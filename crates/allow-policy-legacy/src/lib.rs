@@ -9,6 +9,16 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use toml::Value;
 
+const LEGACY_POLICY_FILES: &[&str] = &[
+    "non-rust-allowlist.toml",
+    "generated-allowlist.toml",
+    "executable-allowlist.toml",
+    "workflow-allowlist.toml",
+    "dependency-surface-allowlist.toml",
+    "process-allowlist.toml",
+    "network-allowlist.toml",
+];
+
 pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
     let text = read_policy(path.as_ref())?;
     if let Some(table) = legacy_table(&text)?
@@ -54,6 +64,65 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
         return config_from_network_rules(&table, &rules);
     }
     parse_policy(&text)
+}
+
+pub fn load_legacy_policy_dir(dir: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
+    load_legacy_policy_dir_inner(dir.as_ref(), None)
+}
+
+pub fn load_legacy_policy_dir_with_non_rust_findings(
+    dir: impl AsRef<Path>,
+    findings: &[Finding],
+) -> CargoAllowResult<AllowConfig> {
+    load_legacy_policy_dir_inner(dir.as_ref(), Some(findings))
+}
+
+fn load_legacy_policy_dir_inner(
+    dir: &Path,
+    non_rust_findings: Option<&[Finding]>,
+) -> CargoAllowResult<AllowConfig> {
+    if !dir.is_dir() {
+        return Err(CargoAllowError::new(format!(
+            "{} is not a policy directory",
+            dir.display()
+        )));
+    }
+
+    let mut merged = AllowConfig::empty();
+    let mut loaded = 0usize;
+    for file_name in LEGACY_POLICY_FILES {
+        let path = dir.join(file_name);
+        if !path.is_file() {
+            continue;
+        }
+        let cfg = if *file_name == "non-rust-allowlist.toml" {
+            if let Some(findings) = non_rust_findings {
+                load_non_rust_compat_config(&path, findings)?
+            } else {
+                load_legacy_or_canonical(&path)?
+            }
+        } else {
+            load_legacy_or_canonical(&path)?
+        };
+        if loaded == 0 {
+            merged.owner = cfg.owner.clone();
+            merged.status = cfg.status.clone();
+            merged.workspace = cfg.workspace.clone();
+            merged.requirements = cfg.requirements.clone();
+        }
+        loaded += 1;
+        merged.allow.extend(cfg.allow);
+    }
+
+    if loaded == 0 {
+        return Err(CargoAllowError::new(format!(
+            "{} contains no supported legacy policy files",
+            dir.display()
+        )));
+    }
+
+    validate_policy(&merged)?;
+    Ok(merged)
 }
 
 pub fn load_non_rust_compat_config(
@@ -2140,6 +2209,75 @@ mod tests {
         assert!(
             err.to_string()
                 .contains("net-missing missing auth_required")
+        );
+    }
+
+    #[test]
+    fn migrates_legacy_policy_directory_to_one_config() {
+        let dir = fixture_dir();
+        fs::write(
+            dir.join("process-allowlist.toml"),
+            process_policy_fixture_text(),
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("process fixture write: {err}")));
+        fs::write(
+            dir.join("network-allowlist.toml"),
+            network_policy_fixture_text(),
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("network fixture write: {err}")));
+
+        let cfg = load_legacy_policy_dir(&dir).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("policy directory migrates: {err}"))
+        });
+
+        assert_eq!(cfg.policy, "cargo-allow");
+        assert_eq!(cfg.owner.as_deref(), Some("EffortlessMetrics"));
+        assert_eq!(cfg.allow.len(), 4);
+        assert!(
+            cfg.allow
+                .iter()
+                .any(|entry| entry.family.as_deref() == Some("process_spawn"))
+        );
+        assert!(
+            cfg.allow
+                .iter()
+                .any(|entry| entry.family.as_deref() == Some("network_destination"))
+        );
+    }
+
+    #[test]
+    fn policy_directory_can_expand_non_rust_globs_with_findings() {
+        let dir = fixture_dir();
+        fs::write(dir.join("non-rust-allowlist.toml"), policy_fixture_text())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("non-rust fixture write: {err}")));
+        let findings = vec![finding(".github/workflows/ci.yml", "tracked_file")];
+
+        let cfg =
+            load_legacy_policy_dir_with_non_rust_findings(&dir, &findings).unwrap_or_else(|err| {
+                std::panic::panic_any(format!("policy directory with findings migrates: {err}"))
+            });
+
+        assert_eq!(cfg.allow.len(), 1);
+        let entry = cfg
+            .allow
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected expanded non-rust entry"));
+        assert_eq!(entry.id, "non-rust-github-workflows--0001");
+        assert_eq!(
+            entry.path.as_deref(),
+            Some(Path::new(".github/workflows/ci.yml"))
+        );
+        assert_eq!(entry.links, vec!["legacy-policy:non-rust-github-workflows"]);
+    }
+
+    #[test]
+    fn legacy_policy_directory_requires_supported_files() {
+        let dir = fixture_dir();
+        let err =
+            load_legacy_policy_dir(&dir).expect_err("empty policy directory should not migrate");
+        assert!(
+            err.to_string()
+                .contains("contains no supported legacy policy files")
         );
     }
 

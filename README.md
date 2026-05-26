@@ -26,6 +26,7 @@ cargo run -p cargo-allow -- allow check --compat --kind process --mode no-new
 cargo run -p cargo-allow -- allow check --compat --kind network --mode no-new
 cargo run -p cargo-allow -- allow check --mode no-new
 cargo run -p cargo-allow -- allow propose --write policy/allow.proposed.toml
+cargo run -p cargo-allow -- allow migrate --repo-policy policy/ --out policy/allow.toml
 cargo run -p cargo-allow -- allow list
 cargo run -p cargo-allow -- allow doctor
 cargo test --workspace

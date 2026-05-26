@@ -133,13 +133,28 @@ cargo allow migrate --repo-policy policy/ --out policy/allow.toml
 cargo allow check --mode no-new
 ```
 
-The migration writer should:
+`--repo-policy` combines the supported legacy files in a policy directory into
+one canonical cargo-allow policy. It currently includes the shiplog-style
+non-Rust, generated, executable, workflow, dependency-surface, process, and
+network allowlists. For non-Rust file policy, directory migration expands
+matching legacy globs against the current inventory so the canonical output does
+not inherit overlapping-glob ambiguity. Single-file migration remains available:
 
-- preserve stable IDs.
-- preserve owners, reasons, classifications, evidence, and links.
-- add lifecycle warnings for missing `review_after` or `expires`.
-- avoid overwriting without an explicit force flag.
-- write stable formatting.
+```bash
+cargo allow migrate --from policy/non-rust-allowlist.toml --out target/non-rust.allow.toml
+```
+
+The migration writer:
+
+- preserves stable IDs.
+- preserves owners, reasons, classifications, evidence, and links.
+- validates the combined canonical policy before writing.
+- avoids overwriting without `--force`.
+- writes stable formatting.
+
+Migration is still a bridge. The combined policy carries retained legacy
+receipts forward; it does not prove that stale legacy entries are removable and
+does not add source discovery beyond the compatibility lanes already listed.
 
 ## Legacy Inputs
 

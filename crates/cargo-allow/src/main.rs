@@ -6,7 +6,7 @@ use allow_inventory::{
     InventoryOptions, discover_workspace_root, inventory_files, workspace_metadata,
 };
 use allow_match::{CheckMode, evaluate};
-use allow_policy::{find_config, load_policy, render_policy, starter_policy};
+use allow_policy::{find_config, load_policy, render_policy, starter_policy, validate_policy};
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
 use std::fs;
@@ -186,10 +186,16 @@ struct ProposeArgs {
 struct MigrateArgs {
     /// Legacy or canonical policy file to migrate.
     #[arg(long)]
-    from: PathBuf,
+    from: Option<PathBuf>,
+    /// Directory containing compatible legacy policy files.
+    #[arg(long)]
+    repo_policy: Option<PathBuf>,
     /// Output canonical policy path.
     #[arg(long, default_value = "policy/allow.toml")]
     out: PathBuf,
+    /// Overwrite an existing output policy file.
+    #[arg(long)]
+    force: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -452,10 +458,57 @@ fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
 }
 
 fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
-    let cfg = allow_policy_legacy::load_legacy_or_canonical(&args.from)?;
-    write_file(&args.out, &render_policy(&cfg))?;
+    let cfg = match (&args.from, &args.repo_policy) {
+        (Some(from), None) => allow_policy_legacy::load_legacy_or_canonical(from)?,
+        (None, Some(repo_policy)) => load_repo_policy_migration_config(repo_policy)?,
+        (Some(_), Some(_)) => {
+            return Err(CargoAllowError::new(
+                "pass either --from or --repo-policy, not both",
+            ));
+        }
+        (None, None) => {
+            return Err(CargoAllowError::new(
+                "pass --from <file> or --repo-policy <dir>",
+            ));
+        }
+    };
+    validate_policy(&cfg)?;
+    write_file_no_overwrite(&args.out, &render_policy(&cfg), args.force)?;
     eprintln!("{}", allow_policy_legacy::migration_notes());
     Ok(())
+}
+
+fn load_repo_policy_migration_config(repo_policy: &Path) -> CargoAllowResult<AllowConfig> {
+    let root = repo_policy_workspace_root(repo_policy)?;
+    let files = inventory_files(&root, &InventoryOptions::default())?;
+    let findings = allow_files::scan_files(&files)
+        .into_iter()
+        .filter(|finding| finding.kind == FindingKind::NonRustFile)
+        .collect::<Vec<_>>();
+    allow_policy_legacy::load_legacy_policy_dir_with_non_rust_findings(repo_policy, &findings)
+}
+
+fn repo_policy_workspace_root(repo_policy: &Path) -> CargoAllowResult<PathBuf> {
+    let cwd =
+        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let full_policy_path = if repo_policy.is_absolute() {
+        repo_policy.to_path_buf()
+    } else {
+        cwd.join(repo_policy)
+    };
+    if full_policy_path.file_name().and_then(|name| name.to_str()) == Some("policy") {
+        return full_policy_path
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .map(PathBuf::from)
+            .ok_or_else(|| {
+                CargoAllowError::new(format!(
+                    "failed to infer repository root from {}",
+                    repo_policy.display()
+                ))
+            });
+    }
+    discover_workspace_root(cwd)
 }
 
 fn cmd_prune() -> CargoAllowResult<()> {
@@ -838,9 +891,25 @@ fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowResult<()> {
         .map_err(|e| CargoAllowError::new(format!("failed to write {}: {e}", path.display())))
 }
 
+fn write_file_no_overwrite(
+    path: impl AsRef<Path>,
+    contents: &str,
+    force: bool,
+) -> CargoAllowResult<()> {
+    let path = path.as_ref();
+    if path.exists() && !force {
+        return Err(CargoAllowError::new(format!(
+            "{} already exists; use --force to overwrite",
+            path.display()
+        )));
+    }
+    write_file(path, contents)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
     fn normalized_args_accepts_cargo_subcommand_prefix() {
@@ -1073,6 +1142,118 @@ mod tests {
     }
 
     #[test]
+    fn clap_parses_repo_policy_migrate() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "migrate",
+            "--repo-policy",
+            "policy",
+            "--out",
+            "target/allow.toml",
+            "--force",
+        ]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse repo-policy migrate: {err}"))
+        });
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Migrate(MigrateArgs {
+                repo_policy: Some(dir),
+                out,
+                force: true,
+                ..
+            })) if dir == Path::new("policy") && out == Path::new("target/allow.toml")
+        ));
+    }
+
+    #[test]
+    fn migrate_requires_one_input_source() {
+        let missing = cmd_migrate(&MigrateArgs {
+            from: None,
+            repo_policy: None,
+            out: PathBuf::from("target/unused.toml"),
+            force: false,
+        })
+        .expect_err("missing input source should fail");
+        assert!(
+            missing
+                .to_string()
+                .contains("pass --from <file> or --repo-policy <dir>")
+        );
+
+        let conflicting = cmd_migrate(&MigrateArgs {
+            from: Some(PathBuf::from("legacy.toml")),
+            repo_policy: Some(PathBuf::from("policy")),
+            out: PathBuf::from("target/unused.toml"),
+            force: false,
+        })
+        .expect_err("conflicting input sources should fail");
+        assert!(
+            conflicting
+                .to_string()
+                .contains("pass either --from or --repo-policy")
+        );
+    }
+
+    #[test]
+    fn migrate_refuses_existing_output_without_force() {
+        let dir = migrate_fixture_dir();
+        let policy_dir = dir.join("policy");
+        fs::create_dir_all(&policy_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::write(
+            policy_dir.join("network-allowlist.toml"),
+            network_policy_fixture_text(),
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("network fixture write: {err}")));
+        let out = dir.join("allow.toml");
+        fs::write(&out, "existing")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("existing output write: {err}")));
+
+        let err = cmd_migrate(&MigrateArgs {
+            from: None,
+            repo_policy: Some(policy_dir),
+            out,
+            force: false,
+        })
+        .expect_err("existing output should require --force");
+        assert!(err.to_string().contains("use --force to overwrite"));
+    }
+
+    #[test]
+    fn migrate_repo_policy_writes_combined_canonical_policy() {
+        let dir = migrate_fixture_dir();
+        let policy_dir = dir.join("policy");
+        fs::create_dir_all(&policy_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::write(
+            policy_dir.join("process-allowlist.toml"),
+            process_policy_fixture_text(),
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("process fixture write: {err}")));
+        fs::write(
+            policy_dir.join("network-allowlist.toml"),
+            network_policy_fixture_text(),
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("network fixture write: {err}")));
+        let out = dir.join("allow.toml");
+
+        cmd_migrate(&MigrateArgs {
+            from: None,
+            repo_policy: Some(policy_dir),
+            out: out.clone(),
+            force: false,
+        })
+        .unwrap_or_else(|err| std::panic::panic_any(format!("repo-policy migrate: {err}")));
+
+        let rendered = fs::read_to_string(&out)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read migrated policy: {err}")));
+        assert!(rendered.contains("process_spawn"));
+        assert!(rendered.contains("network_destination"));
+    }
+
+    #[test]
     fn report_config_filters_allow_entries_by_kind() {
         let mut cfg = AllowConfig::empty();
         cfg.allow
@@ -1215,6 +1396,56 @@ mod tests {
 
     fn argv(items: Vec<&str>) -> Vec<String> {
         items.into_iter().map(String::from).collect()
+    }
+
+    static NEXT_MIGRATE_FIXTURE: AtomicUsize = AtomicUsize::new(0);
+
+    fn migrate_fixture_dir() -> PathBuf {
+        let id = NEXT_MIGRATE_FIXTURE.fetch_add(1, Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!(
+            "cargo-allow-cli-migrate-{}-{id}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("fixture dir: {err}")));
+        dir
+    }
+
+    fn process_policy_fixture_text() -> &'static str {
+        r#"schema_version = 1
+policy = "process-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "proc-cargo-install-cargo-deny"
+binary = "cargo"
+argv_shape = ["install", "cargo-deny", "--locked"]
+network_reach = true
+called_by = [".github/workflows/ci.yml"]
+owner = "release/ci"
+reason = "Installs cargo-deny in the deny job."
+created = "2026-05-09"
+review_after = "2026-09-09"
+"#
+    }
+
+    fn network_policy_fixture_text() -> &'static str {
+        r#"schema_version = 1
+policy = "network-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "net-crates-io-fetch"
+destination = "crates.io"
+auth_required = false
+lane = "build"
+owner = "release"
+reason = "cargo fetch resolves and downloads crate dependencies."
+created = "2026-05-09"
+expires = "permanent"
+"#
     }
 
     fn test_entry(id: &str, kind: FindingKind) -> AllowEntry {
