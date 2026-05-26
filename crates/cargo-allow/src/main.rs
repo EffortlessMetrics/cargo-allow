@@ -5,27 +5,179 @@ use allow_core::{
 use allow_inventory::{InventoryOptions, discover_workspace_root, inventory_files};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{find_config, load_policy, render_policy, starter_policy};
+use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Parser)]
+#[command(
+    name = "cargo-allow",
+    about = "Source exception ledger for Rust workspaces",
+    disable_version_flag = true
+)]
+struct CargoAllowCli {
+    #[command(subcommand)]
+    command: Option<CargoAllowCommand>,
+}
+
+#[derive(Debug, Subcommand)]
+enum CargoAllowCommand {
+    /// Create policy/allow.toml.
+    Init(InitArgs),
+    /// Inventory exceptions and policy health.
+    Audit(ReportArgs),
+    /// CI gate for the exception ledger.
+    Check(CheckArgs),
+    /// PR-oriented report with git changed files.
+    Diff(DiffArgs),
+    /// List allow entries.
+    List(ListArgs),
+    /// Explain one allow entry.
+    Explain(ExplainArgs),
+    /// Generate temporary baseline_debt entries.
+    Propose(ProposeArgs),
+    /// Convert compatible legacy policy files.
+    Migrate(MigrateArgs),
+    /// Dry-run stale cleanup guidance.
+    Prune,
+    /// Validate local setup.
+    Doctor(ConfigArgs),
+}
+
+#[derive(Debug, Clone, Parser)]
+struct ConfigArgs {
+    /// Policy config path.
+    #[arg(long)]
+    config: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Parser)]
+struct InitArgs {
+    /// Write strict-mode defaults.
+    #[arg(long)]
+    strict: bool,
+    /// Overwrite an existing policy file.
+    #[arg(long)]
+    force: bool,
+    /// Policy config path.
+    #[arg(long, default_value = "policy/allow.toml")]
+    config: PathBuf,
+}
+
+#[derive(Debug, Clone, Parser)]
+struct ReportArgs {
+    /// Policy config path.
+    #[arg(long)]
+    config: Option<PathBuf>,
+    /// Filter findings by kind.
+    #[arg(long)]
+    kind: Option<String>,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
+    format: OutputFormat,
+    /// Write report to a file instead of stdout.
+    #[arg(long)]
+    output: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Parser)]
+struct CheckArgs {
+    /// Policy config path.
+    #[arg(long)]
+    config: Option<PathBuf>,
+    /// Filter findings by kind.
+    #[arg(long)]
+    kind: Option<String>,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
+    format: OutputFormat,
+    /// Write report to a file instead of stdout.
+    #[arg(long)]
+    output: Option<PathBuf>,
+    /// Write machine-readable receipt to a file.
+    #[arg(long)]
+    receipt: Option<PathBuf>,
+    /// Check mode.
+    #[arg(long, default_value = "no-new", value_parser = ["audit", "no-new", "strict", "release"])]
+    mode: String,
+}
+
+#[derive(Debug, Clone, Parser)]
+struct DiffArgs {
+    /// Policy config path.
+    #[arg(long)]
+    config: Option<PathBuf>,
+    /// Filter findings by kind.
+    #[arg(long)]
+    kind: Option<String>,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
+    format: OutputFormat,
+    /// Write report to a file instead of stdout.
+    #[arg(long)]
+    output: Option<PathBuf>,
+    /// Base git revision for changed-file listing.
+    #[arg(long)]
+    base: String,
+    /// Optional head git revision.
+    #[arg(long)]
+    head: Option<String>,
+}
+
+#[derive(Debug, Clone, Parser)]
+struct ListArgs {
+    /// Policy config path.
+    #[arg(long)]
+    config: Option<PathBuf>,
+    /// Filter allow entries by kind.
+    #[arg(long)]
+    kind: Option<String>,
+}
+
+#[derive(Debug, Clone, Parser)]
+struct ExplainArgs {
+    /// Allow entry ID.
+    id: String,
+    /// Policy config path.
+    #[arg(long)]
+    config: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Parser)]
+struct ProposeArgs {
+    /// Policy config path.
+    #[arg(long)]
+    config: Option<PathBuf>,
+    /// Filter findings by kind.
+    #[arg(long)]
+    kind: Option<String>,
+    /// Expiry date for generated baseline_debt entries.
+    #[arg(long, default_value = "2026-08-01")]
+    expires: String,
+    /// Write proposed policy to this path.
+    #[arg(long)]
+    write: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Parser)]
+struct MigrateArgs {
+    /// Legacy or canonical policy file to migrate.
+    #[arg(long)]
+    from: PathBuf,
+    /// Output canonical policy path.
+    #[arg(long, default_value = "policy/allow.toml")]
+    out: PathBuf,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum OutputFormat {
     Human,
     Json,
+    #[value(alias = "md")]
     Markdown,
-}
-
-impl OutputFormat {
-    fn parse(value: Option<String>) -> Self {
-        match value.as_deref() {
-            Some("json") => Self::Json,
-            Some("markdown") | Some("md") => Self::Markdown,
-            _ => Self::Human,
-        }
-    }
 }
 
 fn main() {
@@ -36,39 +188,39 @@ fn main() {
 }
 
 fn run() -> CargoAllowResult<()> {
-    let mut args = env::args().skip(1).collect::<Vec<_>>();
-    if args.first().map(|s| s.as_str()) == Some("allow") {
-        args.remove(0);
-    }
-    let Some(cmd) = args.first().cloned() else {
-        print_help();
+    let cli = CargoAllowCli::parse_from(normalized_args(env::args()));
+    let Some(command) = cli.command else {
+        CargoAllowCli::command()
+            .print_help()
+            .map_err(|e| CargoAllowError::new(format!("failed to print help: {e}")))?;
+        println!();
         return Ok(());
     };
-    let rest = &args[1..];
-    match cmd.as_str() {
-        "init" => cmd_init(rest),
-        "audit" => cmd_audit(rest),
-        "check" => cmd_check(rest),
-        "diff" => cmd_diff(rest),
-        "list" => cmd_list(rest),
-        "explain" => cmd_explain(rest),
-        "propose" => cmd_propose(rest),
-        "migrate" => cmd_migrate(rest),
-        "prune" => cmd_prune(rest),
-        "doctor" => cmd_doctor(rest),
-        "help" | "--help" | "-h" => {
-            print_help();
-            Ok(())
-        }
-        other => Err(CargoAllowError::new(format!("unknown command `{other}`"))),
+    match command {
+        CargoAllowCommand::Init(args) => cmd_init(&args),
+        CargoAllowCommand::Audit(args) => cmd_audit(&args),
+        CargoAllowCommand::Check(args) => cmd_check(&args),
+        CargoAllowCommand::Diff(args) => cmd_diff(&args),
+        CargoAllowCommand::List(args) => cmd_list(&args),
+        CargoAllowCommand::Explain(args) => cmd_explain(&args),
+        CargoAllowCommand::Propose(args) => cmd_propose(&args),
+        CargoAllowCommand::Migrate(args) => cmd_migrate(&args),
+        CargoAllowCommand::Prune => cmd_prune(),
+        CargoAllowCommand::Doctor(args) => cmd_doctor(&args),
     }
 }
 
-fn cmd_init(args: &[String]) -> CargoAllowResult<()> {
-    let strict = has_flag(args, "--strict");
-    let config = value_of(args, "--config").unwrap_or_else(|| "policy/allow.toml".to_string());
-    let path = PathBuf::from(config);
-    if path.exists() && !has_flag(args, "--force") {
+fn normalized_args(args: impl IntoIterator<Item = String>) -> Vec<String> {
+    let mut args = args.into_iter().collect::<Vec<_>>();
+    if args.get(1).map(|s| s.as_str()) == Some("allow") {
+        args.remove(1);
+    }
+    args
+}
+
+fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
+    let path = args.config.clone();
+    if path.exists() && !args.force {
         return Err(CargoAllowError::new(format!(
             "{} already exists; use --force to overwrite",
             path.display()
@@ -79,45 +231,41 @@ fn cmd_init(args: &[String]) -> CargoAllowResult<()> {
             CargoAllowError::new(format!("failed to create {}: {e}", parent.display()))
         })?;
     }
-    fs::write(&path, starter_policy(strict))
+    fs::write(&path, starter_policy(args.strict))
         .map_err(|e| CargoAllowError::new(format!("failed to write {}: {e}", path.display())))?;
     println!("created {}", path.display());
     Ok(())
 }
 
-fn cmd_audit(args: &[String]) -> CargoAllowResult<()> {
-    let format = OutputFormat::parse(value_of(args, "--format"));
-    let kind = value_of(args, "--kind");
-    let (root, cfg, findings) = load_world(args, false, kind.as_deref())?;
+fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
+    let (root, cfg, findings) = load_world(args.config.as_deref(), false, args.kind.as_deref())?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
     print_report(
         "audit",
-        format,
+        args.format,
         &findings,
         &outcomes,
         false,
-        value_of(args, "--output"),
+        args.output.as_deref(),
     )?;
     eprintln!("workspace: {}", root.display());
     Ok(())
 }
 
-fn cmd_check(args: &[String]) -> CargoAllowResult<()> {
-    let format = OutputFormat::parse(value_of(args, "--format"));
-    let mode = CheckMode::parse(&value_of(args, "--mode").unwrap_or_else(|| "no-new".to_string()));
-    let kind = value_of(args, "--kind");
-    let (_root, cfg, findings) = load_world(args, true, kind.as_deref())?;
+fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
+    let mode = CheckMode::parse(&args.mode);
+    let (_root, cfg, findings) = load_world(args.config.as_deref(), true, args.kind.as_deref())?;
     let outcomes = evaluate(&cfg, &findings, mode);
     let failed = outcomes.iter().any(|o| mode.fails(o.status));
     print_report(
         "check",
-        format,
+        args.format,
         &findings,
         &outcomes,
         failed,
-        value_of(args, "--output"),
+        args.output.as_deref(),
     )?;
-    if let Some(path) = value_of(args, "--receipt") {
+    if let Some(path) = &args.receipt {
         write_file(
             path,
             &allow_report::render_receipt("check", &outcomes, failed),
@@ -129,24 +277,20 @@ fn cmd_check(args: &[String]) -> CargoAllowResult<()> {
     Ok(())
 }
 
-fn cmd_diff(args: &[String]) -> CargoAllowResult<()> {
-    let base = value_of(args, "--base")
-        .ok_or_else(|| CargoAllowError::new("diff requires --base <rev>"))?;
-    let head = value_of(args, "--head");
-    let format = OutputFormat::parse(value_of(args, "--format"));
-    let (root, cfg, findings) = load_world(args, true, value_of(args, "--kind").as_deref())?;
+fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
+    let (root, cfg, findings) = load_world(args.config.as_deref(), true, args.kind.as_deref())?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let failed = outcomes.iter().any(|o| CheckMode::NoNew.fails(o.status));
-    let mut text = match format {
+    let mut text = match args.format {
         OutputFormat::Json => allow_report::render_json("diff", &findings, &outcomes, failed),
         OutputFormat::Markdown => {
             allow_report::render_markdown("diff", &findings, &outcomes, failed)
         }
         OutputFormat::Human => allow_report::render_human("diff", &findings, &outcomes, failed),
     };
-    match allow_diff::changed_files(&root, &base, head.as_deref()) {
+    match allow_diff::changed_files(&root, &args.base, args.head.as_deref()) {
         Ok(changed) => {
-            if format == OutputFormat::Human {
+            if args.format == OutputFormat::Human {
                 text.push_str("\nChanged files from git diff:\n");
                 for path in changed.iter().take(80) {
                     text.push_str(&format!("  {}\n", normalize_path(path)));
@@ -154,12 +298,12 @@ fn cmd_diff(args: &[String]) -> CargoAllowResult<()> {
             }
         }
         Err(err) => {
-            if format == OutputFormat::Human {
+            if args.format == OutputFormat::Human {
                 text.push_str(&format!("\nwarning: could not compute git diff: {err}\n"));
             }
         }
     }
-    if let Some(path) = value_of(args, "--output") {
+    if let Some(path) = &args.output {
         write_file(path, &text)?;
     } else {
         println!("{text}");
@@ -170,11 +314,11 @@ fn cmd_diff(args: &[String]) -> CargoAllowResult<()> {
     Ok(())
 }
 
-fn cmd_list(args: &[String]) -> CargoAllowResult<()> {
-    let cfg = load_config_required(args)?;
-    let kind = value_of(args, "--kind");
+fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
+    let cfg = load_config_required(args.config.as_deref())?;
     for entry in cfg.allow.iter().filter(|e| {
-        kind.as_deref()
+        args.kind
+            .as_deref()
             .map(|k| e.kind.as_str() == k)
             .unwrap_or(true)
     }) {
@@ -189,17 +333,13 @@ fn cmd_list(args: &[String]) -> CargoAllowResult<()> {
     Ok(())
 }
 
-fn cmd_explain(args: &[String]) -> CargoAllowResult<()> {
-    let id = args
-        .iter()
-        .find(|a| !a.starts_with('-'))
-        .ok_or_else(|| CargoAllowError::new("explain requires an allow id"))?;
-    let cfg = load_config_required(args)?;
+fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
+    let cfg = load_config_required(args.config.as_deref())?;
     let entry = cfg
         .allow
         .iter()
-        .find(|e| e.id == *id)
-        .ok_or_else(|| CargoAllowError::new(format!("no allow entry `{id}`")))?;
+        .find(|e| e.id == args.id)
+        .ok_or_else(|| CargoAllowError::new(format!("no allow entry `{}`", args.id)))?;
     println!("{}", entry.id);
     println!(
         "kind: {}{}",
@@ -226,26 +366,24 @@ fn cmd_explain(args: &[String]) -> CargoAllowResult<()> {
     Ok(())
 }
 
-fn cmd_propose(args: &[String]) -> CargoAllowResult<()> {
-    let kind = value_of(args, "--kind");
-    let (_root, cfg, findings) = load_world(args, false, kind.as_deref())?;
+fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
+    let (_root, cfg, findings) = load_world(args.config.as_deref(), false, args.kind.as_deref())?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
     let mut proposed = cfg.clone();
     let start = proposed.allow.len() + 1;
-    let expires = value_of(args, "--expires").unwrap_or_else(|| "2026-08-01".to_string());
     for (n, outcome) in outcomes
         .iter()
         .filter(|o| o.status == allow_core::MatchStatus::New)
         .enumerate()
     {
-        if let Some(idx) = outcome.finding_index {
+        if let Some(finding) = outcome.finding_index.and_then(|idx| findings.get(idx)) {
             proposed
                 .allow
-                .push(entry_from_finding(&findings[idx], start + n, &expires));
+                .push(entry_from_finding(finding, start + n, &args.expires));
         }
     }
     let rendered = render_policy(&proposed);
-    if let Some(path) = value_of(args, "--write") {
+    if let Some(path) = &args.write {
         write_file(path, &rendered)?;
     } else {
         println!("{rendered}");
@@ -253,29 +391,26 @@ fn cmd_propose(args: &[String]) -> CargoAllowResult<()> {
     Ok(())
 }
 
-fn cmd_migrate(args: &[String]) -> CargoAllowResult<()> {
-    let from = value_of(args, "--from")
-        .ok_or_else(|| CargoAllowError::new("migrate requires --from <path>"))?;
-    let out = value_of(args, "--out").unwrap_or_else(|| "policy/allow.toml".to_string());
-    let cfg = allow_policy_legacy::load_legacy_or_canonical(&from)?;
-    write_file(out, &render_policy(&cfg))?;
+fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
+    let cfg = allow_policy_legacy::load_legacy_or_canonical(&args.from)?;
+    write_file(&args.out, &render_policy(&cfg))?;
     eprintln!("{}", allow_policy_legacy::migration_notes());
     Ok(())
 }
 
-fn cmd_prune(_args: &[String]) -> CargoAllowResult<()> {
+fn cmd_prune() -> CargoAllowResult<()> {
     println!(
         "prune MVP is dry-run only. Use check/audit stale results, then edit policy/allow.toml."
     );
     Ok(())
 }
 
-fn cmd_doctor(args: &[String]) -> CargoAllowResult<()> {
+fn cmd_doctor(args: &ConfigArgs) -> CargoAllowResult<()> {
     let root = discover_workspace_root(
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?,
     )?;
     println!("workspace root: {}", root.display());
-    match config_path(args) {
+    match config_path(args.config.as_deref()) {
         Some(path) => println!("config: {}", path.display()),
         None => println!("config: not found; run `cargo allow init`"),
     }
@@ -289,7 +424,7 @@ fn cmd_doctor(args: &[String]) -> CargoAllowResult<()> {
 }
 
 fn load_world(
-    args: &[String],
+    config: Option<&Path>,
     require_config: bool,
     kind_filter: Option<&str>,
 ) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>)> {
@@ -297,9 +432,9 @@ fn load_world(
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = discover_workspace_root(cwd)?;
     let cfg = if require_config {
-        load_config_required(args)?
+        load_config_required(config)?
     } else {
-        load_config_optional(args)?.unwrap_or_else(AllowConfig::empty)
+        load_config_optional(config)?.unwrap_or_else(AllowConfig::empty)
     };
     let opts = InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
@@ -319,22 +454,22 @@ fn load_world(
     Ok((root, cfg, findings))
 }
 
-fn load_config_required(args: &[String]) -> CargoAllowResult<AllowConfig> {
-    let path = config_path(args).ok_or_else(|| {
+fn load_config_required(config: Option<&Path>) -> CargoAllowResult<AllowConfig> {
+    let path = config_path(config).ok_or_else(|| {
         CargoAllowError::new("no policy config found; run `cargo allow init` or pass --config")
     })?;
     load_policy(path)
 }
 
-fn load_config_optional(args: &[String]) -> CargoAllowResult<Option<AllowConfig>> {
-    match config_path(args) {
+fn load_config_optional(config: Option<&Path>) -> CargoAllowResult<Option<AllowConfig>> {
+    match config_path(config) {
         Some(path) => Ok(Some(load_policy(path)?)),
         None => Ok(None),
     }
 }
 
-fn config_path(args: &[String]) -> Option<PathBuf> {
-    value_of(args, "--config")
+fn config_path(config: Option<&Path>) -> Option<PathBuf> {
+    config
         .map(PathBuf::from)
         .or_else(|| find_config(env::current_dir().ok()?))
 }
@@ -345,7 +480,7 @@ fn print_report(
     findings: &[Finding],
     outcomes: &[allow_core::MatchOutcome],
     failed: bool,
-    output: Option<String>,
+    output: Option<&Path>,
 ) -> CargoAllowResult<()> {
     let text = match format {
         OutputFormat::Human => allow_report::render_human(command, findings, outcomes, failed),
@@ -408,23 +543,6 @@ fn entry_from_finding(finding: &Finding, index: usize, expires: &str) -> AllowEn
     }
 }
 
-fn has_flag(args: &[String], flag: &str) -> bool {
-    args.iter().any(|a| a == flag)
-}
-
-fn value_of(args: &[String], flag: &str) -> Option<String> {
-    let mut iter = args.iter();
-    while let Some(arg) = iter.next() {
-        if arg == flag {
-            return iter.next().cloned();
-        }
-        if let Some(rest) = arg.strip_prefix(&format!("{flag}=")) {
-            return Some(rest.to_string());
-        }
-    }
-    None
-}
-
 fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowResult<()> {
     let path = path.as_ref();
     if let Some(parent) = path.parent() {
@@ -436,29 +554,58 @@ fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowResult<()> {
         .map_err(|e| CargoAllowError::new(format!("failed to write {}: {e}", path.display())))
 }
 
-fn print_help() {
-    println!(
-        r#"cargo-allow: source exception ledger for Rust workspaces
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-Usage through Cargo:
-  cargo allow <command> [options]
+    #[test]
+    fn normalized_args_accepts_cargo_subcommand_prefix() {
+        let normalized = normalized_args(argv(vec!["cargo-allow", "allow", "audit"]));
+        let expected = argv(vec!["cargo-allow", "audit"]);
+        assert_eq!(normalized, expected);
+    }
 
-Commands:
-  init       Create policy/allow.toml
-  audit      Inventory exceptions and policy health
-  check      CI gate for the exception ledger
-  diff       PR-oriented report with git changed files
-  list       List allow entries
-  explain    Explain one allow entry
-  propose    Generate temporary baseline_debt entries
-  migrate    Convert compatible legacy policy files
-  prune      Dry-run stale cleanup guidance
-  doctor     Validate local setup
+    #[test]
+    fn clap_parses_markdown_alias() {
+        let parsed =
+            CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "check", "--format", "md"]))
+                .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
 
-Common options:
-  --config <path>       Policy config path
-  --kind <kind>         panic | unsafe | lint_exception | non_rust_file | generated_code
-  --format <format>     human | json | markdown
-"#
-    );
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(CheckArgs {
+                format: OutputFormat::Markdown,
+                ..
+            }))
+        ));
+    }
+
+    #[test]
+    fn clap_requires_diff_base() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "diff"]));
+
+        assert!(parsed.is_err());
+    }
+
+    #[test]
+    fn clap_parses_explain_id_and_config() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "explain",
+            "allow-0001",
+            "--config",
+            "policy/custom.toml",
+        ]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Explain(ExplainArgs { id, config }))
+                if id == "allow-0001" && config.as_deref() == Some(Path::new("policy/custom.toml"))
+        ));
+    }
+
+    fn argv(items: Vec<&str>) -> Vec<String> {
+        items.into_iter().map(String::from).collect()
+    }
 }
