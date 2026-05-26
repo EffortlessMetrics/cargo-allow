@@ -11,7 +11,9 @@ name = "allow-diff"
 version = "0.1.0"
 dependencies = [
  "allow-core",
+ "allow-files",
  "allow-policy",
+ "allow-rust",
 ]
 
 [[package]]

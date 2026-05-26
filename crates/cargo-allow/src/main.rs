@@ -369,8 +369,32 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
     let policy_path = git_relative_config_path(&root, args.config.as_deref())?;
+    let base_cfg = allow_diff::policy_config_at_revision(&root, &args.base, &policy_path)?
+        .unwrap_or_else(|| report_cfg.clone());
+    let head_cfg_for_diff = if let Some(head) = &args.head {
+        allow_diff::policy_config_at_revision(&root, head, &policy_path)?
+            .unwrap_or_else(|| report_cfg.clone())
+    } else {
+        report_cfg.clone()
+    };
+    let mut base_findings = allow_diff::findings_at_revision(&root, &args.base, &base_cfg)?;
+    if let Some(kind) = &args.kind {
+        let parsed = parse_kind_filter(kind)?;
+        base_findings.retain(|finding| parsed.matches_finding(finding));
+    }
+    let mut head_findings_for_diff = if let Some(head) = &args.head {
+        allow_diff::findings_at_revision(&root, head, &head_cfg_for_diff)?
+    } else {
+        findings.clone()
+    };
+    if let Some(kind) = &args.kind {
+        let parsed = parse_kind_filter(kind)?;
+        head_findings_for_diff.retain(|finding| parsed.matches_finding(finding));
+    }
+    let finding_changes =
+        allow_diff::finding_posture_changes(&base_findings, &head_findings_for_diff);
     let policy_changes =
-        allow_diff::policy_changes_from_git(&root, &args.base, &policy_path, &report_cfg)?;
+        allow_diff::policy_changes_from_git(&root, &args.base, &policy_path, &head_cfg_for_diff)?;
     let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
     let failed = outcomes.iter().any(|o| CheckMode::NoNew.fails(o.status)) || policy_failed;
     let mut text = match args.format {
@@ -380,6 +404,7 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         }
         OutputFormat::Human => allow_report::render_human("diff", &findings, &outcomes, failed),
     };
+    append_finding_posture_changes(&mut text, args.format, &finding_changes);
     append_policy_changes(&mut text, args.format, &policy_changes);
     match allow_diff::changed_files(&root, &args.base, args.head.as_deref()) {
         Ok(changed) => {
@@ -399,6 +424,9 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     if args.format == OutputFormat::Json && !policy_changes.is_empty() {
         eprintln!("{}", render_policy_changes_human(&policy_changes));
     }
+    if args.format == OutputFormat::Json && !finding_changes.is_empty() {
+        eprintln!("{}", render_finding_posture_changes_human(&finding_changes));
+    }
     if let Some(path) = &args.output {
         write_file(path, &text)?;
     } else {
@@ -408,6 +436,70 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         process::exit(1);
     }
     Ok(())
+}
+
+fn append_finding_posture_changes(
+    text: &mut String,
+    format: OutputFormat,
+    changes: &[allow_diff::FindingPostureChange],
+) {
+    match format {
+        OutputFormat::Human => text.push_str(&render_finding_posture_changes_human(changes)),
+        OutputFormat::Markdown => text.push_str(&render_finding_posture_changes_markdown(changes)),
+        OutputFormat::Json => {}
+    }
+}
+
+fn render_finding_posture_changes_human(changes: &[allow_diff::FindingPostureChange]) -> String {
+    let mut out = String::new();
+    out.push_str("\nFinding posture changes:\n");
+    if changes.is_empty() {
+        out.push_str("  none\n");
+        return out;
+    }
+    for change in changes.iter().take(120) {
+        out.push_str(&format!(
+            "  {} {}{} at {}\n",
+            change.kind.as_str(),
+            change.finding_kind,
+            change
+                .family
+                .as_ref()
+                .map(|family| format!(".{family}"))
+                .unwrap_or_default(),
+            change.path
+        ));
+    }
+    if changes.len() > 120 {
+        out.push_str(&format!("  ... {} more omitted\n", changes.len() - 120));
+    }
+    out
+}
+
+fn render_finding_posture_changes_markdown(changes: &[allow_diff::FindingPostureChange]) -> String {
+    let mut out = String::new();
+    out.push_str("\n## Finding Posture Changes\n\n");
+    if changes.is_empty() {
+        out.push_str("No source finding posture changes detected.\n");
+        return out;
+    }
+    out.push_str("| Change | Kind | Family | Path |\n|---|---|---|---|\n");
+    for change in changes.iter().take(120) {
+        out.push_str(&format!(
+            "| `{}` | `{}` | `{}` | `{}` |\n",
+            markdown_cell(change.kind.as_str()),
+            markdown_cell(&change.finding_kind),
+            markdown_cell(change.family.as_deref().unwrap_or("")),
+            markdown_cell(&change.path)
+        ));
+    }
+    if changes.len() > 120 {
+        out.push_str(&format!(
+            "\n{} additional finding posture changes omitted.\n",
+            changes.len() - 120
+        ));
+    }
+    out
 }
 
 fn append_policy_changes(

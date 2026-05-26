@@ -1,4 +1,7 @@
-use allow_core::{AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, SimpleDate};
+use allow_core::{
+    AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, SimpleDate, glob_matches,
+    normalize_path,
+};
 use allow_policy::parse_policy;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -29,6 +32,191 @@ pub fn changed_files(
         .filter(|line| !line.trim().is_empty())
         .map(PathBuf::from)
         .collect())
+}
+
+pub fn git_tracked_files_at_revision(
+    root: impl AsRef<Path>,
+    revision: &str,
+) -> CargoAllowResult<Vec<PathBuf>> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root.as_ref())
+        .arg("ls-tree")
+        .arg("-r")
+        .arg("--name-only")
+        .arg(revision)
+        .output()
+        .map_err(|e| CargoAllowError::new(format!("failed to run git ls-tree: {e}")))?;
+    if !output.status.success() {
+        return Err(CargoAllowError::new(format!(
+            "git ls-tree failed for {revision}"
+        )));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(PathBuf::from)
+        .collect())
+}
+
+pub fn findings_at_revision(
+    root: impl AsRef<Path>,
+    revision: &str,
+    cfg: &AllowConfig,
+) -> CargoAllowResult<Vec<Finding>> {
+    let root = root.as_ref();
+    let mut files = git_tracked_files_at_revision(root, revision)?;
+    files.retain(|path| !is_ignored(path, &cfg.workspace.ignored));
+    let mut findings = Vec::new();
+    for rel in files
+        .iter()
+        .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("rs"))
+    {
+        if let Some(text) = read_file_at_revision(root, revision, rel)? {
+            findings.extend(allow_rust::scan_rust_source(rel, &text));
+        }
+    }
+    findings.extend(allow_files::scan_files_with_options(
+        &files,
+        &allow_files::FileScanOptions {
+            generated: cfg.workspace.generated.clone(),
+        },
+    ));
+    Ok(findings)
+}
+
+fn is_ignored(path: &Path, patterns: &[String]) -> bool {
+    let normalized = normalize_path(path);
+    patterns.iter().any(|pattern| {
+        glob_matches(pattern, path)
+            || pattern
+                .strip_suffix("/**")
+                .map(|prefix| normalized == prefix || normalized.starts_with(&format!("{prefix}/")))
+                .unwrap_or(false)
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FindingPostureChange {
+    pub kind: FindingPostureKind,
+    pub key: String,
+    pub finding_kind: String,
+    pub family: Option<String>,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FindingPostureKind {
+    New,
+    Removed,
+}
+
+impl FindingPostureKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::New => "new",
+            Self::Removed => "removed",
+        }
+    }
+}
+
+pub fn finding_posture_changes(base: &[Finding], head: &[Finding]) -> Vec<FindingPostureChange> {
+    let base_by_key = findings_by_key(base);
+    let head_by_key = findings_by_key(head);
+    let mut changes = Vec::new();
+    for (key, counted) in &head_by_key {
+        let base_count = base_by_key
+            .get(key)
+            .map(|counted| counted.count)
+            .unwrap_or(0);
+        if counted.count > base_count {
+            for _ in 0..(counted.count - base_count) {
+                changes.push(finding_posture_change(
+                    FindingPostureKind::New,
+                    key,
+                    counted.finding,
+                ));
+            }
+        }
+    }
+    for (key, counted) in &base_by_key {
+        let head_count = head_by_key
+            .get(key)
+            .map(|counted| counted.count)
+            .unwrap_or(0);
+        if counted.count > head_count {
+            for _ in 0..(counted.count - head_count) {
+                changes.push(finding_posture_change(
+                    FindingPostureKind::Removed,
+                    key,
+                    counted.finding,
+                ));
+            }
+        }
+    }
+    changes
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CountedFinding<'a> {
+    finding: &'a Finding,
+    count: usize,
+}
+
+fn findings_by_key(findings: &[Finding]) -> BTreeMap<String, CountedFinding<'_>> {
+    let mut by_key = BTreeMap::new();
+    for finding in findings {
+        by_key
+            .entry(finding_identity_key(finding))
+            .and_modify(|counted: &mut CountedFinding<'_>| counted.count += 1)
+            .or_insert(CountedFinding { finding, count: 1 });
+    }
+    by_key
+}
+
+fn finding_posture_change(
+    kind: FindingPostureKind,
+    key: &str,
+    finding: &Finding,
+) -> FindingPostureChange {
+    FindingPostureChange {
+        kind,
+        key: key.to_string(),
+        finding_kind: finding.kind.as_str().to_string(),
+        family: finding.family.clone(),
+        path: normalize_path(&finding.path),
+    }
+}
+
+pub fn finding_identity_key(finding: &Finding) -> String {
+    [
+        finding.kind.as_str().to_string(),
+        finding.family.clone().unwrap_or_default(),
+        normalize_path(&finding.path),
+        finding.identity.ast_kind.clone(),
+        finding.identity.module.clone().unwrap_or_default(),
+        finding.identity.container.clone().unwrap_or_default(),
+        finding.identity.callee.clone().unwrap_or_default(),
+        finding.identity.macro_name.clone().unwrap_or_default(),
+        finding.identity.lint.clone().unwrap_or_default(),
+        finding.identity.symbol.clone().unwrap_or_default(),
+        finding
+            .identity
+            .receiver_fingerprint
+            .clone()
+            .unwrap_or_default(),
+        finding
+            .identity
+            .target_fingerprint
+            .clone()
+            .unwrap_or_default(),
+        finding
+            .identity
+            .normalized_snippet_hash
+            .clone()
+            .unwrap_or_default(),
+    ]
+    .join("|")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -97,11 +285,21 @@ pub fn policy_changes_from_git(
     policy_path: impl AsRef<Path>,
     head_cfg: &AllowConfig,
 ) -> CargoAllowResult<Vec<PolicyChange>> {
-    let Some(base_text) = read_file_at_revision(root, base, policy_path)? else {
+    let Some(base_cfg) = policy_config_at_revision(root, base, policy_path)? else {
         return Ok(Vec::new());
     };
-    let base_cfg = parse_policy(&base_text)?;
     Ok(policy_changes(&base_cfg, head_cfg))
+}
+
+pub fn policy_config_at_revision(
+    root: impl AsRef<Path>,
+    revision: &str,
+    policy_path: impl AsRef<Path>,
+) -> CargoAllowResult<Option<AllowConfig>> {
+    let Some(text) = read_file_at_revision(root, revision, policy_path)? else {
+        return Ok(None);
+    };
+    parse_policy(&text).map(Some)
 }
 
 pub fn read_file_at_revision(
@@ -408,8 +606,51 @@ fn occurrence_limit_loosened(base: Option<u32>, head: Option<u32>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use allow_core::{FindingKind, Lifecycle, Selector};
+    use allow_core::{FindingKind, Lifecycle, Selector, Span, StructuralIdentity};
     use std::path::PathBuf;
+
+    #[test]
+    fn finding_posture_ignores_line_movement_for_same_identity() {
+        let base = vec![finding("src/lib.rs", 10, "load")];
+        let head = vec![finding("src/lib.rs", 99, "load")];
+
+        let changes = finding_posture_changes(&base, &head);
+
+        assert!(changes.is_empty());
+    }
+
+    #[test]
+    fn finding_posture_reports_new_and_removed_findings() {
+        let base = vec![finding("src/old.rs", 10, "old")];
+        let head = vec![finding("src/new.rs", 10, "new")];
+
+        let changes = finding_posture_changes(&base, &head);
+
+        assert!(changes.iter().any(|change| {
+            change.kind == FindingPostureKind::New && change.path == "src/new.rs"
+        }));
+        assert!(changes.iter().any(|change| {
+            change.kind == FindingPostureKind::Removed && change.path == "src/old.rs"
+        }));
+    }
+
+    #[test]
+    fn finding_posture_reports_count_changes_for_same_identity() {
+        let base = vec![finding("src/lib.rs", 10, "load")];
+        let head = vec![
+            finding("src/lib.rs", 10, "load"),
+            finding("src/lib.rs", 20, "load"),
+        ];
+
+        let changes = finding_posture_changes(&base, &head);
+
+        assert_eq!(changes.len(), 1);
+        let change = changes
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected one posture change"));
+        assert_eq!(change.kind, FindingPostureKind::New);
+        assert_eq!(change.path, "src/lib.rs");
+    }
 
     #[test]
     fn detects_scope_broadening_from_path_to_glob() {
@@ -571,6 +812,20 @@ mod tests {
                 ..Selector::default()
             },
             last_seen: None,
+        }
+    }
+
+    fn finding(path: &str, line: u32, container: &str) -> Finding {
+        let mut identity = StructuralIdentity::new("rust", "unsafe_fn");
+        identity.container = Some(container.to_string());
+        identity.normalized_snippet_hash = Some(format!("fnv1a64:{container}"));
+        Finding {
+            kind: FindingKind::Unsafe,
+            family: Some("unsafe_fn".to_string()),
+            path: PathBuf::from(path),
+            span: Some(Span { line, column: 1 }),
+            identity,
+            message: "test finding".to_string(),
         }
     }
 }
