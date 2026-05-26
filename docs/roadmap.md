@@ -39,9 +39,17 @@ Planned PRs:
 
 Goal: ship the first low-parser-risk lane that real repositories can adopt.
 
-Planned PRs:
+Completed:
 
-- Dogfood against an existing bespoke file-policy xtask.
+- Add `--compat --kind non-rust` for shiplog-style
+  `policy/non-rust-allowlist.toml` and prove it side-by-side against shiplog's
+  blocking file-policy xtask.
+
+Next:
+
+- Harden documented replacement gaps before removing any existing xtask:
+  generated files, executable bits, workflow action permissions, dependency
+  surfaces, process policy, and network policy.
 
 ## Phase 4: Build Structural Identity
 

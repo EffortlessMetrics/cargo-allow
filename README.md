@@ -17,6 +17,7 @@ cargo run -p cargo-allow -- allow audit --format json
 cargo run -p cargo-allow -- allow audit --kind non-rust --format human
 cargo run -p cargo-allow -- allow audit --kind non-rust --format markdown --output target/cargo-allow/non-rust-audit.md
 cargo run -p cargo-allow -- allow audit --kind non-rust --include-untracked
+cargo run -p cargo-allow -- allow check --compat --kind non-rust --mode no-new
 cargo run -p cargo-allow -- allow check --mode no-new
 cargo run -p cargo-allow -- allow propose --write policy/allow.proposed.toml
 cargo run -p cargo-allow -- allow list
@@ -42,5 +43,5 @@ It does **not** analyze macro expansion, MIR, type information, or rustc semanti
 | `allow-match` | Structural matcher, lifecycle classification, stale/new/ambiguous statuses |
 | `allow-report` | Human, Markdown, JSON report and receipt rendering, including non-Rust file inventory summaries |
 | `allow-diff` | Git changed-file helper and lightweight diff wrapper |
-| `allow-policy-legacy` | Legacy adapter stubs with concrete migration notes |
+| `allow-policy-legacy` | Legacy policy adapters, including shiplog-style non-Rust allowlists |
 | `cargo-allow` | clap-based CLI wiring for init/audit/check/list/explain/propose/doctor/diff |

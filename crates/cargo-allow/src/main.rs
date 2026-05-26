@@ -74,6 +74,9 @@ struct ReportArgs {
     /// Policy config path.
     #[arg(long)]
     config: Option<PathBuf>,
+    /// Use a compatible legacy policy for the selected kind.
+    #[arg(long)]
+    compat: bool,
     /// Filter findings by kind.
     #[arg(long)]
     kind: Option<String>,
@@ -93,6 +96,9 @@ struct CheckArgs {
     /// Policy config path.
     #[arg(long)]
     config: Option<PathBuf>,
+    /// Use a compatible legacy policy for the selected kind.
+    #[arg(long)]
+    compat: bool,
     /// Filter findings by kind.
     #[arg(long)]
     kind: Option<String>,
@@ -252,12 +258,20 @@ fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
 }
 
 fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings) = load_world(
-        args.config.as_deref(),
-        false,
-        args.kind.as_deref(),
-        args.include_untracked,
-    )?;
+    let (root, cfg, findings) = if args.compat {
+        load_compat_world(
+            args.config.as_deref(),
+            args.kind.as_deref(),
+            args.include_untracked,
+        )?
+    } else {
+        load_world(
+            args.config.as_deref(),
+            false,
+            args.kind.as_deref(),
+            args.include_untracked,
+        )?
+    };
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::Audit);
     print_report(
@@ -274,12 +288,20 @@ fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
 
 fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     let mode = CheckMode::parse(&args.mode);
-    let (_root, cfg, findings) = load_world(
-        args.config.as_deref(),
-        true,
-        args.kind.as_deref(),
-        args.include_untracked,
-    )?;
+    let (_root, cfg, findings) = if args.compat {
+        load_compat_world(
+            args.config.as_deref(),
+            args.kind.as_deref(),
+            args.include_untracked,
+        )?
+    } else {
+        load_world(
+            args.config.as_deref(),
+            true,
+            args.kind.as_deref(),
+            args.include_untracked,
+        )?
+    };
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, mode);
     let failed = outcomes.iter().any(|o| mode.fails(o.status));
@@ -513,6 +535,39 @@ fn load_world(
     Ok((root, cfg, findings))
 }
 
+fn load_compat_world(
+    config: Option<&Path>,
+    kind_filter: Option<&str>,
+    include_untracked: bool,
+) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>)> {
+    let parsed_kind = kind_filter
+        .map(FindingKind::from_str)
+        .transpose()?
+        .unwrap_or(FindingKind::NonRustFile);
+    if parsed_kind != FindingKind::NonRustFile {
+        return Err(CargoAllowError::new(
+            "--compat currently supports only --kind non-rust",
+        ));
+    }
+    let cwd =
+        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let root = discover_workspace_root(cwd)?;
+    let opts = InventoryOptions {
+        include_untracked,
+        ..InventoryOptions::default()
+    };
+    let files = inventory_files(&root, &opts)?;
+    let findings = allow_files::scan_files(&files)
+        .into_iter()
+        .filter(|finding| finding.kind == FindingKind::NonRustFile)
+        .collect::<Vec<_>>();
+    let policy_path = config
+        .map(PathBuf::from)
+        .unwrap_or_else(|| root.join("policy/non-rust-allowlist.toml"));
+    let cfg = allow_policy_legacy::load_non_rust_compat_config(policy_path, &findings)?;
+    Ok((root, cfg, findings))
+}
+
 fn report_config(cfg: &AllowConfig, kind_filter: Option<&str>) -> CargoAllowResult<AllowConfig> {
     let Some(kind) = kind_filter else {
         return Ok(cfg.clone());
@@ -691,6 +746,29 @@ mod tests {
                 include_untracked: true,
                 ..
             }))
+        ));
+    }
+
+    #[test]
+    fn clap_parses_non_rust_compat_check() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--compat",
+            "--kind",
+            "non-rust",
+        ]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse compat check: {err}"))
+        });
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(CheckArgs {
+                compat: true,
+                kind: Some(kind),
+                ..
+            })) if kind == "non-rust"
         ));
     }
 
