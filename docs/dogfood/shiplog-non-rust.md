@@ -35,6 +35,12 @@ Existing workflow gate:
 cargo xtask check-workflows --mode blocking-allowlist
 ```
 
+Existing dependency-surface gate:
+
+```bash
+cargo xtask check-dependency-surfaces --mode blocking-allowlist
+```
+
 Legacy policies:
 
 ```text
@@ -42,6 +48,7 @@ policy/non-rust-allowlist.toml
 policy/generated-allowlist.toml
 policy/executable-allowlist.toml
 policy/workflow-allowlist.toml
+policy/dependency-surface-allowlist.toml
 ```
 
 ## Non-Rust Result
@@ -160,6 +167,32 @@ Workflow compat reads current workflow files from `.github/workflows/*.yml` and
 legacy entries as `policy_exception.github_workflow` and
 `policy_exception.workflow_external_action` canonical policy entries.
 
+## Dependency-Surface Result
+
+The existing dependency-surface xtask gate passed:
+
+```text
+check-dependency-surfaces: no findings.
+```
+
+cargo-allow dependency-surface compat mode also passed:
+
+```bash
+cargo allow check --compat --kind dependency-surface --mode no-new
+```
+
+Observed cargo-allow result:
+
+```text
+Findings scanned: 7
+matched: 7
+new: 0
+```
+
+Dependency-surface compat preserves the existing xtask boundary: configured
+policy patterns must still match tracked files. It renders matched surfaces as
+`policy_exception.dependency_surface` canonical policy entries.
+
 ## What This Proves
 
 - cargo-allow can consume a shiplog-style
@@ -180,15 +213,20 @@ legacy entries as `policy_exception.github_workflow` and
 - Workflow compat preserves the drift shape used by the xtask: workflow files
   and `uses:` references provide current findings, while the policy file
   provides retained workflow and external-action receipts.
+- cargo-allow can consume a shiplog-style
+  `policy/dependency-surface-allowlist.toml`.
+- Dependency-surface compat preserves the legacy xtask's pattern-exists check
+  for configured dependency-surface entries.
 
 ## What This Does Not Prove
 
-- It does not replace shiplog's dependency-surface, process-policy, or
-  network-policy xtasks.
+- It does not replace shiplog's process-policy or network-policy xtasks.
 - It does not prove the canonical `policy/allow.toml` migration is ready to
   replace the legacy policy file.
 - It does not validate macro expansion, type information, executable behavior,
-  workflow permissions, or external network reach.
+  workflow permissions, dependency semantics, or external network reach.
+- It does not prove full unlisted-manifest discovery; dependency-surface compat
+  intentionally mirrors the existing legacy xtask boundary.
 - It does not prove stale legacy entries are removable; compat mode expands
   current findings for side-by-side checking.
 

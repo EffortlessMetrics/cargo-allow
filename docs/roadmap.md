@@ -53,11 +53,14 @@ Completed:
 - Add `--compat --kind workflow` for shiplog-style
   `policy/workflow-allowlist.toml` and prove it side-by-side against shiplog's
   workflow xtask.
+- Add `--compat --kind dependency-surface` for shiplog-style
+  `policy/dependency-surface-allowlist.toml` and prove it side-by-side against
+  shiplog's dependency-surface xtask.
 
 Next:
 
 - Harden documented replacement gaps before removing any existing xtask:
-  dependency surfaces, process policy, and network policy.
+  process policy and network policy.
 
 ## Phase 4: Build Structural Identity
 

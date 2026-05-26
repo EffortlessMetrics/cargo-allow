@@ -46,8 +46,7 @@ Then classify deltas:
 Only replace the xtask when the remaining deltas are documented and acceptable.
 
 Compat mode is a bridge, not the final policy shape. It does not yet replace
-companion legacy checks for dependency surfaces, process policy, or network
-policy.
+companion legacy checks for process policy or network policy.
 
 Generated-file compat is also available for shiplog-style
 `policy/generated-allowlist.toml`:
@@ -87,6 +86,18 @@ both the workflow files and external-action references against
 represented as `policy_exception.github_workflow` and
 `policy_exception.workflow_external_action`.
 
+Dependency-surface compat is available for shiplog-style
+`policy/dependency-surface-allowlist.toml`:
+
+```bash
+cargo allow check --compat --kind dependency-surface
+```
+
+That mode preserves the legacy checker's boundary: it verifies that configured
+dependency-surface patterns still match tracked files, then reports those
+matched surfaces as `policy_exception.dependency_surface`. It does not yet
+perform full unlisted-manifest discovery across every Cargo-adjacent file.
+
 ## Canonical Policy Flow
 
 The target state is:
@@ -113,6 +124,7 @@ Compatibility adapters may support:
 - `policy/generated-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/executable-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/workflow-allowlist.toml` (initial shiplog-style adapter exists)
+- `policy/dependency-surface-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/clippy-exceptions.toml`
 - `policy/unsafe-allowlist.toml`
 - `policy/ripr-suppressions.toml`

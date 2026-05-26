@@ -562,6 +562,14 @@ fn load_compat_world(
         let findings = allow_policy_legacy::workflow_findings_from_files(&root)?;
         return Ok((root, cfg, findings));
     }
+    if is_dependency_surface_compat_kind(compat_kind) {
+        let policy_path = config
+            .map(PathBuf::from)
+            .unwrap_or_else(|| root.join("policy/dependency-surface-allowlist.toml"));
+        let cfg = allow_policy_legacy::load_dependency_surface_compat_config(policy_path)?;
+        let findings = allow_policy_legacy::dependency_surface_findings_from_git(&root, &cfg)?;
+        return Ok((root, cfg, findings));
+    }
     if parsed_filter.kind == FindingKind::GeneratedCode {
         let policy_path = config
             .map(PathBuf::from)
@@ -572,7 +580,7 @@ fn load_compat_world(
     }
     if parsed_filter.kind != FindingKind::NonRustFile {
         return Err(CargoAllowError::new(
-            "--compat currently supports only --kind non-rust, --kind generated, --kind executable, or --kind workflow",
+            "--compat currently supports only --kind non-rust, --kind generated, --kind executable, --kind workflow, or --kind dependency-surface",
         ));
     }
     let opts = InventoryOptions {
@@ -639,6 +647,12 @@ fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
             family: FamilyFilter::Workflow,
         });
     }
+    if is_dependency_surface_compat_kind(kind) {
+        return Ok(KindFilter {
+            kind: FindingKind::PolicyException,
+            family: FamilyFilter::Exact("dependency_surface"),
+        });
+    }
     Ok(KindFilter {
         kind: FindingKind::from_str(kind)?,
         family: FamilyFilter::Any,
@@ -656,6 +670,19 @@ fn is_workflow_compat_kind(kind: &str) -> bool {
     matches!(
         kind.trim(),
         "workflow" | "workflows" | "github_workflow" | "github-workflow" | "workflow-action"
+    )
+}
+
+fn is_dependency_surface_compat_kind(kind: &str) -> bool {
+    matches!(
+        kind.trim(),
+        "dependency"
+            | "dependencies"
+            | "dependency_surface"
+            | "dependency-surface"
+            | "dependency-surfaces"
+            | "dep-surface"
+            | "dep"
     )
 }
 
@@ -933,6 +960,31 @@ mod tests {
     }
 
     #[test]
+    fn clap_parses_dependency_surface_compat_check() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--compat",
+            "--kind",
+            "dependency-surface",
+        ]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!(
+                "CLI should parse dependency-surface compat check: {err}"
+            ))
+        });
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(CheckArgs {
+                compat: true,
+                kind: Some(kind),
+                ..
+            })) if kind == "dependency-surface"
+        ));
+    }
+
+    #[test]
     fn report_config_filters_allow_entries_by_kind() {
         let mut cfg = AllowConfig::empty();
         cfg.allow
@@ -1005,6 +1057,28 @@ mod tests {
                 .iter()
                 .any(|entry| entry.id == "allow-workflow-action")
         );
+    }
+
+    #[test]
+    fn report_config_filters_dependency_surface_family() {
+        let mut cfg = AllowConfig::empty();
+        let mut dependency = test_entry("allow-dep", FindingKind::PolicyException);
+        dependency.family = Some("dependency_surface".to_string());
+        let mut other = test_entry("allow-other-policy", FindingKind::PolicyException);
+        other.family = Some("workflow_external_action".to_string());
+        cfg.allow.push(dependency);
+        cfg.allow.push(other);
+
+        let filtered = report_config(&cfg, Some("dependency-surface")).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("dependency-surface filter should parse: {err}"))
+        });
+
+        assert_eq!(filtered.allow.len(), 1);
+        let entry = filtered
+            .allow
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected dependency entry"));
+        assert_eq!(entry.id, "allow-dep");
     }
 
     fn argv(items: Vec<&str>) -> Vec<String> {
