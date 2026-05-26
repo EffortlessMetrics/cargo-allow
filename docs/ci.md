@@ -12,10 +12,10 @@ The example workflows are intentionally small and copyable:
 - [cargo-allow-diff.yml](../examples/github-actions/cargo-allow-diff.yml)
 - [cargo-allow-check.yml](../examples/github-actions/cargo-allow-check.yml)
 
-The examples use `cargo run -p cargo-allow -- allow ...` because this checkout
-builds the CLI package during development. In a consuming repository, install
-and run the standalone `cargo-allow` binary. `cargo allow ...` remains optional
-Cargo external subcommand compatibility.
+The examples install and run the standalone `cargo-allow` binary before
+scanning. Replace the install step with a pinned release/package source once one
+exists for your environment. `cargo allow ...` remains optional Cargo external
+subcommand compatibility.
 
 ## Pull Requests
 
