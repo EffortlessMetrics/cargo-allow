@@ -139,10 +139,8 @@ Completed:
   posture independent of line movement.
 - Emit Markdown PR summaries with net posture, reviewer action, current
   no-new failures, source finding changes, and policy weakening counts.
-
-Planned work:
-
-- Add GitHub Actions examples.
+- Add GitHub Actions examples for PR posture diff and mainline no-new check
+  workflows.
 
 ## Phase 9: Human UX Commands
 

@@ -1538,3 +1538,69 @@ glob = "docs/dogfood/shiplog-non-rust.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0086"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci.md"
+owner = "core/ci"
+classification = "product_documentation"
+reason = "Documents GitHub Actions patterns for PR posture diffs and mainline checks."
+created = "2026-05-26"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/ci.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0087"
+kind = "non_rust_file"
+family = "configuration"
+path = "examples/github-actions/cargo-allow-diff.yml"
+owner = "core/ci"
+classification = "ci_example"
+reason = "Copyable GitHub Actions example for cargo-allow PR posture diffs."
+created = "2026-05-26"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "examples/github-actions/cargo-allow-diff.yml"
+target_fingerprint = "yml"
+line_hint = 1
+glob = "examples/github-actions/cargo-allow-diff.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0088"
+kind = "non_rust_file"
+family = "configuration"
+path = "examples/github-actions/cargo-allow-check.yml"
+owner = "core/ci"
+classification = "ci_example"
+reason = "Copyable GitHub Actions example for cargo-allow mainline no-new checks."
+created = "2026-05-26"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "examples/github-actions/cargo-allow-check.yml"
+target_fingerprint = "yml"
+line_hint = 1
+glob = "examples/github-actions/cargo-allow-check.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
