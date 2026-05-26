@@ -308,6 +308,33 @@ The migration writer expands non-Rust legacy globs against the current inventory
 so the canonical policy does not inherit overlapping-glob ambiguity. The
 companion retained-entry ledgers are preserved as `policy_exception.*` entries.
 
+The migrated policy also passed normal canonical checks for the companion file
+policy lanes, without `--compat`:
+
+```bash
+cargo allow check --config <migrated-policy> --kind generated --mode no-new
+cargo allow check --config <migrated-policy> --kind executable --mode no-new
+cargo allow check --config <migrated-policy> --kind workflow --mode no-new
+cargo allow check --config <migrated-policy> --kind dependency-surface --mode no-new
+cargo allow check --config <migrated-policy> --kind process --mode no-new
+cargo allow check --config <migrated-policy> --kind network --mode no-new
+```
+
+Observed canonical companion results:
+
+```text
+generated:           1 scanned, 1 matched, 0 new, 0 stale, 0 ambiguous
+executable:          8 scanned, 8 matched, 0 new, 0 stale, 0 ambiguous
+workflow:           84 scanned, 84 matched, 0 new, 0 stale, 0 ambiguous
+dependency-surface:  7 scanned, 7 matched, 0 new, 0 stale, 0 ambiguous
+process:             9 scanned, 9 matched, 0 new, 0 stale, 0 ambiguous
+network:            10 scanned, 10 matched, 0 new, 0 stale, 0 ambiguous
+```
+
+This keeps `--compat` as the migration and side-by-side validation bridge, while
+making the migrated canonical policy checkable for the same retained companion
+surfaces.
+
 ## No-Panic Baseline Migration Result
 
 The existing no-panic xtask gate passed:
@@ -392,15 +419,17 @@ baseline.
   canonical policy file.
 - The migrated canonical policy can pass the non-Rust no-new check without new,
   stale, or ambiguous non-Rust findings.
+- The migrated canonical policy can pass generated, executable, workflow,
+  dependency-surface, process, and network no-new checks without re-entering
+  `--compat`.
 - cargo-allow can migrate a generated shiplog-style no-panic baseline into
   temporary count-limited `baseline_debt` entries.
 
 ## What This Does Not Prove
 
-- It does not prove the canonical `policy/allow.toml` migration is ready to
-  replace every legacy policy file or xtask.
-- It does not prove the full all-kind check passes for shiplog; panic, unsafe,
-  lint, and other source exception lanes still need their own policy migration.
+- It does not prove a full all-kind check passes for shiplog; panic, unsafe,
+  lint, and other source exception lanes still need their own migration proof
+  before replacement.
 - It does not prove no-panic parity for cargo-allow's panic scanner; scanner
   scope and family coverage still differ from shiplog's xtask.
 - It does not validate macro expansion, type information, executable behavior,
