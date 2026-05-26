@@ -39,10 +39,10 @@ container = "glob_match_tokens"
 symbol = "if pattern[0] == \"**\" {"
 target_fingerprint = "if pattern"
 normalized_snippet_hash = "fnv1a64:73a7fa270e88a9d5"
-line_hint = 437
+line_hint = 443
 
 [allow.last_seen]
-line = 437
+line = 443
 column = 15
 
 [[allow]]
@@ -62,10 +62,10 @@ container = "glob_match_tokens"
 symbol = "if glob_match_tokens(&pattern[1..], path) {"
 target_fingerprint = "if glob_match_tokens(&pattern"
 normalized_snippet_hash = "fnv1a64:298935dd7d0a2751"
-line_hint = 438
+line_hint = 444
 
 [allow.last_seen]
-line = 438
+line = 444
 column = 38
 
 [[allow]]
@@ -85,10 +85,10 @@ container = "glob_match_tokens"
 symbol = "return !path.is_empty() && glob_match_tokens(pattern, &path[1..]);"
 target_fingerprint = "ty() && glob_match_tokens(pattern, &path"
 normalized_snippet_hash = "fnv1a64:c091d158dd87f4cf"
-line_hint = 441
+line_hint = 447
 
 [allow.last_seen]
-line = 441
+line = 447
 column = 68
 
 [[allow]]
@@ -108,10 +108,10 @@ container = "glob_match_tokens"
 symbol = "segment_matches(pattern[0], path[0]) && glob_match_tokens(&pattern[1..], &path[1..])"
 target_fingerprint = "segment_matches(pattern"
 normalized_snippet_hash = "fnv1a64:46ba3c73ccc74de9"
-line_hint = 446
+line_hint = 452
 
 [allow.last_seen]
-line = 446
+line = 452
 column = 28
 
 [[allow]]
@@ -131,10 +131,10 @@ container = "segment_match_bytes"
 symbol = "match pattern[0] {"
 target_fingerprint = "match pattern"
 normalized_snippet_hash = "fnv1a64:329c0db0e1879777"
-line_hint = 457
+line_hint = 463
 
 [allow.last_seen]
-line = 457
+line = 463
 column = 18
 
 [[allow]]
@@ -154,10 +154,10 @@ container = "segment_match_bytes"
 symbol = "segment_match_bytes(&pattern[1..], text)"
 target_fingerprint = "segment_match_bytes(&pattern"
 normalized_snippet_hash = "fnv1a64:8acaf2f58e0f776b"
-line_hint = 459
+line_hint = 465
 
 [allow.last_seen]
-line = 459
+line = 465
 column = 41
 
 [[allow]]
@@ -177,10 +177,10 @@ container = "segment_match_bytes"
 symbol = "|| (!text.is_empty() && segment_match_bytes(pattern, &text[1..]))"
 target_fingerprint = "() && segment_match_bytes(pattern, &text"
 normalized_snippet_hash = "fnv1a64:d0ad4d636020e939"
-line_hint = 460
+line_hint = 466
 
 [allow.last_seen]
-line = 460
+line = 466
 column = 75
 
 [[allow]]
@@ -200,10 +200,10 @@ container = "segment_match_bytes"
 symbol = "b'?' => !text.is_empty() && segment_match_bytes(&pattern[1..], &text[1..]),"
 target_fingerprint = "_empty() && segment_match_bytes(&pattern"
 normalized_snippet_hash = "fnv1a64:086e67089d345a77"
-line_hint = 462
+line_hint = 468
 
 [allow.last_seen]
-line = 462
+line = 468
 column = 65
 
 [[allow]]
@@ -223,10 +223,10 @@ container = "segment_match_bytes"
 symbol = "!text.is_empty() && byte == text[0] && segment_match_bytes(&pattern[1..], &text[1..])"
 target_fingerprint = "!text.is_empty() && byte == text"
 normalized_snippet_hash = "fnv1a64:6f7c8e45251773f6"
-line_hint = 464
+line_hint = 470
 
 [allow.last_seen]
-line = 464
+line = 470
 column = 45
 
 [[allow]]

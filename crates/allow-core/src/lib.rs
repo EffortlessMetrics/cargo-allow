@@ -365,6 +365,7 @@ pub struct MatchOutcome {
 
 pub fn normalize_path(path: impl AsRef<Path>) -> String {
     let text = path.as_ref().to_string_lossy().replace('\\', "/");
+    let absolute = text.starts_with('/');
     let mut parts = Vec::new();
     for part in text.split('/') {
         match part {
@@ -372,14 +373,19 @@ pub fn normalize_path(path: impl AsRef<Path>) -> String {
             ".." => {
                 if parts.last().is_some_and(|part| *part != "..") {
                     parts.pop();
-                } else {
+                } else if !absolute {
                     parts.push(part);
                 }
             }
             other => parts.push(other),
         }
     }
-    parts.join("/")
+    let normalized = parts.join("/");
+    if absolute {
+        format!("/{normalized}")
+    } else {
+        normalized
+    }
 }
 
 pub fn normalize_snippet(input: &str) -> String {
@@ -504,6 +510,13 @@ mod tests {
         assert_eq!(normalize_path("../src/lib.rs"), "../src/lib.rs");
         assert_eq!(normalize_path("../../src/../README.md"), "../../README.md");
         assert_eq!(normalize_path("src/../README.md"), "README.md");
+    }
+
+    #[test]
+    fn normalize_path_preserves_absolute_unix_root() {
+        assert_eq!(normalize_path("/a/../b"), "/b");
+        assert_eq!(normalize_path("/../b"), "/b");
+        assert_eq!(normalize_path("/"), "/");
     }
 
     #[test]
