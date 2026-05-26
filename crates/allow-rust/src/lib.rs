@@ -450,16 +450,18 @@ fn looks_like_indexing(line: &str) -> bool {
     if trimmed.contains("use ") && trimmed.contains("::") {
         return false;
     }
-    true
+    line.match_indices('[').any(|(idx, _)| {
+        line[..idx]
+            .chars()
+            .rev()
+            .find(|ch| !ch.is_whitespace())
+            .is_some_and(|ch| ch.is_alphanumeric() || matches!(ch, '_' | ')' | ']' | '}'))
+    })
 }
 
 fn index_symbol(line: &str) -> String {
     let norm = normalize_snippet(line);
-    if norm.len() > 100 {
-        norm[..100].to_string()
-    } else {
-        norm
-    }
+    norm.chars().take(100).collect()
 }
 
 #[cfg(test)]
@@ -518,5 +520,33 @@ mod tests {
                 .iter()
                 .any(|f| f.kind == FindingKind::LintException)
         );
+    }
+
+    #[test]
+    fn indexing_heuristic_ignores_common_bracket_non_indexes() {
+        let src = r#"
+        #[allow(dead_code)]
+        fn load(xs: &[u8]) {
+            let literal = [1, 2, 3];
+            let nested_type: Vec<[u8; 4]> = Vec::new();
+            let macro_vec = vec![1, 2, 3];
+            let actual = xs[0];
+            let call_index = xs.as_ref()[0];
+        }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+        let indexing = findings
+            .iter()
+            .filter(|f| f.family.as_deref() == Some("indexing"))
+            .count();
+
+        assert_eq!(indexing, 2);
+    }
+
+    #[test]
+    fn index_symbol_truncates_on_character_boundaries() {
+        let line = format!("let actual = values[{}];", "é".repeat(120));
+
+        assert_eq!(index_symbol(&line).chars().count(), 100);
     }
 }

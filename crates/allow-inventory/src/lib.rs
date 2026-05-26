@@ -45,7 +45,7 @@ pub fn inventory_files(
     let mut files = if options.include_untracked {
         recursive_files(root)?
     } else {
-        git_ls_files(root).unwrap_or_else(|_| recursive_files(root).unwrap_or_default())
+        git_ls_files(root).or_else(|_| recursive_files(root))?
     };
     files.sort();
     files.dedup();
@@ -84,14 +84,20 @@ fn visit(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> CargoAllowResult<()
         let entry = entry
             .map_err(|e| CargoAllowError::new(format!("failed to read directory entry: {e}")))?;
         let path = entry.path();
+        let file_type = entry.file_type().map_err(|e| {
+            CargoAllowError::new(format!("failed to inspect {}: {e}", path.display()))
+        })?;
+        if file_type.is_symlink() {
+            continue;
+        }
         let name = entry.file_name();
         let name = name.to_string_lossy();
         if name == ".git" || name == "target" {
             continue;
         }
-        if path.is_dir() {
+        if file_type.is_dir() {
             visit(root, &path, out)?;
-        } else if path.is_file() {
+        } else if file_type.is_file() {
             let rel = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
             out.push(rel);
         }
@@ -130,5 +136,31 @@ mod tests {
             Path::new(".github/workflows/ci.yml"),
             &opts.ignored
         ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn recursive_inventory_skips_symlinked_directories() {
+        use std::fs;
+        use std::os::unix::fs::symlink;
+        use std::path::PathBuf;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock should be after unix epoch")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-symlink-test-{}-{unique}",
+            std::process::id()
+        ));
+        fs::create_dir_all(root.join("real")).expect("create test fixture directory");
+        fs::write(root.join("real/file.txt"), "tracked").expect("write test fixture file");
+        symlink(&root, root.join("real/loop")).expect("create symlink loop");
+
+        let files = super::recursive_files(&root).expect("recursive inventory should finish");
+
+        assert_eq!(files, vec![PathBuf::from("real/file.txt")]);
+        fs::remove_dir_all(root).expect("clean up test fixture");
     }
 }

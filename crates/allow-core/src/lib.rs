@@ -370,7 +370,11 @@ pub fn normalize_path(path: impl AsRef<Path>) -> String {
         match part {
             "" | "." => {}
             ".." => {
-                parts.pop();
+                if parts.last().is_some_and(|part| *part != "..") {
+                    parts.pop();
+                } else {
+                    parts.push(part);
+                }
             }
             other => parts.push(other),
         }
@@ -493,6 +497,13 @@ mod tests {
             "scripts/*.sh",
             "scripts/release/build.sh"
         ));
+    }
+
+    #[test]
+    fn normalize_path_preserves_leading_parent_segments() {
+        assert_eq!(normalize_path("../src/lib.rs"), "../src/lib.rs");
+        assert_eq!(normalize_path("../../src/../README.md"), "../../README.md");
+        assert_eq!(normalize_path("src/../README.md"), "README.md");
     }
 
     #[test]
