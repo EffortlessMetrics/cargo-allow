@@ -1524,7 +1524,7 @@ family = "documentation"
 path = "docs/dogfood/shiplog-non-rust.md"
 owner = "core/policy"
 classification = "dogfood_evidence"
-reason = "Records side-by-side non-Rust compatibility evidence against shiplog's existing file-policy xtask."
+reason = "Records side-by-side file-policy compatibility evidence against shiplog's existing xtasks."
 created = "2026-05-26"
 review_after = "2026-11-01"
 

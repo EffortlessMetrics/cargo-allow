@@ -544,14 +544,22 @@ fn load_compat_world(
         .map(FindingKind::from_str)
         .transpose()?
         .unwrap_or(FindingKind::NonRustFile);
-    if parsed_kind != FindingKind::NonRustFile {
-        return Err(CargoAllowError::new(
-            "--compat currently supports only --kind non-rust",
-        ));
-    }
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = discover_workspace_root(cwd)?;
+    if parsed_kind == FindingKind::GeneratedCode {
+        let policy_path = config
+            .map(PathBuf::from)
+            .unwrap_or_else(|| root.join("policy/generated-allowlist.toml"));
+        let cfg = allow_policy_legacy::load_generated_compat_config(policy_path)?;
+        let findings = allow_policy_legacy::generated_findings_from_gitattributes(&root)?;
+        return Ok((root, cfg, findings));
+    }
+    if parsed_kind != FindingKind::NonRustFile {
+        return Err(CargoAllowError::new(
+            "--compat currently supports only --kind non-rust or --kind generated",
+        ));
+    }
     let opts = InventoryOptions {
         include_untracked,
         ..InventoryOptions::default()
@@ -769,6 +777,29 @@ mod tests {
                 kind: Some(kind),
                 ..
             })) if kind == "non-rust"
+        ));
+    }
+
+    #[test]
+    fn clap_parses_generated_compat_check() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--compat",
+            "--kind",
+            "generated",
+        ]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse generated compat check: {err}"))
+        });
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(CheckArgs {
+                compat: true,
+                kind: Some(kind),
+                ..
+            })) if kind == "generated"
         ));
     }
 
