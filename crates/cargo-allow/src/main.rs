@@ -46,7 +46,7 @@ enum CargoAllowCommand {
     /// Convert compatible legacy policy files.
     Migrate(MigrateArgs),
     /// Dry-run stale cleanup guidance.
-    Prune,
+    Prune(PruneArgs),
     /// Validate local setup.
     Doctor(ConfigArgs),
 }
@@ -237,6 +237,22 @@ struct MigrateArgs {
     force: bool,
 }
 
+#[derive(Debug, Clone, Parser)]
+struct PruneArgs {
+    /// Policy config path.
+    #[arg(long)]
+    config: Option<PathBuf>,
+    /// Preview stale allow entries.
+    #[arg(long)]
+    stale: bool,
+    /// Explicitly run without writing policy changes.
+    #[arg(long)]
+    dry_run: bool,
+    /// Include untracked files when determining stale entries.
+    #[arg(long)]
+    include_untracked: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum OutputFormat {
     Human,
@@ -277,7 +293,7 @@ fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Propose(args) => cmd_propose(&args),
         CargoAllowCommand::Worklist(args) => cmd_worklist(&args),
         CargoAllowCommand::Migrate(args) => cmd_migrate(&args),
-        CargoAllowCommand::Prune => cmd_prune(),
+        CargoAllowCommand::Prune(args) => cmd_prune(&args),
         CargoAllowCommand::Doctor(args) => cmd_doctor(&args),
     }
 }
@@ -1551,11 +1567,81 @@ fn repo_policy_workspace_root(repo_policy: &Path) -> CargoAllowResult<PathBuf> {
     discover_workspace_root(cwd)
 }
 
-fn cmd_prune() -> CargoAllowResult<()> {
-    println!(
-        "prune MVP is dry-run only. Use check/audit stale results, then edit policy/allow.toml."
-    );
+fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
+    if !args.stale {
+        return Err(CargoAllowError::new(
+            "prune currently supports only --stale dry-run previews",
+        ));
+    }
+    let (_root, cfg, findings) =
+        load_world(args.config.as_deref(), true, None, args.include_untracked)?;
+    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+    let candidates = prune_stale_candidates(&cfg, &outcomes);
+    println!("{}", render_prune_stale_preview(&candidates, args.dry_run));
     Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PruneCandidate {
+    id: String,
+    kind: FindingKind,
+    family: Option<String>,
+    owner: String,
+    classification: String,
+    scope: String,
+    reason: String,
+}
+
+fn prune_stale_candidates(cfg: &AllowConfig, outcomes: &[MatchOutcome]) -> Vec<PruneCandidate> {
+    outcomes
+        .iter()
+        .filter(|outcome| outcome.status == MatchStatus::Stale)
+        .filter_map(|outcome| {
+            let id = outcome.allow_id.as_deref()?;
+            let entry = cfg.allow.iter().find(|entry| entry.id == id)?;
+            Some(PruneCandidate {
+                id: entry.id.clone(),
+                kind: entry.kind,
+                family: entry.family.clone(),
+                owner: entry.owner.clone(),
+                classification: entry.classification.clone(),
+                scope: entry.path_or_glob(),
+                reason: entry.reason.clone(),
+            })
+        })
+        .collect()
+}
+
+fn render_prune_stale_preview(candidates: &[PruneCandidate], explicit_dry_run: bool) -> String {
+    let mut out = String::new();
+    out.push_str("cargo-allow prune\n\n");
+    out.push_str("mode: dry-run\n");
+    if explicit_dry_run {
+        out.push_str("requested: --dry-run\n");
+    }
+    out.push_str(&format!("stale entries: {}\n\n", candidates.len()));
+    if candidates.is_empty() {
+        out.push_str("No stale allow entries found.\n");
+        return out;
+    }
+    out.push_str("| Allow ID | Kind | Family | Owner | Classification | Scope | Reason |\n");
+    out.push_str("|---|---|---|---|---|---|---|\n");
+    for candidate in candidates {
+        out.push_str(&format!(
+            "| `{}` | `{}` | `{}` | `{}` | `{}` | `{}` | {} |\n",
+            markdown_cell(&candidate.id),
+            candidate.kind,
+            markdown_cell(candidate.family.as_deref().unwrap_or("-")),
+            markdown_cell(&candidate.owner),
+            markdown_cell(&candidate.classification),
+            markdown_cell(&candidate.scope),
+            markdown_cell(&candidate.reason)
+        ));
+    }
+    out.push_str(
+        "\nNo files were changed. Remove these entries only after confirming the exception is gone.\n",
+    );
+    out
 }
 
 fn cmd_doctor(args: &ConfigArgs) -> CargoAllowResult<()> {
@@ -2116,6 +2202,69 @@ mod tests {
         assert!(text.contains("allow-runtime"));
         assert!(!text.contains("allow-parser"));
         assert!(text.contains("baseline_debt"));
+    }
+
+    #[test]
+    fn clap_parses_prune_stale_dry_run() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "prune",
+            "--stale",
+            "--dry-run",
+            "--include-untracked",
+        ]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Prune(PruneArgs {
+                stale: true,
+                dry_run: true,
+                include_untracked: true,
+                ..
+            }))
+        ));
+    }
+
+    #[test]
+    fn prune_stale_candidates_only_include_stale_entries() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow
+            .push(test_entry("allow-stale", FindingKind::Panic));
+        cfg.allow.push(test_entry("allow-live", FindingKind::Panic));
+        let outcomes = vec![
+            test_outcome(MatchStatus::Stale, Some("allow-stale"), None, "stale"),
+            test_outcome(MatchStatus::Matched, Some("allow-live"), Some(0), "matched"),
+        ];
+
+        let candidates = prune_stale_candidates(&cfg, &outcomes);
+
+        assert_eq!(candidates.len(), 1);
+        let candidate = candidates
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected one prune candidate"));
+        assert_eq!(candidate.id, "allow-stale");
+    }
+
+    #[test]
+    fn render_prune_stale_preview_is_dry_run_first() {
+        let candidates = vec![PruneCandidate {
+            id: "allow-stale".to_string(),
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            owner: "parser".to_string(),
+            classification: "reviewed_exception".to_string(),
+            scope: "src/lib.rs".to_string(),
+            reason: "The old exception is gone.".to_string(),
+        }];
+
+        let text = render_prune_stale_preview(&candidates, true);
+
+        assert!(text.contains("mode: dry-run"));
+        assert!(text.contains("requested: --dry-run"));
+        assert!(text.contains("stale entries: 1"));
+        assert!(text.contains("allow-stale"));
+        assert!(text.contains("No files were changed"));
     }
 
     #[test]
