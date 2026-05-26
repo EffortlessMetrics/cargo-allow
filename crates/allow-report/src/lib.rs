@@ -6,6 +6,41 @@ pub const REPORT_SCHEMA_ID: &str = "cargo-allow.report.v1";
 pub const RECEIPT_SCHEMA_VERSION: u32 = 1;
 pub const RECEIPT_SCHEMA_ID: &str = "cargo-allow.receipt.v1";
 
+const CLAIM_BOUNDARY: &[&str] = &[
+    "source_tree_inventory",
+    "source_syntax_only",
+    "macro_expansion_not_analyzed",
+    "type_information_not_analyzed",
+    "mir_not_analyzed",
+    "build_output_not_analyzed",
+    "control_flow_not_analyzed",
+    "data_flow_not_analyzed",
+    "repository_code_not_executed",
+];
+
+const SCANNER_LIMITATIONS: &[&str] = &[
+    "macro_expansion_not_analyzed",
+    "type_information_not_analyzed",
+    "mir_not_analyzed",
+    "build_output_not_analyzed",
+    "control_flow_not_analyzed",
+    "data_flow_not_analyzed",
+    "repository_code_not_executed",
+];
+
+#[derive(Debug, Clone, Copy)]
+pub struct ReportContext<'a> {
+    pub inventory_source: &'a str,
+}
+
+impl Default for ReportContext<'static> {
+    fn default() -> Self {
+        Self {
+            inventory_source: "unknown",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
     pub total: usize,
@@ -132,6 +167,22 @@ pub fn render_json(
     outcomes: &[MatchOutcome],
     failed: bool,
 ) -> String {
+    render_json_with_context(
+        command,
+        findings,
+        outcomes,
+        failed,
+        ReportContext::default(),
+    )
+}
+
+pub fn render_json_with_context(
+    command: &str,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    failed: bool,
+    context: ReportContext<'_>,
+) -> String {
     let summary = Summary::from_outcomes(outcomes);
     let mut out = String::new();
     out.push_str("{\n");
@@ -144,7 +195,22 @@ pub fn render_json(
         if failed { "failed" } else { "passed" }
     ));
     out.push_str(&format!("  \"failed\": {},\n", bool_json(failed)));
-    out.push_str("  \"claim_boundary\": [\"source_syntax_only\", \"macro_expansion_not_analyzed\", \"type_information_not_analyzed\"],\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        json_string_array(CLAIM_BOUNDARY)
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        json_string_array(SCANNER_LIMITATIONS)
+    ));
+    out.push_str("  \"inventory\": {\n");
+    out.push_str("    \"scope\": \"source_tree\",\n");
+    out.push_str("    \"scanner\": \"source_syntax\",\n");
+    out.push_str(&format!(
+        "    \"source\": \"{}\"\n",
+        json_escape(context.inventory_source)
+    ));
+    out.push_str("  },\n");
     out.push_str("  \"summary\": {\n");
     out.push_str(&format!("    \"findings\": {},\n", findings.len()));
     out.push_str(&format!("    \"outcomes\": {},\n", summary.total));
@@ -214,12 +280,24 @@ pub fn render_json(
 }
 
 pub fn render_receipt(command: &str, outcomes: &[MatchOutcome], failed: bool) -> String {
+    render_receipt_with_context(command, outcomes, failed, ReportContext::default())
+}
+
+pub fn render_receipt_with_context(
+    command: &str,
+    outcomes: &[MatchOutcome],
+    failed: bool,
+    context: ReportContext<'_>,
+) -> String {
     let summary = Summary::from_outcomes(outcomes);
     format!(
-        "{{\n  \"schema_version\": {RECEIPT_SCHEMA_VERSION},\n  \"schema_id\": \"{RECEIPT_SCHEMA_ID}\",\n  \"tool\": \"cargo-allow\",\n  \"command\": \"{}\",\n  \"status\": \"{}\",\n  \"failed\": {},\n  \"claim_boundary\": [\"source_syntax_only\", \"macro_expansion_not_analyzed\", \"type_information_not_analyzed\"],\n  \"counts\": {{\n{}  }}\n}}\n",
+        "{{\n  \"schema_version\": {RECEIPT_SCHEMA_VERSION},\n  \"schema_id\": \"{RECEIPT_SCHEMA_ID}\",\n  \"tool\": \"cargo-allow\",\n  \"command\": \"{}\",\n  \"status\": \"{}\",\n  \"failed\": {},\n  \"claim_boundary\": {},\n  \"scanner_limitations\": {},\n  \"inventory\": {{\n    \"scope\": \"source_tree\",\n    \"scanner\": \"source_syntax\",\n    \"source\": \"{}\"\n  }},\n  \"counts\": {{\n{}  }}\n}}\n",
         json_escape(command),
         if failed { "failed" } else { "passed" },
         bool_json(failed),
+        json_string_array(CLAIM_BOUNDARY),
+        json_string_array(SCANNER_LIMITATIONS),
+        json_escape(context.inventory_source),
         render_counts_fields(&summary, "    ")
     )
 }
@@ -232,6 +310,17 @@ fn option_json(value: Option<&str>) -> String {
 
 fn bool_json(value: bool) -> &'static str {
     if value { "true" } else { "false" }
+}
+
+fn json_string_array(values: &[&str]) -> String {
+    format!(
+        "[{}]",
+        values
+            .iter()
+            .map(|value| format!("\"{}\"", json_escape(value)))
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
 }
 
 fn render_counts_fields(summary: &Summary, indent: &str) -> String {
@@ -430,7 +519,9 @@ mod tests {
     #[test]
     fn json_contains_claim_boundary() {
         let json = render_json("audit", &[], &[], false);
+        assert!(json.contains("source_tree_inventory"));
         assert!(json.contains("macro_expansion_not_analyzed"));
+        assert!(json.contains("repository_code_not_executed"));
     }
 
     #[test]
@@ -439,16 +530,29 @@ mod tests {
         assert!(json.contains("\"schema_version\": 1"));
         assert!(json.contains("\"schema_id\": \"cargo-allow.report.v1\""));
         assert!(json.contains("\"failed\": false"));
+        assert!(json.contains("\"scanner_limitations\""));
+        assert!(json.contains("\"scope\": \"source_tree\""));
+        assert!(json.contains("\"scanner\": \"source_syntax\""));
+        assert!(json.contains("\"source\": \"unknown\""));
         assert!(json.contains("\"review_due\": 0"));
         assert!(json.contains("\"baseline_debt\": 0"));
     }
 
     #[test]
     fn receipt_exposes_v1_schema_contract() {
-        let json = render_receipt("check", &[], true);
+        let json = render_receipt_with_context(
+            "check",
+            &[],
+            true,
+            ReportContext {
+                inventory_source: "git_tracked",
+            },
+        );
         assert!(json.contains("\"schema_version\": 1"));
         assert!(json.contains("\"schema_id\": \"cargo-allow.receipt.v1\""));
         assert!(json.contains("\"failed\": true"));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"build_output_not_analyzed\""));
         assert!(json.contains("\"missing_required_field\": 0"));
         assert!(json.contains("\"evidence_missing\": 0"));
     }
