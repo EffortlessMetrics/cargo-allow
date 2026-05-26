@@ -10,6 +10,27 @@ pub struct RustSyntaxTree {
     tree: Tree,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RustSyntaxContainer {
+    pub kind: String,
+    pub name: String,
+    pub module_path: Vec<String>,
+    pub start_line: u32,
+    pub start_column: u32,
+    pub end_line: u32,
+    pub end_column: u32,
+}
+
+impl RustSyntaxContainer {
+    pub fn module(&self) -> Option<String> {
+        if self.module_path.is_empty() {
+            None
+        } else {
+            Some(self.module_path.join("::"))
+        }
+    }
+}
+
 impl RustSyntaxTree {
     pub fn root_kind(&self) -> &'static str {
         self.tree.root_node().kind()
@@ -21,6 +42,18 @@ impl RustSyntaxTree {
 
     pub fn named_node_count(&self) -> usize {
         named_node_count(self.tree.root_node())
+    }
+
+    pub fn containers(&self, source: &str) -> Vec<RustSyntaxContainer> {
+        let mut containers = Vec::new();
+        let mut module_path = Vec::new();
+        collect_containers(
+            self.tree.root_node(),
+            source,
+            &mut module_path,
+            &mut containers,
+        );
+        containers
     }
 }
 
@@ -47,6 +80,62 @@ fn named_node_count(node: Node<'_>) -> usize {
     } else {
         children
     }
+}
+
+fn collect_containers(
+    node: Node<'_>,
+    source: &str,
+    module_path: &mut Vec<String>,
+    containers: &mut Vec<RustSyntaxContainer>,
+) {
+    if node.kind() == "mod_item" {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| node_text(source, name))
+        {
+            module_path.push(name.to_string());
+            visit_child_containers(node, source, module_path, containers);
+            module_path.pop();
+            return;
+        }
+    }
+
+    if node.kind() == "function_item" {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| node_text(source, name))
+        {
+            let start = node.start_position();
+            let end = node.end_position();
+            containers.push(RustSyntaxContainer {
+                kind: "function".to_string(),
+                name: name.to_string(),
+                module_path: module_path.clone(),
+                start_line: start.row as u32 + 1,
+                start_column: start.column as u32 + 1,
+                end_line: end.row as u32 + 1,
+                end_column: end.column as u32 + 1,
+            });
+        }
+    }
+
+    visit_child_containers(node, source, module_path, containers);
+}
+
+fn visit_child_containers(
+    node: Node<'_>,
+    source: &str,
+    module_path: &mut Vec<String>,
+    containers: &mut Vec<RustSyntaxContainer>,
+) {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_containers(child, source, module_path, containers);
+    }
+}
+
+fn node_text<'a>(source: &'a str, node: Node<'a>) -> Option<&'a str> {
+    node.utf8_text(source.as_bytes()).ok()
 }
 
 pub fn scan_rust_files(
@@ -652,5 +741,53 @@ mod tests {
         assert_eq!(tree.root_kind(), "source_file");
         assert!(tree.has_error());
         assert!(tree.named_node_count() > 0);
+    }
+
+    #[test]
+    fn syntax_containers_include_nested_module_functions() {
+        let source = r#"
+        mod parser {
+            pub fn parse_span() {}
+            mod inner {
+                fn normalize_span() {}
+            }
+        }
+        "#;
+        let tree = parse_rust_syntax(source)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+        let containers = tree.containers(source);
+
+        let parse_span = containers
+            .iter()
+            .find(|container| container.name == "parse_span")
+            .unwrap_or_else(|| std::panic::panic_any("parse_span container should exist"));
+        assert_eq!(parse_span.kind, "function");
+        assert_eq!(parse_span.module().as_deref(), Some("parser"));
+        assert!(parse_span.start_line > 0);
+        assert!(parse_span.end_line >= parse_span.start_line);
+
+        let normalize_span = containers
+            .iter()
+            .find(|container| container.name == "normalize_span")
+            .unwrap_or_else(|| std::panic::panic_any("normalize_span container should exist"));
+        assert_eq!(normalize_span.module().as_deref(), Some("parser::inner"));
+    }
+
+    #[test]
+    fn syntax_containers_recover_from_invalid_source() {
+        let source = r#"
+        fn parsed_before_error() {}
+        fn broken( {
+        "#;
+        let tree = parse_rust_syntax(source)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+        let containers = tree.containers(source);
+
+        assert!(tree.has_error());
+        assert!(
+            containers
+                .iter()
+                .any(|container| container.name == "parsed_before_error")
+        );
     }
 }
