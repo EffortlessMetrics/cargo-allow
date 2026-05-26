@@ -69,6 +69,12 @@ uses structural selectors where the current scanner can provide them:
 
 Line numbers are hints. They are not durable identity.
 
+`allow-rust` also has a tree-sitter Rust parser foundation. It can parse source
+files and report syntax errors without compiling the repository, running
+repository build scripts, expanding proc macros, or loading Cargo metadata. The
+active scanners remain line-oriented until later PRs replace each lane with
+syntax-tree walks.
+
 Inventory follows the source-tree boundary: explicit `--root`, nearest git root,
 then current directory. Cargo manifests and lockfiles are scanned as files, not
 used as required build metadata.
