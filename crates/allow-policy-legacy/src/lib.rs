@@ -41,6 +41,12 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
         let rules = parse_dependency_surface_rules(&table)?;
         return config_from_dependency_surface_rules(&table, &rules);
     }
+    if let Some(table) = legacy_table(&text)?
+        && table.get("policy").and_then(Value::as_str) == Some("process-allowlist")
+    {
+        let rules = parse_process_rules(&table)?;
+        return config_from_process_rules(&table, &rules);
+    }
     parse_policy(&text)
 }
 
@@ -123,6 +129,21 @@ pub fn load_dependency_surface_compat_config(
     }
     let rules = parse_dependency_surface_rules(&table)?;
     config_from_dependency_surface_rules(&table, &rules)
+}
+
+pub fn load_process_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
+    let text = read_policy(path.as_ref())?;
+    let table = legacy_table(&text)?.ok_or_else(|| {
+        CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
+    })?;
+    if table.get("policy").and_then(Value::as_str) != Some("process-allowlist") {
+        return Err(CargoAllowError::new(format!(
+            "{} is not a process-allowlist policy",
+            path.as_ref().display()
+        )));
+    }
+    let rules = parse_process_rules(&table)?;
+    config_from_process_rules(&table, &rules)
 }
 
 pub fn generated_findings_from_gitattributes(
@@ -250,8 +271,19 @@ pub fn dependency_surface_findings_from_git(
     Ok(paths.into_iter().map(dependency_surface_finding).collect())
 }
 
+pub fn process_findings_from_config(cfg: &AllowConfig) -> Vec<Finding> {
+    cfg.allow
+        .iter()
+        .filter(|entry| {
+            entry.kind == FindingKind::PolicyException
+                && entry.family.as_deref() == Some("process_spawn")
+        })
+        .map(process_finding_from_entry)
+        .collect()
+}
+
 pub fn migration_notes() -> &'static str {
-    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, executable, workflow, and dependency-surface allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check."
+    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, executable, workflow, dependency-surface, and process allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns."
 }
 
 fn read_policy(path: &Path) -> CargoAllowResult<String> {
@@ -330,6 +362,20 @@ struct LegacyDependencySurfaceRule {
     reason: String,
     broad_glob_reason: Option<String>,
     dep_count_at_baseline: Option<i64>,
+    created: Option<String>,
+    review_after: Option<String>,
+    expires: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct LegacyProcessRule {
+    id: String,
+    binary: String,
+    argv_shape: Vec<String>,
+    network_reach: bool,
+    called_by: Vec<String>,
+    owner: String,
+    reason: String,
     created: Option<String>,
     review_after: Option<String>,
     expires: Option<String>,
@@ -550,6 +596,37 @@ fn parse_dependency_surface_rule(
     })
 }
 
+fn parse_process_rules(table: &toml::Table) -> CargoAllowResult<Vec<LegacyProcessRule>> {
+    let entries = table
+        .get("allow")
+        .and_then(Value::as_array)
+        .ok_or_else(|| CargoAllowError::new("process-allowlist missing allow entries"))?;
+    entries
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| parse_process_rule(index, entry))
+        .collect()
+}
+
+fn parse_process_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyProcessRule> {
+    let table = entry.as_table().ok_or_else(|| {
+        CargoAllowError::new(format!("process allow entry {index} is not a table"))
+    })?;
+    let id = required_string_field(table, "id", &format!("process allow entry {index}"))?;
+    Ok(LegacyProcessRule {
+        binary: required_string_field(table, "binary", &id)?,
+        argv_shape: required_string_array_field(table, "argv_shape", &id)?,
+        network_reach: required_bool_field(table, "network_reach", &id)?,
+        called_by: string_array_field(table, "called_by"),
+        owner: required_string_field(table, "owner", &id)?,
+        reason: required_string_field(table, "reason", &id)?,
+        created: Some(required_string_field(table, "created", &id)?),
+        review_after: string_field(table, "review_after"),
+        expires: normalize_legacy_expires(string_field(table, "expires")),
+        id,
+    })
+}
+
 fn config_from_non_rust_rules(
     table: &toml::Table,
     rules: &[LegacyNonRustRule],
@@ -599,6 +676,16 @@ fn config_from_dependency_surface_rules(
         .iter()
         .map(entry_from_dependency_surface_rule)
         .collect();
+    validate_policy(&cfg)?;
+    Ok(cfg)
+}
+
+fn config_from_process_rules(
+    table: &toml::Table,
+    rules: &[LegacyProcessRule],
+) -> CargoAllowResult<AllowConfig> {
+    let mut cfg = base_config(table);
+    cfg.allow = rules.iter().map(entry_from_process_rule).collect();
     validate_policy(&cfg)?;
     Ok(cfg)
 }
@@ -849,6 +936,40 @@ fn entry_from_dependency_surface_rule(rule: &LegacyDependencySurfaceRule) -> All
     }
 }
 
+fn entry_from_process_rule(rule: &LegacyProcessRule) -> AllowEntry {
+    let scope = process_scope(rule);
+    let symbol = process_symbol(rule);
+    AllowEntry {
+        id: rule.id.clone(),
+        kind: FindingKind::PolicyException,
+        family: Some("process_spawn".to_string()),
+        path: Some(PathBuf::from(&scope)),
+        glob: None,
+        owner: rule.owner.clone(),
+        classification: if rule.network_reach {
+            "network_process".to_string()
+        } else {
+            "local_process".to_string()
+        },
+        reason: rule.reason.clone(),
+        evidence: process_evidence(rule),
+        links: vec![format!("legacy-policy:{}", rule.id)],
+        lifecycle: Lifecycle {
+            created: rule.created.clone(),
+            review_after: rule.review_after.clone(),
+            expires: rule.expires.clone(),
+        },
+        selector: Selector {
+            ast_kind: Some("process_spawn".to_string()),
+            symbol: Some(symbol.clone()),
+            target_fingerprint: Some(process_fingerprint(rule)),
+            glob: Some(scope),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
 fn generated_evidence(rule: &LegacyGeneratedRule) -> Vec<String> {
     let mut evidence = Vec::new();
     if let Some(generator) = &rule.generator {
@@ -890,6 +1011,20 @@ fn dependency_surface_evidence(rule: &LegacyDependencySurfaceRule) -> Vec<String
     if let Some(count) = rule.dep_count_at_baseline {
         evidence.push(format!("dep_count_at_baseline:{count}"));
     }
+    evidence
+}
+
+fn process_evidence(rule: &LegacyProcessRule) -> Vec<String> {
+    let mut evidence = vec![
+        format!("binary:{}", rule.binary),
+        format!("argv_shape:{}", rule.argv_shape.join(" ")),
+        format!("network_reach:{}", rule.network_reach),
+    ];
+    evidence.extend(
+        rule.called_by
+            .iter()
+            .map(|path| format!("called_by:{}", normalize_path(Path::new(path)))),
+    );
     evidence
 }
 
@@ -1009,6 +1144,29 @@ fn dependency_surface_finding(path: PathBuf) -> Finding {
     }
 }
 
+fn process_finding_from_entry(entry: &AllowEntry) -> Finding {
+    let path = entry
+        .path
+        .clone()
+        .unwrap_or_else(|| PathBuf::from(entry.path_or_glob()));
+    let symbol = entry
+        .selector
+        .symbol
+        .clone()
+        .unwrap_or_else(|| entry.id.clone());
+    let mut identity = allow_core::StructuralIdentity::new("policy", "process_spawn");
+    identity.symbol = Some(symbol.clone());
+    identity.target_fingerprint = entry.selector.target_fingerprint.clone();
+    Finding {
+        kind: FindingKind::PolicyException,
+        family: Some("process_spawn".to_string()),
+        path,
+        span: Some(allow_core::Span { line: 1, column: 1 }),
+        identity,
+        message: format!("retained process policy entry {symbol}"),
+    }
+}
+
 fn dependency_surface_family(path: &Path) -> String {
     let normalized = normalize_path(path);
     match normalized.as_str() {
@@ -1056,6 +1214,26 @@ fn extract_workflow_uses(line: &str) -> Option<String> {
 
 fn workflow_action_symbol(path: &str, action: &str) -> String {
     format!("{path} uses {action}")
+}
+
+fn process_scope(rule: &LegacyProcessRule) -> String {
+    rule.called_by
+        .first()
+        .map(|path| normalize_path(Path::new(path)))
+        .unwrap_or_else(|| "policy/process-allowlist.toml".to_string())
+}
+
+fn process_symbol(rule: &LegacyProcessRule) -> String {
+    let args = rule.argv_shape.join(" ");
+    if args.is_empty() {
+        rule.binary.clone()
+    } else {
+        format!("{} {args}", rule.binary)
+    }
+}
+
+fn process_fingerprint(rule: &LegacyProcessRule) -> String {
+    format!("process:{}", process_symbol(rule))
 }
 
 fn is_workflow_path(path: &Path) -> bool {
@@ -1115,6 +1293,35 @@ fn string_array_field(table: &toml::Table, field: &str) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+fn required_string_field(
+    table: &toml::Table,
+    field: &str,
+    context: &str,
+) -> CargoAllowResult<String> {
+    string_field(table, field)
+        .ok_or_else(|| CargoAllowError::new(format!("{context} missing {field}")))
+}
+
+fn required_string_array_field(
+    table: &toml::Table,
+    field: &str,
+    context: &str,
+) -> CargoAllowResult<Vec<String>> {
+    let values = string_array_field(table, field);
+    if values.is_empty() {
+        Err(CargoAllowError::new(format!("{context} missing {field}")))
+    } else {
+        Ok(values)
+    }
+}
+
+fn required_bool_field(table: &toml::Table, field: &str, context: &str) -> CargoAllowResult<bool> {
+    table
+        .get(field)
+        .and_then(Value::as_bool)
+        .ok_or_else(|| CargoAllowError::new(format!("{context} missing {field}")))
 }
 
 fn has_glob_meta(input: &str) -> bool {
@@ -1575,6 +1782,105 @@ mod tests {
         );
     }
 
+    #[test]
+    fn migrates_process_allowlist_to_policy_exception_entries() {
+        let policy = process_policy_fixture_path();
+        let cfg = load_legacy_or_canonical(&policy)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("process policy migrates: {err}")));
+
+        assert_eq!(cfg.policy, "cargo-allow");
+        assert_eq!(cfg.allow.len(), 2);
+        let install = cfg
+            .allow
+            .iter()
+            .find(|entry| entry.id == "proc-cargo-install-cargo-deny")
+            .unwrap_or_else(|| std::panic::panic_any("expected cargo install process entry"));
+        assert_eq!(install.kind, FindingKind::PolicyException);
+        assert_eq!(install.family.as_deref(), Some("process_spawn"));
+        assert_eq!(install.classification, "network_process");
+        assert_eq!(
+            install.path.as_deref(),
+            Some(Path::new(".github/workflows/ci.yml"))
+        );
+        assert_eq!(install.selector.ast_kind.as_deref(), Some("process_spawn"));
+        assert_eq!(
+            install.selector.symbol.as_deref(),
+            Some("cargo install cargo-deny --locked")
+        );
+        assert_eq!(
+            install.selector.target_fingerprint.as_deref(),
+            Some("process:cargo install cargo-deny --locked")
+        );
+        assert_eq!(
+            install.lifecycle.review_after.as_deref(),
+            Some("2026-09-09")
+        );
+        assert!(
+            install
+                .evidence
+                .iter()
+                .any(|item| item == "network_reach:true")
+        );
+
+        let local = cfg
+            .allow
+            .iter()
+            .find(|entry| entry.id == "proc-bash-package-proof")
+            .unwrap_or_else(|| std::panic::panic_any("expected package proof process entry"));
+        assert_eq!(local.classification, "local_process");
+        assert_eq!(local.lifecycle.expires.as_deref(), Some("never"));
+    }
+
+    #[test]
+    fn process_compat_synthesizes_matched_new_and_stale_drift() {
+        let policy = process_policy_fixture_path();
+        let cfg = load_process_compat_config(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("process compat config loads: {err}"))
+        });
+        let findings = process_findings_from_config(&cfg);
+
+        let matched = allow_match::evaluate(&cfg, &findings, allow_match::CheckMode::NoNew);
+        assert_eq!(
+            matched
+                .iter()
+                .filter(|outcome| outcome.status == allow_core::MatchStatus::Matched)
+                .count(),
+            2
+        );
+
+        let missing_allow = allow_match::evaluate(
+            &cfg,
+            &[process_policy_finding(
+                ".github/workflows/release.yml",
+                "bash scripts/publish.sh",
+            )],
+            allow_match::CheckMode::NoNew,
+        );
+        assert!(
+            missing_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::New)
+        );
+
+        let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+        assert!(
+            stale_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::Stale)
+        );
+    }
+
+    #[test]
+    fn process_policy_requires_legacy_xtask_fields() {
+        let policy = malformed_process_policy_fixture_path();
+        let err = load_process_compat_config(&policy)
+            .expect_err("process policy without network_reach should fail");
+        assert!(
+            err.to_string()
+                .contains("proc-missing missing network_reach")
+        );
+    }
+
     static NEXT_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
     fn policy_fixture_path() -> PathBuf {
@@ -1609,6 +1915,35 @@ mod tests {
         let path = fixture_dir().join("dependency-surface-allowlist.toml");
         fs::write(&path, dependency_policy_fixture_text())
             .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+        path
+    }
+
+    fn process_policy_fixture_path() -> PathBuf {
+        let path = fixture_dir().join("process-allowlist.toml");
+        fs::write(&path, process_policy_fixture_text())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+        path
+    }
+
+    fn malformed_process_policy_fixture_path() -> PathBuf {
+        let path = fixture_dir().join("process-allowlist.toml");
+        fs::write(
+            &path,
+            r#"schema_version = 1
+policy = "process-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "proc-missing"
+binary = "cargo"
+argv_shape = ["install", "cargo-deny", "--locked"]
+owner = "release/ci"
+reason = "Intentionally incomplete fixture."
+created = "2026-05-09"
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
         path
     }
 
@@ -1819,10 +2154,63 @@ expires = "permanent"
         text
     }
 
+    fn process_policy_fixture_text() -> String {
+        let mut text = String::from(
+            r#"schema_version = 1
+policy = "process-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+"#,
+        );
+        push_allow(
+            &mut text,
+            r#"id = "proc-cargo-install-cargo-deny"
+binary = "cargo"
+argv_shape = ["install", "cargo-deny", "--locked"]
+network_reach = true
+called_by = [".github/workflows/ci.yml"]
+owner = "release/ci"
+reason = "Installs cargo-deny in the deny job."
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+"#,
+        );
+        push_allow(
+            &mut text,
+            r#"id = "proc-bash-package-proof"
+binary = "bash"
+argv_shape = ["scripts/package-proof.sh"]
+network_reach = false
+called_by = [".github/workflows/release.yml"]
+owner = "release"
+reason = "Release preflight package proof; pure local checks."
+created = "2026-05-09"
+expires = "permanent"
+"#,
+        );
+        text
+    }
+
     fn push_allow(text: &mut String, body: &str) {
         text.push_str("[[");
         text.push_str("allow]]\n");
         text.push_str(body);
+    }
+
+    fn process_policy_finding(path: &str, symbol: &str) -> Finding {
+        let mut identity = StructuralIdentity::new("policy", "process_spawn");
+        identity.symbol = Some(symbol.to_string());
+        identity.target_fingerprint = Some(format!("process:{symbol}"));
+        Finding {
+            kind: FindingKind::PolicyException,
+            family: Some("process_spawn".to_string()),
+            path: PathBuf::from(path),
+            span: Some(Span { line: 1, column: 1 }),
+            identity,
+            message: String::new(),
+        }
     }
 
     fn finding(path: &str, ast_kind: &str) -> Finding {

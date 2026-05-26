@@ -56,11 +56,14 @@ Completed:
 - Add `--compat --kind dependency-surface` for shiplog-style
   `policy/dependency-surface-allowlist.toml` and prove it side-by-side against
   shiplog's dependency-surface xtask.
+- Add `--compat --kind process` for shiplog-style
+  `policy/process-allowlist.toml` and prove it side-by-side against shiplog's
+  process-policy xtask.
 
 Next:
 
 - Harden documented replacement gaps before removing any existing xtask:
-  process policy and network policy.
+  network policy.
 
 ## Phase 4: Build Structural Identity
 
