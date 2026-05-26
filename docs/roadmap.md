@@ -137,10 +137,11 @@ Completed:
 - Compare base and head source findings in `cargo allow diff` using durable
   finding keys, so reviewers can see new and removed syntax-visible exception
   posture independent of line movement.
+- Emit Markdown PR summaries with net posture, reviewer action, current
+  no-new failures, source finding changes, and policy weakening counts.
 
 Planned work:
 
-- Emit Markdown PR summaries.
 - Add GitHub Actions examples.
 
 ## Phase 9: Human UX Commands

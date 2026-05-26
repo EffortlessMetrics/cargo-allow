@@ -145,6 +145,13 @@ syntax-visible exception findings, including count changes for repeated matching
 finding keys; it still does not claim macro expansion, type information, or
 proof adequacy.
 
+Markdown diff output starts with a PR summary. The summary reports net posture,
+reviewer action, current no-new failures, new and removed source findings,
+policy failures, and policy review items. `worse` means the diff has a failing
+no-new or policy-weakening signal. `review-required` means posture changed
+without a failing signal, such as a receipted new source finding or a new allow
+entry. `improved` means source findings were removed without new failures.
+
 ## Non-Rust Files
 
 Rust repositories often contain non-Rust operational surface:

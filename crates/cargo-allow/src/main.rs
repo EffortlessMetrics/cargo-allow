@@ -404,6 +404,10 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         }
         OutputFormat::Human => allow_report::render_human("diff", &findings, &outcomes, failed),
     };
+    if args.format == OutputFormat::Markdown {
+        let summary = render_diff_pr_summary_markdown(&outcomes, &finding_changes, &policy_changes);
+        insert_markdown_pr_summary(&mut text, &summary);
+    }
     append_finding_posture_changes(&mut text, args.format, &finding_changes);
     append_policy_changes(&mut text, args.format, &policy_changes);
     match allow_diff::changed_files(&root, &args.base, args.head.as_deref()) {
@@ -436,6 +440,122 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         process::exit(1);
     }
     Ok(())
+}
+
+fn insert_markdown_pr_summary(text: &mut String, summary: &str) {
+    let marker = "Findings scanned:";
+    if let Some(index) = text.find(marker) {
+        text.insert_str(index, summary);
+    } else {
+        text.push('\n');
+        text.push_str(summary);
+    }
+}
+
+fn render_diff_pr_summary_markdown(
+    outcomes: &[MatchOutcome],
+    finding_changes: &[allow_diff::FindingPostureChange],
+    policy_changes: &[allow_diff::PolicyChange],
+) -> String {
+    let current_failures = outcomes
+        .iter()
+        .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
+        .count();
+    let new_findings = finding_changes
+        .iter()
+        .filter(|change| change.kind == allow_diff::FindingPostureKind::New)
+        .count();
+    let removed_findings = finding_changes
+        .iter()
+        .filter(|change| change.kind == allow_diff::FindingPostureKind::Removed)
+        .count();
+    let policy_failures = policy_changes
+        .iter()
+        .filter(|change| change.severity == allow_diff::PolicyChangeSeverity::Fail)
+        .count();
+    let policy_review_items = policy_changes
+        .iter()
+        .filter(|change| change.severity == allow_diff::PolicyChangeSeverity::Review)
+        .count();
+    let posture = diff_net_posture(
+        current_failures,
+        new_findings,
+        removed_findings,
+        policy_failures,
+        policy_review_items,
+    );
+    let mut out = String::new();
+    out.push_str("## PR Summary\n\n");
+    out.push_str(&format!("**Net posture:** `{}`\n\n", posture.as_str()));
+    out.push_str("| Signal | Count |\n|---|---:|\n");
+    out.push_str(&format!(
+        "| Current no-new failures | {} |\n",
+        current_failures
+    ));
+    out.push_str(&format!("| New source findings | {} |\n", new_findings));
+    out.push_str(&format!(
+        "| Removed source findings | {} |\n",
+        removed_findings
+    ));
+    out.push_str(&format!("| Policy failures | {} |\n", policy_failures));
+    out.push_str(&format!(
+        "| Policy review items | {} |\n",
+        policy_review_items
+    ));
+    out.push_str(&format!(
+        "\n**Reviewer action:** {}\n\n",
+        posture.reviewer_action()
+    ));
+    out
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DiffNetPosture {
+    Worse,
+    ReviewRequired,
+    Improved,
+    Unchanged,
+}
+
+impl DiffNetPosture {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Worse => "worse",
+            Self::ReviewRequired => "review-required",
+            Self::Improved => "improved",
+            Self::Unchanged => "unchanged",
+        }
+    }
+
+    fn reviewer_action(self) -> &'static str {
+        match self {
+            Self::Worse => {
+                "block until failing source exception changes are fixed, narrowed, or receipted."
+            }
+            Self::ReviewRequired => "review the source exception posture change before merging.",
+            Self::Improved => "verify the cleanup was intentional and keep the narrower posture.",
+            Self::Unchanged => "no source exception posture change detected.",
+        }
+    }
+}
+
+fn diff_net_posture(
+    current_failures: usize,
+    new_findings: usize,
+    removed_findings: usize,
+    policy_failures: usize,
+    policy_review_items: usize,
+) -> DiffNetPosture {
+    if current_failures > 0 || policy_failures > 0 {
+        return DiffNetPosture::Worse;
+    }
+    if new_findings > 0 || policy_review_items > 0 {
+        return DiffNetPosture::ReviewRequired;
+    }
+    if removed_findings > 0 {
+        return DiffNetPosture::Improved;
+    }
+    DiffNetPosture::Unchanged
 }
 
 fn append_finding_posture_changes(
@@ -1713,6 +1833,61 @@ mod tests {
     }
 
     #[test]
+    fn diff_markdown_pr_summary_reports_unchanged_posture() {
+        let text = render_diff_pr_summary_markdown(&[], &[], &[]);
+
+        assert!(text.contains("**Net posture:** `unchanged`"));
+        assert!(text.contains("| Current no-new failures | 0 |"));
+        assert!(text.contains("no source exception posture change detected"));
+    }
+
+    #[test]
+    fn diff_markdown_pr_summary_reports_review_required_for_new_source_finding() {
+        let changes = vec![finding_posture_change(
+            allow_diff::FindingPostureKind::New,
+            "panic",
+            Some("unwrap"),
+            "src/lib.rs",
+        )];
+
+        let text = render_diff_pr_summary_markdown(&[], &changes, &[]);
+
+        assert!(text.contains("**Net posture:** `review-required`"));
+        assert!(text.contains("| New source findings | 1 |"));
+        assert!(text.contains("review the source exception posture change"));
+    }
+
+    #[test]
+    fn diff_markdown_pr_summary_reports_worse_for_policy_failure() {
+        let changes = vec![policy_change(
+            allow_diff::PolicyChangeSeverity::Fail,
+            allow_diff::PolicyChangeKind::ScopeBroadened,
+        )];
+
+        let text = render_diff_pr_summary_markdown(&[], &[], &changes);
+
+        assert!(text.contains("**Net posture:** `worse`"));
+        assert!(text.contains("| Policy failures | 1 |"));
+        assert!(text.contains("block until failing source exception changes"));
+    }
+
+    #[test]
+    fn diff_markdown_pr_summary_reports_improved_for_removed_source_finding() {
+        let changes = vec![finding_posture_change(
+            allow_diff::FindingPostureKind::Removed,
+            "panic",
+            Some("unwrap"),
+            "src/lib.rs",
+        )];
+
+        let text = render_diff_pr_summary_markdown(&[], &changes, &[]);
+
+        assert!(text.contains("**Net posture:** `improved`"));
+        assert!(text.contains("| Removed source findings | 1 |"));
+        assert!(text.contains("keep the narrower posture"));
+    }
+
+    #[test]
     fn clap_parses_explain_id_and_config() {
         let parsed = CargoAllowCli::try_parse_from(argv(vec![
             "cargo-allow",
@@ -2447,6 +2622,33 @@ expires = "permanent"
             finding_index,
             message: message.to_string(),
             score: 100,
+        }
+    }
+
+    fn finding_posture_change(
+        kind: allow_diff::FindingPostureKind,
+        finding_kind: &str,
+        family: Option<&str>,
+        path: &str,
+    ) -> allow_diff::FindingPostureChange {
+        allow_diff::FindingPostureChange {
+            kind,
+            key: format!("{finding_kind}:{path}"),
+            finding_kind: finding_kind.to_string(),
+            family: family.map(str::to_string),
+            path: path.to_string(),
+        }
+    }
+
+    fn policy_change(
+        severity: allow_diff::PolicyChangeSeverity,
+        kind: allow_diff::PolicyChangeKind,
+    ) -> allow_diff::PolicyChange {
+        allow_diff::PolicyChange {
+            allow_id: "allow-0001".to_string(),
+            kind,
+            severity,
+            message: "allow-0001 changed".to_string(),
         }
     }
 }
