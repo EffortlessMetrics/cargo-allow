@@ -2,12 +2,10 @@ use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, Lifecycle,
     MatchOutcome, MatchStatus, Selector, SimpleDate, json_escape, normalize_path,
 };
-use allow_inventory::{
-    InventoryOptions, discover_workspace_root, inventory_files, workspace_metadata,
-};
+use allow_inventory::{InventoryOptions, inventory_files, resolve_source_tree_root};
 use allow_match::{CheckMode, evaluate, finding_location, score_match};
 use allow_policy::{find_config, load_policy, render_policy, starter_policy, validate_policy};
-use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -53,8 +51,17 @@ enum CargoAllowCommand {
     Doctor(ConfigArgs),
 }
 
+#[derive(Debug, Clone, Default, Args)]
+struct RootArgs {
+    /// Source tree root. Defaults to the nearest git root, then current directory.
+    #[arg(long)]
+    root: Option<PathBuf>,
+}
+
 #[derive(Debug, Clone, Parser)]
 struct ConfigArgs {
+    #[command(flatten)]
+    root: RootArgs,
     /// Policy config path.
     #[arg(long)]
     config: Option<PathBuf>,
@@ -75,6 +82,8 @@ struct InitArgs {
 
 #[derive(Debug, Clone, Parser)]
 struct ReportArgs {
+    #[command(flatten)]
+    root: RootArgs,
     /// Policy config path.
     #[arg(long)]
     config: Option<PathBuf>,
@@ -97,6 +106,8 @@ struct ReportArgs {
 
 #[derive(Debug, Clone, Parser)]
 struct CheckArgs {
+    #[command(flatten)]
+    root: RootArgs,
     /// Policy config path.
     #[arg(long)]
     config: Option<PathBuf>,
@@ -125,6 +136,8 @@ struct CheckArgs {
 
 #[derive(Debug, Clone, Parser)]
 struct DiffArgs {
+    #[command(flatten)]
+    root: RootArgs,
     /// Policy config path.
     #[arg(long)]
     config: Option<PathBuf>,
@@ -150,6 +163,8 @@ struct DiffArgs {
 
 #[derive(Debug, Clone, Parser)]
 struct ListArgs {
+    #[command(flatten)]
+    root: RootArgs,
     /// Policy config path.
     #[arg(long)]
     config: Option<PathBuf>,
@@ -180,6 +195,8 @@ struct ListArgs {
 struct ExplainArgs {
     /// Allow entry ID.
     id: String,
+    #[command(flatten)]
+    root: RootArgs,
     /// Policy config path.
     #[arg(long)]
     config: Option<PathBuf>,
@@ -187,6 +204,8 @@ struct ExplainArgs {
 
 #[derive(Debug, Clone, Parser)]
 struct AddArgs {
+    #[command(flatten)]
+    root: RootArgs,
     /// Policy config path.
     #[arg(long)]
     config: Option<PathBuf>,
@@ -233,6 +252,8 @@ struct AddArgs {
 
 #[derive(Debug, Clone, Parser)]
 struct ProposeArgs {
+    #[command(flatten)]
+    root: RootArgs,
     /// Policy config path.
     #[arg(long)]
     config: Option<PathBuf>,
@@ -255,6 +276,8 @@ struct ProposeArgs {
 
 #[derive(Debug, Clone, Parser)]
 struct WorklistArgs {
+    #[command(flatten)]
+    root: RootArgs,
     /// Policy config path.
     #[arg(long)]
     config: Option<PathBuf>,
@@ -274,6 +297,8 @@ struct WorklistArgs {
 
 #[derive(Debug, Clone, Parser)]
 struct MigrateArgs {
+    #[command(flatten)]
+    root: RootArgs,
     /// Legacy or canonical policy file to migrate.
     #[arg(long)]
     from: Option<PathBuf>,
@@ -290,6 +315,8 @@ struct MigrateArgs {
 
 #[derive(Debug, Clone, Parser)]
 struct PruneArgs {
+    #[command(flatten)]
+    root: RootArgs,
     /// Policy config path.
     #[arg(long)]
     config: Option<PathBuf>,
@@ -380,12 +407,14 @@ fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
 fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
     let (root, cfg, findings) = if args.compat {
         load_compat_world(
+            args.root.root.as_deref(),
             args.config.as_deref(),
             args.kind.as_deref(),
             args.include_untracked,
         )?
     } else {
         load_world(
+            args.root.root.as_deref(),
             args.config.as_deref(),
             false,
             args.kind.as_deref(),
@@ -410,12 +439,14 @@ fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     let mode = CheckMode::parse(&args.mode);
     let (_root, cfg, findings) = if args.compat {
         load_compat_world(
+            args.root.root.as_deref(),
             args.config.as_deref(),
             args.kind.as_deref(),
             args.include_untracked,
         )?
     } else {
         load_world(
+            args.root.root.as_deref(),
             args.config.as_deref(),
             true,
             args.kind.as_deref(),
@@ -447,6 +478,7 @@ fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
 
 fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let (root, cfg, findings) = load_world(
+        args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         args.kind.as_deref(),
@@ -760,8 +792,13 @@ fn render_policy_changes_markdown(changes: &[allow_diff::PolicyChange]) -> Strin
 }
 
 fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
-    let (_root, cfg, findings) =
-        load_world(args.config.as_deref(), true, None, args.include_untracked)?;
+    let (_root, cfg, findings) = load_world(
+        args.root.root.as_deref(),
+        args.config.as_deref(),
+        true,
+        None,
+        args.include_untracked,
+    )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let parsed_filter = args.kind.as_deref().map(parse_kind_filter).transpose()?;
     let rows = list_rows(&cfg, &outcomes);
@@ -938,7 +975,13 @@ fn empty_as_dash(value: &str) -> &str {
 }
 
 fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
-    let (_root, cfg, findings) = load_world(args.config.as_deref(), true, None, false)?;
+    let (_root, cfg, findings) = load_world(
+        args.root.root.as_deref(),
+        args.config.as_deref(),
+        true,
+        None,
+        false,
+    )?;
     let entry = cfg
         .allow
         .iter()
@@ -951,6 +994,7 @@ fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
 fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let parsed_kind = parse_kind_filter(&args.kind)?;
     let (_root, mut cfg, findings) = load_world(
+        args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         Some(args.kind.as_str()),
@@ -1329,6 +1373,7 @@ fn outcome_summary(outcomes: &[MatchOutcome]) -> String {
 
 fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     let (_root, cfg, findings) = load_world(
+        args.root.root.as_deref(),
         args.config.as_deref(),
         false,
         args.kind.as_deref(),
@@ -1397,6 +1442,7 @@ fn render_propose_summary(
 
 fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     let (_root, cfg, findings) = load_world(
+        args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         args.kind.as_deref(),
@@ -1775,7 +1821,9 @@ fn json_string_array(values: &[String]) -> String {
 fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
     let cfg = match (&args.from, &args.repo_policy) {
         (Some(from), None) => allow_policy_legacy::load_legacy_or_canonical(from)?,
-        (None, Some(repo_policy)) => load_repo_policy_migration_config(repo_policy)?,
+        (None, Some(repo_policy)) => {
+            load_repo_policy_migration_config(args.root.root.as_deref(), repo_policy)?
+        }
         (Some(_), Some(_)) => {
             return Err(CargoAllowError::new(
                 "pass either --from or --repo-policy, not both",
@@ -1793,17 +1841,27 @@ fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
     Ok(())
 }
 
-fn load_repo_policy_migration_config(repo_policy: &Path) -> CargoAllowResult<AllowConfig> {
-    let root = repo_policy_workspace_root(repo_policy)?;
+fn load_repo_policy_migration_config(
+    explicit_root: Option<&Path>,
+    repo_policy: &Path,
+) -> CargoAllowResult<AllowConfig> {
+    let root = repo_policy_source_tree_root(explicit_root, repo_policy)?;
+    let repo_policy = root_relative_path(&root, repo_policy);
     let files = inventory_files(&root, &InventoryOptions::default())?;
     let findings = allow_files::scan_files(&files)
         .into_iter()
         .filter(|finding| finding.kind == FindingKind::NonRustFile)
         .collect::<Vec<_>>();
-    allow_policy_legacy::load_legacy_policy_dir_with_non_rust_findings(repo_policy, &findings)
+    allow_policy_legacy::load_legacy_policy_dir_with_non_rust_findings(&repo_policy, &findings)
 }
 
-fn repo_policy_workspace_root(repo_policy: &Path) -> CargoAllowResult<PathBuf> {
+fn repo_policy_source_tree_root(
+    explicit_root: Option<&Path>,
+    repo_policy: &Path,
+) -> CargoAllowResult<PathBuf> {
+    if let Some(root) = explicit_root {
+        return resolve_source_tree_root(Some(root), root);
+    }
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let full_policy_path = if repo_policy.is_absolute() {
@@ -1823,7 +1881,7 @@ fn repo_policy_workspace_root(repo_policy: &Path) -> CargoAllowResult<PathBuf> {
                 ))
             });
     }
-    discover_workspace_root(cwd)
+    resolve_source_tree_root(None, cwd)
 }
 
 fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
@@ -1832,8 +1890,13 @@ fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             "prune currently supports only --stale dry-run previews",
         ));
     }
-    let (_root, cfg, findings) =
-        load_world(args.config.as_deref(), true, None, args.include_untracked)?;
+    let (_root, cfg, findings) = load_world(
+        args.root.root.as_deref(),
+        args.config.as_deref(),
+        true,
+        None,
+        args.include_untracked,
+    )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let candidates = prune_stale_candidates(&cfg, &outcomes);
     println!("{}", render_prune_stale_preview(&candidates, args.dry_run));
@@ -1906,21 +1969,16 @@ fn render_prune_stale_preview(candidates: &[PruneCandidate], explicit_dry_run: b
 fn cmd_doctor(args: &ConfigArgs) -> CargoAllowResult<()> {
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
-    let metadata = workspace_metadata(&cwd).ok();
-    let root = metadata
-        .as_ref()
-        .map(|metadata| metadata.root.clone())
-        .map(Ok)
-        .unwrap_or_else(|| discover_workspace_root(&cwd))?;
+    let root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
     println!("source tree root: {}", root.display());
-    if let Some(metadata) = &metadata {
-        println!("legacy Rust packages: {}", metadata.packages.len());
-        println!("legacy Rust targets: {}", metadata.target_count());
-        println!("source roots: {}", metadata.source_roots().len());
+    if args.root.root.is_some() {
+        println!("root discovery: explicit --root");
+    } else if root.join(".git").exists() {
+        println!("root discovery: nearest .git");
     } else {
-        println!("legacy Rust project facts: unavailable");
+        println!("root discovery: current directory fallback");
     }
-    match config_path(args.config.as_deref()) {
+    match config_path(&root, args.config.as_deref()) {
         Some(path) => println!("config: {}", path.display()),
         None => println!("config: not found; run `cargo-allow init`"),
     }
@@ -1934,6 +1992,7 @@ fn cmd_doctor(args: &ConfigArgs) -> CargoAllowResult<()> {
 }
 
 fn load_world(
+    explicit_root: Option<&Path>,
     config: Option<&Path>,
     require_config: bool,
     kind_filter: Option<&str>,
@@ -1941,11 +2000,11 @@ fn load_world(
 ) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>)> {
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
-    let root = discover_workspace_root(cwd)?;
+    let root = resolve_source_tree_root(explicit_root, cwd)?;
     let cfg = if require_config {
-        load_config_required(config)?
+        load_config_required(&root, config)?
     } else {
-        load_config_optional(config)?.unwrap_or_else(AllowConfig::empty)
+        load_config_optional(&root, config)?.unwrap_or_else(AllowConfig::empty)
     };
     let opts = InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
@@ -2035,6 +2094,7 @@ fn same_finding_identity(left: &Finding, right: &Finding) -> bool {
 }
 
 fn load_compat_world(
+    explicit_root: Option<&Path>,
     config: Option<&Path>,
     kind_filter: Option<&str>,
     include_untracked: bool,
@@ -2049,7 +2109,7 @@ fn load_compat_world(
         });
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
-    let root = discover_workspace_root(cwd)?;
+    let root = resolve_source_tree_root(explicit_root, cwd)?;
     if is_executable_compat_kind(compat_kind) {
         let policy_path = config
             .map(PathBuf::from)
@@ -2242,33 +2302,41 @@ fn report_config(cfg: &AllowConfig, kind_filter: Option<&str>) -> CargoAllowResu
     Ok(filtered)
 }
 
-fn load_config_required(config: Option<&Path>) -> CargoAllowResult<AllowConfig> {
-    let path = config_path(config).ok_or_else(|| {
+fn load_config_required(root: &Path, config: Option<&Path>) -> CargoAllowResult<AllowConfig> {
+    let path = config_path(root, config).ok_or_else(|| {
         CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
     })?;
     load_policy(path)
 }
 
-fn load_config_optional(config: Option<&Path>) -> CargoAllowResult<Option<AllowConfig>> {
-    match config_path(config) {
+fn load_config_optional(
+    root: &Path,
+    config: Option<&Path>,
+) -> CargoAllowResult<Option<AllowConfig>> {
+    match config_path(root, config) {
         Some(path) => Ok(Some(load_policy(path)?)),
         None => Ok(None),
     }
 }
 
-fn config_path(config: Option<&Path>) -> Option<PathBuf> {
+fn config_path(root: &Path, config: Option<&Path>) -> Option<PathBuf> {
     config
-        .map(PathBuf::from)
-        .or_else(|| find_config(env::current_dir().ok()?))
+        .map(|path| root_relative_path(root, path))
+        .or_else(|| find_config(root))
+}
+
+fn root_relative_path(root: &Path, path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    }
 }
 
 fn git_relative_config_path(root: &Path, config: Option<&Path>) -> CargoAllowResult<PathBuf> {
-    let path = config_path(config).ok_or_else(|| {
+    let path = config_path(root, config).ok_or_else(|| {
         CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
     })?;
-    if path.is_relative() {
-        return Ok(path);
-    }
     let root = root.canonicalize().map_err(|e| {
         CargoAllowError::new(format!("failed to canonicalize {}: {e}", root.display()))
     })?;
@@ -2852,7 +2920,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Explain(ExplainArgs { id, config }))
+            Some(CargoAllowCommand::Explain(ExplainArgs { id, config, .. }))
                 if id == "allow-0001" && config.as_deref() == Some(Path::new("policy/custom.toml"))
         ));
     }
@@ -3056,6 +3124,25 @@ mod tests {
     }
 
     #[test]
+    fn clap_parses_source_tree_root_for_check() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--root",
+            "fixtures/source-snapshot",
+        ]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse --root: {err}")));
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(CheckArgs {
+                root: RootArgs { root: Some(root) },
+                ..
+            })) if root == Path::new("fixtures/source-snapshot")
+        ));
+    }
+
+    #[test]
     fn clap_parses_non_rust_compat_check() {
         let parsed = CargoAllowCli::try_parse_from(argv(vec![
             "cargo-allow",
@@ -3247,6 +3334,7 @@ mod tests {
     #[test]
     fn migrate_requires_one_input_source() {
         let missing = cmd_migrate(&MigrateArgs {
+            root: RootArgs::default(),
             from: None,
             repo_policy: None,
             out: PathBuf::from("target/unused.toml"),
@@ -3260,6 +3348,7 @@ mod tests {
         );
 
         let conflicting = cmd_migrate(&MigrateArgs {
+            root: RootArgs::default(),
             from: Some(PathBuf::from("legacy.toml")),
             repo_policy: Some(PathBuf::from("policy")),
             out: PathBuf::from("target/unused.toml"),
@@ -3289,6 +3378,7 @@ mod tests {
             .unwrap_or_else(|err| std::panic::panic_any(format!("existing output write: {err}")));
 
         let err = cmd_migrate(&MigrateArgs {
+            root: RootArgs::default(),
             from: None,
             repo_policy: Some(policy_dir),
             out,
@@ -3317,6 +3407,7 @@ mod tests {
         let out = dir.join("allow.toml");
 
         cmd_migrate(&MigrateArgs {
+            root: RootArgs::default(),
             from: None,
             repo_policy: Some(policy_dir),
             out: out.clone(),

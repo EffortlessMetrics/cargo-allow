@@ -69,9 +69,9 @@ uses structural selectors where the current scanner can provide them:
 
 Line numbers are hints. They are not durable identity.
 
-The current implementation still contains transitional Cargo-shaped discovery
-seams. Those are implementation debt, not the product boundary; source-tree
-inventory must be able to run when the project does not compile.
+Inventory follows the source-tree boundary: explicit `--root`, nearest git root,
+then current directory. Cargo manifests and lockfiles are scanned as files, not
+used as required build metadata.
 
 ## Matching Direction
 
