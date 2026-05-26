@@ -47,12 +47,15 @@ Completed:
 - Add `--compat --kind generated` for shiplog-style
   `policy/generated-allowlist.toml` and prove it side-by-side against shiplog's
   generated-file xtask.
+- Add `--compat --kind executable` for shiplog-style
+  `policy/executable-allowlist.toml` and prove it side-by-side against
+  shiplog's executable-bit xtask.
 
 Next:
 
 - Harden documented replacement gaps before removing any existing xtask:
-  executable bits, workflow action permissions, dependency surfaces, process
-  policy, and network policy.
+  workflow action permissions, dependency surfaces, process policy, and network
+  policy.
 
 ## Phase 4: Build Structural Identity
 

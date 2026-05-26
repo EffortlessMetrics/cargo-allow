@@ -46,8 +46,8 @@ Then classify deltas:
 Only replace the xtask when the remaining deltas are documented and acceptable.
 
 Compat mode is a bridge, not the final policy shape. It does not yet replace
-companion legacy checks for executable bits, workflow action permissions,
-dependency surfaces, process policy, or network policy.
+companion legacy checks for workflow action permissions, dependency surfaces,
+process policy, or network policy.
 
 Generated-file compat is also available for shiplog-style
 `policy/generated-allowlist.toml`:
@@ -60,6 +60,19 @@ That mode reads generated file findings from `.gitattributes` entries marked
 `linguist-generated=true` and compares them against exact paths in
 `policy/generated-allowlist.toml`, preserving both missing-policy and stale
 policy drift.
+
+Executable-bit compat is available for shiplog-style
+`policy/executable-allowlist.toml`:
+
+```bash
+cargo allow check --compat --kind executable
+```
+
+That mode reads current executable-file findings from `git ls-files --stage`
+entries with tree mode `100755` and compares them against exact paths in
+`policy/executable-allowlist.toml`. In canonical output, these entries are
+represented as `policy_exception.executable_file` because executable bits are a
+file-policy exception surface rather than Rust syntax.
 
 ## Canonical Policy Flow
 
@@ -85,6 +98,7 @@ Compatibility adapters may support:
 - `policy/no-panic-allowlist.toml`
 - `policy/non-rust-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/generated-allowlist.toml` (initial shiplog-style adapter exists)
+- `policy/executable-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/clippy-exceptions.toml`
 - `policy/unsafe-allowlist.toml`
 - `policy/ripr-suppressions.toml`

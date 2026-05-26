@@ -19,6 +19,7 @@ cargo run -p cargo-allow -- allow audit --kind non-rust --format markdown --outp
 cargo run -p cargo-allow -- allow audit --kind non-rust --include-untracked
 cargo run -p cargo-allow -- allow check --compat --kind non-rust --mode no-new
 cargo run -p cargo-allow -- allow check --compat --kind generated --mode no-new
+cargo run -p cargo-allow -- allow check --compat --kind executable --mode no-new
 cargo run -p cargo-allow -- allow check --mode no-new
 cargo run -p cargo-allow -- allow propose --write policy/allow.proposed.toml
 cargo run -p cargo-allow -- allow list
