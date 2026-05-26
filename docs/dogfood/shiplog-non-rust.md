@@ -47,6 +47,12 @@ Existing process-policy gate:
 cargo xtask check-process-policy --mode blocking-allowlist
 ```
 
+Existing network-policy gate:
+
+```bash
+cargo xtask check-network-policy --mode blocking-allowlist
+```
+
 Legacy policies:
 
 ```text
@@ -56,6 +62,7 @@ policy/executable-allowlist.toml
 policy/workflow-allowlist.toml
 policy/dependency-surface-allowlist.toml
 policy/process-allowlist.toml
+policy/network-allowlist.toml
 ```
 
 ## Non-Rust Result
@@ -228,6 +235,35 @@ entries must have the required legacy fields and are rendered as
 current findings from the retained entries for side-by-side receipt validation;
 it does not discover process spawns from source or runtime behavior.
 
+## Network-Policy Result
+
+The existing network-policy xtask gate passed:
+
+```text
+check-network-policy: no findings.
+```
+
+cargo-allow network compat mode also passed:
+
+```bash
+cargo allow check --compat --kind network --mode no-new
+```
+
+Observed cargo-allow result:
+
+```text
+Findings scanned: 10
+matched: 10
+new: 0
+```
+
+Network compat preserves the existing xtask boundary: retained network-policy
+entries must have the required legacy fields and are rendered as
+`policy_exception.network_destination` canonical policy entries. It synthesizes
+current findings from the retained entries for side-by-side receipt validation;
+it does not discover outbound calls from source code, workflow logs, or runtime
+traffic.
+
 ## What This Proves
 
 - cargo-allow can consume a shiplog-style
@@ -256,10 +292,13 @@ it does not discover process spawns from source or runtime behavior.
 - Process compat preserves the legacy xtask's required-field validation shape
   and renders retained process entries as matched process-spawn policy
   exceptions.
+- cargo-allow can consume a shiplog-style `policy/network-allowlist.toml`.
+- Network compat preserves the legacy xtask's required-field validation shape
+  and renders retained destinations as matched network-destination policy
+  exceptions.
 
 ## What This Does Not Prove
 
-- It does not replace shiplog's network-policy xtask.
 - It does not prove the canonical `policy/allow.toml` migration is ready to
   replace the legacy policy file.
 - It does not validate macro expansion, type information, executable behavior,
@@ -269,6 +308,9 @@ it does not discover process spawns from source or runtime behavior.
 - It does not prove full process-spawn discovery; process compat intentionally
   validates retained policy entries rather than scanning source code or runtime
   behavior.
+- It does not prove full outbound network discovery; network compat
+  intentionally validates retained policy entries rather than scanning source
+  code, workflow logs, or runtime traffic.
 - It does not prove stale legacy entries are removable; compat mode expands
   current findings for side-by-side checking.
 
@@ -280,4 +322,5 @@ out-of-scope boundaries. Executable compat validates git tree-mode inventory,
 not script contents or runtime behavior. Workflow compat validates workflow-file
 and `uses:` inventory, not GitHub permission semantics, secret availability, or
 action trust. Process compat validates retained process policy entries, not
-actual source-level or runtime process spawning.
+actual source-level or runtime process spawning. Network compat validates
+retained network policy entries, not actual outbound call discovery.

@@ -59,11 +59,14 @@ Completed:
 - Add `--compat --kind process` for shiplog-style
   `policy/process-allowlist.toml` and prove it side-by-side against shiplog's
   process-policy xtask.
+- Add `--compat --kind network` for shiplog-style
+  `policy/network-allowlist.toml` and prove it side-by-side against shiplog's
+  network-policy xtask.
 
 Next:
 
-- Harden documented replacement gaps before removing any existing xtask:
-  network policy.
+- Harden documented replacement gaps before removing any existing xtask and
+  start the canonical migration writer path.
 
 ## Phase 4: Build Structural Identity
 
