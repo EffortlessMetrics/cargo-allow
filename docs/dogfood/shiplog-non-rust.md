@@ -41,6 +41,12 @@ Existing dependency-surface gate:
 cargo xtask check-dependency-surfaces --mode blocking-allowlist
 ```
 
+Existing process-policy gate:
+
+```bash
+cargo xtask check-process-policy --mode blocking-allowlist
+```
+
 Legacy policies:
 
 ```text
@@ -49,6 +55,7 @@ policy/generated-allowlist.toml
 policy/executable-allowlist.toml
 policy/workflow-allowlist.toml
 policy/dependency-surface-allowlist.toml
+policy/process-allowlist.toml
 ```
 
 ## Non-Rust Result
@@ -193,6 +200,34 @@ Dependency-surface compat preserves the existing xtask boundary: configured
 policy patterns must still match tracked files. It renders matched surfaces as
 `policy_exception.dependency_surface` canonical policy entries.
 
+## Process-Policy Result
+
+The existing process-policy xtask gate passed:
+
+```text
+check-process-policy: no findings.
+```
+
+cargo-allow process compat mode also passed:
+
+```bash
+cargo allow check --compat --kind process --mode no-new
+```
+
+Observed cargo-allow result:
+
+```text
+Findings scanned: 9
+matched: 9
+new: 0
+```
+
+Process compat preserves the existing xtask boundary: retained process-policy
+entries must have the required legacy fields and are rendered as
+`policy_exception.process_spawn` canonical policy entries. It synthesizes
+current findings from the retained entries for side-by-side receipt validation;
+it does not discover process spawns from source or runtime behavior.
+
 ## What This Proves
 
 - cargo-allow can consume a shiplog-style
@@ -217,16 +252,23 @@ policy patterns must still match tracked files. It renders matched surfaces as
   `policy/dependency-surface-allowlist.toml`.
 - Dependency-surface compat preserves the legacy xtask's pattern-exists check
   for configured dependency-surface entries.
+- cargo-allow can consume a shiplog-style `policy/process-allowlist.toml`.
+- Process compat preserves the legacy xtask's required-field validation shape
+  and renders retained process entries as matched process-spawn policy
+  exceptions.
 
 ## What This Does Not Prove
 
-- It does not replace shiplog's process-policy or network-policy xtasks.
+- It does not replace shiplog's network-policy xtask.
 - It does not prove the canonical `policy/allow.toml` migration is ready to
   replace the legacy policy file.
 - It does not validate macro expansion, type information, executable behavior,
   workflow permissions, dependency semantics, or external network reach.
 - It does not prove full unlisted-manifest discovery; dependency-surface compat
   intentionally mirrors the existing legacy xtask boundary.
+- It does not prove full process-spawn discovery; process compat intentionally
+  validates retained policy entries rather than scanning source code or runtime
+  behavior.
 - It does not prove stale legacy entries are removable; compat mode expands
   current findings for side-by-side checking.
 
@@ -237,4 +279,5 @@ file-policy companion ledgers either have cargo-allow equivalents or documented
 out-of-scope boundaries. Executable compat validates git tree-mode inventory,
 not script contents or runtime behavior. Workflow compat validates workflow-file
 and `uses:` inventory, not GitHub permission semantics, secret availability, or
-action trust.
+action trust. Process compat validates retained process policy entries, not
+actual source-level or runtime process spawning.

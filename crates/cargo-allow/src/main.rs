@@ -570,6 +570,14 @@ fn load_compat_world(
         let findings = allow_policy_legacy::dependency_surface_findings_from_git(&root, &cfg)?;
         return Ok((root, cfg, findings));
     }
+    if is_process_compat_kind(compat_kind) {
+        let policy_path = config
+            .map(PathBuf::from)
+            .unwrap_or_else(|| root.join("policy/process-allowlist.toml"));
+        let cfg = allow_policy_legacy::load_process_compat_config(policy_path)?;
+        let findings = allow_policy_legacy::process_findings_from_config(&cfg);
+        return Ok((root, cfg, findings));
+    }
     if parsed_filter.kind == FindingKind::GeneratedCode {
         let policy_path = config
             .map(PathBuf::from)
@@ -580,7 +588,7 @@ fn load_compat_world(
     }
     if parsed_filter.kind != FindingKind::NonRustFile {
         return Err(CargoAllowError::new(
-            "--compat currently supports only --kind non-rust, --kind generated, --kind executable, --kind workflow, or --kind dependency-surface",
+            "--compat currently supports only --kind non-rust, --kind generated, --kind executable, --kind workflow, --kind dependency-surface, or --kind process",
         ));
     }
     let opts = InventoryOptions {
@@ -653,6 +661,12 @@ fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
             family: FamilyFilter::Exact("dependency_surface"),
         });
     }
+    if is_process_compat_kind(kind) {
+        return Ok(KindFilter {
+            kind: FindingKind::PolicyException,
+            family: FamilyFilter::Exact("process_spawn"),
+        });
+    }
     Ok(KindFilter {
         kind: FindingKind::from_str(kind)?,
         family: FamilyFilter::Any,
@@ -683,6 +697,13 @@ fn is_dependency_surface_compat_kind(kind: &str) -> bool {
             | "dependency-surfaces"
             | "dep-surface"
             | "dep"
+    )
+}
+
+fn is_process_compat_kind(kind: &str) -> bool {
+    matches!(
+        kind.trim(),
+        "process" | "processes" | "process-policy" | "process_spawn" | "process-spawn" | "proc"
     )
 }
 
@@ -985,6 +1006,29 @@ mod tests {
     }
 
     #[test]
+    fn clap_parses_process_compat_check() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--compat",
+            "--kind",
+            "process",
+        ]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse process compat check: {err}"))
+        });
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(CheckArgs {
+                compat: true,
+                kind: Some(kind),
+                ..
+            })) if kind == "process"
+        ));
+    }
+
+    #[test]
     fn report_config_filters_allow_entries_by_kind() {
         let mut cfg = AllowConfig::empty();
         cfg.allow
@@ -1079,6 +1123,28 @@ mod tests {
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected dependency entry"));
         assert_eq!(entry.id, "allow-dep");
+    }
+
+    #[test]
+    fn report_config_filters_process_family() {
+        let mut cfg = AllowConfig::empty();
+        let mut process = test_entry("allow-process", FindingKind::PolicyException);
+        process.family = Some("process_spawn".to_string());
+        let mut other = test_entry("allow-other-policy", FindingKind::PolicyException);
+        other.family = Some("dependency_surface".to_string());
+        cfg.allow.push(process);
+        cfg.allow.push(other);
+
+        let filtered = report_config(&cfg, Some("process")).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("process filter should parse: {err}"))
+        });
+
+        assert_eq!(filtered.allow.len(), 1);
+        let entry = filtered
+            .allow
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected process entry"));
+        assert_eq!(entry.id, "allow-process");
     }
 
     fn argv(items: Vec<&str>) -> Vec<String> {
