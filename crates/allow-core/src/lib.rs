@@ -38,10 +38,31 @@ impl SimpleDate {
         let year = parts.next()?.parse().ok()?;
         let month = parts.next()?.parse().ok()?;
         let day = parts.next()?.parse().ok()?;
-        if parts.next().is_some() || month == 0 || month > 12 || day == 0 || day > 31 {
+        if parts.next().is_some() || !valid_ymd(year, month, day) {
             return None;
         }
         Some(Self { year, month, day })
+    }
+
+    pub fn days_until(self, other: Self) -> i64 {
+        other.days_since_unix_epoch() - self.days_since_unix_epoch()
+    }
+
+    fn days_since_unix_epoch(self) -> i64 {
+        // Howard Hinnant's civil date algorithm. This keeps lifecycle validation
+        // deterministic without adding a date dependency to the core crate.
+        let mut year = i64::from(self.year);
+        let month = i64::from(self.month);
+        let day = i64::from(self.day);
+        if month <= 2 {
+            year -= 1;
+        }
+        let era = if year >= 0 { year } else { year - 399 } / 400;
+        let year_of_era = year - era * 400;
+        let month_prime = month + if month > 2 { -3 } else { 9 };
+        let day_of_year = (153 * month_prime + 2) / 5 + day - 1;
+        let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+        era * 146_097 + day_of_era - 719_468
     }
 
     pub fn today_utc_approx() -> Self {
@@ -53,6 +74,21 @@ impl SimpleDate {
             day: 26,
         }
     }
+}
+
+fn valid_ymd(year: i32, month: u32, day: u32) -> bool {
+    let max_day = match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if leap_year(year) => 29,
+        2 => 28,
+        _ => return false,
+    };
+    day > 0 && day <= max_day
+}
+
+fn leap_year(year: i32) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
 }
 
 impl fmt::Display for SimpleDate {
@@ -525,5 +561,23 @@ mod tests {
     fn hash_is_stable() {
         assert_eq!(stable_hash_hex("abc"), stable_hash_hex("abc"));
         assert_ne!(stable_hash_hex("abc"), stable_hash_hex("abd"));
+    }
+
+    #[test]
+    fn simple_date_rejects_invalid_calendar_dates() {
+        assert!(SimpleDate::parse("2026-02-29").is_none());
+        assert!(SimpleDate::parse("2024-02-29").is_some());
+        assert!(SimpleDate::parse("2026-04-31").is_none());
+        assert!(SimpleDate::parse("2026-13-01").is_none());
+    }
+
+    #[test]
+    fn simple_date_counts_days_between_dates() {
+        let start = SimpleDate::parse("2026-05-26")
+            .unwrap_or_else(|| std::panic::panic_any("valid start date"));
+        let end = SimpleDate::parse("2026-08-01")
+            .unwrap_or_else(|| std::panic::panic_any("valid end date"));
+
+        assert_eq!(start.days_until(end), 67);
     }
 }
