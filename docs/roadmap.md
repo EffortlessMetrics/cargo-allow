@@ -139,9 +139,14 @@ Planned work:
 
 Goal: make the tool pleasant and self-explanatory.
 
+Completed:
+
+- Improve `explain` so it reports the current live match status, matched
+  finding count, occurrence-limit overruns, stale entries, lifecycle/evidence
+  outcomes, and the command claim boundary.
+
 Planned work:
 
-- Improve `explain`.
 - Improve `list`.
 - Implement dry-run-first stale pruning.
 - Add allow entries from findings.

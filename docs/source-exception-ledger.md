@@ -116,6 +116,12 @@ The limit preserves no-new semantics during migration. Matching the same
 structural selector more times than the baseline allowed becomes new debt
 instead of silently broadening the exception.
 
+`cargo allow explain <id>` reports this live posture for a single entry. It
+shows the policy metadata, selector, current match status, matched finding
+count, outcome counts, stale state, and occurrence-limit overruns. The command
+is still bounded by the normal cargo-allow claim boundary: source syntax only,
+with no macro expansion or type analysis.
+
 ## Non-Rust Files
 
 Rust repositories often contain non-Rust operational surface:
