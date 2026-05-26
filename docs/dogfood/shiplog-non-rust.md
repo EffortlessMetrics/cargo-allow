@@ -29,12 +29,19 @@ Existing executable-bit gate:
 cargo xtask check-executable-files --mode blocking-allowlist
 ```
 
+Existing workflow gate:
+
+```bash
+cargo xtask check-workflows --mode blocking-allowlist
+```
+
 Legacy policies:
 
 ```text
 policy/non-rust-allowlist.toml
 policy/generated-allowlist.toml
 policy/executable-allowlist.toml
+policy/workflow-allowlist.toml
 ```
 
 ## Non-Rust Result
@@ -126,6 +133,33 @@ Executable compat reads current findings from `git ls-files --stage` tree mode
 `100755` and renders legacy entries as
 `policy_exception.executable_file` canonical policy entries.
 
+## Workflow Result
+
+The existing workflow xtask gate passed:
+
+```text
+check-workflows: no findings.
+```
+
+cargo-allow workflow compat mode also passed:
+
+```bash
+cargo allow check --compat --kind workflow --mode no-new
+```
+
+Observed cargo-allow result:
+
+```text
+Findings scanned: 84
+matched: 84
+new: 0
+```
+
+Workflow compat reads current workflow files from `.github/workflows/*.yml` and
+`.github/workflows/*.yaml`, extracts `uses:` action references, and renders
+legacy entries as `policy_exception.github_workflow` and
+`policy_exception.workflow_external_action` canonical policy entries.
+
 ## What This Proves
 
 - cargo-allow can consume a shiplog-style
@@ -142,11 +176,15 @@ Executable compat reads current findings from `git ls-files --stage` tree mode
 - Executable compat preserves the drift shape used by the xtask: git tree mode
   `100755` provides current executable-file findings, while the policy file
   provides retained executable-file receipts.
+- cargo-allow can consume a shiplog-style `policy/workflow-allowlist.toml`.
+- Workflow compat preserves the drift shape used by the xtask: workflow files
+  and `uses:` references provide current findings, while the policy file
+  provides retained workflow and external-action receipts.
 
 ## What This Does Not Prove
 
-- It does not replace shiplog's workflow, dependency-surface, process-policy,
-  or network-policy xtasks.
+- It does not replace shiplog's dependency-surface, process-policy, or
+  network-policy xtasks.
 - It does not prove the canonical `policy/allow.toml` migration is ready to
   replace the legacy policy file.
 - It does not validate macro expansion, type information, executable behavior,
@@ -159,4 +197,6 @@ Executable compat reads current findings from `git ls-files --stage` tree mode
 The next replacement PR should keep the existing xtasks until the remaining
 file-policy companion ledgers either have cargo-allow equivalents or documented
 out-of-scope boundaries. Executable compat validates git tree-mode inventory,
-not script contents or runtime behavior.
+not script contents or runtime behavior. Workflow compat validates workflow-file
+and `uses:` inventory, not GitHub permission semantics, secret availability, or
+action trust.

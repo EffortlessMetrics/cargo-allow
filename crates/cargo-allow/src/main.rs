@@ -541,7 +541,7 @@ fn load_compat_world(
         .transpose()?
         .unwrap_or(KindFilter {
             kind: FindingKind::NonRustFile,
-            family: None,
+            family: FamilyFilter::Any,
         });
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
@@ -554,6 +554,14 @@ fn load_compat_world(
         let findings = allow_policy_legacy::executable_findings_from_git(&root)?;
         return Ok((root, cfg, findings));
     }
+    if is_workflow_compat_kind(compat_kind) {
+        let policy_path = config
+            .map(PathBuf::from)
+            .unwrap_or_else(|| root.join("policy/workflow-allowlist.toml"));
+        let cfg = allow_policy_legacy::load_workflow_compat_config(policy_path)?;
+        let findings = allow_policy_legacy::workflow_findings_from_files(&root)?;
+        return Ok((root, cfg, findings));
+    }
     if parsed_filter.kind == FindingKind::GeneratedCode {
         let policy_path = config
             .map(PathBuf::from)
@@ -564,7 +572,7 @@ fn load_compat_world(
     }
     if parsed_filter.kind != FindingKind::NonRustFile {
         return Err(CargoAllowError::new(
-            "--compat currently supports only --kind non-rust, --kind generated, or --kind executable",
+            "--compat currently supports only --kind non-rust, --kind generated, --kind executable, or --kind workflow",
         ));
     }
     let opts = InventoryOptions {
@@ -586,24 +594,35 @@ fn load_compat_world(
 #[derive(Debug, Clone, Copy)]
 struct KindFilter {
     kind: FindingKind,
-    family: Option<&'static str>,
+    family: FamilyFilter,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum FamilyFilter {
+    Any,
+    Exact(&'static str),
+    Workflow,
 }
 
 impl KindFilter {
     fn matches_finding(self, finding: &Finding) -> bool {
-        finding.kind == self.kind
-            && self
-                .family
-                .map(|family| finding.family.as_deref() == Some(family))
-                .unwrap_or(true)
+        finding.kind == self.kind && self.family.matches(finding.family.as_deref())
     }
 
     fn matches_entry(self, entry: &AllowEntry) -> bool {
-        entry.kind == self.kind
-            && self
-                .family
-                .map(|family| entry.family.as_deref() == Some(family))
-                .unwrap_or(true)
+        entry.kind == self.kind && self.family.matches(entry.family.as_deref())
+    }
+}
+
+impl FamilyFilter {
+    fn matches(self, family: Option<&str>) -> bool {
+        match self {
+            Self::Any => true,
+            Self::Exact(expected) => family == Some(expected),
+            Self::Workflow => {
+                matches!(family, Some("github_workflow" | "workflow_external_action"))
+            }
+        }
     }
 }
 
@@ -611,12 +630,18 @@ fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
     if is_executable_compat_kind(kind) {
         return Ok(KindFilter {
             kind: FindingKind::PolicyException,
-            family: Some("executable_file"),
+            family: FamilyFilter::Exact("executable_file"),
+        });
+    }
+    if is_workflow_compat_kind(kind) {
+        return Ok(KindFilter {
+            kind: FindingKind::PolicyException,
+            family: FamilyFilter::Workflow,
         });
     }
     Ok(KindFilter {
         kind: FindingKind::from_str(kind)?,
-        family: None,
+        family: FamilyFilter::Any,
     })
 }
 
@@ -624,6 +649,13 @@ fn is_executable_compat_kind(kind: &str) -> bool {
     matches!(
         kind.trim(),
         "executable" | "executable_file" | "executable-file" | "executable-bit" | "exec"
+    )
+}
+
+fn is_workflow_compat_kind(kind: &str) -> bool {
+    matches!(
+        kind.trim(),
+        "workflow" | "workflows" | "github_workflow" | "github-workflow" | "workflow-action"
     )
 }
 
@@ -878,6 +910,29 @@ mod tests {
     }
 
     #[test]
+    fn clap_parses_workflow_compat_check() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--compat",
+            "--kind",
+            "workflow",
+        ]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse workflow compat check: {err}"))
+        });
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(CheckArgs {
+                compat: true,
+                kind: Some(kind),
+                ..
+            })) if kind == "workflow"
+        ));
+    }
+
+    #[test]
     fn report_config_filters_allow_entries_by_kind() {
         let mut cfg = AllowConfig::empty();
         cfg.allow
@@ -918,6 +973,38 @@ mod tests {
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected executable entry"));
         assert_eq!(entry.id, "allow-exec");
+    }
+
+    #[test]
+    fn report_config_filters_workflow_families() {
+        let mut cfg = AllowConfig::empty();
+        let mut workflow = test_entry("allow-workflow", FindingKind::PolicyException);
+        workflow.family = Some("github_workflow".to_string());
+        let mut action = test_entry("allow-workflow-action", FindingKind::PolicyException);
+        action.family = Some("workflow_external_action".to_string());
+        let mut other = test_entry("allow-other-policy", FindingKind::PolicyException);
+        other.family = Some("executable_file".to_string());
+        cfg.allow.push(workflow);
+        cfg.allow.push(action);
+        cfg.allow.push(other);
+
+        let filtered = report_config(&cfg, Some("workflow")).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("workflow filter should parse: {err}"))
+        });
+
+        assert_eq!(filtered.allow.len(), 2);
+        assert!(
+            filtered
+                .allow
+                .iter()
+                .any(|entry| entry.id == "allow-workflow")
+        );
+        assert!(
+            filtered
+                .allow
+                .iter()
+                .any(|entry| entry.id == "allow-workflow-action")
+        );
     }
 
     fn argv(items: Vec<&str>) -> Vec<String> {
