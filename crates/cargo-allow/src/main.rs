@@ -370,16 +370,13 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
 
 fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
     let cfg = load_config_required(args.config.as_deref())?;
-    let parsed_kind = args
-        .kind
-        .as_deref()
-        .map(FindingKind::from_str)
-        .transpose()?;
-    for entry in cfg
-        .allow
-        .iter()
-        .filter(|e| parsed_kind.map(|kind| e.kind == kind).unwrap_or(true))
-    {
+    let parsed_filter = args.kind.as_deref().map(parse_kind_filter).transpose()?;
+    for entry in cfg.allow.iter().filter(|e| {
+        parsed_filter
+            .as_ref()
+            .map(|filter| filter.matches_entry(e))
+            .unwrap_or(true)
+    }) {
         println!(
             "{}\t{}\t{}\t{}",
             entry.id,
@@ -527,10 +524,8 @@ fn load_world(
         },
     ));
     if let Some(kind) = kind_filter {
-        let parsed = FindingKind::from_str(kind)?;
-        findings.retain(|f| {
-            f.kind == parsed || (parsed == FindingKind::Panic && f.kind == FindingKind::Panic)
-        });
+        let parsed = parse_kind_filter(kind)?;
+        findings.retain(|f| parsed.matches_finding(f));
     }
     Ok((root, cfg, findings))
 }
@@ -540,14 +535,26 @@ fn load_compat_world(
     kind_filter: Option<&str>,
     include_untracked: bool,
 ) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>)> {
-    let parsed_kind = kind_filter
-        .map(FindingKind::from_str)
+    let compat_kind = kind_filter.unwrap_or("non-rust");
+    let parsed_filter = kind_filter
+        .map(parse_kind_filter)
         .transpose()?
-        .unwrap_or(FindingKind::NonRustFile);
+        .unwrap_or(KindFilter {
+            kind: FindingKind::NonRustFile,
+            family: None,
+        });
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = discover_workspace_root(cwd)?;
-    if parsed_kind == FindingKind::GeneratedCode {
+    if is_executable_compat_kind(compat_kind) {
+        let policy_path = config
+            .map(PathBuf::from)
+            .unwrap_or_else(|| root.join("policy/executable-allowlist.toml"));
+        let cfg = allow_policy_legacy::load_executable_compat_config(policy_path)?;
+        let findings = allow_policy_legacy::executable_findings_from_git(&root)?;
+        return Ok((root, cfg, findings));
+    }
+    if parsed_filter.kind == FindingKind::GeneratedCode {
         let policy_path = config
             .map(PathBuf::from)
             .unwrap_or_else(|| root.join("policy/generated-allowlist.toml"));
@@ -555,9 +562,9 @@ fn load_compat_world(
         let findings = allow_policy_legacy::generated_findings_from_gitattributes(&root)?;
         return Ok((root, cfg, findings));
     }
-    if parsed_kind != FindingKind::NonRustFile {
+    if parsed_filter.kind != FindingKind::NonRustFile {
         return Err(CargoAllowError::new(
-            "--compat currently supports only --kind non-rust or --kind generated",
+            "--compat currently supports only --kind non-rust, --kind generated, or --kind executable",
         ));
     }
     let opts = InventoryOptions {
@@ -576,13 +583,57 @@ fn load_compat_world(
     Ok((root, cfg, findings))
 }
 
+#[derive(Debug, Clone, Copy)]
+struct KindFilter {
+    kind: FindingKind,
+    family: Option<&'static str>,
+}
+
+impl KindFilter {
+    fn matches_finding(self, finding: &Finding) -> bool {
+        finding.kind == self.kind
+            && self
+                .family
+                .map(|family| finding.family.as_deref() == Some(family))
+                .unwrap_or(true)
+    }
+
+    fn matches_entry(self, entry: &AllowEntry) -> bool {
+        entry.kind == self.kind
+            && self
+                .family
+                .map(|family| entry.family.as_deref() == Some(family))
+                .unwrap_or(true)
+    }
+}
+
+fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
+    if is_executable_compat_kind(kind) {
+        return Ok(KindFilter {
+            kind: FindingKind::PolicyException,
+            family: Some("executable_file"),
+        });
+    }
+    Ok(KindFilter {
+        kind: FindingKind::from_str(kind)?,
+        family: None,
+    })
+}
+
+fn is_executable_compat_kind(kind: &str) -> bool {
+    matches!(
+        kind.trim(),
+        "executable" | "executable_file" | "executable-file" | "executable-bit" | "exec"
+    )
+}
+
 fn report_config(cfg: &AllowConfig, kind_filter: Option<&str>) -> CargoAllowResult<AllowConfig> {
     let Some(kind) = kind_filter else {
         return Ok(cfg.clone());
     };
-    let parsed = FindingKind::from_str(kind)?;
+    let parsed = parse_kind_filter(kind)?;
     let mut filtered = cfg.clone();
-    filtered.allow.retain(|entry| entry.kind == parsed);
+    filtered.allow.retain(|entry| parsed.matches_entry(entry));
     Ok(filtered)
 }
 
@@ -804,6 +855,29 @@ mod tests {
     }
 
     #[test]
+    fn clap_parses_executable_compat_check() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--compat",
+            "--kind",
+            "executable",
+        ]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse executable compat check: {err}"))
+        });
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(CheckArgs {
+                compat: true,
+                kind: Some(kind),
+                ..
+            })) if kind == "executable"
+        ));
+    }
+
+    #[test]
     fn report_config_filters_allow_entries_by_kind() {
         let mut cfg = AllowConfig::empty();
         cfg.allow
@@ -822,6 +896,28 @@ mod tests {
                 .iter()
                 .any(|entry| entry.id == "allow-file" && entry.kind == FindingKind::NonRustFile)
         );
+    }
+
+    #[test]
+    fn report_config_filters_executable_family() {
+        let mut cfg = AllowConfig::empty();
+        let mut executable = test_entry("allow-exec", FindingKind::PolicyException);
+        executable.family = Some("executable_file".to_string());
+        let mut other = test_entry("allow-other-policy", FindingKind::PolicyException);
+        other.family = Some("workflow_permission".to_string());
+        cfg.allow.push(executable);
+        cfg.allow.push(other);
+
+        let filtered = report_config(&cfg, Some("executable")).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("executable filter should parse: {err}"))
+        });
+
+        assert_eq!(filtered.allow.len(), 1);
+        let entry = filtered
+            .allow
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected executable entry"));
+        assert_eq!(entry.id, "allow-exec");
     }
 
     fn argv(items: Vec<&str>) -> Vec<String> {

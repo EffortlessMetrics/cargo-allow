@@ -23,11 +23,18 @@ Existing generated-file gate:
 cargo xtask check-generated --mode blocking-allowlist
 ```
 
+Existing executable-bit gate:
+
+```bash
+cargo xtask check-executable-files --mode blocking-allowlist
+```
+
 Legacy policies:
 
 ```text
 policy/non-rust-allowlist.toml
 policy/generated-allowlist.toml
+policy/executable-allowlist.toml
 ```
 
 ## Non-Rust Result
@@ -93,6 +100,32 @@ The generated file was:
 policy/no-panic-baseline.toml
 ```
 
+## Executable Result
+
+The existing executable-bit xtask gate passed:
+
+```text
+check-executable-files: no findings.
+```
+
+cargo-allow executable compat mode also passed:
+
+```bash
+cargo allow check --compat --kind executable --mode no-new
+```
+
+Observed cargo-allow result:
+
+```text
+Findings scanned: 8
+matched: 8
+new: 0
+```
+
+Executable compat reads current findings from `git ls-files --stage` tree mode
+`100755` and renders legacy entries as
+`policy_exception.executable_file` canonical policy entries.
+
 ## What This Proves
 
 - cargo-allow can consume a shiplog-style
@@ -105,11 +138,15 @@ policy/no-panic-baseline.toml
 - Generated compat preserves the drift shape used by the xtask:
   `.gitattributes` provides current generated findings, while the policy file
   provides retained generated-file receipts.
+- cargo-allow can consume a shiplog-style `policy/executable-allowlist.toml`.
+- Executable compat preserves the drift shape used by the xtask: git tree mode
+  `100755` provides current executable-file findings, while the policy file
+  provides retained executable-file receipts.
 
 ## What This Does Not Prove
 
-- It does not replace shiplog's executable-bit, workflow, dependency-surface,
-  process-policy, or network-policy xtasks.
+- It does not replace shiplog's workflow, dependency-surface, process-policy,
+  or network-policy xtasks.
 - It does not prove the canonical `policy/allow.toml` migration is ready to
   replace the legacy policy file.
 - It does not validate macro expansion, type information, executable behavior,
@@ -121,4 +158,5 @@ policy/no-panic-baseline.toml
 
 The next replacement PR should keep the existing xtasks until the remaining
 file-policy companion ledgers either have cargo-allow equivalents or documented
-out-of-scope boundaries.
+out-of-scope boundaries. Executable compat validates git tree-mode inventory,
+not script contents or runtime behavior.

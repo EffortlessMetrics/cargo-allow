@@ -5,6 +5,7 @@ use allow_core::{
 use allow_policy::{parse_policy, validate_policy};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use toml::Value;
 
 pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
@@ -20,6 +21,12 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
     {
         let rules = parse_generated_rules(&table)?;
         return config_from_generated_rules(&table, &rules);
+    }
+    if let Some(table) = legacy_table(&text)?
+        && table.get("policy").and_then(Value::as_str) == Some("executable-allowlist")
+    {
+        let rules = parse_executable_rules(&table)?;
+        return config_from_executable_rules(&table, &rules);
     }
     parse_policy(&text)
 }
@@ -58,6 +65,21 @@ pub fn load_generated_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<
     config_from_generated_rules(&table, &rules)
 }
 
+pub fn load_executable_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
+    let text = read_policy(path.as_ref())?;
+    let table = legacy_table(&text)?.ok_or_else(|| {
+        CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
+    })?;
+    if table.get("policy").and_then(Value::as_str) != Some("executable-allowlist") {
+        return Err(CargoAllowError::new(format!(
+            "{} is not an executable-allowlist policy",
+            path.as_ref().display()
+        )));
+    }
+    let rules = parse_executable_rules(&table)?;
+    config_from_executable_rules(&table, &rules)
+}
+
 pub fn generated_findings_from_gitattributes(
     root: impl AsRef<Path>,
 ) -> CargoAllowResult<Vec<Finding>> {
@@ -73,8 +95,25 @@ pub fn generated_findings_from_gitattributes(
         .collect())
 }
 
+pub fn executable_findings_from_git(root: impl AsRef<Path>) -> CargoAllowResult<Vec<Finding>> {
+    let output = Command::new("git")
+        .args(["ls-files", "--stage"])
+        .current_dir(root.as_ref())
+        .output()
+        .map_err(|e| CargoAllowError::new(format!("failed to run git ls-files --stage: {e}")))?;
+    if !output.status.success() {
+        return Err(CargoAllowError::new(format!(
+            "git ls-files --stage failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
+    }
+    let text = String::from_utf8(output.stdout)
+        .map_err(|e| CargoAllowError::new(format!("git ls-files output was not UTF-8: {e}")))?;
+    Ok(executable_findings_from_git_stage(&text))
+}
+
 pub fn migration_notes() -> &'static str {
-    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust and generated allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml."
+    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, and executable allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml."
 }
 
 fn read_policy(path: &Path) -> CargoAllowResult<String> {
@@ -114,6 +153,18 @@ struct LegacyGeneratedRule {
     generator: Option<String>,
     regenerate_command: Option<String>,
     created: Option<String>,
+    expires: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct LegacyExecutableRule {
+    id: String,
+    path: String,
+    owner: String,
+    reason: String,
+    interpreter: Option<String>,
+    created: Option<String>,
+    review_after: Option<String>,
     expires: Option<String>,
 }
 
@@ -223,6 +274,37 @@ fn parse_generated_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyG
     })
 }
 
+fn parse_executable_rules(table: &toml::Table) -> CargoAllowResult<Vec<LegacyExecutableRule>> {
+    let entries = table
+        .get("allow")
+        .and_then(Value::as_array)
+        .ok_or_else(|| CargoAllowError::new("executable-allowlist missing allow entries"))?;
+    entries
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| parse_executable_rule(index, entry))
+        .collect()
+}
+
+fn parse_executable_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyExecutableRule> {
+    let table = entry.as_table().ok_or_else(|| {
+        CargoAllowError::new(format!("executable allow entry {index} is not a table"))
+    })?;
+    let id = string_field(table, "id").unwrap_or_else(|| format!("legacy-executable-{index:04}"));
+    let path = string_field(table, "path")
+        .ok_or_else(|| CargoAllowError::new(format!("{id} missing path")))?;
+    Ok(LegacyExecutableRule {
+        id,
+        path,
+        owner: string_field(table, "owner").unwrap_or_default(),
+        reason: string_field(table, "reason").unwrap_or_default(),
+        interpreter: string_field(table, "interpreter"),
+        created: string_field(table, "created"),
+        review_after: string_field(table, "review_after"),
+        expires: normalize_legacy_expires(string_field(table, "expires")),
+    })
+}
+
 fn config_from_non_rust_rules(
     table: &toml::Table,
     rules: &[LegacyNonRustRule],
@@ -239,6 +321,16 @@ fn config_from_generated_rules(
 ) -> CargoAllowResult<AllowConfig> {
     let mut cfg = base_config(table);
     cfg.allow = rules.iter().map(entry_from_generated_rule).collect();
+    validate_policy(&cfg)?;
+    Ok(cfg)
+}
+
+fn config_from_executable_rules(
+    table: &toml::Table,
+    rules: &[LegacyExecutableRule],
+) -> CargoAllowResult<AllowConfig> {
+    let mut cfg = base_config(table);
+    cfg.allow = rules.iter().map(entry_from_executable_rule).collect();
     validate_policy(&cfg)?;
     Ok(cfg)
 }
@@ -365,6 +457,35 @@ fn entry_from_generated_rule(rule: &LegacyGeneratedRule) -> AllowEntry {
     }
 }
 
+fn entry_from_executable_rule(rule: &LegacyExecutableRule) -> AllowEntry {
+    let path = normalize_path(&rule.path);
+    AllowEntry {
+        id: rule.id.clone(),
+        kind: FindingKind::PolicyException,
+        family: Some("executable_file".to_string()),
+        path: Some(PathBuf::from(&path)),
+        glob: None,
+        owner: rule.owner.clone(),
+        classification: "executable_file".to_string(),
+        reason: rule.reason.clone(),
+        evidence: executable_evidence(rule),
+        links: vec![format!("legacy-policy:{}", rule.id)],
+        lifecycle: Lifecycle {
+            created: rule.created.clone(),
+            review_after: rule.review_after.clone(),
+            expires: rule.expires.clone(),
+        },
+        selector: Selector {
+            ast_kind: Some("git_executable_file".to_string()),
+            symbol: Some(path.clone()),
+            target_fingerprint: Some("git-mode:100755".to_string()),
+            glob: Some(path),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
 fn generated_evidence(rule: &LegacyGeneratedRule) -> Vec<String> {
     let mut evidence = Vec::new();
     if let Some(generator) = &rule.generator {
@@ -374,6 +495,13 @@ fn generated_evidence(rule: &LegacyGeneratedRule) -> Vec<String> {
         evidence.push(format!("cargo:{command}"));
     }
     evidence
+}
+
+fn executable_evidence(rule: &LegacyExecutableRule) -> Vec<String> {
+    rule.interpreter
+        .as_ref()
+        .map(|interpreter| vec![format!("interpreter:{interpreter}")])
+        .unwrap_or_default()
 }
 
 fn generated_paths_from_gitattributes(input: &str) -> Vec<PathBuf> {
@@ -412,6 +540,39 @@ fn generated_finding(path: PathBuf) -> Finding {
         span: Some(allow_core::Span { line: 1, column: 1 }),
         identity,
         message: "tracked generated file from .gitattributes".to_string(),
+    }
+}
+
+fn executable_findings_from_git_stage(input: &str) -> Vec<Finding> {
+    input
+        .lines()
+        .filter_map(executable_path_from_git_stage_line)
+        .map(executable_finding)
+        .collect()
+}
+
+fn executable_path_from_git_stage_line(line: &str) -> Option<PathBuf> {
+    let (meta, path) = line.split_once('\t')?;
+    let mode = meta.split_whitespace().next()?;
+    if mode == "100755" && !path.trim().is_empty() {
+        Some(PathBuf::from(path.trim()))
+    } else {
+        None
+    }
+}
+
+fn executable_finding(path: PathBuf) -> Finding {
+    let normalized = normalize_path(&path);
+    let mut identity = allow_core::StructuralIdentity::new("file", "git_executable_file");
+    identity.symbol = Some(normalized);
+    identity.target_fingerprint = Some("git-mode:100755".to_string());
+    Finding {
+        kind: FindingKind::PolicyException,
+        family: Some("executable_file".to_string()),
+        path,
+        span: Some(allow_core::Span { line: 1, column: 1 }),
+        identity,
+        message: "tracked file has git executable bit".to_string(),
     }
 }
 
@@ -609,6 +770,95 @@ mod tests {
         );
     }
 
+    #[test]
+    fn migrates_executable_allowlist_to_policy_exception_entries() {
+        let policy = executable_policy_fixture_path();
+        let cfg = load_legacy_or_canonical(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("executable policy migrates: {err}"))
+        });
+
+        assert_eq!(cfg.policy, "cargo-allow");
+        assert_eq!(cfg.allow.len(), 1);
+        let entry = cfg
+            .allow
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected executable allow entry"));
+        assert_eq!(entry.kind, FindingKind::PolicyException);
+        assert_eq!(entry.family.as_deref(), Some("executable_file"));
+        assert_eq!(entry.classification, "executable_file");
+        assert_eq!(
+            entry.path.as_deref(),
+            Some(Path::new("scripts/package-proof.sh"))
+        );
+        assert_eq!(entry.lifecycle.expires.as_deref(), Some("never"));
+        assert_eq!(entry.evidence, vec!["interpreter:bash"]);
+        assert_eq!(
+            entry.selector.target_fingerprint.as_deref(),
+            Some("git-mode:100755")
+        );
+    }
+
+    #[test]
+    fn executable_findings_read_git_stage_executable_paths() {
+        let stage = "\
+100644 abc 0\tREADME.md\n\
+100755 def 0\tscripts/package-proof.sh\n\
+120000 ghi 0\tscripts/link.sh\n";
+
+        let findings = executable_findings_from_git_stage(stage);
+
+        assert_eq!(findings.len(), 1);
+        let finding = findings
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected executable finding"));
+        assert_eq!(finding.kind, FindingKind::PolicyException);
+        assert_eq!(finding.family.as_deref(), Some("executable_file"));
+        assert_eq!(finding.path, PathBuf::from("scripts/package-proof.sh"));
+        assert_eq!(finding.identity.ast_kind, "git_executable_file");
+        assert_eq!(
+            finding.identity.target_fingerprint.as_deref(),
+            Some("git-mode:100755")
+        );
+    }
+
+    #[test]
+    fn executable_compat_preserves_missing_and_stale_drift() {
+        let policy = executable_policy_fixture_path();
+        let cfg = load_executable_compat_config(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("executable compat config loads: {err}"))
+        });
+
+        let matched = allow_match::evaluate(
+            &cfg,
+            &[executable_finding(PathBuf::from(
+                "scripts/package-proof.sh",
+            ))],
+            allow_match::CheckMode::NoNew,
+        );
+        assert!(matched.iter().any(|outcome| {
+            outcome.status == allow_core::MatchStatus::Matched
+                && outcome.allow_id.as_deref() == Some("exec-package-proof")
+        }));
+
+        let missing_allow = allow_match::evaluate(
+            &cfg,
+            &[executable_finding(PathBuf::from("scripts/new-tool.sh"))],
+            allow_match::CheckMode::NoNew,
+        );
+        assert!(
+            missing_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::New)
+        );
+
+        let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+        assert!(
+            stale_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::Stale)
+        );
+    }
+
     static NEXT_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
     fn policy_fixture_path() -> PathBuf {
@@ -621,6 +871,13 @@ mod tests {
     fn generated_policy_fixture_path() -> PathBuf {
         let path = fixture_dir().join("generated-allowlist.toml");
         fs::write(&path, generated_policy_fixture_text())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+        path
+    }
+
+    fn executable_policy_fixture_path() -> PathBuf {
+        let path = fixture_dir().join("executable-allowlist.toml");
+        fs::write(&path, executable_policy_fixture_text())
             .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
         path
     }
@@ -726,6 +983,29 @@ regenerate_command = "cargo xtask no-panic baseline --reset"
 owner = "policy"
 reason = "Generated by the no-panic classifier."
 created = "2026-05-10"
+expires = "permanent"
+"#,
+        );
+        text
+    }
+
+    fn executable_policy_fixture_text() -> String {
+        let mut text = String::from(
+            r#"schema_version = 1
+policy = "executable-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+"#,
+        );
+        push_allow(
+            &mut text,
+            r#"id = "exec-package-proof"
+path = "scripts/package-proof.sh"
+interpreter = "bash"
+owner = "release"
+reason = "Release preflight aggregator."
+created = "2026-05-09"
 expires = "permanent"
 "#,
         );
