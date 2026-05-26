@@ -131,3 +131,8 @@ The current non-Rust family vocabulary is intentionally explicit:
 `ci_declarative`, `documentation`, `release_script`, `test_fixture`,
 `generated_code`, `editor_extension`, `package_metadata`, `shell_script`,
 `python_tool`, `javascript_tool`, `configuration`, and `unknown_non_rust`.
+
+Human and Markdown audit reports summarize the non-Rust file inventory by
+status and family, then list the scanned file paths. This is a review surface,
+not a separate schema contract; the stable machine-readable report remains the
+versioned JSON output.
