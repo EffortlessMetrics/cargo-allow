@@ -34,7 +34,7 @@ It does **not** analyze macro expansion, MIR, type information, or rustc semanti
 | `allow-core` | Core data model, simple glob matching, stable FNV hash, dates |
 | `allow-policy` | Canonical `policy/allow.toml` parser, writer, validation |
 | `allow-inventory` | Cargo metadata workspace facts and git-tracked file inventory with recursive fallback |
-| `allow-files` | Non-Rust and generated-file finding generation |
+| `allow-files` | Non-Rust/generated-file finding generation with governance families |
 | `allow-rust` | Source-syntax scanner for panic, unsafe, lint suppressions, indexing |
 | `allow-match` | Structural matcher, lifecycle classification, stale/new/ambiguous statuses |
 | `allow-report` | Human, Markdown, JSON report and receipt rendering |

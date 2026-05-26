@@ -241,7 +241,8 @@ fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
 
 fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
     let (root, cfg, findings) = load_world(args.config.as_deref(), false, args.kind.as_deref())?;
-    let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
+    let report_cfg = report_config(&cfg, args.kind.as_deref())?;
+    let outcomes = evaluate(&report_cfg, &findings, CheckMode::Audit);
     print_report(
         "audit",
         args.format,
@@ -257,7 +258,8 @@ fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
 fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     let mode = CheckMode::parse(&args.mode);
     let (_root, cfg, findings) = load_world(args.config.as_deref(), true, args.kind.as_deref())?;
-    let outcomes = evaluate(&cfg, &findings, mode);
+    let report_cfg = report_config(&cfg, args.kind.as_deref())?;
+    let outcomes = evaluate(&report_cfg, &findings, mode);
     let failed = outcomes.iter().any(|o| mode.fails(o.status));
     print_report(
         "check",
@@ -281,7 +283,8 @@ fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
 
 fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let (root, cfg, findings) = load_world(args.config.as_deref(), true, args.kind.as_deref())?;
-    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+    let report_cfg = report_config(&cfg, args.kind.as_deref())?;
+    let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
     let failed = outcomes.iter().any(|o| CheckMode::NoNew.fails(o.status));
     let mut text = match args.format {
         OutputFormat::Json => allow_report::render_json("diff", &findings, &outcomes, failed),
@@ -468,6 +471,16 @@ fn load_world(
     Ok((root, cfg, findings))
 }
 
+fn report_config(cfg: &AllowConfig, kind_filter: Option<&str>) -> CargoAllowResult<AllowConfig> {
+    let Some(kind) = kind_filter else {
+        return Ok(cfg.clone());
+    };
+    let parsed = FindingKind::from_str(kind)?;
+    let mut filtered = cfg.clone();
+    filtered.allow.retain(|entry| entry.kind == parsed);
+    Ok(filtered)
+}
+
 fn load_config_required(config: Option<&Path>) -> CargoAllowResult<AllowConfig> {
     let path = config_path(config).ok_or_else(|| {
         CargoAllowError::new("no policy config found; run `cargo allow init` or pass --config")
@@ -619,7 +632,49 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn report_config_filters_allow_entries_by_kind() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow
+            .push(test_entry("allow-file", FindingKind::NonRustFile));
+        cfg.allow
+            .push(test_entry("allow-panic", FindingKind::Panic));
+
+        let filtered = report_config(&cfg, Some("non-rust")).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("kind filter should parse: {err}"))
+        });
+
+        assert_eq!(filtered.allow.len(), 1);
+        assert!(
+            filtered
+                .allow
+                .iter()
+                .any(|entry| entry.id == "allow-file" && entry.kind == FindingKind::NonRustFile)
+        );
+    }
+
     fn argv(items: Vec<&str>) -> Vec<String> {
         items.into_iter().map(String::from).collect()
+    }
+
+    fn test_entry(id: &str, kind: FindingKind) -> AllowEntry {
+        AllowEntry {
+            id: id.to_string(),
+            kind,
+            family: None,
+            path: Some(PathBuf::from("tracked.file")),
+            glob: None,
+            owner: "owner".to_string(),
+            classification: "classification".to_string(),
+            reason: "reason".to_string(),
+            evidence: Vec::new(),
+            links: Vec::new(),
+            lifecycle: Lifecycle::empty(),
+            selector: Selector {
+                ast_kind: Some("tracked_file".to_string()),
+                ..Selector::default()
+            },
+            last_seen: None,
+        }
     }
 }

@@ -137,14 +137,17 @@ impl FromStr for FindingKind {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.trim() {
-            "panic" | "panic_family" | "indexing" => Ok(Self::Panic),
+            "panic" | "panic_family" | "panic-family" | "indexing" => Ok(Self::Panic),
             "unsafe" => Ok(Self::Unsafe),
-            "lint_exception" | "clippy" | "allow_attribute" | "expect_attribute" => {
+            "lint_exception" | "lint-exception" | "clippy" | "allow_attribute"
+            | "allow-attribute" | "expect_attribute" | "expect-attribute" => {
                 Ok(Self::LintException)
             }
-            "non_rust_file" | "non_rust" | "file" => Ok(Self::NonRustFile),
-            "generated_code" | "generated" => Ok(Self::GeneratedCode),
-            "policy_exception" | "policy" => Ok(Self::PolicyException),
+            "non_rust_file" | "non-rust-file" | "non_rust" | "non-rust" | "file" => {
+                Ok(Self::NonRustFile)
+            }
+            "generated_code" | "generated-code" | "generated" => Ok(Self::GeneratedCode),
+            "policy_exception" | "policy-exception" | "policy" => Ok(Self::PolicyException),
             other => Err(CargoAllowError::new(format!(
                 "unsupported finding kind `{other}`"
             ))),
@@ -539,6 +542,22 @@ mod tests {
             "scripts/*.sh",
             "scripts/release/build.sh"
         ));
+    }
+
+    #[test]
+    fn finding_kind_accepts_hyphenated_cli_aliases() {
+        assert_eq!(
+            FindingKind::from_str("non-rust"),
+            Ok(FindingKind::NonRustFile)
+        );
+        assert_eq!(
+            FindingKind::from_str("lint-exception"),
+            Ok(FindingKind::LintException)
+        );
+        assert_eq!(
+            FindingKind::from_str("generated-code"),
+            Ok(FindingKind::GeneratedCode)
+        );
     }
 
     #[test]

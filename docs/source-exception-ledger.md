@@ -121,3 +121,8 @@ Rust repositories often contain non-Rust operational surface:
 cargo-allow treats those files as governed source surface when they are
 git-tracked. Each retained non-Rust file should have an owner, reason,
 classification, selector, and lifecycle.
+
+The current non-Rust family vocabulary is intentionally explicit:
+`ci_declarative`, `documentation`, `release_script`, `test_fixture`,
+`generated_code`, `editor_extension`, `package_metadata`, `shell_script`,
+`python_tool`, `javascript_tool`, `configuration`, and `unknown_non_rust`.
