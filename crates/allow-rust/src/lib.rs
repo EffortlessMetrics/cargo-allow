@@ -179,8 +179,7 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
     let mut container_depth: Option<i32> = None;
     let mut brace_depth: i32 = 0;
     let mut module_stack: Vec<String> = Vec::new();
-    let index_columns = syntax_index_columns(source);
-    let lint_attributes = syntax_lint_attributes(source);
+    let syntax = syntax_facts(source);
 
     for (line_idx, raw_line) in source.lines().enumerate() {
         let line_no = (line_idx + 1) as u32;
@@ -201,11 +200,12 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
             &container,
             &module_stack,
             SyntaxLineFacts {
-                lint_attributes: lint_attributes
+                lint_attributes: syntax
+                    .lint_attributes
                     .get(&line_no)
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),
-                index_column: index_columns.get(&line_no).copied(),
+                index_column: syntax.index_columns.get(&line_no).copied(),
             },
             &mut findings,
         );
@@ -453,16 +453,22 @@ fn scan_line(
     }
 }
 
-fn syntax_index_columns(source: &str) -> BTreeMap<u32, u32> {
-    let Ok(tree) = parse_rust_syntax(source) else {
-        return BTreeMap::new();
-    };
-    let mut columns = BTreeMap::new();
-    collect_index_columns(tree.tree.root_node(), source, &mut columns);
-    columns
+#[derive(Default)]
+struct RustSyntaxFacts {
+    index_columns: BTreeMap<u32, u32>,
+    lint_attributes: BTreeMap<u32, Vec<LintAttributeKind>>,
 }
 
-fn collect_index_columns(node: Node<'_>, source: &str, columns: &mut BTreeMap<u32, u32>) {
+fn syntax_facts(source: &str) -> RustSyntaxFacts {
+    let Ok(tree) = parse_rust_syntax(source) else {
+        return RustSyntaxFacts::default();
+    };
+    let mut facts = RustSyntaxFacts::default();
+    collect_syntax_facts(tree.tree.root_node(), source, &mut facts);
+    facts
+}
+
+fn collect_syntax_facts(node: Node<'_>, source: &str, facts: &mut RustSyntaxFacts) {
     if node.kind() == "index_expression" {
         let start = node.start_position();
         let bracket_offset = node_text(source, node)
@@ -470,40 +476,21 @@ fn collect_index_columns(node: Node<'_>, source: &str, columns: &mut BTreeMap<u3
             .unwrap_or(0);
         let line = start.row as u32 + 1;
         let column = start.column as u32 + bracket_offset as u32 + 1;
-        columns
+        facts
+            .index_columns
             .entry(line)
             .and_modify(|existing| *existing = (*existing).min(column))
             .or_insert(column);
     }
-    let mut cursor = node.walk();
-    for child in node.children(&mut cursor) {
-        collect_index_columns(child, source, columns);
-    }
-}
-
-fn syntax_lint_attributes(source: &str) -> BTreeMap<u32, Vec<LintAttributeKind>> {
-    let Ok(tree) = parse_rust_syntax(source) else {
-        return BTreeMap::new();
-    };
-    let mut attrs = BTreeMap::new();
-    collect_lint_attributes(tree.tree.root_node(), source, &mut attrs);
-    attrs
-}
-
-fn collect_lint_attributes(
-    node: Node<'_>,
-    source: &str,
-    attrs: &mut BTreeMap<u32, Vec<LintAttributeKind>>,
-) {
     if matches!(node.kind(), "attribute_item" | "inner_attribute_item") {
         if let Some(kind) = node_text(source, node).and_then(lint_attribute_kind) {
             let line = node.start_position().row as u32 + 1;
-            attrs.entry(line).or_default().push(kind);
+            facts.lint_attributes.entry(line).or_default().push(kind);
         }
     }
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        collect_lint_attributes(child, source, attrs);
+        collect_syntax_facts(child, source, facts);
     }
 }
 
