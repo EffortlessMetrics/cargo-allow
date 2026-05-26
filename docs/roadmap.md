@@ -21,6 +21,7 @@ Next:
 - Replace handwritten TOML parsing with typed serde/toml policy loading.
 - Strengthen lifecycle and required-field validation.
 - Replace manual CLI parsing with clap.
+- Use cargo_metadata for workspace discovery.
 
 ## Phase 2: Replace Temporary Foundations
 
@@ -28,7 +29,7 @@ Goal: make the product surface stable enough for real users.
 
 Planned PRs:
 
-- Use cargo_metadata for workspace discovery.
+- Thread Cargo metadata package/source-root facts into scanners and reports.
 
 ## Phase 3: Make Non-Rust Governance Useful
 

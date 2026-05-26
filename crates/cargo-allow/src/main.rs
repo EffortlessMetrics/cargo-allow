@@ -2,7 +2,9 @@ use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, Lifecycle,
     Selector, normalize_path,
 };
-use allow_inventory::{InventoryOptions, discover_workspace_root, inventory_files};
+use allow_inventory::{
+    InventoryOptions, discover_workspace_root, inventory_files, workspace_metadata,
+};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{find_config, load_policy, render_policy, starter_policy};
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
@@ -406,10 +408,22 @@ fn cmd_prune() -> CargoAllowResult<()> {
 }
 
 fn cmd_doctor(args: &ConfigArgs) -> CargoAllowResult<()> {
-    let root = discover_workspace_root(
-        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?,
-    )?;
+    let cwd =
+        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let metadata = workspace_metadata(&cwd).ok();
+    let root = metadata
+        .as_ref()
+        .map(|metadata| metadata.root.clone())
+        .map(Ok)
+        .unwrap_or_else(|| discover_workspace_root(&cwd))?;
     println!("workspace root: {}", root.display());
+    if let Some(metadata) = &metadata {
+        println!("workspace packages: {}", metadata.packages.len());
+        println!("workspace targets: {}", metadata.target_count());
+        println!("source roots: {}", metadata.source_roots().len());
+    } else {
+        println!("workspace metadata: unavailable");
+    }
     match config_path(args.config.as_deref()) {
         Some(path) => println!("config: {}", path.display()),
         None => println!("config: not found; run `cargo allow init`"),

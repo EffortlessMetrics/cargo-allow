@@ -1,7 +1,50 @@
 use allow_core::{CargoAllowError, CargoAllowResult, glob_matches, normalize_path};
+use cargo_metadata::{MetadataCommand, PackageId};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceMetadata {
+    pub root: PathBuf,
+    pub packages: Vec<WorkspacePackage>,
+}
+
+impl WorkspaceMetadata {
+    pub fn target_count(&self) -> usize {
+        self.packages
+            .iter()
+            .map(|package| package.targets.len())
+            .sum()
+    }
+
+    pub fn source_roots(&self) -> Vec<PathBuf> {
+        let mut roots = self
+            .packages
+            .iter()
+            .flat_map(|package| package.source_roots.iter().cloned())
+            .collect::<Vec<_>>();
+        roots.sort();
+        roots.dedup();
+        roots
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspacePackage {
+    pub name: String,
+    pub manifest_path: PathBuf,
+    pub source_roots: Vec<PathBuf>,
+    pub targets: Vec<WorkspaceTarget>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceTarget {
+    pub name: String,
+    pub kinds: Vec<String>,
+    pub src_path: PathBuf,
+}
 
 #[derive(Debug, Clone)]
 pub struct InventoryOptions {
@@ -21,6 +64,85 @@ impl Default for InventoryOptions {
 }
 
 pub fn discover_workspace_root(start: impl AsRef<Path>) -> CargoAllowResult<PathBuf> {
+    if let Ok(metadata) = workspace_metadata(start.as_ref()) {
+        return Ok(metadata.root);
+    }
+    discover_workspace_root_by_ancestor(start)
+}
+
+pub fn workspace_metadata(start: impl AsRef<Path>) -> CargoAllowResult<WorkspaceMetadata> {
+    let start = metadata_start_dir(start.as_ref())?;
+    let metadata = MetadataCommand::new()
+        .current_dir(start)
+        .no_deps()
+        .exec()
+        .map_err(|e| CargoAllowError::new(format!("failed to read cargo metadata: {e}")))?;
+    let root = metadata.workspace_root.as_std_path().to_path_buf();
+    let member_ids = metadata
+        .workspace_members
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<PackageId>>();
+    let mut packages = metadata
+        .packages
+        .into_iter()
+        .filter(|package| member_ids.contains(&package.id))
+        .map(|package| workspace_package(package, &root))
+        .collect::<Vec<_>>();
+    packages.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(WorkspaceMetadata { root, packages })
+}
+
+fn metadata_start_dir(start: &Path) -> CargoAllowResult<PathBuf> {
+    let canonical = start
+        .canonicalize()
+        .map_err(|e| CargoAllowError::new(format!("failed to canonicalize start path: {e}")))?;
+    if canonical.is_file() {
+        canonical
+            .parent()
+            .map(Path::to_path_buf)
+            .ok_or_else(|| CargoAllowError::new("start path has no parent directory"))
+    } else {
+        Ok(canonical)
+    }
+}
+
+fn workspace_package(package: cargo_metadata::Package, workspace_root: &Path) -> WorkspacePackage {
+    let mut source_roots = package
+        .targets
+        .iter()
+        .filter_map(|target| target.src_path.as_std_path().parent())
+        .map(|path| relative_to_workspace(path, workspace_root))
+        .collect::<Vec<_>>();
+    source_roots.sort();
+    source_roots.dedup();
+
+    let mut targets = package
+        .targets
+        .into_iter()
+        .map(|target| WorkspaceTarget {
+            name: target.name,
+            kinds: target.kind.iter().map(ToString::to_string).collect(),
+            src_path: relative_to_workspace(target.src_path.as_std_path(), workspace_root),
+        })
+        .collect::<Vec<_>>();
+    targets.sort_by(|a, b| a.name.cmp(&b.name).then(a.src_path.cmp(&b.src_path)));
+
+    WorkspacePackage {
+        name: package.name.to_string(),
+        manifest_path: relative_to_workspace(package.manifest_path.as_std_path(), workspace_root),
+        source_roots,
+        targets,
+    }
+}
+
+fn relative_to_workspace(path: &Path, workspace_root: &Path) -> PathBuf {
+    path.strip_prefix(workspace_root)
+        .unwrap_or(path)
+        .to_path_buf()
+}
+
+fn discover_workspace_root_by_ancestor(start: impl AsRef<Path>) -> CargoAllowResult<PathBuf> {
     let mut dir = start
         .as_ref()
         .canonicalize()
@@ -138,6 +260,40 @@ mod tests {
             &opts.ignored
         ));
         assert!(!super::is_ignored(Path::new(".gitignore"), &opts.ignored));
+    }
+
+    #[test]
+    fn workspace_metadata_reports_member_packages_and_targets() {
+        let metadata = workspace_metadata(env!("CARGO_MANIFEST_DIR"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read workspace metadata: {err}")));
+
+        assert!(metadata.root.join("Cargo.toml").exists());
+        assert!(metadata.packages.iter().any(|package| {
+            package.name == "allow-inventory"
+                && package.manifest_path == Path::new("crates/allow-inventory/Cargo.toml")
+                && package.targets.iter().any(|target| {
+                    target.name == "allow_inventory"
+                        && target.kinds.iter().any(|kind| kind == "lib")
+                        && target.src_path == Path::new("crates/allow-inventory/src/lib.rs")
+                })
+        }));
+        assert!(metadata.target_count() >= metadata.packages.len());
+        assert!(
+            metadata
+                .source_roots()
+                .iter()
+                .any(|path| path == Path::new("crates/allow-inventory/src"))
+        );
+    }
+
+    #[test]
+    fn workspace_root_uses_cargo_metadata_from_member_directory() {
+        let member_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let root = discover_workspace_root(member_src)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("discover workspace root: {err}")));
+
+        assert!(root.join("Cargo.toml").exists());
+        assert!(root.join("crates/allow-inventory/Cargo.toml").exists());
     }
 
     #[cfg(unix)]
