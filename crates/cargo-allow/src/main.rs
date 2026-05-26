@@ -1,6 +1,6 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, Lifecycle,
-    MatchOutcome, MatchStatus, Selector, json_escape, normalize_path,
+    MatchOutcome, MatchStatus, Selector, SimpleDate, json_escape, normalize_path,
 };
 use allow_inventory::{
     InventoryOptions, discover_workspace_root, inventory_files, workspace_metadata,
@@ -154,6 +154,24 @@ struct ListArgs {
     /// Filter allow entries by kind.
     #[arg(long)]
     kind: Option<String>,
+    /// Filter allow entries by owner.
+    #[arg(long)]
+    owner: Option<String>,
+    /// Include only expired allow entries.
+    #[arg(long)]
+    expired: bool,
+    /// Include only review-due allow entries.
+    #[arg(long)]
+    review_due: bool,
+    /// Include only stale allow entries.
+    #[arg(long)]
+    stale: bool,
+    /// Include only generated baseline debt entries.
+    #[arg(long)]
+    baseline_debt: bool,
+    /// Include untracked files when determining current match status.
+    #[arg(long)]
+    include_untracked: bool,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -674,23 +692,181 @@ fn render_policy_changes_markdown(changes: &[allow_diff::PolicyChange]) -> Strin
 }
 
 fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
-    let cfg = load_config_required(args.config.as_deref())?;
+    let (_root, cfg, findings) =
+        load_world(args.config.as_deref(), true, None, args.include_untracked)?;
+    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let parsed_filter = args.kind.as_deref().map(parse_kind_filter).transpose()?;
-    for entry in cfg.allow.iter().filter(|e| {
-        parsed_filter
-            .as_ref()
-            .map(|filter| filter.matches_entry(e))
-            .unwrap_or(true)
-    }) {
-        println!(
-            "{}\t{}\t{}\t{}",
-            entry.id,
-            entry.kind,
-            entry.path_or_glob(),
-            entry.reason
-        );
-    }
+    let rows = list_rows(&cfg, &outcomes);
+    let filters = ListFilters {
+        kind: parsed_filter,
+        owner: args.owner.as_deref(),
+        expired: args.expired,
+        review_due: args.review_due,
+        stale: args.stale,
+        baseline_debt: args.baseline_debt,
+    };
+    println!("{}", render_list_rows(&rows, &filters));
     Ok(())
+}
+
+#[derive(Debug, Clone)]
+struct ListRow {
+    id: String,
+    status: MatchStatus,
+    matches: usize,
+    kind: FindingKind,
+    family: Option<String>,
+    owner: String,
+    classification: String,
+    scope: String,
+    review_after: String,
+    expires: String,
+    reason: String,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ListFilters<'a> {
+    kind: Option<KindFilter>,
+    owner: Option<&'a str>,
+    expired: bool,
+    review_due: bool,
+    stale: bool,
+    baseline_debt: bool,
+}
+
+fn list_rows(cfg: &AllowConfig, outcomes: &[MatchOutcome]) -> Vec<ListRow> {
+    let today = SimpleDate::today_utc_approx();
+    cfg.allow
+        .iter()
+        .map(|entry| {
+            let entry_outcomes = outcomes
+                .iter()
+                .filter(|outcome| outcome.allow_id.as_deref() == Some(entry.id.as_str()))
+                .collect::<Vec<_>>();
+            ListRow {
+                id: entry.id.clone(),
+                status: list_entry_status(entry, &entry_outcomes, today),
+                matches: entry_outcomes
+                    .iter()
+                    .filter(|outcome| outcome.finding_index.is_some())
+                    .count(),
+                kind: entry.kind,
+                family: entry.family.clone(),
+                owner: entry.owner.clone(),
+                classification: entry.classification.clone(),
+                scope: entry.path_or_glob(),
+                review_after: entry
+                    .lifecycle
+                    .review_after
+                    .clone()
+                    .unwrap_or_else(|| "-".to_string()),
+                expires: entry
+                    .lifecycle
+                    .expires
+                    .clone()
+                    .unwrap_or_else(|| "-".to_string()),
+                reason: entry.reason.clone(),
+            }
+        })
+        .collect()
+}
+
+fn list_entry_status(
+    entry: &AllowEntry,
+    outcomes: &[&MatchOutcome],
+    today: SimpleDate,
+) -> MatchStatus {
+    if date_is_before(entry.lifecycle.expires.as_deref(), today) {
+        return MatchStatus::Expired;
+    }
+    if date_is_due(entry.lifecycle.review_after.as_deref(), today) {
+        return MatchStatus::ReviewDue;
+    }
+    for status in [
+        MatchStatus::New,
+        MatchStatus::Ambiguous,
+        MatchStatus::EvidenceMissing,
+        MatchStatus::MissingRequiredField,
+        MatchStatus::InvalidSelector,
+        MatchStatus::Stale,
+    ] {
+        if outcomes.iter().any(|outcome| outcome.status == status) {
+            return status;
+        }
+    }
+    if entry.classification == "baseline_debt" {
+        return MatchStatus::BaselineDebt;
+    }
+    MatchStatus::Matched
+}
+
+fn date_is_before(date: Option<&str>, today: SimpleDate) -> bool {
+    date.and_then(SimpleDate::parse)
+        .map(|date| date < today)
+        .unwrap_or(false)
+}
+
+fn date_is_due(date: Option<&str>, today: SimpleDate) -> bool {
+    date.and_then(SimpleDate::parse)
+        .map(|date| date <= today)
+        .unwrap_or(false)
+}
+
+fn render_list_rows(rows: &[ListRow], filters: &ListFilters<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\treview_after\texpires\treason\n");
+    let mut count = 0;
+    for row in rows.iter().filter(|row| list_row_matches(row, filters)) {
+        count += 1;
+        out.push_str(&format!(
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+            row.id,
+            row.status.as_str(),
+            row.matches,
+            row.kind,
+            row.family.as_deref().unwrap_or("-"),
+            empty_as_dash(&row.owner),
+            empty_as_dash(&row.classification),
+            row.scope,
+            row.review_after,
+            row.expires,
+            row.reason
+        ));
+    }
+    if count == 0 {
+        out.push_str("(no allow entries matched filters)\n");
+    }
+    out
+}
+
+fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
+    if let Some(kind) = filters.kind {
+        if row.kind != kind.kind || !kind.family.matches(row.family.as_deref()) {
+            return false;
+        }
+    }
+    if let Some(owner) = filters.owner {
+        if row.owner != owner {
+            return false;
+        }
+    }
+    if filters.expired && row.status != MatchStatus::Expired {
+        return false;
+    }
+    if filters.review_due && row.status != MatchStatus::ReviewDue {
+        return false;
+    }
+    if filters.stale && row.status != MatchStatus::Stale {
+        return false;
+    }
+    if filters.baseline_debt && row.classification != "baseline_debt" {
+        return false;
+    }
+    true
+}
+
+fn empty_as_dash(value: &str) -> &str {
+    if value.trim().is_empty() { "-" } else { value }
 }
 
 fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
@@ -1833,6 +2009,116 @@ mod tests {
     }
 
     #[test]
+    fn clap_parses_list_filters() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "list",
+            "--kind",
+            "unsafe",
+            "--owner",
+            "runtime",
+            "--expired",
+            "--review-due",
+            "--stale",
+            "--baseline-debt",
+            "--include-untracked",
+        ]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::List(ListArgs {
+                kind: Some(kind),
+                owner: Some(owner),
+                expired: true,
+                review_due: true,
+                stale: true,
+                baseline_debt: true,
+                include_untracked: true,
+                ..
+            })) if kind == "unsafe" && owner == "runtime"
+        ));
+    }
+
+    #[test]
+    fn list_rows_report_lifecycle_stale_and_baseline_status() {
+        let mut cfg = AllowConfig::empty();
+        let mut expired = test_entry("allow-expired", FindingKind::Panic);
+        expired.lifecycle.expires = Some("2000-01-01".to_string());
+        let mut review_due = test_entry("allow-review", FindingKind::Panic);
+        review_due.lifecycle.review_after = Some("2000-01-01".to_string());
+        let mut baseline = test_entry("allow-baseline", FindingKind::Panic);
+        baseline.classification = "baseline_debt".to_string();
+        let stale = test_entry("allow-stale", FindingKind::Panic);
+        cfg.allow = vec![expired, review_due, baseline, stale];
+        let outcomes = vec![
+            test_outcome(
+                MatchStatus::Matched,
+                Some("allow-expired"),
+                Some(0),
+                "matched",
+            ),
+            test_outcome(
+                MatchStatus::Matched,
+                Some("allow-review"),
+                Some(1),
+                "matched",
+            ),
+            test_outcome(
+                MatchStatus::Matched,
+                Some("allow-baseline"),
+                Some(2),
+                "matched",
+            ),
+            test_outcome(MatchStatus::Stale, Some("allow-stale"), None, "stale"),
+        ];
+
+        let rows = list_rows(&cfg, &outcomes);
+
+        assert_eq!(row_status(&rows, "allow-expired"), MatchStatus::Expired);
+        assert_eq!(row_status(&rows, "allow-review"), MatchStatus::ReviewDue);
+        assert_eq!(
+            row_status(&rows, "allow-baseline"),
+            MatchStatus::BaselineDebt
+        );
+        assert_eq!(row_status(&rows, "allow-stale"), MatchStatus::Stale);
+    }
+
+    #[test]
+    fn render_list_rows_filters_owner_kind_and_baseline_debt() {
+        let rows = vec![
+            list_row(
+                "allow-runtime",
+                FindingKind::Unsafe,
+                "runtime",
+                "baseline_debt",
+            ),
+            list_row(
+                "allow-parser",
+                FindingKind::Panic,
+                "parser",
+                "reviewed_exception",
+            ),
+        ];
+        let filters = ListFilters {
+            kind: Some(parse_kind_filter("unsafe").unwrap_or_else(|err| {
+                std::panic::panic_any(format!("kind filter should parse: {err}"))
+            })),
+            owner: Some("runtime"),
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: true,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(text.contains("allow-runtime"));
+        assert!(!text.contains("allow-parser"));
+        assert!(text.contains("baseline_debt"));
+    }
+
+    #[test]
     fn diff_markdown_pr_summary_reports_unchanged_posture() {
         let text = render_diff_pr_summary_markdown(&[], &[], &[]);
 
@@ -2649,6 +2935,33 @@ expires = "permanent"
             kind,
             severity,
             message: "allow-0001 changed".to_string(),
+        }
+    }
+
+    fn row_status(rows: &[ListRow], id: &str) -> MatchStatus {
+        rows.iter()
+            .find(|row| row.id == id)
+            .map(|row| row.status)
+            .unwrap_or_else(|| std::panic::panic_any(format!("missing row {id}")))
+    }
+
+    fn list_row(id: &str, kind: FindingKind, owner: &str, classification: &str) -> ListRow {
+        ListRow {
+            id: id.to_string(),
+            status: if classification == "baseline_debt" {
+                MatchStatus::BaselineDebt
+            } else {
+                MatchStatus::Matched
+            },
+            matches: 1,
+            kind,
+            family: None,
+            owner: owner.to_string(),
+            classification: classification.to_string(),
+            scope: "src/lib.rs".to_string(),
+            review_after: "-".to_string(),
+            expires: "-".to_string(),
+            reason: "reason".to_string(),
         }
     }
 }

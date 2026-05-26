@@ -151,10 +151,11 @@ Completed:
 - Improve `explain` so it reports the current live match status, matched
   finding count, occurrence-limit overruns, stale entries, lifecycle/evidence
   outcomes, and the command claim boundary.
+- Improve `list` with current status, match counts, owner/kind/lifecycle
+  filters, and baseline-debt filtering.
 
 Planned work:
 
-- Improve `list`.
 - Implement dry-run-first stale pruning.
 - Add allow entries from findings.
 - Make baseline proposal production-quality.
