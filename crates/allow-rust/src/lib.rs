@@ -2,7 +2,7 @@ use allow_core::{
     CargoAllowError, CargoAllowResult, Finding, FindingKind, Span, StructuralIdentity,
     normalize_snippet, stable_hash_hex,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tree_sitter::{Node, Parser, Tree};
@@ -206,6 +206,7 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),
                 index_column: syntax.index_columns.get(&line_no).copied(),
+                unsafe_attribute: syntax.unsafe_attribute_lines.contains(&line_no),
             },
             &mut findings,
         );
@@ -347,7 +348,7 @@ fn scan_line(
             findings,
         );
     }
-    if trimmed.contains("#[unsafe(") {
+    if syntax.unsafe_attribute {
         push_finding(
             FindingSite {
                 path,
@@ -457,6 +458,7 @@ fn scan_line(
 struct RustSyntaxFacts {
     index_columns: BTreeMap<u32, u32>,
     lint_attributes: BTreeMap<u32, Vec<LintAttributeKind>>,
+    unsafe_attribute_lines: BTreeSet<u32>,
 }
 
 fn syntax_facts(source: &str) -> RustSyntaxFacts {
@@ -483,9 +485,14 @@ fn collect_syntax_facts(node: Node<'_>, source: &str, facts: &mut RustSyntaxFact
             .or_insert(column);
     }
     if matches!(node.kind(), "attribute_item" | "inner_attribute_item") {
-        if let Some(kind) = node_text(source, node).and_then(lint_attribute_kind) {
+        if let Some(text) = node_text(source, node) {
             let line = node.start_position().row as u32 + 1;
-            facts.lint_attributes.entry(line).or_default().push(kind);
+            if let Some(kind) = lint_attribute_kind(text) {
+                facts.lint_attributes.entry(line).or_default().push(kind);
+            }
+            if unsafe_attribute_text(text) {
+                facts.unsafe_attribute_lines.insert(line);
+            }
         }
     }
     let mut cursor = node.walk();
@@ -505,9 +512,15 @@ fn lint_attribute_kind(text: &str) -> Option<LintAttributeKind> {
     }
 }
 
+fn unsafe_attribute_text(text: &str) -> bool {
+    let trimmed = text.trim_start();
+    trimmed.starts_with("#[unsafe(") || trimmed.starts_with("#![unsafe(")
+}
+
 struct SyntaxLineFacts<'a> {
     lint_attributes: &'a [LintAttributeKind],
     index_column: Option<u32>,
+    unsafe_attribute: bool,
 }
 
 struct FindingSite<'a> {
@@ -698,6 +711,33 @@ mod tests {
                 .iter()
                 .any(|f| f.kind == FindingKind::LintException)
         );
+    }
+
+    #[test]
+    fn detects_unsafe_attribute_from_syntax() {
+        let src = r#"
+        #[unsafe(no_mangle)]
+        fn exported() {}
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        assert!(findings.iter().any(|f| {
+            f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr")
+        }));
+    }
+
+    #[test]
+    fn syntax_unsafe_attributes_ignore_attribute_text_in_strings() {
+        let src = r##"
+        fn load() {
+            let text = "#[unsafe(no_mangle)]";
+        }
+        "##;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        assert!(!findings.iter().any(|f| {
+            f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr")
+        }));
     }
 
     #[test]
