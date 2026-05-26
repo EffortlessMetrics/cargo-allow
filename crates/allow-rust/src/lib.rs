@@ -37,6 +37,47 @@ impl LintAttributeKind {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum UnsafeSyntaxKind {
+    Fn,
+    Impl,
+    Trait,
+    ExternBlock,
+    Block,
+}
+
+impl UnsafeSyntaxKind {
+    fn family(self) -> &'static str {
+        match self {
+            Self::Fn => "unsafe_fn",
+            Self::Impl => "unsafe_impl",
+            Self::Trait => "unsafe_trait",
+            Self::ExternBlock => "unsafe_extern_block",
+            Self::Block => "unsafe_block",
+        }
+    }
+
+    fn ast_kind(self) -> &'static str {
+        self.family()
+    }
+
+    fn priority(self) -> u8 {
+        match self {
+            Self::Fn => 0,
+            Self::Impl => 1,
+            Self::Trait => 2,
+            Self::ExternBlock => 3,
+            Self::Block => 4,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct UnsafeSyntaxConstruct {
+    kind: UnsafeSyntaxKind,
+    column: u32,
+}
+
 impl RustSyntaxContainer {
     pub fn module(&self) -> Option<String> {
         if self.module_path.is_empty() {
@@ -206,6 +247,7 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),
                 index_column: syntax.index_columns.get(&line_no).copied(),
+                unsafe_construct: syntax.unsafe_constructs.get(&line_no).copied(),
                 unsafe_attribute: syntax.unsafe_attribute_lines.contains(&line_no),
             },
             &mut findings,
@@ -264,86 +306,19 @@ fn scan_line(
         );
     }
 
-    if trimmed.contains("unsafe fn ")
-        || trimmed.starts_with("unsafe fn ")
-        || trimmed.starts_with("pub unsafe fn ")
-    {
+    if let Some(unsafe_construct) = syntax.unsafe_construct {
         push_finding(
             FindingSite {
                 path,
                 line,
                 line_no,
-                column: column(line, "unsafe"),
+                column: unsafe_construct.column,
                 container,
                 module_stack,
             },
             FindingKind::Unsafe,
-            "unsafe_fn",
-            "unsafe_fn",
-            |_| {},
-            findings,
-        );
-    } else if trimmed.starts_with("unsafe impl") || trimmed.starts_with("pub unsafe impl") {
-        push_finding(
-            FindingSite {
-                path,
-                line,
-                line_no,
-                column: column(line, "unsafe"),
-                container,
-                module_stack,
-            },
-            FindingKind::Unsafe,
-            "unsafe_impl",
-            "unsafe_impl",
-            |_| {},
-            findings,
-        );
-    } else if trimmed.starts_with("unsafe trait") || trimmed.starts_with("pub unsafe trait") {
-        push_finding(
-            FindingSite {
-                path,
-                line,
-                line_no,
-                column: column(line, "unsafe"),
-                container,
-                module_stack,
-            },
-            FindingKind::Unsafe,
-            "unsafe_trait",
-            "unsafe_trait",
-            |_| {},
-            findings,
-        );
-    } else if trimmed.contains("unsafe extern") || trimmed.starts_with("unsafe extern") {
-        push_finding(
-            FindingSite {
-                path,
-                line,
-                line_no,
-                column: column(line, "unsafe"),
-                container,
-                module_stack,
-            },
-            FindingKind::Unsafe,
-            "unsafe_extern_block",
-            "unsafe_extern_block",
-            |_| {},
-            findings,
-        );
-    } else if trimmed.contains("unsafe {") || trimmed == "unsafe" {
-        push_finding(
-            FindingSite {
-                path,
-                line,
-                line_no,
-                column: column(line, "unsafe"),
-                container,
-                module_stack,
-            },
-            FindingKind::Unsafe,
-            "unsafe_block",
-            "unsafe_block",
+            unsafe_construct.kind.family(),
+            unsafe_construct.kind.ast_kind(),
             |_| {},
             findings,
         );
@@ -458,6 +433,7 @@ fn scan_line(
 struct RustSyntaxFacts {
     index_columns: BTreeMap<u32, u32>,
     lint_attributes: BTreeMap<u32, Vec<LintAttributeKind>>,
+    unsafe_constructs: BTreeMap<u32, UnsafeSyntaxConstruct>,
     unsafe_attribute_lines: BTreeSet<u32>,
 }
 
@@ -484,6 +460,9 @@ fn collect_syntax_facts(node: Node<'_>, source: &str, facts: &mut RustSyntaxFact
             .and_modify(|existing| *existing = (*existing).min(column))
             .or_insert(column);
     }
+    if let Some((line, construct)) = unsafe_syntax_construct(node) {
+        record_unsafe_construct(facts, line, construct);
+    }
     if matches!(node.kind(), "attribute_item" | "inner_attribute_item") {
         if let Some(text) = node_text(source, node) {
             let line = node.start_position().row as u32 + 1;
@@ -499,6 +478,82 @@ fn collect_syntax_facts(node: Node<'_>, source: &str, facts: &mut RustSyntaxFact
     for child in node.children(&mut cursor) {
         collect_syntax_facts(child, source, facts);
     }
+}
+
+fn unsafe_syntax_construct(node: Node<'_>) -> Option<(u32, UnsafeSyntaxConstruct)> {
+    match node.kind() {
+        "function_item" | "function_signature_item" => {
+            unsafe_modifier_construct(node, "fn", UnsafeSyntaxKind::Fn)
+        }
+        "impl_item" => unsafe_modifier_construct(node, "impl", UnsafeSyntaxKind::Impl),
+        "trait_item" => unsafe_modifier_construct(node, "trait", UnsafeSyntaxKind::Trait),
+        "foreign_mod_item" => {
+            unsafe_modifier_construct(node, "extern_modifier", UnsafeSyntaxKind::ExternBlock)
+        }
+        "unsafe_block" => {
+            unsafe_child_point(node).map(|point| located_construct(point, UnsafeSyntaxKind::Block))
+        }
+        _ => None,
+    }
+}
+
+fn unsafe_modifier_construct(
+    node: Node<'_>,
+    keyword_kind: &str,
+    kind: UnsafeSyntaxKind,
+) -> Option<(u32, UnsafeSyntaxConstruct)> {
+    let mut unsafe_point = None;
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == keyword_kind {
+            return unsafe_point.map(|point| located_construct(point, kind));
+        }
+        if unsafe_point.is_none() {
+            unsafe_point = unsafe_child_point(child);
+        }
+    }
+    None
+}
+
+fn unsafe_child_point(node: Node<'_>) -> Option<tree_sitter::Point> {
+    if node.kind() == "unsafe" {
+        return Some(node.start_position());
+    }
+    let mut cursor = node.walk();
+    node.children(&mut cursor)
+        .find_map(|child| (child.kind() == "unsafe").then(|| child.start_position()))
+}
+
+fn located_construct(
+    point: tree_sitter::Point,
+    kind: UnsafeSyntaxKind,
+) -> (u32, UnsafeSyntaxConstruct) {
+    (
+        point.row as u32 + 1,
+        UnsafeSyntaxConstruct {
+            kind,
+            column: point.column as u32 + 1,
+        },
+    )
+}
+
+fn record_unsafe_construct(
+    facts: &mut RustSyntaxFacts,
+    line: u32,
+    construct: UnsafeSyntaxConstruct,
+) {
+    facts
+        .unsafe_constructs
+        .entry(line)
+        .and_modify(|existing| {
+            if construct.kind.priority() < existing.kind.priority()
+                || (construct.kind.priority() == existing.kind.priority()
+                    && construct.column < existing.column)
+            {
+                *existing = construct;
+            }
+        })
+        .or_insert(construct);
 }
 
 fn lint_attribute_kind(text: &str) -> Option<LintAttributeKind> {
@@ -520,6 +575,7 @@ fn unsafe_attribute_text(text: &str) -> bool {
 struct SyntaxLineFacts<'a> {
     lint_attributes: &'a [LintAttributeKind],
     index_column: Option<u32>,
+    unsafe_construct: Option<UnsafeSyntaxConstruct>,
     unsafe_attribute: bool,
 }
 
@@ -714,6 +770,63 @@ mod tests {
     }
 
     #[test]
+    fn detects_unsafe_item_kinds_from_syntax() {
+        let src = r#"
+        struct Handle;
+        unsafe impl Send for Handle {}
+        unsafe trait Marker {}
+        unsafe extern "C" {
+            fn read_handle();
+        }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        for family in ["unsafe_impl", "unsafe_trait", "unsafe_extern_block"] {
+            assert!(
+                findings
+                    .iter()
+                    .any(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some(family)),
+                "missing {family}"
+            );
+        }
+    }
+
+    #[test]
+    fn detects_unsafe_function_signatures_from_syntax() {
+        let src = r#"
+        trait Reader {
+            unsafe fn read();
+        }
+        extern "C" {
+            pub unsafe fn read_handle();
+        }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        let unsafe_fn_count = findings
+            .iter()
+            .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_fn"))
+            .count();
+        assert_eq!(unsafe_fn_count, 2);
+    }
+
+    #[test]
+    fn syntax_unsafe_constructs_ignore_text_in_strings() {
+        let src = r##"
+        /// unsafe fn documented_only();
+        fn load() {
+            // unsafe { core::ptr::read(ptr) }
+            let unsafe_fn = "unsafe fn read() {}";
+            let unsafe_block = "unsafe { core::ptr::read(ptr) }";
+            let unsafe_impl = "unsafe impl Send for Handle {}";
+        }
+        "##;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        assert!(!findings.iter().any(|f| f.kind == FindingKind::Unsafe));
+    }
+
+    #[test]
     fn detects_unsafe_attribute_from_syntax() {
         let src = r#"
         #[unsafe(no_mangle)]
@@ -723,6 +836,9 @@ mod tests {
 
         assert!(findings.iter().any(|f| {
             f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr")
+        }));
+        assert!(!findings.iter().any(|f| {
+            f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_fn")
         }));
     }
 
