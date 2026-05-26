@@ -134,7 +134,16 @@ base revision's `policy/allow.toml` and reports policy weakening in human and
 Markdown output. Current detection covers scope broadening, selector precision
 loss, expiry/review extension, evidence removal, owner/reason/classification
 removal, occurrence-limit loosening, and added `baseline_debt`. This is policy
-ledger comparison only; scanner base/head comparison is planned separately.
+ledger comparison only.
+
+The same command also compares source finding posture between the base git tree
+and the current checkout, or the optional `--head` git tree when provided. It
+uses source-syntax finding keys built from kind, family, path, AST kind,
+container/callee/macro/lint fields, fingerprints, and normalized snippet hash.
+Line and column remain hints, not identity. The diff reports new and removed
+syntax-visible exception findings, including count changes for repeated matching
+finding keys; it still does not claim macro expansion, type information, or
+proof adequacy.
 
 ## Non-Rust Files
 

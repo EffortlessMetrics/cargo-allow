@@ -7,4 +7,6 @@ rust-version.workspace = true
 
 [dependencies]
 allow-core.workspace = true
+allow-files.workspace = true
 allow-policy.workspace = true
+allow-rust.workspace = true

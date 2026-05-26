@@ -134,10 +134,12 @@ Completed:
   versus `--base`, including scope broadening, selector precision loss, expiry
   extension, evidence removal, metadata removal, occurrence-limit loosening, and
   added baseline debt.
+- Compare base and head source findings in `cargo allow diff` using durable
+  finding keys, so reviewers can see new and removed syntax-visible exception
+  posture independent of line movement.
 
 Planned work:
 
-- Scan base and head.
 - Emit Markdown PR summaries.
 - Add GitHub Actions examples.
 
