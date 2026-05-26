@@ -1,4 +1,4 @@
-use allow_core::{Finding, FindingKind, Span, StructuralIdentity};
+use allow_core::{Finding, FindingKind, Span, StructuralIdentity, normalize_path};
 use std::path::{Path, PathBuf};
 
 pub fn scan_files(files: &[PathBuf]) -> Vec<Finding> {
@@ -14,11 +14,8 @@ pub fn classify_path(path: &Path) -> Option<Finding> {
     }
     let family = file_family(path);
     let mut identity = StructuralIdentity::new("file", "tracked_file");
-    identity.symbol = Some(path.to_string_lossy().replace('\\', "/"));
-    identity.target_fingerprint = path
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(|s| s.to_string());
+    identity.symbol = Some(normalize_path(path));
+    identity.target_fingerprint = file_fingerprint(path);
     Some(Finding {
         kind: if is_generated_path(path) {
             FindingKind::GeneratedCode
@@ -51,33 +48,129 @@ fn is_builtin_allowed(path: &Path) -> bool {
 }
 
 fn is_generated_path(path: &Path) -> bool {
-    let text = path.to_string_lossy().replace('\\', "/");
-    text.contains("/generated/") || text.ends_with(".generated.rs") || text.contains("/gen/")
+    let text = normalize_path(path);
+    let file_name = lower_file_name(path);
+    text.contains("/generated/")
+        || text.starts_with("generated/")
+        || file_name.contains(".generated.")
+        || file_name.ends_with(".generated")
+        || text.contains("/gen/")
+        || text.starts_with("gen/")
 }
 
 fn file_family(path: &Path) -> String {
-    let text = path.to_string_lossy().replace('\\', "/");
-    if text.starts_with(".github/workflows/") {
-        return "ci_declarative".to_string();
-    }
-    if text.starts_with("docs/") || text.ends_with(".md") {
-        return "documentation".to_string();
-    }
-    if text.starts_with("scripts/") {
-        return "script".to_string();
-    }
+    let text = normalize_path(path);
+    let extension = lower_extension(path);
+    let file_name = lower_file_name(path);
     if is_generated_path(path) {
         return "generated_code".to_string();
     }
-    match path.extension().and_then(|e| e.to_str()).unwrap_or("") {
-        "sh" | "bash" => "shell_script".to_string(),
-        "py" => "python_tool".to_string(),
-        "js" | "ts" | "mjs" | "cjs" => "javascript_tool".to_string(),
-        "yml" | "yaml" => "yaml_config".to_string(),
-        "json" | "toml" => "configuration".to_string(),
-        other if !other.is_empty() => format!("{other}_file"),
-        _ => "unknown_file".to_string(),
+    if text.starts_with(".github/workflows/") {
+        return "ci_declarative".to_string();
     }
+    if is_editor_extension(&text, &file_name) {
+        return "editor_extension".to_string();
+    }
+    if is_package_metadata(&file_name) {
+        return "package_metadata".to_string();
+    }
+    if is_test_fixture(&text) {
+        return "test_fixture".to_string();
+    }
+    if is_release_script(&text, &file_name) {
+        return "release_script".to_string();
+    }
+    if text.starts_with("docs/")
+        || matches!(
+            extension.as_deref(),
+            Some("md" | "mdx" | "rst" | "adoc" | "txt")
+        )
+    {
+        return "documentation".to_string();
+    }
+    match extension.as_deref().unwrap_or("") {
+        "sh" | "bash" | "zsh" | "fish" | "ps1" | "bat" | "cmd" => "shell_script".to_string(),
+        "py" => "python_tool".to_string(),
+        "js" | "jsx" | "ts" | "tsx" | "mjs" | "cjs" => "javascript_tool".to_string(),
+        "yml" | "yaml" | "json" | "toml" | "xml" | "ini" | "cfg" | "conf" | "env"
+        | "properties" => "configuration".to_string(),
+        _ if is_configuration_file(&file_name) => "configuration".to_string(),
+        _ => "unknown_non_rust".to_string(),
+    }
+}
+
+fn file_fingerprint(path: &Path) -> Option<String> {
+    lower_extension(path).or_else(|| {
+        let file_name = lower_file_name(path);
+        (!file_name.is_empty()).then_some(file_name)
+    })
+}
+
+fn lower_extension(path: &Path) -> Option<String> {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|s| s.to_ascii_lowercase())
+}
+
+fn lower_file_name(path: &Path) -> String {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name.to_ascii_lowercase())
+        .unwrap_or_default()
+}
+
+fn is_editor_extension(path: &str, file_name: &str) -> bool {
+    path.starts_with(".vscode/")
+        || path.starts_with(".idea/")
+        || file_name.ends_with(".code-workspace")
+}
+
+fn is_package_metadata(file_name: &str) -> bool {
+    matches!(
+        file_name,
+        "package.json"
+            | "package-lock.json"
+            | "pnpm-lock.yaml"
+            | "yarn.lock"
+            | "bun.lockb"
+            | "npm-shrinkwrap.json"
+            | "deno.json"
+            | "deno.lock"
+            | "pyproject.toml"
+            | "requirements.txt"
+    )
+}
+
+fn is_test_fixture(path: &str) -> bool {
+    path.starts_with("fixtures/")
+        || path.starts_with("testdata/")
+        || path.starts_with("snapshots/")
+        || path.contains("/fixtures/")
+        || path.contains("/testdata/")
+        || path.contains("/snapshots/")
+}
+
+fn is_release_script(path: &str, file_name: &str) -> bool {
+    path.starts_with("scripts/")
+        && (file_name.contains("release")
+            || file_name.contains("publish")
+            || file_name.contains("deploy")
+            || file_name.contains("package"))
+}
+
+fn is_configuration_file(file_name: &str) -> bool {
+    file_name.starts_with('.')
+        && matches!(
+            file_name,
+            ".gitignore"
+                | ".gitattributes"
+                | ".dockerignore"
+                | ".editorconfig"
+                | ".prettierrc"
+                | ".eslintrc"
+                | ".npmrc"
+                | ".env"
+        )
 }
 
 #[cfg(test)]
@@ -91,8 +184,76 @@ mod tests {
 
     #[test]
     fn workflow_is_non_rust() {
-        let finding =
-            classify_path(Path::new(".github/workflows/ci.yml")).expect("workflow finding");
-        assert_eq!(finding.family.as_deref(), Some("ci_declarative"));
+        assert_classification(
+            ".github/workflows/ci.yml",
+            FindingKind::NonRustFile,
+            "ci_declarative",
+        );
+    }
+
+    #[test]
+    fn classifies_non_rust_governance_families() {
+        assert_classification("docs/design.md", FindingKind::NonRustFile, "documentation");
+        assert_classification(
+            "generated/schema.json",
+            FindingKind::GeneratedCode,
+            "generated_code",
+        );
+        assert_classification(
+            "src/schema.generated.json",
+            FindingKind::GeneratedCode,
+            "generated_code",
+        );
+        assert_classification(
+            "crates/parser/fixtures/input.txt",
+            FindingKind::NonRustFile,
+            "test_fixture",
+        );
+        assert_classification(
+            "scripts/release.sh",
+            FindingKind::NonRustFile,
+            "release_script",
+        );
+        assert_classification("tools/check.sh", FindingKind::NonRustFile, "shell_script");
+        assert_classification("tools/audit.py", FindingKind::NonRustFile, "python_tool");
+        assert_classification(
+            "tools/report.ts",
+            FindingKind::NonRustFile,
+            "javascript_tool",
+        );
+        assert_classification("package.json", FindingKind::NonRustFile, "package_metadata");
+        assert_classification(
+            ".vscode/extensions.json",
+            FindingKind::NonRustFile,
+            "editor_extension",
+        );
+        assert_classification(".gitignore", FindingKind::NonRustFile, "configuration");
+        assert_classification(
+            "config/settings.yaml",
+            FindingKind::NonRustFile,
+            "configuration",
+        );
+        assert_classification(
+            "assets/logo.bin",
+            FindingKind::NonRustFile,
+            "unknown_non_rust",
+        );
+    }
+
+    #[test]
+    fn builtin_cargo_and_license_files_are_not_findings() {
+        assert!(classify_path(Path::new("Cargo.toml")).is_none());
+        assert!(classify_path(Path::new("Cargo.lock")).is_none());
+        assert!(classify_path(Path::new("crates/allow-files/Cargo.toml")).is_none());
+        assert!(classify_path(Path::new("README.md")).is_none());
+        assert!(classify_path(Path::new("LICENSE-MIT")).is_none());
+    }
+
+    fn assert_classification(path: &str, kind: FindingKind, family: &str) {
+        let finding = classify_path(Path::new(path))
+            .unwrap_or_else(|| std::panic::panic_any(format!("expected file finding for {path}")));
+
+        assert_eq!(finding.kind, kind);
+        assert_eq!(finding.family.as_deref(), Some(family));
     }
 }
