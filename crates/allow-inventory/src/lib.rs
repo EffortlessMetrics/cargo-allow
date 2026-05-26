@@ -76,7 +76,9 @@ pub fn workspace_metadata(start: impl AsRef<Path>) -> CargoAllowResult<Workspace
         .current_dir(start)
         .no_deps()
         .exec()
-        .map_err(|e| CargoAllowError::new(format!("failed to read cargo metadata: {e}")))?;
+        .map_err(|e| {
+            CargoAllowError::new(format!("failed to read legacy Rust project facts: {e}"))
+        })?;
     let root = metadata.workspace_root.as_std_path().to_path_buf();
     let member_ids = metadata
         .workspace_members
@@ -309,8 +311,9 @@ mod tests {
 
     #[test]
     fn workspace_metadata_reports_member_packages_and_targets() {
-        let metadata = workspace_metadata(env!("CARGO_MANIFEST_DIR"))
-            .unwrap_or_else(|err| std::panic::panic_any(format!("read workspace metadata: {err}")));
+        let metadata = workspace_metadata(env!("CARGO_MANIFEST_DIR")).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("read legacy Rust project facts: {err}"))
+        });
 
         assert!(metadata.root.join("Cargo.toml").exists());
         assert!(metadata.packages.iter().any(|package| {
@@ -332,10 +335,11 @@ mod tests {
     }
 
     #[test]
-    fn workspace_root_uses_cargo_metadata_from_member_directory() {
+    fn workspace_root_uses_legacy_project_facts_from_member_directory() {
         let member_src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-        let root = discover_workspace_root(member_src)
-            .unwrap_or_else(|err| std::panic::panic_any(format!("discover workspace root: {err}")));
+        let root = discover_workspace_root(member_src).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("discover source tree root: {err}"))
+        });
 
         assert!(root.join("Cargo.toml").exists());
         assert!(root.join("crates/allow-inventory/Cargo.toml").exists());

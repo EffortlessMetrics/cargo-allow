@@ -84,7 +84,7 @@ cargo-allow compat mode also passed over the cargo-allow scanned non-Rust
 surface:
 
 ```bash
-cargo allow check --compat --kind non-rust --mode no-new
+cargo-allow check --compat --kind non-rust --mode no-new
 ```
 
 Observed cargo-allow result:
@@ -118,7 +118,7 @@ check-generated: no findings.
 cargo-allow generated compat mode also passed:
 
 ```bash
-cargo allow check --compat --kind generated --mode no-new
+cargo-allow check --compat --kind generated --mode no-new
 ```
 
 Observed cargo-allow result:
@@ -146,7 +146,7 @@ check-executable-files: no findings.
 cargo-allow executable compat mode also passed:
 
 ```bash
-cargo allow check --compat --kind executable --mode no-new
+cargo-allow check --compat --kind executable --mode no-new
 ```
 
 Observed cargo-allow result:
@@ -172,7 +172,7 @@ check-workflows: no findings.
 cargo-allow workflow compat mode also passed:
 
 ```bash
-cargo allow check --compat --kind workflow --mode no-new
+cargo-allow check --compat --kind workflow --mode no-new
 ```
 
 Observed cargo-allow result:
@@ -199,7 +199,7 @@ check-dependency-surfaces: no findings.
 cargo-allow dependency-surface compat mode also passed:
 
 ```bash
-cargo allow check --compat --kind dependency-surface --mode no-new
+cargo-allow check --compat --kind dependency-surface --mode no-new
 ```
 
 Observed cargo-allow result:
@@ -225,7 +225,7 @@ check-process-policy: no findings.
 cargo-allow process compat mode also passed:
 
 ```bash
-cargo allow check --compat --kind process --mode no-new
+cargo-allow check --compat --kind process --mode no-new
 ```
 
 Observed cargo-allow result:
@@ -253,7 +253,7 @@ check-network-policy: no findings.
 cargo-allow network compat mode also passed:
 
 ```bash
-cargo allow check --compat --kind network --mode no-new
+cargo-allow check --compat --kind network --mode no-new
 ```
 
 Observed cargo-allow result:
@@ -277,7 +277,7 @@ cargo-allow can combine the supported shiplog-style file-policy ledgers into one
 canonical policy:
 
 ```bash
-cargo allow migrate --repo-policy policy/ --out policy/allow.toml
+cargo-allow migrate --repo-policy policy/ --out policy/allow.toml
 ```
 
 Observed migration proof used a target output file rather than overwriting
@@ -291,7 +291,7 @@ occurrence limits written: 529
 The migrated policy passed the canonical non-Rust check:
 
 ```bash
-cargo allow check --config <migrated-policy> --kind non-rust --mode no-new
+cargo-allow check --config <migrated-policy> --kind non-rust --mode no-new
 ```
 
 Observed cargo-allow result:
@@ -312,12 +312,12 @@ The migrated policy also passed normal canonical checks for the companion file
 policy lanes, without `--compat`:
 
 ```bash
-cargo allow check --config <migrated-policy> --kind generated --mode no-new
-cargo allow check --config <migrated-policy> --kind executable --mode no-new
-cargo allow check --config <migrated-policy> --kind workflow --mode no-new
-cargo allow check --config <migrated-policy> --kind dependency-surface --mode no-new
-cargo allow check --config <migrated-policy> --kind process --mode no-new
-cargo allow check --config <migrated-policy> --kind network --mode no-new
+cargo-allow check --config <migrated-policy> --kind generated --mode no-new
+cargo-allow check --config <migrated-policy> --kind executable --mode no-new
+cargo-allow check --config <migrated-policy> --kind workflow --mode no-new
+cargo-allow check --config <migrated-policy> --kind dependency-surface --mode no-new
+cargo-allow check --config <migrated-policy> --kind process --mode no-new
+cargo-allow check --config <migrated-policy> --kind network --mode no-new
 ```
 
 Observed canonical companion results:
@@ -346,7 +346,7 @@ check-no-panic-family: no new panic-family debt.
 cargo-allow can migrate the generated no-panic baseline:
 
 ```bash
-cargo allow migrate --from policy/no-panic-baseline.toml --out target/no-panic.allow.toml
+cargo-allow migrate --from policy/no-panic-baseline.toml --out target/no-panic.allow.toml
 ```
 
 Observed migration result:

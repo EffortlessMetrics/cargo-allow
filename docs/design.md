@@ -1,6 +1,6 @@
 # Design
 
-cargo-allow is the source-exception ledger for Rust workspaces. Its job is to
+cargo-allow is the source-exception ledger for source trees. Its job is to
 make retained source exceptions visible, owned, scoped, evidenced, expirable,
 diffable, and actionable.
 
@@ -8,6 +8,14 @@ It is not a linter. It does not replace rustc lints, Clippy, cargo-deny,
 cargo-vet, cargo-geiger, ripr, unsafe-review, coverage tooling, or local test
 suites. Those tools detect adjacent facts. cargo-allow records which source
 exceptions a repository permits to remain and why.
+
+cargo-allow scans repository files directly. It may be invoked as `cargo allow`
+through Cargo external subcommand compatibility, but the primary command is the
+standalone `cargo-allow` binary. Its own policy scan must not require Cargo
+project facts, successful compilation, build scripts, proc macro expansion,
+rustc, Clippy, dependency policy tools, unsafe-review, ripr, or coverage tools.
+Those tools may later provide evidence artifacts; cargo-allow owns the durable
+source-exception ledger.
 
 ## Product Lane
 
@@ -29,23 +37,23 @@ The governed surfaces are:
   unimplemented, unreachable, indexing, and slicing.
 - lint suppressions such as `#[allow]`, `#![allow]`, `#[expect]`, and
   `#![expect]`.
-- non-Rust tracked files in Rust repositories.
+- non-Rust tracked files in source trees.
 - generated-code and ignored-surface carveouts.
 - legacy policy exceptions from bespoke xtasks.
 
 ## Current MVP
 
-The MVP intentionally uses only the Rust standard library. It provides:
+The current MVP keeps the scanner and policy surface narrow. It provides:
 
-- `cargo allow audit`
-- `cargo allow check`
-- `cargo allow diff`
-- `cargo allow list`
-- `cargo allow explain`
-- `cargo allow propose`
-- `cargo allow migrate`
-- `cargo allow prune`
-- `cargo allow doctor`
+- `cargo-allow audit`
+- `cargo-allow check`
+- `cargo-allow diff`
+- `cargo-allow list`
+- `cargo-allow explain`
+- `cargo-allow propose`
+- `cargo-allow migrate`
+- `cargo-allow prune`
+- `cargo-allow doctor`
 
 The MVP scanner is source-syntax based and line-oriented. The matcher already
 uses structural selectors where the current scanner can provide them:
@@ -60,6 +68,10 @@ uses structural selectors where the current scanner can provide them:
 - line and column hints.
 
 Line numbers are hints. They are not durable identity.
+
+The current implementation still contains transitional Cargo-shaped discovery
+seams. Those are implementation debt, not the product boundary; source-tree
+inventory must be able to run when the project does not compile.
 
 ## Matching Direction
 
@@ -102,7 +114,8 @@ Evidence references may later include:
 - `pr:`
 
 V1 may validate only local shape and file existence where practical. It must not
-claim semantic proof from the presence of a reference.
+claim semantic proof from the presence of a reference, and it must not execute
+external evidence tools as part of its own scan.
 
 ## Reports
 
@@ -110,7 +123,8 @@ Reports should serve three audiences:
 
 - maintainers need concise current-state inventory and CI failures.
 - reviewers need a PR posture diff.
-- agents need machine-readable work items with suggested proof commands.
+- agents need machine-readable work items with suggested external proof
+  commands.
 
 The desired report artifacts are:
 
@@ -129,6 +143,10 @@ cargo-allow must not claim:
 - macro-expanded coverage.
 - type-aware analysis.
 - MIR-level analysis.
+- build-aware analysis.
+- control-flow or data-flow analysis.
+- execution of repository code.
+- required Cargo project facts.
 - proof that unsafe is sound.
 - proof that tests are adequate.
 - proof that coverage means semantic correctness.
