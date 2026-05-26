@@ -122,6 +122,12 @@ count, outcome counts, stale state, and occurrence-limit overruns. The command
 is still bounded by the normal cargo-allow claim boundary: source syntax only,
 with no macro expansion or type analysis.
 
+`cargo allow list` shows allow entries with current status, match count, kind,
+family, owner, classification, scope, lifecycle dates, and reason. It supports
+maintenance filters such as `--kind`, `--owner`, `--expired`, `--review-due`,
+`--stale`, and `--baseline-debt`. Stale status is computed from current
+source-syntax findings; line and column hints are not identity.
+
 `cargo allow worklist --format json` turns non-matched no-new outcomes into
 agent-safe work items. Each item includes a kind, risk, difficulty, current
 status, path or allow ID where available, suggested actions, and proof commands.
