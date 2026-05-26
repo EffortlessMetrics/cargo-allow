@@ -1,6 +1,6 @@
 # Migration From xtask
 
-Many Rust repositories already enforce source exceptions through bespoke xtasks.
+Many source repositories already enforce source exceptions through bespoke xtasks.
 cargo-allow should replace those lanes gradually, with side-by-side evidence.
 
 ## Migration Principles
@@ -27,7 +27,7 @@ cargo xtask check-file-policy
 Run cargo-allow in the closest compatible mode:
 
 ```bash
-cargo allow check --compat --kind non-rust
+cargo-allow check --compat --kind non-rust
 ```
 
 For a shiplog-style `policy/non-rust-allowlist.toml`, compat mode expands the
@@ -57,7 +57,7 @@ Generated-file compat is also available for shiplog-style
 `policy/generated-allowlist.toml`:
 
 ```bash
-cargo allow check --compat --kind generated
+cargo-allow check --compat --kind generated
 ```
 
 That mode reads generated file findings from `.gitattributes` entries marked
@@ -69,7 +69,7 @@ Executable-bit compat is available for shiplog-style
 `policy/executable-allowlist.toml`:
 
 ```bash
-cargo allow check --compat --kind executable
+cargo-allow check --compat --kind executable
 ```
 
 That mode reads current executable-file findings from `git ls-files --stage`
@@ -81,7 +81,7 @@ file-policy exception surface rather than Rust syntax.
 Workflow compat is available for shiplog-style `policy/workflow-allowlist.toml`:
 
 ```bash
-cargo allow check --compat --kind workflow
+cargo-allow check --compat --kind workflow
 ```
 
 That mode reads current workflow findings from `.github/workflows/*.yml` and
@@ -95,19 +95,20 @@ Dependency-surface compat is available for shiplog-style
 `policy/dependency-surface-allowlist.toml`:
 
 ```bash
-cargo allow check --compat --kind dependency-surface
+cargo-allow check --compat --kind dependency-surface
 ```
 
 That mode preserves the legacy checker's boundary: it verifies that configured
 dependency-surface patterns still match tracked files, then reports those
 matched surfaces as `policy_exception.dependency_surface`. It does not yet
-perform full unlisted-manifest discovery across every Cargo-adjacent file.
+perform full unlisted-manifest discovery across every dependency manifest or
+lockfile in the scanned source tree.
 
 Process-policy compat is available for shiplog-style
 `policy/process-allowlist.toml`:
 
 ```bash
-cargo allow check --compat --kind process
+cargo-allow check --compat --kind process
 ```
 
 That mode preserves the legacy checker's boundary: it validates retained
@@ -120,7 +121,7 @@ Network-policy compat is available for shiplog-style
 `policy/network-allowlist.toml`:
 
 ```bash
-cargo allow check --compat --kind network
+cargo-allow check --compat --kind network
 ```
 
 That mode preserves the legacy checker's boundary: it validates retained
@@ -132,7 +133,7 @@ No-panic baseline migration is available for shiplog-style
 `policy/no-panic-baseline.toml`:
 
 ```bash
-cargo allow migrate --from policy/no-panic-baseline.toml --out target/no-panic.allow.toml
+cargo-allow migrate --from policy/no-panic-baseline.toml --out target/no-panic.allow.toml
 ```
 
 That mode converts generated baseline records into temporary
@@ -145,8 +146,8 @@ entry must not approve unlimited future panic-family findings.
 The target state is:
 
 ```bash
-cargo allow migrate --repo-policy policy/ --out policy/allow.toml
-cargo allow check --mode no-new
+cargo-allow migrate --repo-policy policy/ --out policy/allow.toml
+cargo-allow check --mode no-new
 ```
 
 `--repo-policy` combines the supported legacy files in a policy directory into
@@ -158,7 +159,7 @@ matching legacy globs against the current inventory so the canonical output does
 not inherit overlapping-glob ambiguity. Single-file migration remains available:
 
 ```bash
-cargo allow migrate --from policy/non-rust-allowlist.toml --out target/non-rust.allow.toml
+cargo-allow migrate --from policy/non-rust-allowlist.toml --out target/non-rust.allow.toml
 ```
 
 The migration writer:
@@ -166,7 +167,7 @@ The migration writer:
 - preserves stable IDs.
 - preserves owners, reasons, classifications, evidence, and links.
 - validates the combined canonical policy before writing.
-- lets canonical `cargo allow check` collect the current generated,
+- lets canonical `cargo-allow check` collect the current generated,
   executable, workflow, dependency-surface, process, and network companion
   findings needed by migrated policy entries, without re-entering `--compat`
   mode.

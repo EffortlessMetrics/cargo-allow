@@ -5,9 +5,9 @@ inside what the implementation actually proves.
 
 ## Current Valid Claims
 
-For the MVP, a passing `cargo allow check --mode no-new` may claim:
+For the MVP, a passing `cargo-allow check --mode no-new` may claim:
 
-- The scanned git-tracked files produced findings.
+- The scanned source-tree inventory produced findings.
 - Each finding was matched to the current policy ledger, or no failing new
   finding was found for the selected mode.
 - Required policy fields were present according to the current validator.
@@ -19,7 +19,7 @@ For the MVP, a passing `cargo allow check --mode no-new` may claim:
 The current report may say:
 
 ```text
-No new unreceipted findings were found in scanned source-syntax inventory.
+No new unreceipted findings were found in scanned source-tree inventory.
 ```
 
 It must not shorten that to:
@@ -32,7 +32,8 @@ All exceptions are proven safe.
 
 ## Source Syntax Only
 
-The MVP scanner reads source text. It does not analyze:
+The MVP scanner reads source-tree files and source text. It does not require a
+successful build and does not execute repository code. It does not analyze:
 
 - macro expansion.
 - type information.
@@ -41,10 +42,16 @@ The MVP scanner reads source text. It does not analyze:
 - control flow.
 - data flow.
 - build-script output.
+- compiler output.
 - generated files that are not in the scanned inventory.
 
 If a future scanner adds any of these capabilities, the report wording should
 name the exact capability and the version that introduced it.
+
+Root and inventory discovery should be source-tree based: explicit root, git
+root, then current directory, with git-tracked inventory preferred and
+symlink-safe filesystem traversal as fallback. Cargo manifests and lockfiles are
+ordinary files in that inventory, not required build metadata.
 
 ## Line Hints Are Not Identity
 
@@ -92,6 +99,7 @@ Those are different levels of confidence.
 
 cargo-allow does not replace:
 
+- Cargo, rustc, or build systems for compilation.
 - rustc or Clippy for lint detection.
 - cargo-deny for dependency policy.
 - cargo-vet for third-party crate audits.
@@ -102,6 +110,10 @@ cargo-allow does not replace:
 
 cargo-allow can reference those tools' outputs as evidence in the source
 exception ledger.
+
+`cargo allow ...` is accepted only as Cargo external subcommand compatibility.
+The claim boundary and examples should prefer the standalone `cargo-allow ...`
+form.
 
 ## Baseline Debt
 

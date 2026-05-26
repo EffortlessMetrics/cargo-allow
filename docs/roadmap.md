@@ -9,7 +9,7 @@ Goal: make the imported MVP boring, tested, documented, and safe to evolve.
 
 Completed:
 
-- Import the repo-ready MVP workspace.
+- Import the repo-ready MVP source tree.
 - Add CI gates and the generated no-new baseline.
 - Harden path normalization, inventory traversal, indexing heuristics, and
   snippet-hash matching regressions.
@@ -18,13 +18,16 @@ Completed:
 - Replace handwritten TOML parsing with typed serde/toml policy loading.
 - Strengthen lifecycle and required-field validation.
 - Replace manual CLI parsing with clap.
-- Use cargo_metadata for workspace discovery.
+- Document the source-tree-only product boundary and queue removal of remaining
+  Cargo-project discovery assumptions.
 - Harden non-Rust classification.
 - Support generated-code and ignored-surface policy.
 - Improve human and Markdown non-Rust audit output.
 
 Next:
 
+- Remove remaining Cargo-project discovery assumptions from root and inventory
+  discovery.
 - Dogfood non-Rust governance against an existing bespoke file-policy xtask.
 
 ## Phase 2: Replace Temporary Foundations
@@ -33,7 +36,8 @@ Goal: make the product surface stable enough for real users.
 
 Planned PRs:
 
-- Thread Cargo metadata package/source-root facts into scanners and reports.
+- Thread source-tree root and inventory facts into scanners and reports without
+  requiring Cargo project metadata or a successful build.
 
 ## Phase 3: Make Non-Rust Governance Useful
 
@@ -62,7 +66,7 @@ Completed:
 - Add `--compat --kind network` for shiplog-style
   `policy/network-allowlist.toml` and prove it side-by-side against shiplog's
   network-policy xtask.
-- Add `cargo allow migrate --repo-policy policy/ --out policy/allow.toml` for
+- Add `cargo-allow migrate --repo-policy policy/ --out policy/allow.toml` for
   combining supported shiplog-style legacy files into one canonical policy.
 - Let canonical checks collect migrated generated, executable, workflow,
   dependency-surface, process, and network companion findings without requiring
@@ -132,15 +136,15 @@ Planned work:
 
 ## Phase 8: PR Diff As Flagship
 
-Goal: make PR review the primary cargo-allow experience.
+Goal: make PR review the primary source-tree exception review experience.
 
 Completed:
 
-- Detect policy weakening in `cargo allow diff` for current `policy/allow.toml`
+- Detect policy weakening in `cargo-allow diff` for current `policy/allow.toml`
   versus `--base`, including scope broadening, selector precision loss, expiry
   extension, evidence removal, metadata removal, occurrence-limit loosening, and
   added baseline debt.
-- Compare base and head source findings in `cargo allow diff` using durable
+- Compare base and head source findings in `cargo-allow diff` using durable
   finding keys, so reviewers can see new and removed syntax-visible exception
   posture independent of line movement.
 - Emit Markdown PR summaries with net posture, reviewer action, current
@@ -196,7 +200,7 @@ Goal: make cargo-allow a safe work router for humans and agents.
 
 Completed:
 
-- Emit an initial `cargo allow worklist --format json` that converts non-matched
+- Emit an initial `cargo-allow worklist --format json` that converts non-matched
   no-new outcomes into risk/difficulty-scored work items with suggested actions
   and proof commands.
 
@@ -259,5 +263,5 @@ cargo-allow connects source exceptions to proof artifacts.
 `1.0` should claim:
 
 ```text
-cargo-allow is the stable source exception ledger for Rust workspaces.
+cargo-allow is the stable source exception ledger for source trees.
 ```

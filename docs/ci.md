@@ -2,26 +2,27 @@
 
 cargo-allow has two different CI jobs:
 
-- PR CI should run `cargo allow diff --base <base>` so reviewers can see how a
-  pull request changes source exception posture.
-- Mainline CI should run `cargo allow check --mode no-new` so the committed
-  policy remains a passing ledger.
+- PR CI should run `cargo-allow diff --base <base>` so reviewers can see how a
+  pull request changes source-tree exception posture.
+- Mainline CI should run `cargo-allow check --mode no-new` so the committed
+  policy remains a passing source-tree ledger.
 
 The example workflows are intentionally small and copyable:
 
 - [cargo-allow-diff.yml](../examples/github-actions/cargo-allow-diff.yml)
 - [cargo-allow-check.yml](../examples/github-actions/cargo-allow-check.yml)
 
-The examples use `cargo run -p cargo-allow -- allow ...` because this repository
-is a workspace that contains the CLI package. In a consuming repository with an
-installed `cargo-allow`, use `cargo allow ...` instead.
+The examples use `cargo run -p cargo-allow -- allow ...` because this checkout
+builds the CLI package during development. In a consuming repository, install
+and run the standalone `cargo-allow` binary. `cargo allow ...` remains optional
+Cargo external subcommand compatibility.
 
 ## Pull Requests
 
 Use the diff workflow for pull requests:
 
 ```bash
-cargo run -p cargo-allow -- allow diff \
+cargo-allow diff \
   --base origin/main \
   --format markdown \
   --output target/cargo-allow/pr-summary.md
@@ -36,18 +37,19 @@ The Markdown output starts with a PR Summary section. That section reports:
 - the reviewer action implied by those signals.
 
 This is reviewer guidance for source-syntax and policy-ledger posture. It does
-not claim macro expansion, type information, proof adequacy, or coverage.
+not claim macro expansion, type information, build awareness, proof adequacy, or
+coverage.
 
 ## Mainline
 
 Use the check workflow on `main`:
 
 ```bash
-cargo run -p cargo-allow -- allow audit \
+cargo-allow audit \
   --format json \
   --output target/cargo-allow/audit.json
 
-cargo run -p cargo-allow -- allow check \
+cargo-allow check \
   --mode no-new \
   --format markdown \
   --receipt target/cargo-allow/check.receipt.json \
