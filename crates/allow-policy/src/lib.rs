@@ -814,7 +814,29 @@ mod tests {
             .unwrap_or_else(|err| std::panic::panic_any(format!("repo policy parses: {err}")));
 
         assert_eq!(cfg.policy, "cargo-allow");
-        assert!(cfg.allow.len() >= 60);
+        assert!(cfg.allow.iter().any(|entry| entry.id == "allow-0001"));
+        assert!(cfg.allow.iter().any(|entry| entry.id == "allow-0088"));
+        for removed in [
+            "allow-0020",
+            "allow-0031",
+            "allow-0032",
+            "allow-0033",
+            "allow-0039",
+            "allow-0049",
+            "allow-0050",
+            "allow-0051",
+            "allow-0056",
+            "allow-0058",
+            "allow-0063",
+            "allow-0064",
+            "allow-0065",
+            "allow-0066",
+        ] {
+            assert!(
+                !cfg.allow.iter().any(|entry| entry.id == removed),
+                "{removed} should stay pruned from the repository policy"
+            );
+        }
     }
 
     #[test]
