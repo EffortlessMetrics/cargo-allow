@@ -129,6 +129,13 @@ It is a routing surface, not an auto-fix plan: agents and humans should fix,
 prove, narrow, or remove the exception instead of adding suppressions just to
 silence cargo-allow.
 
+`cargo allow diff --base <rev>` compares the current policy ledger with the
+base revision's `policy/allow.toml` and reports policy weakening in human and
+Markdown output. Current detection covers scope broadening, selector precision
+loss, expiry/review extension, evidence removal, owner/reason/classification
+removal, occurrence-limit loosening, and added `baseline_debt`. This is policy
+ledger comparison only; scanner base/head comparison is planned separately.
+
 ## Non-Rust Files
 
 Rust repositories often contain non-Rust operational surface:

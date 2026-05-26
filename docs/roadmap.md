@@ -128,10 +128,16 @@ Planned work:
 
 Goal: make PR review the primary cargo-allow experience.
 
+Completed:
+
+- Detect policy weakening in `cargo allow diff` for current `policy/allow.toml`
+  versus `--base`, including scope broadening, selector precision loss, expiry
+  extension, evidence removal, metadata removal, occurrence-limit loosening, and
+  added baseline debt.
+
 Planned work:
 
 - Scan base and head.
-- Detect policy weakening.
 - Emit Markdown PR summaries.
 - Add GitHub Actions examples.
 
