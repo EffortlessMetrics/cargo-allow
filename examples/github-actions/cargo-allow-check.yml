@@ -14,13 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-allow
+        run: cargo install --git https://github.com/EffortlessMetrics/cargo-allow cargo-allow --locked
       - name: Run cargo-allow mainline check
         run: |
           mkdir -p target/cargo-allow
-          cargo run -p cargo-allow -- allow audit \
+          cargo-allow audit \
             --format json \
             --output target/cargo-allow/audit.json
-          cargo run -p cargo-allow -- allow check \
+          cargo-allow check \
             --mode no-new \
             --format markdown \
             --receipt target/cargo-allow/check.receipt.json \

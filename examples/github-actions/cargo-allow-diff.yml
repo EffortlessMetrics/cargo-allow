@@ -16,12 +16,14 @@ jobs:
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-allow
+        run: cargo install --git https://github.com/EffortlessMetrics/cargo-allow cargo-allow --locked
       - name: Run cargo-allow PR posture diff
         shell: bash
         run: |
           base_ref="origin/${GITHUB_BASE_REF:-main}"
           mkdir -p target/cargo-allow
-          cargo run -p cargo-allow -- allow diff \
+          cargo-allow diff \
             --base "$base_ref" \
             --format markdown \
             --output target/cargo-allow/pr-summary.md
