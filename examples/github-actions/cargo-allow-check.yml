@@ -1,0 +1,39 @@
+name: cargo-allow check
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-allow-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run cargo-allow mainline check
+        run: |
+          mkdir -p target/cargo-allow
+          cargo run -p cargo-allow -- allow audit \
+            --format json \
+            --output target/cargo-allow/audit.json
+          cargo run -p cargo-allow -- allow check \
+            --mode no-new \
+            --format markdown \
+            --receipt target/cargo-allow/check.receipt.json \
+            --output target/cargo-allow/check.md
+      - name: Publish cargo-allow summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f target/cargo-allow/check.md ]; then
+            cat target/cargo-allow/check.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cargo-allow-reports
+          path: target/cargo-allow/

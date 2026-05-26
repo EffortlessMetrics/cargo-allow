@@ -11,3 +11,5 @@ beyond the MVP scaffold.
   entry model.
 - [Migration from xtask](migration-from-xtask.md): how bespoke allowlist tasks
   should move into cargo-allow.
+- [CI](ci.md): GitHub Actions examples for PR posture diffs and mainline
+  checks.

@@ -1,0 +1,39 @@
+name: cargo-allow diff
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-allow-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run cargo-allow PR posture diff
+        shell: bash
+        run: |
+          base_ref="origin/${GITHUB_BASE_REF:-main}"
+          mkdir -p target/cargo-allow
+          cargo run -p cargo-allow -- allow diff \
+            --base "$base_ref" \
+            --format markdown \
+            --output target/cargo-allow/pr-summary.md
+      - name: Publish cargo-allow summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f target/cargo-allow/pr-summary.md ]; then
+            cat target/cargo-allow/pr-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cargo-allow-pr-summary
+          path: target/cargo-allow/
