@@ -64,11 +64,17 @@ Completed:
   network-policy xtask.
 - Add `cargo allow migrate --repo-policy policy/ --out policy/allow.toml` for
   combining supported shiplog-style legacy files into one canonical policy.
+- Let canonical checks collect migrated generated, executable, workflow,
+  dependency-surface, process, and network companion findings without requiring
+  `--compat`.
+- Dogfood the migrated canonical policy against shiplog's current non-Rust,
+  generated, executable, workflow, dependency-surface, process, and network
+  policy surfaces.
 
 Next:
 
-- Dogfood the combined canonical policy against shiplog before removing any
-  existing xtask.
+- Prepare the first shiplog replacement PR for a file-policy lane while keeping
+  panic, unsafe, and lint source lanes out of scope.
 
 ## Phase 4: Build Structural Identity
 

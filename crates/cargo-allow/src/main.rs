@@ -1961,11 +1961,77 @@ fn load_world(
             generated: opts.generated.clone(),
         },
     ));
+    let companion_findings = canonical_companion_findings(&root, &cfg)?;
+    extend_unique_findings(&mut findings, companion_findings);
     if let Some(kind) = kind_filter {
         let parsed = parse_kind_filter(kind)?;
         findings.retain(|f| parsed.matches_finding(f));
     }
     Ok((root, cfg, findings))
+}
+
+fn canonical_companion_findings(root: &Path, cfg: &AllowConfig) -> CargoAllowResult<Vec<Finding>> {
+    let mut findings = Vec::new();
+    if has_allow_family(cfg, FindingKind::GeneratedCode, "generated_code") {
+        findings.extend(allow_policy_legacy::generated_findings_from_gitattributes(
+            root,
+        )?);
+    }
+    if has_allow_family(cfg, FindingKind::PolicyException, "executable_file") {
+        findings.extend(allow_policy_legacy::executable_findings_from_git(root)?);
+    }
+    if has_policy_family(cfg, &["github_workflow", "workflow_external_action"]) {
+        findings.extend(allow_policy_legacy::workflow_findings_from_files(root)?);
+    }
+    if has_allow_family(cfg, FindingKind::PolicyException, "dependency_surface") {
+        findings.extend(allow_policy_legacy::dependency_surface_findings_from_git(
+            root, cfg,
+        )?);
+    }
+    if has_allow_family(cfg, FindingKind::PolicyException, "process_spawn") {
+        findings.extend(allow_policy_legacy::process_findings_from_config(cfg));
+    }
+    if has_allow_family(cfg, FindingKind::PolicyException, "network_destination") {
+        findings.extend(allow_policy_legacy::network_findings_from_config(cfg));
+    }
+    Ok(findings)
+}
+
+fn has_policy_family(cfg: &AllowConfig, families: &[&str]) -> bool {
+    cfg.allow.iter().any(|entry| {
+        entry.kind == FindingKind::PolicyException
+            && entry
+                .family
+                .as_deref()
+                .is_some_and(|family| families.contains(&family))
+    })
+}
+
+fn has_allow_family(cfg: &AllowConfig, kind: FindingKind, family: &str) -> bool {
+    cfg.allow
+        .iter()
+        .any(|entry| entry.kind == kind && entry.family.as_deref() == Some(family))
+}
+
+fn extend_unique_findings(findings: &mut Vec<Finding>, additional: Vec<Finding>) {
+    for finding in additional {
+        if !findings
+            .iter()
+            .any(|existing| same_finding_identity(existing, &finding))
+        {
+            findings.push(finding);
+        }
+    }
+}
+
+fn same_finding_identity(left: &Finding, right: &Finding) -> bool {
+    left.kind == right.kind
+        && left.family == right.family
+        && normalize_path(&left.path) == normalize_path(&right.path)
+        && left.identity.ast_kind == right.identity.ast_kind
+        && left.identity.symbol == right.identity.symbol
+        && left.identity.target_fingerprint == right.identity.target_fingerprint
+        && left.identity.normalized_snippet_hash == right.identity.normalized_snippet_hash
 }
 
 fn load_compat_world(
@@ -3264,6 +3330,113 @@ mod tests {
     }
 
     #[test]
+    fn canonical_companion_findings_match_migrated_policy_entries() {
+        let dir = migrate_fixture_dir();
+        let workflows_dir = dir.join(".github").join("workflows");
+        fs::create_dir_all(&workflows_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("workflow dir: {err}")));
+        fs::write(
+            dir.join(".gitattributes"),
+            "generated/schema.json linguist-generated=true\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("gitattributes write: {err}")));
+        fs::write(
+            workflows_dir.join("ci.yml"),
+            "steps:\n  - uses: actions/checkout@v4\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("workflow write: {err}")));
+
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(companion_entry(
+            "generated-schema",
+            FindingKind::GeneratedCode,
+            "generated_code",
+            "generated/schema.json",
+            "tracked_file",
+            "generated/schema.json",
+            Some("json"),
+        ));
+        cfg.allow.push(companion_entry(
+            "workflow-file-ci",
+            FindingKind::PolicyException,
+            "github_workflow",
+            ".github/workflows/ci.yml",
+            "github_workflow",
+            ".github/workflows/ci.yml",
+            None,
+        ));
+        cfg.allow.push(companion_entry(
+            "workflow-action-ci-checkout",
+            FindingKind::PolicyException,
+            "workflow_external_action",
+            ".github/workflows/ci.yml",
+            "github_action_uses",
+            ".github/workflows/ci.yml uses actions/checkout@v4",
+            Some("action:actions/checkout@v4"),
+        ));
+        cfg.allow.push(companion_entry(
+            "proc-cargo-test",
+            FindingKind::PolicyException,
+            "process_spawn",
+            ".github/workflows/ci.yml",
+            "process_spawn",
+            "cargo test",
+            Some("process:cargo test"),
+        ));
+        cfg.allow.push(companion_entry(
+            "net-crates-io",
+            FindingKind::PolicyException,
+            "network_destination",
+            "policy/network-allowlist.toml",
+            "network_destination",
+            "crates.io lane build",
+            Some("network:crates.io:auth:false:lane:build"),
+        ));
+
+        let findings = canonical_companion_findings(&dir, &cfg).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("canonical companion findings: {err}"))
+        });
+        let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+
+        assert_eq!(findings.len(), 5);
+        assert!(
+            outcomes
+                .iter()
+                .all(|outcome| outcome.status == MatchStatus::Matched),
+            "expected every migrated companion entry to match current canonical findings: {outcomes:?}"
+        );
+    }
+
+    #[test]
+    fn extend_unique_findings_deduplicates_generated_companion_inventory() {
+        let mut generated = test_finding(
+            FindingKind::GeneratedCode,
+            Some("generated_code"),
+            "generated/schema.json",
+            "tracked_file",
+        );
+        generated.identity.symbol = Some("generated/schema.json".to_string());
+        generated.identity.target_fingerprint = Some("json".to_string());
+        let duplicate = generated.clone();
+        let mut existing = vec![generated];
+        let distinct = test_finding(
+            FindingKind::GeneratedCode,
+            Some("generated_code"),
+            "generated/other.json",
+            "tracked_file",
+        );
+
+        extend_unique_findings(&mut existing, vec![duplicate, distinct]);
+
+        assert_eq!(existing.len(), 2);
+        assert!(
+            existing
+                .iter()
+                .any(|finding| normalize_path(&finding.path) == "generated/other.json")
+        );
+    }
+
+    #[test]
     fn report_config_filters_allow_entries_by_kind() {
         let mut cfg = AllowConfig::empty();
         cfg.allow
@@ -3474,6 +3647,43 @@ expires = "permanent"
             lifecycle: Lifecycle::empty(),
             selector: Selector {
                 ast_kind: Some("tracked_file".to_string()),
+                ..Selector::default()
+            },
+            last_seen: None,
+        }
+    }
+
+    fn companion_entry(
+        id: &str,
+        kind: FindingKind,
+        family: &str,
+        path: &str,
+        ast_kind: &str,
+        symbol: &str,
+        target_fingerprint: Option<&str>,
+    ) -> AllowEntry {
+        AllowEntry {
+            id: id.to_string(),
+            kind,
+            family: Some(family.to_string()),
+            path: Some(PathBuf::from(path)),
+            glob: None,
+            owner: "owner".to_string(),
+            classification: family.to_string(),
+            reason: "retained migrated policy entry".to_string(),
+            evidence: vec!["legacy-policy:test".to_string()],
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle {
+                created: Some("2026-05-26".to_string()),
+                review_after: Some("2026-11-01".to_string()),
+                expires: None,
+            },
+            selector: Selector {
+                ast_kind: Some(ast_kind.to_string()),
+                symbol: Some(symbol.to_string()),
+                target_fingerprint: target_fingerprint.map(str::to_string),
+                glob: Some(path.to_string()),
                 ..Selector::default()
             },
             last_seen: None,

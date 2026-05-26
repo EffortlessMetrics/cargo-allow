@@ -162,12 +162,18 @@ The migration writer:
 - preserves stable IDs.
 - preserves owners, reasons, classifications, evidence, and links.
 - validates the combined canonical policy before writing.
+- lets canonical `cargo allow check` collect the current generated,
+  executable, workflow, dependency-surface, process, and network companion
+  findings needed by migrated policy entries, without re-entering `--compat`
+  mode.
 - avoids overwriting without `--force`.
 - writes stable formatting.
 
 Migration is still a bridge. The combined policy carries retained legacy
 receipts forward; it does not prove that stale legacy entries are removable and
 does not add source discovery beyond the compatibility lanes already listed.
+Process and network companion findings still come from retained policy entries,
+not source-code or runtime discovery.
 
 ## Legacy Inputs
 
