@@ -22,6 +22,21 @@ pub struct RustSyntaxContainer {
     pub end_column: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LintAttributeKind {
+    Allow,
+    Expect,
+}
+
+impl LintAttributeKind {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Allow => "allow",
+            Self::Expect => "expect",
+        }
+    }
+}
+
 impl RustSyntaxContainer {
     pub fn module(&self) -> Option<String> {
         if self.module_path.is_empty() {
@@ -165,6 +180,7 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
     let mut brace_depth: i32 = 0;
     let mut module_stack: Vec<String> = Vec::new();
     let index_columns = syntax_index_columns(source);
+    let lint_attributes = syntax_lint_attributes(source);
 
     for (line_idx, raw_line) in source.lines().enumerate() {
         let line_no = (line_idx + 1) as u32;
@@ -184,7 +200,13 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
             line_no,
             &container,
             &module_stack,
-            index_columns.get(&line_no).copied(),
+            SyntaxLineFacts {
+                lint_attributes: lint_attributes
+                    .get(&line_no)
+                    .map(Vec::as_slice)
+                    .unwrap_or(&[]),
+                index_column: index_columns.get(&line_no).copied(),
+            },
             &mut findings,
         );
 
@@ -205,7 +227,7 @@ fn scan_line(
     line_no: u32,
     container: &Option<String>,
     module_stack: &[String],
-    syntax_index_column: Option<u32>,
+    syntax: SyntaxLineFacts<'_>,
     findings: &mut Vec<Finding>,
 ) {
     let trimmed = line.trim();
@@ -213,7 +235,10 @@ fn scan_line(
         return;
     }
 
-    if let Some(attr_text) = detect_attr(trimmed, "allow") {
+    for attr_kind in syntax.lint_attributes {
+        let Some(attr_text) = detect_attr(trimmed, attr_kind.name()) else {
+            continue;
+        };
         let lint = extract_first_lint(attr_text);
         push_finding(
             FindingSite {
@@ -225,28 +250,10 @@ fn scan_line(
                 module_stack,
             },
             FindingKind::LintException,
-            "allow_attribute",
-            "attribute",
-            |id| {
-                id.lint = lint;
-                id.symbol = Some(trimmed.to_string());
+            match attr_kind {
+                LintAttributeKind::Allow => "allow_attribute",
+                LintAttributeKind::Expect => "expect_attribute",
             },
-            findings,
-        );
-    }
-    if let Some(attr_text) = detect_attr(trimmed, "expect") {
-        let lint = extract_first_lint(attr_text);
-        push_finding(
-            FindingSite {
-                path,
-                line,
-                line_no,
-                column: 1,
-                container,
-                module_stack,
-            },
-            FindingKind::LintException,
-            "expect_attribute",
             "attribute",
             |id| {
                 id.lint = lint;
@@ -410,7 +417,7 @@ fn scan_line(
         }
     }
 
-    if let Some(index_column) = syntax_index_column {
+    if let Some(index_column) = syntax.index_column {
         let family = if line.contains("&") && line.contains("[") {
             "string_slice"
         } else {
@@ -472,6 +479,48 @@ fn collect_index_columns(node: Node<'_>, source: &str, columns: &mut BTreeMap<u3
     for child in node.children(&mut cursor) {
         collect_index_columns(child, source, columns);
     }
+}
+
+fn syntax_lint_attributes(source: &str) -> BTreeMap<u32, Vec<LintAttributeKind>> {
+    let Ok(tree) = parse_rust_syntax(source) else {
+        return BTreeMap::new();
+    };
+    let mut attrs = BTreeMap::new();
+    collect_lint_attributes(tree.tree.root_node(), source, &mut attrs);
+    attrs
+}
+
+fn collect_lint_attributes(
+    node: Node<'_>,
+    source: &str,
+    attrs: &mut BTreeMap<u32, Vec<LintAttributeKind>>,
+) {
+    if matches!(node.kind(), "attribute_item" | "inner_attribute_item") {
+        if let Some(kind) = node_text(source, node).and_then(lint_attribute_kind) {
+            let line = node.start_position().row as u32 + 1;
+            attrs.entry(line).or_default().push(kind);
+        }
+    }
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_lint_attributes(child, source, attrs);
+    }
+}
+
+fn lint_attribute_kind(text: &str) -> Option<LintAttributeKind> {
+    let trimmed = text.trim_start();
+    if detect_attr(trimmed, "allow").is_some() {
+        Some(LintAttributeKind::Allow)
+    } else if detect_attr(trimmed, "expect").is_some() {
+        Some(LintAttributeKind::Expect)
+    } else {
+        None
+    }
+}
+
+struct SyntaxLineFacts<'a> {
+    lint_attributes: &'a [LintAttributeKind],
+    index_column: Option<u32>,
 }
 
 struct FindingSite<'a> {
@@ -659,6 +708,22 @@ mod tests {
         );
         assert!(
             findings
+                .iter()
+                .any(|f| f.kind == FindingKind::LintException)
+        );
+    }
+
+    #[test]
+    fn syntax_lint_attributes_ignore_attribute_text_in_strings() {
+        let src = r##"
+        fn load() {
+            let text = "#[allow(dead_code)]";
+        }
+        "##;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        assert!(
+            !findings
                 .iter()
                 .any(|f| f.kind == FindingKind::LintException)
         );
