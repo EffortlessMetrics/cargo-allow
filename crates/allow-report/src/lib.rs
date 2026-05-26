@@ -1,6 +1,11 @@
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
 use std::collections::BTreeMap;
 
+pub const REPORT_SCHEMA_VERSION: u32 = 1;
+pub const REPORT_SCHEMA_ID: &str = "cargo-allow.report.v1";
+pub const RECEIPT_SCHEMA_VERSION: u32 = 1;
+pub const RECEIPT_SCHEMA_ID: &str = "cargo-allow.receipt.v1";
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
     pub total: usize,
@@ -125,40 +130,20 @@ pub fn render_json(
     let summary = Summary::from_outcomes(outcomes);
     let mut out = String::new();
     out.push_str("{\n");
-    out.push_str("  \"schema_version\": 1,\n");
+    out.push_str(&format!("  \"schema_version\": {REPORT_SCHEMA_VERSION},\n"));
+    out.push_str(&format!("  \"schema_id\": \"{REPORT_SCHEMA_ID}\",\n"));
     out.push_str("  \"tool\": \"cargo-allow\",\n");
     out.push_str(&format!("  \"command\": \"{}\",\n", json_escape(command)));
     out.push_str(&format!(
         "  \"status\": \"{}\",\n",
         if failed { "failed" } else { "passed" }
     ));
+    out.push_str(&format!("  \"failed\": {},\n", bool_json(failed)));
     out.push_str("  \"claim_boundary\": [\"source_syntax_only\", \"macro_expansion_not_analyzed\", \"type_information_not_analyzed\"],\n");
     out.push_str("  \"summary\": {\n");
     out.push_str(&format!("    \"findings\": {},\n", findings.len()));
-    out.push_str(&format!(
-        "    \"matched\": {},\n",
-        summary.count(MatchStatus::Matched)
-    ));
-    out.push_str(&format!(
-        "    \"new\": {},\n",
-        summary.count(MatchStatus::New)
-    ));
-    out.push_str(&format!(
-        "    \"expired\": {},\n",
-        summary.count(MatchStatus::Expired)
-    ));
-    out.push_str(&format!(
-        "    \"stale\": {},\n",
-        summary.count(MatchStatus::Stale)
-    ));
-    out.push_str(&format!(
-        "    \"ambiguous\": {},\n",
-        summary.count(MatchStatus::Ambiguous)
-    ));
-    out.push_str(&format!(
-        "    \"evidence_missing\": {}\n",
-        summary.count(MatchStatus::EvidenceMissing)
-    ));
+    out.push_str(&format!("    \"outcomes\": {},\n", summary.total));
+    out.push_str(&render_counts_fields(&summary, "    "));
     out.push_str("  },\n");
     out.push_str("  \"outcomes\": [\n");
     for (i, outcome) in outcomes.iter().enumerate() {
@@ -226,14 +211,11 @@ pub fn render_json(
 pub fn render_receipt(command: &str, outcomes: &[MatchOutcome], failed: bool) -> String {
     let summary = Summary::from_outcomes(outcomes);
     format!(
-        "{{\n  \"schema_version\": 1,\n  \"tool\": \"cargo-allow\",\n  \"command\": \"{}\",\n  \"status\": \"{}\",\n  \"counts\": {{\n    \"matched\": {},\n    \"new\": {},\n    \"expired\": {},\n    \"stale\": {},\n    \"ambiguous\": {}\n  }}\n}}\n",
+        "{{\n  \"schema_version\": {RECEIPT_SCHEMA_VERSION},\n  \"schema_id\": \"{RECEIPT_SCHEMA_ID}\",\n  \"tool\": \"cargo-allow\",\n  \"command\": \"{}\",\n  \"status\": \"{}\",\n  \"failed\": {},\n  \"claim_boundary\": [\"source_syntax_only\", \"macro_expansion_not_analyzed\", \"type_information_not_analyzed\"],\n  \"counts\": {{\n{}  }}\n}}\n",
         json_escape(command),
         if failed { "failed" } else { "passed" },
-        summary.count(MatchStatus::Matched),
-        summary.count(MatchStatus::New),
-        summary.count(MatchStatus::Expired),
-        summary.count(MatchStatus::Stale),
-        summary.count(MatchStatus::Ambiguous)
+        bool_json(failed),
+        render_counts_fields(&summary, "    ")
     )
 }
 
@@ -241,6 +223,37 @@ fn option_json(value: Option<&str>) -> String {
     value
         .map(|v| format!("\"{}\"", json_escape(v)))
         .unwrap_or_else(|| "null".to_string())
+}
+
+fn bool_json(value: bool) -> &'static str {
+    if value { "true" } else { "false" }
+}
+
+fn render_counts_fields(summary: &Summary, indent: &str) -> String {
+    let statuses = [
+        MatchStatus::Matched,
+        MatchStatus::New,
+        MatchStatus::Expired,
+        MatchStatus::ReviewDue,
+        MatchStatus::Stale,
+        MatchStatus::Ambiguous,
+        MatchStatus::InvalidSelector,
+        MatchStatus::MissingRequiredField,
+        MatchStatus::EvidenceMissing,
+        MatchStatus::BaselineDebt,
+    ];
+    statuses
+        .iter()
+        .enumerate()
+        .map(|(idx, status)| {
+            let comma = if idx + 1 == statuses.len() { "" } else { "," };
+            format!(
+                "{indent}\"{}\": {}{comma}\n",
+                status.as_str(),
+                summary.count(*status)
+            )
+        })
+        .collect::<String>()
 }
 
 #[cfg(test)]
@@ -251,5 +264,33 @@ mod tests {
     fn json_contains_claim_boundary() {
         let json = render_json("audit", &[], &[], false);
         assert!(json.contains("macro_expansion_not_analyzed"));
+    }
+
+    #[test]
+    fn json_report_exposes_v1_schema_contract() {
+        let json = render_json("audit", &[], &[], false);
+        assert!(json.contains("\"schema_version\": 1"));
+        assert!(json.contains("\"schema_id\": \"cargo-allow.report.v1\""));
+        assert!(json.contains("\"failed\": false"));
+        assert!(json.contains("\"review_due\": 0"));
+        assert!(json.contains("\"baseline_debt\": 0"));
+    }
+
+    #[test]
+    fn receipt_exposes_v1_schema_contract() {
+        let json = render_receipt("check", &[], true);
+        assert!(json.contains("\"schema_version\": 1"));
+        assert!(json.contains("\"schema_id\": \"cargo-allow.receipt.v1\""));
+        assert!(json.contains("\"failed\": true"));
+        assert!(json.contains("\"missing_required_field\": 0"));
+        assert!(json.contains("\"evidence_missing\": 0"));
+    }
+
+    #[test]
+    fn schemas_reference_current_contract_ids() {
+        let report_schema = include_str!("../../../docs/schemas/report.schema.json");
+        let receipt_schema = include_str!("../../../docs/schemas/receipt.schema.json");
+        assert!(report_schema.contains(REPORT_SCHEMA_ID));
+        assert!(receipt_schema.contains(RECEIPT_SCHEMA_ID));
     }
 }

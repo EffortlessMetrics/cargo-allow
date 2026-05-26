@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/receipt.v1.schema.json",
+  "title": "cargo-allow receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "command",
+    "status",
+    "failed",
+    "claim_boundary",
+    "counts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "schema_id": {
+      "const": "cargo-allow.receipt.v1"
+    },
+    "tool": {
+      "const": "cargo-allow"
+    },
+    "command": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": ["passed", "failed"]
+    },
+    "failed": {
+      "type": "boolean"
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "contains": {
+        "const": "source_syntax_only"
+      }
+    },
+    "counts": {
+      "$ref": "#/$defs/counts"
+    }
+  },
+  "$defs": {
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "matched",
+        "new",
+        "expired",
+        "review_due",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt"
+      ],
+      "properties": {
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expired": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_due": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ambiguous": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid_selector": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_required_field": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_missing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "baseline_debt": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

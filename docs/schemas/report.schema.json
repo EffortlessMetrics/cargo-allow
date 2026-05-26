@@ -1,0 +1,220 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/report.v1.schema.json",
+  "title": "cargo-allow report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "command",
+    "status",
+    "failed",
+    "claim_boundary",
+    "summary",
+    "outcomes",
+    "findings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "schema_id": {
+      "const": "cargo-allow.report.v1"
+    },
+    "tool": {
+      "const": "cargo-allow"
+    },
+    "command": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": ["passed", "failed"]
+    },
+    "failed": {
+      "type": "boolean"
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "contains": {
+        "const": "source_syntax_only"
+      }
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "outcomes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/outcome"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    }
+  },
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "findings",
+        "outcomes",
+        "matched",
+        "new",
+        "expired",
+        "review_due",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt"
+      ],
+      "properties": {
+        "findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outcomes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expired": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_due": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ambiguous": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid_selector": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_required_field": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_missing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "baseline_debt": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "allow_id",
+        "finding_index",
+        "score",
+        "message"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/match_status"
+        },
+        "allow_id": {
+          "type": ["string", "null"]
+        },
+        "finding_index": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "family",
+        "path",
+        "line",
+        "container",
+        "ast_kind"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": ["string", "null"]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "container": {
+          "type": ["string", "null"]
+        },
+        "ast_kind": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "match_status": {
+      "enum": [
+        "matched",
+        "new",
+        "stale",
+        "expired",
+        "review_due",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt"
+      ]
+    }
+  }
+}
