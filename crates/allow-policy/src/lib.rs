@@ -1,6 +1,6 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, LastSeen, Lifecycle,
-    Requirements, Selector, WorkspaceConfig,
+    Requirements, Selector, SimpleDate, WorkspaceConfig,
 };
 use serde::Deserialize;
 use std::collections::BTreeSet;
@@ -129,6 +129,8 @@ enum U32ish {
     Number(u32),
     String(String),
 }
+
+const BASELINE_DEBT_MAX_DAYS: i64 = 120;
 
 pub fn find_config(start: impl AsRef<Path>) -> Option<PathBuf> {
     let mut dir = start.as_ref().canonicalize().ok()?;
@@ -284,6 +286,12 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
             cfg.policy
         )));
     }
+    for pattern in &cfg.workspace.ignored {
+        validate_glob("workspace ignored glob", pattern)?;
+    }
+    for pattern in &cfg.workspace.generated {
+        validate_glob("workspace generated glob", pattern)?;
+    }
     let mut ids = BTreeSet::new();
     for entry in &cfg.allow {
         if entry.id.trim().is_empty() {
@@ -301,6 +309,17 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
                 entry.id
             )));
         }
+        if let Some(path) = &entry.path {
+            validate_path_scope(&entry.id, path)?;
+        }
+        if let Some(glob) = &entry.glob {
+            validate_glob(&format!("{} glob", entry.id), glob)?;
+        }
+        if let Some(glob) = &entry.selector.glob {
+            validate_glob(&format!("{} selector glob", entry.id), glob)?;
+        }
+        validate_selector(entry)?;
+        validate_lifecycle(entry)?;
         if cfg.requirements.owner_required && entry.owner.trim().is_empty() {
             return Err(CargoAllowError::new(format!("{} missing owner", entry.id)));
         }
@@ -333,6 +352,127 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
         }
     }
     Ok(())
+}
+
+fn validate_path_scope(id: &str, path: &Path) -> CargoAllowResult<()> {
+    let text = path.to_string_lossy().replace('\\', "/");
+    if text.trim().is_empty() {
+        return Err(CargoAllowError::new(format!("{id} has empty path")));
+    }
+    if text.starts_with('/') || text.contains(':') {
+        return Err(CargoAllowError::new(format!(
+            "{id} path must be workspace-relative"
+        )));
+    }
+    if text.split('/').any(|part| part == "..") {
+        return Err(CargoAllowError::new(format!(
+            "{id} path must not contain parent directory segments"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_glob(label: &str, glob: &str) -> CargoAllowResult<()> {
+    let text = glob.replace('\\', "/");
+    if text.trim().is_empty() {
+        return Err(CargoAllowError::new(format!("{label} is empty")));
+    }
+    if text.starts_with('/') || text.contains(':') {
+        return Err(CargoAllowError::new(format!(
+            "{label} must be workspace-relative"
+        )));
+    }
+    if text.split('/').any(|part| part == "..") {
+        return Err(CargoAllowError::new(format!(
+            "{label} must not contain parent directory segments"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_selector(entry: &AllowEntry) -> CargoAllowResult<()> {
+    let selector = &entry.selector;
+    let has_identity = selector.ast_kind.is_some()
+        || selector.container.is_some()
+        || selector.callee.is_some()
+        || selector.macro_name.is_some()
+        || selector.lint.is_some()
+        || selector.symbol.is_some()
+        || selector.receiver_fingerprint.is_some()
+        || selector.target_fingerprint.is_some()
+        || selector.normalized_snippet_hash.is_some()
+        || selector.glob.is_some();
+    if !has_identity {
+        return Err(CargoAllowError::new(format!(
+            "{} selector must include structural identity beyond line hints",
+            entry.id
+        )));
+    }
+    Ok(())
+}
+
+fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
+    let created = parse_lifecycle_date(&entry.id, "created", entry.lifecycle.created.as_deref())?;
+    let review_after = parse_lifecycle_date(
+        &entry.id,
+        "review_after",
+        entry.lifecycle.review_after.as_deref(),
+    )?;
+    let expires = parse_expires(&entry.id, entry.lifecycle.expires.as_deref())?;
+
+    if let (Some(created), Some(review_after)) = (created, review_after) {
+        if created.days_until(review_after) < 0 {
+            return Err(CargoAllowError::new(format!(
+                "{} review_after must not be before created",
+                entry.id
+            )));
+        }
+    }
+    if let (Some(created), Some(expires)) = (created, expires) {
+        if created.days_until(expires) < 0 {
+            return Err(CargoAllowError::new(format!(
+                "{} expires must not be before created",
+                entry.id
+            )));
+        }
+    }
+    if entry.classification == "baseline_debt" {
+        let expires = expires.ok_or_else(|| {
+            CargoAllowError::new(format!("{} baseline_debt requires expires", entry.id))
+        })?;
+        let start = created.unwrap_or_else(SimpleDate::today_utc_approx);
+        let days = start.days_until(expires);
+        if !(0..=BASELINE_DEBT_MAX_DAYS).contains(&days) {
+            return Err(CargoAllowError::new(format!(
+                "{} baseline_debt expires must be within {BASELINE_DEBT_MAX_DAYS} days",
+                entry.id
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn parse_lifecycle_date(
+    id: &str,
+    field: &str,
+    value: Option<&str>,
+) -> CargoAllowResult<Option<SimpleDate>> {
+    match value {
+        Some(value) => SimpleDate::parse(value).map(Some).ok_or_else(|| {
+            CargoAllowError::new(format!("{id} has invalid {field} date `{value}`"))
+        }),
+        None => Ok(None),
+    }
+}
+
+fn parse_expires(id: &str, value: Option<&str>) -> CargoAllowResult<Option<SimpleDate>> {
+    match value {
+        Some("never") => Ok(None),
+        Some(value) => SimpleDate::parse(value).map(Some).ok_or_else(|| {
+            CargoAllowError::new(format!("{id} has invalid expires date `{value}`"))
+        }),
+        None => Ok(None),
+    }
 }
 
 pub fn starter_policy(strict: bool) -> String {
@@ -661,5 +801,122 @@ mod tests {
 
         assert_eq!(cfg.policy, "cargo-allow");
         assert!(cfg.allow.len() >= 70);
+    }
+
+    #[test]
+    fn rejects_invalid_lifecycle_dates() {
+        let err = parse_err(
+            r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "bad-date"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-02-31"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+        );
+
+        assert!(err.contains("invalid expires date"));
+    }
+
+    #[test]
+    fn rejects_lifecycle_dates_before_created() {
+        let err = parse_err(
+            r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "bad-order"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                created = "2026-08-01"
+                review_after = "2026-07-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+        );
+
+        assert!(err.contains("review_after must not be before created"));
+    }
+
+    #[test]
+    fn rejects_invalid_glob_scope() {
+        let err = parse_err(
+            r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "bad-glob"
+                kind = "non_rust_file"
+                glob = "../scripts/**"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = "../scripts/**"
+            "#,
+        );
+
+        assert!(err.contains("parent directory"));
+    }
+
+    #[test]
+    fn rejects_line_only_selector() {
+        let err = parse_err(
+            r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "line-only"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                line_hint = 12
+            "#,
+        );
+
+        assert!(err.contains("selector must include structural identity"));
+    }
+
+    #[test]
+    fn rejects_baseline_debt_without_short_expiry() {
+        let err = parse_err(
+            r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "baseline-too-long"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "unowned"
+                classification = "baseline_debt"
+                reason = "Generated by cargo allow propose; requires human review."
+                created = "2026-05-26"
+                expires = "2027-05-26"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+        );
+
+        assert!(err.contains("baseline_debt expires must be within"));
+    }
+
+    fn parse_err(input: &str) -> String {
+        match parse_policy(input) {
+            Ok(_) => std::panic::panic_any("expected policy parse failure"),
+            Err(err) => err.to_string(),
+        }
     }
 }
