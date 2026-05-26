@@ -30,6 +30,12 @@ Run cargo-allow in the closest compatible mode:
 cargo allow check --compat --kind non-rust
 ```
 
+For a shiplog-style `policy/non-rust-allowlist.toml`, compat mode expands the
+legacy glob/path entries against the current scanned non-Rust findings and
+creates exact in-memory cargo-allow entries for the check. This avoids treating
+overlapping legacy globs as cargo-allow selector ambiguity during the
+side-by-side proof run.
+
 Then classify deltas:
 
 - same finding.
@@ -38,6 +44,10 @@ Then classify deltas:
 - xtask stale or intentionally different.
 
 Only replace the xtask when the remaining deltas are documented and acceptable.
+
+Compat mode is a bridge, not the final policy shape. It does not yet replace
+companion legacy checks for generated files, executable bits, workflow action
+permissions, dependency surfaces, process policy, or network policy.
 
 ## Canonical Policy Flow
 
@@ -61,7 +71,7 @@ The migration writer should:
 Compatibility adapters may support:
 
 - `policy/no-panic-allowlist.toml`
-- `policy/non-rust-allowlist.toml`
+- `policy/non-rust-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/clippy-exceptions.toml`
 - `policy/unsafe-allowlist.toml`
 - `policy/ripr-suppressions.toml`
