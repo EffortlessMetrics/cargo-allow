@@ -14,6 +14,7 @@ seams are stable.
 cargo run -p cargo-allow -- allow init --strict
 cargo run -p cargo-allow -- allow audit --format human
 cargo run -p cargo-allow -- allow audit --format json
+cargo run -p cargo-allow -- allow audit --kind non-rust --include-untracked
 cargo run -p cargo-allow -- allow check --mode no-new
 cargo run -p cargo-allow -- allow propose --write policy/allow.proposed.toml
 cargo run -p cargo-allow -- allow list
@@ -34,7 +35,7 @@ It does **not** analyze macro expansion, MIR, type information, or rustc semanti
 | `allow-core` | Core data model, simple glob matching, stable FNV hash, dates |
 | `allow-policy` | Canonical `policy/allow.toml` parser, writer, validation |
 | `allow-inventory` | Cargo metadata workspace facts and git-tracked file inventory with recursive fallback |
-| `allow-files` | Non-Rust/generated-file finding generation with governance families |
+| `allow-files` | Non-Rust/generated-file finding generation with configured generated globs |
 | `allow-rust` | Source-syntax scanner for panic, unsafe, lint suppressions, indexing |
 | `allow-match` | Structural matcher, lifecycle classification, stale/new/ambiguous statuses |
 | `allow-report` | Human, Markdown, JSON report and receipt rendering |

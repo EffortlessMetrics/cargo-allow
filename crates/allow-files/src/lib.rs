@@ -1,23 +1,37 @@
-use allow_core::{Finding, FindingKind, Span, StructuralIdentity, normalize_path};
+use allow_core::{Finding, FindingKind, Span, StructuralIdentity, glob_matches, normalize_path};
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, Clone, Default)]
+pub struct FileScanOptions {
+    pub generated: Vec<String>,
+}
+
 pub fn scan_files(files: &[PathBuf]) -> Vec<Finding> {
+    scan_files_with_options(files, &FileScanOptions::default())
+}
+
+pub fn scan_files_with_options(files: &[PathBuf], options: &FileScanOptions) -> Vec<Finding> {
     files
         .iter()
-        .filter_map(|path| classify_path(path))
+        .filter_map(|path| classify_path_with_options(path, options))
         .collect()
 }
 
 pub fn classify_path(path: &Path) -> Option<Finding> {
+    classify_path_with_options(path, &FileScanOptions::default())
+}
+
+pub fn classify_path_with_options(path: &Path, options: &FileScanOptions) -> Option<Finding> {
     if is_rust_source(path) || is_builtin_allowed(path) {
         return None;
     }
-    let family = file_family(path);
+    let generated = is_generated_path(path, &options.generated);
+    let family = file_family(path, generated);
     let mut identity = StructuralIdentity::new("file", "tracked_file");
     identity.symbol = Some(normalize_path(path));
     identity.target_fingerprint = file_fingerprint(path);
     Some(Finding {
-        kind: if is_generated_path(path) {
+        kind: if generated {
             FindingKind::GeneratedCode
         } else {
             FindingKind::NonRustFile
@@ -47,10 +61,13 @@ fn is_builtin_allowed(path: &Path) -> bool {
         || text == "LICENSE-APACHE"
 }
 
-fn is_generated_path(path: &Path) -> bool {
+fn is_generated_path(path: &Path, generated_patterns: &[String]) -> bool {
     let text = normalize_path(path);
     let file_name = lower_file_name(path);
-    text.contains("/generated/")
+    generated_patterns
+        .iter()
+        .any(|pattern| glob_matches(pattern, path))
+        || text.contains("/generated/")
         || text.starts_with("generated/")
         || file_name.contains(".generated.")
         || file_name.ends_with(".generated")
@@ -58,11 +75,11 @@ fn is_generated_path(path: &Path) -> bool {
         || text.starts_with("gen/")
 }
 
-fn file_family(path: &Path) -> String {
+fn file_family(path: &Path, generated: bool) -> String {
     let text = normalize_path(path);
     let extension = lower_extension(path);
     let file_name = lower_file_name(path);
-    if is_generated_path(path) {
+    if generated {
         return "generated_code".to_string();
     }
     if text.starts_with(".github/workflows/") {
@@ -238,6 +255,24 @@ mod tests {
             FindingKind::NonRustFile,
             "unknown_non_rust",
         );
+    }
+
+    #[test]
+    fn generated_globs_override_file_family() {
+        let options = FileScanOptions {
+            generated: vec!["schemas/**".to_string()],
+        };
+        let generated = classify_path_with_options(Path::new("schemas/api.yaml"), &options)
+            .unwrap_or_else(|| {
+                std::panic::panic_any("expected generated file finding from configured glob")
+            });
+        let normal = classify_path(Path::new("schemas/api.yaml"))
+            .unwrap_or_else(|| std::panic::panic_any("expected normal file finding"));
+
+        assert_eq!(generated.kind, FindingKind::GeneratedCode);
+        assert_eq!(generated.family.as_deref(), Some("generated_code"));
+        assert_eq!(normal.kind, FindingKind::NonRustFile);
+        assert_eq!(normal.family.as_deref(), Some("configuration"));
     }
 
     #[test]

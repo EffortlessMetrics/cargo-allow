@@ -77,6 +77,9 @@ struct ReportArgs {
     /// Filter findings by kind.
     #[arg(long)]
     kind: Option<String>,
+    /// Include untracked files in addition to git-tracked files.
+    #[arg(long)]
+    include_untracked: bool,
     /// Output format.
     #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
     format: OutputFormat,
@@ -93,6 +96,9 @@ struct CheckArgs {
     /// Filter findings by kind.
     #[arg(long)]
     kind: Option<String>,
+    /// Include untracked files in addition to git-tracked files.
+    #[arg(long)]
+    include_untracked: bool,
     /// Output format.
     #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
     format: OutputFormat,
@@ -115,6 +121,9 @@ struct DiffArgs {
     /// Filter findings by kind.
     #[arg(long)]
     kind: Option<String>,
+    /// Include untracked files in addition to git-tracked files.
+    #[arg(long)]
+    include_untracked: bool,
     /// Output format.
     #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
     format: OutputFormat,
@@ -156,6 +165,9 @@ struct ProposeArgs {
     /// Filter findings by kind.
     #[arg(long)]
     kind: Option<String>,
+    /// Include untracked files in addition to git-tracked files.
+    #[arg(long)]
+    include_untracked: bool,
     /// Expiry date for generated baseline_debt entries.
     #[arg(long, default_value = "2026-08-01")]
     expires: String,
@@ -240,7 +252,12 @@ fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
 }
 
 fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings) = load_world(args.config.as_deref(), false, args.kind.as_deref())?;
+    let (root, cfg, findings) = load_world(
+        args.config.as_deref(),
+        false,
+        args.kind.as_deref(),
+        args.include_untracked,
+    )?;
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::Audit);
     print_report(
@@ -257,7 +274,12 @@ fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
 
 fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     let mode = CheckMode::parse(&args.mode);
-    let (_root, cfg, findings) = load_world(args.config.as_deref(), true, args.kind.as_deref())?;
+    let (_root, cfg, findings) = load_world(
+        args.config.as_deref(),
+        true,
+        args.kind.as_deref(),
+        args.include_untracked,
+    )?;
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, mode);
     let failed = outcomes.iter().any(|o| mode.fails(o.status));
@@ -282,7 +304,12 @@ fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
 }
 
 fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings) = load_world(args.config.as_deref(), true, args.kind.as_deref())?;
+    let (root, cfg, findings) = load_world(
+        args.config.as_deref(),
+        true,
+        args.kind.as_deref(),
+        args.include_untracked,
+    )?;
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
     let failed = outcomes.iter().any(|o| CheckMode::NoNew.fails(o.status));
@@ -321,12 +348,16 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
 
 fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
     let cfg = load_config_required(args.config.as_deref())?;
-    for entry in cfg.allow.iter().filter(|e| {
-        args.kind
-            .as_deref()
-            .map(|k| e.kind.as_str() == k)
-            .unwrap_or(true)
-    }) {
+    let parsed_kind = args
+        .kind
+        .as_deref()
+        .map(FindingKind::from_str)
+        .transpose()?;
+    for entry in cfg
+        .allow
+        .iter()
+        .filter(|e| parsed_kind.map(|kind| e.kind == kind).unwrap_or(true))
+    {
         println!(
             "{}\t{}\t{}\t{}",
             entry.id,
@@ -372,7 +403,12 @@ fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
 }
 
 fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
-    let (_root, cfg, findings) = load_world(args.config.as_deref(), false, args.kind.as_deref())?;
+    let (_root, cfg, findings) = load_world(
+        args.config.as_deref(),
+        false,
+        args.kind.as_deref(),
+        args.include_untracked,
+    )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
     let mut proposed = cfg.clone();
     let start = proposed.allow.len() + 1;
@@ -444,6 +480,7 @@ fn load_world(
     config: Option<&Path>,
     require_config: bool,
     kind_filter: Option<&str>,
+    include_untracked: bool,
 ) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>)> {
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
@@ -456,12 +493,17 @@ fn load_world(
     let opts = InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
         generated: cfg.workspace.generated.clone(),
-        include_untracked: false,
+        include_untracked,
     };
     let files = inventory_files(&root, &opts)?;
     let mut findings = Vec::new();
     findings.extend(allow_rust::scan_rust_files(&root, &files)?);
-    findings.extend(allow_files::scan_files(&files));
+    findings.extend(allow_files::scan_files_with_options(
+        &files,
+        &allow_files::FileScanOptions {
+            generated: opts.generated.clone(),
+        },
+    ));
     if let Some(kind) = kind_filter {
         let parsed = FindingKind::from_str(kind)?;
         findings.retain(|f| {
@@ -629,6 +671,26 @@ mod tests {
             parsed.command,
             Some(CargoAllowCommand::Explain(ExplainArgs { id, config }))
                 if id == "allow-0001" && config.as_deref() == Some(Path::new("policy/custom.toml"))
+        ));
+    }
+
+    #[test]
+    fn clap_parses_include_untracked_audit_flag() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "audit",
+            "--include-untracked",
+        ]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse include-untracked: {err}"))
+        });
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Audit(ReportArgs {
+                include_untracked: true,
+                ..
+            }))
         ));
     }
 
