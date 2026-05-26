@@ -122,6 +122,13 @@ count, outcome counts, stale state, and occurrence-limit overruns. The command
 is still bounded by the normal cargo-allow claim boundary: source syntax only,
 with no macro expansion or type analysis.
 
+`cargo allow worklist --format json` turns non-matched no-new outcomes into
+agent-safe work items. Each item includes a kind, risk, difficulty, current
+status, path or allow ID where available, suggested actions, and proof commands.
+It is a routing surface, not an auto-fix plan: agents and humans should fix,
+prove, narrow, or remove the exception instead of adding suppressions just to
+silence cargo-allow.
+
 ## Non-Rust Files
 
 Rust repositories often contain non-Rust operational surface:

@@ -178,11 +178,16 @@ Planned work:
 
 Goal: make cargo-allow a safe work router for humans and agents.
 
+Completed:
+
+- Emit an initial `cargo allow worklist --format json` that converts non-matched
+  no-new outcomes into risk/difficulty-scored work items with suggested actions
+  and proof commands.
+
 Planned work:
 
-- Emit `cargo allow worklist --format json`.
-- Add risk and difficulty heuristics.
-- Add suggested proof commands.
+- Refine risk and difficulty heuristics with repository/package context.
+- Expand suggested proof commands with crate-local and tool-specific commands.
 - Document agent prompt patterns.
 
 ## Phase 13: Audit Reports
