@@ -166,11 +166,13 @@ ledger comparison only.
 The same command also compares source finding posture between the base git tree
 and the current checkout, or the optional `--head` git tree when provided. It
 uses source-syntax finding keys built from kind, family, path, AST kind,
-container/callee/macro/lint fields, fingerprints, and normalized snippet hash.
-Line and column remain hints, not identity. The diff reports new and removed
-syntax-visible exception findings, including count changes for repeated matching
-finding keys; it still does not claim macro expansion, type information, build
-awareness, proof adequacy, control-flow analysis, or data-flow analysis.
+language, module/container/callee/macro/lint fields, symbols, fingerprints, and
+normalized snippet hash. Line and column remain hints, not identity: moving a
+finding without changing its structural source surface should not appear as a
+new exception. The diff reports new and removed syntax-visible exception
+findings, including count changes for repeated matching finding keys; it still
+does not claim macro expansion, type information, build awareness, proof
+adequacy, control-flow analysis, or data-flow analysis.
 
 Markdown diff output starts with a PR summary. The summary reports net posture,
 reviewer action, current no-new failures, new and removed source findings,

@@ -1,6 +1,6 @@
 use allow_core::{
-    AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, SimpleDate, glob_matches,
-    normalize_path,
+    AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, SimpleDate,
+    finding_identity_key as core_finding_identity_key, glob_matches, normalize_path,
 };
 use allow_policy::parse_policy;
 use std::collections::BTreeMap;
@@ -189,34 +189,7 @@ fn finding_posture_change(
 }
 
 pub fn finding_identity_key(finding: &Finding) -> String {
-    [
-        finding.kind.as_str().to_string(),
-        finding.family.clone().unwrap_or_default(),
-        normalize_path(&finding.path),
-        finding.identity.ast_kind.clone(),
-        finding.identity.module.clone().unwrap_or_default(),
-        finding.identity.container.clone().unwrap_or_default(),
-        finding.identity.callee.clone().unwrap_or_default(),
-        finding.identity.macro_name.clone().unwrap_or_default(),
-        finding.identity.lint.clone().unwrap_or_default(),
-        finding.identity.symbol.clone().unwrap_or_default(),
-        finding
-            .identity
-            .receiver_fingerprint
-            .clone()
-            .unwrap_or_default(),
-        finding
-            .identity
-            .target_fingerprint
-            .clone()
-            .unwrap_or_default(),
-        finding
-            .identity
-            .normalized_snippet_hash
-            .clone()
-            .unwrap_or_default(),
-    ]
-    .join("|")
+    core_finding_identity_key(finding)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

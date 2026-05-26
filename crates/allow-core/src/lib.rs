@@ -192,6 +192,36 @@ impl StructuralIdentity {
             column_hint: None,
         }
     }
+
+    pub fn stable_key(&self) -> String {
+        stable_identity_key_from_parts(self.stable_key_parts())
+    }
+
+    pub fn stable_key_parts(&self) -> Vec<(&'static str, String)> {
+        vec![
+            ("language", self.language.clone()),
+            ("crate_name", self.crate_name.clone().unwrap_or_default()),
+            ("module", self.module.clone().unwrap_or_default()),
+            ("container", self.container.clone().unwrap_or_default()),
+            ("ast_kind", self.ast_kind.clone()),
+            ("symbol", self.symbol.clone().unwrap_or_default()),
+            ("callee", self.callee.clone().unwrap_or_default()),
+            ("macro_name", self.macro_name.clone().unwrap_or_default()),
+            ("lint", self.lint.clone().unwrap_or_default()),
+            (
+                "receiver_fingerprint",
+                self.receiver_fingerprint.clone().unwrap_or_default(),
+            ),
+            (
+                "target_fingerprint",
+                self.target_fingerprint.clone().unwrap_or_default(),
+            ),
+            (
+                "normalized_snippet_hash",
+                self.normalized_snippet_hash.clone().unwrap_or_default(),
+            ),
+        ]
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -202,6 +232,24 @@ pub struct Finding {
     pub span: Option<Span>,
     pub identity: StructuralIdentity,
     pub message: String,
+}
+
+pub fn finding_identity_key(finding: &Finding) -> String {
+    let mut parts = vec![
+        ("kind", finding.kind.as_str().to_string()),
+        ("family", finding.family.clone().unwrap_or_default()),
+        ("path", normalize_path(&finding.path)),
+    ];
+    parts.extend(finding.identity.stable_key_parts());
+    stable_identity_key_from_parts(parts)
+}
+
+fn stable_identity_key_from_parts(parts: Vec<(&'static str, String)>) -> String {
+    parts
+        .into_iter()
+        .map(|(name, value)| format!("{name}:{}:{value}", value.len()))
+        .collect::<Vec<_>>()
+        .join("|")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -581,6 +629,61 @@ mod tests {
     fn hash_is_stable() {
         assert_eq!(stable_hash_hex("abc"), stable_hash_hex("abc"));
         assert_ne!(stable_hash_hex("abc"), stable_hash_hex("abd"));
+    }
+
+    #[test]
+    fn structural_identity_key_excludes_line_and_column_hints() {
+        let mut first = StructuralIdentity::new("rust", "method_call");
+        first.module = Some("parser::span".to_string());
+        first.container = Some("parse_span".to_string());
+        first.callee = Some("unwrap".to_string());
+        first.normalized_snippet_hash = Some("fnv1a64:1234".to_string());
+        first.line_hint = Some(12);
+        first.column_hint = Some(8);
+
+        let mut moved = first.clone();
+        moved.line_hint = Some(99);
+        moved.column_hint = Some(42);
+
+        assert_eq!(first.stable_key(), moved.stable_key());
+
+        moved.container = Some("parse_other_span".to_string());
+
+        assert_ne!(first.stable_key(), moved.stable_key());
+    }
+
+    #[test]
+    fn finding_identity_key_excludes_span_but_includes_structural_scope() {
+        let mut identity = StructuralIdentity::new("rust", "method_call");
+        identity.container = Some("load".to_string());
+        identity.callee = Some("unwrap".to_string());
+        identity.normalized_snippet_hash = Some("fnv1a64:abcd".to_string());
+
+        let mut first = Finding {
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            path: PathBuf::from("src/lib.rs"),
+            span: Some(Span {
+                line: 10,
+                column: 4,
+            }),
+            identity,
+            message: "test finding".to_string(),
+        };
+        let mut moved = first.clone();
+        moved.span = Some(Span {
+            line: 200,
+            column: 40,
+        });
+
+        assert_eq!(finding_identity_key(&first), finding_identity_key(&moved));
+
+        moved.path = PathBuf::from("src/other.rs");
+        assert_ne!(finding_identity_key(&first), finding_identity_key(&moved));
+
+        moved.path = first.path.clone();
+        first.family = Some("expect".to_string());
+        assert_ne!(finding_identity_key(&first), finding_identity_key(&moved));
     }
 
     #[test]

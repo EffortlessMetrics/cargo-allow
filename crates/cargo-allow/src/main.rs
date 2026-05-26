@@ -2104,13 +2104,7 @@ fn extend_unique_findings(findings: &mut Vec<Finding>, additional: Vec<Finding>)
 }
 
 fn same_finding_identity(left: &Finding, right: &Finding) -> bool {
-    left.kind == right.kind
-        && left.family == right.family
-        && normalize_path(&left.path) == normalize_path(&right.path)
-        && left.identity.ast_kind == right.identity.ast_kind
-        && left.identity.symbol == right.identity.symbol
-        && left.identity.target_fingerprint == right.identity.target_fingerprint
-        && left.identity.normalized_snippet_hash == right.identity.normalized_snippet_hash
+    allow_core::finding_identity_key(left) == allow_core::finding_identity_key(right)
 }
 
 fn load_compat_world(
