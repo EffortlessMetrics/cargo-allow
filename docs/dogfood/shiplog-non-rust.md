@@ -1,7 +1,7 @@
-# Shiplog Non-Rust Dogfood
+# Shiplog File-Policy Dogfood
 
-This records the first side-by-side non-Rust compatibility proof against an
-existing bespoke file-policy xtask.
+This records the first side-by-side file-policy compatibility proofs against
+existing bespoke xtasks.
 
 ## Target
 
@@ -11,19 +11,26 @@ Repository:
 H:\Code\Rust\shiplog
 ```
 
-Existing gate:
+Existing non-Rust gate:
 
 ```bash
 cargo xtask check-file-policy --mode blocking-allowlist
 ```
 
-Legacy policy:
+Existing generated-file gate:
+
+```bash
+cargo xtask check-generated --mode blocking-allowlist
+```
+
+Legacy policies:
 
 ```text
 policy/non-rust-allowlist.toml
+policy/generated-allowlist.toml
 ```
 
-## Result
+## Non-Rust Result
 
 The existing xtask gate passed:
 
@@ -58,6 +65,34 @@ test_fixture:       140
 unknown_non_rust:    84
 ```
 
+## Generated Result
+
+The existing generated-file xtask gate passed:
+
+```text
+check-generated: no findings.
+```
+
+cargo-allow generated compat mode also passed:
+
+```bash
+cargo allow check --compat --kind generated --mode no-new
+```
+
+Observed cargo-allow result:
+
+```text
+Findings scanned: 1
+matched: 1
+new: 0
+```
+
+The generated file was:
+
+```text
+policy/no-panic-baseline.toml
+```
+
 ## What This Proves
 
 - cargo-allow can consume a shiplog-style
@@ -66,11 +101,15 @@ unknown_non_rust:    84
   file entries for a side-by-side no-new check.
 - The current shiplog scanned non-Rust surface has no cargo-allow-new findings
   when checked through the existing legacy file policy.
+- cargo-allow can consume a shiplog-style `policy/generated-allowlist.toml`.
+- Generated compat preserves the drift shape used by the xtask:
+  `.gitattributes` provides current generated findings, while the policy file
+  provides retained generated-file receipts.
 
 ## What This Does Not Prove
 
-- It does not replace shiplog's generated-file, executable-bit, workflow,
-  dependency-surface, process-policy, or network-policy xtasks.
+- It does not replace shiplog's executable-bit, workflow, dependency-surface,
+  process-policy, or network-policy xtasks.
 - It does not prove the canonical `policy/allow.toml` migration is ready to
   replace the legacy policy file.
 - It does not validate macro expansion, type information, executable behavior,
@@ -80,6 +119,6 @@ unknown_non_rust:    84
 
 ## Replacement Boundary
 
-The next replacement PR should keep the existing xtask until the remaining
-non-Rust companion ledgers either have cargo-allow equivalents or documented
+The next replacement PR should keep the existing xtasks until the remaining
+file-policy companion ledgers either have cargo-allow equivalents or documented
 out-of-scope boundaries.

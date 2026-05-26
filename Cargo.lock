@@ -49,6 +49,7 @@ name = "allow-policy-legacy"
 version = "0.1.0"
 dependencies = [
  "allow-core",
+ "allow-match",
  "allow-policy",
  "toml",
 ]
