@@ -4,6 +4,50 @@ use allow_core::{
 };
 use std::fs;
 use std::path::{Path, PathBuf};
+use tree_sitter::{Node, Parser, Tree};
+
+pub struct RustSyntaxTree {
+    tree: Tree,
+}
+
+impl RustSyntaxTree {
+    pub fn root_kind(&self) -> &'static str {
+        self.tree.root_node().kind()
+    }
+
+    pub fn has_error(&self) -> bool {
+        self.tree.root_node().has_error()
+    }
+
+    pub fn named_node_count(&self) -> usize {
+        named_node_count(self.tree.root_node())
+    }
+}
+
+pub fn parse_rust_syntax(source: &str) -> CargoAllowResult<RustSyntaxTree> {
+    let mut parser = Parser::new();
+    let language = tree_sitter_rust::LANGUAGE.into();
+    parser
+        .set_language(&language)
+        .map_err(|e| CargoAllowError::new(format!("failed to load Rust parser: {e}")))?;
+    let tree = parser
+        .parse(source, None)
+        .ok_or_else(|| CargoAllowError::new("failed to parse Rust source"))?;
+    Ok(RustSyntaxTree { tree })
+}
+
+fn named_node_count(node: Node<'_>) -> usize {
+    let mut cursor = node.walk();
+    let children = node
+        .children(&mut cursor)
+        .map(named_node_count)
+        .sum::<usize>();
+    if node.is_named() {
+        children + 1
+    } else {
+        children
+    }
+}
 
 pub fn scan_rust_files(
     root: impl AsRef<Path>,
@@ -588,5 +632,25 @@ mod tests {
         let line = format!("let actual = values[{}];", "\u{00e9}".repeat(120));
 
         assert_eq!(index_symbol(&line).chars().count(), 100);
+    }
+
+    #[test]
+    fn parser_foundation_parses_valid_rust() {
+        let tree = parse_rust_syntax("fn load() { let value = 1; }")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+
+        assert_eq!(tree.root_kind(), "source_file");
+        assert!(!tree.has_error());
+        assert!(tree.named_node_count() > 1);
+    }
+
+    #[test]
+    fn parser_foundation_reports_invalid_rust_without_compilation() {
+        let tree = parse_rust_syntax("fn broken( { let value = ;")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+
+        assert_eq!(tree.root_kind(), "source_file");
+        assert!(tree.has_error());
+        assert!(tree.named_node_count() > 0);
     }
 }
