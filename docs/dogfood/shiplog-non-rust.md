@@ -53,11 +53,18 @@ Existing network-policy gate:
 cargo xtask check-network-policy --mode blocking-allowlist
 ```
 
+Existing no-panic baseline gate:
+
+```bash
+cargo xtask check-no-panic-family --mode blocking-allowlist
+```
+
 Legacy policies:
 
 ```text
 policy/non-rust-allowlist.toml
 policy/generated-allowlist.toml
+policy/no-panic-baseline.toml
 policy/executable-allowlist.toml
 policy/workflow-allowlist.toml
 policy/dependency-surface-allowlist.toml
@@ -277,7 +284,8 @@ Observed migration proof used a target output file rather than overwriting
 shiplog's live policy:
 
 ```text
-allow entries written: 615
+allow entries written: 1144
+occurrence limits written: 529
 ```
 
 The migrated policy passed the canonical non-Rust check:
@@ -299,6 +307,54 @@ ambiguous: 0
 The migration writer expands non-Rust legacy globs against the current inventory
 so the canonical policy does not inherit overlapping-glob ambiguity. The
 companion retained-entry ledgers are preserved as `policy_exception.*` entries.
+
+## No-Panic Baseline Migration Result
+
+The existing no-panic xtask gate passed:
+
+```text
+check-no-panic-family: no new panic-family debt.
+```
+
+cargo-allow can migrate the generated no-panic baseline:
+
+```bash
+cargo allow migrate --from policy/no-panic-baseline.toml --out target/no-panic.allow.toml
+```
+
+Observed migration result:
+
+```text
+allow entries written: 529
+```
+
+The migrated entries are temporary `baseline_debt` and include
+`occurrence_limit` from the legacy `count` field. This preserves the no-new
+baseline shape: matching more current findings than the legacy count becomes new
+debt instead of silently broadening the exception.
+
+The migrated baseline is not yet parity for cargo-allow's broader panic scanner:
+
+```text
+Findings scanned: 7176
+matched: 1089
+new: 6087
+```
+
+Top new-finding families:
+
+```text
+unwrap:        3596
+indexing:      1332
+expect:         588
+string_slice:   419
+panic_macro:    147
+```
+
+That gap is expected at this stage. The shiplog xtask excludes test scope and
+does not govern every syntax family cargo-allow currently reports. This is a
+scanner-boundary and migration-scope gap, not a reason to broaden the migrated
+baseline.
 
 ## What This Proves
 
@@ -336,6 +392,8 @@ companion retained-entry ledgers are preserved as `policy_exception.*` entries.
   canonical policy file.
 - The migrated canonical policy can pass the non-Rust no-new check without new,
   stale, or ambiguous non-Rust findings.
+- cargo-allow can migrate a generated shiplog-style no-panic baseline into
+  temporary count-limited `baseline_debt` entries.
 
 ## What This Does Not Prove
 
@@ -343,6 +401,8 @@ companion retained-entry ledgers are preserved as `policy_exception.*` entries.
   replace every legacy policy file or xtask.
 - It does not prove the full all-kind check passes for shiplog; panic, unsafe,
   lint, and other source exception lanes still need their own policy migration.
+- It does not prove no-panic parity for cargo-allow's panic scanner; scanner
+  scope and family coverage still differ from shiplog's xtask.
 - It does not validate macro expansion, type information, executable behavior,
   workflow permissions, dependency semantics, or external network reach.
 - It does not prove full unlisted-manifest discovery; dependency-surface compat

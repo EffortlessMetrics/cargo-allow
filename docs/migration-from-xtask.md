@@ -124,6 +124,18 @@ network policy entries and reports them as matched
 `policy_exception.network_destination` entries. It does not scan source code,
 workflow logs, or runtime traffic for outbound network discovery.
 
+No-panic baseline migration is available for shiplog-style
+`policy/no-panic-baseline.toml`:
+
+```bash
+cargo allow migrate --from policy/no-panic-baseline.toml --out target/no-panic.allow.toml
+```
+
+That mode converts generated baseline records into temporary
+`classification = "baseline_debt"` entries with `occurrence_limit` set from the
+legacy `count` field. The occurrence limit is important: a counted baseline
+entry must not approve unlimited future panic-family findings.
+
 ## Canonical Policy Flow
 
 The target state is:
@@ -135,8 +147,9 @@ cargo allow check --mode no-new
 
 `--repo-policy` combines the supported legacy files in a policy directory into
 one canonical cargo-allow policy. It currently includes the shiplog-style
-non-Rust, generated, executable, workflow, dependency-surface, process, and
-network allowlists. For non-Rust file policy, directory migration expands
+non-Rust, generated, no-panic baseline, executable, workflow,
+dependency-surface, process, and network allowlists. For non-Rust file policy,
+directory migration expands
 matching legacy globs against the current inventory so the canonical output does
 not inherit overlapping-glob ambiguity. Single-file migration remains available:
 
@@ -161,6 +174,7 @@ does not add source discovery beyond the compatibility lanes already listed.
 Compatibility adapters may support:
 
 - `policy/no-panic-allowlist.toml`
+- `policy/no-panic-baseline.toml` (initial generated baseline adapter exists)
 - `policy/non-rust-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/generated-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/executable-allowlist.toml` (initial shiplog-style adapter exists)

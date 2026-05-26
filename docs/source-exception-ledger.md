@@ -106,6 +106,16 @@ Baseline debt must carry a short expiry. In the MVP validator, that means an
 `expires` date no more than 120 days after `created` or, when `created` is
 absent, the tool's deterministic fixture date.
 
+Counted legacy baselines should also carry an `occurrence_limit`:
+
+```toml
+occurrence_limit = 3
+```
+
+The limit preserves no-new semantics during migration. Matching the same
+structural selector more times than the baseline allowed becomes new debt
+instead of silently broadening the exception.
+
 ## Non-Rust Files
 
 Rust repositories often contain non-Rust operational surface:

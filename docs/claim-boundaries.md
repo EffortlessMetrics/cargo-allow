@@ -113,5 +113,6 @@ A generated baseline entry should remain visibly uncomfortable:
 - `classification = "baseline_debt"`
 - a short `expires` date.
 - a reason that says human review is required.
+- `occurrence_limit` when the legacy baseline was count-based.
 
 Release or strict policies should eventually reject baseline debt.

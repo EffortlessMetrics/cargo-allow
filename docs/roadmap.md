@@ -87,6 +87,11 @@ Planned PRs:
 Goal: replace bespoke no-panic allowlist xtasks with structural, reviewable
 receipts.
 
+Completed:
+
+- Add count-limited migration for generated shiplog-style
+  `policy/no-panic-baseline.toml` into temporary `baseline_debt` entries.
+
 Planned work:
 
 - Syntax scanner for method calls and macros.

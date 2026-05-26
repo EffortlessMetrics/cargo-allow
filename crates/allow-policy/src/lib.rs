@@ -74,6 +74,8 @@ struct AllowEntryToml {
     evidence: Vec<String>,
     #[serde(default, deserialize_with = "string_or_vec")]
     links: Vec<String>,
+    #[serde(alias = "count")]
+    occurrence_limit: Option<u32>,
     created: Option<String>,
     review_after: Option<String>,
     expires: Option<String>,
@@ -256,6 +258,7 @@ impl AllowEntryToml {
             reason: self.reason.unwrap_or_default(),
             evidence: self.evidence,
             links: self.links,
+            occurrence_limit: self.occurrence_limit,
             lifecycle: Lifecycle {
                 created: self.created,
                 review_after: self.review_after,
@@ -347,6 +350,12 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
         {
             return Err(CargoAllowError::new(format!(
                 "{} unsafe entry missing evidence",
+                entry.id
+            )));
+        }
+        if entry.occurrence_limit == Some(0) {
+            return Err(CargoAllowError::new(format!(
+                "{} occurrence_limit must be greater than zero",
                 entry.id
             )));
         }
@@ -572,6 +581,9 @@ pub fn render_policy(cfg: &AllowConfig) -> String {
         if !entry.links.is_empty() {
             out.push_str(&format!("links = [{}]\n", render_array(&entry.links)));
         }
+        if let Some(limit) = entry.occurrence_limit {
+            out.push_str(&format!("occurrence_limit = {limit}\n"));
+        }
         if let Some(created) = &entry.lifecycle.created {
             out.push_str(&format!("created = \"{}\"\n", escape_toml(created)));
         }
@@ -765,6 +777,7 @@ mod tests {
                 classification = "legacy"
                 explanation = "legacy reason field"
                 covered_by = "test:legacy"
+                count = 2
                 expires = "2026-08-01"
 
                 [allow.selector]
@@ -782,6 +795,7 @@ mod tests {
             .unwrap_or_else(|| std::panic::panic_any("expected one allow entry"));
         assert_eq!(entry.reason, "legacy reason field");
         assert_eq!(entry.evidence, vec!["test:legacy"]);
+        assert_eq!(entry.occurrence_limit, Some(2));
         assert_eq!(entry.selector.ast_kind.as_deref(), Some("macro_call"));
         assert_eq!(entry.selector.macro_name.as_deref(), Some("panic"));
         assert_eq!(entry.selector.line_hint, Some(12));
@@ -823,6 +837,74 @@ mod tests {
         );
 
         assert!(err.contains("invalid expires date"));
+    }
+
+    #[test]
+    fn renders_and_parses_occurrence_limit() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(AllowEntry {
+            id: "allow-counted".to_string(),
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            path: Some(PathBuf::from("src/lib.rs")),
+            glob: None,
+            owner: "core".to_string(),
+            classification: "baseline_debt".to_string(),
+            reason: "Generated baseline debt.".to_string(),
+            evidence: Vec::new(),
+            links: Vec::new(),
+            occurrence_limit: Some(3),
+            lifecycle: Lifecycle {
+                created: Some("2026-05-26".to_string()),
+                review_after: None,
+                expires: Some("2026-08-01".to_string()),
+            },
+            selector: Selector {
+                ast_kind: Some("method_call".to_string()),
+                callee: Some("unwrap".to_string()),
+                ..Selector::default()
+            },
+            last_seen: None,
+        });
+
+        let rendered = render_policy(&cfg);
+        assert!(rendered.contains("occurrence_limit = 3"));
+        let reparsed = parse_policy(&rendered)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("rendered policy parses: {err}")));
+        assert_eq!(
+            reparsed
+                .allow
+                .first()
+                .and_then(|entry| entry.occurrence_limit),
+            Some(3)
+        );
+    }
+
+    #[test]
+    fn rejects_zero_occurrence_limit() {
+        let err = parse_err(
+            r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-zero"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "baseline_debt"
+                reason = "Generated baseline debt."
+                occurrence_limit = 0
+                created = "2026-05-26"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+        );
+
+        assert!(
+            err.to_string()
+                .contains("occurrence_limit must be greater than zero")
+        );
     }
 
     #[test]

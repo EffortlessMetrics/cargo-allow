@@ -1,6 +1,7 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, LastSeen,
     Lifecycle, Requirements, Selector, WorkspaceConfig, glob_matches, normalize_path,
+    normalize_snippet, stable_hash_hex,
 };
 use allow_policy::{parse_policy, validate_policy};
 use std::collections::BTreeSet;
@@ -12,6 +13,7 @@ use toml::Value;
 const LEGACY_POLICY_FILES: &[&str] = &[
     "non-rust-allowlist.toml",
     "generated-allowlist.toml",
+    "no-panic-baseline.toml",
     "executable-allowlist.toml",
     "workflow-allowlist.toml",
     "dependency-surface-allowlist.toml",
@@ -32,6 +34,12 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
     {
         let rules = parse_generated_rules(&table)?;
         return config_from_generated_rules(&table, &rules);
+    }
+    if let Some(table) = legacy_table(&text)?
+        && table.get("policy").and_then(Value::as_str) == Some("no-panic-baseline")
+    {
+        let entries = parse_no_panic_baseline_entries(&table)?;
+        return config_from_no_panic_baseline_entries(&table, &entries);
     }
     if let Some(table) = legacy_table(&text)?
         && table.get("policy").and_then(Value::as_str) == Some("executable-allowlist")
@@ -384,7 +392,7 @@ pub fn network_findings_from_config(cfg: &AllowConfig) -> Vec<Finding> {
 }
 
 pub fn migration_notes() -> &'static str {
-    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, executable, workflow, dependency-surface, process, and network allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns; network compat validates retained network policy entries and does not scan source code or runtime traffic."
+    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, no-panic-baseline, executable, workflow, dependency-surface, process, and network allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; no-panic baseline migration emits count-limited baseline_debt entries; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns; network compat validates retained network policy entries and does not scan source code or runtime traffic."
 }
 
 fn read_policy(path: &Path) -> CargoAllowResult<String> {
@@ -425,6 +433,17 @@ struct LegacyGeneratedRule {
     regenerate_command: Option<String>,
     created: Option<String>,
     expires: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct LegacyNoPanicBaselineEntry {
+    index: usize,
+    path: String,
+    family: String,
+    selector_kind: String,
+    selector_callee: String,
+    snippet: String,
+    count: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -599,6 +618,45 @@ fn parse_generated_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyG
         regenerate_command: string_field(table, "regenerate_command"),
         created: string_field(table, "created"),
         expires: normalize_legacy_expires(string_field(table, "expires")),
+    })
+}
+
+fn parse_no_panic_baseline_entries(
+    table: &toml::Table,
+) -> CargoAllowResult<Vec<LegacyNoPanicBaselineEntry>> {
+    let entries = table
+        .get("entry")
+        .and_then(Value::as_array)
+        .ok_or_else(|| CargoAllowError::new("no-panic-baseline missing entry records"))?;
+    entries
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| parse_no_panic_baseline_entry(index, entry))
+        .collect()
+}
+
+fn parse_no_panic_baseline_entry(
+    index: usize,
+    entry: &Value,
+) -> CargoAllowResult<LegacyNoPanicBaselineEntry> {
+    let table = entry.as_table().ok_or_else(|| {
+        CargoAllowError::new(format!("no-panic baseline entry {index} is not a table"))
+    })?;
+    let context = format!("no-panic baseline entry {index}");
+    let count = table
+        .get("count")
+        .and_then(Value::as_integer)
+        .filter(|value| *value > 0)
+        .and_then(|value| u32::try_from(value).ok())
+        .ok_or_else(|| CargoAllowError::new(format!("{context} missing count")))?;
+    Ok(LegacyNoPanicBaselineEntry {
+        index,
+        path: required_string_field(table, "path", &context)?,
+        family: required_string_field(table, "family", &context)?,
+        selector_kind: required_string_field(table, "selector_kind", &context)?,
+        selector_callee: required_string_field(table, "selector_callee", &context)?,
+        snippet: required_string_field(table, "snippet", &context)?,
+        count,
     })
 }
 
@@ -793,6 +851,19 @@ fn config_from_generated_rules(
     Ok(cfg)
 }
 
+fn config_from_no_panic_baseline_entries(
+    table: &toml::Table,
+    entries: &[LegacyNoPanicBaselineEntry],
+) -> CargoAllowResult<AllowConfig> {
+    let mut cfg = base_config(table);
+    cfg.allow = entries
+        .iter()
+        .map(entry_from_no_panic_baseline_entry)
+        .collect();
+    validate_policy(&cfg)?;
+    Ok(cfg)
+}
+
 fn config_from_executable_rules(
     table: &toml::Table,
     rules: &[LegacyExecutableRule],
@@ -903,6 +974,7 @@ fn entry_from_rule(rule: &LegacyNonRustRule) -> AllowEntry {
         reason: rule.reason.clone(),
         evidence: Vec::new(),
         links: Vec::new(),
+        occurrence_limit: None,
         lifecycle: lifecycle_from_rule(rule),
         selector: Selector {
             glob: Some(rule.pattern.clone()),
@@ -925,6 +997,7 @@ fn entry_from_finding(rule: &LegacyNonRustRule, finding: &Finding, index: usize)
         reason: rule.reason.clone(),
         evidence: Vec::new(),
         links: vec![format!("legacy-policy:{}", rule.id)],
+        occurrence_limit: None,
         lifecycle: lifecycle_from_rule(rule),
         selector: Selector {
             ast_kind: Some(finding.identity.ast_kind.clone()),
@@ -952,6 +1025,7 @@ fn entry_from_generated_rule(rule: &LegacyGeneratedRule) -> AllowEntry {
         reason: rule.reason.clone(),
         evidence: generated_evidence(rule),
         links: vec![format!("legacy-policy:{}", rule.id)],
+        occurrence_limit: None,
         lifecycle: Lifecycle {
             created: rule.created.clone(),
             review_after: None,
@@ -961,6 +1035,44 @@ fn entry_from_generated_rule(rule: &LegacyGeneratedRule) -> AllowEntry {
             ast_kind: Some("tracked_file".to_string()),
             symbol: Some(path.clone()),
             target_fingerprint: file_fingerprint(Path::new(&path)),
+            glob: Some(path),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
+fn entry_from_no_panic_baseline_entry(rule: &LegacyNoPanicBaselineEntry) -> AllowEntry {
+    let path = normalize_path(&rule.path);
+    let family = cargo_allow_panic_family(&rule.family);
+    let ast_kind = normalize_selector_kind(&rule.selector_kind);
+    let snippet_hash = stable_hash_hex(&normalize_snippet(&rule.snippet));
+    AllowEntry {
+        id: format!("panic-baseline-{:04}", rule.index + 1),
+        kind: FindingKind::Panic,
+        family: Some(family.clone()),
+        path: Some(PathBuf::from(&path)),
+        glob: None,
+        owner: "unowned".to_string(),
+        classification: "baseline_debt".to_string(),
+        reason: "Generated from legacy no-panic baseline; requires human review.".to_string(),
+        evidence: vec![
+            "legacy_policy:no-panic-baseline".to_string(),
+            format!("legacy_selector_callee:{}", rule.selector_callee),
+            format!("baseline_count:{}", rule.count),
+        ],
+        links: vec!["legacy-policy:no-panic-baseline".to_string()],
+        occurrence_limit: Some(rule.count),
+        lifecycle: Lifecycle {
+            created: Some("2026-05-26".to_string()),
+            review_after: None,
+            expires: Some("2026-08-01".to_string()),
+        },
+        selector: Selector {
+            ast_kind: Some(ast_kind.clone()),
+            callee: (ast_kind == "method_call").then(|| family.clone()),
+            macro_name: (ast_kind == "macro_call").then(|| no_panic_macro_name(&rule.family)),
+            normalized_snippet_hash: Some(snippet_hash),
             glob: Some(path),
             ..Selector::default()
         },
@@ -981,6 +1093,7 @@ fn entry_from_executable_rule(rule: &LegacyExecutableRule) -> AllowEntry {
         reason: rule.reason.clone(),
         evidence: executable_evidence(rule),
         links: vec![format!("legacy-policy:{}", rule.id)],
+        occurrence_limit: None,
         lifecycle: Lifecycle {
             created: rule.created.clone(),
             review_after: rule.review_after.clone(),
@@ -1021,6 +1134,7 @@ fn workflow_file_entry(rule: &LegacyWorkflowRule) -> AllowEntry {
         reason: rule.reason.clone(),
         evidence: workflow_evidence(rule),
         links: vec![format!("legacy-policy:workflow:{path}")],
+        occurrence_limit: None,
         lifecycle: lifecycle_from_workflow_rule(rule),
         selector: Selector {
             ast_kind: Some("github_workflow".to_string()),
@@ -1046,6 +1160,7 @@ fn workflow_action_entry(rule: &LegacyWorkflowRule, action: &str) -> AllowEntry 
         reason: rule.reason.clone(),
         evidence: vec![format!("external_action:{action}")],
         links: vec![format!("legacy-policy:workflow:{path}")],
+        occurrence_limit: None,
         lifecycle: lifecycle_from_workflow_rule(rule),
         selector: Selector {
             ast_kind: Some("github_action_uses".to_string()),
@@ -1077,6 +1192,7 @@ fn entry_from_dependency_surface_rule(rule: &LegacyDependencySurfaceRule) -> All
         reason,
         evidence: dependency_surface_evidence(rule),
         links: vec![format!("legacy-policy:{}", rule.id)],
+        occurrence_limit: None,
         lifecycle: Lifecycle {
             created: rule.created.clone(),
             review_after: rule.review_after.clone(),
@@ -1110,6 +1226,7 @@ fn entry_from_process_rule(rule: &LegacyProcessRule) -> AllowEntry {
         reason: rule.reason.clone(),
         evidence: process_evidence(rule),
         links: vec![format!("legacy-policy:{}", rule.id)],
+        occurrence_limit: None,
         lifecycle: Lifecycle {
             created: rule.created.clone(),
             review_after: rule.review_after.clone(),
@@ -1144,6 +1261,7 @@ fn entry_from_network_rule(rule: &LegacyNetworkRule) -> AllowEntry {
         reason: rule.reason.clone(),
         evidence: network_evidence(rule),
         links: vec![format!("legacy-policy:{}", rule.id)],
+        occurrence_limit: None,
         lifecycle: Lifecycle {
             created: rule.created.clone(),
             review_after: rule.review_after.clone(),
@@ -1403,6 +1521,26 @@ fn dependency_surface_family(path: &Path) -> String {
         text if text.ends_with("/Cargo.lock") => "lockfile".to_string(),
         text if text.ends_with("/rust-toolchain.toml") => "toolchain_pin".to_string(),
         _ => "dependency_surface".to_string(),
+    }
+}
+
+fn cargo_allow_panic_family(family: &str) -> String {
+    if family == "panic" {
+        "panic_macro".to_string()
+    } else {
+        family.to_string()
+    }
+}
+
+fn normalize_selector_kind(kind: &str) -> String {
+    kind.replace('-', "_")
+}
+
+fn no_panic_macro_name(family: &str) -> String {
+    if family == "panic" {
+        "panic".to_string()
+    } else {
+        family.to_string()
     }
 }
 
@@ -1687,6 +1825,83 @@ mod tests {
         );
         assert_eq!(entry.lifecycle.expires.as_deref(), Some("never"));
         assert!(entry.evidence.iter().any(|item| item.starts_with("cargo:")));
+    }
+
+    #[test]
+    fn migrates_no_panic_baseline_to_count_limited_baseline_debt() {
+        let policy = no_panic_baseline_fixture_path();
+        let cfg = load_legacy_or_canonical(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("no-panic baseline migrates: {err}"))
+        });
+
+        assert_eq!(cfg.policy, "cargo-allow");
+        assert_eq!(cfg.allow.len(), 2);
+        let unwrap = cfg
+            .allow
+            .iter()
+            .find(|entry| entry.family.as_deref() == Some("unwrap"))
+            .unwrap_or_else(|| std::panic::panic_any("expected unwrap baseline entry"));
+        assert_eq!(unwrap.kind, FindingKind::Panic);
+        assert_eq!(unwrap.classification, "baseline_debt");
+        assert_eq!(unwrap.owner, "unowned");
+        assert_eq!(unwrap.occurrence_limit, Some(2));
+        assert_eq!(unwrap.lifecycle.created.as_deref(), Some("2026-05-26"));
+        assert_eq!(unwrap.lifecycle.expires.as_deref(), Some("2026-08-01"));
+        assert_eq!(unwrap.selector.ast_kind.as_deref(), Some("method_call"));
+        assert_eq!(unwrap.selector.callee.as_deref(), Some("unwrap"));
+        assert!(unwrap.selector.normalized_snippet_hash.is_some());
+        assert!(
+            unwrap
+                .evidence
+                .iter()
+                .any(|item| item == "baseline_count:2")
+        );
+
+        let panic = cfg
+            .allow
+            .iter()
+            .find(|entry| entry.family.as_deref() == Some("panic_macro"))
+            .unwrap_or_else(|| std::panic::panic_any("expected panic macro baseline entry"));
+        assert_eq!(panic.selector.ast_kind.as_deref(), Some("macro_call"));
+        assert_eq!(panic.selector.macro_name.as_deref(), Some("panic"));
+        assert_eq!(panic.occurrence_limit, Some(1));
+    }
+
+    #[test]
+    fn no_panic_baseline_occurrence_limit_prevents_unbounded_matches() {
+        let policy = no_panic_baseline_fixture_path();
+        let cfg = load_legacy_or_canonical(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("no-panic baseline migrates: {err}"))
+        });
+        let snippet = ["let value = maybe.", "unwrap();"].concat();
+        let finding = panic_finding(
+            "src/lib.rs",
+            "unwrap",
+            "method_call",
+            Some("unwrap"),
+            None,
+            &snippet,
+        );
+
+        let outcomes = allow_match::evaluate(
+            &cfg,
+            &[finding.clone(), finding.clone(), finding],
+            allow_match::CheckMode::NoNew,
+        );
+
+        assert_eq!(
+            outcomes
+                .iter()
+                .filter(|outcome| outcome.status == allow_core::MatchStatus::Matched)
+                .count(),
+            2
+        );
+        assert!(
+            outcomes
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::New
+                    && outcome.message.contains("occurrence_limit exceeded"))
+        );
     }
 
     #[test]
@@ -2297,6 +2512,13 @@ mod tests {
         path
     }
 
+    fn no_panic_baseline_fixture_path() -> PathBuf {
+        let path = fixture_dir().join("no-panic-baseline.toml");
+        fs::write(&path, no_panic_baseline_fixture_text())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+        path
+    }
+
     fn executable_policy_fixture_path() -> PathBuf {
         let path = fixture_dir().join("executable-allowlist.toml");
         fs::write(&path, executable_policy_fixture_text())
@@ -2496,6 +2718,37 @@ expires = "permanent"
         text
     }
 
+    fn no_panic_baseline_fixture_text() -> String {
+        let unwrap_snippet = ["let value = maybe.", "unwrap();"].concat();
+        let panic_snippet = ["panic!", "(\"bad\");"].concat();
+        format!(
+            r#"schema_version = 1
+policy = "no-panic-baseline"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[policy_config]
+mode = "no-new-debt"
+
+[[entry]]
+path = "src/lib.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "{unwrap_snippet}"
+count = 2
+
+[[entry]]
+path = "src/lib.rs"
+family = "panic"
+selector_kind = "macro-call"
+selector_callee = "panic"
+snippet = '{panic_snippet}'
+count = 1
+"#,
+        )
+    }
+
     fn executable_policy_fixture_text() -> String {
         let mut text = String::from(
             r#"schema_version = 1
@@ -2688,6 +2941,28 @@ expires = "permanent"
             kind: FindingKind::PolicyException,
             family: Some("network_destination".to_string()),
             path: PathBuf::from("policy/network-allowlist.toml"),
+            span: Some(Span { line: 1, column: 1 }),
+            identity,
+            message: String::new(),
+        }
+    }
+
+    fn panic_finding(
+        path: &str,
+        family: &str,
+        ast_kind: &str,
+        callee: Option<&str>,
+        macro_name: Option<&str>,
+        snippet: &str,
+    ) -> Finding {
+        let mut identity = StructuralIdentity::new("rust", ast_kind);
+        identity.callee = callee.map(str::to_string);
+        identity.macro_name = macro_name.map(str::to_string);
+        identity.normalized_snippet_hash = Some(stable_hash_hex(&normalize_snippet(snippet)));
+        Finding {
+            kind: FindingKind::Panic,
+            family: Some(family.to_string()),
+            path: PathBuf::from(path),
             span: Some(Span { line: 1, column: 1 }),
             identity,
             message: String::new(),
