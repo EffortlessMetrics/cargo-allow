@@ -345,7 +345,21 @@ mod tests {
     #[test]
     fn snippet_hash_selector_rejects_different_source() {
         let finding = finding_with_hash("fnv1a64:actual");
-        let entry = AllowEntry {
+        let entry = entry_with_hash("fnv1a64:expected");
+
+        assert_eq!(score_match(&entry, &finding), None);
+    }
+
+    #[test]
+    fn snippet_hash_selector_accepts_same_source() {
+        let finding = finding_with_hash("fnv1a64:actual");
+        let entry = entry_with_hash("fnv1a64:actual");
+
+        assert!(score_match(&entry, &finding).is_some());
+    }
+
+    fn entry_with_hash(hash: &str) -> AllowEntry {
+        AllowEntry {
             id: "allow-1".to_string(),
             kind: FindingKind::Unsafe,
             family: Some("unsafe_fn".to_string()),
@@ -364,13 +378,11 @@ mod tests {
             selector: Selector {
                 ast_kind: Some("unsafe_fn".to_string()),
                 container: Some("scan_line".to_string()),
-                normalized_snippet_hash: Some("fnv1a64:expected".to_string()),
+                normalized_snippet_hash: Some(hash.to_string()),
                 ..Selector::default()
             },
             last_seen: None,
-        };
-
-        assert_eq!(score_match(&entry, &finding), None);
+        }
     }
 
     fn finding_with_hash(hash: &str) -> Finding {

@@ -127,6 +127,7 @@ mod tests {
             Path::new("target/debug/x"),
             &opts.ignored
         ));
+        assert!(super::is_ignored(Path::new(".git/config"), &opts.ignored));
     }
 
     #[test]
@@ -136,6 +137,7 @@ mod tests {
             Path::new(".github/workflows/ci.yml"),
             &opts.ignored
         ));
+        assert!(!super::is_ignored(Path::new(".gitignore"), &opts.ignored));
     }
 
     #[cfg(unix)]
