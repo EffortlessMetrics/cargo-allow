@@ -1,4 +1,4 @@
-use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
+use allow_core::{Finding, FindingKind, MatchOutcome, MatchStatus, json_escape, normalize_path};
 use std::collections::BTreeMap;
 
 pub const REPORT_SCHEMA_VERSION: u32 = 1;
@@ -56,6 +56,7 @@ pub fn render_human(
     if outcomes.is_empty() {
         out.push_str("  no outcomes\n");
     }
+    render_non_rust_human(findings, outcomes, &mut out);
     out.push('\n');
     for outcome in outcomes
         .iter()
@@ -105,17 +106,21 @@ pub fn render_markdown(
         let count = summary.count(status);
         out.push_str(&format!("| `{}` | {} |\n", status.as_str(), count));
     }
-    out.push_str("\n## Non-matched outcomes\n\n");
-    for outcome in outcomes
+    render_non_rust_markdown(findings, outcomes, &mut out);
+    let non_matched = outcomes
         .iter()
         .filter(|o| o.status != MatchStatus::Matched)
         .take(100)
-    {
-        out.push_str(&format!(
-            "- `{}`: {}\n",
-            outcome.status.as_str(),
-            outcome.message
-        ));
+        .collect::<Vec<_>>();
+    if !non_matched.is_empty() {
+        out.push_str("\n## Non-matched outcomes\n\n");
+        for outcome in non_matched {
+            out.push_str(&format!(
+                "- `{}`: {}\n",
+                outcome.status.as_str(),
+                outcome.message
+            ));
+        }
     }
     out.push_str("\n> Claim boundary: source syntax only; macro expansion and type information were not analyzed.\n");
     out
@@ -256,9 +261,171 @@ fn render_counts_fields(summary: &Summary, indent: &str) -> String {
         .collect::<String>()
 }
 
+#[derive(Debug, Default)]
+struct FilePosture {
+    total: usize,
+    by_family: BTreeMap<String, usize>,
+    matched: usize,
+    new: usize,
+    generated: usize,
+}
+
+impl FilePosture {
+    fn from_report(findings: &[Finding], outcomes: &[MatchOutcome]) -> Self {
+        let mut posture = Self::default();
+        for finding in findings.iter().filter(|finding| is_file_finding(finding)) {
+            posture.total += 1;
+            if finding.kind == FindingKind::GeneratedCode {
+                posture.generated += 1;
+            }
+            *posture
+                .by_family
+                .entry(
+                    finding
+                        .family
+                        .clone()
+                        .unwrap_or_else(|| "unknown".to_string()),
+                )
+                .or_insert(0) += 1;
+        }
+        for outcome in outcomes {
+            let applies_to_file = outcome
+                .finding_index
+                .and_then(|idx| findings.get(idx))
+                .map(is_file_finding)
+                .unwrap_or(false);
+            match outcome.status {
+                MatchStatus::Matched if applies_to_file => posture.matched += 1,
+                MatchStatus::New if applies_to_file => posture.new += 1,
+                _ => {}
+            }
+        }
+        posture
+    }
+
+    fn has_files(&self) -> bool {
+        self.total > 0
+    }
+}
+
+fn render_non_rust_human(findings: &[Finding], outcomes: &[MatchOutcome], out: &mut String) {
+    let posture = FilePosture::from_report(findings, outcomes);
+    if !posture.has_files() {
+        return;
+    }
+    out.push('\n');
+    out.push_str("Non-Rust file inventory:\n");
+    out.push_str(&format!("  files scanned              {}\n", posture.total));
+    out.push_str(&format!(
+        "  matched                    {}\n",
+        posture.matched
+    ));
+    out.push_str(&format!("  new                        {}\n", posture.new));
+    out.push_str(&format!(
+        "  generated                  {}\n",
+        posture.generated
+    ));
+    if !posture.by_family.is_empty() {
+        out.push_str("  by family:\n");
+        for (family, count) in posture.by_family {
+            out.push_str(&format!("    {:24} {}\n", family, count));
+        }
+    }
+    let rows = non_rust_file_rows(findings, outcomes);
+    if !rows.is_empty() {
+        out.push_str("  files:\n");
+        for row in rows.into_iter().take(40) {
+            out.push_str(&format!(
+                "    {:12} {:24} {}\n",
+                row.status, row.family, row.path
+            ));
+        }
+    }
+}
+
+fn render_non_rust_markdown(findings: &[Finding], outcomes: &[MatchOutcome], out: &mut String) {
+    let posture = FilePosture::from_report(findings, outcomes);
+    if !posture.has_files() {
+        return;
+    }
+    out.push_str("\n## Non-Rust File Inventory\n\n");
+    out.push_str("| Metric | Count |\n|---|---:|\n");
+    out.push_str(&format!("| Files scanned | {} |\n", posture.total));
+    out.push_str(&format!("| Matched | {} |\n", posture.matched));
+    out.push_str(&format!("| New | {} |\n", posture.new));
+    out.push_str(&format!("| Generated | {} |\n", posture.generated));
+    if !posture.by_family.is_empty() {
+        out.push_str("\n| Family | Count |\n|---|---:|\n");
+        for (family, count) in posture.by_family {
+            out.push_str(&format!("| `{}` | {} |\n", markdown_cell(&family), count));
+        }
+    }
+    let rows = non_rust_file_rows(findings, outcomes);
+    if !rows.is_empty() {
+        out.push_str("\n| Status | Family | Path |\n|---|---|---|\n");
+        for row in rows.into_iter().take(60) {
+            out.push_str(&format!(
+                "| `{}` | `{}` | `{}` |\n",
+                markdown_cell(row.status),
+                markdown_cell(&row.family),
+                markdown_cell(&row.path)
+            ));
+        }
+    }
+}
+
+fn markdown_cell(value: &str) -> String {
+    value.replace('|', "\\|").replace('`', "\\`")
+}
+
+fn is_file_finding(finding: &Finding) -> bool {
+    matches!(
+        finding.kind,
+        FindingKind::NonRustFile | FindingKind::GeneratedCode
+    )
+}
+
+#[derive(Debug)]
+struct FileRow {
+    status: &'static str,
+    family: String,
+    path: String,
+}
+
+fn non_rust_file_rows(findings: &[Finding], outcomes: &[MatchOutcome]) -> Vec<FileRow> {
+    let mut status_by_index = BTreeMap::new();
+    for outcome in outcomes {
+        if let Some(index) = outcome.finding_index {
+            status_by_index.insert(index, outcome.status.as_str());
+        }
+    }
+    let mut rows = findings
+        .iter()
+        .enumerate()
+        .filter(|(_, finding)| is_file_finding(finding))
+        .map(|(index, finding)| FileRow {
+            status: status_by_index.get(&index).copied().unwrap_or("unmatched"),
+            family: finding
+                .family
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string()),
+            path: normalize_path(&finding.path),
+        })
+        .collect::<Vec<_>>();
+    rows.sort_by(|left, right| {
+        left.path
+            .cmp(&right.path)
+            .then_with(|| left.family.cmp(&right.family))
+            .then_with(|| left.status.cmp(right.status))
+    });
+    rows
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use allow_core::{Finding, FindingKind, Span, StructuralIdentity};
+    use std::path::PathBuf;
 
     #[test]
     fn json_contains_claim_boundary() {
@@ -292,5 +459,71 @@ mod tests {
         let receipt_schema = include_str!("../../../docs/schemas/receipt.schema.json");
         assert!(report_schema.contains(REPORT_SCHEMA_ID));
         assert!(receipt_schema.contains(RECEIPT_SCHEMA_ID));
+    }
+
+    #[test]
+    fn human_report_summarizes_non_rust_inventory() {
+        let findings = vec![
+            file_finding(FindingKind::NonRustFile, "configuration", ".gitignore"),
+            file_finding(
+                FindingKind::GeneratedCode,
+                "generated_code",
+                "schemas/api.yaml",
+            ),
+        ];
+        let outcomes = vec![
+            outcome(MatchStatus::Matched, Some(0)),
+            outcome(MatchStatus::New, Some(1)),
+        ];
+
+        let text = render_human("audit", &findings, &outcomes, false);
+
+        assert!(text.contains("Non-Rust file inventory:"));
+        assert!(text.contains("files scanned              2"));
+        assert!(text.contains("new                        1"));
+        assert!(text.contains("generated                  1"));
+        assert!(text.contains("configuration"));
+        assert!(text.contains("generated_code"));
+        assert!(text.contains("    matched      configuration            .gitignore"));
+        assert!(text.contains("schemas/api.yaml"));
+    }
+
+    #[test]
+    fn markdown_report_summarizes_non_rust_inventory() {
+        let findings = vec![file_finding(
+            FindingKind::NonRustFile,
+            "ci_declarative",
+            ".github/workflows/ci.yml",
+        )];
+        let outcomes = vec![outcome(MatchStatus::Matched, Some(0))];
+
+        let text = render_markdown("audit", &findings, &outcomes, false);
+
+        assert!(text.contains("## Non-Rust File Inventory"));
+        assert!(text.contains("| Files scanned | 1 |"));
+        assert!(text.contains("| `ci_declarative` | 1 |"));
+        assert!(text.contains("| `matched` | `ci_declarative` | `.github/workflows/ci.yml` |"));
+        assert!(!text.contains("## Non-matched outcomes"));
+    }
+
+    fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
+        Finding {
+            kind,
+            family: Some(family.to_string()),
+            path: PathBuf::from(path),
+            span: Some(Span { line: 1, column: 1 }),
+            identity: StructuralIdentity::new("file", "tracked_file"),
+            message: "tracked non-Rust file".to_string(),
+        }
+    }
+
+    fn outcome(status: MatchStatus, finding_index: Option<usize>) -> MatchOutcome {
+        MatchOutcome {
+            status,
+            allow_id: None,
+            finding_index,
+            message: String::new(),
+            score: 0,
+        }
     }
 }

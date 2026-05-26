@@ -13,9 +13,6 @@ Completed:
 - Add CI gates and the generated no-new baseline.
 - Harden path normalization, inventory traversal, indexing heuristics, and
   snippet-hash matching regressions.
-
-Next:
-
 - Define the product lane and claim boundaries in docs.
 - Stabilize current JSON reports and receipt schemas.
 - Replace handwritten TOML parsing with typed serde/toml policy loading.
@@ -24,6 +21,11 @@ Next:
 - Use cargo_metadata for workspace discovery.
 - Harden non-Rust classification.
 - Support generated-code and ignored-surface policy.
+- Improve human and Markdown non-Rust audit output.
+
+Next:
+
+- Dogfood non-Rust governance against an existing bespoke file-policy xtask.
 
 ## Phase 2: Replace Temporary Foundations
 
@@ -39,7 +41,6 @@ Goal: ship the first low-parser-risk lane that real repositories can adopt.
 
 Planned PRs:
 
-- Improve non-Rust audit output.
 - Dogfood against an existing bespoke file-policy xtask.
 
 ## Phase 4: Build Structural Identity
