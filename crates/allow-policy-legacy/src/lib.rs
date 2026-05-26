@@ -35,6 +35,12 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
         let rules = parse_workflow_rules(&table)?;
         return config_from_workflow_rules(&table, &rules);
     }
+    if let Some(table) = legacy_table(&text)?
+        && table.get("policy").and_then(Value::as_str) == Some("dependency-surface-allowlist")
+    {
+        let rules = parse_dependency_surface_rules(&table)?;
+        return config_from_dependency_surface_rules(&table, &rules);
+    }
     parse_policy(&text)
 }
 
@@ -102,6 +108,23 @@ pub fn load_workflow_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<A
     config_from_workflow_rules(&table, &rules)
 }
 
+pub fn load_dependency_surface_compat_config(
+    path: impl AsRef<Path>,
+) -> CargoAllowResult<AllowConfig> {
+    let text = read_policy(path.as_ref())?;
+    let table = legacy_table(&text)?.ok_or_else(|| {
+        CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
+    })?;
+    if table.get("policy").and_then(Value::as_str) != Some("dependency-surface-allowlist") {
+        return Err(CargoAllowError::new(format!(
+            "{} is not a dependency-surface-allowlist policy",
+            path.as_ref().display()
+        )));
+    }
+    let rules = parse_dependency_surface_rules(&table)?;
+    config_from_dependency_surface_rules(&table, &rules)
+}
+
 pub fn generated_findings_from_gitattributes(
     root: impl AsRef<Path>,
 ) -> CargoAllowResult<Vec<Finding>> {
@@ -132,6 +155,28 @@ pub fn executable_findings_from_git(root: impl AsRef<Path>) -> CargoAllowResult<
     let text = String::from_utf8(output.stdout)
         .map_err(|e| CargoAllowError::new(format!("git ls-files output was not UTF-8: {e}")))?;
     Ok(executable_findings_from_git_stage(&text))
+}
+
+fn git_ls_files(root: impl AsRef<Path>) -> CargoAllowResult<Vec<PathBuf>> {
+    let output = Command::new("git")
+        .args(["ls-files"])
+        .current_dir(root.as_ref())
+        .output()
+        .map_err(|e| CargoAllowError::new(format!("failed to run git ls-files: {e}")))?;
+    if !output.status.success() {
+        return Err(CargoAllowError::new(format!(
+            "git ls-files failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
+    }
+    let text = String::from_utf8(output.stdout)
+        .map_err(|e| CargoAllowError::new(format!("git ls-files output was not UTF-8: {e}")))?;
+    Ok(text
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(PathBuf::from)
+        .collect())
 }
 
 pub fn workflow_findings_from_files(root: impl AsRef<Path>) -> CargoAllowResult<Vec<Finding>> {
@@ -184,8 +229,29 @@ pub fn workflow_findings_from_files(root: impl AsRef<Path>) -> CargoAllowResult<
     Ok(findings)
 }
 
+pub fn dependency_surface_findings_from_git(
+    root: impl AsRef<Path>,
+    cfg: &AllowConfig,
+) -> CargoAllowResult<Vec<Finding>> {
+    let tracked = git_ls_files(root)?;
+    let mut paths = BTreeSet::new();
+    for entry in &cfg.allow {
+        if entry.kind != FindingKind::PolicyException
+            || entry.family.as_deref() != Some("dependency_surface")
+        {
+            continue;
+        }
+        for path in &tracked {
+            if dependency_entry_matches_path(entry, path) {
+                paths.insert(path.clone());
+            }
+        }
+    }
+    Ok(paths.into_iter().map(dependency_surface_finding).collect())
+}
+
 pub fn migration_notes() -> &'static str {
-    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, executable, and workflow allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml."
+    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, executable, workflow, and dependency-surface allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check."
 }
 
 fn read_policy(path: &Path) -> CargoAllowResult<String> {
@@ -249,6 +315,21 @@ struct LegacyWorkflowRule {
     secrets_used: Vec<String>,
     external_actions: Vec<String>,
     duplicate_of_lane: Option<String>,
+    created: Option<String>,
+    review_after: Option<String>,
+    expires: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct LegacyDependencySurfaceRule {
+    id: String,
+    pattern: String,
+    is_glob: bool,
+    surface: String,
+    owner: String,
+    reason: String,
+    broad_glob_reason: Option<String>,
+    dep_count_at_baseline: Option<i64>,
     created: Option<String>,
     review_after: Option<String>,
     expires: Option<String>,
@@ -423,6 +504,52 @@ fn parse_workflow_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyWo
     })
 }
 
+fn parse_dependency_surface_rules(
+    table: &toml::Table,
+) -> CargoAllowResult<Vec<LegacyDependencySurfaceRule>> {
+    let entries = table
+        .get("allow")
+        .and_then(Value::as_array)
+        .ok_or_else(|| {
+            CargoAllowError::new("dependency-surface-allowlist missing allow entries")
+        })?;
+    entries
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| parse_dependency_surface_rule(index, entry))
+        .collect()
+}
+
+fn parse_dependency_surface_rule(
+    index: usize,
+    entry: &Value,
+) -> CargoAllowResult<LegacyDependencySurfaceRule> {
+    let table = entry.as_table().ok_or_else(|| {
+        CargoAllowError::new(format!(
+            "dependency-surface allow entry {index} is not a table"
+        ))
+    })?;
+    let id = string_field(table, "id").unwrap_or_else(|| format!("legacy-dependency-{index:04}"));
+    let pattern = string_field(table, "path")
+        .or_else(|| string_field(table, "glob"))
+        .ok_or_else(|| CargoAllowError::new(format!("{id} missing path or glob")))?;
+    Ok(LegacyDependencySurfaceRule {
+        id,
+        is_glob: has_glob_meta(&pattern),
+        pattern,
+        surface: string_field(table, "surface").unwrap_or_else(|| "dependency_surface".to_string()),
+        owner: string_field(table, "owner").unwrap_or_default(),
+        reason: string_field(table, "reason").unwrap_or_default(),
+        broad_glob_reason: string_field(table, "broad_glob_reason"),
+        dep_count_at_baseline: table
+            .get("dep_count_at_baseline")
+            .and_then(Value::as_integer),
+        created: string_field(table, "created"),
+        review_after: string_field(table, "review_after"),
+        expires: normalize_legacy_expires(string_field(table, "expires")),
+    })
+}
+
 fn config_from_non_rust_rules(
     table: &toml::Table,
     rules: &[LegacyNonRustRule],
@@ -459,6 +586,19 @@ fn config_from_workflow_rules(
 ) -> CargoAllowResult<AllowConfig> {
     let mut cfg = base_config(table);
     cfg.allow = rules.iter().flat_map(entries_from_workflow_rule).collect();
+    validate_policy(&cfg)?;
+    Ok(cfg)
+}
+
+fn config_from_dependency_surface_rules(
+    table: &toml::Table,
+    rules: &[LegacyDependencySurfaceRule],
+) -> CargoAllowResult<AllowConfig> {
+    let mut cfg = base_config(table);
+    cfg.allow = rules
+        .iter()
+        .map(entry_from_dependency_surface_rule)
+        .collect();
     validate_policy(&cfg)?;
     Ok(cfg)
 }
@@ -675,6 +815,40 @@ fn workflow_action_entry(rule: &LegacyWorkflowRule, action: &str) -> AllowEntry 
     }
 }
 
+fn entry_from_dependency_surface_rule(rule: &LegacyDependencySurfaceRule) -> AllowEntry {
+    let pattern = normalize_path(&rule.pattern);
+    let reason = match &rule.broad_glob_reason {
+        Some(scope_reason) if !scope_reason.trim().is_empty() => {
+            format!("{} Scope note: {scope_reason}", rule.reason)
+        }
+        _ => rule.reason.clone(),
+    };
+    AllowEntry {
+        id: rule.id.clone(),
+        kind: FindingKind::PolicyException,
+        family: Some("dependency_surface".to_string()),
+        path: (!rule.is_glob).then(|| PathBuf::from(&pattern)),
+        glob: rule.is_glob.then(|| pattern.clone()),
+        owner: rule.owner.clone(),
+        classification: rule.surface.clone(),
+        reason,
+        evidence: dependency_surface_evidence(rule),
+        links: vec![format!("legacy-policy:{}", rule.id)],
+        lifecycle: Lifecycle {
+            created: rule.created.clone(),
+            review_after: rule.review_after.clone(),
+            expires: rule.expires.clone(),
+        },
+        selector: Selector {
+            ast_kind: Some("dependency_surface".to_string()),
+            symbol: (!rule.is_glob).then(|| pattern.clone()),
+            glob: Some(pattern),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
 fn generated_evidence(rule: &LegacyGeneratedRule) -> Vec<String> {
     let mut evidence = Vec::new();
     if let Some(generator) = &rule.generator {
@@ -707,6 +881,14 @@ fn workflow_evidence(rule: &LegacyWorkflowRule) -> Vec<String> {
     );
     if let Some(lane) = &rule.duplicate_of_lane {
         evidence.push(format!("duplicate_of_lane:{lane}"));
+    }
+    evidence
+}
+
+fn dependency_surface_evidence(rule: &LegacyDependencySurfaceRule) -> Vec<String> {
+    let mut evidence = vec![format!("surface:{}", rule.surface)];
+    if let Some(count) = rule.dep_count_at_baseline {
+        evidence.push(format!("dep_count_at_baseline:{count}"));
     }
     evidence
 }
@@ -812,6 +994,51 @@ fn workflow_action_finding(path: PathBuf, action: String) -> Finding {
     }
 }
 
+fn dependency_surface_finding(path: PathBuf) -> Finding {
+    let normalized = normalize_path(&path);
+    let mut identity = allow_core::StructuralIdentity::new("file", "dependency_surface");
+    identity.symbol = Some(normalized.clone());
+    identity.target_fingerprint = Some(dependency_surface_family(&path));
+    Finding {
+        kind: FindingKind::PolicyException,
+        family: Some("dependency_surface".to_string()),
+        path,
+        span: Some(allow_core::Span { line: 1, column: 1 }),
+        identity,
+        message: format!("tracked dependency surface {normalized}"),
+    }
+}
+
+fn dependency_surface_family(path: &Path) -> String {
+    let normalized = normalize_path(path);
+    match normalized.as_str() {
+        "Cargo.toml" => "workspace_manifest".to_string(),
+        "Cargo.lock" => "workspace_lockfile".to_string(),
+        "rust-toolchain.toml" => "toolchain_pin".to_string(),
+        "deny.toml" => "policy_config".to_string(),
+        text if text.ends_with("/Cargo.toml") => "crate_manifest".to_string(),
+        text if text.ends_with("/Cargo.lock") => "lockfile".to_string(),
+        text if text.ends_with("/rust-toolchain.toml") => "toolchain_pin".to_string(),
+        _ => "dependency_surface".to_string(),
+    }
+}
+
+fn dependency_entry_matches_path(entry: &AllowEntry, path: &Path) -> bool {
+    entry
+        .path
+        .as_ref()
+        .is_some_and(|scope| normalize_path(scope) == normalize_path(path))
+        || entry
+            .glob
+            .as_ref()
+            .is_some_and(|glob| glob_matches(glob, path))
+        || entry
+            .selector
+            .glob
+            .as_ref()
+            .is_some_and(|glob| glob_matches(glob, path))
+}
+
 fn extract_workflow_uses(line: &str) -> Option<String> {
     let trimmed = line.trim().trim_start_matches('-').trim_start();
     let stripped = trimmed.strip_prefix("uses:")?;
@@ -888,6 +1115,12 @@ fn string_array_field(table: &toml::Table, field: &str) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+fn has_glob_meta(input: &str) -> bool {
+    input
+        .chars()
+        .any(|ch| matches!(ch, '*' | '?' | '[' | ']' | '{' | '}' | ','))
 }
 
 fn normalize_legacy_expires(expires: Option<String>) -> Option<String> {
@@ -1263,6 +1496,85 @@ mod tests {
         );
     }
 
+    #[test]
+    fn migrates_dependency_surface_allowlist_to_policy_exception_entries() {
+        let policy = dependency_policy_fixture_path();
+        let cfg = load_legacy_or_canonical(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("dependency policy migrates: {err}"))
+        });
+
+        assert_eq!(cfg.policy, "cargo-allow");
+        assert_eq!(cfg.allow.len(), 2);
+        let workspace = cfg
+            .allow
+            .iter()
+            .find(|entry| entry.id == "dep-workspace-cargo-toml")
+            .unwrap_or_else(|| std::panic::panic_any("expected workspace manifest entry"));
+        assert_eq!(workspace.kind, FindingKind::PolicyException);
+        assert_eq!(workspace.family.as_deref(), Some("dependency_surface"));
+        assert_eq!(workspace.classification, "workspace_manifest");
+        assert_eq!(workspace.path.as_deref(), Some(Path::new("Cargo.toml")));
+        assert_eq!(workspace.lifecycle.expires.as_deref(), Some("never"));
+        assert!(
+            workspace
+                .evidence
+                .iter()
+                .any(|item| item == "dep_count_at_baseline:22")
+        );
+
+        let crates = cfg
+            .allow
+            .iter()
+            .find(|entry| entry.id == "dep-crate-cargo-toml")
+            .unwrap_or_else(|| std::panic::panic_any("expected crate glob entry"));
+        assert_eq!(crates.glob.as_deref(), Some("crates/*/Cargo.toml"));
+        assert!(crates.reason.contains("Scope note:"));
+    }
+
+    #[test]
+    fn dependency_surface_compat_preserves_matched_new_and_stale_drift() {
+        let policy = dependency_policy_fixture_path();
+        let cfg = load_dependency_surface_compat_config(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("dependency compat config loads: {err}"))
+        });
+
+        let matched = allow_match::evaluate(
+            &cfg,
+            &[
+                dependency_surface_finding(PathBuf::from("Cargo.toml")),
+                dependency_surface_finding(PathBuf::from("crates/core/Cargo.toml")),
+            ],
+            allow_match::CheckMode::NoNew,
+        );
+        assert_eq!(
+            matched
+                .iter()
+                .filter(|outcome| outcome.status == allow_core::MatchStatus::Matched)
+                .count(),
+            2
+        );
+
+        let missing_allow = allow_match::evaluate(
+            &cfg,
+            &[dependency_surface_finding(PathBuf::from(
+                "xtask/Cargo.toml",
+            ))],
+            allow_match::CheckMode::NoNew,
+        );
+        assert!(
+            missing_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::New)
+        );
+
+        let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+        assert!(
+            stale_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::Stale)
+        );
+    }
+
     static NEXT_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
     fn policy_fixture_path() -> PathBuf {
@@ -1289,6 +1601,13 @@ mod tests {
     fn workflow_policy_fixture_path() -> PathBuf {
         let path = fixture_dir().join("workflow-allowlist.toml");
         fs::write(&path, workflow_policy_fixture_text())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+        path
+    }
+
+    fn dependency_policy_fixture_path() -> PathBuf {
+        let path = fixture_dir().join("dependency-surface-allowlist.toml");
+        fs::write(&path, dependency_policy_fixture_text())
             .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
         path
     }
@@ -1456,6 +1775,43 @@ external_actions = [
   "actions/checkout@v6.0.2",
   "Swatinem/rust-cache@v2",
 ]
+created = "2026-05-09"
+expires = "permanent"
+"#,
+        );
+        text
+    }
+
+    fn dependency_policy_fixture_text() -> String {
+        let mut text = String::from(
+            r#"schema_version = 1
+policy = "dependency-surface-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+"#,
+        );
+        push_allow(
+            &mut text,
+            r#"id = "dep-workspace-cargo-toml"
+path = "Cargo.toml"
+surface = "workspace_manifest"
+owner = "release"
+reason = "Workspace dependency block."
+dep_count_at_baseline = 22
+created = "2026-05-09"
+expires = "permanent"
+
+"#,
+        );
+        push_allow(
+            &mut text,
+            r#"id = "dep-crate-cargo-toml"
+path = "crates/*/Cargo.toml"
+surface = "crate_manifest"
+owner = "release"
+reason = "Per-crate manifests."
+broad_glob_reason = "Per-crate enumeration would duplicate the workspace member list."
 created = "2026-05-09"
 expires = "permanent"
 "#,
