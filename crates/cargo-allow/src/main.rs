@@ -1,11 +1,11 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, Lifecycle,
-    Selector, normalize_path,
+    MatchOutcome, MatchStatus, Selector, normalize_path,
 };
 use allow_inventory::{
     InventoryOptions, discover_workspace_root, inventory_files, workspace_metadata,
 };
-use allow_match::{CheckMode, evaluate};
+use allow_match::{CheckMode, evaluate, finding_location, score_match};
 use allow_policy::{find_config, load_policy, render_policy, starter_policy, validate_policy};
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
@@ -395,36 +395,224 @@ fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
 }
 
 fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
-    let cfg = load_config_required(args.config.as_deref())?;
+    let (_root, cfg, findings) = load_world(args.config.as_deref(), true, None, false)?;
     let entry = cfg
         .allow
         .iter()
         .find(|e| e.id == args.id)
         .ok_or_else(|| CargoAllowError::new(format!("no allow entry `{}`", args.id)))?;
-    println!("{}", entry.id);
-    println!(
-        "kind: {}{}",
-        entry.kind,
-        entry
-            .family
-            .as_ref()
-            .map(|f| format!(".{f}"))
-            .unwrap_or_default()
-    );
-    println!("scope: {}", entry.path_or_glob());
-    println!("owner: {}", entry.owner);
-    println!("classification: {}", entry.classification);
-    println!("reason: {}", entry.reason);
-    if !entry.evidence.is_empty() {
-        println!("evidence: {}", entry.evidence.join(", "));
+    println!("{}", explain_entry_text(&cfg, entry, &findings));
+    Ok(())
+}
+
+fn explain_entry_text(cfg: &AllowConfig, entry: &AllowEntry, findings: &[Finding]) -> String {
+    let matching_findings = findings
+        .iter()
+        .filter(|finding| score_match(entry, finding).is_some())
+        .cloned()
+        .collect::<Vec<_>>();
+    let mut single_entry_cfg = cfg.clone();
+    single_entry_cfg.allow = vec![entry.clone()];
+    let outcomes = evaluate(&single_entry_cfg, &matching_findings, CheckMode::NoNew);
+    render_explain_entry(entry, &matching_findings, &outcomes)
+}
+
+fn render_explain_entry(
+    entry: &AllowEntry,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("{}\n", entry.id));
+    out.push_str(&format!("kind: {}\n", kind_label(entry)));
+    out.push_str(&format!("scope: {}\n", entry.path_or_glob()));
+    out.push_str(&format!("owner: {}\n", empty_as_none(&entry.owner)));
+    out.push_str(&format!(
+        "classification: {}\n",
+        empty_as_none(&entry.classification)
+    ));
+    out.push_str(&format!("reason: {}\n", empty_as_none(&entry.reason)));
+    out.push_str(&format!("evidence: {}\n", list_or_none(&entry.evidence)));
+    if !entry.links.is_empty() {
+        out.push_str(&format!("links: {}\n", entry.links.join(", ")));
+    }
+    if let Some(limit) = entry.occurrence_limit {
+        out.push_str(&format!("occurrence_limit: {limit}\n"));
+    }
+    if let Some(created) = &entry.lifecycle.created {
+        out.push_str(&format!("created: {created}\n"));
     }
     if let Some(expires) = &entry.lifecycle.expires {
-        println!("expires: {expires}");
+        out.push_str(&format!("expires: {expires}\n"));
     }
     if let Some(review_after) = &entry.lifecycle.review_after {
-        println!("review_after: {review_after}");
+        out.push_str(&format!("review_after: {review_after}\n"));
     }
-    Ok(())
+    if let Some(last_seen) = &entry.last_seen {
+        out.push_str(&format!(
+            "last_seen: {}:{}\n",
+            last_seen.line, last_seen.column
+        ));
+    }
+    out.push_str(&format!("selector: {}\n\n", selector_summary(entry)));
+    out.push_str(&format!(
+        "current_status: {}\n",
+        explain_status(outcomes).as_str()
+    ));
+    out.push_str(&format!("current_matches: {}\n", findings.len()));
+    out.push_str(&format!("match_outcomes: {}\n", outcome_summary(outcomes)));
+    if !findings.is_empty() {
+        out.push_str("\ncurrent findings:\n");
+        for (index, finding) in findings.iter().enumerate().take(20) {
+            let status = outcomes
+                .iter()
+                .find(|outcome| outcome.finding_index == Some(index))
+                .map(|outcome| outcome.status.as_str())
+                .unwrap_or("unmatched");
+            out.push_str(&format!(
+                "- {status}: {} ({})\n",
+                finding_location(finding),
+                finding.identity.ast_kind
+            ));
+        }
+        if findings.len() > 20 {
+            out.push_str(&format!(
+                "- ... {} more matching findings omitted\n",
+                findings.len() - 20
+            ));
+        }
+    }
+    let attention = outcomes
+        .iter()
+        .filter(|outcome| outcome.status != MatchStatus::Matched)
+        .collect::<Vec<_>>();
+    if !attention.is_empty() {
+        out.push_str("\nattention:\n");
+        for outcome in attention.into_iter().take(20) {
+            out.push_str(&format!(
+                "- {}: {}\n",
+                outcome.status.as_str(),
+                outcome.message
+            ));
+        }
+    }
+    out.push_str("\nclaim boundary: source syntax only; macro expansion and type information were not analyzed.");
+    out
+}
+
+fn kind_label(entry: &AllowEntry) -> String {
+    entry
+        .family
+        .as_ref()
+        .map(|family| format!("{}.{}", entry.kind, family))
+        .unwrap_or_else(|| entry.kind.to_string())
+}
+
+fn empty_as_none(value: &str) -> &str {
+    if value.trim().is_empty() {
+        "none"
+    } else {
+        value
+    }
+}
+
+fn list_or_none(values: &[String]) -> String {
+    if values.is_empty() {
+        "none".to_string()
+    } else {
+        values.join(", ")
+    }
+}
+
+fn selector_summary(entry: &AllowEntry) -> String {
+    let selector = &entry.selector;
+    let mut fields = Vec::new();
+    if let Some(value) = &selector.ast_kind {
+        fields.push(format!("ast_kind={value}"));
+    }
+    if let Some(value) = &selector.container {
+        fields.push(format!("container={value}"));
+    }
+    if let Some(value) = &selector.callee {
+        fields.push(format!("callee={value}"));
+    }
+    if let Some(value) = &selector.macro_name {
+        fields.push(format!("macro_name={value}"));
+    }
+    if let Some(value) = &selector.lint {
+        fields.push(format!("lint={value}"));
+    }
+    if let Some(value) = &selector.symbol {
+        fields.push(format!("symbol={value}"));
+    }
+    if let Some(value) = &selector.receiver_fingerprint {
+        fields.push(format!("receiver={value}"));
+    }
+    if let Some(value) = &selector.target_fingerprint {
+        fields.push(format!("target={value}"));
+    }
+    if let Some(value) = &selector.normalized_snippet_hash {
+        fields.push(format!("normalized_snippet_hash={value}"));
+    }
+    if let Some(value) = selector.line_hint {
+        fields.push(format!("line_hint={value}"));
+    }
+    if let Some(value) = &selector.glob {
+        fields.push(format!("glob={value}"));
+    }
+    if fields.is_empty() {
+        "none".to_string()
+    } else {
+        fields.join(", ")
+    }
+}
+
+fn explain_status(outcomes: &[MatchOutcome]) -> MatchStatus {
+    for status in [
+        MatchStatus::New,
+        MatchStatus::Expired,
+        MatchStatus::EvidenceMissing,
+        MatchStatus::MissingRequiredField,
+        MatchStatus::InvalidSelector,
+        MatchStatus::Ambiguous,
+        MatchStatus::BaselineDebt,
+        MatchStatus::Stale,
+        MatchStatus::ReviewDue,
+    ] {
+        if outcomes.iter().any(|outcome| outcome.status == status) {
+            return status;
+        }
+    }
+    MatchStatus::Matched
+}
+
+fn outcome_summary(outcomes: &[MatchOutcome]) -> String {
+    let parts = [
+        MatchStatus::Matched,
+        MatchStatus::New,
+        MatchStatus::Expired,
+        MatchStatus::ReviewDue,
+        MatchStatus::Stale,
+        MatchStatus::Ambiguous,
+        MatchStatus::InvalidSelector,
+        MatchStatus::MissingRequiredField,
+        MatchStatus::EvidenceMissing,
+        MatchStatus::BaselineDebt,
+    ]
+    .into_iter()
+    .filter_map(|status| {
+        let count = outcomes
+            .iter()
+            .filter(|outcome| outcome.status == status)
+            .count();
+        (count > 0).then(|| format!("{}={count}", status.as_str()))
+    })
+    .collect::<Vec<_>>();
+    if parts.is_empty() {
+        "none".to_string()
+    } else {
+        parts.join(", ")
+    }
 }
 
 fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
@@ -910,6 +1098,7 @@ fn write_file_no_overwrite(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use allow_core::{Span, StructuralIdentity};
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
@@ -957,6 +1146,64 @@ mod tests {
             Some(CargoAllowCommand::Explain(ExplainArgs { id, config }))
                 if id == "allow-0001" && config.as_deref() == Some(Path::new("policy/custom.toml"))
         ));
+    }
+
+    #[test]
+    fn explain_entry_text_reports_live_match_status() {
+        let mut cfg = AllowConfig::empty();
+        let entry = test_entry("allow-file", FindingKind::NonRustFile);
+        cfg.allow.push(entry.clone());
+        let findings = vec![test_finding(
+            FindingKind::NonRustFile,
+            None,
+            "tracked.file",
+            "tracked_file",
+        )];
+
+        let text = explain_entry_text(&cfg, &entry, &findings);
+
+        assert!(text.contains("current_status: matched"));
+        assert!(text.contains("current_matches: 1"));
+        assert!(text.contains("match_outcomes: matched=1"));
+        assert!(text.contains("matched: tracked.file:1:1"));
+        assert!(text.contains("claim boundary: source syntax only"));
+    }
+
+    #[test]
+    fn explain_entry_text_reports_stale_entry() {
+        let mut cfg = AllowConfig::empty();
+        let entry = test_entry("allow-file", FindingKind::NonRustFile);
+        cfg.allow.push(entry.clone());
+
+        let text = explain_entry_text(&cfg, &entry, &[]);
+
+        assert!(text.contains("current_status: stale"));
+        assert!(text.contains("current_matches: 0"));
+        assert!(text.contains("match_outcomes: stale=1"));
+        assert!(text.contains("allow-file is stale"));
+    }
+
+    #[test]
+    fn explain_entry_text_reports_occurrence_limit_exceeded() {
+        let mut cfg = AllowConfig::empty();
+        let mut entry = test_entry("allow-file", FindingKind::NonRustFile);
+        entry.occurrence_limit = Some(1);
+        cfg.allow.push(entry.clone());
+        let finding = test_finding(
+            FindingKind::NonRustFile,
+            None,
+            "tracked.file",
+            "tracked_file",
+        );
+        let findings = vec![finding.clone(), finding];
+
+        let text = explain_entry_text(&cfg, &entry, &findings);
+
+        assert!(text.contains("occurrence_limit: 1"));
+        assert!(text.contains("current_status: new"));
+        assert!(text.contains("current_matches: 2"));
+        assert!(text.contains("match_outcomes: matched=1, new=1"));
+        assert!(text.contains("occurrence_limit exceeded"));
     }
 
     #[test]
@@ -1468,6 +1715,22 @@ expires = "permanent"
                 ..Selector::default()
             },
             last_seen: None,
+        }
+    }
+
+    fn test_finding(
+        kind: FindingKind,
+        family: Option<&str>,
+        path: &str,
+        ast_kind: &str,
+    ) -> Finding {
+        Finding {
+            kind,
+            family: family.map(str::to_string),
+            path: PathBuf::from(path),
+            span: Some(Span { line: 1, column: 1 }),
+            identity: StructuralIdentity::new("file", ast_kind),
+            message: "test finding".to_string(),
         }
     }
 }
