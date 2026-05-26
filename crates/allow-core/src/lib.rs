@@ -254,6 +254,7 @@ pub struct AllowEntry {
     pub reason: String,
     pub evidence: Vec<String>,
     pub links: Vec<String>,
+    pub occurrence_limit: Option<u32>,
     pub lifecycle: Lifecycle,
     pub selector: Selector,
     pub last_seen: Option<LastSeen>,

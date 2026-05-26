@@ -867,6 +867,7 @@ fn entry_from_finding(finding: &Finding, index: usize, expires: &str) -> AllowEn
             Vec::new()
         },
         links: Vec::new(),
+        occurrence_limit: None,
         lifecycle: Lifecycle {
             created: Some("2026-05-26".to_string()),
             review_after: None,
@@ -1460,6 +1461,7 @@ expires = "permanent"
             reason: "reason".to_string(),
             evidence: Vec::new(),
             links: Vec::new(),
+            occurrence_limit: None,
             lifecycle: Lifecycle::empty(),
             selector: Selector {
                 ast_kind: Some("tracked_file".to_string()),

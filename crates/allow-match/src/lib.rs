@@ -2,7 +2,7 @@ use allow_core::{
     AllowConfig, AllowEntry, Finding, FindingKind, MatchOutcome, MatchStatus, SimpleDate,
     glob_matches, maybe_line_distance_score, normalize_path,
 };
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CheckMode {
@@ -34,6 +34,7 @@ impl CheckMode {
 pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec<MatchOutcome> {
     let mut outcomes = Vec::new();
     let mut used_entries = BTreeSet::new();
+    let mut entry_occurrences = BTreeMap::<usize, u32>::new();
     let today = SimpleDate::today_utc_approx();
 
     for (finding_index, finding) in findings.iter().enumerate() {
@@ -60,7 +61,27 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
             }),
             [(entry_index, score)] => {
                 let entry = &cfg.allow[*entry_index];
+                let current_count = entry_occurrences.get(entry_index).copied().unwrap_or(0);
+                if entry
+                    .occurrence_limit
+                    .is_some_and(|limit| current_count >= limit)
+                {
+                    used_entries.insert(*entry_index);
+                    outcomes.push(MatchOutcome {
+                        status: MatchStatus::New,
+                        allow_id: Some(entry.id.clone()),
+                        finding_index: Some(finding_index),
+                        message: format!(
+                            "{} occurrence_limit exceeded at {}",
+                            entry.id,
+                            finding_location(finding)
+                        ),
+                        score: *score,
+                    });
+                    continue;
+                }
                 used_entries.insert(*entry_index);
+                entry_occurrences.insert(*entry_index, current_count + 1);
                 let (status, message) = classify_matched(entry, *score, today, cfg, mode);
                 outcomes.push(MatchOutcome {
                     status,
@@ -325,6 +346,7 @@ mod tests {
             reason: "reason".to_string(),
             evidence: Vec::new(),
             links: Vec::new(),
+            occurrence_limit: None,
             lifecycle: Lifecycle {
                 created: None,
                 review_after: None,
@@ -358,6 +380,43 @@ mod tests {
         assert!(score_match(&entry, &finding).is_some());
     }
 
+    #[test]
+    fn occurrence_limit_caps_matched_findings() {
+        let finding = finding_with_hash("fnv1a64:actual");
+        let mut entry = entry_with_hash("fnv1a64:actual");
+        entry.occurrence_limit = Some(1);
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(entry);
+
+        let outcomes = evaluate(&cfg, &[finding.clone(), finding], CheckMode::NoNew);
+
+        assert_eq!(outcomes.len(), 2);
+        assert!(matches!(
+            outcomes.first().map(|outcome| outcome.status),
+            Some(MatchStatus::Matched)
+        ));
+        assert!(outcomes.iter().any(|outcome| {
+            outcome.status == MatchStatus::New
+                && outcome.message.contains("occurrence_limit exceeded")
+        }));
+    }
+
+    #[test]
+    fn unlimited_entry_matches_repeated_findings() {
+        let finding = finding_with_hash("fnv1a64:actual");
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(entry_with_hash("fnv1a64:actual"));
+
+        let outcomes = evaluate(&cfg, &[finding.clone(), finding], CheckMode::NoNew);
+
+        assert_eq!(outcomes.len(), 2);
+        assert!(
+            outcomes
+                .iter()
+                .all(|outcome| outcome.status == MatchStatus::Matched)
+        );
+    }
+
     fn entry_with_hash(hash: &str) -> AllowEntry {
         AllowEntry {
             id: "allow-1".to_string(),
@@ -370,6 +429,7 @@ mod tests {
             reason: "reason".to_string(),
             evidence: vec!["unsafe-review".to_string()],
             links: Vec::new(),
+            occurrence_limit: None,
             lifecycle: Lifecycle {
                 created: None,
                 review_after: None,
