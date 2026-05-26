@@ -1,0 +1,31 @@
+[workspace]
+resolver = "3"
+members = [
+  "crates/cargo-allow",
+  "crates/allow-core",
+  "crates/allow-policy",
+  "crates/allow-inventory",
+  "crates/allow-files",
+  "crates/allow-rust",
+  "crates/allow-match",
+  "crates/allow-report",
+  "crates/allow-diff",
+  "crates/allow-policy-legacy",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+version = "0.1.0"
+rust-version = "1.85"
+
+[workspace.dependencies]
+allow-core = { path = "crates/allow-core" }
+allow-policy = { path = "crates/allow-policy" }
+allow-policy-legacy = { path = "crates/allow-policy-legacy" }
+allow-inventory = { path = "crates/allow-inventory" }
+allow-files = { path = "crates/allow-files" }
+allow-rust = { path = "crates/allow-rust" }
+allow-match = { path = "crates/allow-match" }
+allow-report = { path = "crates/allow-report" }
+allow-diff = { path = "crates/allow-diff" }

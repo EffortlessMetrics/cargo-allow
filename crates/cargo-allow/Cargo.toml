@@ -1,0 +1,17 @@
+[package]
+name = "cargo-allow"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+allow-core.workspace = true
+allow-policy.workspace = true
+allow-inventory.workspace = true
+allow-files.workspace = true
+allow-rust.workspace = true
+allow-match.workspace = true
+allow-report.workspace = true
+allow-diff.workspace = true
+allow-policy-legacy.workspace = true
