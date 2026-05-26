@@ -565,10 +565,29 @@ fn parse_non_rust_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyNo
             return Err(CargoAllowError::new(format!("{id} missing path or glob")));
         }
     };
-    let reason = match (
-        string_field(table, "reason"),
-        string_field(table, "broad_glob_reason"),
-    ) {
+    let reason_field = string_field(table, "reason");
+    let raw_broad_glob_reason = raw_string_field(table, "broad_glob_reason");
+    let broad_glob_reason = raw_broad_glob_reason
+        .as_deref()
+        .map(str::trim)
+        .filter(|reason| !reason.is_empty())
+        .map(str::to_string);
+    if !is_path && is_broad_legacy_glob(&pattern) {
+        match raw_broad_glob_reason.as_deref() {
+            None => {
+                return Err(CargoAllowError::new(format!(
+                    "{id} broad glob `{pattern}` requires broad_glob_reason"
+                )));
+            }
+            Some(reason) if reason.trim().is_empty() => {
+                return Err(CargoAllowError::new(format!(
+                    "{id} broad glob `{pattern}` has empty broad_glob_reason"
+                )));
+            }
+            Some(_) => {}
+        }
+    }
+    let reason = match (reason_field, broad_glob_reason) {
         (Some(reason), Some(scope_reason)) if !scope_reason.trim().is_empty() => {
             format!("{reason} Scope note: {scope_reason}")
         }
@@ -588,6 +607,10 @@ fn parse_non_rust_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyNo
         review_after: string_field(table, "review_after"),
         expires: normalize_legacy_expires(string_field(table, "expires")),
     })
+}
+
+fn is_broad_legacy_glob(pattern: &str) -> bool {
+    pattern.contains('*')
 }
 
 fn parse_generated_rules(table: &toml::Table) -> CargoAllowResult<Vec<LegacyGeneratedRule>> {
@@ -1653,6 +1676,10 @@ fn string_field(table: &toml::Table, field: &str) -> Option<String> {
         .map(str::to_string)
 }
 
+fn raw_string_field(table: &toml::Table, field: &str) -> Option<String> {
+    table.get(field).and_then(Value::as_str).map(str::to_string)
+}
+
 fn string_array_field(table: &toml::Table, field: &str) -> Vec<String> {
     table
         .get(field)
@@ -1802,6 +1829,45 @@ mod tests {
             .unwrap_or_else(|| std::panic::panic_any("expected one compat allow entry"));
         assert_eq!(entry.owner, "release/ci");
         assert_eq!(entry.classification, "ci_declarative");
+    }
+
+    #[test]
+    fn non_rust_migration_rejects_broad_glob_without_reason() {
+        let policy = non_rust_policy_with_entry(
+            r#"id = "non-rust-docs"
+glob = "docs/**"
+category = "documentation"
+owner = "docs"
+reason = "Repository policy prose."
+created = "2026-05-09"
+expires = "permanent"
+"#,
+        );
+
+        let err = load_legacy_or_canonical(&policy)
+            .expect_err("broad non-rust glob without reason should fail");
+
+        assert!(err.to_string().contains("requires broad_glob_reason"));
+    }
+
+    #[test]
+    fn non_rust_migration_rejects_empty_broad_glob_reason() {
+        let policy = non_rust_policy_with_entry(
+            r#"id = "non-rust-docs"
+glob = "docs/**"
+category = "documentation"
+owner = "docs"
+reason = "Repository policy prose."
+broad_glob_reason = "   "
+created = "2026-05-09"
+expires = "permanent"
+"#,
+        );
+
+        let err = load_legacy_or_canonical(&policy)
+            .expect_err("empty broad non-rust glob reason should fail");
+
+        assert!(err.to_string().contains("empty broad_glob_reason"));
     }
 
     #[test]
@@ -2501,6 +2567,23 @@ mod tests {
     fn policy_fixture_path() -> PathBuf {
         let path = fixture_dir().join("non-rust-allowlist.toml");
         fs::write(&path, policy_fixture_text())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+        path
+    }
+
+    fn non_rust_policy_with_entry(entry: &str) -> PathBuf {
+        let path = fixture_dir().join("non-rust-allowlist.toml");
+        let text = format!(
+            r#"schema_version = 1
+policy = "non-rust-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+{entry}
+"#
+        );
+        fs::write(&path, text)
             .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
         path
     }

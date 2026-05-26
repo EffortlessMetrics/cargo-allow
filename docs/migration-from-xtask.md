@@ -36,6 +36,10 @@ creates exact in-memory cargo-allow entries for the check. This avoids treating
 overlapping legacy globs as cargo-allow selector ambiguity during the
 side-by-side proof run.
 
+Broad legacy `glob` entries must still carry a non-empty
+`broad_glob_reason`. cargo-allow rejects missing or whitespace-only scope
+justifications instead of treating a broad glob as a fully reviewed exception.
+
 Then classify deltas:
 
 - same finding.
