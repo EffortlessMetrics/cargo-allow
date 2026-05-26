@@ -29,3 +29,5 @@ allow-rust = { path = "crates/allow-rust" }
 allow-match = { path = "crates/allow-match" }
 allow-report = { path = "crates/allow-report" }
 allow-diff = { path = "crates/allow-diff" }
+serde = { version = "1.0.228", features = ["derive"] }
+toml = "1.1.2"
