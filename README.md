@@ -23,6 +23,7 @@ cargo run -p cargo-allow -- allow check --compat --kind executable --mode no-new
 cargo run -p cargo-allow -- allow check --compat --kind workflow --mode no-new
 cargo run -p cargo-allow -- allow check --compat --kind dependency-surface --mode no-new
 cargo run -p cargo-allow -- allow check --compat --kind process --mode no-new
+cargo run -p cargo-allow -- allow check --compat --kind network --mode no-new
 cargo run -p cargo-allow -- allow check --mode no-new
 cargo run -p cargo-allow -- allow propose --write policy/allow.proposed.toml
 cargo run -p cargo-allow -- allow list

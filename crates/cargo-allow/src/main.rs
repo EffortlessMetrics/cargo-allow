@@ -578,6 +578,14 @@ fn load_compat_world(
         let findings = allow_policy_legacy::process_findings_from_config(&cfg);
         return Ok((root, cfg, findings));
     }
+    if is_network_compat_kind(compat_kind) {
+        let policy_path = config
+            .map(PathBuf::from)
+            .unwrap_or_else(|| root.join("policy/network-allowlist.toml"));
+        let cfg = allow_policy_legacy::load_network_compat_config(policy_path)?;
+        let findings = allow_policy_legacy::network_findings_from_config(&cfg);
+        return Ok((root, cfg, findings));
+    }
     if parsed_filter.kind == FindingKind::GeneratedCode {
         let policy_path = config
             .map(PathBuf::from)
@@ -588,7 +596,7 @@ fn load_compat_world(
     }
     if parsed_filter.kind != FindingKind::NonRustFile {
         return Err(CargoAllowError::new(
-            "--compat currently supports only --kind non-rust, --kind generated, --kind executable, --kind workflow, --kind dependency-surface, or --kind process",
+            "--compat currently supports only --kind non-rust, --kind generated, --kind executable, --kind workflow, --kind dependency-surface, --kind process, or --kind network",
         ));
     }
     let opts = InventoryOptions {
@@ -667,6 +675,12 @@ fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
             family: FamilyFilter::Exact("process_spawn"),
         });
     }
+    if is_network_compat_kind(kind) {
+        return Ok(KindFilter {
+            kind: FindingKind::PolicyException,
+            family: FamilyFilter::Exact("network_destination"),
+        });
+    }
     Ok(KindFilter {
         kind: FindingKind::from_str(kind)?,
         family: FamilyFilter::Any,
@@ -704,6 +718,13 @@ fn is_process_compat_kind(kind: &str) -> bool {
     matches!(
         kind.trim(),
         "process" | "processes" | "process-policy" | "process_spawn" | "process-spawn" | "proc"
+    )
+}
+
+fn is_network_compat_kind(kind: &str) -> bool {
+    matches!(
+        kind.trim(),
+        "network" | "net" | "network-policy" | "network_destination" | "network-destination"
     )
 }
 
@@ -1029,6 +1050,29 @@ mod tests {
     }
 
     #[test]
+    fn clap_parses_network_compat_check() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--compat",
+            "--kind",
+            "network",
+        ]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse network compat check: {err}"))
+        });
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(CheckArgs {
+                compat: true,
+                kind: Some(kind),
+                ..
+            })) if kind == "network"
+        ));
+    }
+
+    #[test]
     fn report_config_filters_allow_entries_by_kind() {
         let mut cfg = AllowConfig::empty();
         cfg.allow
@@ -1145,6 +1189,28 @@ mod tests {
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected process entry"));
         assert_eq!(entry.id, "allow-process");
+    }
+
+    #[test]
+    fn report_config_filters_network_family() {
+        let mut cfg = AllowConfig::empty();
+        let mut network = test_entry("allow-network", FindingKind::PolicyException);
+        network.family = Some("network_destination".to_string());
+        let mut other = test_entry("allow-other-policy", FindingKind::PolicyException);
+        other.family = Some("process_spawn".to_string());
+        cfg.allow.push(network);
+        cfg.allow.push(other);
+
+        let filtered = report_config(&cfg, Some("network")).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("network filter should parse: {err}"))
+        });
+
+        assert_eq!(filtered.allow.len(), 1);
+        let entry = filtered
+            .allow
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected network entry"));
+        assert_eq!(entry.id, "allow-network");
     }
 
     fn argv(items: Vec<&str>) -> Vec<String> {

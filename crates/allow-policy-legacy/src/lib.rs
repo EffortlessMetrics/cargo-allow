@@ -47,6 +47,12 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
         let rules = parse_process_rules(&table)?;
         return config_from_process_rules(&table, &rules);
     }
+    if let Some(table) = legacy_table(&text)?
+        && table.get("policy").and_then(Value::as_str) == Some("network-allowlist")
+    {
+        let rules = parse_network_rules(&table)?;
+        return config_from_network_rules(&table, &rules);
+    }
     parse_policy(&text)
 }
 
@@ -144,6 +150,21 @@ pub fn load_process_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<Al
     }
     let rules = parse_process_rules(&table)?;
     config_from_process_rules(&table, &rules)
+}
+
+pub fn load_network_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
+    let text = read_policy(path.as_ref())?;
+    let table = legacy_table(&text)?.ok_or_else(|| {
+        CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
+    })?;
+    if table.get("policy").and_then(Value::as_str) != Some("network-allowlist") {
+        return Err(CargoAllowError::new(format!(
+            "{} is not a network-allowlist policy",
+            path.as_ref().display()
+        )));
+    }
+    let rules = parse_network_rules(&table)?;
+    config_from_network_rules(&table, &rules)
 }
 
 pub fn generated_findings_from_gitattributes(
@@ -282,8 +303,19 @@ pub fn process_findings_from_config(cfg: &AllowConfig) -> Vec<Finding> {
         .collect()
 }
 
+pub fn network_findings_from_config(cfg: &AllowConfig) -> Vec<Finding> {
+    cfg.allow
+        .iter()
+        .filter(|entry| {
+            entry.kind == FindingKind::PolicyException
+                && entry.family.as_deref() == Some("network_destination")
+        })
+        .map(network_finding_from_entry)
+        .collect()
+}
+
 pub fn migration_notes() -> &'static str {
-    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, executable, workflow, dependency-surface, and process allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns."
+    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, executable, workflow, dependency-surface, process, and network allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns; network compat validates retained network policy entries and does not scan source code or runtime traffic."
 }
 
 fn read_policy(path: &Path) -> CargoAllowResult<String> {
@@ -374,6 +406,20 @@ struct LegacyProcessRule {
     argv_shape: Vec<String>,
     network_reach: bool,
     called_by: Vec<String>,
+    owner: String,
+    reason: String,
+    created: Option<String>,
+    review_after: Option<String>,
+    expires: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct LegacyNetworkRule {
+    id: String,
+    destination: String,
+    auth_required: bool,
+    auth_secret: Option<String>,
+    lane: String,
     owner: String,
     reason: String,
     created: Option<String>,
@@ -627,6 +673,37 @@ fn parse_process_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyPro
     })
 }
 
+fn parse_network_rules(table: &toml::Table) -> CargoAllowResult<Vec<LegacyNetworkRule>> {
+    let entries = table
+        .get("allow")
+        .and_then(Value::as_array)
+        .ok_or_else(|| CargoAllowError::new("network-allowlist missing allow entries"))?;
+    entries
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| parse_network_rule(index, entry))
+        .collect()
+}
+
+fn parse_network_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyNetworkRule> {
+    let table = entry.as_table().ok_or_else(|| {
+        CargoAllowError::new(format!("network allow entry {index} is not a table"))
+    })?;
+    let id = required_string_field(table, "id", &format!("network allow entry {index}"))?;
+    Ok(LegacyNetworkRule {
+        destination: required_string_field(table, "destination", &id)?,
+        auth_required: required_bool_field(table, "auth_required", &id)?,
+        auth_secret: string_field(table, "auth_secret"),
+        lane: required_string_field(table, "lane", &id)?,
+        owner: required_string_field(table, "owner", &id)?,
+        reason: required_string_field(table, "reason", &id)?,
+        created: Some(required_string_field(table, "created", &id)?),
+        review_after: string_field(table, "review_after"),
+        expires: normalize_legacy_expires(string_field(table, "expires")),
+        id,
+    })
+}
+
 fn config_from_non_rust_rules(
     table: &toml::Table,
     rules: &[LegacyNonRustRule],
@@ -686,6 +763,16 @@ fn config_from_process_rules(
 ) -> CargoAllowResult<AllowConfig> {
     let mut cfg = base_config(table);
     cfg.allow = rules.iter().map(entry_from_process_rule).collect();
+    validate_policy(&cfg)?;
+    Ok(cfg)
+}
+
+fn config_from_network_rules(
+    table: &toml::Table,
+    rules: &[LegacyNetworkRule],
+) -> CargoAllowResult<AllowConfig> {
+    let mut cfg = base_config(table);
+    cfg.allow = rules.iter().map(entry_from_network_rule).collect();
     validate_policy(&cfg)?;
     Ok(cfg)
 }
@@ -970,6 +1057,40 @@ fn entry_from_process_rule(rule: &LegacyProcessRule) -> AllowEntry {
     }
 }
 
+fn entry_from_network_rule(rule: &LegacyNetworkRule) -> AllowEntry {
+    let scope = "policy/network-allowlist.toml".to_string();
+    let symbol = network_symbol(rule);
+    AllowEntry {
+        id: rule.id.clone(),
+        kind: FindingKind::PolicyException,
+        family: Some("network_destination".to_string()),
+        path: Some(PathBuf::from(&scope)),
+        glob: None,
+        owner: rule.owner.clone(),
+        classification: if rule.auth_required {
+            "authenticated_network".to_string()
+        } else {
+            "public_network".to_string()
+        },
+        reason: rule.reason.clone(),
+        evidence: network_evidence(rule),
+        links: vec![format!("legacy-policy:{}", rule.id)],
+        lifecycle: Lifecycle {
+            created: rule.created.clone(),
+            review_after: rule.review_after.clone(),
+            expires: rule.expires.clone(),
+        },
+        selector: Selector {
+            ast_kind: Some("network_destination".to_string()),
+            symbol: Some(symbol.clone()),
+            target_fingerprint: Some(network_fingerprint(rule)),
+            glob: Some(scope),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
 fn generated_evidence(rule: &LegacyGeneratedRule) -> Vec<String> {
     let mut evidence = Vec::new();
     if let Some(generator) = &rule.generator {
@@ -1025,6 +1146,18 @@ fn process_evidence(rule: &LegacyProcessRule) -> Vec<String> {
             .iter()
             .map(|path| format!("called_by:{}", normalize_path(Path::new(path)))),
     );
+    evidence
+}
+
+fn network_evidence(rule: &LegacyNetworkRule) -> Vec<String> {
+    let mut evidence = vec![
+        format!("destination:{}", rule.destination),
+        format!("lane:{}", rule.lane),
+        format!("auth_required:{}", rule.auth_required),
+    ];
+    if let Some(secret) = &rule.auth_secret {
+        evidence.push(format!("auth_secret:{secret}"));
+    }
     evidence
 }
 
@@ -1167,6 +1300,29 @@ fn process_finding_from_entry(entry: &AllowEntry) -> Finding {
     }
 }
 
+fn network_finding_from_entry(entry: &AllowEntry) -> Finding {
+    let path = entry
+        .path
+        .clone()
+        .unwrap_or_else(|| PathBuf::from(entry.path_or_glob()));
+    let symbol = entry
+        .selector
+        .symbol
+        .clone()
+        .unwrap_or_else(|| entry.id.clone());
+    let mut identity = allow_core::StructuralIdentity::new("policy", "network_destination");
+    identity.symbol = Some(symbol.clone());
+    identity.target_fingerprint = entry.selector.target_fingerprint.clone();
+    Finding {
+        kind: FindingKind::PolicyException,
+        family: Some("network_destination".to_string()),
+        path,
+        span: Some(allow_core::Span { line: 1, column: 1 }),
+        identity,
+        message: format!("retained network policy entry {symbol}"),
+    }
+}
+
 fn dependency_surface_family(path: &Path) -> String {
     let normalized = normalize_path(path);
     match normalized.as_str() {
@@ -1234,6 +1390,17 @@ fn process_symbol(rule: &LegacyProcessRule) -> String {
 
 fn process_fingerprint(rule: &LegacyProcessRule) -> String {
     format!("process:{}", process_symbol(rule))
+}
+
+fn network_symbol(rule: &LegacyNetworkRule) -> String {
+    format!("{} lane {}", rule.destination, rule.lane)
+}
+
+fn network_fingerprint(rule: &LegacyNetworkRule) -> String {
+    format!(
+        "network:{}:auth:{}:lane:{}",
+        rule.destination, rule.auth_required, rule.lane
+    )
 }
 
 fn is_workflow_path(path: &Path) -> bool {
@@ -1881,6 +2048,101 @@ mod tests {
         );
     }
 
+    #[test]
+    fn migrates_network_allowlist_to_policy_exception_entries() {
+        let policy = network_policy_fixture_path();
+        let cfg = load_legacy_or_canonical(&policy)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("network policy migrates: {err}")));
+
+        assert_eq!(cfg.policy, "cargo-allow");
+        assert_eq!(cfg.allow.len(), 2);
+        let public = cfg
+            .allow
+            .iter()
+            .find(|entry| entry.id == "net-crates-io-fetch")
+            .unwrap_or_else(|| std::panic::panic_any("expected crates.io network entry"));
+        assert_eq!(public.kind, FindingKind::PolicyException);
+        assert_eq!(public.family.as_deref(), Some("network_destination"));
+        assert_eq!(public.classification, "public_network");
+        assert_eq!(
+            public.path.as_deref(),
+            Some(Path::new("policy/network-allowlist.toml"))
+        );
+        assert_eq!(
+            public.selector.ast_kind.as_deref(),
+            Some("network_destination")
+        );
+        assert_eq!(
+            public.selector.symbol.as_deref(),
+            Some("crates.io lane build")
+        );
+        assert_eq!(
+            public.selector.target_fingerprint.as_deref(),
+            Some("network:crates.io:auth:false:lane:build")
+        );
+        assert_eq!(public.lifecycle.expires.as_deref(), Some("never"));
+
+        let authenticated = cfg
+            .allow
+            .iter()
+            .find(|entry| entry.id == "net-github-api")
+            .unwrap_or_else(|| std::panic::panic_any("expected GitHub API network entry"));
+        assert_eq!(authenticated.classification, "authenticated_network");
+        assert!(
+            authenticated
+                .evidence
+                .iter()
+                .any(|item| item == "auth_secret:GITHUB_TOKEN")
+        );
+    }
+
+    #[test]
+    fn network_compat_synthesizes_matched_new_and_stale_drift() {
+        let policy = network_policy_fixture_path();
+        let cfg = load_network_compat_config(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("network compat config loads: {err}"))
+        });
+        let findings = network_findings_from_config(&cfg);
+
+        let matched = allow_match::evaluate(&cfg, &findings, allow_match::CheckMode::NoNew);
+        assert_eq!(
+            matched
+                .iter()
+                .filter(|outcome| outcome.status == allow_core::MatchStatus::Matched)
+                .count(),
+            2
+        );
+
+        let missing_allow = allow_match::evaluate(
+            &cfg,
+            &[network_policy_finding("example.com lane test")],
+            allow_match::CheckMode::NoNew,
+        );
+        assert!(
+            missing_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::New)
+        );
+
+        let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+        assert!(
+            stale_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::Stale)
+        );
+    }
+
+    #[test]
+    fn network_policy_requires_legacy_xtask_fields() {
+        let policy = malformed_network_policy_fixture_path();
+        let err = load_network_compat_config(&policy)
+            .expect_err("network policy without auth_required should fail");
+        assert!(
+            err.to_string()
+                .contains("net-missing missing auth_required")
+        );
+    }
+
     static NEXT_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
     fn policy_fixture_path() -> PathBuf {
@@ -1939,6 +2201,35 @@ id = "proc-missing"
 binary = "cargo"
 argv_shape = ["install", "cargo-deny", "--locked"]
 owner = "release/ci"
+reason = "Intentionally incomplete fixture."
+created = "2026-05-09"
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+        path
+    }
+
+    fn network_policy_fixture_path() -> PathBuf {
+        let path = fixture_dir().join("network-allowlist.toml");
+        fs::write(&path, network_policy_fixture_text())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+        path
+    }
+
+    fn malformed_network_policy_fixture_path() -> PathBuf {
+        let path = fixture_dir().join("network-allowlist.toml");
+        fs::write(
+            &path,
+            r#"schema_version = 1
+policy = "network-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "net-missing"
+destination = "crates.io"
+lane = "build"
+owner = "release"
 reason = "Intentionally incomplete fixture."
 created = "2026-05-09"
 "#,
@@ -2193,6 +2484,44 @@ expires = "permanent"
         text
     }
 
+    fn network_policy_fixture_text() -> String {
+        let mut text = String::from(
+            r#"schema_version = 1
+policy = "network-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+"#,
+        );
+        push_allow(
+            &mut text,
+            r#"id = "net-crates-io-fetch"
+destination = "crates.io"
+auth_required = false
+lane = "build"
+owner = "release"
+reason = "cargo fetch resolves and downloads crate dependencies."
+created = "2026-05-09"
+expires = "permanent"
+
+"#,
+        );
+        push_allow(
+            &mut text,
+            r#"id = "net-github-api"
+destination = "api.github.com"
+auth_required = true
+auth_secret = "GITHUB_TOKEN"
+lane = "release"
+owner = "release/ci"
+reason = "Release uploads through the GitHub API."
+created = "2026-05-09"
+expires = "permanent"
+"#,
+        );
+        text
+    }
+
     fn push_allow(text: &mut String, body: &str) {
         text.push_str("[[");
         text.push_str("allow]]\n");
@@ -2207,6 +2536,20 @@ expires = "permanent"
             kind: FindingKind::PolicyException,
             family: Some("process_spawn".to_string()),
             path: PathBuf::from(path),
+            span: Some(Span { line: 1, column: 1 }),
+            identity,
+            message: String::new(),
+        }
+    }
+
+    fn network_policy_finding(symbol: &str) -> Finding {
+        let mut identity = StructuralIdentity::new("policy", "network_destination");
+        identity.symbol = Some(symbol.to_string());
+        identity.target_fingerprint = Some(format!("network:{symbol}"));
+        Finding {
+            kind: FindingKind::PolicyException,
+            family: Some("network_destination".to_string()),
+            path: PathBuf::from("policy/network-allowlist.toml"),
             span: Some(Span { line: 1, column: 1 }),
             identity,
             message: String::new(),

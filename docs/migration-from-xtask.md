@@ -45,8 +45,9 @@ Then classify deltas:
 
 Only replace the xtask when the remaining deltas are documented and acceptable.
 
-Compat mode is a bridge, not the final policy shape. It does not yet replace
-companion legacy checks for network policy.
+Compat mode is a bridge, not the final policy shape. It provides side-by-side
+proof for current compatibility lanes, but the canonical replacement should
+still be a deliberate migration to `policy/allow.toml`.
 
 Generated-file compat is also available for shiplog-style
 `policy/generated-allowlist.toml`:
@@ -111,6 +112,18 @@ process policy entries and reports them as matched
 workflow, or script source for process-spawn discovery and does not validate
 runtime process behavior.
 
+Network-policy compat is available for shiplog-style
+`policy/network-allowlist.toml`:
+
+```bash
+cargo allow check --compat --kind network
+```
+
+That mode preserves the legacy checker's boundary: it validates retained
+network policy entries and reports them as matched
+`policy_exception.network_destination` entries. It does not scan source code,
+workflow logs, or runtime traffic for outbound network discovery.
+
 ## Canonical Policy Flow
 
 The target state is:
@@ -139,6 +152,7 @@ Compatibility adapters may support:
 - `policy/workflow-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/dependency-surface-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/process-allowlist.toml` (initial shiplog-style adapter exists)
+- `policy/network-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/clippy-exceptions.toml`
 - `policy/unsafe-allowlist.toml`
 - `policy/ripr-suppressions.toml`
