@@ -510,6 +510,7 @@ mod tests {
         assert_eq!(normalize_path("../src/lib.rs"), "../src/lib.rs");
         assert_eq!(normalize_path("../../src/../README.md"), "../../README.md");
         assert_eq!(normalize_path("src/../README.md"), "README.md");
+        assert_eq!(normalize_path(r"..\src\lib.rs"), "../src/lib.rs");
     }
 
     #[test]
@@ -517,6 +518,7 @@ mod tests {
         assert_eq!(normalize_path("/a/../b"), "/b");
         assert_eq!(normalize_path("/../b"), "/b");
         assert_eq!(normalize_path("/"), "/");
+        assert_eq!(normalize_path("/a//./b/"), "/a/b");
     }
 
     #[test]

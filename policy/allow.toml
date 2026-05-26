@@ -269,10 +269,10 @@ container = "recursive_inventory_skips_symlinked_directories"
 callee = "expect"
 receiver_fingerprint = ""
 normalized_snippet_hash = "fnv1a64:a7d4f5ee76bfce87"
-line_hint = 151
+line_hint = 153
 
 [allow.last_seen]
-line = 151
+line = 153
 column = 14
 
 [[allow]]
@@ -292,10 +292,10 @@ container = "recursive_inventory_skips_symlinked_directories"
 callee = "expect"
 receiver_fingerprint = "fs::create_dir_all(root.join(\"real\"))"
 normalized_snippet_hash = "fnv1a64:929011cfcc2de203"
-line_hint = 157
+line_hint = 159
 
 [allow.last_seen]
-line = 157
+line = 159
 column = 47
 
 [[allow]]
@@ -315,10 +315,10 @@ container = "recursive_inventory_skips_symlinked_directories"
 callee = "expect"
 receiver_fingerprint = "fs::write(root.join(\"real/file.txt\"), \"tracked\")"
 normalized_snippet_hash = "fnv1a64:e794c2a66c27d99b"
-line_hint = 158
+line_hint = 160
 
 [allow.last_seen]
-line = 158
+line = 160
 column = 58
 
 [[allow]]
@@ -338,10 +338,10 @@ container = "recursive_inventory_skips_symlinked_directories"
 callee = "expect"
 receiver_fingerprint = "symlink(&root, root.join(\"real/loop\"))"
 normalized_snippet_hash = "fnv1a64:8e954de48eca25d3"
-line_hint = 159
+line_hint = 161
 
 [allow.last_seen]
-line = 159
+line = 161
 column = 48
 
 [[allow]]
@@ -361,10 +361,10 @@ container = "recursive_inventory_skips_symlinked_directories"
 callee = "expect"
 receiver_fingerprint = "let files = super::recursive_files(&root)"
 normalized_snippet_hash = "fnv1a64:9ce9a049f5b7f701"
-line_hint = 161
+line_hint = 163
 
 [allow.last_seen]
-line = 161
+line = 163
 column = 51
 
 [[allow]]
@@ -384,10 +384,10 @@ container = "recursive_inventory_skips_symlinked_directories"
 callee = "expect"
 receiver_fingerprint = "fs::remove_dir_all(root)"
 normalized_snippet_hash = "fnv1a64:330ca7cc22baf829"
-line_hint = 164
+line_hint = 166
 
 [allow.last_seen]
-line = 164
+line = 166
 column = 34
 
 [[allow]]
@@ -1452,7 +1452,7 @@ expires = "2026-08-01"
 
 [allow.selector]
 ast_kind = "attribute"
-container = "indexing_heuristic_ignores_common_bracket_non_indexes"
+container = "indexing_heuristic_ignores_common_bracket_false_positives"
 lint = "dead_code"
 symbol = "#[allow(dead_code)]"
 normalized_snippet_hash = "fnv1a64:e855b90cd517df60"
@@ -1479,10 +1479,10 @@ container = "load"
 symbol = "let actual = xs[0];"
 target_fingerprint = "let actual = xs"
 normalized_snippet_hash = "fnv1a64:73d7df0b720377ef"
-line_hint = 533
+line_hint = 535
 
 [allow.last_seen]
-line = 533
+line = 535
 column = 28
 
 [[allow]]
@@ -1502,10 +1502,10 @@ container = "load"
 symbol = "let call_index = xs.as_ref()[0];"
 target_fingerprint = "let call_index = xs.as_ref()"
 normalized_snippet_hash = "fnv1a64:7d2befd25ab88c4d"
-line_hint = 534
+line_hint = 536
 
 [allow.last_seen]
-line = 534
+line = 536
 column = 41
 
 [[allow]]
@@ -1522,13 +1522,13 @@ expires = "2026-08-01"
 [allow.selector]
 ast_kind = "index_expr"
 container = "index_symbol_truncates_on_character_boundaries"
-symbol = "let line = format!(\"let actual = values[{}];\", \"é\".repeat(120));"
+symbol = "let line = format!(\"let actual = values[{}];\", \"\\u{00e9}\".repeat(120));"
 target_fingerprint = "let line = format!(\"let actual = values"
-normalized_snippet_hash = "fnv1a64:daeef267fa995cc3"
-line_hint = 548
+normalized_snippet_hash = "fnv1a64:dc21091db2248c58"
+line_hint = 572
 
 [allow.last_seen]
-line = 548
+line = 572
 column = 48
 
 [[allow]]
