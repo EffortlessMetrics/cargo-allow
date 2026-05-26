@@ -1,6 +1,6 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, Lifecycle,
-    MatchOutcome, MatchStatus, Selector, normalize_path,
+    MatchOutcome, MatchStatus, Selector, json_escape, normalize_path,
 };
 use allow_inventory::{
     InventoryOptions, discover_workspace_root, inventory_files, workspace_metadata,
@@ -41,6 +41,8 @@ enum CargoAllowCommand {
     Explain(ExplainArgs),
     /// Generate temporary baseline_debt entries.
     Propose(ProposeArgs),
+    /// Emit actionable work items for humans or agents.
+    Worklist(WorklistArgs),
     /// Convert compatible legacy policy files.
     Migrate(MigrateArgs),
     /// Dry-run stale cleanup guidance.
@@ -183,6 +185,25 @@ struct ProposeArgs {
 }
 
 #[derive(Debug, Clone, Parser)]
+struct WorklistArgs {
+    /// Policy config path.
+    #[arg(long)]
+    config: Option<PathBuf>,
+    /// Filter findings by kind.
+    #[arg(long)]
+    kind: Option<String>,
+    /// Include untracked files in addition to git-tracked files.
+    #[arg(long)]
+    include_untracked: bool,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = WorklistFormat::Json)]
+    format: WorklistFormat,
+    /// Write worklist to a file instead of stdout.
+    #[arg(long)]
+    output: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Parser)]
 struct MigrateArgs {
     /// Legacy or canonical policy file to migrate.
     #[arg(long)]
@@ -204,6 +225,12 @@ enum OutputFormat {
     Json,
     #[value(alias = "md")]
     Markdown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum WorklistFormat {
+    Human,
+    Json,
 }
 
 fn main() {
@@ -230,6 +257,7 @@ fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::List(args) => cmd_list(&args),
         CargoAllowCommand::Explain(args) => cmd_explain(&args),
         CargoAllowCommand::Propose(args) => cmd_propose(&args),
+        CargoAllowCommand::Worklist(args) => cmd_worklist(&args),
         CargoAllowCommand::Migrate(args) => cmd_migrate(&args),
         CargoAllowCommand::Prune => cmd_prune(),
         CargoAllowCommand::Doctor(args) => cmd_doctor(&args),
@@ -643,6 +671,383 @@ fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         println!("{rendered}");
     }
     Ok(())
+}
+
+fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
+    let (_root, cfg, findings) = load_world(
+        args.config.as_deref(),
+        true,
+        args.kind.as_deref(),
+        args.include_untracked,
+    )?;
+    let report_cfg = report_config(&cfg, args.kind.as_deref())?;
+    let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
+    let items = work_items_from_outcomes(&report_cfg, &findings, &outcomes);
+    let text = match args.format {
+        WorklistFormat::Json => render_worklist_json(&items),
+        WorklistFormat::Human => render_worklist_human(&items),
+    };
+    if let Some(path) = &args.output {
+        write_file(path, &text)?;
+    } else {
+        println!("{text}");
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct WorkItem {
+    id: String,
+    kind: String,
+    risk: &'static str,
+    difficulty: &'static str,
+    status: MatchStatus,
+    allow_id: Option<String>,
+    finding_index: Option<usize>,
+    path: Option<String>,
+    message: String,
+    suggested_actions: Vec<String>,
+    proof_commands: Vec<String>,
+}
+
+fn work_items_from_outcomes(
+    cfg: &AllowConfig,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+) -> Vec<WorkItem> {
+    outcomes
+        .iter()
+        .filter(|outcome| outcome.status != MatchStatus::Matched)
+        .enumerate()
+        .map(|(index, outcome)| work_item_from_outcome(index + 1, cfg, findings, outcome))
+        .collect()
+}
+
+fn work_item_from_outcome(
+    item_index: usize,
+    cfg: &AllowConfig,
+    findings: &[Finding],
+    outcome: &MatchOutcome,
+) -> WorkItem {
+    let finding = outcome.finding_index.and_then(|idx| findings.get(idx));
+    let entry = outcome
+        .allow_id
+        .as_deref()
+        .and_then(|id| cfg.allow.iter().find(|entry| entry.id == id));
+    let kind = work_item_kind(outcome, finding, entry);
+    let path = finding
+        .map(|finding| normalize_path(&finding.path))
+        .or_else(|| entry.map(|entry| entry.path_or_glob()));
+    WorkItem {
+        id: format!("work-{}-{item_index:04}", kind.replace('_', "-")),
+        risk: work_item_risk(&kind, outcome.status, finding, entry),
+        difficulty: work_item_difficulty(&kind),
+        status: outcome.status,
+        allow_id: outcome.allow_id.clone(),
+        finding_index: outcome.finding_index,
+        path,
+        message: outcome.message.clone(),
+        suggested_actions: suggested_actions(&kind),
+        proof_commands: proof_commands(&kind, finding, entry),
+        kind,
+    }
+}
+
+fn work_item_kind(
+    outcome: &MatchOutcome,
+    finding: Option<&Finding>,
+    entry: Option<&AllowEntry>,
+) -> String {
+    match outcome.status {
+        MatchStatus::New if outcome.allow_id.is_some() => "occurrence_limit_exceeded".to_string(),
+        MatchStatus::New => "new_unreceipted_finding".to_string(),
+        MatchStatus::Expired => "expired_allow".to_string(),
+        MatchStatus::Stale => "stale_allow".to_string(),
+        MatchStatus::Ambiguous => "ambiguous_selector".to_string(),
+        MatchStatus::EvidenceMissing
+            if finding
+                .map(|finding| finding.kind == FindingKind::Unsafe)
+                .or_else(|| entry.map(|entry| entry.kind == FindingKind::Unsafe))
+                .unwrap_or(false) =>
+        {
+            "unsafe_missing_evidence".to_string()
+        }
+        MatchStatus::EvidenceMissing => "missing_evidence".to_string(),
+        MatchStatus::MissingRequiredField => "missing_required_field".to_string(),
+        MatchStatus::InvalidSelector => "invalid_selector".to_string(),
+        MatchStatus::BaselineDebt => "baseline_debt".to_string(),
+        MatchStatus::ReviewDue => "review_due".to_string(),
+        MatchStatus::Matched => "matched".to_string(),
+    }
+}
+
+fn work_item_risk(
+    kind: &str,
+    status: MatchStatus,
+    finding: Option<&Finding>,
+    entry: Option<&AllowEntry>,
+) -> &'static str {
+    let exception_kind = finding
+        .map(|finding| finding.kind)
+        .or_else(|| entry.map(|entry| entry.kind));
+    if matches!(exception_kind, Some(FindingKind::Unsafe)) {
+        return "high";
+    }
+    match (kind, status) {
+        ("ambiguous_selector", _) | (_, MatchStatus::Expired) => "high",
+        ("new_unreceipted_finding", _) | ("occurrence_limit_exceeded", _) => "medium",
+        ("missing_evidence", _) | ("missing_required_field", _) | ("invalid_selector", _) => {
+            "medium"
+        }
+        ("baseline_debt", _) | ("review_due", _) => "medium",
+        ("stale_allow", _) => "low",
+        _ => "medium",
+    }
+}
+
+fn work_item_difficulty(kind: &str) -> &'static str {
+    match kind {
+        "stale_allow" => "small",
+        "ambiguous_selector" | "invalid_selector" => "small",
+        "missing_required_field" | "missing_evidence" => "small",
+        "review_due" | "baseline_debt" => "medium",
+        "unsafe_missing_evidence" => "medium",
+        "new_unreceipted_finding" | "occurrence_limit_exceeded" => "medium",
+        _ => "medium",
+    }
+}
+
+fn suggested_actions(kind: &str) -> Vec<String> {
+    match kind {
+        "new_unreceipted_finding" => vec![
+            "remove the new source exception if it is accidental".to_string(),
+            "or add a reviewed allow entry with owner, reason, scope, evidence, and lifecycle"
+                .to_string(),
+        ],
+        "occurrence_limit_exceeded" => vec![
+            "reduce the current findings back to the baseline count".to_string(),
+            "or split the added occurrence into a reviewed allow entry".to_string(),
+        ],
+        "expired_allow" => vec![
+            "remove the expired allow if the exception is gone".to_string(),
+            "or re-review with fresh evidence before changing lifecycle dates".to_string(),
+        ],
+        "stale_allow" => vec![
+            "remove the stale allow entry if the exception no longer exists".to_string(),
+            "or narrow/update the selector if the code moved without broadening scope".to_string(),
+        ],
+        "ambiguous_selector" => vec![
+            "narrow selectors so each finding matches exactly one allow entry".to_string(),
+            "prefer structural fields such as container, callee, lint, and snippet hash"
+                .to_string(),
+        ],
+        "unsafe_missing_evidence" => vec![
+            "add unsafe-review, test, spec, or boundary evidence for the unsafe exception"
+                .to_string(),
+            "keep the selector scoped to the reviewed unsafe boundary".to_string(),
+        ],
+        "missing_evidence" => {
+            vec!["add evidence that supports the exception reason".to_string()]
+        }
+        "missing_required_field" => vec![
+            "fill the required owner, reason, classification, lifecycle, or evidence field"
+                .to_string(),
+        ],
+        "invalid_selector" => {
+            vec!["replace line-only or invalid selector data with structural identity".to_string()]
+        }
+        "baseline_debt" => vec![
+            "replace generated baseline debt with a reviewed allow entry".to_string(),
+            "or remove the underlying exception".to_string(),
+        ],
+        "review_due" => {
+            vec!["review the retained exception and update evidence or remove it".to_string()]
+        }
+        _ => vec!["inspect the outcome and update policy or source accordingly".to_string()],
+    }
+}
+
+fn proof_commands(
+    kind: &str,
+    finding: Option<&Finding>,
+    entry: Option<&AllowEntry>,
+) -> Vec<String> {
+    let exception_kind = finding
+        .map(|finding| finding.kind)
+        .or_else(|| entry.map(|entry| entry.kind));
+    let mut commands = Vec::new();
+    if let Some(allow_id) = entry.map(|entry| entry.id.as_str()) {
+        commands.push(format!("cargo allow explain {allow_id}"));
+    }
+    if let Some(kind_arg) = worklist_kind_arg(finding, entry) {
+        commands.push(format!("cargo allow check --kind {kind_arg} --mode no-new"));
+    } else {
+        commands.push("cargo allow check --mode no-new".to_string());
+    }
+    if matches!(
+        exception_kind,
+        Some(FindingKind::Panic | FindingKind::Unsafe | FindingKind::LintException)
+    ) {
+        commands.push("cargo test --workspace".to_string());
+    }
+    if kind == "unsafe_missing_evidence" && !commands.iter().any(|cmd| cmd.contains("unsafe")) {
+        commands.push("cargo allow check --kind unsafe --mode no-new".to_string());
+    }
+    commands
+}
+
+fn worklist_kind_arg(
+    finding: Option<&Finding>,
+    entry: Option<&AllowEntry>,
+) -> Option<&'static str> {
+    let exception_kind = finding
+        .map(|finding| finding.kind)
+        .or_else(|| entry.map(|entry| entry.kind))?;
+    match exception_kind {
+        FindingKind::Panic => Some("panic"),
+        FindingKind::Unsafe => Some("unsafe"),
+        FindingKind::LintException => Some("lint-exception"),
+        FindingKind::NonRustFile => Some("non-rust"),
+        FindingKind::GeneratedCode => Some("generated"),
+        FindingKind::PolicyException => policy_exception_kind_arg(
+            finding
+                .and_then(|finding| finding.family.as_deref())
+                .or_else(|| entry.and_then(|entry| entry.family.as_deref())),
+        ),
+    }
+}
+
+fn policy_exception_kind_arg(family: Option<&str>) -> Option<&'static str> {
+    match family {
+        Some("executable_file") => Some("executable"),
+        Some("github_workflow" | "workflow_external_action") => Some("workflow"),
+        Some("dependency_surface") => Some("dependency-surface"),
+        Some("process_spawn") => Some("process"),
+        Some("network_destination") => Some("network"),
+        _ => None,
+    }
+}
+
+fn render_worklist_json(items: &[WorkItem]) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str("  \"schema_version\": 1,\n");
+    out.push_str("  \"schema_id\": \"cargo-allow.worklist.v1\",\n");
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"worklist\",\n");
+    out.push_str("  \"claim_boundary\": [\"source_syntax_only\", \"macro_expansion_not_analyzed\", \"type_information_not_analyzed\"],\n");
+    out.push_str("  \"summary\": {\n");
+    out.push_str(&format!("    \"work_items\": {},\n", items.len()));
+    out.push_str(&format!("    \"high\": {},\n", risk_count(items, "high")));
+    out.push_str(&format!(
+        "    \"medium\": {},\n",
+        risk_count(items, "medium")
+    ));
+    out.push_str(&format!("    \"low\": {}\n", risk_count(items, "low")));
+    out.push_str("  },\n");
+    out.push_str("  \"work_items\": [\n");
+    for (index, item) in items.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&render_work_item_json(item));
+    }
+    out.push_str("\n  ]\n");
+    out.push_str("}\n");
+    out
+}
+
+fn render_work_item_json(item: &WorkItem) -> String {
+    let mut out = String::new();
+    out.push_str("    {\n");
+    out.push_str(&format!("      \"id\": \"{}\",\n", json_escape(&item.id)));
+    out.push_str(&format!(
+        "      \"kind\": \"{}\",\n",
+        json_escape(&item.kind)
+    ));
+    out.push_str(&format!("      \"risk\": \"{}\",\n", item.risk));
+    out.push_str(&format!("      \"difficulty\": \"{}\",\n", item.difficulty));
+    out.push_str(&format!(
+        "      \"status\": \"{}\",\n",
+        item.status.as_str()
+    ));
+    out.push_str(&format!(
+        "      \"allow_id\": {},\n",
+        option_json_string(item.allow_id.as_deref())
+    ));
+    out.push_str(&format!(
+        "      \"finding_index\": {},\n",
+        item.finding_index
+            .map(|index| index.to_string())
+            .unwrap_or_else(|| "null".to_string())
+    ));
+    out.push_str(&format!(
+        "      \"path\": {},\n",
+        option_json_string(item.path.as_deref())
+    ));
+    out.push_str(&format!(
+        "      \"message\": \"{}\",\n",
+        json_escape(&item.message)
+    ));
+    out.push_str(&format!(
+        "      \"suggested_actions\": {},\n",
+        json_string_array(&item.suggested_actions)
+    ));
+    out.push_str(&format!(
+        "      \"proof_commands\": {}\n",
+        json_string_array(&item.proof_commands)
+    ));
+    out.push_str("    }");
+    out
+}
+
+fn render_worklist_human(items: &[WorkItem]) -> String {
+    let mut out = String::new();
+    out.push_str("cargo-allow worklist\n\n");
+    out.push_str(&format!("Work items: {}\n", items.len()));
+    out.push_str(&format!("  high      {}\n", risk_count(items, "high")));
+    out.push_str(&format!("  medium    {}\n", risk_count(items, "medium")));
+    out.push_str(&format!("  low       {}\n", risk_count(items, "low")));
+    for item in items.iter().take(80) {
+        out.push_str(&format!(
+            "\n{} ({}, {}) {}\n",
+            item.id, item.risk, item.difficulty, item.kind
+        ));
+        if let Some(path) = &item.path {
+            out.push_str(&format!("  path: {path}\n"));
+        }
+        if let Some(allow_id) = &item.allow_id {
+            out.push_str(&format!("  allow: {allow_id}\n"));
+        }
+        out.push_str(&format!("  status: {}\n", item.status.as_str()));
+        out.push_str(&format!("  message: {}\n", item.message));
+        if let Some(command) = item.proof_commands.first() {
+            out.push_str(&format!("  proof: {command}\n"));
+        }
+    }
+    out.push_str("\nClaim boundary: source syntax only; macro expansion and type information were not analyzed.\n");
+    out
+}
+
+fn risk_count(items: &[WorkItem], risk: &str) -> usize {
+    items.iter().filter(|item| item.risk == risk).count()
+}
+
+fn option_json_string(value: Option<&str>) -> String {
+    value
+        .map(|value| format!("\"{}\"", json_escape(value)))
+        .unwrap_or_else(|| "null".to_string())
+}
+
+fn json_string_array(values: &[String]) -> String {
+    format!(
+        "[{}]",
+        values
+            .iter()
+            .map(|value| format!("\"{}\"", json_escape(value)))
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
 }
 
 fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
@@ -1149,6 +1554,33 @@ mod tests {
     }
 
     #[test]
+    fn clap_parses_worklist_json_output() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "worklist",
+            "--kind",
+            "unsafe",
+            "--format",
+            "json",
+            "--output",
+            "target/worklist.json",
+        ]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse worklist args: {err}"))
+        });
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Worklist(WorklistArgs {
+                kind: Some(kind),
+                format: WorklistFormat::Json,
+                output: Some(path),
+                ..
+            })) if kind == "unsafe" && path == Path::new("target/worklist.json")
+        ));
+    }
+
+    #[test]
     fn explain_entry_text_reports_live_match_status() {
         let mut cfg = AllowConfig::empty();
         let entry = test_entry("allow-file", FindingKind::NonRustFile);
@@ -1204,6 +1636,98 @@ mod tests {
         assert!(text.contains("current_matches: 2"));
         assert!(text.contains("match_outcomes: matched=1, new=1"));
         assert!(text.contains("occurrence_limit exceeded"));
+    }
+
+    #[test]
+    fn worklist_json_emits_stale_allow_actions() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow
+            .push(test_entry("allow-file", FindingKind::NonRustFile));
+        let outcomes = vec![test_outcome(
+            MatchStatus::Stale,
+            Some("allow-file"),
+            None,
+            "allow-file is stale: no current finding matched tracked.file",
+        )];
+
+        let items = work_items_from_outcomes(&cfg, &[], &outcomes);
+        let json = render_worklist_json(&items);
+
+        assert_eq!(items.len(), 1);
+        assert!(json.contains("\"schema_id\": \"cargo-allow.worklist.v1\""));
+        assert!(json.contains("\"kind\": \"stale_allow\""));
+        assert!(json.contains("\"risk\": \"low\""));
+        assert!(json.contains("\"cargo allow explain allow-file\""));
+        assert!(json.contains("\"cargo allow check --kind non-rust --mode no-new\""));
+    }
+
+    #[test]
+    fn worklist_items_prioritize_unsafe_new_findings() {
+        let cfg = AllowConfig::empty();
+        let findings = vec![test_finding(
+            FindingKind::Unsafe,
+            Some("unsafe_fn"),
+            "src/lib.rs",
+            "unsafe_fn",
+        )];
+        let outcomes = vec![test_outcome(
+            MatchStatus::New,
+            None,
+            Some(0),
+            "unreceipted unsafe.unsafe_fn at src/lib.rs:1:1",
+        )];
+
+        let items = work_items_from_outcomes(&cfg, &findings, &outcomes);
+        let text = render_worklist_human(&items);
+
+        let item = items
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+        assert_eq!(item.kind, "new_unreceipted_finding");
+        assert_eq!(item.risk, "high");
+        assert!(
+            item.proof_commands
+                .iter()
+                .any(|command| { command == "cargo allow check --kind unsafe --mode no-new" })
+        );
+        assert!(
+            item.proof_commands
+                .iter()
+                .any(|command| command == "cargo test --workspace")
+        );
+        assert!(text.contains("work-new-unreceipted-finding-0001"));
+    }
+
+    #[test]
+    fn worklist_items_report_occurrence_limit_overrun() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow
+            .push(test_entry("allow-file", FindingKind::NonRustFile));
+        let finding = test_finding(
+            FindingKind::NonRustFile,
+            None,
+            "tracked.file",
+            "tracked_file",
+        );
+        let outcomes = vec![test_outcome(
+            MatchStatus::New,
+            Some("allow-file"),
+            Some(0),
+            "allow-file occurrence_limit exceeded at tracked.file:1:1",
+        )];
+
+        let items = work_items_from_outcomes(&cfg, &[finding], &outcomes);
+
+        let item = items
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+        assert_eq!(item.kind, "occurrence_limit_exceeded");
+        assert_eq!(item.risk, "medium");
+        assert!(
+            item.suggested_actions
+                .iter()
+                .any(|action| action.contains("baseline count"))
+        );
     }
 
     #[test]
@@ -1731,6 +2255,21 @@ expires = "permanent"
             span: Some(Span { line: 1, column: 1 }),
             identity: StructuralIdentity::new("file", ast_kind),
             message: "test finding".to_string(),
+        }
+    }
+
+    fn test_outcome(
+        status: MatchStatus,
+        allow_id: Option<&str>,
+        finding_index: Option<usize>,
+        message: &str,
+    ) -> MatchOutcome {
+        MatchOutcome {
+            status,
+            allow_id: allow_id.map(str::to_string),
+            finding_index,
+            message: message.to_string(),
+            score: 100,
         }
     }
 }
