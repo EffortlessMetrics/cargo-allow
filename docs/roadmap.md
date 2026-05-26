@@ -18,16 +18,15 @@ Completed:
 - Replace handwritten TOML parsing with typed serde/toml policy loading.
 - Strengthen lifecycle and required-field validation.
 - Replace manual CLI parsing with clap.
-- Document the source-tree-only product boundary and queue removal of remaining
-  Cargo-project discovery assumptions.
+- Document the source-tree-only product boundary.
+- Remove remaining Cargo-project discovery assumptions from root and inventory
+  discovery.
 - Harden non-Rust classification.
 - Support generated-code and ignored-surface policy.
 - Improve human and Markdown non-Rust audit output.
 
 Next:
 
-- Remove remaining Cargo-project discovery assumptions from root and inventory
-  discovery.
 - Dogfood non-Rust governance against an existing bespoke file-policy xtask.
 
 ## Phase 2: Replace Temporary Foundations

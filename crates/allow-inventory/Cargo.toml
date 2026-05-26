@@ -7,4 +7,3 @@ rust-version.workspace = true
 
 [dependencies]
 allow-core.workspace = true
-cargo_metadata.workspace = true

@@ -12,9 +12,9 @@ binary. `cargo allow ...` remains compatibility syntax for users who invoke it
 through Cargo.
 
 The current MVP uses `serde`/`toml` for policy loading and `clap` for the CLI.
-The active direction is to remove remaining Cargo-project assumptions from
-inventory and treat `Cargo.toml` and `Cargo.lock` as files in the scanned source
-tree, not as required build metadata.
+Inventory resolves an explicit `--root`, then the nearest git root, then the
+current directory. `Cargo.toml` and `Cargo.lock` are files in the scanned source
+tree, not required build metadata.
 
 ## What currently works
 
@@ -60,7 +60,7 @@ in scanned source-tree inventory," not "no unsafe exists" or "no panic exists."
 |---|---|
 | `allow-core` | Core data model, simple glob matching, stable FNV hash, dates |
 | `allow-policy` | Canonical `policy/allow.toml` parser, writer, validation |
-| `allow-inventory` | Source-tree root and file inventory seams, currently with git-tracked inventory and recursive fallback |
+| `allow-inventory` | Source-tree root discovery and file inventory, with git-tracked inventory and recursive fallback |
 | `allow-files` | Non-Rust/generated-file finding generation with configured generated globs |
 | `allow-rust` | Source-syntax scanner for panic, unsafe, lint suppressions, indexing |
 | `allow-match` | Structural matcher, lifecycle classification, stale/new/ambiguous statuses |

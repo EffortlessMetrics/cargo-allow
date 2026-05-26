@@ -48,10 +48,10 @@ successful build and does not execute repository code. It does not analyze:
 If a future scanner adds any of these capabilities, the report wording should
 name the exact capability and the version that introduced it.
 
-Root and inventory discovery should be source-tree based: explicit root, git
-root, then current directory, with git-tracked inventory preferred and
-symlink-safe filesystem traversal as fallback. Cargo manifests and lockfiles are
-ordinary files in that inventory, not required build metadata.
+Root and inventory discovery is source-tree based: explicit root, git root, then
+current directory, with git-tracked inventory preferred and symlink-safe
+filesystem traversal as fallback. Cargo manifests and lockfiles are ordinary
+files in that inventory, not required build metadata.
 
 ## Line Hints Are Not Identity
 
