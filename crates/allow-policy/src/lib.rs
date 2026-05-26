@@ -2,27 +2,132 @@ use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, LastSeen, Lifecycle,
     Requirements, Selector, WorkspaceConfig,
 };
-use std::collections::{BTreeMap, BTreeSet};
+use serde::Deserialize;
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum Value {
-    String(String),
-    Bool(bool),
-    Array(Vec<String>),
+#[derive(Debug, Default, Deserialize)]
+struct PolicyToml {
+    schema_version: Option<String>,
+    policy: Option<String>,
+    owner: Option<String>,
+    status: Option<String>,
+    #[serde(default)]
+    workspace: WorkspaceToml,
+    #[serde(default)]
+    requirements: RequirementsToml,
+    #[serde(default)]
+    allow: Vec<AllowEntryToml>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Section {
-    Root,
-    Workspace,
-    Requirements,
-    UnsafeRequirements,
-    Allow(usize),
-    AllowSelector(usize),
-    AllowLastSeen(usize),
+#[derive(Debug, Default, Deserialize)]
+struct WorkspaceToml {
+    root: Option<String>,
+    inventory: Option<String>,
+    default_mode: Option<String>,
+    #[serde(default, deserialize_with = "string_or_vec")]
+    ignored: Vec<String>,
+    #[serde(default, deserialize_with = "string_or_vec")]
+    generated: Vec<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct RequirementsToml {
+    #[serde(default, deserialize_with = "option_bool_or_string")]
+    owner_required: Option<bool>,
+    #[serde(default, deserialize_with = "option_bool_or_string")]
+    reason_required: Option<bool>,
+    #[serde(default, deserialize_with = "option_bool_or_string")]
+    classification_required: Option<bool>,
+    #[serde(default, deserialize_with = "option_bool_or_string")]
+    expires_or_review_after_required: Option<bool>,
+    #[serde(default, deserialize_with = "option_bool_or_string")]
+    allow_bare_allow_attributes: Option<bool>,
+    #[serde(default, deserialize_with = "option_bool_or_string")]
+    stale_entries_fail: Option<bool>,
+    #[serde(default, rename = "unsafe")]
+    unsafe_requirements: UnsafeRequirementsToml,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct UnsafeRequirementsToml {
+    #[serde(default, deserialize_with = "option_bool_or_string")]
+    evidence_required: Option<bool>,
+    #[serde(default, deserialize_with = "option_bool_or_string")]
+    safety_comment_required: Option<bool>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct AllowEntryToml {
+    id: Option<String>,
+    kind: Option<String>,
+    family: Option<String>,
+    path: Option<PathBuf>,
+    glob: Option<String>,
+    owner: Option<String>,
+    classification: Option<String>,
+    #[serde(alias = "explanation")]
+    reason: Option<String>,
+    #[serde(default, alias = "covered_by", deserialize_with = "string_or_vec")]
+    evidence: Vec<String>,
+    #[serde(default, deserialize_with = "string_or_vec")]
+    links: Vec<String>,
+    created: Option<String>,
+    review_after: Option<String>,
+    expires: Option<String>,
+    #[serde(default)]
+    selector: SelectorToml,
+    #[serde(default)]
+    last_seen: LastSeenToml,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct SelectorToml {
+    #[serde(alias = "kind")]
+    ast_kind: Option<String>,
+    container: Option<String>,
+    callee: Option<String>,
+    #[serde(alias = "macro")]
+    macro_name: Option<String>,
+    lint: Option<String>,
+    symbol: Option<String>,
+    receiver_fingerprint: Option<String>,
+    target_fingerprint: Option<String>,
+    normalized_snippet_hash: Option<String>,
+    #[serde(default, deserialize_with = "option_u32_or_string")]
+    line_hint: Option<u32>,
+    glob: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct LastSeenToml {
+    #[serde(default, deserialize_with = "option_u32_or_string")]
+    line: Option<u32>,
+    #[serde(default, deserialize_with = "option_u32_or_string")]
+    column: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum StringList {
+    One(String),
+    Many(Vec<String>),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum Boolish {
+    Bool(bool),
+    String(String),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum U32ish {
+    Number(u32),
+    String(String),
 }
 
 pub fn find_config(start: impl AsRef<Path>) -> Option<PathBuf> {
@@ -49,106 +154,127 @@ pub fn load_policy(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
 }
 
 pub fn parse_policy(input: &str) -> CargoAllowResult<AllowConfig> {
-    let mut root: BTreeMap<String, Value> = BTreeMap::new();
-    let mut workspace: BTreeMap<String, Value> = BTreeMap::new();
-    let mut req: BTreeMap<String, Value> = BTreeMap::new();
-    let mut unsafe_req: BTreeMap<String, Value> = BTreeMap::new();
-    let mut allow_maps: Vec<BTreeMap<String, Value>> = Vec::new();
-    let mut selectors: Vec<BTreeMap<String, Value>> = Vec::new();
-    let mut last_seen: Vec<BTreeMap<String, Value>> = Vec::new();
-    let mut section = Section::Root;
-
-    for (idx, raw_line) in input.lines().enumerate() {
-        let line = strip_comment(raw_line).trim();
-        if line.is_empty() {
-            continue;
-        }
-        if line == "[[allow]]" {
-            allow_maps.push(BTreeMap::new());
-            selectors.push(BTreeMap::new());
-            last_seen.push(BTreeMap::new());
-            section = Section::Allow(allow_maps.len() - 1);
-            continue;
-        }
-        if line.starts_with('[') && line.ends_with(']') {
-            let name = &line[1..line.len() - 1];
-            section = match name {
-                "workspace" => Section::Workspace,
-                "requirements" => Section::Requirements,
-                "requirements.unsafe" => Section::UnsafeRequirements,
-                "allow.selector" => {
-                    Section::AllowSelector(allow_maps.len().checked_sub(1).ok_or_else(|| {
-                        CargoAllowError::new(format!(
-                            "line {}: [allow.selector] before [[allow]]",
-                            idx + 1
-                        ))
-                    })?)
-                }
-                "allow.last_seen" => {
-                    Section::AllowLastSeen(allow_maps.len().checked_sub(1).ok_or_else(|| {
-                        CargoAllowError::new(format!(
-                            "line {}: [allow.last_seen] before [[allow]]",
-                            idx + 1
-                        ))
-                    })?)
-                }
-                other => {
-                    return Err(CargoAllowError::new(format!(
-                        "line {}: unsupported section [{other}]",
-                        idx + 1
-                    )));
-                }
-            };
-            continue;
-        }
-        let (key, value) = parse_assignment(line).ok_or_else(|| {
-            CargoAllowError::new(format!("line {}: expected key = value", idx + 1))
-        })?;
-        match section {
-            Section::Root => {
-                root.insert(key, value);
-            }
-            Section::Workspace => {
-                workspace.insert(key, value);
-            }
-            Section::Requirements => {
-                req.insert(key, value);
-            }
-            Section::UnsafeRequirements => {
-                unsafe_req.insert(key, value);
-            }
-            Section::Allow(i) => {
-                allow_maps[i].insert(key, value);
-            }
-            Section::AllowSelector(i) => {
-                selectors[i].insert(key, value);
-            }
-            Section::AllowLastSeen(i) => {
-                last_seen[i].insert(key, value);
-            }
-        }
-    }
-
-    let mut cfg = AllowConfig {
-        schema_version: get_string(&root, "schema_version").unwrap_or_else(|| "0.1".to_string()),
-        policy: get_string(&root, "policy").unwrap_or_else(|| "cargo-allow".to_string()),
-        owner: get_string(&root, "owner"),
-        status: get_string(&root, "status"),
-        workspace: parse_workspace(&workspace),
-        requirements: parse_requirements(&req, &unsafe_req),
-        allow: Vec::new(),
-    };
-
-    for i in 0..allow_maps.len() {
-        cfg.allow.push(parse_allow_entry(
-            &allow_maps[i],
-            &selectors[i],
-            &last_seen[i],
-            i,
-        )?);
-    }
+    let raw = toml::from_str::<PolicyToml>(input)
+        .map_err(|e| CargoAllowError::new(format!("failed to parse policy TOML: {e}")))?;
+    let cfg = raw.into_config()?;
     validate_policy(&cfg)?;
     Ok(cfg)
+}
+
+impl PolicyToml {
+    fn into_config(self) -> CargoAllowResult<AllowConfig> {
+        let allow = self
+            .allow
+            .into_iter()
+            .enumerate()
+            .map(|(index, entry)| entry.into_allow_entry(index))
+            .collect::<CargoAllowResult<Vec<_>>>()?;
+        Ok(AllowConfig {
+            schema_version: self.schema_version.unwrap_or_else(|| "0.1".to_string()),
+            policy: self.policy.unwrap_or_else(|| "cargo-allow".to_string()),
+            owner: self.owner,
+            status: self.status,
+            workspace: self.workspace.into_workspace_config(),
+            requirements: self.requirements.into_requirements(),
+            allow,
+        })
+    }
+}
+
+impl WorkspaceToml {
+    fn into_workspace_config(self) -> WorkspaceConfig {
+        let default = WorkspaceConfig::default();
+        WorkspaceConfig {
+            root: self.root.unwrap_or(default.root),
+            inventory: self.inventory.unwrap_or(default.inventory),
+            ignored: if self.ignored.is_empty() {
+                default.ignored
+            } else {
+                self.ignored
+            },
+            generated: if self.generated.is_empty() {
+                default.generated
+            } else {
+                self.generated
+            },
+            default_mode: self.default_mode.unwrap_or(default.default_mode),
+        }
+    }
+}
+
+impl RequirementsToml {
+    fn into_requirements(self) -> Requirements {
+        let default = Requirements::default();
+        Requirements {
+            owner_required: self.owner_required.unwrap_or(default.owner_required),
+            reason_required: self.reason_required.unwrap_or(default.reason_required),
+            classification_required: self
+                .classification_required
+                .unwrap_or(default.classification_required),
+            expires_or_review_after_required: self
+                .expires_or_review_after_required
+                .unwrap_or(default.expires_or_review_after_required),
+            allow_bare_allow_attributes: self
+                .allow_bare_allow_attributes
+                .unwrap_or(default.allow_bare_allow_attributes),
+            stale_entries_fail: self
+                .stale_entries_fail
+                .unwrap_or(default.stale_entries_fail),
+            unsafe_evidence_required: self
+                .unsafe_requirements
+                .evidence_required
+                .unwrap_or(default.unsafe_evidence_required),
+            unsafe_safety_comment_required: self
+                .unsafe_requirements
+                .safety_comment_required
+                .unwrap_or(default.unsafe_safety_comment_required),
+        }
+    }
+}
+
+impl AllowEntryToml {
+    fn into_allow_entry(self, index: usize) -> CargoAllowResult<AllowEntry> {
+        let id = self.id.unwrap_or_else(|| format!("allow-{:04}", index + 1));
+        let kind_text = self
+            .kind
+            .ok_or_else(|| CargoAllowError::new(format!("{id} missing kind")))?;
+        let kind = FindingKind::from_str(&kind_text)?;
+        let last_seen = match (self.last_seen.line, self.last_seen.column) {
+            (Some(line), Some(column)) => Some(LastSeen { line, column }),
+            _ => None,
+        };
+        Ok(AllowEntry {
+            id,
+            kind,
+            family: self.family,
+            path: self.path,
+            glob: self.glob,
+            owner: self.owner.unwrap_or_default(),
+            classification: self.classification.unwrap_or_default(),
+            reason: self.reason.unwrap_or_default(),
+            evidence: self.evidence,
+            links: self.links,
+            lifecycle: Lifecycle {
+                created: self.created,
+                review_after: self.review_after,
+                expires: self.expires,
+            },
+            selector: Selector {
+                ast_kind: self.selector.ast_kind,
+                container: self.selector.container,
+                callee: self.selector.callee,
+                macro_name: self.selector.macro_name,
+                lint: self.selector.lint,
+                symbol: self.selector.symbol,
+                receiver_fingerprint: self.selector.receiver_fingerprint,
+                target_fingerprint: self.selector.target_fingerprint,
+                normalized_snippet_hash: self.selector.normalized_snippet_hash,
+                line_hint: self.selector.line_hint,
+                glob: self.selector.glob,
+            },
+            last_seen,
+        })
+    }
 }
 
 pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
@@ -363,245 +489,46 @@ pub fn render_policy(cfg: &AllowConfig) -> String {
     out
 }
 
-fn parse_workspace(map: &BTreeMap<String, Value>) -> WorkspaceConfig {
-    let mut w = WorkspaceConfig::default();
-    if let Some(v) = get_string(map, "root") {
-        w.root = v;
-    }
-    if let Some(v) = get_string(map, "inventory") {
-        w.inventory = v;
-    }
-    if let Some(v) = get_string(map, "default_mode") {
-        w.default_mode = v;
-    }
-    if let Some(v) = get_array(map, "ignored") {
-        w.ignored = v;
-    }
-    if let Some(v) = get_array(map, "generated") {
-        w.generated = v;
-    }
-    w
-}
-
-fn parse_requirements(
-    map: &BTreeMap<String, Value>,
-    unsafe_map: &BTreeMap<String, Value>,
-) -> Requirements {
-    let mut r = Requirements::default();
-    if let Some(v) = get_bool(map, "owner_required") {
-        r.owner_required = v;
-    }
-    if let Some(v) = get_bool(map, "reason_required") {
-        r.reason_required = v;
-    }
-    if let Some(v) = get_bool(map, "classification_required") {
-        r.classification_required = v;
-    }
-    if let Some(v) = get_bool(map, "expires_or_review_after_required") {
-        r.expires_or_review_after_required = v;
-    }
-    if let Some(v) = get_bool(map, "allow_bare_allow_attributes") {
-        r.allow_bare_allow_attributes = v;
-    }
-    if let Some(v) = get_bool(map, "stale_entries_fail") {
-        r.stale_entries_fail = v;
-    }
-    if let Some(v) = get_bool(unsafe_map, "evidence_required") {
-        r.unsafe_evidence_required = v;
-    }
-    if let Some(v) = get_bool(unsafe_map, "safety_comment_required") {
-        r.unsafe_safety_comment_required = v;
-    }
-    r
-}
-
-fn parse_allow_entry(
-    map: &BTreeMap<String, Value>,
-    selector_map: &BTreeMap<String, Value>,
-    last_map: &BTreeMap<String, Value>,
-    index: usize,
-) -> CargoAllowResult<AllowEntry> {
-    let id = get_string(map, "id").unwrap_or_else(|| format!("allow-{:04}", index + 1));
-    let kind_text = get_string(map, "kind")
-        .ok_or_else(|| CargoAllowError::new(format!("{id} missing kind")))?;
-    let kind = FindingKind::from_str(&kind_text)?;
-    let path = get_string(map, "path").map(PathBuf::from);
-    let glob = get_string(map, "glob");
-    let selector = Selector {
-        ast_kind: get_string(selector_map, "ast_kind").or_else(|| get_string(selector_map, "kind")),
-        container: get_string(selector_map, "container"),
-        callee: get_string(selector_map, "callee"),
-        macro_name: get_string(selector_map, "macro_name")
-            .or_else(|| get_string(selector_map, "macro")),
-        lint: get_string(selector_map, "lint"),
-        symbol: get_string(selector_map, "symbol"),
-        receiver_fingerprint: get_string(selector_map, "receiver_fingerprint"),
-        target_fingerprint: get_string(selector_map, "target_fingerprint"),
-        normalized_snippet_hash: get_string(selector_map, "normalized_snippet_hash"),
-        line_hint: get_u32(selector_map, "line_hint"),
-        glob: get_string(selector_map, "glob"),
-    };
-    let last_seen = match (get_u32(last_map, "line"), get_u32(last_map, "column")) {
-        (Some(line), Some(column)) => Some(LastSeen { line, column }),
-        _ => None,
-    };
-    Ok(AllowEntry {
-        id,
-        kind,
-        family: get_string(map, "family"),
-        path,
-        glob,
-        owner: get_string(map, "owner").unwrap_or_default(),
-        classification: get_string(map, "classification").unwrap_or_default(),
-        reason: get_string(map, "reason")
-            .or_else(|| get_string(map, "explanation"))
-            .unwrap_or_default(),
-        evidence: get_array(map, "evidence")
-            .or_else(|| get_array(map, "covered_by"))
-            .unwrap_or_default(),
-        links: get_array(map, "links").unwrap_or_default(),
-        lifecycle: Lifecycle {
-            created: get_string(map, "created"),
-            review_after: get_string(map, "review_after"),
-            expires: get_string(map, "expires"),
-        },
-        selector,
-        last_seen,
-    })
-}
-
-fn parse_assignment(line: &str) -> Option<(String, Value)> {
-    let mut parts = line.splitn(2, '=');
-    let key = parts.next()?.trim().to_string();
-    let value = parse_value(parts.next()?.trim())?;
-    Some((key, value))
-}
-
-fn parse_value(input: &str) -> Option<Value> {
-    let input = input.trim();
-    if input.starts_with('"') && input.ends_with('"') && input.len() >= 2 {
-        return Some(Value::String(
-            input[1..input.len() - 1]
-                .replace("\\\"", "\"")
-                .replace("\\\\", "\\"),
-        ));
-    }
-    if input == "true" {
-        return Some(Value::Bool(true));
-    }
-    if input == "false" {
-        return Some(Value::Bool(false));
-    }
-    if input.starts_with('[') && input.ends_with(']') {
-        let inner = &input[1..input.len() - 1];
-        let mut arr = Vec::new();
-        for part in split_array(inner) {
-            let part = part.trim();
-            if part.is_empty() {
-                continue;
-            }
-            if part.starts_with('"') && part.ends_with('"') && part.len() >= 2 {
-                arr.push(
-                    part[1..part.len() - 1]
-                        .replace("\\\"", "\"")
-                        .replace("\\\\", "\\"),
-                );
-            } else {
-                arr.push(part.to_string());
-            }
-        }
-        return Some(Value::Array(arr));
-    }
-    Some(Value::String(input.to_string()))
-}
-
-fn split_array(input: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut current = String::new();
-    let mut in_string = false;
-    let mut escaped = false;
-    for ch in input.chars() {
-        if escaped {
-            current.push(ch);
-            escaped = false;
-            continue;
-        }
-        if ch == '\\' {
-            current.push(ch);
-            escaped = true;
-            continue;
-        }
-        if ch == '"' {
-            in_string = !in_string;
-            current.push(ch);
-            continue;
-        }
-        if ch == ',' && !in_string {
-            out.push(current.trim().to_string());
-            current.clear();
-        } else {
-            current.push(ch);
-        }
-    }
-    if !current.trim().is_empty() {
-        out.push(current.trim().to_string());
-    }
-    out
-}
-
-fn strip_comment(input: &str) -> &str {
-    let mut in_string = false;
-    let mut escaped = false;
-    for (idx, ch) in input.char_indices() {
-        if escaped {
-            escaped = false;
-            continue;
-        }
-        if ch == '\\' {
-            escaped = true;
-            continue;
-        }
-        if ch == '"' {
-            in_string = !in_string;
-            continue;
-        }
-        if ch == '#' && !in_string {
-            return &input[..idx];
-        }
-    }
-    input
-}
-
-fn get_string(map: &BTreeMap<String, Value>, key: &str) -> Option<String> {
-    match map.get(key) {
-        Some(Value::String(v)) => Some(v.clone()),
-        Some(Value::Bool(v)) => Some(v.to_string()),
-        Some(Value::Array(_)) | None => None,
-    }
-}
-
-fn get_array(map: &BTreeMap<String, Value>, key: &str) -> Option<Vec<String>> {
-    match map.get(key) {
-        Some(Value::Array(v)) => Some(v.clone()),
-        Some(Value::String(v)) => Some(vec![v.clone()]),
-        _ => None,
-    }
-}
-
-fn get_bool(map: &BTreeMap<String, Value>, key: &str) -> Option<bool> {
-    match map.get(key) {
-        Some(Value::Bool(v)) => Some(*v),
-        Some(Value::String(v)) => v.parse().ok(),
-        _ => None,
-    }
-}
-
-fn get_u32(map: &BTreeMap<String, Value>, key: &str) -> Option<u32> {
-    get_string(map, key).and_then(|v| v.parse().ok())
-}
-
 fn escape_toml(input: &str) -> String {
     input.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+fn string_or_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match StringList::deserialize(deserializer)? {
+        StringList::One(value) => Ok(vec![value]),
+        StringList::Many(values) => Ok(values),
+    }
+}
+
+fn option_bool_or_string<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match Option::<Boolish>::deserialize(deserializer)? {
+        Some(Boolish::Bool(value)) => Ok(Some(value)),
+        Some(Boolish::String(value)) => value
+            .parse::<bool>()
+            .map(Some)
+            .map_err(serde::de::Error::custom),
+        None => Ok(None),
+    }
+}
+
+fn option_u32_or_string<'de, D>(deserializer: D) -> Result<Option<u32>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match Option::<U32ish>::deserialize(deserializer)? {
+        Some(U32ish::Number(value)) => Ok(Some(value)),
+        Some(U32ish::String(value)) => value
+            .parse::<u32>()
+            .map(Some)
+            .map_err(serde::de::Error::custom),
+        None => Ok(None),
+    }
 }
 
 fn render_array(values: &[String]) -> String {
@@ -676,5 +603,63 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("duplicate"));
+    }
+
+    #[test]
+    fn parses_legacy_aliases_and_scalar_arrays() {
+        let cfg = parse_policy(
+            r#"
+                policy = "cargo-allow"
+
+                [workspace]
+                ignored = ".git/**"
+
+                [requirements]
+                owner_required = "true"
+
+                [[allow]]
+                id = "allow-legacy"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "legacy"
+                explanation = "legacy reason field"
+                covered_by = "test:legacy"
+                expires = "2026-08-01"
+
+                [allow.selector]
+                kind = "macro_call"
+                macro = "panic"
+                line_hint = "12"
+            "#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("legacy aliases parse: {err}")));
+
+        assert_eq!(cfg.workspace.ignored, vec![".git/**"]);
+        let entry = cfg
+            .allow
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected one allow entry"));
+        assert_eq!(entry.reason, "legacy reason field");
+        assert_eq!(entry.evidence, vec!["test:legacy"]);
+        assert_eq!(entry.selector.ast_kind.as_deref(), Some("macro_call"));
+        assert_eq!(entry.selector.macro_name.as_deref(), Some("panic"));
+        assert_eq!(entry.selector.line_hint, Some(12));
+    }
+
+    #[test]
+    fn reports_toml_parse_errors() {
+        let err = parse_policy("policy = [").unwrap_err();
+
+        assert!(err.to_string().contains("failed to parse policy TOML"));
+    }
+
+    #[test]
+    fn parses_current_repository_policy() {
+        let cfg = parse_policy(include_str!("../../../policy/allow.toml"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("repo policy parses: {err}")));
+
+        assert_eq!(cfg.policy, "cargo-allow");
+        assert!(cfg.allow.len() >= 70);
     }
 }
