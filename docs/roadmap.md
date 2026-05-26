@@ -154,11 +154,12 @@ Completed:
 - Improve `list` with current status, match counts, owner/kind/lifecycle
   filters, and baseline-debt filtering.
 - Implement dry-run-first stale pruning.
+- Make baseline proposal output safer by refusing accidental overwrites and
+  emitting a proposal summary.
 
 Planned work:
 
 - Add allow entries from findings.
-- Make baseline proposal production-quality.
 
 ## Phase 10: Migration And Dogfood
 

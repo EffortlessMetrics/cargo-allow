@@ -106,6 +106,11 @@ Baseline debt must carry a short expiry. In the MVP validator, that means an
 `expires` date no more than 120 days after `created` or, when `created` is
 absent, the tool's deterministic fixture date.
 
+`cargo allow propose --write <path>` refuses to overwrite an existing file unless
+`--force` is passed. The command writes only TOML to stdout or the requested
+file, and emits its proposal summary to stderr so generated policy remains
+parseable.
+
 Counted legacy baselines should also carry an `occurrence_limit`:
 
 ```toml
