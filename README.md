@@ -2,7 +2,10 @@
 
 This directory is a repo-ready implementation scaffold for `cargo-allow`.
 
-It is intentionally dependency-light: the MVP compiles with the Rust standard library only. That keeps the first generated repository easy to test in offline/agent sandboxes. Later PRs can swap the handwritten policy parser and source scanner for `toml`/`serde`, `clap`, and a richer Rust syntax parser once the product seams are stable.
+The MVP started dependency-light to keep the first generated repository easy to
+test in offline/agent sandboxes. The policy parser now uses `serde`/`toml`, and
+the CLI now uses `clap`; later PRs can replace the source scanner with a richer
+Rust syntax parser once the product seams are stable.
 
 ## What currently works
 
@@ -36,4 +39,4 @@ It does **not** analyze macro expansion, MIR, type information, or rustc semanti
 | `allow-report` | Human, Markdown, JSON report and receipt rendering |
 | `allow-diff` | Git changed-file helper and lightweight diff wrapper |
 | `allow-policy-legacy` | Legacy adapter stubs with concrete migration notes |
-| `cargo-allow` | Manual CLI wiring for init/audit/check/list/explain/propose/doctor/diff |
+| `cargo-allow` | clap-based CLI wiring for init/audit/check/list/explain/propose/doctor/diff |

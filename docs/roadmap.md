@@ -18,6 +18,9 @@ Next:
 
 - Define the product lane and claim boundaries in docs.
 - Stabilize current JSON reports and receipt schemas.
+- Replace handwritten TOML parsing with typed serde/toml policy loading.
+- Strengthen lifecycle and required-field validation.
+- Replace manual CLI parsing with clap.
 
 ## Phase 2: Replace Temporary Foundations
 
@@ -25,9 +28,6 @@ Goal: make the product surface stable enough for real users.
 
 Planned PRs:
 
-- Replace handwritten TOML parsing with typed serde/toml policy loading.
-- Strengthen lifecycle and required-field validation.
-- Replace manual CLI parsing with clap.
 - Use cargo_metadata for workspace discovery.
 
 ## Phase 3: Make Non-Rust Governance Useful

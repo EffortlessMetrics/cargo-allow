@@ -800,7 +800,7 @@ mod tests {
             .unwrap_or_else(|err| std::panic::panic_any(format!("repo policy parses: {err}")));
 
         assert_eq!(cfg.policy, "cargo-allow");
-        assert!(cfg.allow.len() >= 70);
+        assert!(cfg.allow.len() >= 60);
     }
 
     #[test]

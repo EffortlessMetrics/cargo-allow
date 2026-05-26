@@ -15,3 +15,4 @@ allow-match.workspace = true
 allow-report.workspace = true
 allow-diff.workspace = true
 allow-policy-legacy.workspace = true
+clap.workspace = true
