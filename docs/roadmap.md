@@ -23,6 +23,7 @@ Next:
 - Replace manual CLI parsing with clap.
 - Use cargo_metadata for workspace discovery.
 - Harden non-Rust classification.
+- Support generated-code and ignored-surface policy.
 
 ## Phase 2: Replace Temporary Foundations
 
@@ -38,7 +39,6 @@ Goal: ship the first low-parser-risk lane that real repositories can adopt.
 
 Planned PRs:
 
-- Support generated-code and ignored-surface policy.
 - Improve non-Rust audit output.
 - Dogfood against an existing bespoke file-policy xtask.
 

@@ -263,6 +263,51 @@ mod tests {
     }
 
     #[test]
+    fn inventory_defaults_to_git_tracked_and_can_include_untracked() {
+        let root = temp_root("include-untracked");
+        write_file(root.join("tracked.txt"), "tracked");
+        write_file(root.join("untracked.txt"), "untracked");
+        run_git(&root, &["init"]);
+        run_git(&root, &["add", "tracked.txt"]);
+
+        let tracked = inventory_files(&root, &InventoryOptions::default())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("tracked inventory: {err}")));
+        let with_untracked = inventory_files(
+            &root,
+            &InventoryOptions {
+                include_untracked: true,
+                ..InventoryOptions::default()
+            },
+        )
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("untracked-inclusive inventory: {err}"))
+        });
+
+        assert!(tracked.contains(&PathBuf::from("tracked.txt")));
+        assert!(!tracked.contains(&PathBuf::from("untracked.txt")));
+        assert!(with_untracked.contains(&PathBuf::from("tracked.txt")));
+        assert!(with_untracked.contains(&PathBuf::from("untracked.txt")));
+        remove_dir(&root);
+    }
+
+    #[test]
+    fn inventory_applies_custom_ignored_globs() {
+        let opts = InventoryOptions {
+            ignored: vec!["scripts/**".to_string()],
+            ..InventoryOptions::default()
+        };
+
+        assert!(super::is_ignored(
+            Path::new("scripts/release.sh"),
+            &opts.ignored
+        ));
+        assert!(!super::is_ignored(
+            Path::new("tools/release.sh"),
+            &opts.ignored
+        ));
+    }
+
+    #[test]
     fn workspace_metadata_reports_member_packages_and_targets() {
         let metadata = workspace_metadata(env!("CARGO_MANIFEST_DIR"))
             .unwrap_or_else(|err| std::panic::panic_any(format!("read workspace metadata: {err}")));
@@ -320,5 +365,40 @@ mod tests {
 
         assert_eq!(files, vec![PathBuf::from("real/file.txt")]);
         fs::remove_dir_all(root).expect("clean up test fixture");
+    }
+
+    fn temp_root(label: &str) -> PathBuf {
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("system clock: {err}")))
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-{label}-{}-{unique}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
+        root
+    }
+
+    fn write_file(path: PathBuf, contents: &str) {
+        fs::write(&path, contents).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("write {}: {err}", path.display()))
+        });
+    }
+
+    fn run_git(root: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .status()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("invoke git: {err}")));
+        assert!(status.success(), "git command failed: {args:?}");
+    }
+
+    fn remove_dir(path: &Path) {
+        fs::remove_dir_all(path)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove temp root: {err}")));
     }
 }

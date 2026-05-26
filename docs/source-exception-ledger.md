@@ -122,6 +122,11 @@ cargo-allow treats those files as governed source surface when they are
 git-tracked. Each retained non-Rust file should have an owner, reason,
 classification, selector, and lifecycle.
 
+By default, repository inventory is based on `git ls-files`. Use
+`--include-untracked` for local discovery runs that should include untracked
+files. `workspace.ignored` removes matching inventory paths before scanning, and
+`workspace.generated` marks matching non-Rust file findings as `generated_code`.
+
 The current non-Rust family vocabulary is intentionally explicit:
 `ci_declarative`, `documentation`, `release_script`, `test_fixture`,
 `generated_code`, `editor_extension`, `package_metadata`, `shell_script`,
