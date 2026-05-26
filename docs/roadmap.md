@@ -62,11 +62,13 @@ Completed:
 - Add `--compat --kind network` for shiplog-style
   `policy/network-allowlist.toml` and prove it side-by-side against shiplog's
   network-policy xtask.
+- Add `cargo allow migrate --repo-policy policy/ --out policy/allow.toml` for
+  combining supported shiplog-style legacy files into one canonical policy.
 
 Next:
 
-- Harden documented replacement gaps before removing any existing xtask and
-  start the canonical migration writer path.
+- Dogfood the combined canonical policy against shiplog before removing any
+  existing xtask.
 
 ## Phase 4: Build Structural Identity
 

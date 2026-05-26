@@ -264,6 +264,42 @@ current findings from the retained entries for side-by-side receipt validation;
 it does not discover outbound calls from source code, workflow logs, or runtime
 traffic.
 
+## Canonical Migration Result
+
+cargo-allow can combine the supported shiplog-style file-policy ledgers into one
+canonical policy:
+
+```bash
+cargo allow migrate --repo-policy policy/ --out policy/allow.toml
+```
+
+Observed migration proof used a target output file rather than overwriting
+shiplog's live policy:
+
+```text
+allow entries written: 615
+```
+
+The migrated policy passed the canonical non-Rust check:
+
+```bash
+cargo allow check --config <migrated-policy> --kind non-rust --mode no-new
+```
+
+Observed cargo-allow result:
+
+```text
+Findings scanned: 496
+matched: 496
+new: 0
+stale: 0
+ambiguous: 0
+```
+
+The migration writer expands non-Rust legacy globs against the current inventory
+so the canonical policy does not inherit overlapping-glob ambiguity. The
+companion retained-entry ledgers are preserved as `policy_exception.*` entries.
+
 ## What This Proves
 
 - cargo-allow can consume a shiplog-style
@@ -296,11 +332,17 @@ traffic.
 - Network compat preserves the legacy xtask's required-field validation shape
   and renders retained destinations as matched network-destination policy
   exceptions.
+- cargo-allow can combine the supported shiplog-style policy files into one
+  canonical policy file.
+- The migrated canonical policy can pass the non-Rust no-new check without new,
+  stale, or ambiguous non-Rust findings.
 
 ## What This Does Not Prove
 
 - It does not prove the canonical `policy/allow.toml` migration is ready to
-  replace the legacy policy file.
+  replace every legacy policy file or xtask.
+- It does not prove the full all-kind check passes for shiplog; panic, unsafe,
+  lint, and other source exception lanes still need their own policy migration.
 - It does not validate macro expansion, type information, executable behavior,
   workflow permissions, dependency semantics, or external network reach.
 - It does not prove full unlisted-manifest discovery; dependency-surface compat
