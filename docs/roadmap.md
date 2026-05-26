@@ -153,10 +153,10 @@ Completed:
   outcomes, and the command claim boundary.
 - Improve `list` with current status, match counts, owner/kind/lifecycle
   filters, and baseline-debt filtering.
+- Implement dry-run-first stale pruning.
 
 Planned work:
 
-- Implement dry-run-first stale pruning.
 - Add allow entries from findings.
 - Make baseline proposal production-quality.
 
