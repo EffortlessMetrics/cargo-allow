@@ -827,6 +827,7 @@ mod tests {
             "allow-0051",
             "allow-0056",
             "allow-0058",
+            "allow-0060",
             "allow-0063",
             "allow-0064",
             "allow-0065",
