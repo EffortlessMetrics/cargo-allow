@@ -50,12 +50,14 @@ Completed:
 - Add `--compat --kind executable` for shiplog-style
   `policy/executable-allowlist.toml` and prove it side-by-side against
   shiplog's executable-bit xtask.
+- Add `--compat --kind workflow` for shiplog-style
+  `policy/workflow-allowlist.toml` and prove it side-by-side against shiplog's
+  workflow xtask.
 
 Next:
 
 - Harden documented replacement gaps before removing any existing xtask:
-  workflow action permissions, dependency surfaces, process policy, and network
-  policy.
+  dependency surfaces, process policy, and network policy.
 
 ## Phase 4: Build Structural Identity
 

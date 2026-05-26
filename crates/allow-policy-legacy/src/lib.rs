@@ -3,6 +3,7 @@ use allow_core::{
     Lifecycle, Requirements, Selector, WorkspaceConfig, glob_matches, normalize_path,
 };
 use allow_policy::{parse_policy, validate_policy};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -27,6 +28,12 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
     {
         let rules = parse_executable_rules(&table)?;
         return config_from_executable_rules(&table, &rules);
+    }
+    if let Some(table) = legacy_table(&text)?
+        && table.get("policy").and_then(Value::as_str) == Some("workflow-allowlist")
+    {
+        let rules = parse_workflow_rules(&table)?;
+        return config_from_workflow_rules(&table, &rules);
     }
     parse_policy(&text)
 }
@@ -80,6 +87,21 @@ pub fn load_executable_compat_config(path: impl AsRef<Path>) -> CargoAllowResult
     config_from_executable_rules(&table, &rules)
 }
 
+pub fn load_workflow_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
+    let text = read_policy(path.as_ref())?;
+    let table = legacy_table(&text)?.ok_or_else(|| {
+        CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
+    })?;
+    if table.get("policy").and_then(Value::as_str) != Some("workflow-allowlist") {
+        return Err(CargoAllowError::new(format!(
+            "{} is not a workflow-allowlist policy",
+            path.as_ref().display()
+        )));
+    }
+    let rules = parse_workflow_rules(&table)?;
+    config_from_workflow_rules(&table, &rules)
+}
+
 pub fn generated_findings_from_gitattributes(
     root: impl AsRef<Path>,
 ) -> CargoAllowResult<Vec<Finding>> {
@@ -112,8 +134,58 @@ pub fn executable_findings_from_git(root: impl AsRef<Path>) -> CargoAllowResult<
     Ok(executable_findings_from_git_stage(&text))
 }
 
+pub fn workflow_findings_from_files(root: impl AsRef<Path>) -> CargoAllowResult<Vec<Finding>> {
+    let root = root.as_ref();
+    let workflows_dir = root.join(".github").join("workflows");
+    if !workflows_dir.is_dir() {
+        return Ok(Vec::new());
+    }
+    let mut paths = Vec::new();
+    for entry in fs::read_dir(&workflows_dir).map_err(|e| {
+        CargoAllowError::new(format!("failed to read {}: {e}", workflows_dir.display()))
+    })? {
+        let entry = entry.map_err(|e| {
+            CargoAllowError::new(format!(
+                "failed to read {} entry: {e}",
+                workflows_dir.display()
+            ))
+        })?;
+        let path = entry.path();
+        if is_workflow_path(&path) {
+            let rel = path
+                .strip_prefix(root)
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .replace('\\', "/");
+            paths.push(PathBuf::from(rel));
+        }
+    }
+    paths.sort();
+
+    let mut findings = Vec::new();
+    for path in paths {
+        findings.push(workflow_file_finding(path.clone()));
+        let full_path = root.join(
+            path.to_string_lossy()
+                .replace('/', std::path::MAIN_SEPARATOR_STR),
+        );
+        let text = fs::read_to_string(&full_path).map_err(|e| {
+            CargoAllowError::new(format!("failed to read {}: {e}", full_path.display()))
+        })?;
+        let uses = text
+            .lines()
+            .filter_map(extract_workflow_uses)
+            .collect::<BTreeSet<_>>();
+        findings.extend(
+            uses.into_iter()
+                .map(|action| workflow_action_finding(path.clone(), action)),
+        );
+    }
+    Ok(findings)
+}
+
 pub fn migration_notes() -> &'static str {
-    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, and executable allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml."
+    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, executable, and workflow allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml."
 }
 
 fn read_policy(path: &Path) -> CargoAllowResult<String> {
@@ -163,6 +235,20 @@ struct LegacyExecutableRule {
     owner: String,
     reason: String,
     interpreter: Option<String>,
+    created: Option<String>,
+    review_after: Option<String>,
+    expires: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct LegacyWorkflowRule {
+    path: String,
+    owner: String,
+    reason: String,
+    permissions: Vec<String>,
+    secrets_used: Vec<String>,
+    external_actions: Vec<String>,
+    duplicate_of_lane: Option<String>,
     created: Option<String>,
     review_after: Option<String>,
     expires: Option<String>,
@@ -305,6 +391,38 @@ fn parse_executable_rule(index: usize, entry: &Value) -> CargoAllowResult<Legacy
     })
 }
 
+fn parse_workflow_rules(table: &toml::Table) -> CargoAllowResult<Vec<LegacyWorkflowRule>> {
+    let entries = table
+        .get("entry")
+        .and_then(Value::as_array)
+        .ok_or_else(|| CargoAllowError::new("workflow-allowlist missing entry records"))?;
+    entries
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| parse_workflow_rule(index, entry))
+        .collect()
+}
+
+fn parse_workflow_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyWorkflowRule> {
+    let table = entry
+        .as_table()
+        .ok_or_else(|| CargoAllowError::new(format!("workflow entry {index} is not a table")))?;
+    let path = string_field(table, "path")
+        .ok_or_else(|| CargoAllowError::new(format!("workflow entry {index} missing path")))?;
+    Ok(LegacyWorkflowRule {
+        path,
+        owner: string_field(table, "owner").unwrap_or_default(),
+        reason: string_field(table, "reason").unwrap_or_default(),
+        permissions: string_array_field(table, "permissions"),
+        secrets_used: string_array_field(table, "secrets_used"),
+        external_actions: string_array_field(table, "external_actions"),
+        duplicate_of_lane: string_field(table, "duplicate_of_lane"),
+        created: string_field(table, "created"),
+        review_after: string_field(table, "review_after"),
+        expires: normalize_legacy_expires(string_field(table, "expires")),
+    })
+}
+
 fn config_from_non_rust_rules(
     table: &toml::Table,
     rules: &[LegacyNonRustRule],
@@ -331,6 +449,16 @@ fn config_from_executable_rules(
 ) -> CargoAllowResult<AllowConfig> {
     let mut cfg = base_config(table);
     cfg.allow = rules.iter().map(entry_from_executable_rule).collect();
+    validate_policy(&cfg)?;
+    Ok(cfg)
+}
+
+fn config_from_workflow_rules(
+    table: &toml::Table,
+    rules: &[LegacyWorkflowRule],
+) -> CargoAllowResult<AllowConfig> {
+    let mut cfg = base_config(table);
+    cfg.allow = rules.iter().flat_map(entries_from_workflow_rule).collect();
     validate_policy(&cfg)?;
     Ok(cfg)
 }
@@ -486,6 +614,67 @@ fn entry_from_executable_rule(rule: &LegacyExecutableRule) -> AllowEntry {
     }
 }
 
+fn entries_from_workflow_rule(rule: &LegacyWorkflowRule) -> Vec<AllowEntry> {
+    let mut entries = Vec::with_capacity(rule.external_actions.len() + 1);
+    entries.push(workflow_file_entry(rule));
+    entries.extend(
+        rule.external_actions
+            .iter()
+            .map(|action| workflow_action_entry(rule, action)),
+    );
+    entries
+}
+
+fn workflow_file_entry(rule: &LegacyWorkflowRule) -> AllowEntry {
+    let path = normalize_path(&rule.path);
+    AllowEntry {
+        id: format!("workflow-file-{}", slug_id(&path)),
+        kind: FindingKind::PolicyException,
+        family: Some("github_workflow".to_string()),
+        path: Some(PathBuf::from(&path)),
+        glob: None,
+        owner: rule.owner.clone(),
+        classification: "github_workflow".to_string(),
+        reason: rule.reason.clone(),
+        evidence: workflow_evidence(rule),
+        links: vec![format!("legacy-policy:workflow:{path}")],
+        lifecycle: lifecycle_from_workflow_rule(rule),
+        selector: Selector {
+            ast_kind: Some("github_workflow".to_string()),
+            symbol: Some(path.clone()),
+            glob: Some(path),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
+fn workflow_action_entry(rule: &LegacyWorkflowRule, action: &str) -> AllowEntry {
+    let path = normalize_path(&rule.path);
+    let symbol = workflow_action_symbol(&path, action);
+    AllowEntry {
+        id: format!("workflow-action-{}--{}", slug_id(&path), slug_id(action)),
+        kind: FindingKind::PolicyException,
+        family: Some("workflow_external_action".to_string()),
+        path: Some(PathBuf::from(&path)),
+        glob: None,
+        owner: rule.owner.clone(),
+        classification: "workflow_external_action".to_string(),
+        reason: rule.reason.clone(),
+        evidence: vec![format!("external_action:{action}")],
+        links: vec![format!("legacy-policy:workflow:{path}")],
+        lifecycle: lifecycle_from_workflow_rule(rule),
+        selector: Selector {
+            ast_kind: Some("github_action_uses".to_string()),
+            symbol: Some(symbol),
+            target_fingerprint: Some(format!("action:{action}")),
+            glob: Some(path),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
 fn generated_evidence(rule: &LegacyGeneratedRule) -> Vec<String> {
     let mut evidence = Vec::new();
     if let Some(generator) = &rule.generator {
@@ -502,6 +691,24 @@ fn executable_evidence(rule: &LegacyExecutableRule) -> Vec<String> {
         .as_ref()
         .map(|interpreter| vec![format!("interpreter:{interpreter}")])
         .unwrap_or_default()
+}
+
+fn workflow_evidence(rule: &LegacyWorkflowRule) -> Vec<String> {
+    let mut evidence = Vec::new();
+    evidence.extend(
+        rule.permissions
+            .iter()
+            .map(|permission| format!("permission:{permission}")),
+    );
+    evidence.extend(
+        rule.secrets_used
+            .iter()
+            .map(|secret| format!("secret:{secret}")),
+    );
+    if let Some(lane) = &rule.duplicate_of_lane {
+        evidence.push(format!("duplicate_of_lane:{lane}"));
+    }
+    evidence
 }
 
 fn generated_paths_from_gitattributes(input: &str) -> Vec<PathBuf> {
@@ -576,6 +783,61 @@ fn executable_finding(path: PathBuf) -> Finding {
     }
 }
 
+fn workflow_file_finding(path: PathBuf) -> Finding {
+    let normalized = normalize_path(&path);
+    let mut identity = allow_core::StructuralIdentity::new("workflow", "github_workflow");
+    identity.symbol = Some(normalized);
+    Finding {
+        kind: FindingKind::PolicyException,
+        family: Some("github_workflow".to_string()),
+        path,
+        span: Some(allow_core::Span { line: 1, column: 1 }),
+        identity,
+        message: "GitHub Actions workflow file".to_string(),
+    }
+}
+
+fn workflow_action_finding(path: PathBuf, action: String) -> Finding {
+    let normalized = normalize_path(&path);
+    let mut identity = allow_core::StructuralIdentity::new("workflow", "github_action_uses");
+    identity.symbol = Some(workflow_action_symbol(&normalized, &action));
+    identity.target_fingerprint = Some(format!("action:{action}"));
+    Finding {
+        kind: FindingKind::PolicyException,
+        family: Some("workflow_external_action".to_string()),
+        path,
+        span: Some(allow_core::Span { line: 1, column: 1 }),
+        identity,
+        message: format!("GitHub Actions workflow uses external action {action}"),
+    }
+}
+
+fn extract_workflow_uses(line: &str) -> Option<String> {
+    let trimmed = line.trim().trim_start_matches('-').trim_start();
+    let stripped = trimmed.strip_prefix("uses:")?;
+    let value = stripped.trim();
+    if value.is_empty() {
+        return None;
+    }
+    let no_comment = value.split('#').next().unwrap_or(value).trim();
+    if no_comment.is_empty() {
+        None
+    } else {
+        Some(no_comment.to_string())
+    }
+}
+
+fn workflow_action_symbol(path: &str, action: &str) -> String {
+    format!("{path} uses {action}")
+}
+
+fn is_workflow_path(path: &Path) -> bool {
+    matches!(
+        path.extension().and_then(|extension| extension.to_str()),
+        Some("yml" | "yaml")
+    )
+}
+
 fn file_fingerprint(path: &Path) -> Option<String> {
     path.extension()
         .and_then(|extension| extension.to_str())
@@ -595,6 +857,14 @@ fn lifecycle_from_rule(rule: &LegacyNonRustRule) -> Lifecycle {
     }
 }
 
+fn lifecycle_from_workflow_rule(rule: &LegacyWorkflowRule) -> Lifecycle {
+    Lifecycle {
+        created: rule.created.clone(),
+        review_after: rule.review_after.clone(),
+        expires: rule.expires.clone(),
+    }
+}
+
 fn string_field(table: &toml::Table, field: &str) -> Option<String> {
     table
         .get(field)
@@ -602,6 +872,22 @@ fn string_field(table: &toml::Table, field: &str) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_string)
+}
+
+fn string_array_field(table: &toml::Table, field: &str) -> Vec<String> {
+    table
+        .get(field)
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn normalize_legacy_expires(expires: Option<String>) -> Option<String> {
@@ -612,6 +898,18 @@ fn normalize_legacy_expires(expires: Option<String>) -> Option<String> {
             value
         }
     })
+}
+
+fn slug_id(input: &str) -> String {
+    let mut out = String::new();
+    for ch in input.chars() {
+        if ch.is_ascii_alphanumeric() {
+            out.push(ch.to_ascii_lowercase());
+        } else if !out.ends_with('-') {
+            out.push('-');
+        }
+    }
+    out.trim_matches('-').to_string()
 }
 
 #[cfg(test)]
@@ -859,6 +1157,112 @@ mod tests {
         );
     }
 
+    #[test]
+    fn migrates_workflow_allowlist_to_policy_exception_entries() {
+        let policy = workflow_policy_fixture_path();
+        let cfg = load_legacy_or_canonical(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("workflow policy migrates: {err}"))
+        });
+
+        assert_eq!(cfg.policy, "cargo-allow");
+        assert_eq!(cfg.allow.len(), 3);
+        assert!(cfg.allow.iter().any(|entry| {
+            entry.kind == FindingKind::PolicyException
+                && entry.family.as_deref() == Some("github_workflow")
+                && entry.path.as_deref() == Some(Path::new(".github/workflows/ci.yml"))
+        }));
+        let action = cfg
+            .allow
+            .iter()
+            .find(|entry| {
+                entry.family.as_deref() == Some("workflow_external_action")
+                    && entry
+                        .selector
+                        .target_fingerprint
+                        .as_deref()
+                        .is_some_and(|target| target == "action:actions/checkout@v6.0.2")
+            })
+            .unwrap_or_else(|| std::panic::panic_any("expected checkout action entry"));
+        assert_eq!(action.classification, "workflow_external_action");
+        assert_eq!(action.lifecycle.expires.as_deref(), Some("never"));
+    }
+
+    #[test]
+    fn workflow_findings_read_workflow_files_and_uses_lines() {
+        let root = workflow_fixture_root();
+
+        let findings = workflow_findings_from_files(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("workflow findings load: {err}")));
+
+        assert!(findings.iter().any(|finding| {
+            finding.family.as_deref() == Some("github_workflow")
+                && finding.path == Path::new(".github/workflows/ci.yml")
+        }));
+        assert!(findings.iter().any(|finding| {
+            finding.family.as_deref() == Some("workflow_external_action")
+                && finding.identity.target_fingerprint.as_deref()
+                    == Some("action:actions/checkout@v6.0.2")
+        }));
+        assert!(!findings.iter().any(|finding| {
+            finding.identity.target_fingerprint.as_deref() == Some("action:ignored/comment@v1")
+        }));
+    }
+
+    #[test]
+    fn workflow_compat_preserves_missing_and_stale_drift() {
+        let policy = workflow_policy_fixture_path();
+        let cfg = load_workflow_compat_config(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("workflow compat config loads: {err}"))
+        });
+
+        let matched = allow_match::evaluate(
+            &cfg,
+            &[
+                workflow_file_finding(PathBuf::from(".github/workflows/ci.yml")),
+                workflow_action_finding(
+                    PathBuf::from(".github/workflows/ci.yml"),
+                    "actions/checkout@v6.0.2".to_string(),
+                ),
+                workflow_action_finding(
+                    PathBuf::from(".github/workflows/ci.yml"),
+                    "Swatinem/rust-cache@v2".to_string(),
+                ),
+            ],
+            allow_match::CheckMode::NoNew,
+        );
+        assert_eq!(
+            matched
+                .iter()
+                .filter(|outcome| outcome.status == allow_core::MatchStatus::Matched)
+                .count(),
+            3
+        );
+
+        let missing_allow = allow_match::evaluate(
+            &cfg,
+            &[
+                workflow_file_finding(PathBuf::from(".github/workflows/ci.yml")),
+                workflow_action_finding(
+                    PathBuf::from(".github/workflows/ci.yml"),
+                    "actions/setup-node@v5".to_string(),
+                ),
+            ],
+            allow_match::CheckMode::NoNew,
+        );
+        assert!(
+            missing_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::New)
+        );
+
+        let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+        assert!(
+            stale_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::Stale)
+        );
+    }
+
     static NEXT_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
     fn policy_fixture_path() -> PathBuf {
@@ -882,6 +1286,13 @@ mod tests {
         path
     }
 
+    fn workflow_policy_fixture_path() -> PathBuf {
+        let path = fixture_dir().join("workflow-allowlist.toml");
+        fs::write(&path, workflow_policy_fixture_text())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+        path
+    }
+
     fn generated_fixture_root() -> PathBuf {
         let dir = fixture_dir();
         fs::write(
@@ -889,6 +1300,19 @@ mod tests {
             "# generated files\npolicy/no-panic-baseline.toml text linguist-generated=true\nREADME.md text\n",
         )
         .unwrap_or_else(|err| std::panic::panic_any(format!("gitattributes write: {err}")));
+        dir
+    }
+
+    fn workflow_fixture_root() -> PathBuf {
+        let dir = fixture_dir();
+        let workflows = dir.join(".github").join("workflows");
+        fs::create_dir_all(&workflows)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("workflow dir: {err}")));
+        fs::write(
+            workflows.join("ci.yml"),
+            "name: ci\njobs:\n  test:\n    steps:\n      - uses: actions/checkout@v6.0.2\n      - uses: Swatinem/rust-cache@v2 # cache\n      # - uses: ignored/comment@v1\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("workflow write: {err}")));
         dir
     }
 
@@ -1005,6 +1429,33 @@ path = "scripts/package-proof.sh"
 interpreter = "bash"
 owner = "release"
 reason = "Release preflight aggregator."
+created = "2026-05-09"
+expires = "permanent"
+"#,
+        );
+        text
+    }
+
+    fn workflow_policy_fixture_text() -> String {
+        let mut text = String::from(
+            r#"schema_version = 1
+policy = "workflow-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+"#,
+        );
+        text.push_str("[[entry]]\n");
+        text.push_str(
+            r#"path = ".github/workflows/ci.yml"
+owner = "release/ci"
+reason = "Primary PR correctness gate."
+permissions = ["contents:read"]
+secrets_used = []
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "Swatinem/rust-cache@v2",
+]
 created = "2026-05-09"
 expires = "permanent"
 "#,
