@@ -40,14 +40,47 @@
         "type": "string"
       },
       "contains": {
-        "const": "source_syntax_only"
+        "const": "source_tree_inventory"
       }
+    },
+    "scanner_limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "contains": {
+        "const": "macro_expansion_not_analyzed"
+      }
+    },
+    "inventory": {
+      "$ref": "#/$defs/inventory"
     },
     "counts": {
       "$ref": "#/$defs/counts"
     }
   },
   "$defs": {
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "scanner", "source"],
+      "properties": {
+        "scope": {
+          "const": "source_tree"
+        },
+        "scanner": {
+          "const": "source_syntax"
+        },
+        "source": {
+          "enum": [
+            "unknown",
+            "git_tracked",
+            "filesystem_fallback",
+            "filesystem_include_untracked"
+          ]
+        }
+      }
+    },
     "counts": {
       "type": "object",
       "additionalProperties": false,

@@ -20,6 +20,29 @@ impl Default for InventoryOptions {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InventorySource {
+    GitTracked,
+    FilesystemFallback,
+    FilesystemIncludeUntracked,
+}
+
+impl InventorySource {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::GitTracked => "git_tracked",
+            Self::FilesystemFallback => "filesystem_fallback",
+            Self::FilesystemIncludeUntracked => "filesystem_include_untracked",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Inventory {
+    pub files: Vec<PathBuf>,
+    pub source: InventorySource,
+}
+
 pub fn resolve_source_tree_root(
     explicit_root: Option<&Path>,
     start: impl AsRef<Path>,
@@ -76,16 +99,29 @@ pub fn inventory_files(
     root: impl AsRef<Path>,
     options: &InventoryOptions,
 ) -> CargoAllowResult<Vec<PathBuf>> {
+    Ok(inventory(root, options)?.files)
+}
+
+pub fn inventory(
+    root: impl AsRef<Path>,
+    options: &InventoryOptions,
+) -> CargoAllowResult<Inventory> {
     let root = root.as_ref();
-    let mut files = if options.include_untracked {
-        recursive_files(root)?
+    let (mut files, source) = if options.include_untracked {
+        (
+            recursive_files(root)?,
+            InventorySource::FilesystemIncludeUntracked,
+        )
     } else {
-        git_ls_files(root).or_else(|_| recursive_files(root))?
+        match git_ls_files(root) {
+            Ok(files) => (files, InventorySource::GitTracked),
+            Err(_) => (recursive_files(root)?, InventorySource::FilesystemFallback),
+        }
     };
     files.sort();
     files.dedup();
     files.retain(|path| !is_ignored(path, &options.ignored));
-    Ok(files)
+    Ok(Inventory { files, source })
 }
 
 pub fn git_ls_files(root: impl AsRef<Path>) -> CargoAllowResult<Vec<PathBuf>> {
@@ -185,6 +221,8 @@ mod tests {
 
         let tracked = inventory_files(&root, &InventoryOptions::default())
             .unwrap_or_else(|err| std::panic::panic_any(format!("tracked inventory: {err}")));
+        let tracked_inventory = inventory(&root, &InventoryOptions::default())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("tracked inventory: {err}")));
         let with_untracked = inventory_files(
             &root,
             &InventoryOptions {
@@ -198,8 +236,22 @@ mod tests {
 
         assert!(tracked.contains(&PathBuf::from("tracked.txt")));
         assert!(!tracked.contains(&PathBuf::from("untracked.txt")));
+        assert_eq!(tracked_inventory.source, InventorySource::GitTracked);
         assert!(with_untracked.contains(&PathBuf::from("tracked.txt")));
         assert!(with_untracked.contains(&PathBuf::from("untracked.txt")));
+        remove_dir(&root);
+    }
+
+    #[test]
+    fn inventory_reports_filesystem_fallback_source_without_git() {
+        let root = temp_root("filesystem-source");
+        write_file(root.join("tracked.txt"), "tracked");
+
+        let snapshot = inventory(&root, &InventoryOptions::default())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("snapshot inventory: {err}")));
+
+        assert_eq!(snapshot.source, InventorySource::FilesystemFallback);
+        assert!(snapshot.files.contains(&PathBuf::from("tracked.txt")));
         remove_dir(&root);
     }
 
