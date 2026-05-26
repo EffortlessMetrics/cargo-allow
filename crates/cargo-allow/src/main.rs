@@ -368,7 +368,11 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     )?;
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
-    let failed = outcomes.iter().any(|o| CheckMode::NoNew.fails(o.status));
+    let policy_path = git_relative_config_path(&root, args.config.as_deref())?;
+    let policy_changes =
+        allow_diff::policy_changes_from_git(&root, &args.base, &policy_path, &report_cfg)?;
+    let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
+    let failed = outcomes.iter().any(|o| CheckMode::NoNew.fails(o.status)) || policy_failed;
     let mut text = match args.format {
         OutputFormat::Json => allow_report::render_json("diff", &findings, &outcomes, failed),
         OutputFormat::Markdown => {
@@ -376,6 +380,7 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         }
         OutputFormat::Human => allow_report::render_human("diff", &findings, &outcomes, failed),
     };
+    append_policy_changes(&mut text, args.format, &policy_changes);
     match allow_diff::changed_files(&root, &args.base, args.head.as_deref()) {
         Ok(changed) => {
             if args.format == OutputFormat::Human {
@@ -391,6 +396,9 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             }
         }
     }
+    if args.format == OutputFormat::Json && !policy_changes.is_empty() {
+        eprintln!("{}", render_policy_changes_human(&policy_changes));
+    }
     if let Some(path) = &args.output {
         write_file(path, &text)?;
     } else {
@@ -400,6 +408,57 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         process::exit(1);
     }
     Ok(())
+}
+
+fn append_policy_changes(
+    text: &mut String,
+    format: OutputFormat,
+    changes: &[allow_diff::PolicyChange],
+) {
+    match format {
+        OutputFormat::Human => text.push_str(&render_policy_changes_human(changes)),
+        OutputFormat::Markdown => text.push_str(&render_policy_changes_markdown(changes)),
+        OutputFormat::Json => {}
+    }
+}
+
+fn render_policy_changes_human(changes: &[allow_diff::PolicyChange]) -> String {
+    let mut out = String::new();
+    out.push_str("\nPolicy posture changes:\n");
+    if changes.is_empty() {
+        out.push_str("  none\n");
+        return out;
+    }
+    for change in changes {
+        out.push_str(&format!(
+            "  {} {} {}: {}\n",
+            change.severity.as_str(),
+            change.allow_id,
+            change.kind.as_str(),
+            change.message
+        ));
+    }
+    out
+}
+
+fn render_policy_changes_markdown(changes: &[allow_diff::PolicyChange]) -> String {
+    let mut out = String::new();
+    out.push_str("\n## Policy Posture Changes\n\n");
+    if changes.is_empty() {
+        out.push_str("No policy weakening detected.\n");
+        return out;
+    }
+    out.push_str("| Severity | Allow ID | Kind | Message |\n|---|---|---|---|\n");
+    for change in changes {
+        out.push_str(&format!(
+            "| `{}` | `{}` | `{}` | {} |\n",
+            markdown_cell(change.severity.as_str()),
+            markdown_cell(&change.allow_id),
+            markdown_cell(change.kind.as_str()),
+            markdown_cell(&change.message)
+        ));
+    }
+    out
 }
 
 fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
@@ -1402,6 +1461,32 @@ fn config_path(config: Option<&Path>) -> Option<PathBuf> {
     config
         .map(PathBuf::from)
         .or_else(|| find_config(env::current_dir().ok()?))
+}
+
+fn git_relative_config_path(root: &Path, config: Option<&Path>) -> CargoAllowResult<PathBuf> {
+    let path = config_path(config).ok_or_else(|| {
+        CargoAllowError::new("no policy config found; run `cargo allow init` or pass --config")
+    })?;
+    if path.is_relative() {
+        return Ok(path);
+    }
+    let root = root.canonicalize().map_err(|e| {
+        CargoAllowError::new(format!("failed to canonicalize {}: {e}", root.display()))
+    })?;
+    let path = path.canonicalize().map_err(|e| {
+        CargoAllowError::new(format!("failed to canonicalize {}: {e}", path.display()))
+    })?;
+    path.strip_prefix(&root).map(PathBuf::from).map_err(|_| {
+        CargoAllowError::new(format!(
+            "policy config {} is not inside workspace {}",
+            path.display(),
+            root.display()
+        ))
+    })
+}
+
+fn markdown_cell(value: &str) -> String {
+    value.replace('|', "\\|").replace('`', "\\`")
 }
 
 fn print_report(
