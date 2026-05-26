@@ -2,6 +2,7 @@ use allow_core::{
     CargoAllowError, CargoAllowResult, Finding, FindingKind, Span, StructuralIdentity,
     normalize_snippet, stable_hash_hex,
 };
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tree_sitter::{Node, Parser, Tree};
@@ -163,6 +164,7 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
     let mut container_depth: Option<i32> = None;
     let mut brace_depth: i32 = 0;
     let mut module_stack: Vec<String> = Vec::new();
+    let index_columns = syntax_index_columns(source);
 
     for (line_idx, raw_line) in source.lines().enumerate() {
         let line_no = (line_idx + 1) as u32;
@@ -182,6 +184,7 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
             line_no,
             &container,
             &module_stack,
+            index_columns.get(&line_no).copied(),
             &mut findings,
         );
 
@@ -202,6 +205,7 @@ fn scan_line(
     line_no: u32,
     container: &Option<String>,
     module_stack: &[String],
+    syntax_index_column: Option<u32>,
     findings: &mut Vec<Finding>,
 ) {
     let trimmed = line.trim();
@@ -406,7 +410,7 @@ fn scan_line(
         }
     }
 
-    if looks_like_indexing(line) {
+    if let Some(index_column) = syntax_index_column {
         let family = if line.contains("&") && line.contains("[") {
             "string_slice"
         } else {
@@ -417,7 +421,7 @@ fn scan_line(
                 path,
                 line,
                 line_no,
-                column: column(line, "["),
+                column: index_column,
                 container,
                 module_stack,
             },
@@ -439,6 +443,34 @@ fn scan_line(
             },
             findings,
         );
+    }
+}
+
+fn syntax_index_columns(source: &str) -> BTreeMap<u32, u32> {
+    let Ok(tree) = parse_rust_syntax(source) else {
+        return BTreeMap::new();
+    };
+    let mut columns = BTreeMap::new();
+    collect_index_columns(tree.tree.root_node(), source, &mut columns);
+    columns
+}
+
+fn collect_index_columns(node: Node<'_>, source: &str, columns: &mut BTreeMap<u32, u32>) {
+    if node.kind() == "index_expression" {
+        let start = node.start_position();
+        let bracket_offset = node_text(source, node)
+            .and_then(|text| text.find('['))
+            .unwrap_or(0);
+        let line = start.row as u32 + 1;
+        let column = start.column as u32 + bracket_offset as u32 + 1;
+        columns
+            .entry(line)
+            .and_modify(|existing| *existing = (*existing).min(column))
+            .or_insert(column);
+    }
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_index_columns(child, source, columns);
     }
 }
 
@@ -569,42 +601,6 @@ fn receiver_before(line: &str, pos: usize) -> String {
         .collect()
 }
 
-fn looks_like_indexing(line: &str) -> bool {
-    let trimmed = line.trim();
-    if trimmed.starts_with("#[") || trimmed.starts_with("#![") || trimmed.starts_with("//") {
-        return false;
-    }
-    if !trimmed.contains('[') || !trimmed.contains(']') {
-        return false;
-    }
-    if trimmed.starts_with('[') || trimmed.contains("vec![") || trimmed.contains("format![") {
-        return false;
-    }
-    if trimmed.contains("use ") && trimmed.contains("::") {
-        return false;
-    }
-    line.match_indices('[').any(|(idx, _)| {
-        if bracket_in_type_context(line, idx) {
-            return false;
-        }
-        line[..idx]
-            .chars()
-            .rev()
-            .find(|ch| !ch.is_whitespace())
-            .is_some_and(|ch| ch.is_alphanumeric() || matches!(ch, '_' | ')' | ']' | '}'))
-    })
-}
-
-fn bracket_in_type_context(line: &str, idx: usize) -> bool {
-    let prefix = line.get(..idx).unwrap_or("");
-    let segment = prefix
-        .rsplit(['=', ';', '{'])
-        .next()
-        .unwrap_or(prefix)
-        .trim();
-    segment.contains(':') && !segment.contains('=')
-}
-
 fn index_symbol(line: &str) -> String {
     let norm = normalize_snippet(line);
     norm.chars().take(100).collect()
@@ -669,33 +665,32 @@ mod tests {
     }
 
     #[test]
-    fn indexing_heuristic_ignores_common_bracket_false_positives() {
-        let src = r#"
-        #[allow(dead_code)]
-        fn load(xs: &[u8]) {
-            let literal = [1, 2, 3];
-            let nested_type: Vec<[u8; 4]> = Vec::new();
-            let macro_vec = vec![1, 2, 3];
-            let macro_custom = custom![1, 2, 3];
-            use crate::{alpha, beta};
-            let actual = xs[0];
-            let call_index = xs.as_ref()[0];
-        }
-        "#;
-        let findings = scan_rust_source("src/lib.rs", src);
+    fn syntax_indexing_ignores_common_bracket_false_positives() {
+        let src = [
+            "#[allow(dead_code)]",
+            "fn load(xs: &[u8]) {",
+            "    let literal = [1, 2, 3];",
+            "    let nested_type: Vec<[u8; 4]> = Vec::new();",
+            "    let macro_vec = vec![1, 2, 3];",
+            "    let macro_custom = custom![1, 2, 3];",
+            "    let string_literal = \"items[0]\";",
+            "    use crate::{alpha, beta};",
+            "    let actual = xs[0];",
+            "    let call_index = xs.as_ref()[0];",
+            "}",
+        ]
+        .join("\n");
+        let findings = scan_rust_source("src/lib.rs", &src);
         let indexing = findings
             .iter()
             .filter(|f| f.family.as_deref() == Some("indexing"))
             .count();
 
         assert_eq!(indexing, 2);
-        assert!(!looks_like_indexing(
-            "fn with_lifetime<'a>(findings: &'a [Finding]) {}"
-        ));
     }
 
     #[test]
-    fn indexing_heuristic_detects_true_positive_shapes() {
+    fn syntax_indexing_detects_true_positive_shapes() {
         let lb = char::from(91);
         let rb = char::from(93);
         let src = format!(
