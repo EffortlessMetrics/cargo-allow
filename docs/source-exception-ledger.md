@@ -111,6 +111,12 @@ absent, the tool's deterministic fixture date.
 file, and emits its proposal summary to stderr so generated policy remains
 parseable.
 
+`cargo allow add --kind <kind> --path <path> --line <line>` generates a reviewed
+allow entry from the nearest current finding at that location. It copies the
+finding's structural selector fields, sets owner/reason/classification and
+lifecycle metadata from CLI flags, fails closed on ambiguous nearest findings,
+and refuses to overwrite an output policy without `--force`.
+
 Counted legacy baselines should also carry an `occurrence_limit`:
 
 ```toml

@@ -156,10 +156,11 @@ Completed:
 - Implement dry-run-first stale pruning.
 - Make baseline proposal output safer by refusing accidental overwrites and
   emitting a proposal summary.
+- Add allow entries from current findings with structural selectors and
+  fail-closed nearest-finding selection.
 
 Planned work:
 
-- Add allow entries from findings.
 
 ## Phase 10: Migration And Dogfood
 

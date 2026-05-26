@@ -451,12 +451,25 @@ fn looks_like_indexing(line: &str) -> bool {
         return false;
     }
     line.match_indices('[').any(|(idx, _)| {
+        if bracket_in_type_context(line, idx) {
+            return false;
+        }
         line[..idx]
             .chars()
             .rev()
             .find(|ch| !ch.is_whitespace())
             .is_some_and(|ch| ch.is_alphanumeric() || matches!(ch, '_' | ')' | ']' | '}'))
     })
+}
+
+fn bracket_in_type_context(line: &str, idx: usize) -> bool {
+    let prefix = line.get(..idx).unwrap_or("");
+    let segment = prefix
+        .rsplit(['=', ';', '{'])
+        .next()
+        .unwrap_or(prefix)
+        .trim();
+    segment.contains(':') && !segment.contains('=')
 }
 
 fn index_symbol(line: &str) -> String {
@@ -543,6 +556,9 @@ mod tests {
             .count();
 
         assert_eq!(indexing, 2);
+        assert!(!looks_like_indexing(
+            "fn with_lifetime<'a>(findings: &'a [Finding]) {}"
+        ));
     }
 
     #[test]

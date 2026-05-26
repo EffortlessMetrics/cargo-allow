@@ -39,6 +39,8 @@ enum CargoAllowCommand {
     List(ListArgs),
     /// Explain one allow entry.
     Explain(ExplainArgs),
+    /// Generate an allow entry from a current finding.
+    Add(AddArgs),
     /// Generate temporary baseline_debt entries.
     Propose(ProposeArgs),
     /// Emit actionable work items for humans or agents.
@@ -184,6 +186,52 @@ struct ExplainArgs {
 }
 
 #[derive(Debug, Clone, Parser)]
+struct AddArgs {
+    /// Policy config path.
+    #[arg(long)]
+    config: Option<PathBuf>,
+    /// Finding kind to add.
+    #[arg(long)]
+    kind: String,
+    /// Path containing the finding.
+    #[arg(long)]
+    path: PathBuf,
+    /// Line near the finding.
+    #[arg(long)]
+    line: u32,
+    /// Owner for the retained exception.
+    #[arg(long)]
+    owner: String,
+    /// Reason this exception is acceptable.
+    #[arg(long)]
+    reason: String,
+    /// Classification for the retained exception.
+    #[arg(long, default_value = "reviewed_exception")]
+    classification: String,
+    /// Review date for the retained exception.
+    #[arg(long, default_value = "2026-11-01")]
+    review_after: String,
+    /// Optional expiry date for the retained exception.
+    #[arg(long)]
+    expires: Option<String>,
+    /// Evidence reference supporting this exception.
+    #[arg(long)]
+    evidence: Vec<String>,
+    /// Entry ID. Defaults to the next allow-NNNN ID.
+    #[arg(long)]
+    id: Option<String>,
+    /// Include untracked files in addition to git-tracked files.
+    #[arg(long)]
+    include_untracked: bool,
+    /// Write proposed policy to this path.
+    #[arg(long)]
+    write: Option<PathBuf>,
+    /// Overwrite an existing output policy file.
+    #[arg(long)]
+    force: bool,
+}
+
+#[derive(Debug, Clone, Parser)]
 struct ProposeArgs {
     /// Policy config path.
     #[arg(long)]
@@ -293,6 +341,7 @@ fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Diff(args) => cmd_diff(&args),
         CargoAllowCommand::List(args) => cmd_list(&args),
         CargoAllowCommand::Explain(args) => cmd_explain(&args),
+        CargoAllowCommand::Add(args) => cmd_add(&args),
         CargoAllowCommand::Propose(args) => cmd_propose(&args),
         CargoAllowCommand::Worklist(args) => cmd_worklist(&args),
         CargoAllowCommand::Migrate(args) => cmd_migrate(&args),
@@ -897,6 +946,175 @@ fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         .ok_or_else(|| CargoAllowError::new(format!("no allow entry `{}`", args.id)))?;
     println!("{}", explain_entry_text(&cfg, entry, &findings));
     Ok(())
+}
+
+fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
+    let parsed_kind = parse_kind_filter(&args.kind)?;
+    let (_root, mut cfg, findings) = load_world(
+        args.config.as_deref(),
+        true,
+        Some(args.kind.as_str()),
+        args.include_untracked,
+    )?;
+    let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
+    let (finding_index, finding) =
+        select_add_finding(&findings, parsed_kind, &args.path, args.line)?;
+    let selected_outcome = outcomes
+        .iter()
+        .find(|outcome| outcome.finding_index == Some(finding_index))
+        .ok_or_else(|| CargoAllowError::new("selected finding did not produce a match outcome"))?;
+    ensure_addable_outcome(selected_outcome.status)?;
+    if finding.kind == FindingKind::Unsafe && args.evidence.is_empty() {
+        return Err(CargoAllowError::new(
+            "unsafe allow entries require at least one --evidence reference",
+        ));
+    }
+    let id = args.id.clone().unwrap_or_else(|| next_allow_id(&cfg));
+    if cfg.allow.iter().any(|entry| entry.id == id) {
+        return Err(CargoAllowError::new(format!(
+            "allow entry id `{id}` already exists"
+        )));
+    }
+    let entry = allow_entry_from_finding(AddEntryRequest {
+        finding,
+        id,
+        owner: args.owner.clone(),
+        classification: args.classification.clone(),
+        reason: args.reason.clone(),
+        evidence: args.evidence.clone(),
+        review_after: args.review_after.clone(),
+        expires: args.expires.clone(),
+    });
+    let summary = render_add_summary(&entry, finding, args.write.as_deref());
+    cfg.allow.push(entry);
+    validate_policy(&cfg)?;
+    let rendered = render_policy(&cfg);
+    if let Some(path) = &args.write {
+        write_file_no_overwrite(path, &rendered, args.force)?;
+    } else {
+        println!("{rendered}");
+    }
+    eprintln!("{summary}");
+    Ok(())
+}
+
+fn select_add_finding<'a>(
+    findings: &'a [Finding],
+    kind: KindFilter,
+    path: &Path,
+    line: u32,
+) -> CargoAllowResult<(usize, &'a Finding)> {
+    let normalized_path = normalize_path(path);
+    let mut candidates = findings
+        .iter()
+        .enumerate()
+        .filter(|(_, finding)| kind.matches_finding(finding))
+        .filter(|(_, finding)| normalize_path(&finding.path) == normalized_path)
+        .filter_map(|(index, finding)| {
+            finding
+                .span
+                .as_ref()
+                .map(|span| (span.line.abs_diff(line), index, finding))
+        })
+        .collect::<Vec<_>>();
+    candidates.sort_by_key(|(distance, _, finding)| (*distance, normalize_path(&finding.path)));
+    let Some((distance, index, finding)) = candidates.first().copied() else {
+        return Err(CargoAllowError::new(format!(
+            "no current {} finding found near {}:{}",
+            kind.kind, normalized_path, line
+        )));
+    };
+    let tied = candidates
+        .iter()
+        .filter(|(candidate_distance, _, _)| *candidate_distance == distance)
+        .count();
+    if tied > 1 {
+        return Err(CargoAllowError::new(format!(
+            "ambiguous add request: {tied} findings are equally near {}:{}",
+            normalized_path, line
+        )));
+    }
+    Ok((index, finding))
+}
+
+fn ensure_addable_outcome(status: MatchStatus) -> CargoAllowResult<()> {
+    if status == MatchStatus::New {
+        return Ok(());
+    }
+    Err(CargoAllowError::new(format!(
+        "selected finding is already receipted or blocked with status `{}`; use list or explain before editing policy",
+        status.as_str()
+    )))
+}
+
+struct AddEntryRequest<'a> {
+    finding: &'a Finding,
+    id: String,
+    owner: String,
+    classification: String,
+    reason: String,
+    evidence: Vec<String>,
+    review_after: String,
+    expires: Option<String>,
+}
+
+fn allow_entry_from_finding(request: AddEntryRequest<'_>) -> AllowEntry {
+    let selector = selector_from_finding(request.finding);
+    AllowEntry {
+        id: request.id,
+        kind: request.finding.kind,
+        family: request.finding.family.clone(),
+        path: Some(request.finding.path.clone()),
+        glob: None,
+        owner: request.owner,
+        classification: request.classification,
+        reason: request.reason,
+        evidence: request.evidence,
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: Some(SimpleDate::today_utc_approx().to_string()),
+            review_after: Some(request.review_after),
+            expires: request.expires,
+        },
+        selector,
+        last_seen: request.finding.span.as_ref().map(|s| allow_core::LastSeen {
+            line: s.line,
+            column: s.column,
+        }),
+    }
+}
+
+fn render_add_summary(entry: &AllowEntry, finding: &Finding, output: Option<&Path>) -> String {
+    let mut out = String::new();
+    out.push_str("cargo-allow add summary\n");
+    out.push_str(&format!("id: {}\n", entry.id));
+    out.push_str(&format!("kind: {}\n", entry.kind));
+    if let Some(family) = &entry.family {
+        out.push_str(&format!("family: {family}\n"));
+    }
+    out.push_str(&format!("scope: {}\n", entry.path_or_glob()));
+    out.push_str(&format!("owner: {}\n", entry.owner));
+    out.push_str(&format!("classification: {}\n", entry.classification));
+    out.push_str(&format!("matched finding: {}\n", finding_location(finding)));
+    if let Some(output) = output {
+        out.push_str(&format!("output: {}\n", output.display()));
+    } else {
+        out.push_str("output: stdout\n");
+    }
+    out.push_str("claim boundary: generated policy entry requires human review before merge.\n");
+    out
+}
+
+fn next_allow_id(cfg: &AllowConfig) -> String {
+    let mut index = cfg.allow.len() + 1;
+    loop {
+        let candidate = format!("allow-{index:04}");
+        if !cfg.allow.iter().any(|entry| entry.id == candidate) {
+            return candidate;
+        }
+        index += 1;
+    }
 }
 
 fn explain_entry_text(cfg: &AllowConfig, entry: &AllowEntry, findings: &[Finding]) -> String {
@@ -2028,23 +2246,6 @@ fn print_report(
 }
 
 fn entry_from_finding(finding: &Finding, index: usize, expires: &str) -> AllowEntry {
-    let selector = Selector {
-        ast_kind: Some(finding.identity.ast_kind.clone()),
-        container: finding.identity.container.clone(),
-        callee: finding.identity.callee.clone(),
-        macro_name: finding.identity.macro_name.clone(),
-        lint: finding.identity.lint.clone(),
-        symbol: finding.identity.symbol.clone(),
-        receiver_fingerprint: finding.identity.receiver_fingerprint.clone(),
-        target_fingerprint: finding.identity.target_fingerprint.clone(),
-        normalized_snippet_hash: finding.identity.normalized_snippet_hash.clone(),
-        line_hint: finding.span.as_ref().map(|s| s.line),
-        glob: matches!(
-            finding.kind,
-            FindingKind::NonRustFile | FindingKind::GeneratedCode
-        )
-        .then(|| normalize_path(&finding.path)),
-    };
     AllowEntry {
         id: format!("allow-{index:04}"),
         kind: finding.kind,
@@ -2066,11 +2267,31 @@ fn entry_from_finding(finding: &Finding, index: usize, expires: &str) -> AllowEn
             review_after: None,
             expires: Some(expires.to_string()),
         },
-        selector,
+        selector: selector_from_finding(finding),
         last_seen: finding.span.as_ref().map(|s| allow_core::LastSeen {
             line: s.line,
             column: s.column,
         }),
+    }
+}
+
+fn selector_from_finding(finding: &Finding) -> Selector {
+    Selector {
+        ast_kind: Some(finding.identity.ast_kind.clone()),
+        container: finding.identity.container.clone(),
+        callee: finding.identity.callee.clone(),
+        macro_name: finding.identity.macro_name.clone(),
+        lint: finding.identity.lint.clone(),
+        symbol: finding.identity.symbol.clone(),
+        receiver_fingerprint: finding.identity.receiver_fingerprint.clone(),
+        target_fingerprint: finding.identity.target_fingerprint.clone(),
+        normalized_snippet_hash: finding.identity.normalized_snippet_hash.clone(),
+        line_hint: finding.span.as_ref().map(|s| s.line),
+        glob: matches!(
+            finding.kind,
+            FindingKind::NonRustFile | FindingKind::GeneratedCode
+        )
+        .then(|| normalize_path(&finding.path)),
     }
 }
 
@@ -2203,6 +2424,157 @@ mod tests {
         assert!(text.contains("classification: baseline_debt"));
         assert!(text.contains("output: policy/allow.proposed.toml"));
         assert!(text.contains("generated debt still requires human review"));
+    }
+
+    #[test]
+    fn clap_parses_add_from_finding() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "42",
+            "--owner",
+            "parser",
+            "--reason",
+            "validated invariant",
+            "--evidence",
+            "test:parser_invariant",
+            "--write",
+            "policy/allow.proposed.toml",
+            "--force",
+        ]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Add(AddArgs {
+                kind,
+                path,
+                line: 42,
+                owner,
+                reason,
+                evidence,
+                write: Some(write),
+                force: true,
+                ..
+            })) if kind == "panic"
+                && path == Path::new("src/lib.rs")
+                && owner == "parser"
+                && reason == "validated invariant"
+                && evidence == vec!["test:parser_invariant".to_string()]
+                && write == Path::new("policy/allow.proposed.toml")
+        ));
+    }
+
+    #[test]
+    fn select_add_finding_picks_nearest_path_and_kind() {
+        let findings = vec![
+            test_finding_at_line(
+                FindingKind::Panic,
+                Some("unwrap"),
+                "src/lib.rs",
+                "method_call",
+                10,
+            ),
+            test_finding_at_line(
+                FindingKind::Panic,
+                Some("expect"),
+                "src/lib.rs",
+                "method_call",
+                40,
+            ),
+            test_finding_at_line(
+                FindingKind::Unsafe,
+                Some("unsafe_fn"),
+                "src/lib.rs",
+                "unsafe_fn",
+                39,
+            ),
+        ];
+        let kind = parse_kind_filter("panic")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("kind should parse: {err}")));
+
+        let (_index, selected) = select_add_finding(&findings, kind, Path::new("src/lib.rs"), 39)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("finding should select: {err}")));
+
+        assert_eq!(selected.family.as_deref(), Some("expect"));
+        assert_eq!(selected.span.as_ref().map(|span| span.line), Some(40));
+    }
+
+    #[test]
+    fn select_add_finding_fails_closed_on_equal_nearest_findings() {
+        let findings = vec![
+            test_finding_at_line(
+                FindingKind::Panic,
+                Some("unwrap"),
+                "src/lib.rs",
+                "method_call",
+                40,
+            ),
+            test_finding_at_line(
+                FindingKind::Panic,
+                Some("expect"),
+                "src/lib.rs",
+                "method_call",
+                42,
+            ),
+        ];
+        let kind = parse_kind_filter("panic")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("kind should parse: {err}")));
+
+        let err = select_add_finding(&findings, kind, Path::new("src/lib.rs"), 41)
+            .expect_err("equally near findings should be ambiguous");
+
+        assert!(err.to_string().contains("ambiguous add request"));
+    }
+
+    #[test]
+    fn ensure_addable_outcome_rejects_already_matched_findings() {
+        assert!(ensure_addable_outcome(MatchStatus::New).is_ok());
+
+        let err = ensure_addable_outcome(MatchStatus::Matched)
+            .expect_err("matched finding should not be addable");
+
+        assert!(err.to_string().contains("already receipted"));
+    }
+
+    #[test]
+    fn allow_entry_from_finding_uses_structural_selector_and_review_metadata() {
+        let mut finding = test_finding_at_line(
+            FindingKind::Panic,
+            Some("unwrap"),
+            "src/lib.rs",
+            "method_call",
+            42,
+        );
+        finding.identity.container = Some("parse_span".to_string());
+        finding.identity.callee = Some("unwrap".to_string());
+        finding.identity.normalized_snippet_hash = Some("fnv1a64:1234".to_string());
+
+        let entry = allow_entry_from_finding(AddEntryRequest {
+            finding: &finding,
+            id: "allow-0099".to_string(),
+            owner: "parser".to_string(),
+            classification: "validated_invariant".to_string(),
+            reason: "Parser validates the span before unwrapping.".to_string(),
+            evidence: vec!["test:parser_validates_span".to_string()],
+            review_after: "2026-11-01".to_string(),
+            expires: None,
+        });
+
+        assert_eq!(entry.id, "allow-0099");
+        assert_eq!(entry.owner, "parser");
+        assert_eq!(entry.selector.container.as_deref(), Some("parse_span"));
+        assert_eq!(entry.selector.callee.as_deref(), Some("unwrap"));
+        assert_eq!(
+            entry.selector.normalized_snippet_hash.as_deref(),
+            Some("fnv1a64:1234")
+        );
+        assert_eq!(entry.last_seen.as_ref().map(|last| last.line), Some(42));
     }
 
     #[test]
@@ -3114,11 +3486,21 @@ expires = "permanent"
         path: &str,
         ast_kind: &str,
     ) -> Finding {
+        test_finding_at_line(kind, family, path, ast_kind, 1)
+    }
+
+    fn test_finding_at_line(
+        kind: FindingKind,
+        family: Option<&str>,
+        path: &str,
+        ast_kind: &str,
+        line: u32,
+    ) -> Finding {
         Finding {
             kind,
             family: family.map(str::to_string),
             path: PathBuf::from(path),
-            span: Some(Span { line: 1, column: 1 }),
+            span: Some(Span { line, column: 1 }),
             identity: StructuralIdentity::new("file", ast_kind),
             message: "test finding".to_string(),
         }
