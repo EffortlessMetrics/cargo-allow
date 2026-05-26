@@ -3,9 +3,10 @@
 This directory is a repo-ready implementation scaffold for `cargo-allow`.
 
 The MVP started dependency-light to keep the first generated repository easy to
-test in offline/agent sandboxes. The policy parser now uses `serde`/`toml`, and
-the CLI now uses `clap`; later PRs can replace the source scanner with a richer
-Rust syntax parser once the product seams are stable.
+test in offline/agent sandboxes. The policy parser now uses `serde`/`toml`, the
+CLI uses `clap`, and workspace discovery uses Cargo metadata; later PRs can
+replace the source scanner with a richer Rust syntax parser once the product
+seams are stable.
 
 ## What currently works
 
@@ -32,7 +33,7 @@ It does **not** analyze macro expansion, MIR, type information, or rustc semanti
 |---|---|
 | `allow-core` | Core data model, simple glob matching, stable FNV hash, dates |
 | `allow-policy` | Canonical `policy/allow.toml` parser, writer, validation |
-| `allow-inventory` | Workspace discovery and git-tracked file inventory with recursive fallback |
+| `allow-inventory` | Cargo metadata workspace facts and git-tracked file inventory with recursive fallback |
 | `allow-files` | Non-Rust and generated-file finding generation |
 | `allow-rust` | Source-syntax scanner for panic, unsafe, lint suppressions, indexing |
 | `allow-match` | Structural matcher, lifecycle classification, stale/new/ambiguous statuses |
