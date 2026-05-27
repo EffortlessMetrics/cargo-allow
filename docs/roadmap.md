@@ -137,10 +137,11 @@ Completed:
 - Add `--compat --kind unsafe` for legacy `policy/unsafe-allowlist.toml`
   files, mapping retained unsafe entries to source-syntax `unsafe` receipts and
   keeping missing legacy evidence as temporary baseline debt.
+- Validate `unsafe-review:` evidence references as local source-tree files
+  without executing unsafe-review.
 
 Planned work:
 
-- unsafe-review evidence references.
 - Side-by-side dogfood against a repo with existing unsafe policy.
 
 ## Phase 7: Lint Suppression Lane

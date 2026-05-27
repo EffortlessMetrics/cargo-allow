@@ -1067,6 +1067,44 @@ mod tests {
     }
 
     #[test]
+    fn validates_existing_unsafe_review_evidence_references() {
+        let root = unique_test_dir("unsafe-review-evidence-existing");
+        fs::create_dir_all(root.join("docs/evidence/unsafe-review")).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("create unsafe-review evidence dir: {err}"))
+        });
+        fs::write(
+            root.join("docs/evidence/unsafe-review/ffi-read-buffer.json"),
+            "{}",
+        )
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("write unsafe-review evidence: {err}"))
+        });
+        let cfg = parse_policy(
+            r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-unsafe-review"
+                kind = "unsafe"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["unsafe-review:docs/evidence/unsafe-review/ffi-read-buffer.json"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "unsafe_block"
+                container = "load"
+            "#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy parses: {err}")));
+
+        validate_local_evidence_references(&root, &cfg).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("unsafe-review evidence validates: {err}"))
+        });
+        remove_test_dir(root);
+    }
+
+    #[test]
     fn rejects_missing_local_evidence_references() {
         let root = unique_test_dir("evidence-missing");
         fs::create_dir_all(&root)
@@ -1092,6 +1130,36 @@ mod tests {
 
         let err = validate_local_evidence_references(&root, &cfg).unwrap_err();
         assert!(err.to_string().contains("allow-doc evidence"));
+        assert!(err.to_string().contains("missing local file"));
+        remove_test_dir(root);
+    }
+
+    #[test]
+    fn rejects_missing_unsafe_review_evidence_references() {
+        let root = unique_test_dir("unsafe-review-evidence-missing");
+        fs::create_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create root: {err}")));
+        let cfg = parse_policy(
+            r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-unsafe-review"
+                kind = "unsafe"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["unsafe-review:docs/evidence/unsafe-review/missing.json"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "unsafe_block"
+                container = "load"
+            "#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy parses: {err}")));
+
+        let err = validate_local_evidence_references(&root, &cfg).unwrap_err();
+        assert!(err.to_string().contains("allow-unsafe-review evidence"));
         assert!(err.to_string().contains("missing local file"));
         remove_test_dir(root);
     }
