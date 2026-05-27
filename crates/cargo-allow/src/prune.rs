@@ -1,16 +1,12 @@
 use allow_core::{
     AllowConfig, CargoAllowError, CargoAllowResult, FindingKind, MatchOutcome, MatchStatus,
-    json_escape,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 use clap::{Parser, ValueEnum};
 use std::path::{Path, PathBuf};
 
-use crate::{
-    RootArgs, config_path, load_world, markdown_cell, option_json_string, source_tree_root_text,
-    write_file,
-};
+use crate::{RootArgs, config_path, load_world, markdown_cell, source_tree_root_text, write_file};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct PruneArgs {
@@ -219,75 +215,31 @@ fn render_prune_stale_json(
     written_path: Option<&Path>,
     context: PruneContext<'_>,
 ) -> String {
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str(&format!(
-        "  \"schema_version\": {},\n",
-        allow_report::PRUNE_SCHEMA_VERSION
-    ));
-    out.push_str(&format!(
-        "  \"schema_id\": \"{}\",\n",
-        allow_report::PRUNE_SCHEMA_ID
-    ));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"prune\",\n");
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        allow_report::render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        allow_report::render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&allow_report::render_inventory_json(
+    let written = written_path.map(|path| path.display().to_string());
+    let report_candidates = candidates
+        .iter()
+        .map(|candidate| allow_report::PruneCandidate {
+            id: &candidate.id,
+            kind: candidate.kind.as_str(),
+            family: candidate.family.as_deref(),
+            owner: &candidate.owner,
+            classification: &candidate.classification,
+            scope: &candidate.scope,
+            reason: &candidate.reason,
+        })
+        .collect::<Vec<_>>();
+    allow_report::render_prune_json(
+        &report_candidates,
+        allow_report::PruneModeContext {
+            explicit_dry_run,
+            write_requested,
+            written_path: written.as_deref(),
+        },
         allow_report::InventoryContext::source_syntax(
             context.inventory_source,
             context.source_tree_root,
             context.inventory_files,
         ),
-        "  ",
-    ));
-    out.push_str(",\n");
-    out.push_str("  \"mode\": {\n");
-    out.push_str(&format!("    \"dry_run\": {},\n", !write_requested));
-    out.push_str(&format!("    \"write_requested\": {},\n", write_requested));
-    out.push_str(&format!(
-        "    \"explicit_dry_run\": {},\n",
-        explicit_dry_run
-    ));
-    let written = written_path.map(|path| path.display().to_string());
-    out.push_str(&format!(
-        "    \"written_path\": {}\n",
-        option_json_string(written.as_deref())
-    ));
-    out.push_str("  },\n");
-    out.push_str(&format!(
-        "  \"summary\": {{\n    \"stale_entries\": {}\n  }},\n",
-        candidates.len()
-    ));
-    out.push_str("  \"stale_entries\": [\n");
-    for (index, candidate) in candidates.iter().enumerate() {
-        if index > 0 {
-            out.push_str(",\n");
-        }
-        out.push_str(&prune_candidate_json(candidate, "  "));
-    }
-    out.push_str("\n  ]\n");
-    out.push_str("}\n");
-    out
-}
-
-fn prune_candidate_json(candidate: &PruneCandidate, indent: &str) -> String {
-    format!(
-        "{indent}  {{\n{indent}    \"id\": \"{}\",\n{indent}    \"kind\": \"{}\",\n{indent}    \"family\": {},\n{indent}    \"owner\": \"{}\",\n{indent}    \"classification\": \"{}\",\n{indent}    \"scope\": \"{}\",\n{indent}    \"reason\": \"{}\"\n{indent}  }}",
-        json_escape(&candidate.id),
-        candidate.kind,
-        option_json_string(candidate.family.as_deref()),
-        json_escape(&candidate.owner),
-        json_escape(&candidate.classification),
-        json_escape(&candidate.scope),
-        json_escape(&candidate.reason)
     )
 }
 

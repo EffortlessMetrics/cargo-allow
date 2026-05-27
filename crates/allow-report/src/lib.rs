@@ -124,6 +124,24 @@ impl<'a> From<ReportContext<'a>> for InventoryContext<'a> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct PruneModeContext<'a> {
+    pub explicit_dry_run: bool,
+    pub write_requested: bool,
+    pub written_path: Option<&'a str>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct PruneCandidate<'a> {
+    pub id: &'a str,
+    pub kind: &'a str,
+    pub family: Option<&'a str>,
+    pub owner: &'a str,
+    pub classification: &'a str,
+    pub scope: &'a str,
+    pub reason: &'a str,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
     pub total: usize,
@@ -924,6 +942,75 @@ pub fn render_inventory_json(context: InventoryContext<'_>, indent: &str) -> Str
     out
 }
 
+pub fn render_prune_json(
+    candidates: &[PruneCandidate<'_>],
+    mode: PruneModeContext<'_>,
+    inventory: InventoryContext<'_>,
+) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("  \"schema_version\": {PRUNE_SCHEMA_VERSION},\n"));
+    out.push_str(&format!("  \"schema_id\": \"{PRUNE_SCHEMA_ID}\",\n"));
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"prune\",\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        render_claim_boundary_json()
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        render_scanner_limitations_json()
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&render_inventory_json(inventory, "  "));
+    out.push_str(",\n");
+    out.push_str("  \"mode\": {\n");
+    out.push_str(&format!(
+        "    \"dry_run\": {},\n",
+        bool_json(!mode.write_requested)
+    ));
+    out.push_str(&format!(
+        "    \"write_requested\": {},\n",
+        bool_json(mode.write_requested)
+    ));
+    out.push_str(&format!(
+        "    \"explicit_dry_run\": {},\n",
+        bool_json(mode.explicit_dry_run)
+    ));
+    out.push_str(&format!(
+        "    \"written_path\": {}\n",
+        option_json(mode.written_path)
+    ));
+    out.push_str("  },\n");
+    out.push_str(&format!(
+        "  \"summary\": {{\n    \"stale_entries\": {}\n  }},\n",
+        candidates.len()
+    ));
+    out.push_str("  \"stale_entries\": [\n");
+    for (index, candidate) in candidates.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&render_prune_candidate_json(candidate, "  "));
+    }
+    out.push_str("\n  ]\n");
+    out.push_str("}\n");
+    out
+}
+
+fn render_prune_candidate_json(candidate: &PruneCandidate<'_>, indent: &str) -> String {
+    format!(
+        "{indent}  {{\n{indent}    \"id\": \"{}\",\n{indent}    \"kind\": \"{}\",\n{indent}    \"family\": {},\n{indent}    \"owner\": \"{}\",\n{indent}    \"classification\": \"{}\",\n{indent}    \"scope\": \"{}\",\n{indent}    \"reason\": \"{}\"\n{indent}  }}",
+        json_escape(candidate.id),
+        json_escape(candidate.kind),
+        option_json(candidate.family),
+        json_escape(candidate.owner),
+        json_escape(candidate.classification),
+        json_escape(candidate.scope),
+        json_escape(candidate.reason)
+    )
+}
+
 fn inventory_files_suffix(context: ReportContext<'_>) -> String {
     context
         .inventory_files
@@ -1313,6 +1400,47 @@ mod tests {
         assert!(inventory.contains("\"source\": \"git_tracked\""));
         assert!(inventory.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
         assert!(inventory.contains("\"files_scanned\": 76"));
+    }
+
+    #[test]
+    fn prune_json_renderer_records_mode_context_and_candidates() {
+        let candidates = vec![PruneCandidate {
+            id: "allow-stale",
+            kind: "panic",
+            family: Some("unwrap"),
+            owner: "parser",
+            classification: "baseline_debt",
+            scope: "crates/parser/src/lib.rs",
+            reason: "stale baseline entry",
+        }];
+
+        let json = render_prune_json(
+            &candidates,
+            PruneModeContext {
+                explicit_dry_run: true,
+                write_requested: false,
+                written_path: None,
+            },
+            InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(49),
+            ),
+        );
+
+        assert!(json.contains("\"schema_id\": \"cargo-allow.prune.v1\""));
+        assert!(json.contains("\"command\": \"prune\""));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
+        assert!(json.contains("\"files_scanned\": 49"));
+        assert!(json.contains("\"dry_run\": true"));
+        assert!(json.contains("\"write_requested\": false"));
+        assert!(json.contains("\"explicit_dry_run\": true"));
+        assert!(json.contains("\"written_path\": null"));
+        assert!(json.contains("\"stale_entries\": 1"));
+        assert!(json.contains("\"id\": \"allow-stale\""));
+        assert!(json.contains("\"kind\": \"panic\""));
+        assert!(json.contains("\"family\": \"unwrap\""));
     }
 
     #[test]
