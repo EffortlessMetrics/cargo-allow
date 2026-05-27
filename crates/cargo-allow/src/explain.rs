@@ -1,6 +1,6 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, MatchOutcome, MatchStatus,
-    json_escape, normalize_path,
+    normalize_path,
 };
 use allow_match::{CheckMode, evaluate, finding_location, score_match};
 use allow_policy::evidence_reference_diagnostics;
@@ -8,9 +8,8 @@ use clap::{Parser, ValueEnum};
 use std::path::{Path, PathBuf};
 
 use crate::{
-    RootArgs, allow_entry_json, explain_finding_json, json_string_array,
-    load_world_with_evidence_validation, option_json_string, option_usize_json,
-    source_package_name, source_tree_root_text, worklist, write_file,
+    RootArgs, load_world_with_evidence_validation, source_package_name, source_tree_root_text,
+    worklist, write_file,
 };
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ExplainArgs {
@@ -273,115 +272,36 @@ fn render_explain_entry_json(
     context: ExplainContext<'_>,
 ) -> String {
     let (suggested_actions, proof_commands) = explain_next_steps(entry, findings, outcomes);
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str(&format!(
-        "  \"schema_version\": {},\n",
-        allow_report::EXPLAIN_SCHEMA_VERSION
-    ));
-    out.push_str(&format!(
-        "  \"schema_id\": \"{}\",\n",
-        allow_report::EXPLAIN_SCHEMA_ID
-    ));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"explain\",\n");
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        allow_report::render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        allow_report::render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&allow_report::render_inventory_json(
-        allow_report::InventoryContext::source_syntax(
+    let evidence_diagnostics = evidence_reference_diagnostics(root, entry);
+    let normalized_targets = evidence_diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.target.as_ref().map(normalize_path))
+        .collect::<Vec<_>>();
+    let evidence_references = evidence_diagnostics
+        .iter()
+        .zip(normalized_targets.iter())
+        .map(|(diagnostic, target)| allow_report::EvidenceReference {
+            raw: &diagnostic.raw,
+            prefix: diagnostic.prefix.as_deref(),
+            target: target.as_deref(),
+            status: diagnostic.status.as_str(),
+            message: &diagnostic.message,
+        })
+        .collect::<Vec<_>>();
+
+    allow_report::render_explain_json(allow_report::ExplainReport {
+        inventory: allow_report::InventoryContext::source_syntax(
             context.inventory_source,
             context.source_tree_root,
             context.inventory_files,
         ),
-        "  ",
-    ));
-    out.push_str(",\n");
-    out.push_str("  \"allow_entry\": ");
-    out.push_str(&allow_entry_json(entry, "  "));
-    out.push_str(",\n");
-    out.push_str(&format!(
-        "  \"summary\": {{\n    \"current_status\": \"{}\",\n    \"current_matches\": {},\n    \"match_outcomes\": {}\n  }},\n",
-        explain_status(outcomes).as_str(),
-        findings.len(),
-        outcomes.len()
-    ));
-    out.push_str("  \"evidence_references\": [\n");
-    for (index, diagnostic) in evidence_reference_diagnostics(root, entry)
-        .iter()
-        .enumerate()
-    {
-        if index > 0 {
-            out.push_str(",\n");
-        }
-        out.push_str(&evidence_reference_diagnostic_json(diagnostic, "  "));
-    }
-    out.push_str("\n  ],\n");
-    out.push_str("  \"current_findings\": [\n");
-    for (index, finding) in findings.iter().enumerate() {
-        if index > 0 {
-            out.push_str(",\n");
-        }
-        let status = outcomes
-            .iter()
-            .find(|outcome| outcome.finding_index == Some(index))
-            .map(|outcome| outcome.status.as_str())
-            .unwrap_or("unmatched");
-        out.push_str(&explain_finding_json(finding, status, "  "));
-    }
-    out.push_str("\n  ],\n");
-    out.push_str("  \"match_outcomes\": [\n");
-    for (index, outcome) in outcomes.iter().enumerate() {
-        if index > 0 {
-            out.push_str(",\n");
-        }
-        out.push_str(&match_outcome_json(outcome, "  "));
-    }
-    out.push_str("\n  ],\n");
-    out.push_str("  \"next\": {\n");
-    out.push_str(&format!(
-        "    \"suggested_actions\": {},\n",
-        json_string_array(&suggested_actions)
-    ));
-    out.push_str(&format!(
-        "    \"proof_commands\": {}\n",
-        json_string_array(&proof_commands)
-    ));
-    out.push_str("  }\n");
-    out.push_str("}\n");
-    out
-}
-
-fn evidence_reference_diagnostic_json(
-    diagnostic: &allow_policy::EvidenceReferenceDiagnostic,
-    indent: &str,
-) -> String {
-    let target = diagnostic.target.as_ref().map(normalize_path);
-    format!(
-        "{indent}  {{\n{indent}    \"raw\": \"{}\",\n{indent}    \"prefix\": {},\n{indent}    \"target\": {},\n{indent}    \"status\": \"{}\",\n{indent}    \"message\": \"{}\"\n{indent}  }}",
-        json_escape(&diagnostic.raw),
-        option_json_string(diagnostic.prefix.as_deref()),
-        option_json_string(target.as_deref()),
-        diagnostic.status.as_str(),
-        json_escape(&diagnostic.message)
-    )
-}
-
-fn match_outcome_json(outcome: &MatchOutcome, indent: &str) -> String {
-    format!(
-        "{indent}  {{\n{indent}    \"status\": \"{}\",\n{indent}    \"allow_id\": {},\n{indent}    \"finding_index\": {},\n{indent}    \"score\": {},\n{indent}    \"message\": \"{}\"\n{indent}  }}",
-        outcome.status.as_str(),
-        option_json_string(outcome.allow_id.as_deref()),
-        option_usize_json(outcome.finding_index),
-        outcome.score,
-        json_escape(&outcome.message)
-    )
+        entry,
+        current_findings: findings,
+        match_outcomes: outcomes,
+        evidence_references: &evidence_references,
+        suggested_actions: &suggested_actions,
+        proof_commands: &proof_commands,
+    })
 }
 
 fn explain_next_steps(

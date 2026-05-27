@@ -180,6 +180,26 @@ pub struct ListRow<'a> {
 }
 
 #[derive(Debug, Clone, Copy, Default)]
+pub struct EvidenceReference<'a> {
+    pub raw: &'a str,
+    pub prefix: Option<&'a str>,
+    pub target: Option<&'a str>,
+    pub status: &'a str,
+    pub message: &'a str,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ExplainReport<'a> {
+    pub inventory: InventoryContext<'a>,
+    pub entry: &'a AllowEntry,
+    pub current_findings: &'a [Finding],
+    pub match_outcomes: &'a [MatchOutcome],
+    pub evidence_references: &'a [EvidenceReference<'a>],
+    pub suggested_actions: &'a [String],
+    pub proof_commands: &'a [String],
+}
+
+#[derive(Debug, Clone, Copy, Default)]
 pub struct WorklistFilters<'a> {
     pub kind: Option<&'a str>,
     pub family: Option<&'a str>,
@@ -1024,6 +1044,12 @@ fn option_u32_json(value: Option<u32>) -> String {
         .unwrap_or_else(|| "null".to_string())
 }
 
+fn option_usize_json(value: Option<usize>) -> String {
+    value
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| "null".to_string())
+}
+
 fn json_string_array<T: AsRef<str>>(values: &[T]) -> String {
     format!(
         "[{}]",
@@ -1491,6 +1517,120 @@ pub fn render_propose_json(report: ProposeReport<'_>) -> String {
     out.push_str("  }\n");
     out.push_str("}\n");
     out
+}
+
+pub fn render_explain_json(report: ExplainReport<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "  \"schema_version\": {EXPLAIN_SCHEMA_VERSION},\n"
+    ));
+    out.push_str(&format!("  \"schema_id\": \"{EXPLAIN_SCHEMA_ID}\",\n"));
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"explain\",\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        render_claim_boundary_json()
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        render_scanner_limitations_json()
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&render_inventory_json(report.inventory, "  "));
+    out.push_str(",\n");
+    out.push_str("  \"allow_entry\": ");
+    out.push_str(&render_allow_entry_json(report.entry, "  "));
+    out.push_str(",\n");
+    out.push_str(&format!(
+        "  \"summary\": {{\n    \"current_status\": \"{}\",\n    \"current_matches\": {},\n    \"match_outcomes\": {}\n  }},\n",
+        explain_report_status(report.match_outcomes).as_str(),
+        report.current_findings.len(),
+        report.match_outcomes.len()
+    ));
+    out.push_str("  \"evidence_references\": [\n");
+    for (index, diagnostic) in report.evidence_references.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&render_evidence_reference_json(diagnostic, "  "));
+    }
+    out.push_str("\n  ],\n");
+    out.push_str("  \"current_findings\": [\n");
+    for (index, finding) in report.current_findings.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        let status = report
+            .match_outcomes
+            .iter()
+            .find(|outcome| outcome.finding_index == Some(index))
+            .map(|outcome| outcome.status.as_str())
+            .unwrap_or("unmatched");
+        out.push_str(&render_explain_finding_json(finding, status, "  "));
+    }
+    out.push_str("\n  ],\n");
+    out.push_str("  \"match_outcomes\": [\n");
+    for (index, outcome) in report.match_outcomes.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&render_match_outcome_json(outcome, "  "));
+    }
+    out.push_str("\n  ],\n");
+    out.push_str("  \"next\": {\n");
+    out.push_str(&format!(
+        "    \"suggested_actions\": {},\n",
+        json_string_array(report.suggested_actions)
+    ));
+    out.push_str(&format!(
+        "    \"proof_commands\": {}\n",
+        json_string_array(report.proof_commands)
+    ));
+    out.push_str("  }\n");
+    out.push_str("}\n");
+    out
+}
+
+fn render_evidence_reference_json(reference: &EvidenceReference<'_>, indent: &str) -> String {
+    format!(
+        "{indent}  {{\n{indent}    \"raw\": \"{}\",\n{indent}    \"prefix\": {},\n{indent}    \"target\": {},\n{indent}    \"status\": \"{}\",\n{indent}    \"message\": \"{}\"\n{indent}  }}",
+        json_escape(reference.raw),
+        option_json(reference.prefix),
+        option_json(reference.target),
+        json_escape(reference.status),
+        json_escape(reference.message)
+    )
+}
+
+fn render_match_outcome_json(outcome: &MatchOutcome, indent: &str) -> String {
+    format!(
+        "{indent}  {{\n{indent}    \"status\": \"{}\",\n{indent}    \"allow_id\": {},\n{indent}    \"finding_index\": {},\n{indent}    \"score\": {},\n{indent}    \"message\": \"{}\"\n{indent}  }}",
+        outcome.status.as_str(),
+        option_json(outcome.allow_id.as_deref()),
+        option_usize_json(outcome.finding_index),
+        outcome.score,
+        json_escape(&outcome.message)
+    )
+}
+
+fn explain_report_status(outcomes: &[MatchOutcome]) -> MatchStatus {
+    for status in [
+        MatchStatus::New,
+        MatchStatus::Expired,
+        MatchStatus::EvidenceMissing,
+        MatchStatus::MissingRequiredField,
+        MatchStatus::InvalidSelector,
+        MatchStatus::Ambiguous,
+        MatchStatus::BaselineDebt,
+        MatchStatus::Stale,
+        MatchStatus::ReviewDue,
+    ] {
+        if outcomes.iter().any(|outcome| outcome.status == status) {
+            return status;
+        }
+    }
+    MatchStatus::Matched
 }
 
 pub fn render_add_json(report: AddReport<'_>) -> String {
@@ -2467,6 +2607,100 @@ mod tests {
         assert!(json.contains("\"evidence_count\": 1"));
         assert!(json.contains("\"source_package\": \"parser\""));
         assert!(json.contains("\"normalized_snippet_hash\": \"fnv1a64:add\""));
+    }
+
+    #[test]
+    fn explain_json_renderer_records_context_and_current_status() {
+        let entry = AllowEntry {
+            id: "allow-explain-json".to_string(),
+            kind: FindingKind::Unsafe,
+            family: Some("unsafe_block".to_string()),
+            path: Some(PathBuf::from("src\\ffi.rs")),
+            glob: None,
+            owner: "runtime".to_string(),
+            classification: "ffi_boundary".to_string(),
+            reason: "FFI pointer boundary requires unsafe.".to_string(),
+            evidence: vec!["doc:docs/safety/ffi.md".to_string()],
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle {
+                created: Some("2026-05-27".to_string()),
+                review_after: Some("2026-11-01".to_string()),
+                expires: None,
+            },
+            selector: Selector {
+                ast_kind: Some("unsafe_block".to_string()),
+                container: Some("read_byte".to_string()),
+                callee: None,
+                macro_name: None,
+                lint: None,
+                symbol: None,
+                receiver_fingerprint: None,
+                target_fingerprint: None,
+                normalized_snippet_hash: Some("fnv1a64:unsafe".to_string()),
+                line_hint: Some(9),
+                glob: None,
+            },
+            last_seen: Some(LastSeen { line: 9, column: 5 }),
+        };
+        let mut identity = StructuralIdentity::new("rust", "unsafe_block");
+        identity.crate_name = Some("runtime".to_string());
+        identity.container = Some("read_byte".to_string());
+        let finding = Finding {
+            kind: FindingKind::Unsafe,
+            family: Some("unsafe_block".to_string()),
+            path: PathBuf::from("src\\ffi.rs"),
+            span: Some(Span { line: 9, column: 5 }),
+            identity,
+            message: "unsafe block".to_string(),
+        };
+        let outcomes = vec![MatchOutcome {
+            status: MatchStatus::EvidenceMissing,
+            allow_id: Some("allow-explain-json".to_string()),
+            finding_index: Some(0),
+            message: "unsafe entry has missing evidence".to_string(),
+            score: 9,
+        }];
+        let evidence_references = vec![EvidenceReference {
+            raw: "doc:docs/safety/ffi.md",
+            prefix: Some("doc"),
+            target: Some("docs/safety/ffi.md"),
+            status: "missing",
+            message: "local evidence file is missing",
+        }];
+        let suggested_actions = vec!["add missing evidence".to_string()];
+        let proof_commands = vec!["cargo-allow check --kind unsafe".to_string()];
+
+        let json = render_explain_json(ExplainReport {
+            inventory: InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(76),
+            ),
+            entry: &entry,
+            current_findings: &[finding],
+            match_outcomes: &outcomes,
+            evidence_references: &evidence_references,
+            suggested_actions: &suggested_actions,
+            proof_commands: &proof_commands,
+        });
+
+        assert!(json.contains("\"schema_id\": \"cargo-allow.explain.v1\""));
+        assert!(json.contains("\"command\": \"explain\""));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"files_scanned\": 76"));
+        assert!(json.contains("\"id\": \"allow-explain-json\""));
+        assert!(json.contains("\"current_status\": \"evidence_missing\""));
+        assert!(json.contains("\"current_matches\": 1"));
+        assert!(json.contains("\"match_outcomes\": 1"));
+        assert!(json.contains("\"raw\": \"doc:docs/safety/ffi.md\""));
+        assert!(json.contains("\"target\": \"docs/safety/ffi.md\""));
+        assert!(json.contains("\"status\": \"missing\""));
+        assert!(json.contains("\"path\": \"src/ffi.rs\""));
+        assert!(json.contains("\"source_package\": \"runtime\""));
+        assert!(json.contains("\"score\": 9"));
+        assert!(json.contains("\"add missing evidence\""));
+        assert!(json.contains("\"cargo-allow check --kind unsafe\""));
     }
 
     #[test]
