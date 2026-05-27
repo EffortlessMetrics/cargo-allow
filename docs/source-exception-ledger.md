@@ -219,6 +219,8 @@ build-membership proof.
 
 The human worklist output includes the same first-step suggested actions and
 proof commands so a maintainer can triage the queue without switching to JSON.
+When the human view is truncated, it says how many work items were omitted and
+points to JSON for the full queue.
 It is a routing surface, not an auto-fix plan: agents and humans should fix,
 prove, narrow, or remove the exception instead of adding suppressions just to
 silence cargo-allow.

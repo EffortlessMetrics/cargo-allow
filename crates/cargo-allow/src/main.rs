@@ -2344,6 +2344,12 @@ fn render_worklist_human_with_context(items: &[WorkItem], context: WorklistConte
             out.push_str(&format!("  proof: {command}\n"));
         }
     }
+    if items.len() > 80 {
+        out.push_str(&format!(
+            "\n{} additional work items omitted from human output; use `cargo-allow worklist --format json` for the full queue.\n",
+            items.len() - 80
+        ));
+    }
     out.push('\n');
     out.push_str(allow_report::CLAIM_BOUNDARY_TEXT);
     out.push('\n');
@@ -4109,6 +4115,39 @@ mod tests {
             )
         );
         assert!(human.contains("Source tree root: H:/Code/Rust/cargo-allow"));
+    }
+
+    #[test]
+    fn worklist_human_output_reports_truncated_items() {
+        let cfg = AllowConfig::empty();
+        let findings = (0..81)
+            .map(|index| {
+                test_finding(
+                    FindingKind::Panic,
+                    Some("unwrap"),
+                    &format!("src/file_{index}.rs"),
+                    "method_call",
+                )
+            })
+            .collect::<Vec<_>>();
+        let outcomes = (0..81)
+            .map(|index| {
+                test_outcome(
+                    MatchStatus::New,
+                    None,
+                    Some(index),
+                    &format!("unreceipted panic.unwrap at src/file_{index}.rs:1:1"),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let items = work_items_from_outcomes(&cfg, &findings, &outcomes);
+        let human = render_worklist_human_with_context(&items, WorklistContext::default());
+
+        assert!(human.contains("work-new-unreceipted-finding-0080"));
+        assert!(!human.contains("work-new-unreceipted-finding-0081"));
+        assert!(human.contains("1 additional work items omitted from human output"));
+        assert!(human.contains("cargo-allow worklist --format json"));
     }
 
     #[test]
