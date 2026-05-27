@@ -284,6 +284,18 @@ fn classify_matched(
             format!("{} matched unsafe finding but has no evidence", entry.id),
         );
     }
+    if entry.kind == FindingKind::LintException
+        && !cfg.requirements.allow_bare_allow_attributes
+        && finding.family.as_deref() == Some("allow_attribute")
+    {
+        return (
+            MatchStatus::InvalidSelector,
+            format!(
+                "{} matched bare allow attribute while allow_bare_allow_attributes=false",
+                entry.id
+            ),
+        );
+    }
     if entry.kind == FindingKind::LintException {
         if let Some(policy_id) = finding
             .identity
@@ -474,6 +486,41 @@ mod tests {
     }
 
     #[test]
+    fn bare_allow_attribute_fails_when_policy_disallows_it() {
+        let finding = lint_finding("allow_attribute");
+        let mut cfg = AllowConfig::empty();
+        cfg.requirements.allow_bare_allow_attributes = false;
+        cfg.allow
+            .push(lint_entry_with_family("allow-lint", "allow_attribute"));
+
+        let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+        assert!(outcomes.iter().any(|outcome| {
+            outcome.status == MatchStatus::InvalidSelector
+                && outcome
+                    .message
+                    .contains("allow_bare_allow_attributes=false")
+        }));
+    }
+
+    #[test]
+    fn bare_allow_attribute_passes_when_policy_allows_it() {
+        let finding = lint_finding("allow_attribute");
+        let mut cfg = AllowConfig::empty();
+        cfg.requirements.allow_bare_allow_attributes = true;
+        cfg.allow
+            .push(lint_entry_with_family("allow-lint", "allow_attribute"));
+
+        let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+        assert!(
+            outcomes
+                .iter()
+                .any(|outcome| outcome.status == MatchStatus::Matched)
+        );
+    }
+
+    #[test]
     fn occurrence_limit_caps_matched_findings() {
         let finding = finding_with_hash("fnv1a64:actual");
         let mut entry = entry_with_hash("fnv1a64:actual");
@@ -556,10 +603,14 @@ mod tests {
     }
 
     fn lint_entry(id: &str) -> AllowEntry {
+        lint_entry_with_family(id, "expect_attribute")
+    }
+
+    fn lint_entry_with_family(id: &str, family: &str) -> AllowEntry {
         AllowEntry {
             id: id.to_string(),
             kind: FindingKind::LintException,
-            family: Some("expect_attribute".to_string()),
+            family: Some(family.to_string()),
             path: Some(PathBuf::from("src/lib.rs")),
             glob: None,
             owner: "core".to_string(),
@@ -583,12 +634,17 @@ mod tests {
     }
 
     fn lint_finding_with_policy(policy_id: &str) -> Finding {
+        let mut finding = lint_finding("expect_attribute");
+        finding.identity.target_fingerprint = Some(format!("policy:{policy_id}"));
+        finding
+    }
+
+    fn lint_finding(family: &str) -> Finding {
         let mut id = StructuralIdentity::new("rust", "attribute");
         id.lint = Some("clippy::unwrap_used".to_string());
-        id.target_fingerprint = Some(format!("policy:{policy_id}"));
         Finding {
             kind: FindingKind::LintException,
-            family: Some("expect_attribute".to_string()),
+            family: Some(family.to_string()),
             path: PathBuf::from("src/lib.rs"),
             span: Some(Span {
                 line: 10,
