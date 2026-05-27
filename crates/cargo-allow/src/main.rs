@@ -5159,6 +5159,11 @@ container = "read"
             "cargo-allow-cli-migrate-{}-{id}",
             std::process::id()
         ));
+        if dir.exists() {
+            fs::remove_dir_all(&dir).unwrap_or_else(|err| {
+                std::panic::panic_any(format!("remove stale fixture dir: {err}"))
+            });
+        }
         fs::create_dir_all(&dir)
             .unwrap_or_else(|err| std::panic::panic_any(format!("fixture dir: {err}")));
         dir
