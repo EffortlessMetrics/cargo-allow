@@ -61,3 +61,5 @@ mod artifact_contract_tests;
 mod compat_integration_tests;
 #[cfg(test)]
 mod main_tests;
+#[cfg(test)]
+mod report_config_tests;
