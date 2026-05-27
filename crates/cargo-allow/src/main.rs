@@ -204,6 +204,9 @@ struct ListArgs {
     /// Filter allow entries by classification.
     #[arg(long)]
     classification: Option<String>,
+    /// Filter allow entries by scanner-provided source-tree package context.
+    #[arg(long)]
+    source_package: Option<String>,
     /// Include only expired allow entries.
     #[arg(long)]
     expired: bool,
@@ -1062,6 +1065,7 @@ fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         kind: parsed_filter,
         owner: args.owner.as_deref(),
         classification: args.classification.as_deref(),
+        source_package: args.source_package.as_deref(),
         expired: args.expired,
         review_due: args.review_due,
         stale: args.stale,
@@ -1092,6 +1096,7 @@ struct ListFilters<'a> {
     kind: Option<KindFilter>,
     owner: Option<&'a str>,
     classification: Option<&'a str>,
+    source_package: Option<&'a str>,
     expired: bool,
     review_due: bool,
     stale: bool,
@@ -1222,6 +1227,11 @@ fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
     }
     if let Some(classification) = filters.classification {
         if row.classification != classification {
+            return false;
+        }
+    }
+    if let Some(source_package) = filters.source_package {
+        if row.source_package.as_deref() != Some(source_package) {
             return false;
         }
     }
@@ -3849,6 +3859,8 @@ mod tests {
             "runtime",
             "--classification",
             "baseline_debt",
+            "--source-package",
+            "allow-core",
             "--expired",
             "--review-due",
             "--stale",
@@ -3863,6 +3875,7 @@ mod tests {
                 kind: Some(kind),
                 owner: Some(owner),
                 classification: Some(classification),
+                source_package: Some(source_package),
                 expired: true,
                 review_due: true,
                 stale: true,
@@ -3872,6 +3885,7 @@ mod tests {
             })) if kind == "unsafe"
                 && owner == "runtime"
                 && classification == "baseline_debt"
+                && source_package == "allow-core"
         ));
     }
 
@@ -4156,6 +4170,7 @@ mod tests {
             })),
             owner: Some("runtime"),
             classification: Some("baseline_debt"),
+            source_package: None,
             expired: false,
             review_due: false,
             stale: false,
@@ -4189,6 +4204,7 @@ mod tests {
             kind: None,
             owner: None,
             classification: Some("reviewed_exception"),
+            source_package: None,
             expired: false,
             review_due: false,
             stale: false,
@@ -4200,6 +4216,30 @@ mod tests {
         assert!(!text.contains("allow-runtime"));
         assert!(text.contains("allow-parser"));
         assert!(text.contains("reviewed_exception"));
+    }
+
+    #[test]
+    fn render_list_rows_filters_source_package() {
+        let mut allow_core = list_row("allow-core", FindingKind::Panic, "parser", "baseline_debt");
+        allow_core.source_package = Some("allow-core".to_string());
+        let mut allow_rust = list_row("allow-rust", FindingKind::Panic, "scanner", "baseline_debt");
+        allow_rust.source_package = Some("allow-rust".to_string());
+        let rows = vec![allow_core, allow_rust];
+        let filters = ListFilters {
+            kind: None,
+            owner: None,
+            classification: None,
+            source_package: Some("allow-core"),
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(text.contains("allow-core"));
+        assert!(!text.contains("allow-rust"));
     }
 
     #[test]
