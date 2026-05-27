@@ -340,6 +340,8 @@ Completed:
   treating that context as Cargo metadata or build proof.
 - Filter worklist output by scanner or policy family so humans and agents can
   take bounded exception-family slices.
+- Filter worklist output by match status so humans and agents can take bounded
+  new, stale, expired, review-due, or baseline-debt slices.
 
 Planned work:
 

@@ -152,6 +152,23 @@
           "type": ["string", "null"],
           "description": "Applied --item-kind filter, or null when all work item queue kinds are included."
         },
+        "status": {
+          "type": ["string", "null"],
+          "enum": [
+            "matched",
+            "new",
+            "stale",
+            "expired",
+            "review_due",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "evidence_missing",
+            "baseline_debt",
+            null
+          ],
+          "description": "Applied --status filter, or null when all match statuses are included."
+        },
         "allow_id": {
           "type": ["string", "null"],
           "description": "Applied --allow-id filter, or null when all allow entries are included."
