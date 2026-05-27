@@ -1596,7 +1596,7 @@ fn work_item_from_outcome(
     WorkItem {
         id: format!("work-{}-{item_index:04}", kind.replace('_', "-")),
         risk: work_item_risk(&kind, outcome.status, finding, entry),
-        difficulty: work_item_difficulty(&kind),
+        difficulty: work_item_difficulty(&kind, finding, entry),
         status: outcome.status,
         allow_id: outcome.allow_id.clone(),
         finding_index: outcome.finding_index,
@@ -1696,6 +1696,19 @@ fn work_item_risk(
     let exception_kind = finding
         .map(|finding| finding.kind)
         .or_else(|| entry.map(|entry| entry.kind));
+    let family = exception_family(finding, entry);
+    if matches!(status, MatchStatus::Stale) {
+        return "low";
+    }
+    if matches!(
+        (exception_kind, family),
+        (
+            Some(FindingKind::PolicyException),
+            Some("process_spawn" | "network_destination")
+        )
+    ) {
+        return "high";
+    }
     if matches!(exception_kind, Some(FindingKind::Unsafe)) {
         return "high";
     }
@@ -1711,16 +1724,40 @@ fn work_item_risk(
     }
 }
 
-fn work_item_difficulty(kind: &str) -> &'static str {
+fn work_item_difficulty(
+    kind: &str,
+    finding: Option<&Finding>,
+    entry: Option<&AllowEntry>,
+) -> &'static str {
+    let exception_kind = finding
+        .map(|finding| finding.kind)
+        .or_else(|| entry.map(|entry| entry.kind));
     match kind {
         "stale_allow" => "small",
         "ambiguous_selector" | "invalid_selector" => "small",
         "missing_required_field" | "missing_evidence" => "small",
         "review_due" | "baseline_debt" => "medium",
         "unsafe_missing_evidence" => "medium",
+        "new_unreceipted_finding"
+            if matches!(
+                exception_kind,
+                Some(FindingKind::NonRustFile | FindingKind::GeneratedCode)
+            ) =>
+        {
+            "small"
+        }
         "new_unreceipted_finding" | "occurrence_limit_exceeded" => "medium",
         _ => "medium",
     }
+}
+
+fn exception_family<'a>(
+    finding: Option<&'a Finding>,
+    entry: Option<&'a AllowEntry>,
+) -> Option<&'a str> {
+    finding
+        .and_then(|finding| finding.family.as_deref())
+        .or_else(|| entry.and_then(|entry| entry.family.as_deref()))
 }
 
 fn suggested_actions(kind: &str) -> Vec<String> {
@@ -3286,6 +3323,90 @@ mod tests {
                     == "run the repository validation command for this source tree")
         );
         assert!(text.contains("work-new-unreceipted-finding-0001"));
+    }
+
+    #[test]
+    fn worklist_items_prioritize_process_policy_findings() {
+        let cfg = AllowConfig::empty();
+        let findings = vec![test_finding(
+            FindingKind::PolicyException,
+            Some("process_spawn"),
+            ".github/workflows/ci.yml",
+            "process_spawn",
+        )];
+        let outcomes = vec![test_outcome(
+            MatchStatus::New,
+            None,
+            Some(0),
+            "unreceipted policy_exception.process_spawn at .github/workflows/ci.yml:1:1",
+        )];
+
+        let items = work_items_from_outcomes(&cfg, &findings, &outcomes);
+
+        let item = items
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+        assert_eq!(item.kind, "new_unreceipted_finding");
+        assert_eq!(item.risk, "high");
+        assert_eq!(item.difficulty, "medium");
+        assert!(
+            item.proof_commands
+                .iter()
+                .any(|command| command == "cargo-allow check --kind process --mode no-new")
+        );
+    }
+
+    #[test]
+    fn worklist_items_treat_new_non_rust_files_as_small() {
+        let cfg = AllowConfig::empty();
+        let findings = vec![test_finding(
+            FindingKind::NonRustFile,
+            Some("shell_script"),
+            "scripts/new.sh",
+            "tracked_file",
+        )];
+        let outcomes = vec![test_outcome(
+            MatchStatus::New,
+            None,
+            Some(0),
+            "unreceipted non_rust_file.shell_script at scripts/new.sh:1:1",
+        )];
+
+        let items = work_items_from_outcomes(&cfg, &findings, &outcomes);
+
+        let item = items
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+        assert_eq!(item.kind, "new_unreceipted_finding");
+        assert_eq!(item.risk, "medium");
+        assert_eq!(item.difficulty, "small");
+        assert!(
+            item.proof_commands
+                .iter()
+                .any(|command| command == "cargo-allow check --kind non-rust --mode no-new")
+        );
+    }
+
+    #[test]
+    fn worklist_items_keep_stale_allows_low_risk_even_for_unsafe() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow
+            .push(test_entry("allow-unsafe", FindingKind::Unsafe));
+        let outcomes = vec![test_outcome(
+            MatchStatus::Stale,
+            Some("allow-unsafe"),
+            None,
+            "allow-unsafe is stale: no current finding matched src/lib.rs",
+        )];
+
+        let items = work_items_from_outcomes(&cfg, &[], &outcomes);
+
+        let item = items
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+        assert_eq!(item.kind, "stale_allow");
+        assert_eq!(item.risk, "low");
+        assert_eq!(item.difficulty, "small");
     }
 
     #[test]
