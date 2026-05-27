@@ -214,8 +214,10 @@ status, governed exception kind, family where available, path or allow ID,
 suggested actions, and proof commands. The worklist summary rolls up both risk
 and difficulty counts, and the artifact records the source-tree inventory
 source, root, `files_scanned` count, and explicit scanner limitations when
-available. `source_package` fields are scanner-provided context only; they are
-not Cargo metadata or build-membership proof.
+available. The worklist schema enumerates the supported scanner limitation
+values so consumers can distinguish source-tree boundaries from arbitrary
+annotations. `source_package` fields are scanner-provided context only; they
+are not Cargo metadata or build-membership proof.
 
 The human worklist output includes the same first-step suggested actions and
 proof commands so a maintainer can triage the queue without switching to JSON.

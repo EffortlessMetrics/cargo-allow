@@ -4108,6 +4108,8 @@ mod tests {
         assert!(schema.contains("\"source_package\""));
         assert!(schema.contains("\"proof_commands\""));
         assert!(schema.contains("\"scanner_limitations\""));
+        assert!(schema.contains("\"scanner_limitation\""));
+        assert!(schema.contains("\"macro_expansion_not_analyzed\""));
         assert!(schema.contains("\"small_difficulty\""));
         assert!(schema.contains("\"medium_difficulty\""));
         assert!(schema.contains("\"inventory\""));

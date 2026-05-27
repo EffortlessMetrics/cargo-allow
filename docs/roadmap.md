@@ -274,6 +274,7 @@ Completed:
   source-tree scanner limitations.
 - Emit explicit worklist JSON `scanner_limitations` alongside
   `claim_boundary`, matching report and receipt artifacts.
+- Enumerate supported worklist scanner limitation values in the JSON schema.
 - Refine worklist risk and difficulty heuristics for source-tree policy
   exception families without using Cargo package metadata.
 - Keep worklist proof commands as executable cargo-allow commands and avoid
