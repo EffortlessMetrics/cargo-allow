@@ -13,9 +13,8 @@ For the MVP, a passing `cargo-allow check --mode no-new` may claim:
 - Required policy fields were present according to the current validator.
 - Unsafe entries had at least one evidence string when unsafe evidence was
   required.
-- Unsafe safety-comment enforcement is not implemented yet; enabling
-  `requirements.unsafe.safety_comment_required` fails closed instead of
-  creating a false claim.
+- Unsafe findings had a nearby visible `SAFETY:` comment when
+  `requirements.unsafe.safety_comment_required` was enabled.
 - Expired, review-due, stale, ambiguous, invalid, and missing-field statuses were
   classified by the current matcher.
 
@@ -94,6 +93,8 @@ Examples:
   adequacy engine.
 - `unsafe-review:*` means unsafe-review evidence is linked. It does not make
   cargo-allow an unsafe soundness checker.
+- `SAFETY:` comment detection is a source-text proximity heuristic. It does not
+  prove the comment is correct, complete, or sound.
 - `coverage:*` means execution-surface evidence is linked. It does not prove
   semantic correctness.
 

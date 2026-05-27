@@ -131,10 +131,12 @@ Completed:
 - Scan unsafe functions, impls, traits, extern blocks, unsafe blocks, and unsafe
   attributes from source syntax, including multiple unsafe constructs on the
   same line.
+- Detect nearby visible `SAFETY:` comments as source-text metadata for unsafe
+  findings and enforce `requirements.unsafe.safety_comment_required` in the
+  matcher.
 
 Planned work:
 
-- Safety-comment and evidence metadata.
 - unsafe-review evidence references.
 - Legacy unsafe allowlist adapter.
 - Side-by-side dogfood against a repo with existing unsafe policy.
