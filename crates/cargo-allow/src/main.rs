@@ -1779,6 +1779,11 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         inventory_source: inventory_facts.source.as_str(),
         source_tree_root: Some(&root_text),
         inventory_files: inventory_facts.files_scanned,
+        filters: WorklistFilters {
+            kind: args.kind.as_deref(),
+            risk: args.risk.as_deref(),
+            difficulty: args.difficulty.as_deref(),
+        },
     };
     let text = match args.format {
         WorklistFormat::Json => render_worklist_json_with_context(&items, context),
@@ -1815,6 +1820,14 @@ struct WorklistContext<'a> {
     inventory_source: &'a str,
     source_tree_root: Option<&'a str>,
     inventory_files: Option<usize>,
+    filters: WorklistFilters<'a>,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct WorklistFilters<'a> {
+    kind: Option<&'a str>,
+    risk: Option<&'a str>,
+    difficulty: Option<&'a str>,
 }
 
 impl Default for WorklistContext<'static> {
@@ -1823,6 +1836,7 @@ impl Default for WorklistContext<'static> {
             inventory_source: "unknown",
             source_tree_root: None,
             inventory_files: None,
+            filters: WorklistFilters::default(),
         }
     }
 }
@@ -2302,6 +2316,9 @@ fn render_worklist_json_with_context(items: &[WorkItem], context: WorklistContex
     out.push_str("  \"inventory\": ");
     out.push_str(&worklist_inventory_json(context, "  "));
     out.push_str(",\n");
+    out.push_str("  \"filters\": ");
+    out.push_str(&worklist_filters_json(context.filters, "  "));
+    out.push_str(",\n");
     out.push_str("  \"summary\": {\n");
     out.push_str(&format!("    \"work_items\": {},\n", items.len()));
     out.push_str(&format!("    \"high\": {},\n", risk_count(items, "high")));
@@ -2398,6 +2415,7 @@ fn render_worklist_human_with_context(items: &[WorkItem], context: WorklistConte
     if let Some(root) = context.source_tree_root {
         out.push_str(&format!("Source tree root: {root}\n"));
     }
+    out.push_str(&worklist_filters_human(context.filters));
     out.push_str(&format!("Work items: {}\n", items.len()));
     out.push_str("Risk:\n");
     out.push_str(&format!("  high      {}\n", risk_count(items, "high")));
@@ -2478,6 +2496,43 @@ fn worklist_inventory_files_suffix(context: WorklistContext<'_>) -> String {
         .inventory_files
         .map(|files| format!("; files scanned: {files}"))
         .unwrap_or_default()
+}
+
+fn worklist_filters_json(filters: WorklistFilters<'_>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "{indent}  \"kind\": {},\n",
+        option_json_string(filters.kind)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"risk\": {},\n",
+        option_json_string(filters.risk)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"difficulty\": {}\n",
+        option_json_string(filters.difficulty)
+    ));
+    out.push_str(&format!("{indent}}}"));
+    out
+}
+
+fn worklist_filters_human(filters: WorklistFilters<'_>) -> String {
+    let mut parts = Vec::new();
+    if let Some(kind) = filters.kind {
+        parts.push(format!("kind={kind}"));
+    }
+    if let Some(risk) = filters.risk {
+        parts.push(format!("risk={risk}"));
+    }
+    if let Some(difficulty) = filters.difficulty {
+        parts.push(format!("difficulty={difficulty}"));
+    }
+    if parts.is_empty() {
+        "Filters: none\n".to_string()
+    } else {
+        format!("Filters: {}\n", parts.join(", "))
+    }
 }
 
 fn risk_count(items: &[WorkItem], risk: &str) -> usize {
@@ -4448,6 +4503,7 @@ mod tests {
         assert!(schema.contains("\"macro_expansion_not_analyzed\""));
         assert!(schema.contains("\"small_difficulty\""));
         assert!(schema.contains("\"medium_difficulty\""));
+        assert!(schema.contains("\"filters\""));
         assert!(schema.contains("\"inventory\""));
         assert!(schema.contains("\"git_tracked\""));
         assert!(schema.contains("\"source_tree_inventory\""));
@@ -4460,6 +4516,7 @@ mod tests {
             inventory_source: "git_tracked",
             source_tree_root: Some("H:/Code/Rust/cargo-allow"),
             inventory_files: Some(46),
+            filters: WorklistFilters::default(),
         };
 
         let json = render_worklist_json_with_context(&items, context);
@@ -4470,12 +4527,39 @@ mod tests {
         assert!(json.contains("\"source\": \"git_tracked\""));
         assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
         assert!(json.contains("\"files_scanned\": 46"));
+        assert!(json.contains("\"filters\""));
+        assert!(json.contains("\"risk\": null"));
         assert!(
             human.contains(
                 "Inventory: source_tree/source_syntax via git_tracked; files scanned: 46"
             )
         );
         assert!(human.contains("Source tree root: H:/Code/Rust/cargo-allow"));
+        assert!(human.contains("Filters: none"));
+    }
+
+    #[test]
+    fn worklist_renderers_include_applied_filters() {
+        let items = Vec::new();
+        let context = WorklistContext {
+            inventory_source: "git_tracked",
+            source_tree_root: None,
+            inventory_files: Some(46),
+            filters: WorklistFilters {
+                kind: Some("unsafe"),
+                risk: Some("high"),
+                difficulty: Some("medium"),
+            },
+        };
+
+        let json = render_worklist_json_with_context(&items, context);
+        let human = render_worklist_human_with_context(&items, context);
+
+        assert!(json.contains("\"filters\""));
+        assert!(json.contains("\"kind\": \"unsafe\""));
+        assert!(json.contains("\"risk\": \"high\""));
+        assert!(json.contains("\"difficulty\": \"medium\""));
+        assert!(human.contains("Filters: kind=unsafe, risk=high, difficulty=medium"));
     }
 
     #[test]
