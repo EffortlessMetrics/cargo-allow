@@ -327,6 +327,8 @@ Completed:
   count tables.
 - Add optional JSON report trend metrics for review items, lifecycle pressure,
   evidence gaps, and baseline debt.
+- Count policy-level `baseline_debt` entries in audit/report trend summaries so
+  matched generated debt stays visible after no-new passes.
 - Expose optional source-derived package context as `source_package` in JSON
   report findings and SARIF result properties, without treating it as Cargo
   metadata.

@@ -458,6 +458,7 @@ fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
     print_report(ReportRenderArgs {
         command: "audit",
         format: args.format,
+        baseline_debt_entries: policy_baseline_debt_entries(&report_cfg),
         findings: &findings,
         outcomes: &outcomes,
         failed: false,
@@ -493,6 +494,7 @@ fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     print_report(ReportRenderArgs {
         command: "check",
         format: args.format,
+        baseline_debt_entries: policy_baseline_debt_entries(&report_cfg),
         findings: &findings,
         outcomes: &outcomes,
         failed,
@@ -512,6 +514,7 @@ fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
                     inventory_source: inventory_facts.source.as_str(),
                     source_tree_root: Some(&root_text),
                     inventory_files: inventory_facts.files_scanned,
+                    ..allow_report::ReportContext::default()
                 },
             ),
         )?;
@@ -566,6 +569,7 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         inventory_source: inventory_facts.source.as_str(),
         source_tree_root: Some(&root_text),
         inventory_files: inventory_facts.files_scanned,
+        baseline_debt_entries: Some(policy_baseline_debt_entries(&report_cfg)),
     };
     let mut text = match args.format {
         OutputFormat::Json => render_diff_json_with_posture(
@@ -3173,6 +3177,13 @@ fn report_config(cfg: &AllowConfig, kind_filter: Option<&str>) -> CargoAllowResu
     Ok(filtered)
 }
 
+fn policy_baseline_debt_entries(cfg: &AllowConfig) -> usize {
+    cfg.allow
+        .iter()
+        .filter(|entry| entry.classification == "baseline_debt")
+        .count()
+}
+
 fn load_config_required(
     root: &Path,
     config: Option<&Path>,
@@ -3265,6 +3276,7 @@ fn source_tree_root_text(root: &Path) -> String {
 struct ReportRenderArgs<'a> {
     command: &'a str,
     format: OutputFormat,
+    baseline_debt_entries: usize,
     findings: &'a [Finding],
     outcomes: &'a [allow_core::MatchOutcome],
     failed: bool,
@@ -3279,6 +3291,7 @@ fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
         inventory_source: args.inventory_facts.source.as_str(),
         source_tree_root: Some(&root_text),
         inventory_files: args.inventory_facts.files_scanned,
+        baseline_debt_entries: Some(args.baseline_debt_entries),
     };
     let text = match args.format {
         OutputFormat::Human => allow_report::render_human_with_context(

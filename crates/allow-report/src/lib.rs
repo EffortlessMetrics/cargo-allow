@@ -51,6 +51,7 @@ pub struct ReportContext<'a> {
     pub inventory_source: &'a str,
     pub source_tree_root: Option<&'a str>,
     pub inventory_files: Option<usize>,
+    pub baseline_debt_entries: Option<usize>,
 }
 
 impl Default for ReportContext<'static> {
@@ -59,6 +60,7 @@ impl Default for ReportContext<'static> {
             inventory_source: "unknown",
             source_tree_root: None,
             inventory_files: None,
+            baseline_debt_entries: None,
         }
     }
 }
@@ -221,7 +223,7 @@ pub fn render_markdown_with_context(
         out.push_str(&format!("| `{}` | {} |\n", status.as_str(), count));
     }
     if command == "audit" {
-        render_audit_summary_markdown(&summary, outcomes, &mut out);
+        render_audit_summary_markdown(&summary, outcomes, context, &mut out);
     }
     render_non_rust_markdown(findings, outcomes, &mut out);
     let non_matched = outcomes
@@ -301,7 +303,7 @@ pub fn render_html_with_context(
     out.push_str("<h2>Status Counts</h2>\n");
     render_status_count_table_html(&summary, &mut out);
     if command == "audit" {
-        render_audit_summary_html(&summary, outcomes, &mut out);
+        render_audit_summary_html(&summary, outcomes, context, &mut out);
     }
     render_non_rust_html(findings, outcomes, &mut out);
     render_non_matched_html(outcomes, &mut out);
@@ -337,8 +339,15 @@ fn render_status_count_table_html(summary: &Summary, out: &mut String) {
     out.push_str("</tbody></table>\n");
 }
 
-fn render_audit_summary_html(summary: &Summary, outcomes: &[MatchOutcome], out: &mut String) {
-    let review_items = review_item_count(summary);
+fn render_audit_summary_html(
+    summary: &Summary,
+    outcomes: &[MatchOutcome],
+    context: ReportContext<'_>,
+    out: &mut String,
+) {
+    let baseline_debt = baseline_debt_count(summary, context);
+    let review_items = review_item_count_with_baseline(summary, baseline_debt);
+    let queue = audit_review_queue(outcomes);
     out.push_str("<h2>Audit Summary</h2>\n");
     out.push_str("<table><thead><tr><th>Signal</th><th>Count</th></tr></thead><tbody>\n");
     for (name, value) in [
@@ -347,7 +356,7 @@ fn render_audit_summary_html(summary: &Summary, outcomes: &[MatchOutcome], out: 
         ("New unreceipted", summary.count(MatchStatus::New)),
         ("Expired", summary.count(MatchStatus::Expired)),
         ("Evidence gaps", summary.count(MatchStatus::EvidenceMissing)),
-        ("Baseline debt", summary.count(MatchStatus::BaselineDebt)),
+        ("Baseline debt", baseline_debt),
     ] {
         out.push_str(&format!(
             "<tr><td>{}</td><td class=\"count\">{}</td></tr>\n",
@@ -358,16 +367,13 @@ fn render_audit_summary_html(summary: &Summary, outcomes: &[MatchOutcome], out: 
     out.push_str("</tbody></table>\n");
     if review_items == 0 {
         out.push_str("<p>Recommended next step: keep <code>cargo-allow check --mode no-new</code> in CI.</p>\n");
+    } else if queue.is_empty() && baseline_debt > 0 {
+        out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --format json</code> to review generated baseline debt.</p>\n");
     } else {
         out.push_str(
             "<p>Recommended next step: review the queue below before tightening policy.</p>\n",
         );
     }
-    let queue = outcomes
-        .iter()
-        .filter(|outcome| outcome.status != MatchStatus::Matched)
-        .take(20)
-        .collect::<Vec<_>>();
     if !queue.is_empty() {
         out.push_str("<h2>Audit Review Queue</h2>\n<ul>\n");
         for outcome in queue {
@@ -381,7 +387,12 @@ fn render_audit_summary_html(summary: &Summary, outcomes: &[MatchOutcome], out: 
     }
 }
 
-fn render_audit_summary_markdown(summary: &Summary, outcomes: &[MatchOutcome], out: &mut String) {
+fn render_audit_summary_markdown(
+    summary: &Summary,
+    outcomes: &[MatchOutcome],
+    context: ReportContext<'_>,
+    out: &mut String,
+) {
     let review_statuses = [
         MatchStatus::New,
         MatchStatus::Expired,
@@ -392,7 +403,13 @@ fn render_audit_summary_markdown(summary: &Summary, outcomes: &[MatchOutcome], o
         MatchStatus::Stale,
         MatchStatus::ReviewDue,
     ];
-    let review_items = review_item_count(summary);
+    let baseline_debt = baseline_debt_count(summary, context);
+    let review_items = review_item_count_with_baseline(summary, baseline_debt);
+    let queue = outcomes
+        .iter()
+        .filter(|outcome| review_statuses.contains(&outcome.status))
+        .take(20)
+        .collect::<Vec<_>>();
     out.push_str("\n## Audit Summary\n\n");
     out.push_str("| Signal | Count |\n|---|---:|\n");
     out.push_str(&format!("| Match outcomes | {} |\n", summary.total));
@@ -409,21 +426,15 @@ fn render_audit_summary_markdown(summary: &Summary, outcomes: &[MatchOutcome], o
         "| Evidence gaps | {} |\n",
         summary.count(MatchStatus::EvidenceMissing)
     ));
-    out.push_str(&format!(
-        "| Baseline debt | {} |\n",
-        summary.count(MatchStatus::BaselineDebt)
-    ));
+    out.push_str(&format!("| Baseline debt | {} |\n", baseline_debt));
     if review_items == 0 {
         out.push_str("\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n");
+    } else if queue.is_empty() && baseline_debt > 0 {
+        out.push_str("\nRecommended next step: run `cargo-allow worklist --format json` to review generated baseline debt.\n");
     } else {
         out.push_str("\nRecommended next step: review the queue below before tightening policy.\n");
     }
 
-    let queue = outcomes
-        .iter()
-        .filter(|outcome| review_statuses.contains(&outcome.status))
-        .take(20)
-        .collect::<Vec<_>>();
     if !queue.is_empty() {
         out.push_str("\n## Audit Review Queue\n\n");
         for outcome in queue {
@@ -487,7 +498,7 @@ pub fn render_json_with_context(
     out.push_str(&render_counts_fields(&summary, "    "));
     out.push_str("  },\n");
     out.push_str("  \"trend\": {\n");
-    out.push_str(&render_trend_fields(&summary, "    "));
+    out.push_str(&render_trend_fields(&summary, context, "    "));
     out.push_str("  },\n");
     out.push_str("  \"outcomes\": [\n");
     for (i, outcome) in outcomes.iter().enumerate() {
@@ -892,9 +903,13 @@ fn render_counts_fields(summary: &Summary, indent: &str) -> String {
         .collect::<String>()
 }
 
-fn render_trend_fields(summary: &Summary, indent: &str) -> String {
+fn render_trend_fields(summary: &Summary, context: ReportContext<'_>, indent: &str) -> String {
+    let baseline_debt = baseline_debt_count(summary, context);
     let fields = [
-        ("review_items", review_item_count(summary)),
+        (
+            "review_items",
+            review_item_count_with_baseline(summary, baseline_debt),
+        ),
         ("new", summary.count(MatchStatus::New)),
         ("expired", summary.count(MatchStatus::Expired)),
         ("review_due", summary.count(MatchStatus::ReviewDue)),
@@ -912,7 +927,7 @@ fn render_trend_fields(summary: &Summary, indent: &str) -> String {
             "evidence_missing",
             summary.count(MatchStatus::EvidenceMissing),
         ),
-        ("baseline_debt", summary.count(MatchStatus::BaselineDebt)),
+        ("baseline_debt", baseline_debt),
     ];
     fields
         .iter()
@@ -924,7 +939,7 @@ fn render_trend_fields(summary: &Summary, indent: &str) -> String {
         .collect()
 }
 
-fn review_item_count(summary: &Summary) -> usize {
+fn review_item_count_with_baseline(summary: &Summary, baseline_debt: usize) -> usize {
     [
         MatchStatus::New,
         MatchStatus::Expired,
@@ -934,11 +949,25 @@ fn review_item_count(summary: &Summary) -> usize {
         MatchStatus::InvalidSelector,
         MatchStatus::MissingRequiredField,
         MatchStatus::EvidenceMissing,
-        MatchStatus::BaselineDebt,
     ]
     .iter()
     .map(|status| summary.count(*status))
-    .sum()
+    .sum::<usize>()
+        + baseline_debt
+}
+
+fn baseline_debt_count(summary: &Summary, context: ReportContext<'_>) -> usize {
+    context
+        .baseline_debt_entries
+        .unwrap_or_else(|| summary.count(MatchStatus::BaselineDebt))
+}
+
+fn audit_review_queue(outcomes: &[MatchOutcome]) -> Vec<&MatchOutcome> {
+    outcomes
+        .iter()
+        .filter(|outcome| outcome.status != MatchStatus::Matched)
+        .take(20)
+        .collect()
 }
 
 #[derive(Debug, Default)]
@@ -1202,6 +1231,7 @@ mod tests {
                 inventory_source: "filesystem_fallback",
                 source_tree_root: Some("fixtures/source-snapshot"),
                 inventory_files: Some(7),
+                ..ReportContext::default()
             },
         );
         assert!(CLAIM_BOUNDARY.contains(&"source_tree_inventory"));
@@ -1230,6 +1260,7 @@ mod tests {
                 inventory_source: "filesystem_fallback",
                 source_tree_root: Some("fixtures/source-snapshot"),
                 inventory_files: Some(7),
+                ..ReportContext::default()
             },
         );
         assert!(json.contains("\"schema_version\": 1"));
@@ -1263,6 +1294,24 @@ mod tests {
         assert!(json.contains("\"stale\": 1"));
         assert!(json.contains("\"evidence_missing\": 1"));
         assert!(json.contains("\"baseline_debt\": 0"));
+    }
+
+    #[test]
+    fn json_report_trend_counts_policy_baseline_debt_context() {
+        let json = render_json_with_context(
+            "audit",
+            &[],
+            &[],
+            false,
+            ReportContext {
+                inventory_source: "git_tracked",
+                baseline_debt_entries: Some(3),
+                ..ReportContext::default()
+            },
+        );
+
+        assert!(json.contains("\"review_items\": 3"));
+        assert!(json.contains("\"baseline_debt\": 3"));
     }
 
     #[test]
@@ -1355,6 +1404,7 @@ mod tests {
                 inventory_source: "git_tracked",
                 source_tree_root: Some("H:/Code/Rust/cargo-allow"),
                 inventory_files: Some(42),
+                ..ReportContext::default()
             },
         );
         assert!(json.contains("\"schema_version\": 1"));
@@ -1424,6 +1474,7 @@ mod tests {
                 inventory_source: "filesystem_fallback",
                 source_tree_root: Some("fixtures/snapshot"),
                 inventory_files: Some(2),
+                ..ReportContext::default()
             },
         );
 
@@ -1461,6 +1512,7 @@ mod tests {
                 inventory_source: "git_tracked",
                 source_tree_root: Some("H:/Code/Rust/cargo-allow"),
                 inventory_files: Some(1),
+                ..ReportContext::default()
             },
         );
 
@@ -1551,6 +1603,26 @@ mod tests {
         assert!(text.contains(
             "- `evidence_missing`: allow-unsafe-ffi matched unsafe finding but has no evidence"
         ));
+    }
+
+    #[test]
+    fn markdown_audit_report_counts_policy_baseline_debt_context() {
+        let text = render_markdown_with_context(
+            "audit",
+            &[],
+            &[],
+            false,
+            ReportContext {
+                inventory_source: "git_tracked",
+                baseline_debt_entries: Some(3),
+                ..ReportContext::default()
+            },
+        );
+
+        assert!(text.contains("| Review items | 3 |"));
+        assert!(text.contains("| Baseline debt | 3 |"));
+        assert!(text.contains("cargo-allow worklist --format json"));
+        assert!(!text.contains("## Audit Review Queue"));
     }
 
     #[test]

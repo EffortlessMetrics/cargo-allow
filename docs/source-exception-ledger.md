@@ -307,4 +307,6 @@ The current non-Rust family vocabulary is intentionally explicit:
 Human and Markdown audit reports summarize the non-Rust file inventory by
 status and family, then list the scanned file paths. This is a review surface,
 not a separate schema contract; the stable machine-readable report remains the
-versioned JSON output.
+versioned JSON output. Audit summaries also count policy-level
+`baseline_debt` entries so generated adoption debt remains visible even when the
+underlying findings currently match and `check --mode no-new` passes.
