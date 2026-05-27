@@ -7,8 +7,8 @@ use allow_inventory::{
 };
 use allow_match::{CheckMode, evaluate, finding_location, score_match};
 use allow_policy::{
-    find_config, load_policy, render_policy, starter_policy, validate_local_evidence_references,
-    validate_policy,
+    evidence_reference_diagnostics, find_config, load_policy, render_policy, starter_policy,
+    validate_local_evidence_references, validate_policy,
 };
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
@@ -1008,11 +1008,12 @@ fn empty_as_dash(value: &str) -> &str {
 }
 
 fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
-    let (_root, cfg, findings, _inventory_source) = load_world(
+    let (root, cfg, findings, _inventory_source) = load_world_with_evidence_validation(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         None,
+        false,
         false,
     )?;
     let entry = cfg
@@ -1020,7 +1021,7 @@ fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         .iter()
         .find(|e| e.id == args.id)
         .ok_or_else(|| CargoAllowError::new(format!("no allow entry `{}`", args.id)))?;
-    println!("{}", explain_entry_text(&cfg, entry, &findings));
+    println!("{}", explain_entry_text(&root, &cfg, entry, &findings));
     Ok(())
 }
 
@@ -1195,7 +1196,12 @@ fn next_allow_id(cfg: &AllowConfig) -> String {
     }
 }
 
-fn explain_entry_text(cfg: &AllowConfig, entry: &AllowEntry, findings: &[Finding]) -> String {
+fn explain_entry_text(
+    root: &Path,
+    cfg: &AllowConfig,
+    entry: &AllowEntry,
+    findings: &[Finding],
+) -> String {
     let matching_findings = findings
         .iter()
         .filter(|finding| score_match(entry, finding).is_some())
@@ -1204,10 +1210,11 @@ fn explain_entry_text(cfg: &AllowConfig, entry: &AllowEntry, findings: &[Finding
     let mut single_entry_cfg = cfg.clone();
     single_entry_cfg.allow = vec![entry.clone()];
     let outcomes = evaluate(&single_entry_cfg, &matching_findings, CheckMode::NoNew);
-    render_explain_entry(entry, &matching_findings, &outcomes)
+    render_explain_entry(root, entry, &matching_findings, &outcomes)
 }
 
 fn render_explain_entry(
+    root: &Path,
     entry: &AllowEntry,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
@@ -1223,6 +1230,26 @@ fn render_explain_entry(
     ));
     out.push_str(&format!("reason: {}\n", empty_as_none(&entry.reason)));
     out.push_str(&format!("evidence: {}\n", list_or_none(&entry.evidence)));
+    let evidence_diagnostics = evidence_reference_diagnostics(root, entry);
+    if !evidence_diagnostics.is_empty() {
+        out.push_str("\nevidence references:\n");
+        for diagnostic in evidence_diagnostics {
+            let target = diagnostic
+                .target
+                .as_ref()
+                .map(normalize_path)
+                .unwrap_or_else(|| "-".to_string());
+            let prefix = diagnostic.prefix.as_deref().unwrap_or("-");
+            out.push_str(&format!(
+                "- {} prefix={} target={} status={} message={}\n",
+                diagnostic.raw,
+                prefix,
+                target,
+                diagnostic.status.as_str(),
+                diagnostic.message
+            ));
+        }
+    }
     if !entry.links.is_empty() {
         out.push_str(&format!("links: {}\n", entry.links.join(", ")));
     }
@@ -2033,13 +2060,32 @@ fn load_world(
     kind_filter: Option<&str>,
     include_untracked: bool,
 ) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>, InventorySource)> {
+    load_world_with_evidence_validation(
+        explicit_root,
+        config,
+        require_config,
+        kind_filter,
+        include_untracked,
+        true,
+    )
+}
+
+fn load_world_with_evidence_validation(
+    explicit_root: Option<&Path>,
+    config: Option<&Path>,
+    require_config: bool,
+    kind_filter: Option<&str>,
+    include_untracked: bool,
+    validate_local_evidence: bool,
+) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>, InventorySource)> {
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let cfg = if require_config {
-        load_config_required(&root, config)?
+        load_config_required(&root, config, validate_local_evidence)?
     } else {
-        load_config_optional(&root, config)?.unwrap_or_else(AllowConfig::empty)
+        load_config_optional(&root, config, validate_local_evidence)?
+            .unwrap_or_else(AllowConfig::empty)
     };
     let opts = InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
@@ -2332,26 +2378,41 @@ fn report_config(cfg: &AllowConfig, kind_filter: Option<&str>) -> CargoAllowResu
     Ok(filtered)
 }
 
-fn load_config_required(root: &Path, config: Option<&Path>) -> CargoAllowResult<AllowConfig> {
+fn load_config_required(
+    root: &Path,
+    config: Option<&Path>,
+    validate_local_evidence: bool,
+) -> CargoAllowResult<AllowConfig> {
     let path = config_path(root, config).ok_or_else(|| {
         CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
     })?;
-    load_policy_with_local_evidence(root, path)
+    load_policy_for_root(root, path, validate_local_evidence)
 }
 
 fn load_config_optional(
     root: &Path,
     config: Option<&Path>,
+    validate_local_evidence: bool,
 ) -> CargoAllowResult<Option<AllowConfig>> {
     match config_path(root, config) {
-        Some(path) => Ok(Some(load_policy_with_local_evidence(root, path)?)),
+        Some(path) => Ok(Some(load_policy_for_root(
+            root,
+            path,
+            validate_local_evidence,
+        )?)),
         None => Ok(None),
     }
 }
 
-fn load_policy_with_local_evidence(root: &Path, path: PathBuf) -> CargoAllowResult<AllowConfig> {
+fn load_policy_for_root(
+    root: &Path,
+    path: PathBuf,
+    validate_local_evidence: bool,
+) -> CargoAllowResult<AllowConfig> {
     let cfg = load_policy(path)?;
-    validate_local_evidence_references(root, &cfg)?;
+    if validate_local_evidence {
+        validate_local_evidence_references(root, &cfg)?;
+    }
     Ok(cfg)
 }
 
@@ -3008,7 +3069,7 @@ mod tests {
             "tracked_file",
         )];
 
-        let text = explain_entry_text(&cfg, &entry, &findings);
+        let text = explain_entry_text(Path::new("."), &cfg, &entry, &findings);
 
         assert!(text.contains("current_status: matched"));
         assert!(text.contains("current_matches: 1"));
@@ -3019,12 +3080,41 @@ mod tests {
     }
 
     #[test]
+    fn explain_entry_text_reports_evidence_reference_status() {
+        let root = migrate_fixture_dir();
+        fs::create_dir_all(root.join("docs"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+        fs::write(root.join("docs/safety.md"), "review notes")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence: {err}")));
+        let mut cfg = AllowConfig::empty();
+        let mut entry = test_entry("allow-file", FindingKind::NonRustFile);
+        entry.evidence = vec![
+            "doc:docs/safety.md".to_string(),
+            "spec:docs/missing.md".to_string(),
+            "test:file_policy_fixture".to_string(),
+        ];
+        cfg.allow.push(entry.clone());
+
+        let text = explain_entry_text(&root, &cfg, &entry, &[]);
+
+        assert!(text.contains("evidence references:"));
+        assert!(text.contains("doc:docs/safety.md"));
+        assert!(text.contains("status=local_file_present"));
+        assert!(text.contains("spec:docs/missing.md"));
+        assert!(text.contains("status=local_file_missing"));
+        assert!(text.contains("test:file_policy_fixture"));
+        assert!(text.contains("status=traceability_only"));
+        fs::remove_dir_all(root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    }
+
+    #[test]
     fn explain_entry_text_reports_stale_entry() {
         let mut cfg = AllowConfig::empty();
         let entry = test_entry("allow-file", FindingKind::NonRustFile);
         cfg.allow.push(entry.clone());
 
-        let text = explain_entry_text(&cfg, &entry, &[]);
+        let text = explain_entry_text(Path::new("."), &cfg, &entry, &[]);
 
         assert!(text.contains("current_status: stale"));
         assert!(text.contains("current_matches: 0"));
@@ -3046,7 +3136,7 @@ mod tests {
         );
         let findings = vec![finding.clone(), finding];
 
-        let text = explain_entry_text(&cfg, &entry, &findings);
+        let text = explain_entry_text(Path::new("."), &cfg, &entry, &findings);
 
         assert!(text.contains("occurrence_limit: 1"));
         assert!(text.contains("current_status: new"));
