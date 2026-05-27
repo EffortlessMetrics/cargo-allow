@@ -4,6 +4,7 @@ use allow_core::{AllowEntry, Lifecycle, Selector};
 use allow_policy::load_policy;
 use clap::Parser;
 use std::fs;
+use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 fn argv(items: Vec<&str>) -> Vec<String> {
