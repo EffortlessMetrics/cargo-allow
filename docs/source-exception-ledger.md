@@ -239,6 +239,8 @@ and scanner-provided source-tree package context can be filtered with
 
 The human worklist output includes the same first-step suggested actions and
 proof commands so a maintainer can triage the queue without switching to JSON.
+Generated proof commands point broad-scope and baseline-debt advisory items back
+to the matching shortcut queues.
 When the human view is truncated, it says how many work items were omitted and
 points to JSON for the full queue. Filtered worklist output records the applied
 filters so saved artifacts are not mistaken for the full ledger queue. The
