@@ -60,6 +60,6 @@ mod artifact_contract_tests;
 #[cfg(test)]
 mod compat_integration_tests;
 #[cfg(test)]
-mod main_tests;
-#[cfg(test)]
 mod report_config_tests;
+#[cfg(test)]
+mod root_cli_tests;
