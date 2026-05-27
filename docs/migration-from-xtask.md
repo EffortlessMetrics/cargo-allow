@@ -230,6 +230,13 @@ The migration writer:
 - avoids overwriting without `--force`.
 - writes stable formatting.
 
+`--summary-format json --summary-output <path>` writes a
+`cargo-allow.migrate.v1` receipt for the conversion. The summary records the
+input mode, output path, source-tree inventory context when repo-policy
+migration collected one, allow-entry counts, baseline-debt counts, unsafe-entry
+counts, evidence-bearing entry counts, and the same migration notes shown by
+the human summary. The canonical policy output remains TOML.
+
 Migration is still a bridge. The combined policy carries retained legacy
 receipts forward; it does not prove that stale legacy entries are removable and
 does not add source discovery beyond the compatibility lanes already listed.

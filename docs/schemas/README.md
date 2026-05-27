@@ -14,6 +14,7 @@ macro-expansion, or proof-level coverage.
 | Stale prune preview/result | `cargo-allow.prune.v1` | `cargo-allow prune --stale --format json` |
 | Baseline proposal summary | `cargo-allow.propose.v1` | `cargo-allow propose --summary-format json` |
 | Single-entry add summary | `cargo-allow.add.v1` | `cargo-allow add --summary-format json` |
+| Legacy migration summary | `cargo-allow.migrate.v1` | `cargo-allow migrate --summary-format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
 
 ## Files
@@ -26,6 +27,7 @@ macro-expansion, or proof-level coverage.
 - [prune.schema.json](prune.schema.json)
 - [propose.schema.json](propose.schema.json)
 - [add.schema.json](add.schema.json)
+- [migrate.schema.json](migrate.schema.json)
 - [worklist.schema.json](worklist.schema.json)
 
 ## Contract Status
@@ -60,9 +62,9 @@ covered by their individual schema files. Consumers should branch on
 ## Compatibility Coverage
 
 The test suite parses the current report, receipt, diff, list, explain,
-worklist, prune, propose, add, and doctor JSON renderers as JSON and checks the
-shared v1 source-tree contract fields. That protects the artifact root shape
-from accidental manual-rendering drift.
+worklist, prune, propose, add, migrate, and doctor JSON renderers as JSON and
+checks the shared v1 source-tree contract fields. That protects the artifact
+root shape from accidental manual-rendering drift.
 
 This is not a promise that every field is permanently frozen. Breaking changes
 should either preserve the existing `*.v1` contract or introduce a new schema ID
@@ -79,6 +81,7 @@ Use JSON artifacts for automation:
 - `doctor` for setup diagnostics before wider scans.
 - `propose` for generated-baseline review.
 - `add` for one finding-to-policy-entry proposal summary.
+- `migrate` for legacy-policy conversion receipts.
 - `prune` for stale-entry cleanup previews or write receipts.
 
 Do not parse human, Markdown, SARIF, or HTML output as the primary contract when
