@@ -734,17 +734,7 @@ pub fn render_json_with_context(
         if failed { "failed" } else { "passed" }
     ));
     out.push_str(&format!("  \"failed\": {},\n", bool_json(failed)));
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&render_inventory_json(context.into(), "  "));
-    out.push_str(",\n");
+    push_json_artifact_source_context(&mut out, context.into());
     out.push_str("  \"summary\": {\n");
     out.push_str(&format!("    \"findings\": {},\n", findings.len()));
     out.push_str(&format!("    \"outcomes\": {},\n", summary.total));
@@ -1057,17 +1047,7 @@ pub fn render_receipt_with_context(
         if failed { "failed" } else { "passed" }
     ));
     out.push_str(&format!("  \"failed\": {},\n", bool_json(failed)));
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&render_inventory_json(context.into(), "  "));
-    out.push_str(",\n");
+    push_json_artifact_source_context(&mut out, context.into());
     out.push_str("  \"counts\": {\n");
     out.push_str(&render_counts_fields(&summary, "    "));
     out.push_str("  }\n}\n");
@@ -1087,6 +1067,20 @@ fn push_json_artifact_header(
     ));
     out.push_str("  \"tool\": \"cargo-allow\",\n");
     out.push_str(&format!("  \"command\": \"{}\",\n", json_escape(command)));
+}
+
+fn push_json_artifact_source_context(out: &mut String, inventory: InventoryContext<'_>) {
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        render_claim_boundary_json()
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        render_scanner_limitations_json()
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&render_inventory_json(inventory, "  "));
+    out.push_str(",\n");
 }
 
 fn option_json(value: Option<&str>) -> String {
@@ -1326,17 +1320,7 @@ pub fn render_prune_json(
     let mut out = String::new();
     out.push_str("{\n");
     push_json_artifact_header(&mut out, PRUNE_SCHEMA_VERSION, PRUNE_SCHEMA_ID, "prune");
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&render_inventory_json(inventory, "  "));
-    out.push_str(",\n");
+    push_json_artifact_source_context(&mut out, inventory);
     out.push_str("  \"mode\": {\n");
     out.push_str(&format!(
         "    \"dry_run\": {},\n",
@@ -1379,17 +1363,7 @@ pub fn render_list_json(
     let mut out = String::new();
     out.push_str("{\n");
     push_json_artifact_header(&mut out, LIST_SCHEMA_VERSION, LIST_SCHEMA_ID, "list");
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&render_inventory_json(inventory, "  "));
-    out.push_str(",\n");
+    push_json_artifact_source_context(&mut out, inventory);
     out.push_str("  \"filters\": ");
     out.push_str(&render_list_filters_json(filters, "  "));
     out.push_str(",\n");
@@ -1422,17 +1396,7 @@ pub fn render_worklist_json(
         WORKLIST_SCHEMA_ID,
         "worklist",
     );
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&render_inventory_json(inventory, "  "));
-    out.push_str(",\n");
+    push_json_artifact_source_context(&mut out, inventory);
     out.push_str("  \"filters\": ");
     out.push_str(&render_worklist_filters_json(filters, "  "));
     out.push_str(",\n");
@@ -1525,17 +1489,7 @@ pub fn render_propose_json(report: ProposeReport<'_>) -> String {
         PROPOSE_SCHEMA_ID,
         "propose",
     );
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&render_inventory_json(report.inventory, "  "));
-    out.push_str(",\n");
+    push_json_artifact_source_context(&mut out, report.inventory);
     out.push_str("  \"options\": {\n");
     out.push_str(&format!("    \"kind\": {},\n", option_json(report.kind)));
     out.push_str(&format!(
@@ -1580,17 +1534,7 @@ pub fn render_explain_json(report: ExplainReport<'_>) -> String {
         EXPLAIN_SCHEMA_ID,
         "explain",
     );
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&render_inventory_json(report.inventory, "  "));
-    out.push_str(",\n");
+    push_json_artifact_source_context(&mut out, report.inventory);
     out.push_str("  \"allow_entry\": ");
     out.push_str(&render_allow_entry_json(report.entry, "  "));
     out.push_str(",\n");
@@ -1774,17 +1718,7 @@ pub fn render_add_json(report: AddReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
     push_json_artifact_header(&mut out, ADD_SCHEMA_VERSION, ADD_SCHEMA_ID, "add");
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&render_inventory_json(report.inventory, "  "));
-    out.push_str(",\n");
+    push_json_artifact_source_context(&mut out, report.inventory);
     out.push_str("  \"options\": {\n");
     out.push_str(&format!(
         "    \"policy_output\": {},\n",
@@ -1867,17 +1801,7 @@ pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
         MIGRATE_SCHEMA_ID,
         "migrate",
     );
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&render_inventory_json(report.inventory, "  "));
-    out.push_str(",\n");
+    push_json_artifact_source_context(&mut out, report.inventory);
     out.push_str("  \"input\": {\n");
     out.push_str(&format!(
         "    \"kind\": \"{}\",\n",
