@@ -67,13 +67,25 @@ pub fn findings_at_revision(
     let root = root.as_ref();
     let mut files = git_tracked_files_at_revision(root, revision)?;
     files.retain(|path| !is_ignored(path, &cfg.workspace.ignored));
+    let mut manifests = Vec::new();
+    for rel in files
+        .iter()
+        .filter(|path| path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml"))
+    {
+        if let Some(text) = read_file_at_revision(root, revision, rel)? {
+            manifests.push((rel.clone(), text));
+        }
+    }
+    let packages = allow_rust::source_package_contexts_from_sources(manifests);
     let mut findings = Vec::new();
     for rel in files
         .iter()
         .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("rs"))
     {
         if let Some(text) = read_file_at_revision(root, revision, rel)? {
-            findings.extend(allow_rust::scan_rust_source(rel, &text));
+            let mut rust_findings = allow_rust::scan_rust_source(rel, &text);
+            allow_rust::apply_source_package_context(rel, &packages, &mut rust_findings);
+            findings.extend(rust_findings);
         }
     }
     findings.extend(allow_files::scan_files_with_options(
@@ -580,7 +592,9 @@ fn occurrence_limit_loosened(base: Option<u32>, head: Option<u32>) -> bool {
 mod tests {
     use super::*;
     use allow_core::{FindingKind, Lifecycle, Selector, Span, StructuralIdentity};
+    use std::fs;
     use std::path::PathBuf;
+    use std::process::Command;
 
     #[test]
     fn finding_posture_ignores_line_movement_for_same_identity() {
@@ -780,6 +794,42 @@ mod tests {
         }));
     }
 
+    #[test]
+    fn findings_at_revision_preserves_source_package_context() {
+        let root = temp_root("revision-package-context");
+        fs::create_dir_all(root.join("src"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+        fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("manifest write: {err}")));
+        fs::write(
+            root.join("src").join("lib.rs"),
+            "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
+        git(&root, &["init"]);
+        git(
+            &root,
+            &["config", "user.email", "cargo-allow@example.invalid"],
+        );
+        git(&root, &["config", "user.name", "cargo-allow test"]);
+        git(&root, &["add", "."]);
+        git(&root, &["commit", "-m", "initial"]);
+
+        let findings = findings_at_revision(&root, "HEAD", &AllowConfig::empty())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("findings: {err}")));
+
+        let unwrap = findings
+            .iter()
+            .find(|finding| finding.family.as_deref() == Some("unwrap"))
+            .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
+        assert_eq!(unwrap.identity.crate_name.as_deref(), Some("demo"));
+        fs::remove_dir_all(root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
+    }
+
     fn config_with(entry: AllowEntry) -> AllowConfig {
         let mut cfg = AllowConfig::empty();
         cfg.allow.push(entry);
@@ -826,6 +876,35 @@ mod tests {
             span: Some(Span { line, column: 1 }),
             identity,
             message: "test finding".to_string(),
+        }
+    }
+
+    fn temp_root(label: &str) -> PathBuf {
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("system clock: {err}")))
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-diff-{label}-{}-{unique}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("temp root: {err}")));
+        root
+    }
+
+    fn git(root: &PathBuf, args: &[&str]) {
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+        if !output.status.success() {
+            std::panic::panic_any(format!(
+                "git {args:?} failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
         }
     }
 }

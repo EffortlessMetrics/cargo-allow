@@ -190,6 +190,8 @@ Completed:
   posture independent of line movement.
 - Emit Markdown PR summaries with net posture, reviewer action, current
   no-new failures, source finding changes, and policy weakening counts.
+- Emit structured JSON diff posture data with net posture, finding changes, and
+  policy changes for automated PR consumers.
 - Add GitHub Actions examples for PR posture diff and mainline no-new check
   workflows.
 

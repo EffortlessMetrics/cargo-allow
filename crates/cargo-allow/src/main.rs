@@ -565,12 +565,17 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         inventory_files: inventory_facts.files_scanned,
     };
     let mut text = match args.format {
-        OutputFormat::Json => allow_report::render_json_with_context(
-            "diff",
-            &findings,
+        OutputFormat::Json => render_diff_json_with_posture(
+            allow_report::render_json_with_context(
+                "diff",
+                &findings,
+                &outcomes,
+                failed,
+                report_context,
+            ),
             &outcomes,
-            failed,
-            report_context,
+            &finding_changes,
+            &policy_changes,
         ),
         OutputFormat::Html => allow_report::render_html_with_context(
             "diff",
@@ -654,56 +659,87 @@ fn render_diff_pr_summary_markdown(
     finding_changes: &[allow_diff::FindingPostureChange],
     policy_changes: &[allow_diff::PolicyChange],
 ) -> String {
-    let current_failures = outcomes
-        .iter()
-        .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
-        .count();
-    let new_findings = finding_changes
-        .iter()
-        .filter(|change| change.kind == allow_diff::FindingPostureKind::New)
-        .count();
-    let removed_findings = finding_changes
-        .iter()
-        .filter(|change| change.kind == allow_diff::FindingPostureKind::Removed)
-        .count();
-    let policy_failures = policy_changes
-        .iter()
-        .filter(|change| change.severity == allow_diff::PolicyChangeSeverity::Fail)
-        .count();
-    let policy_review_items = policy_changes
-        .iter()
-        .filter(|change| change.severity == allow_diff::PolicyChangeSeverity::Review)
-        .count();
-    let posture = diff_net_posture(
-        current_failures,
-        new_findings,
-        removed_findings,
-        policy_failures,
-        policy_review_items,
-    );
+    let summary = diff_posture_summary(outcomes, finding_changes, policy_changes);
+    let posture = summary.net_posture();
     let mut out = String::new();
     out.push_str("## PR Summary\n\n");
     out.push_str(&format!("**Net posture:** `{}`\n\n", posture.as_str()));
     out.push_str("| Signal | Count |\n|---|---:|\n");
     out.push_str(&format!(
         "| Current no-new failures | {} |\n",
-        current_failures
+        summary.current_failures
     ));
-    out.push_str(&format!("| New source findings | {} |\n", new_findings));
+    out.push_str(&format!(
+        "| New source findings | {} |\n",
+        summary.new_findings
+    ));
     out.push_str(&format!(
         "| Removed source findings | {} |\n",
-        removed_findings
+        summary.removed_findings
     ));
-    out.push_str(&format!("| Policy failures | {} |\n", policy_failures));
+    out.push_str(&format!(
+        "| Policy failures | {} |\n",
+        summary.policy_failures
+    ));
     out.push_str(&format!(
         "| Policy review items | {} |\n",
-        policy_review_items
+        summary.policy_review_items
     ));
     out.push_str(&format!(
         "\n**Reviewer action:** {}\n\n",
         posture.reviewer_action()
     ));
     out
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DiffPostureSummary {
+    current_failures: usize,
+    new_findings: usize,
+    removed_findings: usize,
+    policy_failures: usize,
+    policy_review_items: usize,
+}
+
+impl DiffPostureSummary {
+    fn net_posture(self) -> DiffNetPosture {
+        diff_net_posture(
+            self.current_failures,
+            self.new_findings,
+            self.removed_findings,
+            self.policy_failures,
+            self.policy_review_items,
+        )
+    }
+}
+
+fn diff_posture_summary(
+    outcomes: &[MatchOutcome],
+    finding_changes: &[allow_diff::FindingPostureChange],
+    policy_changes: &[allow_diff::PolicyChange],
+) -> DiffPostureSummary {
+    DiffPostureSummary {
+        current_failures: outcomes
+            .iter()
+            .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
+            .count(),
+        new_findings: finding_changes
+            .iter()
+            .filter(|change| change.kind == allow_diff::FindingPostureKind::New)
+            .count(),
+        removed_findings: finding_changes
+            .iter()
+            .filter(|change| change.kind == allow_diff::FindingPostureKind::Removed)
+            .count(),
+        policy_failures: policy_changes
+            .iter()
+            .filter(|change| change.severity == allow_diff::PolicyChangeSeverity::Fail)
+            .count(),
+        policy_review_items: policy_changes
+            .iter()
+            .filter(|change| change.severity == allow_diff::PolicyChangeSeverity::Review)
+            .count(),
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -765,6 +801,100 @@ fn append_finding_posture_changes(
         OutputFormat::Markdown => text.push_str(&render_finding_posture_changes_markdown(changes)),
         OutputFormat::Html | OutputFormat::Json | OutputFormat::Sarif => {}
     }
+}
+
+fn render_diff_json_with_posture(
+    report_json: String,
+    outcomes: &[MatchOutcome],
+    finding_changes: &[allow_diff::FindingPostureChange],
+    policy_changes: &[allow_diff::PolicyChange],
+) -> String {
+    let diff_json = render_diff_posture_json(outcomes, finding_changes, policy_changes);
+    let trimmed = report_json.trim_end();
+    if let Some(prefix) = trimmed.strip_suffix('}') {
+        format!("{prefix},\n  \"diff\": {diff_json}\n}}\n")
+    } else {
+        report_json
+    }
+}
+
+fn render_diff_posture_json(
+    outcomes: &[MatchOutcome],
+    finding_changes: &[allow_diff::FindingPostureChange],
+    policy_changes: &[allow_diff::PolicyChange],
+) -> String {
+    let summary = diff_posture_summary(outcomes, finding_changes, policy_changes);
+    let posture = summary.net_posture();
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("    \"net_posture\": \"{}\",\n", posture.as_str()));
+    out.push_str(&format!(
+        "    \"reviewer_action\": \"{}\",\n",
+        json_escape(posture.reviewer_action())
+    ));
+    out.push_str("    \"summary\": {\n");
+    out.push_str(&format!(
+        "      \"current_failures\": {},\n",
+        summary.current_failures
+    ));
+    out.push_str(&format!(
+        "      \"new_findings\": {},\n",
+        summary.new_findings
+    ));
+    out.push_str(&format!(
+        "      \"removed_findings\": {},\n",
+        summary.removed_findings
+    ));
+    out.push_str(&format!(
+        "      \"policy_failures\": {},\n",
+        summary.policy_failures
+    ));
+    out.push_str(&format!(
+        "      \"policy_review_items\": {}\n",
+        summary.policy_review_items
+    ));
+    out.push_str("    },\n");
+    out.push_str("    \"finding_changes\": [\n");
+    for (index, change) in finding_changes.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str("      {");
+        out.push_str(&format!("\"change\": \"{}\", ", change.kind.as_str()));
+        out.push_str(&format!("\"key\": \"{}\", ", json_escape(&change.key)));
+        out.push_str(&format!(
+            "\"kind\": \"{}\", ",
+            json_escape(&change.finding_kind)
+        ));
+        out.push_str(&format!(
+            "\"family\": {}, ",
+            option_json_string(change.family.as_deref())
+        ));
+        out.push_str(&format!("\"path\": \"{}\"", json_escape(&change.path)));
+        out.push('}');
+    }
+    out.push_str("\n    ],\n");
+    out.push_str("    \"policy_changes\": [\n");
+    for (index, change) in policy_changes.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str("      {");
+        out.push_str(&format!("\"severity\": \"{}\", ", change.severity.as_str()));
+        out.push_str(&format!(
+            "\"allow_id\": \"{}\", ",
+            json_escape(&change.allow_id)
+        ));
+        out.push_str(&format!("\"kind\": \"{}\", ", change.kind.as_str()));
+        out.push_str(&format!(
+            "\"message\": \"{}\"",
+            json_escape(&change.message)
+        ));
+        out.push('}');
+    }
+    out.push_str("\n    ]\n");
+    out.push_str("  }");
+    out
 }
 
 fn render_finding_posture_changes_human(changes: &[allow_diff::FindingPostureChange]) -> String {
@@ -3563,6 +3693,57 @@ mod tests {
         assert!(text.contains("**Net posture:** `improved`"));
         assert!(text.contains("| Removed source findings | 1 |"));
         assert!(text.contains("keep the narrower posture"));
+    }
+
+    #[test]
+    fn diff_json_report_includes_structured_posture_changes() {
+        let outcomes = vec![test_outcome(
+            MatchStatus::New,
+            None,
+            Some(0),
+            "unreceipted panic.unwrap at src/lib.rs:1:1",
+        )];
+        let finding_changes = vec![finding_posture_change(
+            allow_diff::FindingPostureKind::New,
+            "panic",
+            Some("unwrap"),
+            "src/lib.rs",
+        )];
+        let policy_changes = vec![policy_change(
+            allow_diff::PolicyChangeSeverity::Fail,
+            allow_diff::PolicyChangeKind::ScopeBroadened,
+        )];
+
+        let json = render_diff_json_with_posture(
+            "{\n  \"schema_id\": \"cargo-allow.report.v1\"\n}".to_string(),
+            &outcomes,
+            &finding_changes,
+            &policy_changes,
+        );
+
+        assert!(json.contains("\"diff\""));
+        assert!(json.contains("\"net_posture\": \"worse\""));
+        assert!(json.contains("\"current_failures\": 1"));
+        assert!(json.contains("\"new_findings\": 1"));
+        assert!(json.contains("\"policy_failures\": 1"));
+        assert!(json.contains("\"finding_changes\""));
+        assert!(json.contains("\"change\": \"new\""));
+        assert!(json.contains("\"family\": \"unwrap\""));
+        assert!(json.contains("\"policy_changes\""));
+        assert!(json.contains("\"severity\": \"fail\""));
+        assert!(json.contains("\"kind\": \"scope_broadened\""));
+        assert!(json.ends_with("}\n"));
+    }
+
+    #[test]
+    fn report_schema_documents_diff_posture_contract() {
+        let schema = include_str!("../../../docs/schemas/report.schema.json");
+
+        assert!(schema.contains("\"diff\""));
+        assert!(schema.contains("\"net_posture\""));
+        assert!(schema.contains("\"finding_changes\""));
+        assert!(schema.contains("\"policy_changes\""));
+        assert!(schema.contains("\"scope_broadened\""));
     }
 
     #[test]

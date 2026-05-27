@@ -308,35 +308,41 @@ pub fn scan_rust_files(
         let text = fs::read_to_string(&path)
             .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))?;
         let mut findings = scan_rust_source(rel, &text);
-        if let Some(package) = source_package_for_path(rel, &packages) {
-            for finding in &mut findings {
-                finding.identity.crate_name = Some(package.name.clone());
-            }
-        }
+        apply_source_package_context(rel, &packages, &mut findings);
         out.extend(findings);
     }
     Ok(out)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct SourcePackageContext {
-    root: String,
-    name: String,
+pub struct SourcePackageContext {
+    pub root: String,
+    pub name: String,
 }
 
 fn source_package_contexts(
     root: &Path,
     files: &[PathBuf],
 ) -> CargoAllowResult<Vec<SourcePackageContext>> {
-    let mut packages = Vec::new();
+    let mut manifests = Vec::new();
     for rel in files {
         if rel.file_name().and_then(|name| name.to_str()) != Some("Cargo.toml") {
             continue;
         }
-        let normalized = normalize_path(rel);
         let path = root.join(rel);
         let text = fs::read_to_string(&path)
             .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))?;
+        manifests.push((rel.clone(), text));
+    }
+    Ok(source_package_contexts_from_sources(manifests))
+}
+
+pub fn source_package_contexts_from_sources(
+    manifests: impl IntoIterator<Item = (PathBuf, String)>,
+) -> Vec<SourcePackageContext> {
+    let mut packages = Vec::new();
+    for (rel, text) in manifests {
+        let normalized = normalize_path(&rel);
         if let Some(name) = source_package_name(&text) {
             let package_root = normalized
                 .strip_suffix("Cargo.toml")
@@ -350,7 +356,7 @@ fn source_package_contexts(
         }
     }
     packages.sort_by_key(|package| std::cmp::Reverse(package.root.len()));
-    Ok(packages)
+    packages
 }
 
 fn source_package_name(manifest: &str) -> Option<String> {
@@ -363,6 +369,18 @@ fn source_package_name(manifest: &str) -> Option<String> {
         .map(str::trim)
         .filter(|name| !name.is_empty())
         .map(ToOwned::to_owned)
+}
+
+pub fn apply_source_package_context(
+    path: impl AsRef<Path>,
+    packages: &[SourcePackageContext],
+    findings: &mut [Finding],
+) {
+    if let Some(package) = source_package_for_path(path.as_ref(), packages) {
+        for finding in findings {
+            finding.identity.crate_name = Some(package.name.clone());
+        }
+    }
 }
 
 fn source_package_for_path<'a>(
