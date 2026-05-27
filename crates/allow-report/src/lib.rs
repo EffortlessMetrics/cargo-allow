@@ -239,10 +239,7 @@ fn render_audit_summary_markdown(summary: &Summary, outcomes: &[MatchOutcome], o
         MatchStatus::Stale,
         MatchStatus::ReviewDue,
     ];
-    let review_items = review_statuses
-        .iter()
-        .map(|status| summary.count(*status))
-        .sum::<usize>();
+    let review_items = review_item_count(summary);
     out.push_str("\n## Audit Summary\n\n");
     out.push_str("| Signal | Count |\n|---|---:|\n");
     out.push_str(&format!("| Match outcomes | {} |\n", summary.total));
@@ -340,6 +337,9 @@ pub fn render_json_with_context(
     out.push_str(&format!("    \"findings\": {},\n", findings.len()));
     out.push_str(&format!("    \"outcomes\": {},\n", summary.total));
     out.push_str(&render_counts_fields(&summary, "    "));
+    out.push_str("  },\n");
+    out.push_str("  \"trend\": {\n");
+    out.push_str(&render_trend_fields(&summary, "    "));
     out.push_str("  },\n");
     out.push_str("  \"outcomes\": [\n");
     for (i, outcome) in outcomes.iter().enumerate() {
@@ -473,6 +473,55 @@ fn render_counts_fields(summary: &Summary, indent: &str) -> String {
             )
         })
         .collect::<String>()
+}
+
+fn render_trend_fields(summary: &Summary, indent: &str) -> String {
+    let fields = [
+        ("review_items", review_item_count(summary)),
+        ("new", summary.count(MatchStatus::New)),
+        ("expired", summary.count(MatchStatus::Expired)),
+        ("review_due", summary.count(MatchStatus::ReviewDue)),
+        ("stale", summary.count(MatchStatus::Stale)),
+        ("ambiguous", summary.count(MatchStatus::Ambiguous)),
+        (
+            "invalid_selector",
+            summary.count(MatchStatus::InvalidSelector),
+        ),
+        (
+            "missing_required_field",
+            summary.count(MatchStatus::MissingRequiredField),
+        ),
+        (
+            "evidence_missing",
+            summary.count(MatchStatus::EvidenceMissing),
+        ),
+        ("baseline_debt", summary.count(MatchStatus::BaselineDebt)),
+    ];
+    fields
+        .iter()
+        .enumerate()
+        .map(|(idx, (name, value))| {
+            let comma = if idx + 1 == fields.len() { "" } else { "," };
+            format!("{indent}\"{name}\": {value}{comma}\n")
+        })
+        .collect()
+}
+
+fn review_item_count(summary: &Summary) -> usize {
+    [
+        MatchStatus::New,
+        MatchStatus::Expired,
+        MatchStatus::ReviewDue,
+        MatchStatus::Stale,
+        MatchStatus::Ambiguous,
+        MatchStatus::InvalidSelector,
+        MatchStatus::MissingRequiredField,
+        MatchStatus::EvidenceMissing,
+        MatchStatus::BaselineDebt,
+    ]
+    .iter()
+    .map(|status| summary.count(*status))
+    .sum()
 }
 
 #[derive(Debug, Default)]
@@ -667,6 +716,26 @@ mod tests {
         assert!(json.contains("\"scanner\": \"source_syntax\""));
         assert!(json.contains("\"source\": \"unknown\""));
         assert!(json.contains("\"review_due\": 0"));
+        assert!(json.contains("\"baseline_debt\": 0"));
+        assert!(json.contains("\"trend\""));
+        assert!(json.contains("\"review_items\": 0"));
+    }
+
+    #[test]
+    fn json_report_exposes_trend_metrics() {
+        let outcomes = vec![
+            outcome(MatchStatus::New, Some(0)),
+            outcome(MatchStatus::EvidenceMissing, Some(1)),
+            outcome(MatchStatus::Stale, None),
+        ];
+
+        let json = render_json("audit", &[], &outcomes, false);
+
+        assert!(json.contains("\"trend\""));
+        assert!(json.contains("\"review_items\": 3"));
+        assert!(json.contains("\"new\": 1"));
+        assert!(json.contains("\"stale\": 1"));
+        assert!(json.contains("\"evidence_missing\": 1"));
         assert!(json.contains("\"baseline_debt\": 0"));
     }
 
