@@ -27,6 +27,8 @@ Completed:
   `allow-report` instead of duplicating artifact literals in the CLI.
 - Assert every shared claim-boundary and scanner-limitation flag is documented
   across report, receipt, list, and worklist schemas.
+- Add a schema index for the current machine-readable artifacts and their
+  source-tree claim boundary.
 - Enumerate supported claim-boundary values in report, receipt, list, and
   worklist schemas.
 - Thread source-tree root and inventory file-count facts into reports and

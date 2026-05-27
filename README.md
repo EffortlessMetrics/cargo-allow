@@ -215,5 +215,6 @@ cargo-allow doctor
 - [CI examples](docs/ci.md)
 - [Examples](examples/README.md)
 - [Agent worklist prompt](docs/agents/cargo-allow-worklist.md)
+- [JSON schema index](docs/schemas/README.md)
 - [Explain JSON schema](docs/schemas/explain.schema.json)
 - [List JSON schema](docs/schemas/list.schema.json)
