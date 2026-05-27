@@ -1,8 +1,13 @@
 [package]
 name = "allow-core"
+description = "Core types and matching primitives for cargo-allow source exception policies."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]

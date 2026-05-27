@@ -247,10 +247,10 @@ Completed:
 
 - Public README.
 - Examples.
+- crates.io metadata.
 
 Planned work:
 
-- crates.io metadata.
 - 0.1.0 dry-run.
 - 0.1.0 publish.
 

@@ -1,9 +1,14 @@
 [package]
 name = "allow-policy-legacy"
+description = "Legacy policy adapters for cargo-allow migrations."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 allow-core.workspace = true
