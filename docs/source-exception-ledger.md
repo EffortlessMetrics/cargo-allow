@@ -175,6 +175,9 @@ The limit preserves no-new semantics during migration. Matching the same
 structural selector more times than the baseline allowed becomes new debt
 instead of silently broadening the exception.
 
+Diff mode reports occurrence-limit increases or removals as policy weakening
+and occurrence-limit additions or reductions as policy improvements.
+
 `cargo-allow explain <id>` reports this live posture for a single entry. It
 shows the policy metadata, selector, current match status, matched finding
 count, outcome counts, stale state, occurrence-limit overruns, and evidence

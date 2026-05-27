@@ -475,6 +475,7 @@
             "owner_removed",
             "reason_removed",
             "classification_removed",
+            "occurrence_limit_tightened",
             "occurrence_limit_loosened"
           ]
         },

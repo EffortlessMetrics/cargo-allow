@@ -3787,6 +3787,7 @@ mod tests {
         assert!(schema.contains("\"removed_allow\""));
         assert!(schema.contains("\"selector_precision_increased\""));
         assert!(schema.contains("\"evidence_added\""));
+        assert!(schema.contains("\"occurrence_limit_tightened\""));
         assert!(schema.contains("\"policy_improvements\""));
     }
 
