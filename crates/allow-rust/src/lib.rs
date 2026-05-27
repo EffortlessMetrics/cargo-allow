@@ -315,6 +315,7 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
     let path = path.as_ref().to_path_buf();
     let mut findings = Vec::new();
     let syntax = syntax_facts(source);
+    let safety_comments = safety_comment_lines(source);
 
     for (line_idx, raw_line) in source.lines().enumerate() {
         let line_no = (line_idx + 1) as u32;
@@ -350,6 +351,7 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),
                 unsafe_attribute: syntax.unsafe_attribute_lines.contains(&line_no),
+                safety_comment_nearby: has_nearby_safety_comment(&safety_comments, line_no),
             },
             &mut findings,
         );
@@ -414,7 +416,11 @@ fn scan_line(
             FindingKind::Unsafe,
             unsafe_construct.kind.family(),
             unsafe_construct.kind.ast_kind(),
-            |_| {},
+            |id| {
+                if syntax.safety_comment_nearby {
+                    id.target_fingerprint = Some("safety-comment:present".to_string());
+                }
+            },
             findings,
         );
     }
@@ -431,7 +437,11 @@ fn scan_line(
             FindingKind::Unsafe,
             "unsafe_attr",
             "unsafe_attr",
-            |_| {},
+            |id| {
+                if syntax.safety_comment_nearby {
+                    id.target_fingerprint = Some("safety-comment:present".to_string());
+                }
+            },
             findings,
         );
     }
@@ -847,6 +857,28 @@ fn unsafe_attribute_text(text: &str) -> bool {
     trimmed.starts_with("#[unsafe(") || trimmed.starts_with("#![unsafe(")
 }
 
+fn safety_comment_lines(source: &str) -> BTreeSet<u32> {
+    source
+        .lines()
+        .enumerate()
+        .filter_map(|(line_idx, line)| is_safety_comment(line).then_some((line_idx + 1) as u32))
+        .collect()
+}
+
+fn is_safety_comment(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('*') {
+        return trimmed.contains("SAFETY:");
+    }
+    line.split_once("//")
+        .is_some_and(|(_, comment)| comment.contains("SAFETY:"))
+}
+
+fn has_nearby_safety_comment(safety_comments: &BTreeSet<u32>, line_no: u32) -> bool {
+    let first = line_no.saturating_sub(3).max(1);
+    (first..=line_no).any(|line| safety_comments.contains(&line))
+}
+
 struct SyntaxLineFacts<'a> {
     lint_attributes: &'a [LintAttributeKind],
     panic_macros: &'a [PanicMacroInvocation],
@@ -854,6 +886,7 @@ struct SyntaxLineFacts<'a> {
     index_column: Option<u32>,
     unsafe_constructs: &'a [UnsafeSyntaxConstruct],
     unsafe_attribute: bool,
+    safety_comment_nearby: bool,
 }
 
 struct FindingSite<'a> {
@@ -1302,6 +1335,45 @@ mod tests {
             .count();
 
         assert_eq!(unsafe_blocks, 2);
+    }
+
+    #[test]
+    fn unsafe_findings_record_nearby_safety_comment_metadata() {
+        let src = r#"
+        fn read(ptr: *const u8) -> u8 {
+            // SAFETY: caller provides a valid pointer.
+            unsafe { core::ptr::read(ptr) }
+        }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        let unsafe_block = findings
+            .iter()
+            .find(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_block"))
+            .unwrap_or_else(|| std::panic::panic_any("unsafe block should be found"));
+        assert_eq!(
+            unsafe_block.identity.target_fingerprint.as_deref(),
+            Some("safety-comment:present")
+        );
+    }
+
+    #[test]
+    fn unsafe_findings_without_safety_comment_have_no_safety_metadata() {
+        let src = r#"
+        fn read(ptr: *const u8) -> u8 {
+            unsafe { core::ptr::read(ptr) }
+        }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        let unsafe_block = findings
+            .iter()
+            .find(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_block"))
+            .unwrap_or_else(|| std::panic::panic_any("unsafe block should be found"));
+        assert_ne!(
+            unsafe_block.identity.target_fingerprint.as_deref(),
+            Some("safety-comment:present")
+        );
     }
 
     #[test]

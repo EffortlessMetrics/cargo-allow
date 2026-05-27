@@ -294,11 +294,6 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
             cfg.policy
         )));
     }
-    if cfg.requirements.unsafe_safety_comment_required {
-        return Err(CargoAllowError::new(
-            "requirements.unsafe.safety_comment_required is not supported yet; cargo-allow does not detect SAFETY comments",
-        ));
-    }
     for pattern in &cfg.workspace.ignored {
         validate_glob("source-tree ignored glob", pattern)?;
     }
@@ -938,8 +933,8 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unsupported_unsafe_safety_comment_requirement() {
-        let err = parse_err(
+    fn parses_unsafe_safety_comment_requirement() {
+        let cfg = parse_policy(
             r#"
                 policy = "cargo-allow"
 
@@ -959,9 +954,10 @@ mod tests {
                 ast_kind = "unsafe_block"
                 container = "load"
             "#,
-        );
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy should parse: {err}")));
 
-        assert!(err.contains("safety_comment_required is not supported yet"));
+        assert!(cfg.requirements.unsafe_safety_comment_required);
     }
 
     #[test]

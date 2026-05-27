@@ -284,6 +284,18 @@ fn classify_matched(
             format!("{} matched unsafe finding but has no evidence", entry.id),
         );
     }
+    if cfg.requirements.unsafe_safety_comment_required
+        && entry.kind == FindingKind::Unsafe
+        && finding.identity.target_fingerprint.as_deref() != Some("safety-comment:present")
+    {
+        return (
+            MatchStatus::EvidenceMissing,
+            format!(
+                "{} matched unsafe finding but has no nearby SAFETY comment",
+                entry.id
+            ),
+        );
+    }
     if entry.kind == FindingKind::LintException
         && !cfg.requirements.allow_bare_allow_attributes
         && finding.family.as_deref() == Some("allow_attribute")
@@ -429,6 +441,38 @@ mod tests {
         entry.selector.container = Some("other_container".to_string());
 
         assert_eq!(score_match(&entry, &finding), None);
+    }
+
+    #[test]
+    fn unsafe_safety_comment_requirement_fails_without_metadata() {
+        let finding = finding_with_hash("fnv1a64:actual");
+        let mut cfg = AllowConfig::empty();
+        cfg.requirements.unsafe_safety_comment_required = true;
+        cfg.allow.push(entry_with_hash("fnv1a64:actual"));
+
+        let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+        assert!(outcomes.iter().any(|outcome| {
+            outcome.status == MatchStatus::EvidenceMissing
+                && outcome.message.contains("no nearby SAFETY comment")
+        }));
+    }
+
+    #[test]
+    fn unsafe_safety_comment_requirement_passes_with_metadata() {
+        let mut finding = finding_with_hash("fnv1a64:actual");
+        finding.identity.target_fingerprint = Some("safety-comment:present".to_string());
+        let mut cfg = AllowConfig::empty();
+        cfg.requirements.unsafe_safety_comment_required = true;
+        cfg.allow.push(entry_with_hash("fnv1a64:actual"));
+
+        let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+        assert!(
+            outcomes
+                .iter()
+                .any(|outcome| outcome.status == MatchStatus::Matched)
+        );
     }
 
     #[test]
