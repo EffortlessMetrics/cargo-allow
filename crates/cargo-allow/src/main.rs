@@ -6,7 +6,10 @@ use allow_inventory::{
     InventoryOptions, InventorySource, inventory, inventory_files, resolve_source_tree_root,
 };
 use allow_match::{CheckMode, evaluate, finding_location, score_match};
-use allow_policy::{find_config, load_policy, render_policy, starter_policy, validate_policy};
+use allow_policy::{
+    find_config, load_policy, render_policy, starter_policy, validate_local_evidence_references,
+    validate_policy,
+};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
 use std::fs;
@@ -1023,7 +1026,7 @@ fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
 
 fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let parsed_kind = parse_kind_filter(&args.kind)?;
-    let (_root, mut cfg, findings, _inventory_source) = load_world(
+    let (root, mut cfg, findings, _inventory_source) = load_world(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
@@ -1062,6 +1065,7 @@ fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let summary = render_add_summary(&entry, finding, args.write.as_deref());
     cfg.allow.push(entry);
     validate_policy(&cfg)?;
+    validate_local_evidence_references(&root, &cfg)?;
     let rendered = render_policy(&cfg);
     if let Some(path) = &args.write {
         write_file_no_overwrite(path, &rendered, args.force)?;
@@ -2332,7 +2336,7 @@ fn load_config_required(root: &Path, config: Option<&Path>) -> CargoAllowResult<
     let path = config_path(root, config).ok_or_else(|| {
         CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
     })?;
-    load_policy(path)
+    load_policy_with_local_evidence(root, path)
 }
 
 fn load_config_optional(
@@ -2340,9 +2344,15 @@ fn load_config_optional(
     config: Option<&Path>,
 ) -> CargoAllowResult<Option<AllowConfig>> {
     match config_path(root, config) {
-        Some(path) => Ok(Some(load_policy(path)?)),
+        Some(path) => Ok(Some(load_policy_with_local_evidence(root, path)?)),
         None => Ok(None),
     }
+}
+
+fn load_policy_with_local_evidence(root: &Path, path: PathBuf) -> CargoAllowResult<AllowConfig> {
+    let cfg = load_policy(path)?;
+    validate_local_evidence_references(root, &cfg)?;
+    Ok(cfg)
 }
 
 fn config_path(root: &Path, config: Option<&Path>) -> Option<PathBuf> {
