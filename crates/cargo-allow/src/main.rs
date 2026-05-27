@@ -4,7 +4,7 @@ use allow_core::{
 };
 use allow_inventory::{InventoryOptions, InventorySource, inventory, resolve_source_tree_root};
 use allow_match::{CheckMode, evaluate};
-use allow_policy::{find_config, load_policy, starter_policy, validate_local_evidence_references};
+use allow_policy::{find_config, load_policy, validate_local_evidence_references};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
 use std::fs;
@@ -15,6 +15,7 @@ use std::str::FromStr;
 mod add;
 mod doctor;
 mod explain;
+mod init;
 mod list;
 mod migrate;
 mod propose;
@@ -35,7 +36,7 @@ struct CargoAllowCli {
 #[derive(Debug, Subcommand)]
 enum CargoAllowCommand {
     /// Create policy/allow.toml.
-    Init(InitArgs),
+    Init(init::InitArgs),
     /// Inventory exceptions and policy health.
     Audit(ReportArgs),
     /// CI gate for the exception ledger.
@@ -87,19 +88,6 @@ impl InventoryFacts {
             files_scanned: Some(files_scanned),
         }
     }
-}
-
-#[derive(Debug, Clone, Parser)]
-struct InitArgs {
-    /// Write strict-mode defaults.
-    #[arg(long)]
-    strict: bool,
-    /// Overwrite an existing policy file.
-    #[arg(long)]
-    force: bool,
-    /// Policy config path.
-    #[arg(long, default_value = "policy/allow.toml")]
-    config: PathBuf,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -210,7 +198,7 @@ fn run() -> CargoAllowResult<()> {
         return Ok(());
     };
     match command {
-        CargoAllowCommand::Init(args) => cmd_init(&args),
+        CargoAllowCommand::Init(args) => init::cmd_init(&args),
         CargoAllowCommand::Audit(args) => cmd_audit(&args),
         CargoAllowCommand::Check(args) => cmd_check(&args),
         CargoAllowCommand::Diff(args) => cmd_diff(&args),
@@ -231,25 +219,6 @@ fn normalized_args(args: impl IntoIterator<Item = String>) -> Vec<String> {
         args.remove(1);
     }
     args
-}
-
-fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
-    let path = args.config.clone();
-    if path.exists() && !args.force {
-        return Err(CargoAllowError::new(format!(
-            "{} already exists; use --force to overwrite",
-            path.display()
-        )));
-    }
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| {
-            CargoAllowError::new(format!("failed to create {}: {e}", parent.display()))
-        })?;
-    }
-    fs::write(&path, starter_policy(args.strict))
-        .map_err(|e| CargoAllowError::new(format!("failed to write {}: {e}", path.display())))?;
-    println!("created {}", path.display());
-    Ok(())
 }
 
 fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
