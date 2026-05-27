@@ -2174,8 +2174,14 @@ fn policy_exception_kind_arg(family: Option<&str>) -> Option<&'static str> {
 fn render_worklist_json_with_context(items: &[WorkItem], context: WorklistContext<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    out.push_str("  \"schema_version\": 1,\n");
-    out.push_str("  \"schema_id\": \"cargo-allow.worklist.v1\",\n");
+    out.push_str(&format!(
+        "  \"schema_version\": {},\n",
+        allow_report::WORKLIST_SCHEMA_VERSION
+    ));
+    out.push_str(&format!(
+        "  \"schema_id\": \"{}\",\n",
+        allow_report::WORKLIST_SCHEMA_ID
+    ));
     out.push_str("  \"tool\": \"cargo-allow\",\n");
     out.push_str("  \"command\": \"worklist\",\n");
     out.push_str(&format!(
@@ -4044,7 +4050,10 @@ mod tests {
         let json = render_worklist_json_with_context(&items, WorklistContext::default());
 
         assert_eq!(items.len(), 1);
-        assert!(json.contains("\"schema_id\": \"cargo-allow.worklist.v1\""));
+        assert!(json.contains(&format!(
+            "\"schema_id\": \"{}\"",
+            allow_report::WORKLIST_SCHEMA_ID
+        )));
         assert!(json.contains("\"source_tree_inventory\""));
         assert!(json.contains("\"cargo_commands_not_invoked\""));
         assert!(json.contains("\"repository_code_not_executed\""));
@@ -4066,7 +4075,7 @@ mod tests {
     fn worklist_schema_documents_current_contract() {
         let schema = include_str!("../../../docs/schemas/worklist.schema.json");
 
-        assert!(schema.contains("\"cargo-allow.worklist.v1\""));
+        assert!(schema.contains(allow_report::WORKLIST_SCHEMA_ID));
         assert!(schema.contains("\"exception_kind\""));
         assert!(schema.contains("\"family\""));
         assert!(schema.contains("\"source_package\""));
