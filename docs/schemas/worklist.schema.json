@@ -251,6 +251,23 @@
           "type": ["string", "null"],
           "description": "Policy reason for the related allow entry, when available."
         },
+        "created": {
+          "type": ["string", "null"],
+          "description": "Policy creation date for the related allow entry, when available."
+        },
+        "review_after": {
+          "type": ["string", "null"],
+          "description": "Policy review-after date for the related allow entry, when available."
+        },
+        "expires": {
+          "type": ["string", "null"],
+          "description": "Policy expiry date for the related allow entry, when available."
+        },
+        "evidence_count": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Number of evidence references on the related allow entry, when available."
+        },
         "risk": {
           "enum": ["high", "medium", "low"]
         },
