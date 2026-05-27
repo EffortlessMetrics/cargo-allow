@@ -1549,7 +1549,7 @@ fn render_propose_summary(
 }
 
 fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, _inventory_source) = load_world_with_evidence_validation(
+    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_validation(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
@@ -1565,9 +1565,15 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         &report_cfg,
         items.len() + 1,
     ));
+    let root_text = source_tree_root_text(&root);
+    let context = WorklistContext {
+        inventory_source: inventory_facts.source.as_str(),
+        source_tree_root: Some(&root_text),
+        inventory_files: inventory_facts.files_scanned,
+    };
     let text = match args.format {
-        WorklistFormat::Json => render_worklist_json(&items),
-        WorklistFormat::Human => render_worklist_human(&items),
+        WorklistFormat::Json => render_worklist_json_with_context(&items, context),
+        WorklistFormat::Human => render_worklist_human_with_context(&items, context),
     };
     if let Some(path) = &args.output {
         write_file(path, &text)?;
@@ -1591,6 +1597,23 @@ struct WorkItem {
     message: String,
     suggested_actions: Vec<String>,
     proof_commands: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct WorklistContext<'a> {
+    inventory_source: &'a str,
+    source_tree_root: Option<&'a str>,
+    inventory_files: Option<usize>,
+}
+
+impl Default for WorklistContext<'static> {
+    fn default() -> Self {
+        Self {
+            inventory_source: "unknown",
+            source_tree_root: None,
+            inventory_files: None,
+        }
+    }
 }
 
 const WORKLIST_CLAIM_BOUNDARY: &[&str] = &[
@@ -1932,7 +1955,7 @@ fn policy_exception_kind_arg(family: Option<&str>) -> Option<&'static str> {
     }
 }
 
-fn render_worklist_json(items: &[WorkItem]) -> String {
+fn render_worklist_json_with_context(items: &[WorkItem], context: WorklistContext<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
     out.push_str("  \"schema_version\": 1,\n");
@@ -1943,6 +1966,9 @@ fn render_worklist_json(items: &[WorkItem]) -> String {
         "  \"claim_boundary\": {},\n",
         json_string_array(WORKLIST_CLAIM_BOUNDARY)
     ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&worklist_inventory_json(context, "  "));
+    out.push_str(",\n");
     out.push_str("  \"summary\": {\n");
     out.push_str(&format!("    \"work_items\": {},\n", items.len()));
     out.push_str(&format!("    \"high\": {},\n", risk_count(items, "high")));
@@ -2020,9 +2046,17 @@ fn render_work_item_json(item: &WorkItem) -> String {
     out
 }
 
-fn render_worklist_human(items: &[WorkItem]) -> String {
+fn render_worklist_human_with_context(items: &[WorkItem], context: WorklistContext<'_>) -> String {
     let mut out = String::new();
     out.push_str("cargo-allow worklist\n\n");
+    out.push_str(&format!(
+        "Inventory: source_tree/source_syntax via {}{}\n",
+        context.inventory_source,
+        worklist_inventory_files_suffix(context)
+    ));
+    if let Some(root) = context.source_tree_root {
+        out.push_str(&format!("Source tree root: {root}\n"));
+    }
     out.push_str(&format!("Work items: {}\n", items.len()));
     out.push_str("Risk:\n");
     out.push_str(&format!("  high      {}\n", risk_count(items, "high")));
@@ -2061,6 +2095,32 @@ fn render_worklist_human(items: &[WorkItem]) -> String {
     out.push_str(allow_report::CLAIM_BOUNDARY_TEXT);
     out.push('\n');
     out
+}
+
+fn worklist_inventory_json(context: WorklistContext<'_>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("{indent}  \"scope\": \"source_tree\",\n"));
+    out.push_str(&format!("{indent}  \"scanner\": \"source_syntax\",\n"));
+    out.push_str(&format!(
+        "{indent}  \"source\": \"{}\"",
+        json_escape(context.inventory_source)
+    ));
+    if let Some(root) = context.source_tree_root {
+        out.push_str(&format!(",\n{indent}  \"root\": \"{}\"", json_escape(root)));
+    }
+    if let Some(files) = context.inventory_files {
+        out.push_str(&format!(",\n{indent}  \"files_scanned\": {files}"));
+    }
+    out.push_str(&format!("\n{indent}}}"));
+    out
+}
+
+fn worklist_inventory_files_suffix(context: WorklistContext<'_>) -> String {
+    context
+        .inventory_files
+        .map(|files| format!("; files scanned: {files}"))
+        .unwrap_or_default()
 }
 
 fn risk_count(items: &[WorkItem], risk: &str) -> usize {
@@ -3651,13 +3711,15 @@ mod tests {
         )];
 
         let items = work_items_from_outcomes(&cfg, &[], &outcomes);
-        let json = render_worklist_json(&items);
+        let json = render_worklist_json_with_context(&items, WorklistContext::default());
 
         assert_eq!(items.len(), 1);
         assert!(json.contains("\"schema_id\": \"cargo-allow.worklist.v1\""));
         assert!(json.contains("\"source_tree_inventory\""));
         assert!(json.contains("\"cargo_commands_not_invoked\""));
         assert!(json.contains("\"repository_code_not_executed\""));
+        assert!(json.contains("\"inventory\""));
+        assert!(json.contains("\"source\": \"unknown\""));
         assert!(json.contains("\"kind\": \"stale_allow\""));
         assert!(json.contains("\"risk\": \"low\""));
         assert!(json.contains("\"small_difficulty\": 1"));
@@ -3676,7 +3738,34 @@ mod tests {
         assert!(schema.contains("\"proof_commands\""));
         assert!(schema.contains("\"small_difficulty\""));
         assert!(schema.contains("\"medium_difficulty\""));
+        assert!(schema.contains("\"inventory\""));
+        assert!(schema.contains("\"git_tracked\""));
         assert!(schema.contains("\"source_tree_inventory\""));
+    }
+
+    #[test]
+    fn worklist_renderers_include_inventory_context() {
+        let items = Vec::new();
+        let context = WorklistContext {
+            inventory_source: "git_tracked",
+            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
+            inventory_files: Some(46),
+        };
+
+        let json = render_worklist_json_with_context(&items, context);
+        let human = render_worklist_human_with_context(&items, context);
+
+        assert!(json.contains("\"scope\": \"source_tree\""));
+        assert!(json.contains("\"scanner\": \"source_syntax\""));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
+        assert!(json.contains("\"files_scanned\": 46"));
+        assert!(
+            human.contains(
+                "Inventory: source_tree/source_syntax via git_tracked; files scanned: 46"
+            )
+        );
+        assert!(human.contains("Source tree root: H:/Code/Rust/cargo-allow"));
     }
 
     #[test]
@@ -3696,7 +3785,7 @@ mod tests {
         )];
 
         let items = work_items_from_outcomes(&cfg, &findings, &outcomes);
-        let text = render_worklist_human(&items);
+        let text = render_worklist_human_with_context(&items, WorklistContext::default());
 
         let item = items
             .first()
@@ -3741,8 +3830,8 @@ mod tests {
         )];
 
         let items = work_items_from_outcomes(&cfg, &[finding], &outcomes);
-        let json = render_worklist_json(&items);
-        let human = render_worklist_human(&items);
+        let json = render_worklist_json_with_context(&items, WorklistContext::default());
+        let human = render_worklist_human_with_context(&items, WorklistContext::default());
         let item = items
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
@@ -3892,7 +3981,7 @@ mod tests {
         cfg.allow.push(entry);
 
         let items = work_items_from_evidence_diagnostics(&root, &cfg, 1);
-        let json = render_worklist_json(&items);
+        let json = render_worklist_json_with_context(&items, WorklistContext::default());
 
         let item = items
             .first()
