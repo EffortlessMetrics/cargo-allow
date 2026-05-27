@@ -199,6 +199,9 @@ pub fn render_markdown_with_context(
         let count = summary.count(status);
         out.push_str(&format!("| `{}` | {} |\n", status.as_str(), count));
     }
+    if command == "audit" {
+        render_audit_summary_markdown(&summary, outcomes, &mut out);
+    }
     render_non_rust_markdown(findings, outcomes, &mut out);
     let non_matched = outcomes
         .iter()
@@ -219,6 +222,64 @@ pub fn render_markdown_with_context(
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out.push('\n');
     out
+}
+
+fn render_audit_summary_markdown(summary: &Summary, outcomes: &[MatchOutcome], out: &mut String) {
+    let review_statuses = [
+        MatchStatus::New,
+        MatchStatus::Expired,
+        MatchStatus::Ambiguous,
+        MatchStatus::EvidenceMissing,
+        MatchStatus::MissingRequiredField,
+        MatchStatus::BaselineDebt,
+        MatchStatus::Stale,
+        MatchStatus::ReviewDue,
+    ];
+    let review_items = review_statuses
+        .iter()
+        .map(|status| summary.count(*status))
+        .sum::<usize>();
+    out.push_str("\n## Audit Summary\n\n");
+    out.push_str("| Signal | Count |\n|---|---:|\n");
+    out.push_str(&format!("| Match outcomes | {} |\n", summary.total));
+    out.push_str(&format!("| Review items | {} |\n", review_items));
+    out.push_str(&format!(
+        "| New unreceipted | {} |\n",
+        summary.count(MatchStatus::New)
+    ));
+    out.push_str(&format!(
+        "| Expired | {} |\n",
+        summary.count(MatchStatus::Expired)
+    ));
+    out.push_str(&format!(
+        "| Evidence gaps | {} |\n",
+        summary.count(MatchStatus::EvidenceMissing)
+    ));
+    out.push_str(&format!(
+        "| Baseline debt | {} |\n",
+        summary.count(MatchStatus::BaselineDebt)
+    ));
+    if review_items == 0 {
+        out.push_str("\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n");
+    } else {
+        out.push_str("\nRecommended next step: review the queue below before tightening policy.\n");
+    }
+
+    let queue = outcomes
+        .iter()
+        .filter(|outcome| review_statuses.contains(&outcome.status))
+        .take(20)
+        .collect::<Vec<_>>();
+    if !queue.is_empty() {
+        out.push_str("\n## Audit Review Queue\n\n");
+        for outcome in queue {
+            out.push_str(&format!(
+                "- `{}`: {}\n",
+                outcome.status.as_str(),
+                outcome.message
+            ));
+        }
+    }
 }
 
 pub fn render_json(
@@ -700,6 +761,56 @@ mod tests {
         assert!(!text.contains("## Non-matched outcomes"));
         assert!(text.contains("did not invoke Cargo metadata"));
         assert!(text.contains("proc macros"));
+    }
+
+    #[test]
+    fn markdown_audit_report_includes_review_summary() {
+        let findings = vec![
+            file_finding(FindingKind::NonRustFile, "shell_script", "scripts/new.sh"),
+            file_finding(FindingKind::Unsafe, "unsafe_block", "src/ffi.rs"),
+        ];
+        let outcomes = vec![
+            MatchOutcome {
+                status: MatchStatus::New,
+                allow_id: None,
+                finding_index: Some(0),
+                message: "unreceipted shell script at scripts/new.sh".to_string(),
+                score: 0,
+            },
+            MatchOutcome {
+                status: MatchStatus::EvidenceMissing,
+                allow_id: Some("allow-unsafe-ffi".to_string()),
+                finding_index: Some(1),
+                message: "allow-unsafe-ffi matched unsafe finding but has no evidence".to_string(),
+                score: 0,
+            },
+        ];
+
+        let text = render_markdown_with_context(
+            "audit",
+            &findings,
+            &outcomes,
+            false,
+            ReportContext {
+                inventory_source: "git_tracked",
+            },
+        );
+
+        assert!(text.contains("## Audit Summary"));
+        assert!(text.contains("| Match outcomes | 2 |"));
+        assert!(text.contains("| Review items | 2 |"));
+        assert!(text.contains("| New unreceipted | 1 |"));
+        assert!(text.contains("| Evidence gaps | 1 |"));
+        assert!(
+            text.contains(
+                "Recommended next step: review the queue below before tightening policy."
+            )
+        );
+        assert!(text.contains("## Audit Review Queue"));
+        assert!(text.contains("- `new`: unreceipted shell script at scripts/new.sh"));
+        assert!(text.contains(
+            "- `evidence_missing`: allow-unsafe-ffi matched unsafe finding but has no evidence"
+        ));
     }
 
     fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {

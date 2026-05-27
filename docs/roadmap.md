@@ -225,9 +225,13 @@ Planned work:
 
 Goal: make output useful beyond developers.
 
+Completed:
+
+- Add a Markdown audit summary and review queue for non-matched source-tree
+  outcomes.
+
 Planned work:
 
-- Markdown audit report.
 - HTML audit report when useful.
 - SARIF output.
 - Exception trend receipt.
