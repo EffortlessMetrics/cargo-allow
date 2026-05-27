@@ -21,6 +21,38 @@ The identity may contain source-derived package-like context in `crate_name`
 later, but that field must remain optional. It must not become a requirement to
 load Cargo workspace facts.
 
+## Rust Parser Foundation
+
+The Rust scanner uses a direct source-syntax parser over `.rs` files. It parses
+repository text without invoking Cargo, rustc, Clippy, build scripts, proc
+macros, or project code. Parser errors are scanner facts, not build failures:
+the scanner can still recover parser-visible items that appear before or around
+invalid source.
+
+This foundation is intentionally syntax-bound. It can identify syntax-visible
+exception surfaces such as unsafe constructs, panic-family method calls and
+macros, indexing expressions, and lint attributes. It does not know whether an
+expression type can panic, whether a macro expands to an exception surface, or
+whether control flow makes a site reachable.
+
+## Container Identity
+
+Rust container identity is derived from parser-visible module and item nesting.
+Current container names include:
+
+| Source shape | Container example |
+|---|---|
+| Free function | `parse_span` |
+| Nested module function | module `parser::inner`, container `normalize_span` |
+| Inherent impl method | `Parser::parse_span` |
+| Trait impl method | `<Parser as ParserApi>::parse_span` |
+
+Container names are stable source-syntax hints, not type identities. They do not
+resolve aliases, macro-generated items, conditional compilation, or duplicate
+names across files. Matching must still include kind, family, path, AST kind,
+and strong selector fields where available, and it must fail closed when
+multiple findings remain plausible.
+
 ## Fields
 
 Stable identity fields:

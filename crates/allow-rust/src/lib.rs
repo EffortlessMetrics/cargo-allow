@@ -184,10 +184,12 @@ impl RustSyntaxTree {
     pub fn containers(&self, source: &str) -> Vec<RustSyntaxContainer> {
         let mut containers = Vec::new();
         let mut module_path = Vec::new();
+        let mut impl_path = Vec::new();
         collect_containers(
             self.tree.root_node(),
             source,
             &mut module_path,
+            &mut impl_path,
             &mut containers,
         );
         containers
@@ -223,6 +225,7 @@ fn collect_containers(
     node: Node<'_>,
     source: &str,
     module_path: &mut Vec<String>,
+    impl_path: &mut Vec<String>,
     containers: &mut Vec<RustSyntaxContainer>,
 ) {
     if node.kind() == "mod_item" {
@@ -231,8 +234,17 @@ fn collect_containers(
             .and_then(|name| node_text(source, name))
         {
             module_path.push(name.to_string());
-            visit_child_containers(node, source, module_path, containers);
+            visit_child_containers(node, source, module_path, impl_path, containers);
             module_path.pop();
+            return;
+        }
+    }
+
+    if node.kind() == "impl_item" {
+        if let Some(name) = impl_container_name(node, source) {
+            impl_path.push(name);
+            visit_child_containers(node, source, module_path, impl_path, containers);
+            impl_path.pop();
             return;
         }
     }
@@ -242,11 +254,16 @@ fn collect_containers(
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
         {
+            let (kind, name) = if let Some(impl_name) = impl_path.last() {
+                ("method", format!("{impl_name}::{name}"))
+            } else {
+                ("function", name.to_string())
+            };
             let start = node.start_position();
             let end = node.end_position();
             containers.push(RustSyntaxContainer {
-                kind: "function".to_string(),
-                name: name.to_string(),
+                kind: kind.to_string(),
+                name,
                 module_path: module_path.clone(),
                 start_line: start.row as u32 + 1,
                 start_column: start.column as u32 + 1,
@@ -256,18 +273,19 @@ fn collect_containers(
         }
     }
 
-    visit_child_containers(node, source, module_path, containers);
+    visit_child_containers(node, source, module_path, impl_path, containers);
 }
 
 fn visit_child_containers(
     node: Node<'_>,
     source: &str,
     module_path: &mut Vec<String>,
+    impl_path: &mut Vec<String>,
     containers: &mut Vec<RustSyntaxContainer>,
 ) {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        collect_containers(child, source, module_path, containers);
+        collect_containers(child, source, module_path, impl_path, containers);
     }
 }
 
@@ -1402,6 +1420,58 @@ mod tests {
             .find(|container| container.name == "normalize_span")
             .unwrap_or_else(|| std::panic::panic_any("normalize_span container should exist"));
         assert_eq!(normalize_span.module().as_deref(), Some("parser::inner"));
+    }
+
+    #[test]
+    fn syntax_containers_include_inherent_impl_methods() {
+        let source = r#"
+        mod parser {
+            struct Parser;
+
+            impl Parser {
+                fn parse_span(&self) {}
+            }
+        }
+        "#;
+        let tree = parse_rust_syntax(source)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+        let containers = tree.containers(source);
+
+        let method = containers
+            .iter()
+            .find(|container| container.name == "Parser::parse_span")
+            .unwrap_or_else(|| std::panic::panic_any("Parser::parse_span should exist"));
+        assert_eq!(method.kind, "method");
+        assert_eq!(method.module().as_deref(), Some("parser"));
+        assert!(method.start_line > 0);
+        assert!(method.end_line >= method.start_line);
+    }
+
+    #[test]
+    fn syntax_containers_include_trait_impl_methods() {
+        let source = r#"
+        trait ParserApi {
+            fn parse_span(&self);
+        }
+
+        struct Parser;
+
+        impl ParserApi for Parser {
+            fn parse_span(&self) {}
+        }
+        "#;
+        let tree = parse_rust_syntax(source)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+        let containers = tree.containers(source);
+
+        let method = containers
+            .iter()
+            .find(|container| container.name == "<Parser as ParserApi>::parse_span")
+            .unwrap_or_else(|| {
+                std::panic::panic_any("<Parser as ParserApi>::parse_span should exist")
+            });
+        assert_eq!(method.kind, "method");
+        assert_eq!(method.module(), None);
     }
 
     #[test]
