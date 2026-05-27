@@ -151,6 +151,13 @@ struct PanicMethodCall {
     column: u32,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct RustLineScope {
+    container: Option<String>,
+    module_path: Vec<String>,
+    span_len: u32,
+}
+
 impl RustSyntaxContainer {
     pub fn module(&self) -> Option<String> {
         if self.module_path.is_empty() {
@@ -289,30 +296,19 @@ pub fn scan_rust_files(
 pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
     let path = path.as_ref().to_path_buf();
     let mut findings = Vec::new();
-    let mut container: Option<String> = None;
-    let mut container_depth: Option<i32> = None;
-    let mut brace_depth: i32 = 0;
-    let mut module_stack: Vec<String> = Vec::new();
     let syntax = syntax_facts(source);
 
     for (line_idx, raw_line) in source.lines().enumerate() {
         let line_no = (line_idx + 1) as u32;
         let line = raw_line;
-        let trimmed = line.trim();
-        if let Some(name) = parse_mod_name(trimmed) {
-            module_stack.push(name);
-        }
-        if let Some(name) = parse_fn_name(trimmed) {
-            container = Some(name);
-            container_depth = Some(brace_depth + count_char(line, '{') - count_char(line, '}'));
-        }
+        let scope = syntax.scopes.get(&line_no).cloned().unwrap_or_default();
 
         scan_line(
             &path,
             line,
             line_no,
-            &container,
-            &module_stack,
+            &scope.container,
+            &scope.module_path,
             SyntaxLineFacts {
                 lint_attributes: syntax
                     .lint_attributes
@@ -335,14 +331,6 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
             },
             &mut findings,
         );
-
-        brace_depth += count_char(line, '{') - count_char(line, '}');
-        if let Some(depth) = container_depth {
-            if brace_depth < depth {
-                container = None;
-                container_depth = None;
-            }
-        }
     }
     findings
 }
@@ -508,6 +496,7 @@ struct RustSyntaxFacts {
     lint_attributes: BTreeMap<u32, Vec<LintAttributeKind>>,
     panic_macros: BTreeMap<u32, Vec<PanicMacroInvocation>>,
     panic_methods: BTreeMap<u32, Vec<PanicMethodCall>>,
+    scopes: BTreeMap<u32, RustLineScope>,
     unsafe_constructs: BTreeMap<u32, UnsafeSyntaxConstruct>,
     unsafe_attribute_lines: BTreeSet<u32>,
 }
@@ -518,6 +507,13 @@ fn syntax_facts(source: &str) -> RustSyntaxFacts {
     };
     let mut facts = RustSyntaxFacts::default();
     collect_syntax_facts(tree.tree.root_node(), source, &mut facts);
+    let mut module_path = Vec::new();
+    collect_line_scopes(
+        tree.tree.root_node(),
+        source,
+        &mut module_path,
+        &mut facts.scopes,
+    );
     facts
 }
 
@@ -563,6 +559,102 @@ fn collect_syntax_facts(node: Node<'_>, source: &str, facts: &mut RustSyntaxFact
     for child in node.children(&mut cursor) {
         collect_syntax_facts(child, source, facts);
     }
+}
+
+fn collect_line_scopes(
+    node: Node<'_>,
+    source: &str,
+    module_path: &mut Vec<String>,
+    scopes: &mut BTreeMap<u32, RustLineScope>,
+) {
+    if node.kind() == "mod_item" {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| node_text(source, name))
+        {
+            module_path.push(name.to_string());
+            record_module_scope(node, module_path, scopes);
+            visit_child_scopes(node, source, module_path, scopes);
+            module_path.pop();
+            return;
+        }
+    }
+
+    if node.kind() == "function_item" {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| node_text(source, name))
+        {
+            record_container_scope(node, name, module_path, scopes);
+        }
+    }
+
+    visit_child_scopes(node, source, module_path, scopes);
+}
+
+fn visit_child_scopes(
+    node: Node<'_>,
+    source: &str,
+    module_path: &mut Vec<String>,
+    scopes: &mut BTreeMap<u32, RustLineScope>,
+) {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_line_scopes(child, source, module_path, scopes);
+    }
+}
+
+fn record_module_scope(
+    node: Node<'_>,
+    module_path: &[String],
+    scopes: &mut BTreeMap<u32, RustLineScope>,
+) {
+    let start_line = node.start_position().row as u32 + 1;
+    let end_line = node.end_position().row as u32 + 1;
+    let span_len = end_line.saturating_sub(start_line) + 1;
+    for line in start_line..=end_line {
+        let candidate = RustLineScope {
+            container: None,
+            module_path: module_path.to_vec(),
+            span_len,
+        };
+        merge_scope(scopes, line, candidate);
+    }
+}
+
+fn record_container_scope(
+    node: Node<'_>,
+    name: &str,
+    module_path: &[String],
+    scopes: &mut BTreeMap<u32, RustLineScope>,
+) {
+    let start_line = node.start_position().row as u32 + 1;
+    let end_line = node.end_position().row as u32 + 1;
+    let span_len = end_line.saturating_sub(start_line) + 1;
+    for line in start_line..=end_line {
+        let candidate = RustLineScope {
+            container: Some(name.to_string()),
+            module_path: module_path.to_vec(),
+            span_len,
+        };
+        merge_scope(scopes, line, candidate);
+    }
+}
+
+fn merge_scope(scopes: &mut BTreeMap<u32, RustLineScope>, line: u32, candidate: RustLineScope) {
+    scopes
+        .entry(line)
+        .and_modify(|existing| {
+            let candidate_has_container = candidate.container.is_some();
+            let existing_has_container = existing.container.is_some();
+            if (candidate_has_container && !existing_has_container)
+                || (candidate_has_container == existing_has_container
+                    && candidate.span_len < existing.span_len)
+            {
+                *existing = candidate.clone();
+            }
+        })
+        .or_insert(candidate);
 }
 
 fn panic_macro_invocation(node: Node<'_>, source: &str) -> Option<(u32, PanicMacroInvocation)> {
@@ -768,54 +860,6 @@ fn extract_first_lint(text: &str) -> Option<String> {
     }
 }
 
-fn parse_fn_name(line: &str) -> Option<String> {
-    let mut text = line;
-    for prefix in [
-        "pub(crate) ",
-        "pub(super) ",
-        "pub ",
-        "async ",
-        "const ",
-        "unsafe ",
-        "extern \"C\" ",
-    ] {
-        if let Some(rest) = text.strip_prefix(prefix) {
-            text = rest;
-        }
-    }
-    let idx = text.find("fn ")?;
-    let rest = &text[idx + 3..];
-    let name = rest
-        .split(|c: char| !(c.is_alphanumeric() || c == '_'))
-        .next()?;
-    if name.is_empty() {
-        None
-    } else {
-        Some(name.to_string())
-    }
-}
-
-fn parse_mod_name(line: &str) -> Option<String> {
-    let text = line
-        .strip_prefix("mod ")
-        .or_else(|| line.strip_prefix("pub mod "))?;
-    if !line.contains('{') {
-        return None;
-    }
-    let name = text
-        .split(|c: char| !(c.is_alphanumeric() || c == '_'))
-        .next()?;
-    if name.is_empty() {
-        None
-    } else {
-        Some(name.to_string())
-    }
-}
-
-fn count_char(line: &str, ch: char) -> i32 {
-    line.chars().filter(|c| *c == ch).count() as i32
-}
-
 fn column(line: &str, needle: &str) -> u32 {
     line.find(needle).map(|idx| idx as u32 + 1).unwrap_or(1)
 }
@@ -931,6 +975,58 @@ mod tests {
                 .iter()
                 .any(|f| f.kind == FindingKind::Panic && f.identity.ast_kind == "method_call")
         );
+    }
+
+    #[test]
+    fn scan_uses_syntax_container_scope() {
+        let src = r#"
+        fn actual(value: Result<(), ()>) {
+            let text = "fn fake() {";
+            value.unwrap();
+        }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+        let Some(finding) = findings
+            .iter()
+            .find(|f| f.family.as_deref() == Some("unwrap"))
+        else {
+            std::panic::panic_any("unwrap finding should exist");
+        };
+
+        assert_eq!(finding.identity.container.as_deref(), Some("actual"));
+    }
+
+    #[test]
+    fn scan_uses_syntax_module_scope() {
+        let src = r#"
+        mod parser {
+            fn parse(value: Result<(), ()>) {
+                value.unwrap();
+            }
+        }
+
+        fn load(value: Result<(), ()>) {
+            value.expect("loaded");
+        }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+        let Some(parser_finding) = findings
+            .iter()
+            .find(|f| f.family.as_deref() == Some("unwrap"))
+        else {
+            std::panic::panic_any("parser unwrap finding should exist");
+        };
+        let Some(root_finding) = findings
+            .iter()
+            .find(|f| f.family.as_deref() == Some("expect"))
+        else {
+            std::panic::panic_any("root expect finding should exist");
+        };
+
+        assert_eq!(parser_finding.identity.module.as_deref(), Some("parser"));
+        assert_eq!(parser_finding.identity.container.as_deref(), Some("parse"));
+        assert_eq!(root_finding.identity.module, None);
+        assert_eq!(root_finding.identity.container.as_deref(), Some("load"));
     }
 
     #[test]
