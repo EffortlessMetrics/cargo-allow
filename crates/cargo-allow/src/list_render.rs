@@ -1,5 +1,5 @@
 use super::{ListContext, ListFilters, ListRow};
-use crate::{scope_has_wildcard, source_tree_path_matches_filter};
+use crate::{scope_has_wildcard, source_syntax_inventory_context, source_tree_path_matches_filter};
 use allow_core::MatchStatus;
 
 pub(super) fn render_list_rows(rows: &[ListRow], filters: &ListFilters<'_>) -> String {
@@ -75,7 +75,7 @@ pub(super) fn render_list_rows_json(
             broad_scope: filters.broad_scope,
             missing_evidence: filters.missing_evidence,
         },
-        allow_report::InventoryContext::source_syntax(
+        source_syntax_inventory_context(
             context.inventory_source,
             context.source_tree_root,
             context.inventory_files,

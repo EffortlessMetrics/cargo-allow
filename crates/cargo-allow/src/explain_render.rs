@@ -1,5 +1,5 @@
 use super::ExplainContext;
-use crate::{source_package_name, worklist};
+use crate::{source_package_name, source_syntax_inventory_context, worklist};
 use allow_core::{AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path};
 use allow_match::finding_location;
 use allow_policy::evidence_reference_diagnostics;
@@ -172,7 +172,7 @@ pub(super) fn render_explain_entry_json(
         .collect::<Vec<_>>();
 
     allow_report::render_explain_json(allow_report::ExplainReport {
-        inventory: allow_report::InventoryContext::source_syntax(
+        inventory: source_syntax_inventory_context(
             context.inventory_source,
             context.source_tree_root,
             context.inventory_files,

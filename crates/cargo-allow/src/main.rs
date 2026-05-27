@@ -45,6 +45,7 @@ pub(crate) use render::{
 };
 pub(crate) use reporting::{
     ReportRenderArgs, policy_baseline_debt_entries, print_report, report_config,
+    source_syntax_inventory_context, source_syntax_report_context,
 };
 pub(crate) use world::{load_world, load_world_with_evidence_validation};
 

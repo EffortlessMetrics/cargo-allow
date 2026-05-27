@@ -2,6 +2,8 @@ use allow_core::{AllowEntry, Finding};
 use allow_match::finding_location;
 use std::path::Path;
 
+use crate::source_syntax_inventory_context;
+
 pub(super) fn render_add_summary(
     entry: &AllowEntry,
     finding: &Finding,
@@ -53,7 +55,7 @@ pub(super) fn render_add_summary_json(
 ) -> String {
     let policy_output = output.map(|path| path.display().to_string());
     allow_report::render_add_json(allow_report::AddReport {
-        inventory: allow_report::InventoryContext::source_syntax(
+        inventory: source_syntax_inventory_context(
             context.inventory_source,
             context.source_tree_root,
             context.inventory_files,
