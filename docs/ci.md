@@ -33,7 +33,7 @@ The Markdown output starts with a PR Summary section. That section reports:
 - net posture: `unchanged`, `improved`, `review-required`, or `worse`;
 - current no-new failures;
 - new and removed source findings;
-- policy failures and policy review items;
+- policy failures, policy review items, and policy improvements;
 - the reviewer action implied by those signals.
 
 This is reviewer guidance for source-syntax and policy-ledger posture. It does
