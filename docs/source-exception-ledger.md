@@ -212,7 +212,9 @@ source-tree paths and includes broad glob scopes that cover the selected path.
 Stale status is computed from current source-syntax findings; line and column
 hints are not identity. `--broad-scope` lists entries whose source-tree scope
 uses wildcard syntax, which is useful for reviewing intentionally wide policy
-receipts before they become normalized debt.
+receipts before they become normalized debt. `--format json` emits the same
+filtered ledger rows with source-tree inventory context, scanner limitations,
+and applied filters so saved artifacts do not require parsing the human table.
 
 `cargo-allow prune --stale` previews stale allow entries that no current
 source-syntax finding matched. Dry-run is the default; `--dry-run` makes that

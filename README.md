@@ -172,6 +172,7 @@ cargo-allow list --status baseline_debt
 cargo-allow list --broad-scope
 cargo-allow list --missing-evidence
 cargo-allow list --source-package allow-core
+cargo-allow list --format json --output target/cargo-allow/list.json
 cargo-allow worklist --baseline-debt --format human
 cargo-allow worklist --broad-scope --format human
 cargo-allow worklist --missing-evidence --format human

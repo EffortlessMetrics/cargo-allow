@@ -248,6 +248,12 @@ struct ListArgs {
     /// Include only entries with no evidence references.
     #[arg(long)]
     missing_evidence: bool,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = ListFormat::Human)]
+    format: ListFormat,
+    /// Write list output to a file instead of stdout.
+    #[arg(long)]
+    output: Option<PathBuf>,
     /// Include untracked files when determining current match status.
     #[arg(long)]
     include_untracked: bool,
@@ -461,6 +467,12 @@ enum OutputFormat {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum WorklistFormat {
+    Human,
+    Json,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum ListFormat {
     Human,
     Json,
 }
@@ -1112,7 +1124,7 @@ fn render_policy_changes_markdown(changes: &[allow_diff::PolicyChange]) -> Strin
 }
 
 fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
-    let (_root, cfg, findings, _inventory_source) = load_world(
+    let (root, cfg, findings, inventory_facts) = load_world(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
@@ -1137,7 +1149,22 @@ fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         broad_scope: args.broad_scope,
         missing_evidence: args.missing_evidence,
     };
-    println!("{}", render_list_rows(&rows, &filters));
+    let root_text = source_tree_root_text(&root);
+    let context = ListContext {
+        inventory_source: inventory_facts.source.as_str(),
+        source_tree_root: Some(&root_text),
+        inventory_files: inventory_facts.files_scanned,
+        kind_arg: args.kind.as_deref(),
+    };
+    let text = match args.format {
+        ListFormat::Human => render_list_rows(&rows, &filters),
+        ListFormat::Json => render_list_rows_json(&rows, &filters, context),
+    };
+    if let Some(path) = &args.output {
+        write_file(path, &text)?;
+    } else {
+        println!("{text}");
+    }
     Ok(())
 }
 
@@ -1173,6 +1200,25 @@ struct ListFilters<'a> {
     baseline_debt: bool,
     broad_scope: bool,
     missing_evidence: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ListContext<'a> {
+    inventory_source: &'a str,
+    source_tree_root: Option<&'a str>,
+    inventory_files: Option<usize>,
+    kind_arg: Option<&'a str>,
+}
+
+impl Default for ListContext<'static> {
+    fn default() -> Self {
+        Self {
+            inventory_source: "unknown",
+            source_tree_root: None,
+            inventory_files: None,
+            kind_arg: None,
+        }
+    }
 }
 
 fn list_rows(cfg: &AllowConfig, findings: &[Finding], outcomes: &[MatchOutcome]) -> Vec<ListRow> {
@@ -1286,6 +1332,176 @@ fn render_list_rows(rows: &[ListRow], filters: &ListFilters<'_>) -> String {
         out.push_str("(no allow entries matched filters)\n");
     }
     out
+}
+
+fn render_list_rows_json(
+    rows: &[ListRow],
+    filters: &ListFilters<'_>,
+    context: ListContext<'_>,
+) -> String {
+    let filtered = rows
+        .iter()
+        .filter(|row| list_row_matches(row, filters))
+        .collect::<Vec<_>>();
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"list\",\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        json_string_array(allow_report::CLAIM_BOUNDARY)
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        json_string_array(allow_report::SCANNER_LIMITATIONS)
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&list_inventory_json(context, "  "));
+    out.push_str(",\n");
+    out.push_str("  \"filters\": ");
+    out.push_str(&list_filters_json(filters, context.kind_arg, "  "));
+    out.push_str(",\n");
+    out.push_str(&format!(
+        "  \"summary\": {{\n    \"allow_entries\": {}\n  }},\n",
+        filtered.len()
+    ));
+    out.push_str("  \"allow_entries\": [\n");
+    for (index, row) in filtered.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&render_list_row_json(row));
+    }
+    out.push_str("\n  ]\n");
+    out.push_str("}\n");
+    out
+}
+
+fn render_list_row_json(row: &ListRow) -> String {
+    let mut out = String::new();
+    out.push_str("    {\n");
+    out.push_str(&format!("      \"id\": \"{}\",\n", json_escape(&row.id)));
+    out.push_str(&format!("      \"status\": \"{}\",\n", row.status.as_str()));
+    out.push_str(&format!("      \"matches\": {},\n", row.matches));
+    out.push_str(&format!("      \"kind\": \"{}\",\n", row.kind));
+    out.push_str(&format!(
+        "      \"family\": {},\n",
+        option_json_string(row.family.as_deref())
+    ));
+    out.push_str(&format!(
+        "      \"owner\": \"{}\",\n",
+        json_escape(&row.owner)
+    ));
+    out.push_str(&format!(
+        "      \"classification\": \"{}\",\n",
+        json_escape(&row.classification)
+    ));
+    out.push_str(&format!(
+        "      \"scope\": \"{}\",\n",
+        json_escape(&row.scope)
+    ));
+    out.push_str(&format!(
+        "      \"source_package\": {},\n",
+        option_json_string(row.source_package.as_deref())
+    ));
+    out.push_str(&format!(
+        "      \"evidence_count\": {},\n",
+        row.evidence_count
+    ));
+    out.push_str(&format!(
+        "      \"review_after\": {},\n",
+        dash_as_null_json(&row.review_after)
+    ));
+    out.push_str(&format!(
+        "      \"expires\": {},\n",
+        dash_as_null_json(&row.expires)
+    ));
+    out.push_str(&format!(
+        "      \"reason\": \"{}\"\n",
+        json_escape(&row.reason)
+    ));
+    out.push_str("    }");
+    out
+}
+
+fn list_inventory_json(context: ListContext<'_>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("{indent}  \"scope\": \"source_tree\",\n"));
+    out.push_str(&format!("{indent}  \"scanner\": \"source_syntax\",\n"));
+    out.push_str(&format!(
+        "{indent}  \"source\": \"{}\"",
+        json_escape(context.inventory_source)
+    ));
+    if let Some(root) = context.source_tree_root {
+        out.push_str(&format!(",\n{indent}  \"root\": \"{}\"", json_escape(root)));
+    }
+    if let Some(files) = context.inventory_files {
+        out.push_str(&format!(",\n{indent}  \"files_scanned\": {files}"));
+    }
+    out.push_str(&format!("\n{indent}}}"));
+    out
+}
+
+fn list_filters_json(filters: &ListFilters<'_>, kind_arg: Option<&str>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "{indent}  \"kind\": {},\n",
+        option_json_string(kind_arg)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"family\": {},\n",
+        option_json_string(filters.family)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"owner\": {},\n",
+        option_json_string(filters.owner)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"classification\": {},\n",
+        option_json_string(filters.classification)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"path\": {},\n",
+        option_json_string(filters.path)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"source_package\": {},\n",
+        option_json_string(filters.source_package)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"status\": {},\n",
+        option_json_string(filters.status)
+    ));
+    out.push_str(&format!("{indent}  \"expired\": {},\n", filters.expired));
+    out.push_str(&format!(
+        "{indent}  \"review_due\": {},\n",
+        filters.review_due
+    ));
+    out.push_str(&format!("{indent}  \"stale\": {},\n", filters.stale));
+    out.push_str(&format!(
+        "{indent}  \"baseline_debt\": {},\n",
+        filters.baseline_debt
+    ));
+    out.push_str(&format!(
+        "{indent}  \"broad_scope\": {},\n",
+        filters.broad_scope
+    ));
+    out.push_str(&format!(
+        "{indent}  \"missing_evidence\": {}\n",
+        filters.missing_evidence
+    ));
+    out.push_str(&format!("{indent}}}"));
+    out
+}
+
+fn dash_as_null_json(value: &str) -> String {
+    if value == "-" {
+        "null".to_string()
+    } else {
+        format!("\"{}\"", json_escape(value))
+    }
 }
 
 fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
@@ -4073,6 +4289,10 @@ mod tests {
             "--baseline-debt",
             "--broad-scope",
             "--missing-evidence",
+            "--format",
+            "json",
+            "--output",
+            "target/list.json",
             "--include-untracked",
         ]))
         .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
@@ -4093,6 +4313,8 @@ mod tests {
                 baseline_debt: true,
                 broad_scope: true,
                 missing_evidence: true,
+                format: ListFormat::Json,
+                output: Some(output),
                 include_untracked: true,
                 ..
             })) if kind == "unsafe"
@@ -4102,6 +4324,7 @@ mod tests {
                 && path == "crates/allow-core"
                 && source_package == "allow-core"
                 && status == "baseline_debt"
+                && output == Path::new("target/list.json")
         ));
     }
 
@@ -4655,6 +4878,56 @@ mod tests {
         assert!(text.contains("evidence_count"));
         assert!(text.contains("allow-missing"));
         assert!(!text.contains("allow-evidenced"));
+    }
+
+    #[test]
+    fn render_list_rows_json_records_context_filters_and_rows() {
+        let mut row = list_row("allow-json", FindingKind::Panic, "parser", "baseline_debt");
+        row.family = Some("unwrap".to_string());
+        row.source_package = Some("allow-core".to_string());
+        row.evidence_count = 2;
+        row.review_after = "2026-09-01".to_string();
+        row.expires = "2026-12-01".to_string();
+        let filters = ListFilters {
+            kind: Some(
+                parse_kind_filter("panic")
+                    .unwrap_or_else(|err| std::panic::panic_any(format!("kind filter: {err}"))),
+            ),
+            family: Some("unwrap"),
+            owner: Some("parser"),
+            classification: Some("baseline_debt"),
+            path: Some("src/lib.rs"),
+            source_package: Some("allow-core"),
+            status: Some("baseline_debt"),
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: true,
+            broad_scope: false,
+            missing_evidence: false,
+        };
+        let context = ListContext {
+            inventory_source: "git_tracked",
+            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
+            inventory_files: Some(46),
+            kind_arg: Some("panic"),
+        };
+
+        let json = render_list_rows_json(&[row], &filters, context);
+
+        assert!(json.contains("\"command\": \"list\""));
+        assert!(json.contains("\"claim_boundary\""));
+        assert!(json.contains("\"scanner_limitations\""));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
+        assert!(json.contains("\"files_scanned\": 46"));
+        assert!(json.contains("\"kind\": \"panic\""));
+        assert!(json.contains("\"family\": \"unwrap\""));
+        assert!(json.contains("\"baseline_debt\": true"));
+        assert!(json.contains("\"allow_entries\": 1"));
+        assert!(json.contains("\"id\": \"allow-json\""));
+        assert!(json.contains("\"source_package\": \"allow-core\""));
+        assert!(json.contains("\"evidence_count\": 2"));
     }
 
     #[test]
