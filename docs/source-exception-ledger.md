@@ -225,8 +225,8 @@ limitation values so consumers can distinguish source-tree boundaries from
 arbitrary annotations. `source_package` fields are scanner-provided context
 only; they are not Cargo metadata or build-membership proof.
 Worklist output can be filtered by governed kind, policy owner, policy
-classification, risk, and difficulty; filtered artifacts record all applied
-filters.
+classification, work item queue kind, risk, and difficulty; filtered artifacts
+record all applied filters.
 
 The human worklist output includes the same first-step suggested actions and
 proof commands so a maintainer can triage the queue without switching to JSON.

@@ -18,6 +18,8 @@ be removed cleanly.
 Use `--risk low`, `--risk medium`, `--risk high`, `--difficulty small`, or
 `--difficulty medium` when the assignment needs a narrower queue, but do not
 mistake a filter for approval to ignore the rest of the ledger.
+Use `--item-kind <kind>` for queue-type slices such as `stale_allow`,
+`baseline_debt`, `broad_scope`, or `broken_evidence_link`.
 Use `--owner <owner>` and `--classification <classification>` to take a bounded
 policy-owner or debt-class slice, such as `--owner unowned --classification
 baseline_debt`.
