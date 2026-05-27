@@ -49,6 +49,10 @@ cargo-allow audit \
   --format json \
   --output target/cargo-allow/audit.json
 
+cargo-allow audit \
+  --format html \
+  --output target/cargo-allow/audit.html
+
 cargo-allow check \
   --mode no-new \
   --format markdown \
@@ -61,10 +65,11 @@ cargo-allow check \
   --output target/cargo-allow/check.sarif
 ```
 
-The JSON audit is useful for machines and future trend reporting. The receipt
-is the durable CI claim for the current source exception ledger. SARIF output
-contains non-matched source-tree outcomes for code-scanning surfaces; it does
-not include proof-tool results or build-derived findings.
+The JSON audit is useful for machines and future trend reporting. The HTML
+audit is a static human-readable artifact for maintainers and auditors. The
+receipt is the durable CI claim for the current source exception ledger. SARIF
+output contains non-matched source-tree outcomes for code-scanning surfaces; it
+does not include proof-tool results or build-derived findings.
 
 ## Artifacts
 
