@@ -18,6 +18,8 @@ be removed cleanly.
 Use `--risk low`, `--risk medium`, `--risk high`, `--difficulty small`, or
 `--difficulty medium` when the assignment needs a narrower queue, but do not
 mistake a filter for approval to ignore the rest of the ledger.
+Use `--family <family>` for scanner-family slices such as `unwrap`, `indexing`,
+`unsafe_fn`, or `ci_declarative`.
 Use `--item-kind <kind>` for queue-type slices such as `stale_allow`,
 `baseline_debt`, `broad_scope`, or `broken_evidence_link`.
 Use `--allow-id <id>` when the assignment is tied to one durable policy entry.
