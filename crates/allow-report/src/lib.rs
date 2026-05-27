@@ -219,6 +219,15 @@ pub struct WorklistItem<'a> {
     pub proof_commands: &'a [String],
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct DoctorReport<'a> {
+    pub source_tree_root: &'a str,
+    pub root_discovery: &'a str,
+    pub config_path: Option<&'a str>,
+    pub inventory_source: &'a str,
+    pub files_scanned: usize,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
     pub total: usize,
@@ -1178,6 +1187,54 @@ pub fn render_worklist_json(
     out
 }
 
+pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("  \"schema_version\": {DOCTOR_SCHEMA_VERSION},\n"));
+    out.push_str(&format!("  \"schema_id\": \"{DOCTOR_SCHEMA_ID}\",\n"));
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"doctor\",\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        render_claim_boundary_json()
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        render_scanner_limitations_json()
+    ));
+    out.push_str("  \"root\": {\n");
+    out.push_str(&format!(
+        "    \"path\": \"{}\",\n",
+        json_escape(facts.source_tree_root)
+    ));
+    out.push_str(&format!(
+        "    \"discovery\": \"{}\"\n",
+        json_escape(facts.root_discovery)
+    ));
+    out.push_str("  },\n");
+    out.push_str("  \"config\": {\n");
+    out.push_str(&format!(
+        "    \"found\": {},\n",
+        bool_json(facts.config_path.is_some())
+    ));
+    out.push_str(&format!(
+        "    \"path\": {}\n",
+        option_json(facts.config_path)
+    ));
+    out.push_str("  },\n");
+    out.push_str("  \"inventory\": {\n");
+    out.push_str("    \"scope\": \"source_tree\",\n");
+    out.push_str("    \"scanner\": \"source_syntax\",\n");
+    out.push_str(&format!(
+        "    \"source\": \"{}\",\n",
+        json_escape(facts.inventory_source)
+    ));
+    out.push_str(&format!("    \"files_scanned\": {}\n", facts.files_scanned));
+    out.push_str("  }\n");
+    out.push_str("}\n");
+    out
+}
+
 fn render_work_item_json(item: &WorklistItem<'_>) -> String {
     let mut out = String::new();
     out.push_str("    {\n");
@@ -2002,6 +2059,29 @@ mod tests {
         assert!(json.contains("\"source_package\": \"parser\""));
         assert!(json.contains("\"suggested_actions\": [\"review stale allow\"]"));
         assert!(json.contains("\"proof_commands\": [\"cargo-allow check --mode no-new\"]"));
+    }
+
+    #[test]
+    fn doctor_json_renderer_records_root_config_and_inventory() {
+        let json = render_doctor_json(DoctorReport {
+            source_tree_root: "H:/Code/Rust/cargo-allow",
+            root_discovery: "nearest_git_root",
+            config_path: Some("H:/Code/Rust/cargo-allow/policy/allow.toml"),
+            inventory_source: "git_tracked",
+            files_scanned: 50,
+        });
+
+        assert!(json.contains("\"schema_id\": \"cargo-allow.doctor.v1\""));
+        assert!(json.contains("\"command\": \"doctor\""));
+        assert!(json.contains("\"claim_boundary\""));
+        assert!(json.contains("\"scanner_limitations\""));
+        assert!(json.contains("\"path\": \"H:/Code/Rust/cargo-allow\""));
+        assert!(json.contains("\"discovery\": \"nearest_git_root\""));
+        assert!(json.contains("\"found\": true"));
+        assert!(json.contains("\"path\": \"H:/Code/Rust/cargo-allow/policy/allow.toml\""));
+        assert!(json.contains("\"scanner\": \"source_syntax\""));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"files_scanned\": 50"));
     }
 
     #[test]

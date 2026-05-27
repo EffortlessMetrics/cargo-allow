@@ -1,10 +1,10 @@
-use allow_core::{CargoAllowError, CargoAllowResult, json_escape};
+use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use clap::{Parser, ValueEnum};
 use std::env;
 use std::path::{Path, PathBuf};
 
-use crate::{RootArgs, config_path, option_json_string, source_tree_root_text, write_file};
+use crate::{RootArgs, config_path, source_tree_root_text, write_file};
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct DoctorArgs {
     #[command(flatten)]
@@ -91,57 +91,13 @@ fn render_doctor_human(facts: DoctorFacts<'_>) -> String {
 }
 
 fn render_doctor_json(facts: DoctorFacts<'_>) -> String {
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str(&format!(
-        "  \"schema_version\": {},\n",
-        allow_report::DOCTOR_SCHEMA_VERSION
-    ));
-    out.push_str(&format!(
-        "  \"schema_id\": \"{}\",\n",
-        allow_report::DOCTOR_SCHEMA_ID
-    ));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"doctor\",\n");
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        allow_report::render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        allow_report::render_scanner_limitations_json()
-    ));
-    out.push_str("  \"root\": {\n");
-    out.push_str(&format!(
-        "    \"path\": \"{}\",\n",
-        json_escape(facts.source_tree_root)
-    ));
-    out.push_str(&format!(
-        "    \"discovery\": \"{}\"\n",
-        json_escape(facts.root_discovery)
-    ));
-    out.push_str("  },\n");
-    out.push_str("  \"config\": {\n");
-    out.push_str(&format!(
-        "    \"found\": {},\n",
-        facts.config_path.is_some()
-    ));
-    out.push_str(&format!(
-        "    \"path\": {}\n",
-        option_json_string(facts.config_path)
-    ));
-    out.push_str("  },\n");
-    out.push_str("  \"inventory\": {\n");
-    out.push_str("    \"scope\": \"source_tree\",\n");
-    out.push_str("    \"scanner\": \"source_syntax\",\n");
-    out.push_str(&format!(
-        "    \"source\": \"{}\",\n",
-        json_escape(facts.inventory_source)
-    ));
-    out.push_str(&format!("    \"files_scanned\": {}\n", facts.files_scanned));
-    out.push_str("  }\n");
-    out.push_str("}\n");
-    out
+    allow_report::render_doctor_json(allow_report::DoctorReport {
+        source_tree_root: facts.source_tree_root,
+        root_discovery: facts.root_discovery,
+        config_path: facts.config_path,
+        inventory_source: facts.inventory_source,
+        files_scanned: facts.files_scanned,
+    })
 }
 
 #[cfg(test)]
