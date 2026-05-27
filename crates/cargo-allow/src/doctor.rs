@@ -4,6 +4,10 @@ use clap::{Parser, ValueEnum};
 use std::env;
 use std::path::{Path, PathBuf};
 
+#[path = "doctor_render.rs"]
+mod doctor_render;
+use doctor_render::{DoctorFacts, render_doctor_human, render_doctor_json};
+
 use crate::{RootArgs, config_path, source_tree_root_text, write_file};
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct DoctorArgs {
@@ -55,15 +59,6 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     Ok(())
 }
 
-#[derive(Debug, Clone, Copy)]
-struct DoctorFacts<'a> {
-    source_tree_root: &'a str,
-    root_discovery: &'a str,
-    config_path: Option<&'a str>,
-    inventory_source: &'a str,
-    files_scanned: usize,
-}
-
 fn root_discovery_kind(explicit_root: Option<&Path>, root: &Path) -> &'static str {
     if explicit_root.is_some() {
         "explicit_root"
@@ -72,32 +67,6 @@ fn root_discovery_kind(explicit_root: Option<&Path>, root: &Path) -> &'static st
     } else {
         "current_directory_fallback"
     }
-}
-
-fn render_doctor_human(facts: DoctorFacts<'_>) -> String {
-    let mut out = String::new();
-    out.push_str(&format!("source tree root: {}\n", facts.source_tree_root));
-    out.push_str(&format!("root discovery: {}\n", facts.root_discovery));
-    match facts.config_path {
-        Some(path) => out.push_str(&format!("config: {path}\n")),
-        None => out.push_str("config: not found; run `cargo-allow init`\n"),
-    }
-    out.push_str(&format!(
-        "inventory: source_tree/source_syntax via {}; files scanned: {}\n",
-        facts.inventory_source, facts.files_scanned
-    ));
-    out.push_str(allow_report::CLAIM_BOUNDARY_TEXT);
-    out
-}
-
-fn render_doctor_json(facts: DoctorFacts<'_>) -> String {
-    allow_report::render_doctor_json(allow_report::DoctorReport {
-        source_tree_root: facts.source_tree_root,
-        root_discovery: facts.root_discovery,
-        config_path: facts.config_path,
-        inventory_source: facts.inventory_source,
-        files_scanned: facts.files_scanned,
-    })
 }
 
 #[cfg(test)]
