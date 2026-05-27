@@ -50,9 +50,18 @@
       "items": {
         "type": "string"
       },
-      "contains": {
-        "const": "macro_expansion_not_analyzed"
-      }
+      "allOf": [
+        {
+          "contains": {
+            "const": "macro_expansion_not_analyzed"
+          }
+        },
+        {
+          "contains": {
+            "const": "macro_token_tree_contents_not_analyzed"
+          }
+        }
+      ]
     },
     "inventory": {
       "$ref": "#/$defs/inventory"

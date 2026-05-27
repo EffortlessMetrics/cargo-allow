@@ -10,6 +10,7 @@ const CLAIM_BOUNDARY: &[&str] = &[
     "source_tree_inventory",
     "source_syntax_only",
     "macro_expansion_not_analyzed",
+    "macro_token_tree_contents_not_analyzed",
     "type_information_not_analyzed",
     "mir_not_analyzed",
     "build_output_not_analyzed",
@@ -20,6 +21,7 @@ const CLAIM_BOUNDARY: &[&str] = &[
 
 const SCANNER_LIMITATIONS: &[&str] = &[
     "macro_expansion_not_analyzed",
+    "macro_token_tree_contents_not_analyzed",
     "type_information_not_analyzed",
     "mir_not_analyzed",
     "build_output_not_analyzed",
@@ -104,7 +106,7 @@ pub fn render_human(
             outcome.message
         ));
     }
-    out.push_str("\nClaim boundary: source syntax only; macro expansion and type information were not analyzed.\n");
+    out.push_str("\nClaim boundary: source syntax only; macro expansion, macro token-tree contents, and type information were not analyzed.\n");
     out.push_str(if failed {
         "Result: failed\n"
     } else {
@@ -157,7 +159,7 @@ pub fn render_markdown(
             ));
         }
     }
-    out.push_str("\n> Claim boundary: source syntax only; macro expansion and type information were not analyzed.\n");
+    out.push_str("\n> Claim boundary: source syntax only; macro expansion, macro token-tree contents, and type information were not analyzed.\n");
     out
 }
 
@@ -521,6 +523,7 @@ mod tests {
         let json = render_json("audit", &[], &[], false);
         assert!(json.contains("source_tree_inventory"));
         assert!(json.contains("macro_expansion_not_analyzed"));
+        assert!(json.contains("macro_token_tree_contents_not_analyzed"));
         assert!(json.contains("repository_code_not_executed"));
     }
 
@@ -553,6 +556,7 @@ mod tests {
         assert!(json.contains("\"failed\": true"));
         assert!(json.contains("\"source\": \"git_tracked\""));
         assert!(json.contains("\"build_output_not_analyzed\""));
+        assert!(json.contains("\"macro_token_tree_contents_not_analyzed\""));
         assert!(json.contains("\"missing_required_field\": 0"));
         assert!(json.contains("\"evidence_missing\": 0"));
     }
