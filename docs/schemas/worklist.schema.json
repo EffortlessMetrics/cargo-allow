@@ -36,6 +36,16 @@
         "const": "source_tree_inventory"
       }
     },
+    "scanner_limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Explicit scanner and execution limitations for this source-tree worklist artifact.",
+      "contains": {
+        "const": "cargo_metadata_not_invoked"
+      }
+    },
     "inventory": {
       "$ref": "#/$defs/inventory"
     },

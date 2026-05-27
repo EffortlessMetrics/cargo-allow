@@ -272,6 +272,8 @@ Completed:
 - Document bounded agent prompt patterns for `cargo-allow worklist`.
 - Align worklist JSON claim-boundary flags with the report and receipt
   source-tree scanner limitations.
+- Emit explicit worklist JSON `scanner_limitations` alongside
+  `claim_boundary`, matching report and receipt artifacts.
 - Refine worklist risk and difficulty heuristics for source-tree policy
   exception families without using Cargo package metadata.
 - Keep worklist proof commands as executable cargo-allow commands and avoid

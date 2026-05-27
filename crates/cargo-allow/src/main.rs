@@ -1788,6 +1788,23 @@ const WORKLIST_CLAIM_BOUNDARY: &[&str] = &[
     "repository_code_not_executed",
 ];
 
+const WORKLIST_SCANNER_LIMITATIONS: &[&str] = &[
+    "cargo_metadata_not_invoked",
+    "cargo_commands_not_invoked",
+    "rustc_not_invoked",
+    "clippy_not_invoked",
+    "build_scripts_not_executed",
+    "proc_macros_not_executed",
+    "macro_expansion_not_analyzed",
+    "macro_token_tree_contents_not_analyzed",
+    "type_information_not_analyzed",
+    "mir_not_analyzed",
+    "build_output_not_analyzed",
+    "control_flow_not_analyzed",
+    "data_flow_not_analyzed",
+    "repository_code_not_executed",
+];
+
 fn work_items_from_outcomes(
     cfg: &AllowConfig,
     findings: &[Finding],
@@ -2200,6 +2217,10 @@ fn render_worklist_json_with_context(items: &[WorkItem], context: WorklistContex
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
         json_string_array(WORKLIST_CLAIM_BOUNDARY)
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        json_string_array(WORKLIST_SCANNER_LIMITATIONS)
     ));
     out.push_str("  \"inventory\": ");
     out.push_str(&worklist_inventory_json(context, "  "));
@@ -4063,6 +4084,7 @@ mod tests {
         assert!(json.contains("\"source_tree_inventory\""));
         assert!(json.contains("\"cargo_commands_not_invoked\""));
         assert!(json.contains("\"repository_code_not_executed\""));
+        assert!(json.contains("\"scanner_limitations\""));
         assert!(json.contains("\"inventory\""));
         assert!(json.contains("\"source\": \"unknown\""));
         assert!(json.contains("\"kind\": \"stale_allow\""));
@@ -4085,6 +4107,7 @@ mod tests {
         assert!(schema.contains("\"family\""));
         assert!(schema.contains("\"source_package\""));
         assert!(schema.contains("\"proof_commands\""));
+        assert!(schema.contains("\"scanner_limitations\""));
         assert!(schema.contains("\"small_difficulty\""));
         assert!(schema.contains("\"medium_difficulty\""));
         assert!(schema.contains("\"inventory\""));
