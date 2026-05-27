@@ -4,9 +4,7 @@ use clap::{Parser, ValueEnum};
 use std::env;
 use std::path::{Path, PathBuf};
 
-use crate::{
-    RootArgs, config_path, json_string_array, option_json_string, source_tree_root_text, write_file,
-};
+use crate::{RootArgs, config_path, option_json_string, source_tree_root_text, write_file};
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct DoctorArgs {
     #[command(flatten)]
@@ -107,11 +105,11 @@ fn render_doctor_json(facts: DoctorFacts<'_>) -> String {
     out.push_str("  \"command\": \"doctor\",\n");
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
-        json_string_array(allow_report::CLAIM_BOUNDARY)
+        allow_report::render_claim_boundary_json()
     ));
     out.push_str(&format!(
         "  \"scanner_limitations\": {},\n",
-        json_string_array(allow_report::SCANNER_LIMITATIONS)
+        allow_report::render_scanner_limitations_json()
     ));
     out.push_str("  \"root\": {\n");
     out.push_str(&format!(

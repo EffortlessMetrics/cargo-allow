@@ -61,6 +61,41 @@ pub const SCANNER_LIMITATIONS: &[&str] = &[
 pub const CLAIM_BOUNDARY_TEXT: &str = "Claim boundary: scanned source-tree/source syntax only; cargo-allow did not invoke Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros, or repository code. Macro expansion, macro token-tree contents, type information, MIR, build output, control flow, and data flow were not analyzed.";
 
 #[derive(Debug, Clone, Copy)]
+pub struct InventoryContext<'a> {
+    pub scope: &'a str,
+    pub scanner: &'a str,
+    pub source: &'a str,
+    pub root: Option<&'a str>,
+    pub files_scanned: Option<usize>,
+}
+
+impl<'a> InventoryContext<'a> {
+    pub const fn new(
+        scope: &'a str,
+        scanner: &'a str,
+        source: &'a str,
+        root: Option<&'a str>,
+        files_scanned: Option<usize>,
+    ) -> Self {
+        Self {
+            scope,
+            scanner,
+            source,
+            root,
+            files_scanned,
+        }
+    }
+
+    pub const fn source_syntax(
+        source: &'a str,
+        root: Option<&'a str>,
+        files_scanned: Option<usize>,
+    ) -> Self {
+        Self::new("source_tree", "source_syntax", source, root, files_scanned)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct ReportContext<'a> {
     pub inventory_source: &'a str,
     pub source_tree_root: Option<&'a str>,
@@ -76,6 +111,16 @@ impl Default for ReportContext<'static> {
             inventory_files: None,
             baseline_debt_entries: None,
         }
+    }
+}
+
+impl<'a> From<ReportContext<'a>> for InventoryContext<'a> {
+    fn from(context: ReportContext<'a>) -> Self {
+        Self::source_syntax(
+            context.inventory_source,
+            context.source_tree_root,
+            context.inventory_files,
+        )
     }
 }
 
@@ -497,14 +542,14 @@ pub fn render_json_with_context(
     out.push_str(&format!("  \"failed\": {},\n", bool_json(failed)));
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
-        json_string_array(CLAIM_BOUNDARY)
+        render_claim_boundary_json()
     ));
     out.push_str(&format!(
         "  \"scanner_limitations\": {},\n",
-        json_string_array(SCANNER_LIMITATIONS)
+        render_scanner_limitations_json()
     ));
     out.push_str("  \"inventory\": ");
-    out.push_str(&inventory_json(context, "  "));
+    out.push_str(&render_inventory_json(context.into(), "  "));
     out.push_str(",\n");
     out.push_str("  \"summary\": {\n");
     out.push_str(&format!("    \"findings\": {},\n", findings.len()));
@@ -640,15 +685,15 @@ pub fn render_sarif_with_context(
     ));
     out.push_str(&format!("        \"failed\": {},\n", bool_json(failed)));
     out.push_str("        \"inventory\": ");
-    out.push_str(&inventory_json(context, "        "));
+    out.push_str(&render_inventory_json(context.into(), "        "));
     out.push_str(",\n");
     out.push_str(&format!(
         "        \"claim_boundary\": {},\n",
-        json_string_array(CLAIM_BOUNDARY)
+        render_claim_boundary_json()
     ));
     out.push_str(&format!(
         "        \"scanner_limitations\": {}\n",
-        json_string_array(SCANNER_LIMITATIONS)
+        render_scanner_limitations_json()
     ));
     out.push_str("      },\n");
     out.push_str("      \"results\": [\n");
@@ -815,9 +860,9 @@ pub fn render_receipt_with_context(
         json_escape(command),
         if failed { "failed" } else { "passed" },
         bool_json(failed),
-        json_string_array(CLAIM_BOUNDARY),
-        json_string_array(SCANNER_LIMITATIONS),
-        inventory_json(context, "  "),
+        render_claim_boundary_json(),
+        render_scanner_limitations_json(),
+        render_inventory_json(context.into(), "  "),
         render_counts_fields(&summary, "    ")
     )
 }
@@ -843,20 +888,34 @@ fn json_string_array(values: &[&str]) -> String {
     )
 }
 
-fn inventory_json(context: ReportContext<'_>, indent: &str) -> String {
+pub fn render_claim_boundary_json() -> String {
+    json_string_array(CLAIM_BOUNDARY)
+}
+
+pub fn render_scanner_limitations_json() -> String {
+    json_string_array(SCANNER_LIMITATIONS)
+}
+
+pub fn render_inventory_json(context: InventoryContext<'_>, indent: &str) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    out.push_str(&format!("{indent}  \"scope\": \"source_tree\",\n"));
-    out.push_str(&format!("{indent}  \"scanner\": \"source_syntax\",\n"));
+    out.push_str(&format!(
+        "{indent}  \"scope\": \"{}\",\n",
+        json_escape(context.scope)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"scanner\": \"{}\",\n",
+        json_escape(context.scanner)
+    ));
     out.push_str(&format!(
         "{indent}  \"source\": \"{}\"",
-        json_escape(context.inventory_source)
+        json_escape(context.source)
     ));
-    if let Some(root) = context.source_tree_root {
+    if let Some(root) = context.root {
         out.push_str(",\n");
         out.push_str(&format!("{indent}  \"root\": \"{}\"", json_escape(root)));
     }
-    if let Some(files) = context.inventory_files {
+    if let Some(files) = context.files_scanned {
         out.push_str(",\n");
         out.push_str(&format!("{indent}  \"files_scanned\": {files}"));
     }
@@ -1232,6 +1291,28 @@ mod tests {
             inventory_source: source,
             ..ReportContext::default()
         }
+    }
+
+    #[test]
+    fn artifact_contract_helpers_render_source_tree_inventory() {
+        let inventory = render_inventory_json(
+            InventoryContext::new(
+                "source_tree",
+                "policy_migration",
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(76),
+            ),
+            "  ",
+        );
+
+        assert!(render_claim_boundary_json().contains("source_tree_inventory"));
+        assert!(render_scanner_limitations_json().contains("repository_code_not_executed"));
+        assert!(inventory.contains("\"scope\": \"source_tree\""));
+        assert!(inventory.contains("\"scanner\": \"policy_migration\""));
+        assert!(inventory.contains("\"source\": \"git_tracked\""));
+        assert!(inventory.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
+        assert!(inventory.contains("\"files_scanned\": 76"));
     }
 
     #[test]

@@ -8,9 +8,9 @@ use clap::{Parser, ValueEnum};
 use std::path::{Path, PathBuf};
 
 use crate::{
-    KindFilter, RootArgs, explain_finding_json, json_string_array, last_seen_json, load_world,
-    option_json_string, parse_kind_filter, selector_from_finding, selector_json,
-    source_tree_root_text, write_file, write_file_no_overwrite,
+    KindFilter, RootArgs, explain_finding_json, last_seen_json, load_world, option_json_string,
+    parse_kind_filter, selector_from_finding, selector_json, source_tree_root_text, write_file,
+    write_file_no_overwrite,
 };
 
 #[derive(Debug, Clone, Parser)]
@@ -288,14 +288,21 @@ fn render_add_summary_json(
     out.push_str("  \"command\": \"add\",\n");
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
-        json_string_array(allow_report::CLAIM_BOUNDARY)
+        allow_report::render_claim_boundary_json()
     ));
     out.push_str(&format!(
         "  \"scanner_limitations\": {},\n",
-        json_string_array(allow_report::SCANNER_LIMITATIONS)
+        allow_report::render_scanner_limitations_json()
     ));
     out.push_str("  \"inventory\": ");
-    out.push_str(&add_inventory_json(context, "  "));
+    out.push_str(&allow_report::render_inventory_json(
+        allow_report::InventoryContext::source_syntax(
+            context.inventory_source,
+            context.source_tree_root,
+            context.inventory_files,
+        ),
+        "  ",
+    ));
     out.push_str(",\n");
     out.push_str("  \"options\": {\n");
     out.push_str(&format!(
@@ -363,25 +370,6 @@ fn render_add_summary_json(
     out.push_str("  \"selected_finding\": ");
     out.push_str(&explain_finding_json(finding, "selected", "  "));
     out.push_str("\n}\n");
-    out
-}
-
-fn add_inventory_json(context: AddContext<'_>, indent: &str) -> String {
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str(&format!("{indent}  \"scope\": \"source_tree\",\n"));
-    out.push_str(&format!("{indent}  \"scanner\": \"source_syntax\",\n"));
-    out.push_str(&format!(
-        "{indent}  \"source\": \"{}\"",
-        json_escape(context.inventory_source)
-    ));
-    if let Some(root) = context.source_tree_root {
-        out.push_str(&format!(",\n{indent}  \"root\": \"{}\"", json_escape(root)));
-    }
-    if let Some(files) = context.inventory_files {
-        out.push_str(&format!(",\n{indent}  \"files_scanned\": {files}"));
-    }
-    out.push_str(&format!("\n{indent}}}"));
     out
 }
 
