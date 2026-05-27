@@ -146,6 +146,7 @@ dependencies = [
  "allow-report",
  "allow-rust",
  "clap",
+ "serde_json",
 ]
 
 [[package]]
