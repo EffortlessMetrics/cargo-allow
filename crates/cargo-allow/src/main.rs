@@ -9,6 +9,7 @@ use allow_match::{CheckMode, evaluate};
 use allow_policy::{find_config, load_policy, validate_local_evidence_references};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
+#[cfg(test)]
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -21,6 +22,7 @@ mod diff;
 mod doctor;
 mod explain;
 mod init;
+mod io;
 mod list;
 mod migrate;
 mod propose;
@@ -28,6 +30,7 @@ mod prune;
 mod render;
 mod worklist;
 
+pub(crate) use io::{write_file, write_file_no_overwrite};
 pub(crate) use render::{
     allow_entry_json, explain_finding_json, json_string_array, last_seen_json, markdown_cell,
     option_json_string, option_usize_json, scope_has_wildcard, selector_from_finding,
@@ -781,32 +784,6 @@ fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
         println!("{text}");
     }
     Ok(())
-}
-
-fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowResult<()> {
-    let path = path.as_ref();
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| {
-            CargoAllowError::new(format!("failed to create {}: {e}", parent.display()))
-        })?;
-    }
-    fs::write(path, contents)
-        .map_err(|e| CargoAllowError::new(format!("failed to write {}: {e}", path.display())))
-}
-
-fn write_file_no_overwrite(
-    path: impl AsRef<Path>,
-    contents: &str,
-    force: bool,
-) -> CargoAllowResult<()> {
-    let path = path.as_ref();
-    if path.exists() && !force {
-        return Err(CargoAllowError::new(format!(
-            "{} already exists; use --force to overwrite",
-            path.display()
-        )));
-    }
-    write_file(path, contents)
 }
 
 #[cfg(test)]
