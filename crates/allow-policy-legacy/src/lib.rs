@@ -16,6 +16,7 @@ const LEGACY_POLICY_FILES: &[&str] = &[
     "no-panic-allowlist.toml",
     "no-panic-baseline.toml",
     "clippy-exceptions.toml",
+    "unsafe-allowlist.toml",
     "executable-allowlist.toml",
     "workflow-allowlist.toml",
     "dependency-surface-allowlist.toml",
@@ -54,6 +55,12 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
     {
         let rules = parse_clippy_rules(&table)?;
         return config_from_clippy_rules(&table, &rules);
+    }
+    if let Some(table) = legacy_table(&text)?
+        && table.get("policy").and_then(Value::as_str) == Some("unsafe-allowlist")
+    {
+        let rules = parse_unsafe_rules(&table)?;
+        return config_from_unsafe_rules(&table, &rules);
     }
     if let Some(table) = legacy_table(&text)?
         && table.get("policy").and_then(Value::as_str) == Some("executable-allowlist")
@@ -230,6 +237,23 @@ pub fn load_clippy_exceptions_compat_config(
     }
     let rules = parse_clippy_rules(&table)?;
     config_from_clippy_rules(&table, &rules)
+}
+
+pub fn load_unsafe_allowlist_compat_config(
+    path: impl AsRef<Path>,
+) -> CargoAllowResult<AllowConfig> {
+    let text = read_policy(path.as_ref())?;
+    let table = legacy_table(&text)?.ok_or_else(|| {
+        CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
+    })?;
+    if table.get("policy").and_then(Value::as_str) != Some("unsafe-allowlist") {
+        return Err(CargoAllowError::new(format!(
+            "{} is not an unsafe-allowlist policy",
+            path.as_ref().display()
+        )));
+    }
+    let rules = parse_unsafe_rules(&table)?;
+    config_from_unsafe_rules(&table, &rules)
 }
 
 pub fn load_executable_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
@@ -457,7 +481,7 @@ pub fn network_findings_from_config(cfg: &AllowConfig) -> Vec<Finding> {
 }
 
 pub fn migration_notes() -> &'static str {
-    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, no-panic-allowlist, no-panic-baseline, clippy-exceptions, executable, workflow, dependency-surface, process, and network allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; no-panic allowlist migration maps retained source exceptions to structural panic receipts and treats last_seen as a hint only; no-panic baseline migration emits count-limited baseline_debt entries; clippy-exceptions compat maps retained lint suppression entries to source-syntax lint_exception receipts and uses cargo-allow's Rust source scanner for current findings; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns; network compat validates retained network policy entries and does not scan source code or runtime traffic."
+    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, no-panic-allowlist, no-panic-baseline, clippy-exceptions, unsafe-allowlist, executable, workflow, dependency-surface, process, and network allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; no-panic allowlist migration maps retained source exceptions to structural panic receipts and treats last_seen as a hint only; no-panic baseline migration emits count-limited baseline_debt entries; clippy-exceptions compat maps retained lint suppression entries to source-syntax lint_exception receipts and uses cargo-allow's Rust source scanner for current findings; unsafe compat maps retained unsafe entries to source-syntax unsafe receipts and keeps missing evidence as temporary baseline_debt TODO evidence; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns; network compat validates retained network policy entries and does not scan source code or runtime traffic."
 }
 
 fn read_policy(path: &Path) -> CargoAllowResult<String> {
@@ -544,6 +568,24 @@ struct LegacyClippyRule {
     created: Option<String>,
     review_after: Option<String>,
     expires: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct LegacyUnsafeRule {
+    id: String,
+    path: String,
+    family: String,
+    selector_kind: String,
+    selector_container: Option<String>,
+    owner: String,
+    classification: String,
+    reason: String,
+    evidence: Vec<String>,
+    created: Option<String>,
+    review_after: Option<String>,
+    expires: Option<String>,
+    line_hint: Option<u32>,
+    last_seen: Option<LastSeen>,
 }
 
 #[derive(Debug, Clone)]
@@ -885,6 +927,69 @@ fn parse_clippy_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyClip
     })
 }
 
+fn parse_unsafe_rules(table: &toml::Table) -> CargoAllowResult<Vec<LegacyUnsafeRule>> {
+    let entries = table
+        .get("allow")
+        .or_else(|| table.get("entry"))
+        .and_then(Value::as_array)
+        .ok_or_else(|| CargoAllowError::new("unsafe-allowlist missing allow entries"))?;
+    entries
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| parse_unsafe_rule(index, entry))
+        .collect()
+}
+
+fn parse_unsafe_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyUnsafeRule> {
+    let table = entry.as_table().ok_or_else(|| {
+        CargoAllowError::new(format!("unsafe allow entry {index} is not a table"))
+    })?;
+    let id = string_field(table, "id").unwrap_or_else(|| format!("legacy-unsafe-{index:04}"));
+    let selector = table.get("selector").and_then(Value::as_table);
+    let last_seen_table = table.get("last_seen").and_then(Value::as_table);
+    let review_after = string_field(table, "review_after");
+    let expires = normalize_legacy_expires(string_field(table, "expires"))
+        .or_else(|| review_after.is_none().then(|| "2026-08-01".to_string()));
+    let family = string_field(table, "family")
+        .or_else(|| {
+            selector.and_then(|selector| {
+                string_field(selector, "kind").or_else(|| string_field(selector, "ast_kind"))
+            })
+        })
+        .ok_or_else(|| CargoAllowError::new(format!("{id} missing family or selector.kind")))?;
+    let family = normalize_unsafe_family(&family);
+    let selector_kind = selector
+        .and_then(|selector| {
+            string_field(selector, "kind").or_else(|| string_field(selector, "ast_kind"))
+        })
+        .map(|kind| normalize_unsafe_family(&kind))
+        .unwrap_or_else(|| family.clone());
+    let last_seen = optional_last_seen(last_seen_table);
+    Ok(LegacyUnsafeRule {
+        id: id.clone(),
+        path: required_string_field(table, "path", &id)?,
+        family,
+        selector_kind,
+        selector_container: selector.and_then(|selector| string_field(selector, "container")),
+        owner: string_field(table, "owner").unwrap_or_else(|| "unowned".to_string()),
+        classification: string_field(table, "classification")
+            .unwrap_or_else(|| "baseline_debt".to_string()),
+        reason: string_field(table, "reason")
+            .or_else(|| string_field(table, "explanation"))
+            .unwrap_or_else(|| {
+                "Generated from legacy unsafe allowlist; requires human review.".to_string()
+            }),
+        evidence: legacy_evidence(table),
+        created: string_field(table, "created").or_else(|| Some("2026-05-26".to_string())),
+        review_after,
+        expires,
+        line_hint: selector
+            .and_then(|selector| optional_u32_field(selector, "line_hint"))
+            .or_else(|| last_seen.as_ref().map(|seen| seen.line)),
+        last_seen,
+    })
+}
+
 fn parse_executable_rules(table: &toml::Table) -> CargoAllowResult<Vec<LegacyExecutableRule>> {
     let entries = table
         .get("allow")
@@ -1108,6 +1213,16 @@ fn config_from_clippy_rules(
 ) -> CargoAllowResult<AllowConfig> {
     let mut cfg = base_config(table);
     cfg.allow = rules.iter().map(entry_from_clippy_rule).collect();
+    validate_policy(&cfg)?;
+    Ok(cfg)
+}
+
+fn config_from_unsafe_rules(
+    table: &toml::Table,
+    rules: &[LegacyUnsafeRule],
+) -> CargoAllowResult<AllowConfig> {
+    let mut cfg = base_config(table);
+    cfg.allow = rules.iter().map(entry_from_unsafe_rule).collect();
     validate_policy(&cfg)?;
     Ok(cfg)
 }
@@ -1398,6 +1513,36 @@ fn entry_from_clippy_rule(rule: &LegacyClippyRule) -> AllowEntry {
     }
 }
 
+fn entry_from_unsafe_rule(rule: &LegacyUnsafeRule) -> AllowEntry {
+    let path = normalize_path(&rule.path);
+    AllowEntry {
+        id: rule.id.clone(),
+        kind: FindingKind::Unsafe,
+        family: Some(rule.family.clone()),
+        path: Some(PathBuf::from(&path)),
+        glob: None,
+        owner: rule.owner.clone(),
+        classification: rule.classification.clone(),
+        reason: rule.reason.clone(),
+        evidence: unsafe_evidence(rule),
+        links: vec![format!("legacy-policy:{}", rule.id)],
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: rule.created.clone(),
+            review_after: rule.review_after.clone(),
+            expires: rule.expires.clone(),
+        },
+        selector: Selector {
+            ast_kind: Some(rule.selector_kind.clone()),
+            container: rule.selector_container.clone(),
+            line_hint: rule.line_hint,
+            glob: Some(path),
+            ..Selector::default()
+        },
+        last_seen: rule.last_seen.clone(),
+    }
+}
+
 fn entry_from_executable_rule(rule: &LegacyExecutableRule) -> AllowEntry {
     let path = normalize_path(&rule.path);
     AllowEntry {
@@ -1605,6 +1750,14 @@ fn generated_evidence(rule: &LegacyGeneratedRule) -> Vec<String> {
         evidence.push(format!("cargo:{command}"));
     }
     evidence
+}
+
+fn unsafe_evidence(rule: &LegacyUnsafeRule) -> Vec<String> {
+    if rule.evidence.is_empty() {
+        vec!["TODO: add unsafe-review or boundary-test evidence".to_string()]
+    } else {
+        rule.evidence.clone()
+    }
 }
 
 fn executable_evidence(rule: &LegacyExecutableRule) -> Vec<String> {
@@ -1875,6 +2028,20 @@ fn no_panic_method_callee(family: &str, selector_callee: Option<&str>) -> String
     }
 }
 
+fn normalize_unsafe_family(kind: &str) -> String {
+    match kind.trim() {
+        "unsafe-block" | "unsafe block" => "unsafe_block".to_string(),
+        "unsafe-fn" | "unsafe function" | "unsafe_fn" => "unsafe_fn".to_string(),
+        "unsafe-impl" | "unsafe impl" => "unsafe_impl".to_string(),
+        "unsafe-trait" | "unsafe trait" => "unsafe_trait".to_string(),
+        "unsafe-extern" | "unsafe extern" | "unsafe-extern-block" | "unsafe extern block" => {
+            "unsafe_extern_block".to_string()
+        }
+        "unsafe-attr" | "unsafe attribute" | "unsafe-attribute" => "unsafe_attr".to_string(),
+        other => other.replace('-', "_"),
+    }
+}
+
 fn dependency_entry_matches_path(entry: &AllowEntry, path: &Path) -> bool {
     entry
         .path
@@ -2002,6 +2169,22 @@ fn string_array_field(table: &toml::Table, field: &str) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+fn string_or_array_field(table: &toml::Table, field: &str) -> Vec<String> {
+    match table.get(field) {
+        Some(Value::String(value)) if !value.trim().is_empty() => vec![value.trim().to_string()],
+        Some(Value::Array(_)) => string_array_field(table, field),
+        _ => Vec::new(),
+    }
+}
+
+fn legacy_evidence(table: &toml::Table) -> Vec<String> {
+    let mut evidence = string_or_array_field(table, "evidence");
+    if evidence.is_empty() {
+        evidence = string_or_array_field(table, "covered_by");
+    }
+    evidence
 }
 
 fn required_string_field(
@@ -2532,6 +2715,103 @@ lint = "clippy::unwrap_used"
             .expect_err("generated policy should not load as clippy compat");
 
         assert!(err.to_string().contains("not a clippy-exceptions policy"));
+    }
+
+    #[test]
+    fn migrates_unsafe_allowlist_to_structural_unsafe_entries() {
+        let policy = unsafe_policy_fixture_path();
+        let cfg = load_legacy_or_canonical(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("unsafe allowlist migrates: {err}"))
+        });
+
+        assert_eq!(cfg.policy, "cargo-allow");
+        assert_eq!(cfg.allow.len(), 2);
+        let reviewed = cfg
+            .allow
+            .iter()
+            .find(|entry| entry.id == "unsafe-read")
+            .unwrap_or_else(|| std::panic::panic_any("expected reviewed unsafe entry"));
+        assert_eq!(reviewed.kind, FindingKind::Unsafe);
+        assert_eq!(reviewed.family.as_deref(), Some("unsafe_block"));
+        assert_eq!(reviewed.selector.ast_kind.as_deref(), Some("unsafe_block"));
+        assert_eq!(reviewed.selector.container.as_deref(), Some("read"));
+        assert_eq!(reviewed.selector.line_hint, Some(7));
+        assert_eq!(
+            reviewed
+                .last_seen
+                .as_ref()
+                .map(|seen| (seen.line, seen.column)),
+            Some((7, 12))
+        );
+        assert!(
+            reviewed
+                .evidence
+                .iter()
+                .any(|item| item == "unsafe-review:docs/evidence/unsafe/read.json")
+        );
+
+        let generated = cfg
+            .allow
+            .iter()
+            .find(|entry| entry.id.starts_with("legacy-unsafe-"))
+            .unwrap_or_else(|| std::panic::panic_any("expected generated unsafe entry"));
+        assert_eq!(generated.family.as_deref(), Some("unsafe_fn"));
+        assert_eq!(generated.classification, "baseline_debt");
+        assert_eq!(generated.owner, "unowned");
+        assert!(
+            generated
+                .evidence
+                .iter()
+                .any(|item| item.contains("TODO: add unsafe-review"))
+        );
+        assert_eq!(generated.lifecycle.expires.as_deref(), Some("2026-08-01"));
+    }
+
+    #[test]
+    fn unsafe_allowlist_compat_preserves_matched_new_and_stale_drift() {
+        let policy = unsafe_policy_fixture_path();
+        let cfg = load_unsafe_allowlist_compat_config(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("unsafe allowlist compat config loads: {err}"))
+        });
+
+        let matched = allow_match::evaluate(
+            &cfg,
+            &[unsafe_finding("src/lib.rs", "unsafe_block", Some("read"))],
+            allow_match::CheckMode::NoNew,
+        );
+        assert!(
+            matched
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::Matched)
+        );
+
+        let missing_allow = allow_match::evaluate(
+            &cfg,
+            &[unsafe_finding("src/lib.rs", "unsafe_impl", None)],
+            allow_match::CheckMode::NoNew,
+        );
+        assert!(
+            missing_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::New)
+        );
+
+        let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+        assert!(
+            stale_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::Stale)
+        );
+    }
+
+    #[test]
+    fn unsafe_allowlist_loader_requires_unsafe_policy() {
+        let policy = generated_policy_fixture_path();
+
+        let err = load_unsafe_allowlist_compat_config(&policy)
+            .expect_err("generated policy should not load as unsafe compat");
+
+        assert!(err.to_string().contains("not an unsafe-allowlist policy"));
     }
 
     #[test]
@@ -3180,6 +3460,13 @@ status = "advisory"
         path
     }
 
+    fn unsafe_policy_fixture_path() -> PathBuf {
+        let path = fixture_dir().join("unsafe-allowlist.toml");
+        fs::write(&path, unsafe_policy_fixture_text())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+        path
+    }
+
     fn executable_policy_fixture_path() -> PathBuf {
         let path = fixture_dir().join("executable-allowlist.toml");
         fs::write(&path, executable_policy_fixture_text())
@@ -3473,6 +3760,42 @@ review_after = "2026-09-09"
         text
     }
 
+    fn unsafe_policy_fixture_text() -> String {
+        r#"schema_version = 1
+policy = "unsafe-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "unsafe-read"
+path = "src/lib.rs"
+family = "unsafe_block"
+owner = "runtime"
+classification = "reviewed_unsafe_boundary"
+reason = "Caller validates pointer before read."
+evidence = ["unsafe-review:docs/evidence/unsafe/read.json"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "unsafe-block"
+container = "read"
+line_hint = 7
+
+[allow.last_seen]
+line = 7
+column = 12
+
+[[allow]]
+path = "src/lib.rs"
+family = "unsafe_fn"
+
+[allow.selector]
+kind = "unsafe-fn"
+"#
+        .to_string()
+    }
+
     fn executable_policy_fixture_text() -> String {
         let mut text = String::from(
             r#"schema_version = 1
@@ -3703,6 +4026,19 @@ expires = "permanent"
         identity.target_fingerprint = policy_id.map(|id| format!("policy:{id}"));
         Finding {
             kind: FindingKind::LintException,
+            family: Some(family.to_string()),
+            path: PathBuf::from(path),
+            span: Some(Span { line: 1, column: 1 }),
+            identity,
+            message: String::new(),
+        }
+    }
+
+    fn unsafe_finding(path: &str, family: &str, container: Option<&str>) -> Finding {
+        let mut identity = StructuralIdentity::new("rust", family);
+        identity.container = container.map(str::to_string);
+        Finding {
+            kind: FindingKind::Unsafe,
             family: Some(family.to_string()),
             path: PathBuf::from(path),
             span: Some(Span { line: 1, column: 1 }),

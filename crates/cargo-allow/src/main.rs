@@ -2358,6 +2358,21 @@ fn load_compat_world(
         findings.retain(|finding| finding.kind == FindingKind::LintException);
         return Ok((root, cfg, findings, inventory.source));
     }
+    if is_unsafe_compat_kind(compat_kind) {
+        let policy_path = config
+            .map(PathBuf::from)
+            .unwrap_or_else(|| root.join("policy/unsafe-allowlist.toml"));
+        let cfg = allow_policy_legacy::load_unsafe_allowlist_compat_config(policy_path)?;
+        let opts = InventoryOptions {
+            ignored: cfg.workspace.ignored.clone(),
+            generated: cfg.workspace.generated.clone(),
+            include_untracked,
+        };
+        let inventory = inventory(&root, &opts)?;
+        let mut findings = allow_rust::scan_rust_files(&root, &inventory.files)?;
+        findings.retain(|finding| finding.kind == FindingKind::Unsafe);
+        return Ok((root, cfg, findings, inventory.source));
+    }
     if is_executable_compat_kind(compat_kind) {
         let policy_path = config
             .map(PathBuf::from)
@@ -2408,7 +2423,7 @@ fn load_compat_world(
     }
     if parsed_filter.kind != FindingKind::NonRustFile {
         return Err(CargoAllowError::new(
-            "--compat currently supports only --kind non-rust, --kind generated, --kind panic, --kind no-panic-allowlist, --kind lint-exception, --kind executable, --kind workflow, --kind dependency-surface, --kind process, or --kind network",
+            "--compat currently supports only --kind non-rust, --kind generated, --kind panic, --kind no-panic-allowlist, --kind lint-exception, --kind unsafe, --kind executable, --kind workflow, --kind dependency-surface, --kind process, or --kind network",
         ));
     }
     let opts = InventoryOptions {
@@ -2481,6 +2496,12 @@ fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
             family: FamilyFilter::Any,
         });
     }
+    if is_unsafe_compat_kind(kind) {
+        return Ok(KindFilter {
+            kind: FindingKind::Unsafe,
+            family: FamilyFilter::Any,
+        });
+    }
     if is_executable_compat_kind(kind) {
         return Ok(KindFilter {
             kind: FindingKind::PolicyException,
@@ -2550,6 +2571,13 @@ fn is_clippy_compat_kind(kind: &str) -> bool {
             | "lint_exception"
             | "lint-suppression"
             | "lint_suppression"
+    )
+}
+
+fn is_unsafe_compat_kind(kind: &str) -> bool {
+    matches!(
+        kind.trim(),
+        "unsafe" | "unsafe-allowlist" | "unsafe_allowlist" | "unsafe-policy" | "unsafe_policy"
     )
 }
 
@@ -2859,6 +2887,27 @@ mod tests {
                 kind: Some(kind),
                 ..
             })) if kind == "no-panic-allowlist"
+        ));
+    }
+
+    #[test]
+    fn clap_parses_unsafe_compat_check() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--compat",
+            "--kind",
+            "unsafe",
+        ]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(CheckArgs {
+                compat: true,
+                kind: Some(kind),
+                ..
+            })) if kind == "unsafe"
         ));
     }
 
@@ -4222,6 +4271,66 @@ fn load() {}
         assert!(findings.iter().any(|finding| {
             finding.kind == FindingKind::LintException
                 && finding.family.as_deref() == Some("expect_attribute")
+        }));
+        assert!(
+            outcomes
+                .iter()
+                .any(|outcome| outcome.status == MatchStatus::Matched)
+        );
+    }
+
+    #[test]
+    fn unsafe_compat_loads_legacy_policy_and_scans_unsafe_findings() {
+        let dir = migrate_fixture_dir();
+        let policy_dir = dir.join("policy");
+        let src_dir = dir.join("src");
+        fs::create_dir_all(&policy_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::create_dir_all(&src_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+        fs::write(
+            policy_dir.join("unsafe-allowlist.toml"),
+            r#"schema_version = 1
+policy = "unsafe-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "unsafe-read"
+path = "src/lib.rs"
+family = "unsafe_block"
+owner = "runtime"
+classification = "reviewed_unsafe_boundary"
+reason = "Caller validates pointer before read."
+evidence = ["unsafe-review:docs/evidence/unsafe/read.json"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "unsafe-block"
+container = "read"
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("unsafe policy write: {err}")));
+        fs::write(
+            src_dir.join("lib.rs"),
+            "fn read(ptr: *const u8) -> u8 {\n    // SAFETY: fixture validates the policy match path.\n    unsafe { core::ptr::read(ptr) }\n}\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rust fixture write: {err}")));
+
+        let (_root, cfg, findings, inventory_source) =
+            load_compat_world(Some(&dir), None, Some("unsafe"), false).unwrap_or_else(|err| {
+                std::panic::panic_any(format!("unsafe compat world loads: {err}"))
+            });
+        let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+
+        assert_eq!(inventory_source, InventorySource::FilesystemFallback);
+        assert!(cfg.allow.iter().any(|entry| {
+            entry.kind == FindingKind::Unsafe
+                && entry.selector.ast_kind.as_deref() == Some("unsafe_block")
+        }));
+        assert!(findings.iter().any(|finding| {
+            finding.kind == FindingKind::Unsafe && finding.family.as_deref() == Some("unsafe_block")
         }));
         assert!(
             outcomes

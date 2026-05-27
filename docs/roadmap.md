@@ -134,11 +134,13 @@ Completed:
 - Detect nearby visible `SAFETY:` comments as source-text metadata for unsafe
   findings and enforce `requirements.unsafe.safety_comment_required` in the
   matcher.
+- Add `--compat --kind unsafe` for legacy `policy/unsafe-allowlist.toml`
+  files, mapping retained unsafe entries to source-syntax `unsafe` receipts and
+  keeping missing legacy evidence as temporary baseline debt.
 
 Planned work:
 
 - unsafe-review evidence references.
-- Legacy unsafe allowlist adapter.
 - Side-by-side dogfood against a repo with existing unsafe policy.
 
 ## Phase 7: Lint Suppression Lane
