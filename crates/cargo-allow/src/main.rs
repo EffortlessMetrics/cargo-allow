@@ -2328,6 +2328,21 @@ fn load_compat_world(
         findings.retain(|finding| finding.kind == FindingKind::Panic);
         return Ok((root, cfg, findings, inventory.source));
     }
+    if is_clippy_compat_kind(compat_kind) {
+        let policy_path = config
+            .map(PathBuf::from)
+            .unwrap_or_else(|| root.join("policy/clippy-exceptions.toml"));
+        let cfg = allow_policy_legacy::load_clippy_exceptions_compat_config(policy_path)?;
+        let opts = InventoryOptions {
+            ignored: cfg.workspace.ignored.clone(),
+            generated: cfg.workspace.generated.clone(),
+            include_untracked,
+        };
+        let inventory = inventory(&root, &opts)?;
+        let mut findings = allow_rust::scan_rust_files(&root, &inventory.files)?;
+        findings.retain(|finding| finding.kind == FindingKind::LintException);
+        return Ok((root, cfg, findings, inventory.source));
+    }
     if is_executable_compat_kind(compat_kind) {
         let policy_path = config
             .map(PathBuf::from)
@@ -2378,7 +2393,7 @@ fn load_compat_world(
     }
     if parsed_filter.kind != FindingKind::NonRustFile {
         return Err(CargoAllowError::new(
-            "--compat currently supports only --kind non-rust, --kind generated, --kind panic, --kind executable, --kind workflow, --kind dependency-surface, --kind process, or --kind network",
+            "--compat currently supports only --kind non-rust, --kind generated, --kind panic, --kind lint-exception, --kind executable, --kind workflow, --kind dependency-surface, --kind process, or --kind network",
         ));
     }
     let opts = InventoryOptions {
@@ -2439,6 +2454,12 @@ fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
             family: FamilyFilter::Any,
         });
     }
+    if is_clippy_compat_kind(kind) {
+        return Ok(KindFilter {
+            kind: FindingKind::LintException,
+            family: FamilyFilter::Any,
+        });
+    }
     if is_executable_compat_kind(kind) {
         return Ok(KindFilter {
             kind: FindingKind::PolicyException,
@@ -2485,6 +2506,22 @@ fn is_panic_compat_kind(kind: &str) -> bool {
             | "no_panic"
             | "no-panic-baseline"
             | "no_panic_baseline"
+    )
+}
+
+fn is_clippy_compat_kind(kind: &str) -> bool {
+    matches!(
+        kind.trim(),
+        "clippy"
+            | "clippy-exception"
+            | "clippy-exceptions"
+            | "clippy_exception"
+            | "clippy_exceptions"
+            | "lint"
+            | "lint-exception"
+            | "lint_exception"
+            | "lint-suppression"
+            | "lint_suppression"
     )
 }
 
@@ -2752,6 +2789,27 @@ mod tests {
                 format: OutputFormat::Markdown,
                 ..
             }))
+        ));
+    }
+
+    #[test]
+    fn clap_parses_lint_exception_compat_check() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--compat",
+            "--kind",
+            "lint-exception",
+        ]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(CheckArgs {
+                compat: true,
+                kind: Some(kind),
+                ..
+            })) if kind == "lint-exception"
         ));
     }
 
@@ -3997,6 +4055,66 @@ count = 1
         );
         assert!(findings.iter().any(|finding| {
             finding.kind == FindingKind::Panic && finding.family.as_deref() == Some("unwrap")
+        }));
+        assert!(
+            outcomes
+                .iter()
+                .any(|outcome| outcome.status == MatchStatus::Matched)
+        );
+    }
+
+    #[test]
+    fn clippy_compat_loads_legacy_policy_and_scans_lint_findings() {
+        let dir = migrate_fixture_dir();
+        let policy_dir = dir.join("policy");
+        let src_dir = dir.join("src");
+        fs::create_dir_all(&policy_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::create_dir_all(&src_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+        fs::write(
+            policy_dir.join("clippy-exceptions.toml"),
+            r#"schema_version = 1
+policy = "clippy-exceptions"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "clippy-unwrap-policy"
+path = "src/lib.rs"
+lint = "clippy::unwrap_used"
+family = "expect"
+owner = "lint"
+classification = "reviewed_lint_exception"
+reason = "Fixture keeps an explicit lint suppression linked to policy."
+policy_id = "clippy-unwrap-policy"
+created = "2026-05-09"
+review_after = "2026-09-09"
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("clippy policy write: {err}")));
+        fs::write(
+            src_dir.join("lib.rs"),
+            r#"#[expect(clippy::unwrap_used, reason = "policy:clippy-unwrap-policy: fixture")]
+fn load() {}
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rust fixture write: {err}")));
+
+        let (_root, cfg, findings, inventory_source) =
+            load_compat_world(Some(&dir), None, Some("lint-exception"), false).unwrap_or_else(
+                |err| std::panic::panic_any(format!("clippy compat world loads: {err}")),
+            );
+        let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+
+        assert_eq!(inventory_source, InventorySource::FilesystemFallback);
+        assert!(cfg.allow.iter().any(|entry| {
+            entry.kind == FindingKind::LintException
+                && entry.selector.lint.as_deref() == Some("clippy::unwrap_used")
+        }));
+        assert!(findings.iter().any(|finding| {
+            finding.kind == FindingKind::LintException
+                && finding.family.as_deref() == Some("expect_attribute")
         }));
         assert!(
             outcomes

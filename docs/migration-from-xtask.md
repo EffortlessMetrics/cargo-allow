@@ -147,6 +147,23 @@ Migration converts generated baseline records into temporary
 legacy `count` field. The occurrence limit is important: a counted baseline
 entry must not approve unlimited future panic-family findings.
 
+Clippy exception compat is available for legacy
+`policy/clippy-exceptions.toml` files:
+
+```bash
+cargo-allow check --compat --kind lint-exception
+cargo-allow migrate --from policy/clippy-exceptions.toml --out target/clippy.allow.toml
+```
+
+Compat maps retained lint suppression entries to canonical
+`lint_exception` receipts and compares them with current source-syntax lint
+attribute findings. It does not run Clippy, rustc, Cargo metadata, macro
+expansion, or type analysis, so findings are limited to visible source
+attributes such as `#[allow]`, `#![allow]`, `#[expect]`, and `#![expect]`.
+Only `path` and `lint` are required in the legacy entry; missing owner,
+reason, classification, or lifecycle metadata is migrated as temporary
+`baseline_debt` requiring human review.
+
 ## Canonical Policy Flow
 
 The target state is:

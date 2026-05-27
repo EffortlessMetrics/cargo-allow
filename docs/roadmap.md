@@ -152,10 +152,14 @@ Completed:
   `#[allow]` suppressions instead of treating the receipt as approval.
 - Require visible `policy:<allow-id>` references for matched lint suppressions
   when `lint_policy_id_required = true`.
+- Add `--compat --kind lint-exception` for legacy `policy/clippy-exceptions.toml`
+  files, mapping retained suppression entries to source-syntax
+  `lint_exception` receipts.
 
 Planned work:
 
-- Add a legacy clippy exceptions adapter.
+- Dogfood lint-exception compat against a repo with an existing Clippy
+  exceptions policy.
 
 ## Phase 8: PR Diff As Flagship
 
