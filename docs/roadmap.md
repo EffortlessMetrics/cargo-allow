@@ -205,6 +205,8 @@ Completed:
 - Emit an initial `cargo-allow worklist --format json` that converts non-matched
   no-new outcomes into risk/difficulty-scored work items with suggested actions
   and proof commands.
+- Emit `broken_evidence_link` work items for missing or invalid local evidence
+  references.
 
 Planned work:
 

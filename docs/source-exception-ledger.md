@@ -164,6 +164,11 @@ It is a routing surface, not an auto-fix plan: agents and humans should fix,
 prove, narrow, or remove the exception instead of adding suppressions just to
 silence cargo-allow.
 
+The worklist command also reports broken local evidence links as
+`broken_evidence_link` work items. This mode loads the policy even when local
+evidence is missing so humans or agents can get a repair target; normal
+`cargo-allow check` still fails closed on broken local evidence references.
+
 `cargo-allow diff --base <rev>` compares the current policy ledger with the
 base revision's `policy/allow.toml` and reports policy weakening in human and
 Markdown output. Current detection covers scope broadening, selector precision
