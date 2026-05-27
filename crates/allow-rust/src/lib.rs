@@ -122,6 +122,35 @@ struct PanicMacroInvocation {
     column: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PanicMethodKind {
+    Unwrap,
+    Expect,
+}
+
+impl PanicMethodKind {
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "unwrap" => Some(Self::Unwrap),
+            "expect" => Some(Self::Expect),
+            _ => None,
+        }
+    }
+
+    fn family(self) -> &'static str {
+        match self {
+            Self::Unwrap => "unwrap",
+            Self::Expect => "expect",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PanicMethodCall {
+    kind: PanicMethodKind,
+    column: u32,
+}
+
 impl RustSyntaxContainer {
     pub fn module(&self) -> Option<String> {
         if self.module_path.is_empty() {
@@ -295,6 +324,11 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
                     .get(&line_no)
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),
+                panic_methods: syntax
+                    .panic_methods
+                    .get(&line_no)
+                    .map(Vec::as_slice)
+                    .unwrap_or(&[]),
                 index_column: syntax.index_columns.get(&line_no).copied(),
                 unsafe_construct: syntax.unsafe_constructs.get(&line_no).copied(),
                 unsafe_attribute: syntax.unsafe_attribute_lines.contains(&line_no),
@@ -390,28 +424,26 @@ fn scan_line(
         );
     }
 
-    for (family, needle) in [("unwrap", ".unwrap("), ("expect", ".expect(")] {
-        if let Some(pos) = line.find(needle) {
-            let receiver = receiver_before(line, pos);
-            push_finding(
-                FindingSite {
-                    path,
-                    line,
-                    line_no,
-                    column: pos as u32 + 2,
-                    container,
-                    module_stack,
-                },
-                FindingKind::Panic,
-                family,
-                "method_call",
-                |id| {
-                    id.callee = Some(family.to_string());
-                    id.receiver_fingerprint = Some(receiver);
-                },
-                findings,
-            );
-        }
+    for method_call in syntax.panic_methods {
+        let receiver = receiver_before_method_column(line, method_call.column);
+        push_finding(
+            FindingSite {
+                path,
+                line,
+                line_no,
+                column: method_call.column,
+                container,
+                module_stack,
+            },
+            FindingKind::Panic,
+            method_call.kind.family(),
+            "method_call",
+            |id| {
+                id.callee = Some(method_call.kind.family().to_string());
+                id.receiver_fingerprint = Some(receiver);
+            },
+            findings,
+        );
     }
 
     for macro_invocation in syntax.panic_macros {
@@ -475,6 +507,7 @@ struct RustSyntaxFacts {
     index_columns: BTreeMap<u32, u32>,
     lint_attributes: BTreeMap<u32, Vec<LintAttributeKind>>,
     panic_macros: BTreeMap<u32, Vec<PanicMacroInvocation>>,
+    panic_methods: BTreeMap<u32, Vec<PanicMethodCall>>,
     unsafe_constructs: BTreeMap<u32, UnsafeSyntaxConstruct>,
     unsafe_attribute_lines: BTreeSet<u32>,
 }
@@ -508,6 +541,13 @@ fn collect_syntax_facts(node: Node<'_>, source: &str, facts: &mut RustSyntaxFact
     if let Some((line, invocation)) = panic_macro_invocation(node, source) {
         facts.panic_macros.entry(line).or_default().push(invocation);
     }
+    if let Some((line, method_call)) = panic_method_call(node, source) {
+        facts
+            .panic_methods
+            .entry(line)
+            .or_default()
+            .push(method_call);
+    }
     if matches!(node.kind(), "attribute_item" | "inner_attribute_item") {
         if let Some(text) = node_text(source, node) {
             let line = node.start_position().row as u32 + 1;
@@ -540,6 +580,27 @@ fn panic_macro_invocation(node: Node<'_>, source: &str) -> Option<(u32, PanicMac
         PanicMacroInvocation {
             kind,
             column: start.column as u32 + base_offset + 1,
+        },
+    ))
+}
+
+fn panic_method_call(node: Node<'_>, source: &str) -> Option<(u32, PanicMethodCall)> {
+    if node.kind() != "call_expression" {
+        return None;
+    }
+    let function = node.child_by_field_name("function")?;
+    if function.kind() != "field_expression" {
+        return None;
+    }
+    let field = function.child_by_field_name("field")?;
+    let method_name = node_text(source, field)?;
+    let kind = PanicMethodKind::from_name(method_name)?;
+    let start = field.start_position();
+    Some((
+        start.row as u32 + 1,
+        PanicMethodCall {
+            kind,
+            column: start.column as u32 + 1,
         },
     ))
 }
@@ -639,6 +700,7 @@ fn unsafe_attribute_text(text: &str) -> bool {
 struct SyntaxLineFacts<'a> {
     lint_attributes: &'a [LintAttributeKind],
     panic_macros: &'a [PanicMacroInvocation],
+    panic_methods: &'a [PanicMethodCall],
     index_column: Option<u32>,
     unsafe_construct: Option<UnsafeSyntaxConstruct>,
     unsafe_attribute: bool,
@@ -758,6 +820,17 @@ fn column(line: &str, needle: &str) -> u32 {
     line.find(needle).map(|idx| idx as u32 + 1).unwrap_or(1)
 }
 
+fn receiver_before_method_column(line: &str, method_column: u32) -> String {
+    let Some(dot_pos) = method_column.checked_sub(2).map(|pos| pos as usize) else {
+        return String::new();
+    };
+    if dot_pos <= line.len() {
+        receiver_before(line, dot_pos)
+    } else {
+        String::new()
+    }
+}
+
 fn receiver_before(line: &str, pos: usize) -> String {
     let prefix = &line[..pos];
     let trimmed = normalize_snippet(prefix);
@@ -804,6 +877,43 @@ mod tests {
             findings
                 .iter()
                 .any(|f| f.family.as_deref() == Some("panic_macro"))
+        );
+    }
+
+    #[test]
+    fn detects_panic_methods_from_syntax() {
+        let src = r#"
+        fn load() {
+            let x = std::fs::read_to_string("x").unwrap();
+            let y = std::fs::read_to_string("y").expect("read y");
+        }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        for family in ["unwrap", "expect"] {
+            assert!(
+                findings.iter().any(|f| f.kind == FindingKind::Panic
+                    && f.family.as_deref() == Some(family)
+                    && f.identity.ast_kind == "method_call"),
+                "missing {family}"
+            );
+        }
+    }
+
+    #[test]
+    fn syntax_panic_methods_ignore_text_in_strings_and_comments() {
+        let src = r#"
+        fn load() {
+            // value.unwrap();
+            let text = "value.expect(\"string\")";
+        }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        assert!(
+            !findings
+                .iter()
+                .any(|f| f.kind == FindingKind::Panic && f.identity.ast_kind == "method_call")
         );
     }
 
