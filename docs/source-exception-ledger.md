@@ -233,6 +233,8 @@ points to JSON for the full queue. Filtered worklist output records the applied
 the full ledger queue. The report, receipt, and worklist schemas enumerate
 scanner limitation values rather than treating claim-boundary facts as open-ended
 prose.
+Work items are ordered for routing: high risk first, then lower estimated
+difficulty, then stable source and allow identifiers.
 It is a routing surface, not an auto-fix plan: agents and humans should fix,
 prove, narrow, or remove the exception instead of adding suppressions just to
 silence cargo-allow.
