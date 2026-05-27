@@ -326,6 +326,8 @@ Completed:
   humans and agents can route work before running `explain`.
 - Include lifecycle dates and evidence counts on policy-backed worklist items so
   expiry pressure and weak evidence are visible in the queue.
+- Filter worklist output by policy owner and classification so humans and
+  agents can take bounded ownership or debt-class slices.
 
 Planned work:
 

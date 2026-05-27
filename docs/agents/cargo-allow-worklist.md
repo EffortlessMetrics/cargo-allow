@@ -18,6 +18,9 @@ be removed cleanly.
 Use `--risk low`, `--risk medium`, `--risk high`, `--difficulty small`, or
 `--difficulty medium` when the assignment needs a narrower queue, but do not
 mistake a filter for approval to ignore the rest of the ledger.
+Use `--owner <owner>` and `--classification <classification>` to take a bounded
+policy-owner or debt-class slice, such as `--owner unowned --classification
+baseline_debt`.
 Saved worklist artifacts record the applied filters; preserve that context in
 handoffs.
 The default order already puts high-risk work first, then lower estimated

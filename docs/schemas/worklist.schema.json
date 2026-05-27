@@ -144,6 +144,14 @@
           "type": ["string", "null"],
           "description": "Applied --kind filter, or null when the worklist includes all governed kinds."
         },
+        "owner": {
+          "type": ["string", "null"],
+          "description": "Applied --owner filter, or null when all policy owners are included."
+        },
+        "classification": {
+          "type": ["string", "null"],
+          "description": "Applied --classification filter, or null when all policy classifications are included."
+        },
         "risk": {
           "type": ["string", "null"],
           "enum": ["low", "medium", "high", null],
