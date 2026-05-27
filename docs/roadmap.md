@@ -107,12 +107,15 @@ Completed:
 
 - Add count-limited migration for generated shiplog-style
   `policy/no-panic-baseline.toml` into temporary `baseline_debt` entries.
+- Scan panic-family method calls and macros from source syntax.
+- Scan indexing and slicing expressions from source syntax.
+- Apply shared no-new and strict matching behavior to panic-family findings.
+- Add `--compat --kind panic` for generated shiplog-style
+  `policy/no-panic-baseline.toml`, preserving legacy `count` as
+  `occurrence_limit`.
 
 Planned work:
 
-- Syntax scanner for method calls and macros.
-- Indexing and slicing scanner.
-- no-new and strict behavior for panic-family findings.
 - Legacy no-panic allowlist adapter.
 - Side-by-side dogfood against a strict repo.
 

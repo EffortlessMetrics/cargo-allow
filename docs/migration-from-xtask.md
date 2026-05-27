@@ -133,10 +133,16 @@ No-panic baseline migration is available for shiplog-style
 `policy/no-panic-baseline.toml`:
 
 ```bash
+cargo-allow check --compat --kind panic
 cargo-allow migrate --from policy/no-panic-baseline.toml --out target/no-panic.allow.toml
 ```
 
-That mode converts generated baseline records into temporary
+Compat check loads the generated baseline and compares it with current
+source-syntax panic-family findings. The scanner surface may be broader than a
+legacy xtask; extra findings should be treated as scanner-boundary or migration
+scope deltas, not suppressed by broadening the baseline.
+
+Migration converts generated baseline records into temporary
 `classification = "baseline_debt"` entries with `occurrence_limit` set from the
 legacy `count` field. The occurrence limit is important: a counted baseline
 entry must not approve unlimited future panic-family findings.
