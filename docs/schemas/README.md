@@ -26,6 +26,62 @@ macro-expansion, or proof-level coverage.
 - [propose.schema.json](propose.schema.json)
 - [worklist.schema.json](worklist.schema.json)
 
+## Contract Status
+
+The `*.v1` schema IDs are the current machine-readable contract names. They are
+intended for CI, review automation, and agent routing that need stable artifact
+identity and source-tree claim-boundary fields.
+
+Consumers may rely on these common root fields across all current cargo-allow
+JSON artifacts:
+
+- `schema_version`
+- `schema_id`
+- `tool`
+- `command`
+- `claim_boundary`
+- `scanner_limitations`
+- `inventory.scope`
+- `inventory.scanner`
+- `inventory.source`
+
+When available, artifacts also include `inventory.root` and
+`inventory.files_scanned`. Those values describe the local source-tree scan that
+produced the artifact; `root` may be an absolute local path and should not be
+treated as portable identity.
+
+Artifact-specific fields such as `diff`, `summary`, `allow_entries`,
+`work_items`, `stale_entries`, `allow_entry`, and evidence diagnostics are
+covered by their individual schema files. Consumers should branch on
+`schema_id`, not on command-line spelling or filenames.
+
+## Compatibility Coverage
+
+The test suite parses the current report, receipt, diff, list, explain,
+worklist, prune, propose, and doctor JSON renderers as JSON and checks the
+shared v1 source-tree contract fields. That protects the artifact root shape
+from accidental manual-rendering drift.
+
+This is not a promise that every field is permanently frozen. Breaking changes
+should either preserve the existing `*.v1` contract or introduce a new schema ID
+and update the schema file, tests, and this index together.
+
+## Consumer Guidance
+
+Use JSON artifacts for automation:
+
+- `report` and `receipt` for CI gates and stored no-new evidence.
+- `diff` for PR posture review.
+- `worklist` for agent routing.
+- `list` and `explain` for policy lookup and interactive tooling.
+- `doctor` for setup diagnostics before wider scans.
+- `propose` for generated-baseline review.
+- `prune` for stale-entry cleanup previews or write receipts.
+
+Do not parse human, Markdown, SARIF, or HTML output as the primary contract when
+a JSON artifact exists for the same workflow. Markdown and HTML are review
+surfaces; JSON is the machine surface.
+
 ## Boundary
 
 Every schema carries explicit source-tree claim-boundary and scanner-limitation
