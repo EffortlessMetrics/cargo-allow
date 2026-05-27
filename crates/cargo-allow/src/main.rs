@@ -56,4 +56,6 @@ fn main() {
 }
 
 #[cfg(test)]
+mod artifact_contract_tests;
+#[cfg(test)]
 mod main_tests;
