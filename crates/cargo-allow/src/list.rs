@@ -1,14 +1,14 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowResult, Finding, FindingKind, MatchOutcome, MatchStatus,
-    SimpleDate, json_escape,
+    SimpleDate,
 };
 use allow_match::{CheckMode, evaluate};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
 use crate::{
-    KindFilter, RootArgs, load_world, option_json_string, parse_kind_filter, scope_has_wildcard,
-    source_package_name, source_tree_path_matches_filter, source_tree_root_text, write_file,
+    KindFilter, RootArgs, load_world, parse_kind_filter, scope_has_wildcard, source_package_name,
+    source_tree_path_matches_filter, source_tree_root_text, write_file,
 };
 
 #[derive(Debug, Clone, Parser)]
@@ -308,161 +308,51 @@ fn render_list_rows_json(
         .iter()
         .filter(|row| list_row_matches(row, filters))
         .collect::<Vec<_>>();
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str(&format!(
-        "  \"schema_version\": {},\n",
-        allow_report::LIST_SCHEMA_VERSION
-    ));
-    out.push_str(&format!(
-        "  \"schema_id\": \"{}\",\n",
-        allow_report::LIST_SCHEMA_ID
-    ));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"list\",\n");
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        allow_report::render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        allow_report::render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&allow_report::render_inventory_json(
+    let report_rows = filtered
+        .iter()
+        .map(|row| allow_report::ListRow {
+            id: &row.id,
+            status: row.status.as_str(),
+            matches: row.matches,
+            kind: row.kind.as_str(),
+            family: row.family.as_deref(),
+            owner: &row.owner,
+            classification: &row.classification,
+            scope: &row.scope,
+            source_package: row.source_package.as_deref(),
+            evidence_count: row.evidence_count,
+            review_after: dash_as_none(&row.review_after),
+            expires: dash_as_none(&row.expires),
+            reason: &row.reason,
+        })
+        .collect::<Vec<_>>();
+    allow_report::render_list_json(
+        &report_rows,
+        allow_report::ListFilters {
+            kind: context.kind_arg,
+            family: filters.family,
+            owner: filters.owner,
+            classification: filters.classification,
+            path: filters.path,
+            source_package: filters.source_package,
+            status: filters.status,
+            expired: filters.expired,
+            review_due: filters.review_due,
+            stale: filters.stale,
+            baseline_debt: filters.baseline_debt,
+            broad_scope: filters.broad_scope,
+            missing_evidence: filters.missing_evidence,
+        },
         allow_report::InventoryContext::source_syntax(
             context.inventory_source,
             context.source_tree_root,
             context.inventory_files,
         ),
-        "  ",
-    ));
-    out.push_str(",\n");
-    out.push_str("  \"filters\": ");
-    out.push_str(&list_filters_json(filters, context.kind_arg, "  "));
-    out.push_str(",\n");
-    out.push_str(&format!(
-        "  \"summary\": {{\n    \"allow_entries\": {}\n  }},\n",
-        filtered.len()
-    ));
-    out.push_str("  \"allow_entries\": [\n");
-    for (index, row) in filtered.iter().enumerate() {
-        if index > 0 {
-            out.push_str(",\n");
-        }
-        out.push_str(&render_list_row_json(row));
-    }
-    out.push_str("\n  ]\n");
-    out.push_str("}\n");
-    out
+    )
 }
 
-fn render_list_row_json(row: &ListRow) -> String {
-    let mut out = String::new();
-    out.push_str("    {\n");
-    out.push_str(&format!("      \"id\": \"{}\",\n", json_escape(&row.id)));
-    out.push_str(&format!("      \"status\": \"{}\",\n", row.status.as_str()));
-    out.push_str(&format!("      \"matches\": {},\n", row.matches));
-    out.push_str(&format!("      \"kind\": \"{}\",\n", row.kind));
-    out.push_str(&format!(
-        "      \"family\": {},\n",
-        option_json_string(row.family.as_deref())
-    ));
-    out.push_str(&format!(
-        "      \"owner\": \"{}\",\n",
-        json_escape(&row.owner)
-    ));
-    out.push_str(&format!(
-        "      \"classification\": \"{}\",\n",
-        json_escape(&row.classification)
-    ));
-    out.push_str(&format!(
-        "      \"scope\": \"{}\",\n",
-        json_escape(&row.scope)
-    ));
-    out.push_str(&format!(
-        "      \"source_package\": {},\n",
-        option_json_string(row.source_package.as_deref())
-    ));
-    out.push_str(&format!(
-        "      \"evidence_count\": {},\n",
-        row.evidence_count
-    ));
-    out.push_str(&format!(
-        "      \"review_after\": {},\n",
-        dash_as_null_json(&row.review_after)
-    ));
-    out.push_str(&format!(
-        "      \"expires\": {},\n",
-        dash_as_null_json(&row.expires)
-    ));
-    out.push_str(&format!(
-        "      \"reason\": \"{}\"\n",
-        json_escape(&row.reason)
-    ));
-    out.push_str("    }");
-    out
-}
-
-fn list_filters_json(filters: &ListFilters<'_>, kind_arg: Option<&str>, indent: &str) -> String {
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str(&format!(
-        "{indent}  \"kind\": {},\n",
-        option_json_string(kind_arg)
-    ));
-    out.push_str(&format!(
-        "{indent}  \"family\": {},\n",
-        option_json_string(filters.family)
-    ));
-    out.push_str(&format!(
-        "{indent}  \"owner\": {},\n",
-        option_json_string(filters.owner)
-    ));
-    out.push_str(&format!(
-        "{indent}  \"classification\": {},\n",
-        option_json_string(filters.classification)
-    ));
-    out.push_str(&format!(
-        "{indent}  \"path\": {},\n",
-        option_json_string(filters.path)
-    ));
-    out.push_str(&format!(
-        "{indent}  \"source_package\": {},\n",
-        option_json_string(filters.source_package)
-    ));
-    out.push_str(&format!(
-        "{indent}  \"status\": {},\n",
-        option_json_string(filters.status)
-    ));
-    out.push_str(&format!("{indent}  \"expired\": {},\n", filters.expired));
-    out.push_str(&format!(
-        "{indent}  \"review_due\": {},\n",
-        filters.review_due
-    ));
-    out.push_str(&format!("{indent}  \"stale\": {},\n", filters.stale));
-    out.push_str(&format!(
-        "{indent}  \"baseline_debt\": {},\n",
-        filters.baseline_debt
-    ));
-    out.push_str(&format!(
-        "{indent}  \"broad_scope\": {},\n",
-        filters.broad_scope
-    ));
-    out.push_str(&format!(
-        "{indent}  \"missing_evidence\": {}\n",
-        filters.missing_evidence
-    ));
-    out.push_str(&format!("{indent}}}"));
-    out
-}
-
-fn dash_as_null_json(value: &str) -> String {
-    if value == "-" {
-        "null".to_string()
-    } else {
-        format!("\"{}\"", json_escape(value))
-    }
+fn dash_as_none(value: &str) -> Option<&str> {
+    if value == "-" { None } else { Some(value) }
 }
 
 fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
