@@ -287,6 +287,8 @@ Completed:
   use wildcard source-tree scopes.
 - Show suggested actions in human worklist output so maintainers can triage
   without switching to JSON.
+- Show multiple proof commands in human worklist output for local follow-up and
+  refreshed worklist routing.
 
 Planned work:
 

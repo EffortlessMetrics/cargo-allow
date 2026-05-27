@@ -2340,7 +2340,7 @@ fn render_worklist_human_with_context(items: &[WorkItem], context: WorklistConte
         for action in item.suggested_actions.iter().take(2) {
             out.push_str(&format!("  action: {action}\n"));
         }
-        if let Some(command) = item.proof_commands.first() {
+        for command in item.proof_commands.iter().take(3) {
             out.push_str(&format!("  proof: {command}\n"));
         }
     }
@@ -4155,6 +4155,8 @@ mod tests {
         assert!(text.contains("work-new-unreceipted-finding-0001"));
         assert!(text.contains("exception: unsafe.unsafe_fn"));
         assert!(text.contains("action: remove the new source exception if it is accidental"));
+        assert!(text.contains("proof: cargo-allow check --kind unsafe --mode no-new"));
+        assert!(text.contains("proof: cargo-allow worklist --kind unsafe --format json"));
         assert!(text.contains("Difficulty:"));
         assert!(text.contains("  medium    1"));
     }
