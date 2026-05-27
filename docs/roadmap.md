@@ -305,6 +305,8 @@ Completed:
 - Add a versioned JSON schema for `cargo-allow.worklist.v1`.
 - Emit advisory `broad_scope` work items for matched allow entries that still
   use wildcard source-tree scopes.
+- Emit advisory `baseline_debt` work items for matched generated baseline
+  entries so temporary debt stays visible after no-new passes.
 - Show suggested actions in human worklist output so maintainers can triage
   without switching to JSON.
 - Show multiple proof commands in human worklist output for local follow-up and
