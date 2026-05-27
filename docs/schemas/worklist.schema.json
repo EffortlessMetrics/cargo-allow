@@ -10,6 +10,7 @@
     "tool",
     "command",
     "claim_boundary",
+    "inventory",
     "summary",
     "work_items"
   ],
@@ -35,6 +36,9 @@
         "const": "source_tree_inventory"
       }
     },
+    "inventory": {
+      "$ref": "#/$defs/inventory"
+    },
     "summary": {
       "$ref": "#/$defs/summary"
     },
@@ -46,6 +50,37 @@
     }
   },
   "$defs": {
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "scanner", "source"],
+      "properties": {
+        "scope": {
+          "const": "source_tree"
+        },
+        "scanner": {
+          "const": "source_syntax"
+        },
+        "source": {
+          "enum": [
+            "unknown",
+            "git_tracked",
+            "filesystem_fallback",
+            "filesystem_include_untracked"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Local source-tree root used for this worklist. This may be an absolute path in local artifacts."
+        },
+        "files_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of source-tree inventory files considered before scanner filtering, when a full inventory was collected."
+        }
+      }
+    },
     "summary": {
       "type": "object",
       "additionalProperties": false,
