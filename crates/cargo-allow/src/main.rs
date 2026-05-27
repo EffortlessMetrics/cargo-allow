@@ -1345,6 +1345,14 @@ fn render_list_rows_json(
         .collect::<Vec<_>>();
     let mut out = String::new();
     out.push_str("{\n");
+    out.push_str(&format!(
+        "  \"schema_version\": {},\n",
+        allow_report::LIST_SCHEMA_VERSION
+    ));
+    out.push_str(&format!(
+        "  \"schema_id\": \"{}\",\n",
+        allow_report::LIST_SCHEMA_ID
+    ));
     out.push_str("  \"tool\": \"cargo-allow\",\n");
     out.push_str("  \"command\": \"list\",\n");
     out.push_str(&format!(
@@ -4915,6 +4923,11 @@ mod tests {
 
         let json = render_list_rows_json(&[row], &filters, context);
 
+        assert!(json.contains("\"schema_version\": 1"));
+        assert!(json.contains(&format!(
+            "\"schema_id\": \"{}\"",
+            allow_report::LIST_SCHEMA_ID
+        )));
         assert!(json.contains("\"command\": \"list\""));
         assert!(json.contains("\"claim_boundary\""));
         assert!(json.contains("\"scanner_limitations\""));

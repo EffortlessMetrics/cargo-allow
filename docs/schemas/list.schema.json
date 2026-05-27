@@ -1,0 +1,346 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/list.v1.schema.json",
+  "title": "cargo-allow list v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "command",
+    "claim_boundary",
+    "scanner_limitations",
+    "inventory",
+    "filters",
+    "summary",
+    "allow_entries"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "schema_id": {
+      "type": "string",
+      "const": "cargo-allow.list.v1"
+    },
+    "tool": {
+      "type": "string",
+      "const": "cargo-allow"
+    },
+    "command": {
+      "type": "string",
+      "const": "list"
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "source_tree_inventory",
+          "source_syntax_only",
+          "cargo_metadata_not_invoked",
+          "cargo_commands_not_invoked",
+          "rustc_not_invoked",
+          "clippy_not_invoked",
+          "build_scripts_not_executed",
+          "proc_macros_not_executed",
+          "macro_expansion_not_analyzed",
+          "macro_token_tree_contents_not_analyzed",
+          "type_information_not_analyzed",
+          "mir_not_analyzed",
+          "build_output_not_analyzed",
+          "control_flow_not_analyzed",
+          "data_flow_not_analyzed",
+          "repository_code_not_executed"
+        ]
+      },
+      "contains": {
+        "const": "source_tree_inventory"
+      },
+      "description": "Explicit source-tree claim boundary for this filtered list artifact."
+    },
+    "scanner_limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "cargo_metadata_not_invoked",
+          "cargo_commands_not_invoked",
+          "rustc_not_invoked",
+          "clippy_not_invoked",
+          "build_scripts_not_executed",
+          "proc_macros_not_executed",
+          "macro_expansion_not_analyzed",
+          "macro_token_tree_contents_not_analyzed",
+          "type_information_not_analyzed",
+          "mir_not_analyzed",
+          "build_output_not_analyzed",
+          "control_flow_not_analyzed",
+          "data_flow_not_analyzed",
+          "repository_code_not_executed"
+        ]
+      },
+      "contains": {
+        "const": "cargo_metadata_not_invoked"
+      },
+      "description": "Explicit scanner_limitation and execution limitation values for this filtered list artifact."
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "scanner", "source"],
+      "properties": {
+        "scope": {
+          "type": "string",
+          "const": "source_tree"
+        },
+        "scanner": {
+          "type": "string",
+          "const": "source_syntax"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "git_tracked",
+            "filesystem_fallback",
+            "filesystem_include_untracked"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Local source-tree root used for this list artifact. This may be an absolute path."
+        },
+        "files_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of source-tree inventory files considered before scanner filtering, when collected."
+        }
+      }
+    },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "family",
+        "owner",
+        "classification",
+        "path",
+        "source_package",
+        "status",
+        "expired",
+        "review_due",
+        "stale",
+        "baseline_debt",
+        "broad_scope",
+        "missing_evidence"
+      ],
+      "properties": {
+        "kind": {
+          "type": ["string", "null"],
+          "description": "Applied --kind filter, or null when all governed kinds are included."
+        },
+        "family": {
+          "type": ["string", "null"],
+          "description": "Applied --family filter, or null when all scanner or policy families are included."
+        },
+        "owner": {
+          "type": ["string", "null"],
+          "description": "Applied --owner filter, or null when all policy owners are included."
+        },
+        "classification": {
+          "type": ["string", "null"],
+          "description": "Applied --classification filter, or null when all policy classifications are included."
+        },
+        "path": {
+          "type": ["string", "null"],
+          "description": "Applied --path source-tree path or path-prefix filter, or null when all scopes are included."
+        },
+        "source_package": {
+          "type": ["string", "null"],
+          "description": "Applied --source-package filter, or null when all scanner-provided source package contexts are included."
+        },
+        "status": {
+          "type": ["string", "null"],
+          "enum": [
+            "matched",
+            "new",
+            "stale",
+            "expired",
+            "review_due",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "evidence_missing",
+            "baseline_debt",
+            null
+          ],
+          "description": "Applied --status filter, or null when all current ledger statuses are included."
+        },
+        "expired": {
+          "type": "boolean",
+          "description": "Applied --expired shortcut filter."
+        },
+        "review_due": {
+          "type": "boolean",
+          "description": "Applied --review-due shortcut filter."
+        },
+        "stale": {
+          "type": "boolean",
+          "description": "Applied --stale shortcut filter."
+        },
+        "baseline_debt": {
+          "type": "boolean",
+          "description": "Applied --baseline-debt shortcut filter."
+        },
+        "broad_scope": {
+          "type": "boolean",
+          "description": "Applied --broad-scope shortcut filter."
+        },
+        "missing_evidence": {
+          "type": "boolean",
+          "description": "Applied --missing-evidence shortcut filter."
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allow_entries"],
+      "properties": {
+        "allow_entries": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "allow_entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/allow_entry"
+      }
+    }
+  },
+  "$defs": {
+    "claim_boundary_flag": {
+      "type": "string",
+      "enum": [
+        "source_tree_inventory",
+        "source_syntax_only",
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "repository_code_not_executed"
+      ]
+    },
+    "scanner_limitation": {
+      "type": "string",
+      "enum": [
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "repository_code_not_executed"
+      ]
+    },
+    "allow_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "matches",
+        "kind",
+        "family",
+        "owner",
+        "classification",
+        "scope",
+        "source_package",
+        "evidence_count",
+        "review_after",
+        "expires",
+        "reason"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "matched",
+            "new",
+            "stale",
+            "expired",
+            "review_due",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "evidence_missing",
+            "baseline_debt"
+          ]
+        },
+        "matches": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kind": {
+          "type": "string"
+        },
+        "family": {
+          "type": ["string", "null"]
+        },
+        "owner": {
+          "type": "string"
+        },
+        "classification": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "source_package": {
+          "type": ["string", "null"],
+          "description": "Scanner-provided source package context; not Cargo metadata or build proof."
+        },
+        "evidence_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_after": {
+          "type": ["string", "null"]
+        },
+        "expires": {
+          "type": ["string", "null"]
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
