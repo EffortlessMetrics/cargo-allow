@@ -189,6 +189,14 @@
           "type": ["string", "null"],
           "description": "Applied --classification filter, or null when all policy classifications are included."
         },
+        "baseline_debt": {
+          "type": "boolean",
+          "description": "Applied --baseline-debt filter. True means only generated baseline debt work items are included."
+        },
+        "broad_scope": {
+          "type": "boolean",
+          "description": "Applied --broad-scope filter. True means only broad source-tree scope advisory work items are included."
+        },
         "risk": {
           "type": ["string", "null"],
           "enum": ["low", "medium", "high", null],

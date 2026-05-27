@@ -384,6 +384,12 @@ struct WorklistArgs {
     /// Filter work items by policy classification.
     #[arg(long)]
     classification: Option<String>,
+    /// Include only generated baseline debt work items.
+    #[arg(long)]
+    baseline_debt: bool,
+    /// Include only broad source-tree scope advisory work items.
+    #[arg(long)]
+    broad_scope: bool,
     /// Filter work items by risk.
     #[arg(long, value_parser = ["low", "medium", "high"])]
     risk: Option<String>,
@@ -1907,6 +1913,8 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         source_package: args.source_package.as_deref(),
         owner: args.owner.as_deref(),
         classification: args.classification.as_deref(),
+        baseline_debt: args.baseline_debt,
+        broad_scope: args.broad_scope,
         risk: args.risk.as_deref(),
         difficulty: args.difficulty.as_deref(),
         missing_evidence: args.missing_evidence,
@@ -1977,6 +1985,8 @@ struct WorklistFilters<'a> {
     source_package: Option<&'a str>,
     owner: Option<&'a str>,
     classification: Option<&'a str>,
+    baseline_debt: bool,
+    broad_scope: bool,
     risk: Option<&'a str>,
     difficulty: Option<&'a str>,
     missing_evidence: bool,
@@ -2047,6 +2057,11 @@ fn filter_work_items(items: Vec<WorkItem>, filters: WorklistFilters<'_>) -> Vec<
                     .classification
                     .map(|classification| item.classification.as_deref() == Some(classification))
                     .unwrap_or(true)
+                && (!filters.baseline_debt
+                    || item.kind == "baseline_debt"
+                    || item.classification.as_deref() == Some("baseline_debt")
+                    || item.status == MatchStatus::BaselineDebt)
+                && (!filters.broad_scope || item.kind == "broad_scope")
                 && filters.risk.map(|risk| item.risk == risk).unwrap_or(true)
                 && filters
                     .difficulty
@@ -2855,6 +2870,14 @@ fn worklist_filters_json(filters: WorklistFilters<'_>, indent: &str) -> String {
         option_json_string(filters.classification)
     ));
     out.push_str(&format!(
+        "{indent}  \"baseline_debt\": {},\n",
+        filters.baseline_debt
+    ));
+    out.push_str(&format!(
+        "{indent}  \"broad_scope\": {},\n",
+        filters.broad_scope
+    ));
+    out.push_str(&format!(
         "{indent}  \"risk\": {},\n",
         option_json_string(filters.risk)
     ));
@@ -2898,6 +2921,12 @@ fn worklist_filters_human(filters: WorklistFilters<'_>) -> String {
     }
     if let Some(classification) = filters.classification {
         parts.push(format!("classification={classification}"));
+    }
+    if filters.baseline_debt {
+        parts.push("baseline_debt=true".to_string());
+    }
+    if filters.broad_scope {
+        parts.push("broad_scope=true".to_string());
     }
     if let Some(risk) = filters.risk {
         parts.push(format!("risk={risk}"));
@@ -4991,6 +5020,8 @@ mod tests {
             "runtime",
             "--classification",
             "baseline_debt",
+            "--baseline-debt",
+            "--broad-scope",
             "--risk",
             "medium",
             "--difficulty",
@@ -5017,6 +5048,8 @@ mod tests {
                 source_package: Some(source_package),
                 owner: Some(owner),
                 classification: Some(classification),
+                baseline_debt: true,
+                broad_scope: true,
                 risk: Some(risk),
                 difficulty: Some(difficulty),
                 missing_evidence: true,
@@ -5240,6 +5273,8 @@ mod tests {
         assert!(schema.contains("\"allow_id\""));
         assert!(schema.contains("\"path\""));
         assert!(schema.contains("\"source_package\""));
+        assert!(schema.contains("\"baseline_debt\""));
+        assert!(schema.contains("\"broad_scope\""));
         assert!(schema.contains("\"missing_evidence\""));
         assert!(schema.contains("\"inventory\""));
         assert!(schema.contains("\"git_tracked\""));
@@ -5292,6 +5327,8 @@ mod tests {
                 source_package: Some("allow-core"),
                 owner: Some("runtime"),
                 classification: Some("baseline_debt"),
+                baseline_debt: true,
+                broad_scope: true,
                 risk: Some("high"),
                 difficulty: Some("medium"),
                 missing_evidence: true,
@@ -5311,11 +5348,13 @@ mod tests {
         assert!(json.contains("\"source_package\": \"allow-core\""));
         assert!(json.contains("\"owner\": \"runtime\""));
         assert!(json.contains("\"classification\": \"baseline_debt\""));
+        assert!(json.contains("\"baseline_debt\": true"));
+        assert!(json.contains("\"broad_scope\": true"));
         assert!(json.contains("\"risk\": \"high\""));
         assert!(json.contains("\"difficulty\": \"medium\""));
         assert!(json.contains("\"missing_evidence\": true"));
         assert!(human.contains(
-            "Filters: kind=unsafe, family=unsafe_fn, item_kind=baseline_debt, status=baseline_debt, allow_id=allow-0001, path=crates/allow-core, source_package=allow-core, owner=runtime, classification=baseline_debt, risk=high, difficulty=medium, missing_evidence=true"
+            "Filters: kind=unsafe, family=unsafe_fn, item_kind=baseline_debt, status=baseline_debt, allow_id=allow-0001, path=crates/allow-core, source_package=allow-core, owner=runtime, classification=baseline_debt, baseline_debt=true, broad_scope=true, risk=high, difficulty=medium, missing_evidence=true"
         ));
     }
 
@@ -5753,6 +5792,67 @@ mod tests {
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
         assert_eq!(item.allow_id.as_deref(), Some("allow-second"));
+    }
+
+    #[test]
+    fn worklist_filters_by_advisory_shortcuts() {
+        let baseline = WorkItem {
+            id: "work-baseline-debt-0001".to_string(),
+            kind: "baseline_debt".to_string(),
+            exception_kind: Some("panic".to_string()),
+            family: Some("unwrap".to_string()),
+            owner: Some("runtime".to_string()),
+            classification: Some("baseline_debt".to_string()),
+            reason: Some("fixture".to_string()),
+            created: None,
+            review_after: None,
+            expires: Some("2026-08-01".to_string()),
+            evidence_count: Some(0),
+            risk: "medium",
+            difficulty: "medium",
+            status: MatchStatus::BaselineDebt,
+            allow_id: Some("allow-baseline".to_string()),
+            finding_index: None,
+            path: Some("src/lib.rs".to_string()),
+            source_package: None,
+            message: "baseline debt".to_string(),
+            suggested_actions: Vec::new(),
+            proof_commands: Vec::new(),
+        };
+        let mut broad = baseline.clone();
+        broad.id = "work-broad-scope-0002".to_string();
+        broad.kind = "broad_scope".to_string();
+        broad.classification = Some("reviewed_exception".to_string());
+        broad.status = MatchStatus::Matched;
+        broad.allow_id = Some("allow-broad".to_string());
+        let mut stale = broad.clone();
+        stale.id = "work-stale-0003".to_string();
+        stale.kind = "stale_allow".to_string();
+        stale.status = MatchStatus::Stale;
+        stale.allow_id = Some("allow-stale".to_string());
+
+        let baseline_filtered = filter_work_items(
+            vec![baseline.clone(), broad.clone(), stale.clone()],
+            WorklistFilters {
+                baseline_debt: true,
+                ..WorklistFilters::default()
+            },
+        );
+        let broad_filtered = filter_work_items(
+            vec![baseline, broad, stale],
+            WorklistFilters {
+                broad_scope: true,
+                ..WorklistFilters::default()
+            },
+        );
+
+        assert_eq!(baseline_filtered.len(), 1);
+        assert_eq!(
+            baseline_filtered[0].allow_id.as_deref(),
+            Some("allow-baseline")
+        );
+        assert_eq!(broad_filtered.len(), 1);
+        assert_eq!(broad_filtered[0].allow_id.as_deref(), Some("allow-broad"));
     }
 
     #[test]

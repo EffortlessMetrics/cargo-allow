@@ -356,6 +356,8 @@ Completed:
   file or subtree-local queues.
 - Filter worklist output to policy-backed items with missing evidence so agents
   can take bounded evidence-gap slices without parsing item-kind details.
+- Add `--baseline-debt` and `--broad-scope` worklist shortcuts so common
+  generated-debt and wildcard-scope advisory queues are easy to route.
 
 Planned work:
 
