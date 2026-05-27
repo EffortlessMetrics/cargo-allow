@@ -110,11 +110,12 @@ Weak selectors include:
 - missing callee, macro name, or lint where applicable.
 - line-only matching.
 
-Diff mode reports precision loss as policy weakening. The current precision
-score rewards exact paths and structural selector fields such as AST kind,
-container, callee, macro name, lint, symbol/fingerprints, snippet hash, and
-occurrence limits. It deliberately does not reward line hints, because line and
-column are review hints rather than identity.
+Diff mode reports precision loss as policy weakening and precision increases as
+policy improvements. The current precision score rewards exact paths and
+structural selector fields such as AST kind, container, callee, macro name,
+lint, symbol/fingerprints, snippet hash, and occurrence limits. It deliberately
+does not reward line hints, because line and column are review hints rather than
+identity.
 
 ## Lifecycle
 

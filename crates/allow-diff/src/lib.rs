@@ -219,6 +219,7 @@ pub enum PolicyChangeKind {
     BaselineDebtAdded,
     ScopeBroadened,
     SelectorPrecisionDecreased,
+    SelectorPrecisionIncreased,
     ExpiryExtended,
     ReviewAfterExtended,
     EvidenceRemoved,
@@ -236,6 +237,7 @@ impl PolicyChangeKind {
             Self::BaselineDebtAdded => "baseline_debt_added",
             Self::ScopeBroadened => "scope_broadened",
             Self::SelectorPrecisionDecreased => "selector_precision_decreased",
+            Self::SelectorPrecisionIncreased => "selector_precision_increased",
             Self::ExpiryExtended => "expiry_extended",
             Self::ReviewAfterExtended => "review_after_extended",
             Self::EvidenceRemoved => "evidence_removed",
@@ -401,6 +403,16 @@ fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<PolicyChang
             severity: PolicyChangeSeverity::Fail,
             message: format!(
                 "{} selector precision decreased: {} -> {}",
+                head.id, base_precision, head_precision
+            ),
+        });
+    } else if head_precision > base_precision {
+        changes.push(PolicyChange {
+            allow_id: head.id.clone(),
+            kind: PolicyChangeKind::SelectorPrecisionIncreased,
+            severity: PolicyChangeSeverity::Improvement,
+            message: format!(
+                "{} selector precision increased: {} -> {}",
                 head.id, base_precision, head_precision
             ),
         });
@@ -709,6 +721,23 @@ mod tests {
         assert!(changes.iter().any(|change| {
             change.kind == PolicyChangeKind::SelectorPrecisionDecreased
                 && change.message.contains("decreased")
+        }));
+    }
+
+    #[test]
+    fn detects_selector_precision_increase_as_improvement() {
+        let mut weaker = entry("allow-1");
+        weaker.selector.normalized_snippet_hash = None;
+        weaker.selector.container = None;
+        let base = config_with(weaker);
+        let head = config_with(entry("allow-1"));
+
+        let changes = policy_changes(&base, &head);
+
+        assert!(changes.iter().any(|change| {
+            change.kind == PolicyChangeKind::SelectorPrecisionIncreased
+                && change.severity == PolicyChangeSeverity::Improvement
+                && change.message.contains("increased")
         }));
     }
 
