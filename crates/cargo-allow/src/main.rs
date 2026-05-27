@@ -1,6 +1,6 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, Lifecycle,
-    MatchOutcome, MatchStatus, Selector, SimpleDate, json_escape, normalize_path,
+    MatchOutcome, MatchStatus, Selector, SimpleDate, glob_matches_str, json_escape, normalize_path,
 };
 use allow_inventory::{
     InventoryOptions, InventorySource, inventory, inventory_files, resolve_source_tree_root,
@@ -204,6 +204,9 @@ struct ListArgs {
     /// Filter allow entries by classification.
     #[arg(long)]
     classification: Option<String>,
+    /// Filter allow entries by source-tree path or path prefix.
+    #[arg(long)]
+    path: Option<String>,
     /// Filter allow entries by scanner-provided source-tree package context.
     #[arg(long)]
     source_package: Option<String>,
@@ -1088,6 +1091,7 @@ fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         kind: parsed_filter,
         owner: args.owner.as_deref(),
         classification: args.classification.as_deref(),
+        path: args.path.as_deref(),
         source_package: args.source_package.as_deref(),
         expired: args.expired,
         review_due: args.review_due,
@@ -1119,6 +1123,7 @@ struct ListFilters<'a> {
     kind: Option<KindFilter>,
     owner: Option<&'a str>,
     classification: Option<&'a str>,
+    path: Option<&'a str>,
     source_package: Option<&'a str>,
     expired: bool,
     review_due: bool,
@@ -1250,6 +1255,11 @@ fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
     }
     if let Some(classification) = filters.classification {
         if row.classification != classification {
+            return false;
+        }
+    }
+    if let Some(path) = filters.path {
+        if !source_tree_path_matches_filter(&row.scope, path) {
             return false;
         }
     }
@@ -1963,7 +1973,7 @@ fn filter_work_items(items: Vec<WorkItem>, filters: WorklistFilters<'_>) -> Vec<
                     .map(|path| {
                         item.path
                             .as_deref()
-                            .map(|item_path| worklist_path_matches(item_path, path))
+                            .map(|item_path| source_tree_path_matches_filter(item_path, path))
                             .unwrap_or(false)
                     })
                     .unwrap_or(true)
@@ -1988,7 +1998,7 @@ fn filter_work_items(items: Vec<WorkItem>, filters: WorklistFilters<'_>) -> Vec<
         .collect()
 }
 
-fn worklist_path_matches(item_path: &str, filter_path: &str) -> bool {
+fn source_tree_path_matches_filter(item_path: &str, filter_path: &str) -> bool {
     let item_path = normalize_path(item_path);
     let filter_path = normalize_path(filter_path);
     let filter_path = filter_path.trim_end_matches('/');
@@ -2000,6 +2010,7 @@ fn worklist_path_matches(item_path: &str, filter_path: &str) -> bool {
             .strip_prefix(filter_path)
             .map(|suffix| suffix.starts_with('/'))
             .unwrap_or(false)
+        || (scope_has_wildcard(&item_path) && glob_matches_str(&item_path, filter_path))
 }
 
 fn sort_work_items(items: &mut [WorkItem]) {
@@ -3940,6 +3951,8 @@ mod tests {
             "runtime",
             "--classification",
             "baseline_debt",
+            "--path",
+            "crates/allow-core",
             "--source-package",
             "allow-core",
             "--expired",
@@ -3956,6 +3969,7 @@ mod tests {
                 kind: Some(kind),
                 owner: Some(owner),
                 classification: Some(classification),
+                path: Some(path),
                 source_package: Some(source_package),
                 expired: true,
                 review_due: true,
@@ -3966,6 +3980,7 @@ mod tests {
             })) if kind == "unsafe"
                 && owner == "runtime"
                 && classification == "baseline_debt"
+                && path == "crates/allow-core"
                 && source_package == "allow-core"
         ));
     }
@@ -4251,6 +4266,7 @@ mod tests {
             })),
             owner: Some("runtime"),
             classification: Some("baseline_debt"),
+            path: None,
             source_package: None,
             expired: false,
             review_due: false,
@@ -4285,6 +4301,7 @@ mod tests {
             kind: None,
             owner: None,
             classification: Some("reviewed_exception"),
+            path: None,
             source_package: None,
             expired: false,
             review_due: false,
@@ -4310,6 +4327,7 @@ mod tests {
             kind: None,
             owner: None,
             classification: None,
+            path: None,
             source_package: Some("allow-core"),
             expired: false,
             review_due: false,
@@ -4320,6 +4338,39 @@ mod tests {
         let text = render_list_rows(&rows, &filters);
 
         assert!(text.contains("allow-core"));
+        assert!(!text.contains("allow-rust"));
+    }
+
+    #[test]
+    fn render_list_rows_filters_path_prefix_and_covering_glob() {
+        let mut allow_core = list_row("allow-core", FindingKind::Panic, "parser", "baseline_debt");
+        allow_core.scope = "crates/allow-core/src/lib.rs".to_string();
+        let mut broad = list_row(
+            "allow-broad",
+            FindingKind::NonRustFile,
+            "tools",
+            "baseline_debt",
+        );
+        broad.scope = "crates/allow-core/**".to_string();
+        let mut allow_rust = list_row("allow-rust", FindingKind::Panic, "scanner", "baseline_debt");
+        allow_rust.scope = "crates/allow-rust/src/lib.rs".to_string();
+        let rows = vec![allow_core, broad, allow_rust];
+        let filters = ListFilters {
+            kind: None,
+            owner: None,
+            classification: None,
+            path: Some(r"crates\allow-core"),
+            source_package: None,
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(text.contains("allow-core"));
+        assert!(text.contains("allow-broad"));
         assert!(!text.contains("allow-rust"));
     }
 
