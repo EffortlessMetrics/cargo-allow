@@ -324,6 +324,8 @@ Completed:
   handles match the presented order.
 - Include owner, classification, and reason on policy-backed worklist items so
   humans and agents can route work before running `explain`.
+- Include lifecycle dates and evidence counts on policy-backed worklist items so
+  expiry pressure and weak evidence are visible in the queue.
 
 Planned work:
 

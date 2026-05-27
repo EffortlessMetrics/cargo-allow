@@ -1808,6 +1808,10 @@ struct WorkItem {
     owner: Option<String>,
     classification: Option<String>,
     reason: Option<String>,
+    created: Option<String>,
+    review_after: Option<String>,
+    expires: Option<String>,
+    evidence_count: Option<usize>,
     risk: &'static str,
     difficulty: &'static str,
     status: MatchStatus,
@@ -1944,6 +1948,10 @@ fn work_item_from_outcome(
         owner: entry.map(|entry| entry.owner.clone()),
         classification: entry.map(|entry| entry.classification.clone()),
         reason: entry.map(|entry| entry.reason.clone()),
+        created: entry.and_then(|entry| entry.lifecycle.created.clone()),
+        review_after: entry.and_then(|entry| entry.lifecycle.review_after.clone()),
+        expires: entry.and_then(|entry| entry.lifecycle.expires.clone()),
+        evidence_count: entry.map(|entry| entry.evidence.len()),
         risk: work_item_risk(&kind, outcome.status, finding, entry),
         difficulty: work_item_difficulty(&kind, finding, entry),
         status: outcome.status,
@@ -1985,6 +1993,10 @@ fn work_items_from_evidence_diagnostics(
                 owner: Some(entry.owner.clone()),
                 classification: Some(entry.classification.clone()),
                 reason: Some(entry.reason.clone()),
+                created: entry.lifecycle.created.clone(),
+                review_after: entry.lifecycle.review_after.clone(),
+                expires: entry.lifecycle.expires.clone(),
+                evidence_count: Some(entry.evidence.len()),
                 risk: if entry.kind == FindingKind::Unsafe {
                     "high"
                 } else {
@@ -2037,6 +2049,10 @@ fn work_items_from_policy_advisories(
                 owner: Some(entry.owner.clone()),
                 classification: Some(entry.classification.clone()),
                 reason: Some(entry.reason.clone()),
+                created: entry.lifecycle.created.clone(),
+                review_after: entry.lifecycle.review_after.clone(),
+                expires: entry.lifecycle.expires.clone(),
+                evidence_count: Some(entry.evidence.len()),
                 risk: work_item_risk(&kind, MatchStatus::BaselineDebt, finding, Some(entry)),
                 difficulty: work_item_difficulty(&kind, finding, Some(entry)),
                 status: MatchStatus::BaselineDebt,
@@ -2067,6 +2083,10 @@ fn work_items_from_policy_advisories(
                 owner: Some(entry.owner.clone()),
                 classification: Some(entry.classification.clone()),
                 reason: Some(entry.reason.clone()),
+                created: entry.lifecycle.created.clone(),
+                review_after: entry.lifecycle.review_after.clone(),
+                expires: entry.lifecycle.expires.clone(),
+                evidence_count: Some(entry.evidence.len()),
                 risk: "medium",
                 difficulty: "small",
                 status: MatchStatus::Matched,
@@ -2431,6 +2451,22 @@ fn render_work_item_json(item: &WorkItem) -> String {
         "      \"reason\": {},\n",
         option_json_string(item.reason.as_deref())
     ));
+    out.push_str(&format!(
+        "      \"created\": {},\n",
+        option_json_string(item.created.as_deref())
+    ));
+    out.push_str(&format!(
+        "      \"review_after\": {},\n",
+        option_json_string(item.review_after.as_deref())
+    ));
+    out.push_str(&format!(
+        "      \"expires\": {},\n",
+        option_json_string(item.expires.as_deref())
+    ));
+    out.push_str(&format!(
+        "      \"evidence_count\": {},\n",
+        option_usize_json(item.evidence_count)
+    ));
     out.push_str(&format!("      \"risk\": \"{}\",\n", item.risk));
     out.push_str(&format!("      \"difficulty\": \"{}\",\n", item.difficulty));
     out.push_str(&format!(
@@ -2519,6 +2555,18 @@ fn render_worklist_human_with_context(items: &[WorkItem], context: WorklistConte
         }
         if let Some(reason) = &item.reason {
             out.push_str(&format!("  reason: {reason}\n"));
+        }
+        if let Some(created) = &item.created {
+            out.push_str(&format!("  created: {created}\n"));
+        }
+        if let Some(review_after) = &item.review_after {
+            out.push_str(&format!("  review_after: {review_after}\n"));
+        }
+        if let Some(expires) = &item.expires {
+            out.push_str(&format!("  expires: {expires}\n"));
+        }
+        if let Some(evidence_count) = item.evidence_count {
+            out.push_str(&format!("  evidence: {evidence_count} reference(s)\n"));
         }
         if let Some(exception_kind) = &item.exception_kind {
             out.push_str(&format!("  exception: {exception_kind}"));
@@ -2625,6 +2673,12 @@ fn difficulty_count(items: &[WorkItem], difficulty: &str) -> usize {
 fn option_json_string(value: Option<&str>) -> String {
     value
         .map(|value| format!("\"{}\"", json_escape(value)))
+        .unwrap_or_else(|| "null".to_string())
+}
+
+fn option_usize_json(value: Option<usize>) -> String {
+    value
+        .map(|value| value.to_string())
         .unwrap_or_else(|| "null".to_string())
 }
 
@@ -4531,8 +4585,12 @@ mod tests {
     #[test]
     fn worklist_json_emits_stale_allow_actions() {
         let mut cfg = AllowConfig::empty();
-        cfg.allow
-            .push(test_entry("allow-file", FindingKind::NonRustFile));
+        let mut entry = test_entry("allow-file", FindingKind::NonRustFile);
+        entry.lifecycle.created = Some("2026-05-01".to_string());
+        entry.lifecycle.review_after = Some("2026-06-01".to_string());
+        entry.lifecycle.expires = Some("2026-08-01".to_string());
+        entry.evidence = vec!["doc:docs/policy/file.md".to_string()];
+        cfg.allow.push(entry);
         let outcomes = vec![test_outcome(
             MatchStatus::Stale,
             Some("allow-file"),
@@ -4561,6 +4619,10 @@ mod tests {
         assert!(json.contains("\"owner\": \"owner\""));
         assert!(json.contains("\"classification\": \"classification\""));
         assert!(json.contains("\"reason\": \"reason\""));
+        assert!(json.contains("\"created\": \"2026-05-01\""));
+        assert!(json.contains("\"review_after\": \"2026-06-01\""));
+        assert!(json.contains("\"expires\": \"2026-08-01\""));
+        assert!(json.contains("\"evidence_count\": 1"));
         assert!(json.contains("\"risk\": \"low\""));
         assert!(json.contains("\"small_difficulty\": 1"));
         assert!(json.contains("\"medium_difficulty\": 0"));
@@ -4570,6 +4632,10 @@ mod tests {
         assert!(human.contains("owner: owner"));
         assert!(human.contains("classification: classification"));
         assert!(human.contains("reason: reason"));
+        assert!(human.contains("created: 2026-05-01"));
+        assert!(human.contains("review_after: 2026-06-01"));
+        assert!(human.contains("expires: 2026-08-01"));
+        assert!(human.contains("evidence: 1 reference(s)"));
     }
 
     #[test]
@@ -4582,6 +4648,10 @@ mod tests {
         assert!(schema.contains("\"owner\""));
         assert!(schema.contains("\"classification\""));
         assert!(schema.contains("\"reason\""));
+        assert!(schema.contains("\"created\""));
+        assert!(schema.contains("\"review_after\""));
+        assert!(schema.contains("\"expires\""));
+        assert!(schema.contains("\"evidence_count\""));
         assert!(schema.contains("\"source_package\""));
         assert!(schema.contains("\"proof_commands\""));
         assert!(schema.contains("\"scanner_limitations\""));
