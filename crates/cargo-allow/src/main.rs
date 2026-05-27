@@ -317,6 +317,9 @@ struct WorklistArgs {
     /// Filter findings by kind.
     #[arg(long)]
     kind: Option<String>,
+    /// Filter work items by scanner or policy family.
+    #[arg(long)]
+    family: Option<String>,
     /// Filter work items by queue item kind, such as stale_allow or baseline_debt.
     #[arg(long)]
     item_kind: Option<String>,
@@ -1810,6 +1813,7 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     ));
     let filters = WorklistFilters {
         kind: args.kind.as_deref(),
+        family: args.family.as_deref(),
         item_kind: args.item_kind.as_deref(),
         allow_id: args.allow_id.as_deref(),
         source_package: args.source_package.as_deref(),
@@ -1876,6 +1880,7 @@ struct WorklistContext<'a> {
 #[derive(Debug, Clone, Copy, Default)]
 struct WorklistFilters<'a> {
     kind: Option<&'a str>,
+    family: Option<&'a str>,
     item_kind: Option<&'a str>,
     allow_id: Option<&'a str>,
     source_package: Option<&'a str>,
@@ -1914,9 +1919,13 @@ fn filter_work_items(items: Vec<WorkItem>, filters: WorklistFilters<'_>) -> Vec<
         .into_iter()
         .filter(|item| {
             filters
-                .item_kind
-                .map(|item_kind| item.kind == item_kind)
+                .family
+                .map(|family| item.family.as_deref() == Some(family))
                 .unwrap_or(true)
+                && filters
+                    .item_kind
+                    .map(|item_kind| item.kind == item_kind)
+                    .unwrap_or(true)
                 && filters
                     .allow_id
                     .map(|allow_id| item.allow_id.as_deref() == Some(allow_id))
@@ -2693,6 +2702,10 @@ fn worklist_filters_json(filters: WorklistFilters<'_>, indent: &str) -> String {
         option_json_string(filters.kind)
     ));
     out.push_str(&format!(
+        "{indent}  \"family\": {},\n",
+        option_json_string(filters.family)
+    ));
+    out.push_str(&format!(
         "{indent}  \"item_kind\": {},\n",
         option_json_string(filters.item_kind)
     ));
@@ -2728,6 +2741,9 @@ fn worklist_filters_human(filters: WorklistFilters<'_>) -> String {
     let mut parts = Vec::new();
     if let Some(kind) = filters.kind {
         parts.push(format!("kind={kind}"));
+    }
+    if let Some(family) = filters.family {
+        parts.push(format!("family={family}"));
     }
     if let Some(item_kind) = filters.item_kind {
         parts.push(format!("item_kind={item_kind}"));
@@ -4602,6 +4618,8 @@ mod tests {
             "worklist",
             "--kind",
             "unsafe",
+            "--family",
+            "unsafe_fn",
             "--item-kind",
             "baseline_debt",
             "--allow-id",
@@ -4629,6 +4647,7 @@ mod tests {
             parsed.command,
             Some(CargoAllowCommand::Worklist(WorklistArgs {
                 kind: Some(kind),
+                family: Some(family),
                 item_kind: Some(item_kind),
                 allow_id: Some(allow_id),
                 source_package: Some(source_package),
@@ -4640,6 +4659,7 @@ mod tests {
                 output: Some(path),
                 ..
             })) if kind == "unsafe"
+                && family == "unsafe_fn"
                 && item_kind == "baseline_debt"
                 && allow_id == "allow-0001"
                 && source_package == "allow-core"
@@ -4847,6 +4867,7 @@ mod tests {
         assert!(schema.contains("\"small_difficulty\""));
         assert!(schema.contains("\"medium_difficulty\""));
         assert!(schema.contains("\"filters\""));
+        assert!(schema.contains("\"family\""));
         assert!(schema.contains("\"item_kind\""));
         assert!(schema.contains("\"allow_id\""));
         assert!(schema.contains("\"source_package\""));
@@ -4893,6 +4914,7 @@ mod tests {
             inventory_files: Some(46),
             filters: WorklistFilters {
                 kind: Some("unsafe"),
+                family: Some("unsafe_fn"),
                 item_kind: Some("baseline_debt"),
                 allow_id: Some("allow-0001"),
                 source_package: Some("allow-core"),
@@ -4908,6 +4930,7 @@ mod tests {
 
         assert!(json.contains("\"filters\""));
         assert!(json.contains("\"kind\": \"unsafe\""));
+        assert!(json.contains("\"family\": \"unsafe_fn\""));
         assert!(json.contains("\"item_kind\": \"baseline_debt\""));
         assert!(json.contains("\"allow_id\": \"allow-0001\""));
         assert!(json.contains("\"source_package\": \"allow-core\""));
@@ -4916,7 +4939,7 @@ mod tests {
         assert!(json.contains("\"risk\": \"high\""));
         assert!(json.contains("\"difficulty\": \"medium\""));
         assert!(human.contains(
-            "Filters: kind=unsafe, item_kind=baseline_debt, allow_id=allow-0001, source_package=allow-core, owner=runtime, classification=baseline_debt, risk=high, difficulty=medium"
+            "Filters: kind=unsafe, family=unsafe_fn, item_kind=baseline_debt, allow_id=allow-0001, source_package=allow-core, owner=runtime, classification=baseline_debt, risk=high, difficulty=medium"
         ));
     }
 
@@ -5356,6 +5379,45 @@ mod tests {
             .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
         assert_eq!(item.source_package.as_deref(), Some("allow-core"));
         assert_eq!(item.path.as_deref(), Some("crates/allow-core/src/lib.rs"));
+    }
+
+    #[test]
+    fn worklist_filters_by_family() {
+        let cfg = AllowConfig::empty();
+        let findings = vec![
+            test_finding(
+                FindingKind::Panic,
+                Some("unwrap"),
+                "src/unwrap.rs",
+                "method_call",
+            ),
+            test_finding(
+                FindingKind::Panic,
+                Some("expect"),
+                "src/expect.rs",
+                "method_call",
+            ),
+        ];
+        let outcomes = vec![
+            test_outcome(MatchStatus::New, None, Some(0), "unreceipted unwrap"),
+            test_outcome(MatchStatus::New, None, Some(1), "unreceipted expect"),
+        ];
+
+        let items = work_items_from_outcomes(&cfg, &findings, &outcomes);
+        let filtered = filter_work_items(
+            items,
+            WorklistFilters {
+                family: Some("unwrap"),
+                ..WorklistFilters::default()
+            },
+        );
+
+        assert_eq!(filtered.len(), 1);
+        let item = filtered
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
+        assert_eq!(item.family.as_deref(), Some("unwrap"));
+        assert_eq!(item.path.as_deref(), Some("src/unwrap.rs"));
     }
 
     #[test]

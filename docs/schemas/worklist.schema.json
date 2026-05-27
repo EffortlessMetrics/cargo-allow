@@ -144,6 +144,10 @@
           "type": ["string", "null"],
           "description": "Applied --kind filter, or null when the worklist includes all governed kinds."
         },
+        "family": {
+          "type": ["string", "null"],
+          "description": "Applied --family filter, or null when all scanner or policy families are included."
+        },
         "item_kind": {
           "type": ["string", "null"],
           "description": "Applied --item-kind filter, or null when all work item queue kinds are included."

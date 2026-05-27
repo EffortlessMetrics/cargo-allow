@@ -338,6 +338,8 @@ Completed:
   be reopened without relying on artifact-local `work-*` handles.
 - Filter worklist output by scanner-provided source package context without
   treating that context as Cargo metadata or build proof.
+- Filter worklist output by scanner or policy family so humans and agents can
+  take bounded exception-family slices.
 
 Planned work:
 
