@@ -3635,8 +3635,19 @@ mod tests {
         assert!(json.contains("\"repository_code_not_executed\""));
         assert!(json.contains("\"kind\": \"stale_allow\""));
         assert!(json.contains("\"risk\": \"low\""));
+        assert!(json.contains("\"source_package\": null"));
         assert!(json.contains("\"cargo-allow explain allow-file\""));
         assert!(json.contains("\"cargo-allow check --kind non-rust --mode no-new\""));
+    }
+
+    #[test]
+    fn worklist_schema_documents_current_contract() {
+        let schema = include_str!("../../../docs/schemas/worklist.schema.json");
+
+        assert!(schema.contains("\"cargo-allow.worklist.v1\""));
+        assert!(schema.contains("\"source_package\""));
+        assert!(schema.contains("\"proof_commands\""));
+        assert!(schema.contains("\"source_tree_inventory\""));
     }
 
     #[test]

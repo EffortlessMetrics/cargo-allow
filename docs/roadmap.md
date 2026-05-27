@@ -260,6 +260,7 @@ Completed:
   vague external validation placeholders.
 - Surface explicit source-tree package context in work items when a scanner
   provides it, without inferring Cargo metadata or build facts.
+- Add a versioned JSON schema for `cargo-allow.worklist.v1`.
 
 Planned work:
 
