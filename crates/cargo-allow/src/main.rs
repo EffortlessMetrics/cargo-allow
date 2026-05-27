@@ -1775,6 +1775,7 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     ));
     let mut items = filter_work_items(items, args.risk.as_deref(), args.difficulty.as_deref());
     sort_work_items(&mut items);
+    renumber_work_items(&mut items);
     let root_text = source_tree_root_text(&root);
     let context = WorklistContext {
         inventory_source: inventory_facts.source.as_str(),
@@ -1900,6 +1901,12 @@ fn work_item_difficulty_rank(difficulty: &str) -> u8 {
         "small" => 0,
         "medium" => 1,
         _ => 2,
+    }
+}
+
+fn renumber_work_items(items: &mut [WorkItem]) {
+    for (index, item) in items.iter_mut().enumerate() {
+        item.id = format!("work-{}-{:04}", item.kind.replace('_', "-"), index + 1);
     }
 }
 
@@ -4909,17 +4916,22 @@ mod tests {
 
         let mut items = work_items_from_outcomes(&cfg, &findings, &outcomes);
         sort_work_items(&mut items);
+        renumber_work_items(&mut items);
 
         assert_eq!(items[0].risk, "high");
         assert_eq!(items[0].family.as_deref(), Some("process_spawn"));
+        assert_eq!(items[0].id, "work-new-unreceipted-finding-0001");
         assert_eq!(items[1].risk, "medium");
         assert_eq!(items[1].difficulty, "small");
         assert_eq!(items[1].family.as_deref(), Some("shell_script"));
+        assert_eq!(items[1].id, "work-new-unreceipted-finding-0002");
         assert_eq!(items[2].risk, "medium");
         assert_eq!(items[2].difficulty, "medium");
         assert_eq!(items[2].family.as_deref(), Some("unwrap"));
+        assert_eq!(items[2].id, "work-new-unreceipted-finding-0003");
         assert_eq!(items[3].risk, "low");
         assert_eq!(items[3].kind, "stale_allow");
+        assert_eq!(items[3].id, "work-stale-allow-0004");
     }
 
     #[test]
