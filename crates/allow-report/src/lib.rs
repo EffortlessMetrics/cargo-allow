@@ -47,12 +47,16 @@ pub const CLAIM_BOUNDARY_TEXT: &str = "Claim boundary: scanned source-tree/sourc
 #[derive(Debug, Clone, Copy)]
 pub struct ReportContext<'a> {
     pub inventory_source: &'a str,
+    pub source_tree_root: Option<&'a str>,
+    pub inventory_files: Option<usize>,
 }
 
 impl Default for ReportContext<'static> {
     fn default() -> Self {
         Self {
             inventory_source: "unknown",
+            source_tree_root: None,
+            inventory_files: None,
         }
     }
 }
@@ -106,9 +110,13 @@ pub fn render_human_with_context(
     out.push_str(&format!("cargo-allow {command}\n\n"));
     out.push_str(&format!("Findings scanned: {}\n", findings.len()));
     out.push_str(&format!(
-        "Inventory: source_tree/source_syntax via {}\n",
-        context.inventory_source
+        "Inventory: source_tree/source_syntax via {}{}\n",
+        context.inventory_source,
+        inventory_files_suffix(context)
     ));
+    if let Some(root) = context.source_tree_root {
+        out.push_str(&format!("Source tree root: {root}\n"));
+    }
     for status in [
         MatchStatus::Matched,
         MatchStatus::New,
@@ -184,9 +192,16 @@ pub fn render_markdown_with_context(
     ));
     out.push_str(&format!("Findings scanned: `{}`\n\n", findings.len()));
     out.push_str(&format!(
-        "Inventory: `source_tree` / `source_syntax` via `{}`\n\n",
-        json_escape(context.inventory_source)
+        "Inventory: `source_tree` / `source_syntax` via `{}`{}\n\n",
+        json_escape(context.inventory_source),
+        inventory_files_markdown_suffix(context)
     ));
+    if let Some(root) = context.source_tree_root {
+        out.push_str(&format!(
+            "Source tree root: `{}`\n\n",
+            markdown_inline_code(root)
+        ));
+    }
     out.push_str("| Status | Count |\n|---|---:|\n");
     for status in [
         MatchStatus::Matched,
@@ -271,9 +286,16 @@ pub fn render_html_with_context(
         findings.len()
     ));
     out.push_str(&format!(
-        "<p>Inventory: <code>source_tree</code> / <code>source_syntax</code> via <code>{}</code></p>\n",
-        html_escape(context.inventory_source)
+        "<p>Inventory: <code>source_tree</code> / <code>source_syntax</code> via <code>{}</code>{}</p>\n",
+        html_escape(context.inventory_source),
+        inventory_files_html_suffix(context)
     ));
+    if let Some(root) = context.source_tree_root {
+        out.push_str(&format!(
+            "<p>Source tree root: <code>{}</code></p>\n",
+            html_escape(root)
+        ));
+    }
     out.push_str("<h2>Status Counts</h2>\n");
     render_status_count_table_html(&summary, &mut out);
     if command == "audit" {
@@ -454,14 +476,9 @@ pub fn render_json_with_context(
         "  \"scanner_limitations\": {},\n",
         json_string_array(SCANNER_LIMITATIONS)
     ));
-    out.push_str("  \"inventory\": {\n");
-    out.push_str("    \"scope\": \"source_tree\",\n");
-    out.push_str("    \"scanner\": \"source_syntax\",\n");
-    out.push_str(&format!(
-        "    \"source\": \"{}\"\n",
-        json_escape(context.inventory_source)
-    ));
-    out.push_str("  },\n");
+    out.push_str("  \"inventory\": ");
+    out.push_str(&inventory_json(context, "  "));
+    out.push_str(",\n");
     out.push_str("  \"summary\": {\n");
     out.push_str(&format!("    \"findings\": {},\n", findings.len()));
     out.push_str(&format!("    \"outcomes\": {},\n", summary.total));
@@ -591,14 +608,9 @@ pub fn render_sarif_with_context(
         if failed { "failed" } else { "passed" }
     ));
     out.push_str(&format!("        \"failed\": {},\n", bool_json(failed)));
-    out.push_str("        \"inventory\": {\n");
-    out.push_str("          \"scope\": \"source_tree\",\n");
-    out.push_str("          \"scanner\": \"source_syntax\",\n");
-    out.push_str(&format!(
-        "          \"source\": \"{}\"\n",
-        json_escape(context.inventory_source)
-    ));
-    out.push_str("        },\n");
+    out.push_str("        \"inventory\": ");
+    out.push_str(&inventory_json(context, "        "));
+    out.push_str(",\n");
     out.push_str(&format!(
         "        \"claim_boundary\": {},\n",
         json_string_array(CLAIM_BOUNDARY)
@@ -764,13 +776,13 @@ pub fn render_receipt_with_context(
 ) -> String {
     let summary = Summary::from_outcomes(outcomes);
     format!(
-        "{{\n  \"schema_version\": {RECEIPT_SCHEMA_VERSION},\n  \"schema_id\": \"{RECEIPT_SCHEMA_ID}\",\n  \"tool\": \"cargo-allow\",\n  \"command\": \"{}\",\n  \"status\": \"{}\",\n  \"failed\": {},\n  \"claim_boundary\": {},\n  \"scanner_limitations\": {},\n  \"inventory\": {{\n    \"scope\": \"source_tree\",\n    \"scanner\": \"source_syntax\",\n    \"source\": \"{}\"\n  }},\n  \"counts\": {{\n{}  }}\n}}\n",
+        "{{\n  \"schema_version\": {RECEIPT_SCHEMA_VERSION},\n  \"schema_id\": \"{RECEIPT_SCHEMA_ID}\",\n  \"tool\": \"cargo-allow\",\n  \"command\": \"{}\",\n  \"status\": \"{}\",\n  \"failed\": {},\n  \"claim_boundary\": {},\n  \"scanner_limitations\": {},\n  \"inventory\": {},\n  \"counts\": {{\n{}  }}\n}}\n",
         json_escape(command),
         if failed { "failed" } else { "passed" },
         bool_json(failed),
         json_string_array(CLAIM_BOUNDARY),
         json_string_array(SCANNER_LIMITATIONS),
-        json_escape(context.inventory_source),
+        inventory_json(context, "  "),
         render_counts_fields(&summary, "    ")
     )
 }
@@ -794,6 +806,53 @@ fn json_string_array(values: &[&str]) -> String {
             .collect::<Vec<_>>()
             .join(", ")
     )
+}
+
+fn inventory_json(context: ReportContext<'_>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("{indent}  \"scope\": \"source_tree\",\n"));
+    out.push_str(&format!("{indent}  \"scanner\": \"source_syntax\",\n"));
+    out.push_str(&format!(
+        "{indent}  \"source\": \"{}\"",
+        json_escape(context.inventory_source)
+    ));
+    if let Some(root) = context.source_tree_root {
+        out.push_str(",\n");
+        out.push_str(&format!("{indent}  \"root\": \"{}\"", json_escape(root)));
+    }
+    if let Some(files) = context.inventory_files {
+        out.push_str(",\n");
+        out.push_str(&format!("{indent}  \"files_scanned\": {files}"));
+    }
+    out.push('\n');
+    out.push_str(&format!("{indent}}}"));
+    out
+}
+
+fn inventory_files_suffix(context: ReportContext<'_>) -> String {
+    context
+        .inventory_files
+        .map(|files| format!("; files scanned: {files}"))
+        .unwrap_or_default()
+}
+
+fn inventory_files_markdown_suffix(context: ReportContext<'_>) -> String {
+    context
+        .inventory_files
+        .map(|files| format!("; files scanned: `{files}`"))
+        .unwrap_or_default()
+}
+
+fn inventory_files_html_suffix(context: ReportContext<'_>) -> String {
+    context
+        .inventory_files
+        .map(|files| format!("; files scanned: <code>{files}</code>"))
+        .unwrap_or_default()
+}
+
+fn markdown_inline_code(value: &str) -> String {
+    json_escape(value).replace('`', "\\`")
 }
 
 fn render_counts_fields(summary: &Summary, indent: &str) -> String {
@@ -1115,9 +1174,26 @@ mod tests {
     use allow_core::{Finding, FindingKind, Span, StructuralIdentity};
     use std::path::PathBuf;
 
+    fn context(source: &'static str) -> ReportContext<'static> {
+        ReportContext {
+            inventory_source: source,
+            ..ReportContext::default()
+        }
+    }
+
     #[test]
     fn json_contains_claim_boundary() {
-        let json = render_json("audit", &[], &[], false);
+        let json = render_json_with_context(
+            "audit",
+            &[],
+            &[],
+            false,
+            ReportContext {
+                inventory_source: "filesystem_fallback",
+                source_tree_root: Some("fixtures/source-snapshot"),
+                inventory_files: Some(7),
+            },
+        );
         assert!(json.contains("source_tree_inventory"));
         assert!(json.contains("cargo_metadata_not_invoked"));
         assert!(json.contains("cargo_commands_not_invoked"));
@@ -1132,14 +1208,26 @@ mod tests {
 
     #[test]
     fn json_report_exposes_v1_schema_contract() {
-        let json = render_json("audit", &[], &[], false);
+        let json = render_json_with_context(
+            "audit",
+            &[],
+            &[],
+            false,
+            ReportContext {
+                inventory_source: "filesystem_fallback",
+                source_tree_root: Some("fixtures/source-snapshot"),
+                inventory_files: Some(7),
+            },
+        );
         assert!(json.contains("\"schema_version\": 1"));
         assert!(json.contains("\"schema_id\": \"cargo-allow.report.v1\""));
         assert!(json.contains("\"failed\": false"));
         assert!(json.contains("\"scanner_limitations\""));
         assert!(json.contains("\"scope\": \"source_tree\""));
         assert!(json.contains("\"scanner\": \"source_syntax\""));
-        assert!(json.contains("\"source\": \"unknown\""));
+        assert!(json.contains("\"source\": \"filesystem_fallback\""));
+        assert!(json.contains("\"root\": \"fixtures/source-snapshot\""));
+        assert!(json.contains("\"files_scanned\": 7"));
         assert!(json.contains("\"review_due\": 0"));
         assert!(json.contains("\"baseline_debt\": 0"));
         assert!(json.contains("\"trend\""));
@@ -1182,15 +1270,8 @@ mod tests {
             },
         ];
 
-        let sarif = render_sarif_with_context(
-            "check",
-            &findings,
-            &outcomes,
-            true,
-            ReportContext {
-                inventory_source: "git_tracked",
-            },
-        );
+        let sarif =
+            render_sarif_with_context("check", &findings, &outcomes, true, context("git_tracked"));
 
         assert!(sarif.contains("\"version\": \"2.1.0\""));
         assert!(sarif.contains("\"name\": \"cargo-allow\""));
@@ -1211,12 +1292,16 @@ mod tests {
             true,
             ReportContext {
                 inventory_source: "git_tracked",
+                source_tree_root: Some("H:/Code/Rust/cargo-allow"),
+                inventory_files: Some(42),
             },
         );
         assert!(json.contains("\"schema_version\": 1"));
         assert!(json.contains("\"schema_id\": \"cargo-allow.receipt.v1\""));
         assert!(json.contains("\"failed\": true"));
         assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
+        assert!(json.contains("\"files_scanned\": 42"));
         assert!(json.contains("\"cargo_metadata_not_invoked\""));
         assert!(json.contains("\"cargo_commands_not_invoked\""));
         assert!(json.contains("\"build_output_not_analyzed\""));
@@ -1231,6 +1316,10 @@ mod tests {
         let receipt_schema = include_str!("../../../docs/schemas/receipt.schema.json");
         assert!(report_schema.contains(REPORT_SCHEMA_ID));
         assert!(receipt_schema.contains(RECEIPT_SCHEMA_ID));
+        assert!(report_schema.contains("\"files_scanned\""));
+        assert!(receipt_schema.contains("\"files_scanned\""));
+        assert!(report_schema.contains("\"root\""));
+        assert!(receipt_schema.contains("\"root\""));
     }
 
     #[test]
@@ -1255,10 +1344,15 @@ mod tests {
             false,
             ReportContext {
                 inventory_source: "filesystem_fallback",
+                source_tree_root: Some("fixtures/snapshot"),
+                inventory_files: Some(2),
             },
         );
 
-        assert!(text.contains("Inventory: source_tree/source_syntax via filesystem_fallback"));
+        assert!(text.contains(
+            "Inventory: source_tree/source_syntax via filesystem_fallback; files scanned: 2"
+        ));
+        assert!(text.contains("Source tree root: fixtures/snapshot"));
         assert!(text.contains("Non-Rust file inventory:"));
         assert!(text.contains("files scanned              2"));
         assert!(text.contains("new                        1"));
@@ -1287,10 +1381,15 @@ mod tests {
             false,
             ReportContext {
                 inventory_source: "git_tracked",
+                source_tree_root: Some("H:/Code/Rust/cargo-allow"),
+                inventory_files: Some(1),
             },
         );
 
-        assert!(text.contains("Inventory: `source_tree` / `source_syntax` via `git_tracked`"));
+        assert!(text.contains(
+            "Inventory: `source_tree` / `source_syntax` via `git_tracked`; files scanned: `1`"
+        ));
+        assert!(text.contains("Source tree root: `H:/Code/Rust/cargo-allow`"));
         assert!(text.contains("## Non-Rust File Inventory"));
         assert!(text.contains("| Files scanned | 1 |"));
         assert!(text.contains("| `ci_declarative` | 1 |"));
@@ -1315,15 +1414,8 @@ mod tests {
             score: 0,
         }];
 
-        let html = render_html_with_context(
-            "audit",
-            &findings,
-            &outcomes,
-            true,
-            ReportContext {
-                inventory_source: "git_tracked",
-            },
-        );
+        let html =
+            render_html_with_context("audit", &findings, &outcomes, true, context("git_tracked"));
 
         assert!(html.contains("<!doctype html>"));
         assert!(html.contains("<h1>cargo-allow audit</h1>"));
@@ -1363,9 +1455,7 @@ mod tests {
             &findings,
             &outcomes,
             false,
-            ReportContext {
-                inventory_source: "git_tracked",
-            },
+            context("git_tracked"),
         );
 
         assert!(text.contains("## Audit Summary"));

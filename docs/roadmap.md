@@ -15,6 +15,8 @@ Completed:
   snippet-hash matching regressions.
 - Define the product lane and claim boundaries in docs.
 - Stabilize current JSON reports and receipt schemas.
+- Thread source-tree root and inventory file-count facts into reports and
+  receipts without requiring Cargo project metadata or a successful build.
 - Replace handwritten TOML parsing with typed serde/toml policy loading.
 - Strengthen lifecycle and required-field validation.
 - Replace manual CLI parsing with clap.
@@ -34,9 +36,6 @@ Next:
 Goal: make the product surface stable enough for real users.
 
 Planned PRs:
-
-- Thread source-tree root and inventory facts into scanners and reports without
-  requiring Cargo project metadata or a successful build.
 
 ## Phase 3: Make Non-Rust Governance Useful
 
