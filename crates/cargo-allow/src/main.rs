@@ -28,6 +28,7 @@ mod migrate;
 mod propose;
 mod prune;
 mod render;
+mod reporting;
 mod worklist;
 
 pub(crate) use io::{write_file, write_file_no_overwrite};
@@ -36,6 +37,7 @@ pub(crate) use render::{
     option_json_string, option_usize_json, scope_has_wildcard, selector_from_finding,
     selector_json, source_package_name, source_tree_path_matches_filter, source_tree_root_text,
 };
+pub(crate) use reporting::{ReportRenderArgs, print_report};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -719,71 +721,6 @@ fn git_relative_config_path(root: &Path, config: Option<&Path>) -> CargoAllowRes
             root.display()
         ))
     })
-}
-
-struct ReportRenderArgs<'a> {
-    command: &'a str,
-    format: OutputFormat,
-    baseline_debt_entries: usize,
-    findings: &'a [Finding],
-    outcomes: &'a [allow_core::MatchOutcome],
-    failed: bool,
-    output: Option<&'a Path>,
-    root: &'a Path,
-    inventory_facts: InventoryFacts,
-}
-
-fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
-    let root_text = source_tree_root_text(args.root);
-    let context = allow_report::ReportContext {
-        inventory_source: args.inventory_facts.source.as_str(),
-        source_tree_root: Some(&root_text),
-        inventory_files: args.inventory_facts.files_scanned,
-        baseline_debt_entries: Some(args.baseline_debt_entries),
-    };
-    let text = match args.format {
-        OutputFormat::Human => allow_report::render_human_with_context(
-            args.command,
-            args.findings,
-            args.outcomes,
-            args.failed,
-            context,
-        ),
-        OutputFormat::Json => allow_report::render_json_with_context(
-            args.command,
-            args.findings,
-            args.outcomes,
-            args.failed,
-            context,
-        ),
-        OutputFormat::Html => allow_report::render_html_with_context(
-            args.command,
-            args.findings,
-            args.outcomes,
-            args.failed,
-            context,
-        ),
-        OutputFormat::Sarif => allow_report::render_sarif_with_context(
-            args.command,
-            args.findings,
-            args.outcomes,
-            args.failed,
-            context,
-        ),
-        OutputFormat::Markdown => allow_report::render_markdown_with_context(
-            args.command,
-            args.findings,
-            args.outcomes,
-            args.failed,
-            context,
-        ),
-    };
-    if let Some(path) = args.output {
-        write_file(path, &text)?;
-    } else {
-        println!("{text}");
-    }
-    Ok(())
 }
 
 #[cfg(test)]
