@@ -1,4 +1,7 @@
-use allow_core::{Finding, FindingKind, MatchOutcome, MatchStatus, json_escape, normalize_path};
+use allow_core::{
+    AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, MatchOutcome, MatchStatus, Selector,
+    StructuralIdentity, json_escape, normalize_path,
+};
 use std::collections::BTreeMap;
 
 pub const REPORT_SCHEMA_VERSION: u32 = 1;
@@ -1006,6 +1009,12 @@ fn bool_json(value: bool) -> &'static str {
     if value { "true" } else { "false" }
 }
 
+fn option_u32_json(value: Option<u32>) -> String {
+    value
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| "null".to_string())
+}
+
 fn json_string_array<T: AsRef<str>>(values: &[T]) -> String {
     format!(
         "[{}]",
@@ -1051,6 +1060,154 @@ pub fn render_inventory_json(context: InventoryContext<'_>, indent: &str) -> Str
     out.push('\n');
     out.push_str(&format!("{indent}}}"));
     out
+}
+
+pub fn render_allow_entry_json(entry: &AllowEntry, indent: &str) -> String {
+    let path = entry.path.as_ref().map(normalize_path);
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "{indent}  \"id\": \"{}\",\n",
+        json_escape(&entry.id)
+    ));
+    out.push_str(&format!("{indent}  \"kind\": \"{}\",\n", entry.kind));
+    out.push_str(&format!(
+        "{indent}  \"family\": {},\n",
+        option_json(entry.family.as_deref())
+    ));
+    out.push_str(&format!(
+        "{indent}  \"scope\": \"{}\",\n",
+        json_escape(&entry.path_or_glob())
+    ));
+    out.push_str(&format!(
+        "{indent}  \"path\": {},\n",
+        option_json(path.as_deref())
+    ));
+    out.push_str(&format!(
+        "{indent}  \"glob\": {},\n",
+        option_json(entry.glob.as_deref())
+    ));
+    out.push_str(&format!(
+        "{indent}  \"owner\": \"{}\",\n",
+        json_escape(&entry.owner)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"classification\": \"{}\",\n",
+        json_escape(&entry.classification)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"reason\": \"{}\",\n",
+        json_escape(&entry.reason)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"evidence\": {},\n",
+        json_string_array(&entry.evidence)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"links\": {},\n",
+        json_string_array(&entry.links)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"occurrence_limit\": {},\n",
+        option_u32_json(entry.occurrence_limit)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"lifecycle\": {},\n",
+        lifecycle_json(&entry.lifecycle, indent)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"selector\": {},\n",
+        render_selector_json(&entry.selector, indent)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"last_seen\": {}\n",
+        render_last_seen_json(entry.last_seen.as_ref(), indent)
+    ));
+    out.push_str(&format!("{indent}}}"));
+    out
+}
+
+fn lifecycle_json(lifecycle: &Lifecycle, indent: &str) -> String {
+    format!(
+        "{{\n{indent}    \"created\": {},\n{indent}    \"review_after\": {},\n{indent}    \"expires\": {}\n{indent}  }}",
+        option_json(lifecycle.created.as_deref()),
+        option_json(lifecycle.review_after.as_deref()),
+        option_json(lifecycle.expires.as_deref())
+    )
+}
+
+pub fn render_selector_json(selector: &Selector, indent: &str) -> String {
+    format!(
+        "{{\n{indent}    \"ast_kind\": {},\n{indent}    \"container\": {},\n{indent}    \"callee\": {},\n{indent}    \"macro_name\": {},\n{indent}    \"lint\": {},\n{indent}    \"symbol\": {},\n{indent}    \"receiver_fingerprint\": {},\n{indent}    \"target_fingerprint\": {},\n{indent}    \"normalized_snippet_hash\": {},\n{indent}    \"line_hint\": {},\n{indent}    \"glob\": {}\n{indent}  }}",
+        option_json(selector.ast_kind.as_deref()),
+        option_json(selector.container.as_deref()),
+        option_json(selector.callee.as_deref()),
+        option_json(selector.macro_name.as_deref()),
+        option_json(selector.lint.as_deref()),
+        option_json(selector.symbol.as_deref()),
+        option_json(selector.receiver_fingerprint.as_deref()),
+        option_json(selector.target_fingerprint.as_deref()),
+        option_json(selector.normalized_snippet_hash.as_deref()),
+        option_u32_json(selector.line_hint),
+        option_json(selector.glob.as_deref())
+    )
+}
+
+pub fn render_last_seen_json(last_seen: Option<&LastSeen>, indent: &str) -> String {
+    last_seen
+        .map(|last_seen| {
+            format!(
+                "{{\n{indent}    \"line\": {},\n{indent}    \"column\": {}\n{indent}  }}",
+                last_seen.line, last_seen.column
+            )
+        })
+        .unwrap_or_else(|| "null".to_string())
+}
+
+pub fn render_explain_finding_json(finding: &Finding, status: &str, indent: &str) -> String {
+    let span = finding.span.as_ref();
+    format!(
+        "{indent}  {{\n{indent}    \"status\": \"{}\",\n{indent}    \"kind\": \"{}\",\n{indent}    \"family\": {},\n{indent}    \"path\": \"{}\",\n{indent}    \"line\": {},\n{indent}    \"column\": {},\n{indent}    \"source_package\": {},\n{indent}    \"identity\": {},\n{indent}    \"message\": \"{}\"\n{indent}  }}",
+        json_escape(status),
+        finding.kind,
+        option_json(finding.family.as_deref()),
+        json_escape(&normalize_path(&finding.path)),
+        option_u32_json(span.map(|span| span.line)),
+        option_u32_json(span.map(|span| span.column)),
+        option_json(source_package_name(finding).as_deref()),
+        structural_identity_json(&finding.identity, indent),
+        json_escape(&finding.message)
+    )
+}
+
+fn structural_identity_json(identity: &StructuralIdentity, indent: &str) -> String {
+    format!(
+        "{{\n{indent}      \"language\": \"{}\",\n{indent}      \"crate_name\": {},\n{indent}      \"module\": {},\n{indent}      \"container\": {},\n{indent}      \"ast_kind\": \"{}\",\n{indent}      \"symbol\": {},\n{indent}      \"callee\": {},\n{indent}      \"macro_name\": {},\n{indent}      \"lint\": {},\n{indent}      \"receiver_fingerprint\": {},\n{indent}      \"target_fingerprint\": {},\n{indent}      \"normalized_snippet_hash\": {},\n{indent}      \"line_hint\": {},\n{indent}      \"column_hint\": {}\n{indent}    }}",
+        json_escape(&identity.language),
+        option_json(identity.crate_name.as_deref()),
+        option_json(identity.module.as_deref()),
+        option_json(identity.container.as_deref()),
+        json_escape(&identity.ast_kind),
+        option_json(identity.symbol.as_deref()),
+        option_json(identity.callee.as_deref()),
+        option_json(identity.macro_name.as_deref()),
+        option_json(identity.lint.as_deref()),
+        option_json(identity.receiver_fingerprint.as_deref()),
+        option_json(identity.target_fingerprint.as_deref()),
+        option_json(identity.normalized_snippet_hash.as_deref()),
+        option_u32_json(identity.line_hint),
+        option_u32_json(identity.column_hint)
+    )
+}
+
+fn source_package_name(finding: &Finding) -> Option<String> {
+    finding
+        .identity
+        .crate_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(ToOwned::to_owned)
 }
 
 pub fn render_prune_json(
@@ -2013,7 +2170,9 @@ fn non_rust_file_rows(findings: &[Finding], outcomes: &[MatchOutcome]) -> Vec<Fi
 #[cfg(test)]
 mod tests {
     use super::*;
-    use allow_core::{Finding, FindingKind, Span, StructuralIdentity};
+    use allow_core::{
+        AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, Selector, Span, StructuralIdentity,
+    };
     use std::path::PathBuf;
 
     fn context(source: &'static str) -> ReportContext<'static> {
@@ -2043,6 +2202,72 @@ mod tests {
         assert!(inventory.contains("\"source\": \"git_tracked\""));
         assert!(inventory.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
         assert!(inventory.contains("\"files_scanned\": 76"));
+    }
+
+    #[test]
+    fn policy_and_finding_json_helpers_render_current_contract() {
+        let entry = AllowEntry {
+            id: "allow-json".to_string(),
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            path: Some(PathBuf::from("crates\\parser\\src\\lib.rs")),
+            glob: None,
+            owner: "parser".to_string(),
+            classification: "baseline_debt".to_string(),
+            reason: "generated baseline".to_string(),
+            evidence: vec!["test:parser_handles_empty".to_string()],
+            links: vec!["adr:docs/adr/0001.md".to_string()],
+            occurrence_limit: Some(2),
+            lifecycle: Lifecycle {
+                created: Some("2026-05-27".to_string()),
+                review_after: Some("2026-07-01".to_string()),
+                expires: Some("2026-08-02".to_string()),
+            },
+            selector: Selector {
+                ast_kind: Some("method_call".to_string()),
+                container: Some("parse".to_string()),
+                callee: Some("unwrap".to_string()),
+                macro_name: None,
+                lint: None,
+                symbol: Some("value.unwrap()".to_string()),
+                receiver_fingerprint: None,
+                target_fingerprint: None,
+                normalized_snippet_hash: Some("fnv1a64:test".to_string()),
+                line_hint: Some(12),
+                glob: None,
+            },
+            last_seen: Some(LastSeen {
+                line: 12,
+                column: 9,
+            }),
+        };
+        let mut identity = StructuralIdentity::new("rust", "method_call");
+        identity.crate_name = Some("parser".to_string());
+        identity.container = Some("parse".to_string());
+        let finding = Finding {
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            path: PathBuf::from("crates\\parser\\src\\lib.rs"),
+            span: Some(Span {
+                line: 12,
+                column: 9,
+            }),
+            identity,
+            message: "unwrap call".to_string(),
+        };
+
+        let entry_json = render_allow_entry_json(&entry, "  ");
+        let finding_json = render_explain_finding_json(&finding, "selected", "  ");
+
+        assert!(entry_json.contains("\"id\": \"allow-json\""));
+        assert!(entry_json.contains("\"path\": \"crates/parser/src/lib.rs\""));
+        assert!(entry_json.contains("\"occurrence_limit\": 2"));
+        assert!(entry_json.contains("\"normalized_snippet_hash\": \"fnv1a64:test\""));
+        assert!(entry_json.contains("\"line\": 12"));
+        assert!(finding_json.contains("\"status\": \"selected\""));
+        assert!(finding_json.contains("\"path\": \"crates/parser/src/lib.rs\""));
+        assert!(finding_json.contains("\"source_package\": \"parser\""));
+        assert!(finding_json.contains("\"container\": \"parse\""));
     }
 
     #[test]
