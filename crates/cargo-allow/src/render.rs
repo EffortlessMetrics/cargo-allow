@@ -1,4 +1,4 @@
-use allow_core::{Finding, FindingKind, Selector, glob_matches_str, json_escape, normalize_path};
+use allow_core::{Finding, FindingKind, Selector, glob_matches_str, normalize_path};
 use std::path::Path;
 
 pub(crate) fn source_tree_path_matches_filter(item_path: &str, filter_path: &str) -> bool {
@@ -30,12 +30,6 @@ pub(crate) fn source_package_name(finding: &Finding) -> Option<String> {
         .map(str::trim)
         .filter(|name| !name.is_empty())
         .map(ToOwned::to_owned)
-}
-
-pub(crate) fn option_json_string(value: Option<&str>) -> String {
-    value
-        .map(|value| format!("\"{}\"", json_escape(value)))
-        .unwrap_or_else(|| "null".to_string())
 }
 
 pub(crate) fn markdown_cell(value: &str) -> String {

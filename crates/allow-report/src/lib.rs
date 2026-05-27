@@ -285,6 +285,42 @@ pub struct MigrateReport<'a> {
     pub notes: &'a str,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DiffPostureSummary {
+    pub current_failures: usize,
+    pub new_findings: usize,
+    pub removed_findings: usize,
+    pub policy_failures: usize,
+    pub policy_review_items: usize,
+    pub policy_improvements: usize,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct DiffFindingChange<'a> {
+    pub change: &'a str,
+    pub key: &'a str,
+    pub kind: &'a str,
+    pub family: Option<&'a str>,
+    pub path: &'a str,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct DiffPolicyChange<'a> {
+    pub severity: &'a str,
+    pub allow_id: &'a str,
+    pub kind: &'a str,
+    pub message: &'a str,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct DiffReport<'a> {
+    pub net_posture: &'a str,
+    pub reviewer_action: &'a str,
+    pub summary: DiffPostureSummary,
+    pub finding_changes: &'a [DiffFindingChange<'a>],
+    pub policy_changes: &'a [DiffPolicyChange<'a>],
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
     pub total: usize,
@@ -1633,6 +1669,88 @@ fn explain_report_status(outcomes: &[MatchOutcome]) -> MatchStatus {
     MatchStatus::Matched
 }
 
+pub fn render_diff_json_with_posture(report_json: &str, report: DiffReport<'_>) -> Option<String> {
+    let diff_json = render_diff_posture_json(report);
+    let trimmed = report_json.trim_end();
+    trimmed
+        .strip_suffix('}')
+        .map(|prefix| format!("{prefix},\n  \"diff\": {diff_json}\n}}\n"))
+}
+
+fn render_diff_posture_json(report: DiffReport<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "    \"net_posture\": \"{}\",\n",
+        json_escape(report.net_posture)
+    ));
+    out.push_str(&format!(
+        "    \"reviewer_action\": \"{}\",\n",
+        json_escape(report.reviewer_action)
+    ));
+    out.push_str("    \"summary\": {\n");
+    out.push_str(&format!(
+        "      \"current_failures\": {},\n",
+        report.summary.current_failures
+    ));
+    out.push_str(&format!(
+        "      \"new_findings\": {},\n",
+        report.summary.new_findings
+    ));
+    out.push_str(&format!(
+        "      \"removed_findings\": {},\n",
+        report.summary.removed_findings
+    ));
+    out.push_str(&format!(
+        "      \"policy_failures\": {},\n",
+        report.summary.policy_failures
+    ));
+    out.push_str(&format!(
+        "      \"policy_review_items\": {},\n",
+        report.summary.policy_review_items
+    ));
+    out.push_str(&format!(
+        "      \"policy_improvements\": {}\n",
+        report.summary.policy_improvements
+    ));
+    out.push_str("    },\n");
+    out.push_str("    \"finding_changes\": [\n");
+    for (index, change) in report.finding_changes.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str("      {");
+        out.push_str(&format!("\"change\": \"{}\", ", json_escape(change.change)));
+        out.push_str(&format!("\"key\": \"{}\", ", json_escape(change.key)));
+        out.push_str(&format!("\"kind\": \"{}\", ", json_escape(change.kind)));
+        out.push_str(&format!("\"family\": {}, ", option_json(change.family)));
+        out.push_str(&format!("\"path\": \"{}\"", json_escape(change.path)));
+        out.push('}');
+    }
+    out.push_str("\n    ],\n");
+    out.push_str("    \"policy_changes\": [\n");
+    for (index, change) in report.policy_changes.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str("      {");
+        out.push_str(&format!(
+            "\"severity\": \"{}\", ",
+            json_escape(change.severity)
+        ));
+        out.push_str(&format!(
+            "\"allow_id\": \"{}\", ",
+            json_escape(change.allow_id)
+        ));
+        out.push_str(&format!("\"kind\": \"{}\", ", json_escape(change.kind)));
+        out.push_str(&format!("\"message\": \"{}\"", json_escape(change.message)));
+        out.push('}');
+    }
+    out.push_str("\n    ]\n");
+    out.push_str("  }");
+    out
+}
+
 pub fn render_add_json(report: AddReport<'_>) -> String {
     let entry = report.entry;
     let selected_finding = report.selected_finding;
@@ -2701,6 +2819,77 @@ mod tests {
         assert!(json.contains("\"score\": 9"));
         assert!(json.contains("\"add missing evidence\""));
         assert!(json.contains("\"cargo-allow check --kind unsafe\""));
+    }
+
+    #[test]
+    fn diff_json_renderer_appends_posture_extension() {
+        let finding_changes = vec![DiffFindingChange {
+            change: "new",
+            key: "panic|unwrap|src/lib.rs",
+            kind: "panic",
+            family: Some("unwrap"),
+            path: "src/lib.rs",
+        }];
+        let policy_changes = vec![DiffPolicyChange {
+            severity: "fail",
+            allow_id: "allow-0001",
+            kind: "scope_broadened",
+            message: "allow-0001 selector scope broadened",
+        }];
+
+        let rendered = render_diff_json_with_posture(
+            "{\n  \"schema_id\": \"cargo-allow.report.v1\"\n}",
+            DiffReport {
+                net_posture: "worse",
+                reviewer_action: "block until fixed",
+                summary: DiffPostureSummary {
+                    current_failures: 1,
+                    new_findings: 1,
+                    removed_findings: 0,
+                    policy_failures: 1,
+                    policy_review_items: 0,
+                    policy_improvements: 0,
+                },
+                finding_changes: &finding_changes,
+                policy_changes: &policy_changes,
+            },
+        );
+        assert!(rendered.is_some());
+        let Some(json) = rendered else {
+            return;
+        };
+
+        assert!(json.contains("\"diff\""));
+        assert!(json.contains("\"net_posture\": \"worse\""));
+        assert!(json.contains("\"reviewer_action\": \"block until fixed\""));
+        assert!(json.contains("\"current_failures\": 1"));
+        assert!(json.contains("\"new_findings\": 1"));
+        assert!(json.contains("\"policy_failures\": 1"));
+        assert!(json.contains("\"change\": \"new\""));
+        assert!(json.contains("\"family\": \"unwrap\""));
+        assert!(json.contains("\"severity\": \"fail\""));
+        assert!(json.contains("\"kind\": \"scope_broadened\""));
+        assert!(json.ends_with("}\n"));
+        assert!(
+            render_diff_json_with_posture(
+                "not json",
+                DiffReport {
+                    net_posture: "unchanged",
+                    reviewer_action: "none",
+                    summary: DiffPostureSummary {
+                        current_failures: 0,
+                        new_findings: 0,
+                        removed_findings: 0,
+                        policy_failures: 0,
+                        policy_review_items: 0,
+                        policy_improvements: 0,
+                    },
+                    finding_changes: &[],
+                    policy_changes: &[],
+                },
+            )
+            .is_none()
+        );
     }
 
     #[test]

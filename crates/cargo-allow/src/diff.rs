@@ -1,13 +1,12 @@
-use allow_core::{CargoAllowResult, MatchOutcome, json_escape, normalize_path};
+use allow_core::{CargoAllowResult, MatchOutcome, normalize_path};
 use allow_match::{CheckMode, evaluate};
 use clap::Parser;
 use std::path::PathBuf;
 use std::process;
 
 use crate::{
-    OutputFormat, RootArgs, git_relative_config_path, load_world, markdown_cell,
-    option_json_string, parse_kind_filter, policy_baseline_debt_entries, report_config,
-    source_tree_root_text, write_file,
+    OutputFormat, RootArgs, git_relative_config_path, load_world, markdown_cell, parse_kind_filter,
+    policy_baseline_debt_entries, report_config, source_tree_root_text, write_file,
 };
 
 #[derive(Debug, Clone, Parser)]
@@ -339,97 +338,47 @@ pub(crate) fn render_diff_json_with_posture(
     finding_changes: &[allow_diff::FindingPostureChange],
     policy_changes: &[allow_diff::PolicyChange],
 ) -> String {
-    let diff_json = render_diff_posture_json(outcomes, finding_changes, policy_changes);
-    let trimmed = report_json.trim_end();
-    if let Some(prefix) = trimmed.strip_suffix('}') {
-        format!("{prefix},\n  \"diff\": {diff_json}\n}}\n")
+    let summary = diff_posture_summary(outcomes, finding_changes, policy_changes);
+    let posture = summary.net_posture();
+    let finding_rows = finding_changes
+        .iter()
+        .map(|change| allow_report::DiffFindingChange {
+            change: change.kind.as_str(),
+            key: &change.key,
+            kind: &change.finding_kind,
+            family: change.family.as_deref(),
+            path: &change.path,
+        })
+        .collect::<Vec<_>>();
+    let policy_rows = policy_changes
+        .iter()
+        .map(|change| allow_report::DiffPolicyChange {
+            severity: change.severity.as_str(),
+            allow_id: &change.allow_id,
+            kind: change.kind.as_str(),
+            message: &change.message,
+        })
+        .collect::<Vec<_>>();
+    let report = allow_report::DiffReport {
+        net_posture: posture.as_str(),
+        reviewer_action: posture.reviewer_action(),
+        summary: allow_report::DiffPostureSummary {
+            current_failures: summary.current_failures,
+            new_findings: summary.new_findings,
+            removed_findings: summary.removed_findings,
+            policy_failures: summary.policy_failures,
+            policy_review_items: summary.policy_review_items,
+            policy_improvements: summary.policy_improvements,
+        },
+        finding_changes: &finding_rows,
+        policy_changes: &policy_rows,
+    };
+    if let Some(json) = allow_report::render_diff_json_with_posture(&report_json, report) {
+        json
     } else {
         eprintln!("warning: failed to append diff posture to JSON report");
         report_json
     }
-}
-
-fn render_diff_posture_json(
-    outcomes: &[MatchOutcome],
-    finding_changes: &[allow_diff::FindingPostureChange],
-    policy_changes: &[allow_diff::PolicyChange],
-) -> String {
-    let summary = diff_posture_summary(outcomes, finding_changes, policy_changes);
-    let posture = summary.net_posture();
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str(&format!("    \"net_posture\": \"{}\",\n", posture.as_str()));
-    out.push_str(&format!(
-        "    \"reviewer_action\": \"{}\",\n",
-        json_escape(posture.reviewer_action())
-    ));
-    out.push_str("    \"summary\": {\n");
-    out.push_str(&format!(
-        "      \"current_failures\": {},\n",
-        summary.current_failures
-    ));
-    out.push_str(&format!(
-        "      \"new_findings\": {},\n",
-        summary.new_findings
-    ));
-    out.push_str(&format!(
-        "      \"removed_findings\": {},\n",
-        summary.removed_findings
-    ));
-    out.push_str(&format!(
-        "      \"policy_failures\": {},\n",
-        summary.policy_failures
-    ));
-    out.push_str(&format!(
-        "      \"policy_review_items\": {},\n",
-        summary.policy_review_items
-    ));
-    out.push_str(&format!(
-        "      \"policy_improvements\": {}\n",
-        summary.policy_improvements
-    ));
-    out.push_str("    },\n");
-    out.push_str("    \"finding_changes\": [\n");
-    for (index, change) in finding_changes.iter().enumerate() {
-        if index > 0 {
-            out.push_str(",\n");
-        }
-        out.push_str("      {");
-        out.push_str(&format!("\"change\": \"{}\", ", change.kind.as_str()));
-        out.push_str(&format!("\"key\": \"{}\", ", json_escape(&change.key)));
-        out.push_str(&format!(
-            "\"kind\": \"{}\", ",
-            json_escape(&change.finding_kind)
-        ));
-        out.push_str(&format!(
-            "\"family\": {}, ",
-            option_json_string(change.family.as_deref())
-        ));
-        out.push_str(&format!("\"path\": \"{}\"", json_escape(&change.path)));
-        out.push('}');
-    }
-    out.push_str("\n    ],\n");
-    out.push_str("    \"policy_changes\": [\n");
-    for (index, change) in policy_changes.iter().enumerate() {
-        if index > 0 {
-            out.push_str(",\n");
-        }
-        out.push_str("      {");
-        out.push_str(&format!("\"severity\": \"{}\", ", change.severity.as_str()));
-        out.push_str(&format!(
-            "\"allow_id\": \"{}\", ",
-            json_escape(&change.allow_id)
-        ));
-        out.push_str(&format!("\"kind\": \"{}\", ", change.kind.as_str()));
-        out.push_str(&format!(
-            "\"message\": \"{}\"",
-            json_escape(&change.message)
-        ));
-        out.push('}');
-    }
-    out.push_str("\n    ]\n");
-    out.push_str("  }");
-    out
 }
 
 fn render_finding_posture_changes_human(changes: &[allow_diff::FindingPostureChange]) -> String {
