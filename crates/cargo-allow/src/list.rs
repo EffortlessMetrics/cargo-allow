@@ -1,0 +1,1128 @@
+use allow_core::{
+    AllowConfig, AllowEntry, CargoAllowResult, Finding, FindingKind, MatchOutcome, MatchStatus,
+    SimpleDate, json_escape,
+};
+use allow_match::{CheckMode, evaluate};
+use clap::{Parser, ValueEnum};
+use std::path::PathBuf;
+
+use crate::{
+    KindFilter, RootArgs, json_string_array, load_world, option_json_string, parse_kind_filter,
+    scope_has_wildcard, source_package_name, source_tree_path_matches_filter,
+    source_tree_root_text, write_file,
+};
+
+#[derive(Debug, Clone, Parser)]
+pub(crate) struct ListArgs {
+    #[command(flatten)]
+    root: RootArgs,
+    /// Policy config path.
+    #[arg(long)]
+    config: Option<PathBuf>,
+    /// Filter allow entries by kind.
+    #[arg(long)]
+    kind: Option<String>,
+    /// Filter allow entries by scanner or policy family.
+    #[arg(long)]
+    family: Option<String>,
+    /// Filter allow entries by owner.
+    #[arg(long)]
+    owner: Option<String>,
+    /// Filter allow entries by classification.
+    #[arg(long)]
+    classification: Option<String>,
+    /// Filter allow entries by source-tree path or path prefix.
+    #[arg(long)]
+    path: Option<String>,
+    /// Filter allow entries by scanner-provided source-tree package context.
+    #[arg(long)]
+    source_package: Option<String>,
+    /// Filter allow entries by current match status.
+    #[arg(
+        long,
+        value_parser = [
+            "matched",
+            "new",
+            "stale",
+            "expired",
+            "review_due",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "evidence_missing",
+            "baseline_debt"
+        ]
+    )]
+    status: Option<String>,
+    /// Include only expired allow entries.
+    #[arg(long)]
+    expired: bool,
+    /// Include only review-due allow entries.
+    #[arg(long)]
+    review_due: bool,
+    /// Include only stale allow entries.
+    #[arg(long)]
+    stale: bool,
+    /// Include only generated baseline debt entries.
+    #[arg(long)]
+    baseline_debt: bool,
+    /// Include only entries with wildcard source-tree scopes.
+    #[arg(long)]
+    broad_scope: bool,
+    /// Include only entries with no evidence references.
+    #[arg(long)]
+    missing_evidence: bool,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = ListFormat::Human)]
+    format: ListFormat,
+    /// Write list output to a file instead of stdout.
+    #[arg(long)]
+    output: Option<PathBuf>,
+    /// Include untracked files when determining current match status.
+    #[arg(long)]
+    include_untracked: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum ListFormat {
+    Human,
+    Json,
+}
+
+pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
+    let (root, cfg, findings, inventory_facts) = load_world(
+        args.root.root.as_deref(),
+        args.config.as_deref(),
+        true,
+        None,
+        args.include_untracked,
+    )?;
+    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+    let parsed_filter = args.kind.as_deref().map(parse_kind_filter).transpose()?;
+    let rows = list_rows(&cfg, &findings, &outcomes);
+    let filters = ListFilters {
+        kind: parsed_filter,
+        family: args.family.as_deref(),
+        owner: args.owner.as_deref(),
+        classification: args.classification.as_deref(),
+        path: args.path.as_deref(),
+        source_package: args.source_package.as_deref(),
+        status: args.status.as_deref(),
+        expired: args.expired,
+        review_due: args.review_due,
+        stale: args.stale,
+        baseline_debt: args.baseline_debt,
+        broad_scope: args.broad_scope,
+        missing_evidence: args.missing_evidence,
+    };
+    let root_text = source_tree_root_text(&root);
+    let context = ListContext {
+        inventory_source: inventory_facts.source.as_str(),
+        source_tree_root: Some(&root_text),
+        inventory_files: inventory_facts.files_scanned,
+        kind_arg: args.kind.as_deref(),
+    };
+    let text = match args.format {
+        ListFormat::Human => render_list_rows(&rows, &filters),
+        ListFormat::Json => render_list_rows_json(&rows, &filters, context),
+    };
+    if let Some(path) = &args.output {
+        write_file(path, &text)?;
+    } else {
+        println!("{text}");
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone)]
+struct ListRow {
+    id: String,
+    status: MatchStatus,
+    matches: usize,
+    kind: FindingKind,
+    family: Option<String>,
+    owner: String,
+    classification: String,
+    scope: String,
+    source_package: Option<String>,
+    evidence_count: usize,
+    review_after: String,
+    expires: String,
+    reason: String,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ListFilters<'a> {
+    kind: Option<KindFilter>,
+    family: Option<&'a str>,
+    owner: Option<&'a str>,
+    classification: Option<&'a str>,
+    path: Option<&'a str>,
+    source_package: Option<&'a str>,
+    status: Option<&'a str>,
+    expired: bool,
+    review_due: bool,
+    stale: bool,
+    baseline_debt: bool,
+    broad_scope: bool,
+    missing_evidence: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ListContext<'a> {
+    inventory_source: &'a str,
+    source_tree_root: Option<&'a str>,
+    inventory_files: Option<usize>,
+    kind_arg: Option<&'a str>,
+}
+
+impl Default for ListContext<'static> {
+    fn default() -> Self {
+        Self {
+            inventory_source: "unknown",
+            source_tree_root: None,
+            inventory_files: None,
+            kind_arg: None,
+        }
+    }
+}
+
+fn list_rows(cfg: &AllowConfig, findings: &[Finding], outcomes: &[MatchOutcome]) -> Vec<ListRow> {
+    let today = SimpleDate::today_utc_approx();
+    cfg.allow
+        .iter()
+        .map(|entry| {
+            let entry_outcomes = outcomes
+                .iter()
+                .filter(|outcome| outcome.allow_id.as_deref() == Some(entry.id.as_str()))
+                .collect::<Vec<_>>();
+            ListRow {
+                id: entry.id.clone(),
+                status: list_entry_status(entry, &entry_outcomes, today),
+                matches: entry_outcomes
+                    .iter()
+                    .filter(|outcome| outcome.finding_index.is_some())
+                    .count(),
+                kind: entry.kind,
+                family: entry.family.clone(),
+                owner: entry.owner.clone(),
+                classification: entry.classification.clone(),
+                scope: entry.path_or_glob(),
+                source_package: entry_outcomes
+                    .iter()
+                    .filter_map(|outcome| outcome.finding_index)
+                    .filter_map(|index| findings.get(index))
+                    .find_map(source_package_name),
+                evidence_count: entry.evidence.len(),
+                review_after: entry
+                    .lifecycle
+                    .review_after
+                    .clone()
+                    .unwrap_or_else(|| "-".to_string()),
+                expires: entry
+                    .lifecycle
+                    .expires
+                    .clone()
+                    .unwrap_or_else(|| "-".to_string()),
+                reason: entry.reason.clone(),
+            }
+        })
+        .collect()
+}
+
+fn list_entry_status(
+    entry: &AllowEntry,
+    outcomes: &[&MatchOutcome],
+    today: SimpleDate,
+) -> MatchStatus {
+    if date_is_before(entry.lifecycle.expires.as_deref(), today) {
+        return MatchStatus::Expired;
+    }
+    if date_is_due(entry.lifecycle.review_after.as_deref(), today) {
+        return MatchStatus::ReviewDue;
+    }
+    for status in [
+        MatchStatus::New,
+        MatchStatus::Ambiguous,
+        MatchStatus::EvidenceMissing,
+        MatchStatus::MissingRequiredField,
+        MatchStatus::InvalidSelector,
+        MatchStatus::Stale,
+    ] {
+        if outcomes.iter().any(|outcome| outcome.status == status) {
+            return status;
+        }
+    }
+    if entry.classification == "baseline_debt" {
+        return MatchStatus::BaselineDebt;
+    }
+    MatchStatus::Matched
+}
+
+fn date_is_before(date: Option<&str>, today: SimpleDate) -> bool {
+    date.and_then(SimpleDate::parse)
+        .map(|date| date < today)
+        .unwrap_or(false)
+}
+
+fn date_is_due(date: Option<&str>, today: SimpleDate) -> bool {
+    date.and_then(SimpleDate::parse)
+        .map(|date| date <= today)
+        .unwrap_or(false)
+}
+
+fn render_list_rows(rows: &[ListRow], filters: &ListFilters<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\tevidence_count\treview_after\texpires\treason\n");
+    let mut count = 0;
+    for row in rows.iter().filter(|row| list_row_matches(row, filters)) {
+        count += 1;
+        out.push_str(&format!(
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+            row.id,
+            row.status.as_str(),
+            row.matches,
+            row.kind,
+            row.family.as_deref().unwrap_or("-"),
+            empty_as_dash(&row.owner),
+            empty_as_dash(&row.classification),
+            row.scope,
+            row.source_package.as_deref().unwrap_or("-"),
+            row.evidence_count,
+            row.review_after,
+            row.expires,
+            row.reason
+        ));
+    }
+    if count == 0 {
+        out.push_str("(no allow entries matched filters)\n");
+    }
+    out
+}
+
+fn render_list_rows_json(
+    rows: &[ListRow],
+    filters: &ListFilters<'_>,
+    context: ListContext<'_>,
+) -> String {
+    let filtered = rows
+        .iter()
+        .filter(|row| list_row_matches(row, filters))
+        .collect::<Vec<_>>();
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "  \"schema_version\": {},\n",
+        allow_report::LIST_SCHEMA_VERSION
+    ));
+    out.push_str(&format!(
+        "  \"schema_id\": \"{}\",\n",
+        allow_report::LIST_SCHEMA_ID
+    ));
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"list\",\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        json_string_array(allow_report::CLAIM_BOUNDARY)
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        json_string_array(allow_report::SCANNER_LIMITATIONS)
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&list_inventory_json(context, "  "));
+    out.push_str(",\n");
+    out.push_str("  \"filters\": ");
+    out.push_str(&list_filters_json(filters, context.kind_arg, "  "));
+    out.push_str(",\n");
+    out.push_str(&format!(
+        "  \"summary\": {{\n    \"allow_entries\": {}\n  }},\n",
+        filtered.len()
+    ));
+    out.push_str("  \"allow_entries\": [\n");
+    for (index, row) in filtered.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&render_list_row_json(row));
+    }
+    out.push_str("\n  ]\n");
+    out.push_str("}\n");
+    out
+}
+
+fn render_list_row_json(row: &ListRow) -> String {
+    let mut out = String::new();
+    out.push_str("    {\n");
+    out.push_str(&format!("      \"id\": \"{}\",\n", json_escape(&row.id)));
+    out.push_str(&format!("      \"status\": \"{}\",\n", row.status.as_str()));
+    out.push_str(&format!("      \"matches\": {},\n", row.matches));
+    out.push_str(&format!("      \"kind\": \"{}\",\n", row.kind));
+    out.push_str(&format!(
+        "      \"family\": {},\n",
+        option_json_string(row.family.as_deref())
+    ));
+    out.push_str(&format!(
+        "      \"owner\": \"{}\",\n",
+        json_escape(&row.owner)
+    ));
+    out.push_str(&format!(
+        "      \"classification\": \"{}\",\n",
+        json_escape(&row.classification)
+    ));
+    out.push_str(&format!(
+        "      \"scope\": \"{}\",\n",
+        json_escape(&row.scope)
+    ));
+    out.push_str(&format!(
+        "      \"source_package\": {},\n",
+        option_json_string(row.source_package.as_deref())
+    ));
+    out.push_str(&format!(
+        "      \"evidence_count\": {},\n",
+        row.evidence_count
+    ));
+    out.push_str(&format!(
+        "      \"review_after\": {},\n",
+        dash_as_null_json(&row.review_after)
+    ));
+    out.push_str(&format!(
+        "      \"expires\": {},\n",
+        dash_as_null_json(&row.expires)
+    ));
+    out.push_str(&format!(
+        "      \"reason\": \"{}\"\n",
+        json_escape(&row.reason)
+    ));
+    out.push_str("    }");
+    out
+}
+
+fn list_inventory_json(context: ListContext<'_>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("{indent}  \"scope\": \"source_tree\",\n"));
+    out.push_str(&format!("{indent}  \"scanner\": \"source_syntax\",\n"));
+    out.push_str(&format!(
+        "{indent}  \"source\": \"{}\"",
+        json_escape(context.inventory_source)
+    ));
+    if let Some(root) = context.source_tree_root {
+        out.push_str(&format!(",\n{indent}  \"root\": \"{}\"", json_escape(root)));
+    }
+    if let Some(files) = context.inventory_files {
+        out.push_str(&format!(",\n{indent}  \"files_scanned\": {files}"));
+    }
+    out.push_str(&format!("\n{indent}}}"));
+    out
+}
+
+fn list_filters_json(filters: &ListFilters<'_>, kind_arg: Option<&str>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "{indent}  \"kind\": {},\n",
+        option_json_string(kind_arg)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"family\": {},\n",
+        option_json_string(filters.family)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"owner\": {},\n",
+        option_json_string(filters.owner)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"classification\": {},\n",
+        option_json_string(filters.classification)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"path\": {},\n",
+        option_json_string(filters.path)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"source_package\": {},\n",
+        option_json_string(filters.source_package)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"status\": {},\n",
+        option_json_string(filters.status)
+    ));
+    out.push_str(&format!("{indent}  \"expired\": {},\n", filters.expired));
+    out.push_str(&format!(
+        "{indent}  \"review_due\": {},\n",
+        filters.review_due
+    ));
+    out.push_str(&format!("{indent}  \"stale\": {},\n", filters.stale));
+    out.push_str(&format!(
+        "{indent}  \"baseline_debt\": {},\n",
+        filters.baseline_debt
+    ));
+    out.push_str(&format!(
+        "{indent}  \"broad_scope\": {},\n",
+        filters.broad_scope
+    ));
+    out.push_str(&format!(
+        "{indent}  \"missing_evidence\": {}\n",
+        filters.missing_evidence
+    ));
+    out.push_str(&format!("{indent}}}"));
+    out
+}
+
+fn dash_as_null_json(value: &str) -> String {
+    if value == "-" {
+        "null".to_string()
+    } else {
+        format!("\"{}\"", json_escape(value))
+    }
+}
+
+fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
+    if let Some(kind) = filters.kind {
+        if row.kind != kind.kind || !kind.family.matches(row.family.as_deref()) {
+            return false;
+        }
+    }
+    if let Some(family) = filters.family {
+        if row.family.as_deref() != Some(family) {
+            return false;
+        }
+    }
+    if let Some(owner) = filters.owner {
+        if row.owner != owner {
+            return false;
+        }
+    }
+    if let Some(classification) = filters.classification {
+        if row.classification != classification {
+            return false;
+        }
+    }
+    if let Some(path) = filters.path {
+        if !source_tree_path_matches_filter(&row.scope, path) {
+            return false;
+        }
+    }
+    if let Some(source_package) = filters.source_package {
+        if row.source_package.as_deref() != Some(source_package) {
+            return false;
+        }
+    }
+    if let Some(status) = filters.status {
+        if row.status.as_str() != status {
+            return false;
+        }
+    }
+    if filters.expired && row.status != MatchStatus::Expired {
+        return false;
+    }
+    if filters.review_due && row.status != MatchStatus::ReviewDue {
+        return false;
+    }
+    if filters.stale && row.status != MatchStatus::Stale {
+        return false;
+    }
+    if filters.baseline_debt && row.classification != "baseline_debt" {
+        return false;
+    }
+    if filters.broad_scope && !scope_has_wildcard(&row.scope) {
+        return false;
+    }
+    if filters.missing_evidence && row.evidence_count != 0 {
+        return false;
+    }
+    true
+}
+
+fn empty_as_dash(value: &str) -> &str {
+    if value.trim().is_empty() { "-" } else { value }
+}
+
+#[cfg(test)]
+pub(crate) fn sample_list_json_for_contract_test() -> String {
+    let row = ListRow {
+        id: "allow-json".to_string(),
+        status: MatchStatus::BaselineDebt,
+        matches: 1,
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        owner: "parser".to_string(),
+        classification: "baseline_debt".to_string(),
+        scope: "src/lib.rs".to_string(),
+        source_package: Some("allow-core".to_string()),
+        evidence_count: 2,
+        review_after: "2026-09-01".to_string(),
+        expires: "2026-12-01".to_string(),
+        reason: "reason".to_string(),
+    };
+    let filters = ListFilters {
+        kind: Some(
+            parse_kind_filter("panic")
+                .unwrap_or_else(|err| std::panic::panic_any(format!("kind filter: {err}"))),
+        ),
+        family: Some("unwrap"),
+        owner: Some("parser"),
+        classification: Some("baseline_debt"),
+        path: Some("src/lib.rs"),
+        source_package: Some("allow-core"),
+        status: Some("baseline_debt"),
+        expired: false,
+        review_due: false,
+        stale: false,
+        baseline_debt: true,
+        broad_scope: false,
+        missing_evidence: false,
+    };
+    let context = ListContext {
+        inventory_source: "git_tracked",
+        source_tree_root: Some("H:/Code/Rust/cargo-allow"),
+        inventory_files: Some(46),
+        kind_arg: Some("panic"),
+    };
+    render_list_rows_json(&[row], &filters, context)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{CargoAllowCli, CargoAllowCommand};
+    use allow_core::{Lifecycle, Selector, Span, StructuralIdentity};
+    use clap::Parser;
+    use std::path::Path;
+
+    fn argv(items: Vec<&str>) -> Vec<String> {
+        items.into_iter().map(String::from).collect()
+    }
+
+    #[test]
+    fn clap_parses_list_json_filters() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "list",
+            "--kind",
+            "unsafe",
+            "--family",
+            "unsafe_fn",
+            "--owner",
+            "runtime",
+            "--classification",
+            "baseline_debt",
+            "--path",
+            "crates/allow-core",
+            "--source-package",
+            "allow-core",
+            "--status",
+            "baseline_debt",
+            "--expired",
+            "--review-due",
+            "--stale",
+            "--baseline-debt",
+            "--broad-scope",
+            "--missing-evidence",
+            "--format",
+            "json",
+            "--output",
+            "target/list.json",
+        ]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse list args: {err}")));
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::List(ListArgs {
+                kind: Some(kind),
+                family: Some(family),
+                owner: Some(owner),
+                classification: Some(classification),
+                path: Some(path_filter),
+                source_package: Some(source_package),
+                status: Some(status),
+                expired: true,
+                review_due: true,
+                stale: true,
+                baseline_debt: true,
+                broad_scope: true,
+                missing_evidence: true,
+                format: ListFormat::Json,
+                output: Some(path),
+                ..
+            })) if kind == "unsafe"
+                && family == "unsafe_fn"
+                && owner == "runtime"
+                && classification == "baseline_debt"
+                && path_filter == "crates/allow-core"
+                && source_package == "allow-core"
+                && status == "baseline_debt"
+                && path == Path::new("target/list.json")
+        ));
+    }
+
+    #[test]
+    fn list_rows_report_lifecycle_stale_and_baseline_status() {
+        let mut cfg = AllowConfig::empty();
+        let mut expired = test_entry("allow-expired", FindingKind::Panic);
+        expired.lifecycle.expires = Some("2000-01-01".to_string());
+        let mut review_due = test_entry("allow-review", FindingKind::Panic);
+        review_due.lifecycle.review_after = Some("2000-01-01".to_string());
+        let mut baseline = test_entry("allow-baseline", FindingKind::Panic);
+        baseline.classification = "baseline_debt".to_string();
+        let stale = test_entry("allow-stale", FindingKind::Panic);
+        cfg.allow = vec![expired, review_due, baseline, stale];
+        let outcomes = vec![
+            test_outcome(
+                MatchStatus::Matched,
+                Some("allow-expired"),
+                Some(0),
+                "matched",
+            ),
+            test_outcome(
+                MatchStatus::Matched,
+                Some("allow-review"),
+                Some(1),
+                "matched",
+            ),
+            test_outcome(
+                MatchStatus::Matched,
+                Some("allow-baseline"),
+                Some(2),
+                "matched",
+            ),
+            test_outcome(MatchStatus::Stale, Some("allow-stale"), None, "stale"),
+        ];
+        let expired_finding = test_finding(
+            FindingKind::NonRustFile,
+            None,
+            "tracked-expired.file",
+            "tracked_file",
+        );
+        let mut review_finding = test_finding(
+            FindingKind::NonRustFile,
+            None,
+            "tracked-review.file",
+            "tracked_file",
+        );
+        review_finding.identity.crate_name = Some("review-package".to_string());
+        let stale_finding = test_finding(
+            FindingKind::NonRustFile,
+            None,
+            "tracked-stale.file",
+            "tracked_file",
+        );
+        let findings = vec![expired_finding, review_finding, stale_finding];
+
+        let rows = list_rows(&cfg, &findings, &outcomes);
+
+        assert_eq!(row_status(&rows, "allow-expired"), MatchStatus::Expired);
+        assert_eq!(row_status(&rows, "allow-review"), MatchStatus::ReviewDue);
+        assert_eq!(
+            rows.iter()
+                .find(|row| row.id == "allow-review")
+                .and_then(|row| row.source_package.as_deref()),
+            Some("review-package")
+        );
+        assert_eq!(
+            row_status(&rows, "allow-baseline"),
+            MatchStatus::BaselineDebt
+        );
+        assert_eq!(row_status(&rows, "allow-stale"), MatchStatus::Stale);
+    }
+
+    #[test]
+    fn render_list_rows_filters_owner_kind_classification_and_baseline_debt() {
+        let rows = vec![
+            list_row(
+                "allow-runtime",
+                FindingKind::Unsafe,
+                "runtime",
+                "baseline_debt",
+            ),
+            list_row(
+                "allow-parser",
+                FindingKind::Panic,
+                "parser",
+                "reviewed_exception",
+            ),
+        ];
+        let filters = ListFilters {
+            kind: Some(parse_kind_filter("unsafe").unwrap_or_else(|err| {
+                std::panic::panic_any(format!("kind filter should parse: {err}"))
+            })),
+            family: None,
+            owner: Some("runtime"),
+            classification: Some("baseline_debt"),
+            path: None,
+            source_package: None,
+            status: None,
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: true,
+            broad_scope: false,
+            missing_evidence: false,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(text.contains("allow-runtime"));
+        assert!(!text.contains("allow-parser"));
+        assert!(text.contains("baseline_debt"));
+    }
+
+    #[test]
+    fn render_list_rows_filters_classification_without_baseline_shortcut() {
+        let rows = vec![
+            list_row(
+                "allow-runtime",
+                FindingKind::Unsafe,
+                "runtime",
+                "baseline_debt",
+            ),
+            list_row(
+                "allow-parser",
+                FindingKind::Panic,
+                "parser",
+                "reviewed_exception",
+            ),
+        ];
+        let filters = ListFilters {
+            kind: None,
+            family: None,
+            owner: None,
+            classification: Some("reviewed_exception"),
+            path: None,
+            source_package: None,
+            status: None,
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+            broad_scope: false,
+            missing_evidence: false,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(!text.contains("allow-runtime"));
+        assert!(text.contains("allow-parser"));
+        assert!(text.contains("reviewed_exception"));
+    }
+
+    #[test]
+    fn render_list_rows_filters_source_package() {
+        let mut allow_core = list_row("allow-core", FindingKind::Panic, "parser", "baseline_debt");
+        allow_core.source_package = Some("allow-core".to_string());
+        let mut allow_rust = list_row("allow-rust", FindingKind::Panic, "scanner", "baseline_debt");
+        allow_rust.source_package = Some("allow-rust".to_string());
+        let rows = vec![allow_core, allow_rust];
+        let filters = ListFilters {
+            kind: None,
+            family: None,
+            owner: None,
+            classification: None,
+            path: None,
+            source_package: Some("allow-core"),
+            status: None,
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+            broad_scope: false,
+            missing_evidence: false,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(text.contains("allow-core"));
+        assert!(!text.contains("allow-rust"));
+    }
+
+    #[test]
+    fn render_list_rows_filters_family() {
+        let mut indexing = list_row("allow-index", FindingKind::Panic, "parser", "baseline_debt");
+        indexing.family = Some("indexing".to_string());
+        let mut unwrap = list_row(
+            "allow-unwrap",
+            FindingKind::Panic,
+            "parser",
+            "baseline_debt",
+        );
+        unwrap.family = Some("unwrap".to_string());
+        let rows = vec![indexing, unwrap];
+        let filters = ListFilters {
+            kind: None,
+            family: Some("unwrap"),
+            owner: None,
+            classification: None,
+            path: None,
+            source_package: None,
+            status: None,
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+            broad_scope: false,
+            missing_evidence: false,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(!text.contains("allow-index"));
+        assert!(text.contains("allow-unwrap"));
+    }
+
+    #[test]
+    fn render_list_rows_filters_status() {
+        let mut baseline = list_row(
+            "allow-baseline",
+            FindingKind::Panic,
+            "parser",
+            "baseline_debt",
+        );
+        baseline.status = MatchStatus::BaselineDebt;
+        let mut stale = list_row(
+            "allow-stale",
+            FindingKind::Panic,
+            "parser",
+            "reviewed_exception",
+        );
+        stale.status = MatchStatus::Stale;
+        let rows = vec![baseline, stale];
+        let filters = ListFilters {
+            kind: None,
+            family: None,
+            owner: None,
+            classification: None,
+            path: None,
+            source_package: None,
+            status: Some("stale"),
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+            broad_scope: false,
+            missing_evidence: false,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(!text.contains("allow-baseline"));
+        assert!(text.contains("allow-stale"));
+    }
+
+    #[test]
+    fn render_list_rows_filters_path_prefix_and_covering_glob() {
+        let mut allow_core = list_row("allow-core", FindingKind::Panic, "parser", "baseline_debt");
+        allow_core.scope = "crates/allow-core/src/lib.rs".to_string();
+        let mut broad = list_row(
+            "allow-broad",
+            FindingKind::NonRustFile,
+            "tools",
+            "baseline_debt",
+        );
+        broad.scope = "crates/allow-core/**".to_string();
+        let mut allow_rust = list_row("allow-rust", FindingKind::Panic, "scanner", "baseline_debt");
+        allow_rust.scope = "crates/allow-rust/src/lib.rs".to_string();
+        let rows = vec![allow_core, broad, allow_rust];
+        let filters = ListFilters {
+            kind: None,
+            family: None,
+            owner: None,
+            classification: None,
+            path: Some(r"crates\allow-core"),
+            source_package: None,
+            status: None,
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+            broad_scope: false,
+            missing_evidence: false,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(text.contains("allow-core"));
+        assert!(text.contains("allow-broad"));
+        assert!(!text.contains("allow-rust"));
+    }
+
+    #[test]
+    fn render_list_rows_filters_broad_scope() {
+        let mut exact = list_row("allow-exact", FindingKind::Panic, "parser", "baseline_debt");
+        exact.scope = "crates/allow-core/src/lib.rs".to_string();
+        let mut broad = list_row(
+            "allow-broad",
+            FindingKind::NonRustFile,
+            "tools",
+            "baseline_debt",
+        );
+        broad.scope = "crates/allow-core/**".to_string();
+        let rows = vec![exact, broad];
+        let filters = ListFilters {
+            kind: None,
+            family: None,
+            owner: None,
+            classification: None,
+            path: None,
+            source_package: None,
+            status: None,
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+            broad_scope: true,
+            missing_evidence: false,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(!text.contains("allow-exact"));
+        assert!(text.contains("allow-broad"));
+    }
+
+    #[test]
+    fn render_list_rows_reports_and_filters_missing_evidence() {
+        let mut missing = list_row(
+            "allow-missing",
+            FindingKind::Panic,
+            "parser",
+            "baseline_debt",
+        );
+        missing.evidence_count = 0;
+        let mut evidenced = list_row(
+            "allow-evidenced",
+            FindingKind::Unsafe,
+            "runtime",
+            "reviewed_exception",
+        );
+        evidenced.evidence_count = 2;
+        let rows = vec![missing, evidenced];
+        let filters = ListFilters {
+            kind: None,
+            family: None,
+            owner: None,
+            classification: None,
+            path: None,
+            source_package: None,
+            status: None,
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+            broad_scope: false,
+            missing_evidence: true,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(text.contains("evidence_count"));
+        assert!(text.contains("allow-missing"));
+        assert!(!text.contains("allow-evidenced"));
+    }
+
+    #[test]
+    fn render_list_rows_json_records_context_filters_and_rows() {
+        let json = sample_list_json_for_contract_test();
+
+        assert!(json.contains("\"schema_version\": 1"));
+        assert!(json.contains(&format!(
+            "\"schema_id\": \"{}\"",
+            allow_report::LIST_SCHEMA_ID
+        )));
+        assert!(json.contains("\"command\": \"list\""));
+        assert!(json.contains("\"claim_boundary\""));
+        assert!(json.contains("\"scanner_limitations\""));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
+        assert!(json.contains("\"files_scanned\": 46"));
+        assert!(json.contains("\"kind\": \"panic\""));
+        assert!(json.contains("\"family\": \"unwrap\""));
+        assert!(json.contains("\"baseline_debt\": true"));
+        assert!(json.contains("\"allow_entries\": 1"));
+        assert!(json.contains("\"id\": \"allow-json\""));
+        assert!(json.contains("\"source_package\": \"allow-core\""));
+        assert!(json.contains("\"evidence_count\": 2"));
+    }
+
+    fn row_status(rows: &[ListRow], id: &str) -> MatchStatus {
+        rows.iter()
+            .find(|row| row.id == id)
+            .map(|row| row.status)
+            .unwrap_or_else(|| std::panic::panic_any(format!("missing row {id}")))
+    }
+
+    fn list_row(id: &str, kind: FindingKind, owner: &str, classification: &str) -> ListRow {
+        ListRow {
+            id: id.to_string(),
+            status: if classification == "baseline_debt" {
+                MatchStatus::BaselineDebt
+            } else {
+                MatchStatus::Matched
+            },
+            matches: 1,
+            kind,
+            family: None,
+            owner: owner.to_string(),
+            classification: classification.to_string(),
+            scope: "src/lib.rs".to_string(),
+            source_package: None,
+            evidence_count: 0,
+            review_after: "-".to_string(),
+            expires: "-".to_string(),
+            reason: "reason".to_string(),
+        }
+    }
+
+    fn test_entry(id: &str, kind: FindingKind) -> AllowEntry {
+        AllowEntry {
+            id: id.to_string(),
+            kind,
+            family: None,
+            path: Some(PathBuf::from("tracked.file")),
+            glob: None,
+            owner: "owner".to_string(),
+            classification: "classification".to_string(),
+            reason: "reason".to_string(),
+            evidence: Vec::new(),
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle::empty(),
+            selector: Selector {
+                ast_kind: Some("tracked_file".to_string()),
+                ..Selector::default()
+            },
+            last_seen: None,
+        }
+    }
+
+    fn test_finding(
+        kind: FindingKind,
+        family: Option<&str>,
+        path: &str,
+        ast_kind: &str,
+    ) -> Finding {
+        Finding {
+            kind,
+            family: family.map(str::to_string),
+            path: PathBuf::from(path),
+            span: Some(Span { line: 1, column: 1 }),
+            identity: StructuralIdentity::new("file", ast_kind),
+            message: "test finding".to_string(),
+        }
+    }
+
+    fn test_outcome(
+        status: MatchStatus,
+        allow_id: Option<&str>,
+        finding_index: Option<usize>,
+        message: &str,
+    ) -> MatchOutcome {
+        MatchOutcome {
+            status,
+            allow_id: allow_id.map(str::to_string),
+            finding_index,
+            message: message.to_string(),
+            score: 100,
+        }
+    }
+}
