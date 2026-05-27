@@ -96,6 +96,8 @@ Completed:
   macro expansion.
 - Implement source-syntax container identity for modules, free functions,
   inherent impl methods, and trait impl methods.
+- Populate optional source-derived package context from tracked `Cargo.toml`
+  `[package].name` fields without invoking Cargo metadata.
 - Replace ad hoc matching with a scored structural matcher that requires
   kind/path compatibility plus selector field agreement and fails closed on
   ambiguity.
