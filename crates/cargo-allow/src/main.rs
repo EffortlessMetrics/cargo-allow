@@ -1026,7 +1026,7 @@ fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
     )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let parsed_filter = args.kind.as_deref().map(parse_kind_filter).transpose()?;
-    let rows = list_rows(&cfg, &outcomes);
+    let rows = list_rows(&cfg, &findings, &outcomes);
     let filters = ListFilters {
         kind: parsed_filter,
         owner: args.owner.as_deref(),
@@ -1049,6 +1049,7 @@ struct ListRow {
     owner: String,
     classification: String,
     scope: String,
+    source_package: Option<String>,
     review_after: String,
     expires: String,
     reason: String,
@@ -1064,7 +1065,7 @@ struct ListFilters<'a> {
     baseline_debt: bool,
 }
 
-fn list_rows(cfg: &AllowConfig, outcomes: &[MatchOutcome]) -> Vec<ListRow> {
+fn list_rows(cfg: &AllowConfig, findings: &[Finding], outcomes: &[MatchOutcome]) -> Vec<ListRow> {
     let today = SimpleDate::today_utc_approx();
     cfg.allow
         .iter()
@@ -1085,6 +1086,11 @@ fn list_rows(cfg: &AllowConfig, outcomes: &[MatchOutcome]) -> Vec<ListRow> {
                 owner: entry.owner.clone(),
                 classification: entry.classification.clone(),
                 scope: entry.path_or_glob(),
+                source_package: entry_outcomes
+                    .iter()
+                    .filter_map(|outcome| outcome.finding_index)
+                    .filter_map(|index| findings.get(index))
+                    .find_map(source_package_name),
                 review_after: entry
                     .lifecycle
                     .review_after
@@ -1144,12 +1150,12 @@ fn date_is_due(date: Option<&str>, today: SimpleDate) -> bool {
 
 fn render_list_rows(rows: &[ListRow], filters: &ListFilters<'_>) -> String {
     let mut out = String::new();
-    out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\treview_after\texpires\treason\n");
+    out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\treview_after\texpires\treason\n");
     let mut count = 0;
     for row in rows.iter().filter(|row| list_row_matches(row, filters)) {
         count += 1;
         out.push_str(&format!(
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
             row.id,
             row.status.as_str(),
             row.matches,
@@ -1158,6 +1164,7 @@ fn render_list_rows(rows: &[ListRow], filters: &ListFilters<'_>) -> String {
             empty_as_dash(&row.owner),
             empty_as_dash(&row.classification),
             row.scope,
+            row.source_package.as_deref().unwrap_or("-"),
             row.review_after,
             row.expires,
             row.reason
@@ -3669,11 +3676,37 @@ mod tests {
             ),
             test_outcome(MatchStatus::Stale, Some("allow-stale"), None, "stale"),
         ];
+        let expired_finding = test_finding(
+            FindingKind::NonRustFile,
+            None,
+            "tracked-expired.file",
+            "tracked_file",
+        );
+        let mut review_finding = test_finding(
+            FindingKind::NonRustFile,
+            None,
+            "tracked-review.file",
+            "tracked_file",
+        );
+        review_finding.identity.crate_name = Some("review-package".to_string());
+        let stale_finding = test_finding(
+            FindingKind::NonRustFile,
+            None,
+            "tracked-stale.file",
+            "tracked_file",
+        );
+        let findings = vec![expired_finding, review_finding, stale_finding];
 
-        let rows = list_rows(&cfg, &outcomes);
+        let rows = list_rows(&cfg, &findings, &outcomes);
 
         assert_eq!(row_status(&rows, "allow-expired"), MatchStatus::Expired);
         assert_eq!(row_status(&rows, "allow-review"), MatchStatus::ReviewDue);
+        assert_eq!(
+            rows.iter()
+                .find(|row| row.id == "allow-review")
+                .and_then(|row| row.source_package.as_deref()),
+            Some("review-package")
+        );
         assert_eq!(
             row_status(&rows, "allow-baseline"),
             MatchStatus::BaselineDebt
@@ -5608,6 +5641,7 @@ expires = "permanent"
             owner: owner.to_string(),
             classification: classification.to_string(),
             scope: "src/lib.rs".to_string(),
+            source_package: None,
             review_after: "-".to_string(),
             expires: "-".to_string(),
             reason: "reason".to_string(),

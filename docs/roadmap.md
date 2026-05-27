@@ -233,6 +233,8 @@ Completed:
   without treating it as Cargo metadata.
 - Improve `list` with current status, match counts, owner/kind/lifecycle
   filters, and baseline-debt filtering.
+- Show scanner-provided source package context in `list` rows without treating
+  it as Cargo metadata.
 - Implement dry-run-first stale pruning.
 - Make baseline proposal output safer by refusing accidental overwrites and
   emitting a proposal summary.
