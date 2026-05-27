@@ -218,6 +218,7 @@ pub enum PolicyChangeKind {
     RemovedAllow,
     BaselineDebtAdded,
     ScopeBroadened,
+    ScopeNarrowed,
     SelectorPrecisionDecreased,
     SelectorPrecisionIncreased,
     ExpiryExtended,
@@ -243,6 +244,7 @@ impl PolicyChangeKind {
             Self::RemovedAllow => "removed_allow",
             Self::BaselineDebtAdded => "baseline_debt_added",
             Self::ScopeBroadened => "scope_broadened",
+            Self::ScopeNarrowed => "scope_narrowed",
             Self::SelectorPrecisionDecreased => "selector_precision_decreased",
             Self::SelectorPrecisionIncreased => "selector_precision_increased",
             Self::ExpiryExtended => "expiry_extended",
@@ -406,6 +408,14 @@ fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<PolicyChang
             PolicyChangeKind::ScopeBroadened,
             PolicyChangeSeverity::Fail,
             "scope broadened",
+        ));
+    }
+    if scope_narrowed(base, head) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::ScopeNarrowed,
+            PolicyChangeSeverity::Improvement,
+            "scope narrowed",
         ));
     }
     let base_precision = selector_precision_score(base);
@@ -639,6 +649,10 @@ fn scope_broadened(base: &AllowEntry, head: &AllowEntry) -> bool {
     }
 }
 
+fn scope_narrowed(base: &AllowEntry, head: &AllowEntry) -> bool {
+    !scope_broadened(base, head) && scope_broadened(head, base)
+}
+
 fn glob_scope_broadened(base: Option<&str>, head: Option<&str>) -> bool {
     match (base, head) {
         (Some(base), Some(head)) => head != base && wildcard_covers_path(head, base),
@@ -813,6 +827,41 @@ mod tests {
                 .iter()
                 .any(|change| change.kind == PolicyChangeKind::ScopeBroadened)
         );
+    }
+
+    #[test]
+    fn detects_scope_narrowing_from_glob_to_path() {
+        let mut base_entry = entry("allow-1");
+        base_entry.path = None;
+        base_entry.glob = Some("src/**".to_string());
+        let base = config_with(base_entry);
+        let head = config_with(entry("allow-1"));
+
+        let changes = policy_changes(&base, &head);
+
+        assert!(changes.iter().any(|change| {
+            change.kind == PolicyChangeKind::ScopeNarrowed
+                && change.severity == PolicyChangeSeverity::Improvement
+        }));
+    }
+
+    #[test]
+    fn detects_scope_narrowing_between_globs() {
+        let mut base_entry = entry("allow-1");
+        base_entry.path = None;
+        base_entry.glob = Some("src/**".to_string());
+        let base = config_with(base_entry);
+        let mut head_entry = entry("allow-1");
+        head_entry.path = None;
+        head_entry.glob = Some("src/parser/**".to_string());
+        let head = config_with(head_entry);
+
+        let changes = policy_changes(&base, &head);
+
+        assert!(changes.iter().any(|change| {
+            change.kind == PolicyChangeKind::ScopeNarrowed
+                && change.severity == PolicyChangeSeverity::Improvement
+        }));
     }
 
     #[test]

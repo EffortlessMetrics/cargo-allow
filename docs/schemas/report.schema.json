@@ -466,6 +466,7 @@
             "removed_allow",
             "baseline_debt_added",
             "scope_broadened",
+            "scope_narrowed",
             "selector_precision_decreased",
             "selector_precision_increased",
             "expiry_extended",

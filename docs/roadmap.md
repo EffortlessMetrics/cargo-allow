@@ -195,6 +195,8 @@ Completed:
   improvements so lifecycle tightening is visible in PR posture.
 - Report owner, reason, and classification additions as policy improvements so
   required-metadata restoration is visible in PR posture.
+- Report scope narrowing as a policy improvement so glob-to-path and broad-glob
+  cleanup is visible in PR posture.
 - Compare base and head source findings in `cargo-allow diff` using durable
   finding keys, so reviewers can see new and removed syntax-visible exception
   posture independent of line movement.
