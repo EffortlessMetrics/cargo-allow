@@ -91,11 +91,12 @@ Completed:
   macro expansion.
 - Implement source-syntax container identity for modules, free functions,
   inherent impl methods, and trait impl methods.
+- Replace ad hoc matching with a scored structural matcher that requires
+  kind/path compatibility plus selector field agreement and fails closed on
+  ambiguity.
+- Add selector precision scoring for diff-time policy weakening detection.
 
 Planned PRs:
-
-- Replace ad hoc matching with a scored structural matcher.
-- Add selector precision scoring.
 
 ## Phase 5: Panic-Family Lane
 

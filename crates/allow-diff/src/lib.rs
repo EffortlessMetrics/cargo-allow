@@ -676,6 +676,33 @@ mod tests {
     }
 
     #[test]
+    fn selector_precision_scores_structural_selectors_above_glob_only_scope() {
+        let strong = entry("allow-1");
+        let mut weak = entry("allow-1");
+        weak.path = None;
+        weak.glob = Some("src/**".to_string());
+        weak.selector.ast_kind = None;
+        weak.selector.container = None;
+        weak.selector.callee = None;
+        weak.selector.normalized_snippet_hash = None;
+
+        assert!(selector_precision_score(&strong) > selector_precision_score(&weak));
+    }
+
+    #[test]
+    fn selector_precision_ignores_line_hints() {
+        let mut with_hint = entry("allow-1");
+        with_hint.selector.line_hint = Some(900);
+        let mut without_hint = entry("allow-1");
+        without_hint.selector.line_hint = None;
+
+        assert_eq!(
+            selector_precision_score(&with_hint),
+            selector_precision_score(&without_hint)
+        );
+    }
+
+    #[test]
     fn detects_evidence_removed_and_lifecycle_extended() {
         let base = config_with(entry("allow-1"));
         let mut weaker = entry("allow-1");

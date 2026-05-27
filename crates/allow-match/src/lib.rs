@@ -4,6 +4,8 @@ use allow_core::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
+pub const STRUCTURAL_MATCH_THRESHOLD: u32 = 80;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CheckMode {
     Audit,
@@ -41,7 +43,7 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
         let mut candidates = Vec::new();
         for (entry_index, entry) in cfg.allow.iter().enumerate() {
             if let Some(score) = score_match(entry, finding) {
-                if score >= 80 {
+                if score >= STRUCTURAL_MATCH_THRESHOLD {
                     candidates.push((entry_index, score));
                 }
             }
@@ -378,6 +380,49 @@ mod tests {
         let entry = entry_with_hash("fnv1a64:actual");
 
         assert!(score_match(&entry, &finding).is_some());
+    }
+
+    #[test]
+    fn structural_field_mismatch_rejects_match() {
+        let finding = finding_with_hash("fnv1a64:actual");
+        let mut entry = entry_with_hash("fnv1a64:actual");
+        entry.selector.container = Some("other_container".to_string());
+
+        assert_eq!(score_match(&entry, &finding), None);
+    }
+
+    #[test]
+    fn evaluate_fails_closed_on_ambiguous_structural_matches() {
+        let finding = finding_with_hash("fnv1a64:actual");
+        let mut first = entry_with_hash("fnv1a64:actual");
+        first.id = "allow-1".to_string();
+        let mut second = entry_with_hash("fnv1a64:actual");
+        second.id = "allow-2".to_string();
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(first);
+        cfg.allow.push(second);
+
+        let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+        assert!(
+            outcomes
+                .iter()
+                .any(|outcome| outcome.status == MatchStatus::Ambiguous)
+        );
+        assert!(
+            outcomes
+                .iter()
+                .find(|outcome| outcome.status == MatchStatus::Ambiguous)
+                .map(|outcome| outcome.score >= STRUCTURAL_MATCH_THRESHOLD)
+                .unwrap_or(false)
+        );
+        assert_eq!(
+            outcomes
+                .iter()
+                .filter(|outcome| outcome.status == MatchStatus::Stale)
+                .count(),
+            2
+        );
     }
 
     #[test]
