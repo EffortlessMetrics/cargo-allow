@@ -1497,12 +1497,26 @@ fn render_explain_entry(
         .collect::<Vec<_>>();
     if !attention.is_empty() {
         out.push_str("\nattention:\n");
-        for outcome in attention.into_iter().take(20) {
+        for outcome in attention.iter().take(20) {
             out.push_str(&format!(
                 "- {}: {}\n",
                 outcome.status.as_str(),
                 outcome.message
             ));
+        }
+        if let Some(outcome) = attention.first() {
+            let finding = outcome.finding_index.and_then(|index| findings.get(index));
+            let kind = work_item_kind(outcome, finding, Some(entry));
+            out.push_str("\nnext:\n");
+            for action in suggested_actions(&kind).into_iter().take(2) {
+                out.push_str(&format!("- action: {action}\n"));
+            }
+            for command in proof_commands(&kind, finding, Some(entry))
+                .into_iter()
+                .take(3)
+            {
+                out.push_str(&format!("- proof: {command}\n"));
+            }
         }
     }
     out.push('\n');
@@ -4009,6 +4023,9 @@ mod tests {
         assert!(text.contains("current_matches: 0"));
         assert!(text.contains("match_outcomes: stale=1"));
         assert!(text.contains("allow-file is stale"));
+        assert!(text.contains("next:"));
+        assert!(text.contains("action: remove the stale allow entry"));
+        assert!(text.contains("proof: cargo-allow explain allow-file"));
     }
 
     #[test]

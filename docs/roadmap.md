@@ -227,6 +227,8 @@ Completed:
 - Improve `explain` so it reports the current live match status, matched
   finding count, occurrence-limit overruns, stale entries, lifecycle/evidence
   outcomes, and the command claim boundary.
+- Include suggested actions and proof commands in `explain` output for entries
+  that need attention.
 - Improve `list` with current status, match counts, owner/kind/lifecycle
   filters, and baseline-debt filtering.
 - Implement dry-run-first stale pruning.
