@@ -147,6 +147,23 @@
           "type": "string",
           "minLength": 1
         },
+        "exception_kind": {
+          "type": ["string", "null"],
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception",
+            null
+          ],
+          "description": "Governed source exception surface behind the work item, when known."
+        },
+        "family": {
+          "type": ["string", "null"],
+          "description": "More specific scanner or policy family behind the work item, when known."
+        },
         "risk": {
           "enum": ["high", "medium", "low"]
         },

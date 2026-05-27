@@ -210,11 +210,12 @@ confirm the exception is gone before deleting the entry.
 
 `cargo-allow worklist --format json` turns non-matched no-new outcomes into
 agent-safe work items. Each item includes a kind, risk, difficulty, current
-status, path or allow ID where available, suggested actions, and proof commands.
-The worklist summary rolls up both risk and difficulty counts, and the artifact
-records the source-tree inventory source, root, and `files_scanned` count when
-available. `source_package` fields are scanner-provided context only; they are
-not Cargo metadata or build-membership proof.
+status, governed exception kind, family where available, path or allow ID,
+suggested actions, and proof commands. The worklist summary rolls up both risk
+and difficulty counts, and the artifact records the source-tree inventory
+source, root, and `files_scanned` count when available. `source_package` fields
+are scanner-provided context only; they are not Cargo metadata or
+build-membership proof.
 It is a routing surface, not an auto-fix plan: agents and humans should fix,
 prove, narrow, or remove the exception instead of adding suppressions just to
 silence cargo-allow.
