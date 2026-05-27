@@ -1271,7 +1271,8 @@ fn render_explain_entry(
             ));
         }
     }
-    out.push_str("\nclaim boundary: source syntax only; macro expansion, macro token-tree contents, and type information were not analyzed.");
+    out.push('\n');
+    out.push_str(allow_report::CLAIM_BOUNDARY_TEXT);
     out
 }
 
@@ -1812,7 +1813,9 @@ fn render_worklist_human(items: &[WorkItem]) -> String {
             out.push_str(&format!("  proof: {command}\n"));
         }
     }
-    out.push_str("\nClaim boundary: source syntax only; macro expansion, macro token-tree contents, and type information were not analyzed.\n");
+    out.push('\n');
+    out.push_str(allow_report::CLAIM_BOUNDARY_TEXT);
+    out.push('\n');
     out
 }
 
@@ -2004,9 +2007,7 @@ fn cmd_doctor(args: &ConfigArgs) -> CargoAllowResult<()> {
     let opts = InventoryOptions::default();
     let files = inventory_files(&root, &opts)?;
     println!("tracked/scanned files: {}", files.len());
-    println!(
-        "claim boundary: source syntax only; macro expansion, macro token-tree contents, and type information are not analyzed"
-    );
+    println!("{}", allow_report::CLAIM_BOUNDARY_TEXT);
     Ok(())
 }
 
@@ -2993,7 +2994,8 @@ mod tests {
         assert!(text.contains("current_matches: 1"));
         assert!(text.contains("match_outcomes: matched=1"));
         assert!(text.contains("matched: tracked.file:1:1"));
-        assert!(text.contains("claim boundary: source syntax only"));
+        assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
+        assert!(text.contains("did not invoke Cargo metadata"));
     }
 
     #[test]
