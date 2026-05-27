@@ -74,9 +74,9 @@ Completed:
 - Let canonical checks collect migrated generated, executable, workflow,
   dependency-surface, process, and network companion findings without requiring
   `--compat`.
-- Dogfood the migrated canonical policy against a real legacy non-Rust,
+- Dogfood the migrated canonical policy against real legacy non-Rust,
   generated, executable, workflow, dependency-surface, process, and network
-  policy fixture.
+  policy fixtures.
 
 External dogfood:
 
