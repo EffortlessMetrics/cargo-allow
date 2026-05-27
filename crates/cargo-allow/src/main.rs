@@ -311,6 +311,12 @@ struct WorklistArgs {
     /// Filter findings by kind.
     #[arg(long)]
     kind: Option<String>,
+    /// Filter work items by risk.
+    #[arg(long, value_parser = ["low", "medium", "high"])]
+    risk: Option<String>,
+    /// Filter work items by estimated difficulty.
+    #[arg(long, value_parser = ["small", "medium"])]
+    difficulty: Option<String>,
     /// Include untracked files in addition to git-tracked files.
     #[arg(long)]
     include_untracked: bool,
@@ -1767,6 +1773,7 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         &report_cfg,
         items.len() + 1,
     ));
+    let items = filter_work_items(items, args.risk.as_deref(), args.difficulty.as_deref());
     let root_text = source_tree_root_text(&root);
     let context = WorklistContext {
         inventory_source: inventory_facts.source.as_str(),
@@ -1830,6 +1837,22 @@ fn work_items_from_outcomes(
         .filter(|outcome| outcome.status != MatchStatus::Matched)
         .enumerate()
         .map(|(index, outcome)| work_item_from_outcome(index + 1, cfg, findings, outcome))
+        .collect()
+}
+
+fn filter_work_items(
+    items: Vec<WorkItem>,
+    risk: Option<&str>,
+    difficulty: Option<&str>,
+) -> Vec<WorkItem> {
+    items
+        .into_iter()
+        .filter(|item| {
+            risk.map(|risk| item.risk == risk).unwrap_or(true)
+                && difficulty
+                    .map(|difficulty| item.difficulty == difficulty)
+                    .unwrap_or(true)
+        })
         .collect()
 }
 
@@ -4227,6 +4250,10 @@ mod tests {
             "worklist",
             "--kind",
             "unsafe",
+            "--risk",
+            "medium",
+            "--difficulty",
+            "small",
             "--format",
             "json",
             "--output",
@@ -4240,10 +4267,15 @@ mod tests {
             parsed.command,
             Some(CargoAllowCommand::Worklist(WorklistArgs {
                 kind: Some(kind),
+                risk: Some(risk),
+                difficulty: Some(difficulty),
                 format: WorklistFormat::Json,
                 output: Some(path),
                 ..
-            })) if kind == "unsafe" && path == Path::new("target/worklist.json")
+            })) if kind == "unsafe"
+                && risk == "medium"
+                && difficulty == "small"
+                && path == Path::new("target/worklist.json")
         ));
     }
 
@@ -4665,6 +4697,55 @@ mod tests {
         assert_eq!(item.exception_kind.as_deref(), Some("unsafe"));
         assert_eq!(item.risk, "low");
         assert_eq!(item.difficulty, "small");
+    }
+
+    #[test]
+    fn worklist_filters_by_risk_and_difficulty() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow
+            .push(test_entry("allow-stale", FindingKind::NonRustFile));
+        let findings = vec![
+            test_finding(
+                FindingKind::PolicyException,
+                Some("process_spawn"),
+                ".github/workflows/ci.yml",
+                "process_spawn",
+            ),
+            test_finding(
+                FindingKind::NonRustFile,
+                Some("shell_script"),
+                "scripts/new.sh",
+                "tracked_file",
+            ),
+        ];
+        let outcomes = vec![
+            test_outcome(
+                MatchStatus::New,
+                None,
+                Some(0),
+                "unreceipted process policy exception",
+            ),
+            test_outcome(MatchStatus::New, None, Some(1), "unreceipted shell script"),
+            test_outcome(
+                MatchStatus::Stale,
+                Some("allow-stale"),
+                None,
+                "allow-stale is stale",
+            ),
+        ];
+
+        let items = work_items_from_outcomes(&cfg, &findings, &outcomes);
+        let filtered = filter_work_items(items, Some("medium"), Some("small"));
+
+        assert_eq!(filtered.len(), 1);
+        let item = filtered
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
+        assert_eq!(item.kind, "new_unreceipted_finding");
+        assert_eq!(item.exception_kind.as_deref(), Some("non_rust_file"));
+        assert_eq!(item.risk, "medium");
+        assert_eq!(item.difficulty, "small");
+        assert_eq!(item.path.as_deref(), Some("scripts/new.sh"));
     }
 
     #[test]

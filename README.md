@@ -89,6 +89,7 @@ Generate an agent-safe worklist:
 
 ```bash
 cargo-allow worklist --format json --output target/cargo-allow/worklist.json
+cargo-allow worklist --difficulty small --format human
 ```
 
 When developing this repository before installing the binary, run the same
