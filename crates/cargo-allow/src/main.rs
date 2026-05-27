@@ -3,7 +3,9 @@ use allow_core::{
     MatchOutcome, Selector, glob_matches_str, json_escape, normalize_path,
 };
 use allow_inventory::{InventoryOptions, InventorySource, inventory, resolve_source_tree_root};
-use allow_match::{CheckMode, evaluate};
+use allow_match::CheckMode;
+#[cfg(test)]
+use allow_match::evaluate;
 use allow_policy::{find_config, load_policy, validate_local_evidence_references};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
@@ -15,6 +17,7 @@ use std::str::FromStr;
 mod add;
 mod audit;
 mod check;
+mod diff;
 mod doctor;
 mod explain;
 mod init;
@@ -44,7 +47,7 @@ enum CargoAllowCommand {
     /// CI gate for the exception ledger.
     Check(check::CheckArgs),
     /// PR-oriented report with git changed files.
-    Diff(DiffArgs),
+    Diff(diff::DiffArgs),
     /// List allow entries.
     List(list::ListArgs),
     /// Explain one allow entry.
@@ -92,33 +95,6 @@ impl InventoryFacts {
     }
 }
 
-#[derive(Debug, Clone, Parser)]
-struct DiffArgs {
-    #[command(flatten)]
-    root: RootArgs,
-    /// Policy config path.
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Filter findings by kind.
-    #[arg(long)]
-    kind: Option<String>,
-    /// Include untracked files in addition to git-tracked files.
-    #[arg(long)]
-    include_untracked: bool,
-    /// Output format.
-    #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
-    format: OutputFormat,
-    /// Write report to a file instead of stdout.
-    #[arg(long)]
-    output: Option<PathBuf>,
-    /// Base git revision for changed-file listing.
-    #[arg(long)]
-    base: String,
-    /// Optional head git revision.
-    #[arg(long)]
-    head: Option<String>,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum OutputFormat {
     Human,
@@ -149,7 +125,7 @@ fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Init(args) => init::cmd_init(&args),
         CargoAllowCommand::Audit(args) => audit::cmd_audit(&args),
         CargoAllowCommand::Check(args) => check::cmd_check(&args),
-        CargoAllowCommand::Diff(args) => cmd_diff(&args),
+        CargoAllowCommand::Diff(args) => diff::cmd_diff(&args),
         CargoAllowCommand::List(args) => list::cmd_list(&args),
         CargoAllowCommand::Explain(args) => explain::cmd_explain(&args),
         CargoAllowCommand::Add(args) => add::cmd_add(&args),
@@ -167,132 +143,6 @@ fn normalized_args(args: impl IntoIterator<Item = String>) -> Vec<String> {
         args.remove(1);
     }
     args
-}
-
-fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, inventory_facts) = load_world(
-        args.root.root.as_deref(),
-        args.config.as_deref(),
-        true,
-        args.kind.as_deref(),
-        args.include_untracked,
-    )?;
-    let report_cfg = report_config(&cfg, args.kind.as_deref())?;
-    let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
-    let policy_path = git_relative_config_path(&root, args.config.as_deref())?;
-    let base_cfg = allow_diff::policy_config_at_revision(&root, &args.base, &policy_path)?
-        .unwrap_or_else(|| report_cfg.clone());
-    let head_cfg_for_diff = if let Some(head) = &args.head {
-        allow_diff::policy_config_at_revision(&root, head, &policy_path)?
-            .unwrap_or_else(|| report_cfg.clone())
-    } else {
-        report_cfg.clone()
-    };
-    let mut base_findings = allow_diff::findings_at_revision(&root, &args.base, &base_cfg)?;
-    if let Some(kind) = &args.kind {
-        let parsed = parse_kind_filter(kind)?;
-        base_findings.retain(|finding| parsed.matches_finding(finding));
-    }
-    let mut head_findings_for_diff = if let Some(head) = &args.head {
-        allow_diff::findings_at_revision(&root, head, &head_cfg_for_diff)?
-    } else {
-        findings.clone()
-    };
-    if let Some(kind) = &args.kind {
-        let parsed = parse_kind_filter(kind)?;
-        head_findings_for_diff.retain(|finding| parsed.matches_finding(finding));
-    }
-    let finding_changes =
-        allow_diff::finding_posture_changes(&base_findings, &head_findings_for_diff);
-    let policy_changes =
-        allow_diff::policy_changes_from_git(&root, &args.base, &policy_path, &head_cfg_for_diff)?;
-    let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
-    let failed = outcomes.iter().any(|o| CheckMode::NoNew.fails(o.status)) || policy_failed;
-    let root_text = source_tree_root_text(&root);
-    let report_context = allow_report::ReportContext {
-        inventory_source: inventory_facts.source.as_str(),
-        source_tree_root: Some(&root_text),
-        inventory_files: inventory_facts.files_scanned,
-        baseline_debt_entries: Some(policy_baseline_debt_entries(&report_cfg)),
-    };
-    let mut text = match args.format {
-        OutputFormat::Json => render_diff_json_with_posture(
-            allow_report::render_json_with_context(
-                "diff",
-                &findings,
-                &outcomes,
-                failed,
-                report_context,
-            ),
-            &outcomes,
-            &finding_changes,
-            &policy_changes,
-        ),
-        OutputFormat::Html => allow_report::render_html_with_context(
-            "diff",
-            &findings,
-            &outcomes,
-            failed,
-            report_context,
-        ),
-        OutputFormat::Sarif => allow_report::render_sarif_with_context(
-            "diff",
-            &findings,
-            &outcomes,
-            failed,
-            report_context,
-        ),
-        OutputFormat::Markdown => allow_report::render_markdown_with_context(
-            "diff",
-            &findings,
-            &outcomes,
-            failed,
-            report_context,
-        ),
-        OutputFormat::Human => allow_report::render_human_with_context(
-            "diff",
-            &findings,
-            &outcomes,
-            failed,
-            report_context,
-        ),
-    };
-    if args.format == OutputFormat::Markdown {
-        let summary = render_diff_pr_summary_markdown(&outcomes, &finding_changes, &policy_changes);
-        insert_markdown_pr_summary(&mut text, &summary);
-    }
-    append_finding_posture_changes(&mut text, args.format, &finding_changes);
-    append_policy_changes(&mut text, args.format, &policy_changes);
-    match allow_diff::changed_files(&root, &args.base, args.head.as_deref()) {
-        Ok(changed) => {
-            if args.format == OutputFormat::Human {
-                text.push_str("\nChanged files from git diff:\n");
-                for path in changed.iter().take(80) {
-                    text.push_str(&format!("  {}\n", normalize_path(path)));
-                }
-            }
-        }
-        Err(err) => {
-            if args.format == OutputFormat::Human {
-                text.push_str(&format!("\nwarning: could not compute git diff: {err}\n"));
-            }
-        }
-    }
-    if args.format == OutputFormat::Json && !policy_changes.is_empty() {
-        eprintln!("{}", render_policy_changes_human(&policy_changes));
-    }
-    if args.format == OutputFormat::Json && !finding_changes.is_empty() {
-        eprintln!("{}", render_finding_posture_changes_human(&finding_changes));
-    }
-    if let Some(path) = &args.output {
-        write_file(path, &text)?;
-    } else {
-        println!("{text}");
-    }
-    if failed {
-        process::exit(1);
-    }
-    Ok(())
 }
 
 fn insert_markdown_pr_summary(text: &mut String, summary: &str) {
