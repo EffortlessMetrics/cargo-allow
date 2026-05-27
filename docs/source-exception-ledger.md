@@ -201,6 +201,10 @@ Cargo metadata or build-membership proof. The
 command is still bounded by the normal cargo-allow claim boundary: source syntax
 only, with no macro expansion, macro token-tree expression parsing, type
 analysis, build output, control-flow analysis, or data-flow analysis.
+`--format json` emits the same single-entry explanation as
+`cargo-allow.explain.v1`, including source-tree inventory context, scanner
+limitations, evidence diagnostics, current findings, match outcomes, and the
+same suggested actions/proof commands shown in the human view.
 
 `cargo-allow list` shows allow entries with current status, match count, kind,
 family, owner, classification, scope, scanner-provided source package context,
@@ -247,7 +251,7 @@ to the matching shortcut queues.
 When the human view is truncated, it says how many work items were omitted and
 points to JSON for the full queue. Filtered worklist output records the applied
 filters so saved artifacts are not mistaken for the full ledger queue. The
-report, receipt, list, and worklist schemas enumerate scanner limitation values
+report, receipt, explain, list, and worklist schemas enumerate scanner limitation values
 rather than treating claim-boundary facts as open-ended prose.
 Work items are ordered for routing: high risk first, then lower estimated
 difficulty, then stable source and allow identifiers.

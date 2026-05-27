@@ -85,6 +85,13 @@ cargo-allow diff --base origin/main \
   --output target/cargo-allow/pr-summary.md
 ```
 
+Explain one retained exception:
+
+```bash
+cargo-allow explain allow-0042
+cargo-allow explain allow-0042 --format json --output target/cargo-allow/explain.json
+```
+
 Generate an agent-safe worklist:
 
 ```bash
@@ -164,6 +171,7 @@ cargo-allow audit
 cargo-allow check --mode no-new
 cargo-allow diff --base origin/main
 cargo-allow explain allow-0042
+cargo-allow explain allow-0042 --format json --output target/cargo-allow/explain.json
 cargo-allow list --kind unsafe
 cargo-allow list --family unwrap
 cargo-allow list --classification baseline_debt
@@ -207,4 +215,5 @@ cargo-allow doctor
 - [CI examples](docs/ci.md)
 - [Examples](examples/README.md)
 - [Agent worklist prompt](docs/agents/cargo-allow-worklist.md)
+- [Explain JSON schema](docs/schemas/explain.schema.json)
 - [List JSON schema](docs/schemas/list.schema.json)

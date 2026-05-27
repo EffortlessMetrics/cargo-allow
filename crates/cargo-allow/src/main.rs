@@ -268,6 +268,15 @@ struct ExplainArgs {
     /// Policy config path.
     #[arg(long)]
     config: Option<PathBuf>,
+    /// Include untracked files in addition to git-tracked files.
+    #[arg(long)]
+    include_untracked: bool,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = ExplainFormat::Human)]
+    format: ExplainFormat,
+    /// Write explanation output to a file instead of stdout.
+    #[arg(long)]
+    output: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -473,6 +482,12 @@ enum WorklistFormat {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum ListFormat {
+    Human,
+    Json,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum ExplainFormat {
     Human,
     Json,
 }
@@ -1574,12 +1589,12 @@ fn empty_as_dash(value: &str) -> &str {
 }
 
 fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, _inventory_source) = load_world_with_evidence_validation(
+    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_validation(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         None,
-        false,
+        args.include_untracked,
         false,
     )?;
     let entry = cfg
@@ -1587,7 +1602,21 @@ fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         .iter()
         .find(|e| e.id == args.id)
         .ok_or_else(|| CargoAllowError::new(format!("no allow entry `{}`", args.id)))?;
-    println!("{}", explain_entry_text(&root, &cfg, entry, &findings));
+    let root_text = source_tree_root_text(&root);
+    let context = ExplainContext {
+        inventory_source: inventory_facts.source.as_str(),
+        source_tree_root: Some(&root_text),
+        inventory_files: inventory_facts.files_scanned,
+    };
+    let text = match args.format {
+        ExplainFormat::Human => explain_entry_text(&root, &cfg, entry, &findings),
+        ExplainFormat::Json => explain_entry_json(&root, &cfg, entry, &findings, context),
+    };
+    if let Some(path) = &args.output {
+        write_file(path, &text)?;
+    } else {
+        println!("{text}");
+    }
     Ok(())
 }
 
@@ -1751,6 +1780,23 @@ fn render_add_summary(entry: &AllowEntry, finding: &Finding, output: Option<&Pat
     out
 }
 
+#[derive(Debug, Clone, Copy)]
+struct ExplainContext<'a> {
+    inventory_source: &'a str,
+    source_tree_root: Option<&'a str>,
+    inventory_files: Option<usize>,
+}
+
+impl Default for ExplainContext<'static> {
+    fn default() -> Self {
+        Self {
+            inventory_source: "unknown",
+            source_tree_root: None,
+            inventory_files: None,
+        }
+    }
+}
+
 fn next_allow_id(cfg: &AllowConfig) -> String {
     let mut index = cfg.allow.len() + 1;
     loop {
@@ -1768,6 +1814,26 @@ fn explain_entry_text(
     entry: &AllowEntry,
     findings: &[Finding],
 ) -> String {
+    let (matching_findings, outcomes) = explain_entry_state(cfg, entry, findings);
+    render_explain_entry(root, entry, &matching_findings, &outcomes)
+}
+
+fn explain_entry_json(
+    root: &Path,
+    cfg: &AllowConfig,
+    entry: &AllowEntry,
+    findings: &[Finding],
+    context: ExplainContext<'_>,
+) -> String {
+    let (matching_findings, outcomes) = explain_entry_state(cfg, entry, findings);
+    render_explain_entry_json(root, entry, &matching_findings, &outcomes, context)
+}
+
+fn explain_entry_state(
+    cfg: &AllowConfig,
+    entry: &AllowEntry,
+    findings: &[Finding],
+) -> (Vec<Finding>, Vec<MatchOutcome>) {
     let matching_findings = findings
         .iter()
         .filter(|finding| score_match(entry, finding).is_some())
@@ -1776,7 +1842,7 @@ fn explain_entry_text(
     let mut single_entry_cfg = cfg.clone();
     single_entry_cfg.allow = vec![entry.clone()];
     let outcomes = evaluate(&single_entry_cfg, &matching_findings, CheckMode::NoNew);
-    render_explain_entry(root, entry, &matching_findings, &outcomes)
+    (matching_findings, outcomes)
 }
 
 fn render_explain_entry(
@@ -1918,6 +1984,309 @@ fn render_explain_entry(
     out.push('\n');
     out.push_str(allow_report::CLAIM_BOUNDARY_TEXT);
     out
+}
+
+fn render_explain_entry_json(
+    root: &Path,
+    entry: &AllowEntry,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    context: ExplainContext<'_>,
+) -> String {
+    let (suggested_actions, proof_commands) = explain_next_steps(entry, findings, outcomes);
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "  \"schema_version\": {},\n",
+        allow_report::EXPLAIN_SCHEMA_VERSION
+    ));
+    out.push_str(&format!(
+        "  \"schema_id\": \"{}\",\n",
+        allow_report::EXPLAIN_SCHEMA_ID
+    ));
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"explain\",\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        json_string_array(allow_report::CLAIM_BOUNDARY)
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        json_string_array(allow_report::SCANNER_LIMITATIONS)
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&explain_inventory_json(context, "  "));
+    out.push_str(",\n");
+    out.push_str("  \"allow_entry\": ");
+    out.push_str(&allow_entry_json(entry, "  "));
+    out.push_str(",\n");
+    out.push_str(&format!(
+        "  \"summary\": {{\n    \"current_status\": \"{}\",\n    \"current_matches\": {},\n    \"match_outcomes\": {}\n  }},\n",
+        explain_status(outcomes).as_str(),
+        findings.len(),
+        outcomes.len()
+    ));
+    out.push_str("  \"evidence_references\": [\n");
+    for (index, diagnostic) in evidence_reference_diagnostics(root, entry)
+        .iter()
+        .enumerate()
+    {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&evidence_reference_diagnostic_json(diagnostic, "  "));
+    }
+    out.push_str("\n  ],\n");
+    out.push_str("  \"current_findings\": [\n");
+    for (index, finding) in findings.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        let status = outcomes
+            .iter()
+            .find(|outcome| outcome.finding_index == Some(index))
+            .map(|outcome| outcome.status.as_str())
+            .unwrap_or("unmatched");
+        out.push_str(&explain_finding_json(finding, status, "  "));
+    }
+    out.push_str("\n  ],\n");
+    out.push_str("  \"match_outcomes\": [\n");
+    for (index, outcome) in outcomes.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&match_outcome_json(outcome, "  "));
+    }
+    out.push_str("\n  ],\n");
+    out.push_str("  \"next\": {\n");
+    out.push_str(&format!(
+        "    \"suggested_actions\": {},\n",
+        json_string_array(&suggested_actions)
+    ));
+    out.push_str(&format!(
+        "    \"proof_commands\": {}\n",
+        json_string_array(&proof_commands)
+    ));
+    out.push_str("  }\n");
+    out.push_str("}\n");
+    out
+}
+
+fn explain_inventory_json(context: ExplainContext<'_>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("{indent}  \"scope\": \"source_tree\",\n"));
+    out.push_str(&format!("{indent}  \"scanner\": \"source_syntax\",\n"));
+    out.push_str(&format!(
+        "{indent}  \"source\": \"{}\"",
+        json_escape(context.inventory_source)
+    ));
+    if let Some(root) = context.source_tree_root {
+        out.push_str(&format!(",\n{indent}  \"root\": \"{}\"", json_escape(root)));
+    }
+    if let Some(files) = context.inventory_files {
+        out.push_str(&format!(",\n{indent}  \"files_scanned\": {files}"));
+    }
+    out.push_str(&format!("\n{indent}}}"));
+    out
+}
+
+fn allow_entry_json(entry: &AllowEntry, indent: &str) -> String {
+    let path = entry.path.as_ref().map(normalize_path);
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "{indent}  \"id\": \"{}\",\n",
+        json_escape(&entry.id)
+    ));
+    out.push_str(&format!("{indent}  \"kind\": \"{}\",\n", entry.kind));
+    out.push_str(&format!(
+        "{indent}  \"family\": {},\n",
+        option_json_string(entry.family.as_deref())
+    ));
+    out.push_str(&format!(
+        "{indent}  \"scope\": \"{}\",\n",
+        json_escape(&entry.path_or_glob())
+    ));
+    out.push_str(&format!(
+        "{indent}  \"path\": {},\n",
+        option_json_string(path.as_deref())
+    ));
+    out.push_str(&format!(
+        "{indent}  \"glob\": {},\n",
+        option_json_string(entry.glob.as_deref())
+    ));
+    out.push_str(&format!(
+        "{indent}  \"owner\": \"{}\",\n",
+        json_escape(&entry.owner)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"classification\": \"{}\",\n",
+        json_escape(&entry.classification)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"reason\": \"{}\",\n",
+        json_escape(&entry.reason)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"evidence\": {},\n",
+        json_string_array(&entry.evidence)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"links\": {},\n",
+        json_string_array(&entry.links)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"occurrence_limit\": {},\n",
+        option_u32_json(entry.occurrence_limit)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"lifecycle\": {},\n",
+        lifecycle_json(&entry.lifecycle, indent)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"selector\": {},\n",
+        selector_json(&entry.selector, indent)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"last_seen\": {}\n",
+        last_seen_json(entry.last_seen.as_ref(), indent)
+    ));
+    out.push_str(&format!("{indent}}}"));
+    out
+}
+
+fn lifecycle_json(lifecycle: &Lifecycle, indent: &str) -> String {
+    format!(
+        "{{\n{indent}    \"created\": {},\n{indent}    \"review_after\": {},\n{indent}    \"expires\": {}\n{indent}  }}",
+        option_json_string(lifecycle.created.as_deref()),
+        option_json_string(lifecycle.review_after.as_deref()),
+        option_json_string(lifecycle.expires.as_deref())
+    )
+}
+
+fn selector_json(selector: &Selector, indent: &str) -> String {
+    format!(
+        "{{\n{indent}    \"ast_kind\": {},\n{indent}    \"container\": {},\n{indent}    \"callee\": {},\n{indent}    \"macro_name\": {},\n{indent}    \"lint\": {},\n{indent}    \"symbol\": {},\n{indent}    \"receiver_fingerprint\": {},\n{indent}    \"target_fingerprint\": {},\n{indent}    \"normalized_snippet_hash\": {},\n{indent}    \"line_hint\": {},\n{indent}    \"glob\": {}\n{indent}  }}",
+        option_json_string(selector.ast_kind.as_deref()),
+        option_json_string(selector.container.as_deref()),
+        option_json_string(selector.callee.as_deref()),
+        option_json_string(selector.macro_name.as_deref()),
+        option_json_string(selector.lint.as_deref()),
+        option_json_string(selector.symbol.as_deref()),
+        option_json_string(selector.receiver_fingerprint.as_deref()),
+        option_json_string(selector.target_fingerprint.as_deref()),
+        option_json_string(selector.normalized_snippet_hash.as_deref()),
+        option_u32_json(selector.line_hint),
+        option_json_string(selector.glob.as_deref())
+    )
+}
+
+fn last_seen_json(last_seen: Option<&allow_core::LastSeen>, indent: &str) -> String {
+    last_seen
+        .map(|last_seen| {
+            format!(
+                "{{\n{indent}    \"line\": {},\n{indent}    \"column\": {}\n{indent}  }}",
+                last_seen.line, last_seen.column
+            )
+        })
+        .unwrap_or_else(|| "null".to_string())
+}
+
+fn evidence_reference_diagnostic_json(
+    diagnostic: &allow_policy::EvidenceReferenceDiagnostic,
+    indent: &str,
+) -> String {
+    let target = diagnostic.target.as_ref().map(normalize_path);
+    format!(
+        "{indent}  {{\n{indent}    \"raw\": \"{}\",\n{indent}    \"prefix\": {},\n{indent}    \"target\": {},\n{indent}    \"status\": \"{}\",\n{indent}    \"message\": \"{}\"\n{indent}  }}",
+        json_escape(&diagnostic.raw),
+        option_json_string(diagnostic.prefix.as_deref()),
+        option_json_string(target.as_deref()),
+        diagnostic.status.as_str(),
+        json_escape(&diagnostic.message)
+    )
+}
+
+fn explain_finding_json(finding: &Finding, status: &str, indent: &str) -> String {
+    let span = finding.span.as_ref();
+    format!(
+        "{indent}  {{\n{indent}    \"status\": \"{}\",\n{indent}    \"kind\": \"{}\",\n{indent}    \"family\": {},\n{indent}    \"path\": \"{}\",\n{indent}    \"line\": {},\n{indent}    \"column\": {},\n{indent}    \"source_package\": {},\n{indent}    \"identity\": {},\n{indent}    \"message\": \"{}\"\n{indent}  }}",
+        json_escape(status),
+        finding.kind,
+        option_json_string(finding.family.as_deref()),
+        json_escape(&normalize_path(&finding.path)),
+        option_u32_json(span.map(|span| span.line)),
+        option_u32_json(span.map(|span| span.column)),
+        option_json_string(source_package_name(finding).as_deref()),
+        structural_identity_json(&finding.identity, indent),
+        json_escape(&finding.message)
+    )
+}
+
+fn structural_identity_json(identity: &allow_core::StructuralIdentity, indent: &str) -> String {
+    format!(
+        "{{\n{indent}      \"language\": \"{}\",\n{indent}      \"crate_name\": {},\n{indent}      \"module\": {},\n{indent}      \"container\": {},\n{indent}      \"ast_kind\": \"{}\",\n{indent}      \"symbol\": {},\n{indent}      \"callee\": {},\n{indent}      \"macro_name\": {},\n{indent}      \"lint\": {},\n{indent}      \"receiver_fingerprint\": {},\n{indent}      \"target_fingerprint\": {},\n{indent}      \"normalized_snippet_hash\": {},\n{indent}      \"line_hint\": {},\n{indent}      \"column_hint\": {}\n{indent}    }}",
+        json_escape(&identity.language),
+        option_json_string(identity.crate_name.as_deref()),
+        option_json_string(identity.module.as_deref()),
+        option_json_string(identity.container.as_deref()),
+        json_escape(&identity.ast_kind),
+        option_json_string(identity.symbol.as_deref()),
+        option_json_string(identity.callee.as_deref()),
+        option_json_string(identity.macro_name.as_deref()),
+        option_json_string(identity.lint.as_deref()),
+        option_json_string(identity.receiver_fingerprint.as_deref()),
+        option_json_string(identity.target_fingerprint.as_deref()),
+        option_json_string(identity.normalized_snippet_hash.as_deref()),
+        option_u32_json(identity.line_hint),
+        option_u32_json(identity.column_hint)
+    )
+}
+
+fn match_outcome_json(outcome: &MatchOutcome, indent: &str) -> String {
+    format!(
+        "{indent}  {{\n{indent}    \"status\": \"{}\",\n{indent}    \"allow_id\": {},\n{indent}    \"finding_index\": {},\n{indent}    \"score\": {},\n{indent}    \"message\": \"{}\"\n{indent}  }}",
+        outcome.status.as_str(),
+        option_json_string(outcome.allow_id.as_deref()),
+        option_usize_json(outcome.finding_index),
+        outcome.score,
+        json_escape(&outcome.message)
+    )
+}
+
+fn explain_next_steps(
+    entry: &AllowEntry,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+) -> (Vec<String>, Vec<String>) {
+    let attention = outcomes
+        .iter()
+        .filter(|outcome| outcome.status != MatchStatus::Matched)
+        .collect::<Vec<_>>();
+    if let Some(outcome) = attention.first() {
+        let finding = outcome.finding_index.and_then(|index| findings.get(index));
+        let kind = work_item_kind(outcome, finding, Some(entry));
+        return (
+            suggested_actions(&kind).into_iter().take(2).collect(),
+            proof_commands(&kind, finding, Some(entry))
+                .into_iter()
+                .take(3)
+                .collect(),
+        );
+    }
+    if entry.classification == "baseline_debt" {
+        let finding = findings.first();
+        let kind = "baseline_debt";
+        return (
+            suggested_actions(kind).into_iter().take(2).collect(),
+            proof_commands(kind, finding, Some(entry))
+                .into_iter()
+                .take(3)
+                .collect(),
+        );
+    }
+    (Vec::new(), Vec::new())
 }
 
 fn kind_label(entry: &AllowEntry) -> String {
@@ -3199,6 +3568,12 @@ fn option_json_string(value: Option<&str>) -> String {
 }
 
 fn option_usize_json(value: Option<usize>) -> String {
+    value
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| "null".to_string())
+}
+
+fn option_u32_json(value: Option<u32>) -> String {
     value
         .map(|value| value.to_string())
         .unwrap_or_else(|| "null".to_string())
@@ -5286,13 +5661,26 @@ mod tests {
             "allow-0001",
             "--config",
             "policy/custom.toml",
+            "--include-untracked",
+            "--format",
+            "json",
+            "--output",
+            "target/explain.json",
         ]))
         .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Explain(ExplainArgs { id, config, .. }))
-                if id == "allow-0001" && config.as_deref() == Some(Path::new("policy/custom.toml"))
+            Some(CargoAllowCommand::Explain(ExplainArgs {
+                id,
+                config,
+                include_untracked: true,
+                format: ExplainFormat::Json,
+                output,
+                ..
+            })) if id == "allow-0001"
+                && config.as_deref() == Some(Path::new("policy/custom.toml"))
+                && output.as_deref() == Some(Path::new("target/explain.json"))
         ));
     }
 
@@ -5393,6 +5781,58 @@ mod tests {
         assert!(text.contains("source_package=fixture-package"));
         assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
         assert!(text.contains("did not invoke Cargo metadata"));
+    }
+
+    #[test]
+    fn explain_entry_json_records_context_and_live_status() {
+        let mut cfg = AllowConfig::empty();
+        let mut entry = test_entry("allow-json", FindingKind::NonRustFile);
+        entry.family = Some("documentation".to_string());
+        entry.evidence = vec!["test:explain_fixture".to_string()];
+        entry.lifecycle.created = Some("2026-05-27".to_string());
+        entry.lifecycle.review_after = Some("2026-11-01".to_string());
+        cfg.allow.push(entry.clone());
+        let mut finding = test_finding(
+            FindingKind::NonRustFile,
+            Some("documentation"),
+            "tracked.file",
+            "tracked_file",
+        );
+        finding.identity.crate_name = Some("allow-core".to_string());
+
+        let json = explain_entry_json(
+            Path::new("."),
+            &cfg,
+            &entry,
+            &[finding],
+            ExplainContext {
+                inventory_source: "git_tracked",
+                source_tree_root: Some("H:/Code/Rust/cargo-allow"),
+                inventory_files: Some(47),
+            },
+        );
+
+        assert!(json.contains("\"schema_version\": 1"));
+        assert!(json.contains(&format!(
+            "\"schema_id\": \"{}\"",
+            allow_report::EXPLAIN_SCHEMA_ID
+        )));
+        assert!(json.contains("\"command\": \"explain\""));
+        assert!(json.contains("\"claim_boundary\""));
+        assert!(json.contains("\"scanner_limitations\""));
+        assert!(json.contains("\"cargo_metadata_not_invoked\""));
+        assert!(json.contains("\"repository_code_not_executed\""));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
+        assert!(json.contains("\"files_scanned\": 47"));
+        assert!(json.contains("\"id\": \"allow-json\""));
+        assert!(json.contains("\"current_status\": \"matched\""));
+        assert!(json.contains("\"current_matches\": 1"));
+        assert!(json.contains("\"path\": \"tracked.file\""));
+        assert!(json.contains("\"source_package\": \"allow-core\""));
+        assert!(json.contains("\"status\": \"traceability_only\""));
+        assert!(json.contains("\"suggested_actions\": []"));
+        assert!(json.contains("\"proof_commands\": []"));
     }
 
     #[test]
@@ -5578,6 +6018,23 @@ mod tests {
         assert!(schema.contains("\"inventory\""));
         assert!(schema.contains("\"git_tracked\""));
         assert!(schema.contains("\"source_tree_inventory\""));
+    }
+
+    #[test]
+    fn explain_schema_documents_current_contract() {
+        let schema = include_str!("../../../docs/schemas/explain.schema.json");
+
+        assert!(schema.contains(allow_report::EXPLAIN_SCHEMA_ID));
+        assert!(schema.contains("\"allow_entry\""));
+        assert!(schema.contains("\"evidence_references\""));
+        assert!(schema.contains("\"current_findings\""));
+        assert!(schema.contains("\"match_outcomes\""));
+        assert!(schema.contains("\"next\""));
+        assert!(schema.contains("\"scanner_limitations\""));
+        assert!(schema.contains("\"scanner_limitation\""));
+        assert!(schema.contains("\"source_package\""));
+        assert!(schema.contains("\"cargo_metadata_not_invoked\""));
+        assert!(schema.contains("\"repository_code_not_executed\""));
     }
 
     #[test]

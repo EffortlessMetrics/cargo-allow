@@ -1,0 +1,669 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/explain.v1.schema.json",
+  "title": "cargo-allow explain v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "command",
+    "claim_boundary",
+    "scanner_limitations",
+    "inventory",
+    "allow_entry",
+    "summary",
+    "evidence_references",
+    "current_findings",
+    "match_outcomes",
+    "next"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "schema_id": {
+      "const": "cargo-allow.explain.v1"
+    },
+    "tool": {
+      "const": "cargo-allow"
+    },
+    "command": {
+      "const": "explain"
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/claim_boundary_flag"
+      }
+    },
+    "scanner_limitations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/scanner_limitation"
+      }
+    },
+    "inventory": {
+      "$ref": "#/$defs/inventory"
+    },
+    "allow_entry": {
+      "$ref": "#/$defs/allow_entry"
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current_status",
+        "current_matches",
+        "match_outcomes"
+      ],
+      "properties": {
+        "current_status": {
+          "$ref": "#/$defs/match_status"
+        },
+        "current_matches": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "match_outcomes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "evidence_references": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidence_reference"
+      }
+    },
+    "current_findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/current_finding"
+      }
+    },
+    "match_outcomes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/match_outcome"
+      }
+    },
+    "next": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "suggested_actions",
+        "proof_commands"
+      ],
+      "properties": {
+        "suggested_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "proof_commands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "claim_boundary_flag": {
+      "type": "string",
+      "enum": [
+        "source_tree_inventory",
+        "source_syntax_only",
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "repository_code_not_executed"
+      ]
+    },
+    "scanner_limitation": {
+      "type": "string",
+      "enum": [
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "repository_code_not_executed"
+      ]
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "scanner",
+        "source"
+      ],
+      "properties": {
+        "scope": {
+          "const": "source_tree"
+        },
+        "scanner": {
+          "const": "source_syntax"
+        },
+        "source": {
+          "enum": [
+            "git_tracked",
+            "filesystem_fallback",
+            "unknown"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "description": "Local source-tree root used for this explanation. This may be an absolute path."
+        },
+        "files_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of source-tree inventory files considered before scanner filtering, when collected."
+        }
+      }
+    },
+    "allow_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "family",
+        "scope",
+        "path",
+        "glob",
+        "owner",
+        "classification",
+        "reason",
+        "evidence",
+        "links",
+        "occurrence_limit",
+        "lifecycle",
+        "selector",
+        "last_seen"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scope": {
+          "type": "string"
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "glob": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "owner": {
+          "type": "string"
+        },
+        "classification": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "occurrence_limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/lifecycle"
+        },
+        "selector": {
+          "$ref": "#/$defs/selector"
+        },
+        "last_seen": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/span"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "created",
+        "review_after",
+        "expires"
+      ],
+      "properties": {
+        "created": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "review_after": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expires": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ast_kind",
+        "container",
+        "callee",
+        "macro_name",
+        "lint",
+        "symbol",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+        "line_hint",
+        "glob"
+      ],
+      "properties": {
+        "ast_kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "container": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "callee": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "macro_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "symbol": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "receiver_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "normalized_snippet_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line_hint": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "glob": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "evidence_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw",
+        "prefix",
+        "target",
+        "status",
+        "message"
+      ],
+      "properties": {
+        "raw": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "enum": [
+            "local_file_present",
+            "local_file_missing",
+            "invalid_local_path",
+            "traceability_only",
+            "unstructured"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "current_finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "kind",
+        "family",
+        "path",
+        "line",
+        "column",
+        "source_package",
+        "identity",
+        "message"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "column": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "source_package": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Scanner-provided source package context; not Cargo metadata or build proof."
+        },
+        "identity": {
+          "$ref": "#/$defs/structural_identity"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "structural_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "language",
+        "crate_name",
+        "module",
+        "container",
+        "ast_kind",
+        "symbol",
+        "callee",
+        "macro_name",
+        "lint",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+        "line_hint",
+        "column_hint"
+      ],
+      "properties": {
+        "language": {
+          "type": "string"
+        },
+        "crate_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "module": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "container": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ast_kind": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "callee": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "macro_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "receiver_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "normalized_snippet_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line_hint": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "column_hint": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "match_outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "allow_id",
+        "finding_index",
+        "score",
+        "message"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/match_status"
+        },
+        "allow_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "finding_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "match_status": {
+      "enum": [
+        "matched",
+        "new",
+        "stale",
+        "expired",
+        "review_due",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt"
+      ]
+    },
+    "span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "line",
+        "column"
+      ],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}
