@@ -46,6 +46,8 @@ struct RequirementsToml {
     #[serde(default, deserialize_with = "option_bool_or_string")]
     allow_bare_allow_attributes: Option<bool>,
     #[serde(default, deserialize_with = "option_bool_or_string")]
+    lint_policy_id_required: Option<bool>,
+    #[serde(default, deserialize_with = "option_bool_or_string")]
     stale_entries_fail: Option<bool>,
     #[serde(default, rename = "unsafe")]
     unsafe_requirements: UnsafeRequirementsToml,
@@ -221,6 +223,9 @@ impl RequirementsToml {
             allow_bare_allow_attributes: self
                 .allow_bare_allow_attributes
                 .unwrap_or(default.allow_bare_allow_attributes),
+            lint_policy_id_required: self
+                .lint_policy_id_required
+                .unwrap_or(default.lint_policy_id_required),
             stale_entries_fail: self
                 .stale_entries_fail
                 .unwrap_or(default.stale_entries_fail),
@@ -708,6 +713,7 @@ reason_required = true
 classification_required = true
 expires_or_review_after_required = true
 allow_bare_allow_attributes = false
+lint_policy_id_required = false
 stale_entries_fail = {stale}
 
 [requirements.unsafe]
@@ -747,7 +753,7 @@ pub fn render_policy(cfg: &AllowConfig) -> String {
         render_array(&cfg.workspace.generated)
     ));
     out.push_str("[requirements]\n");
-    out.push_str(&format!("owner_required = {}\nreason_required = {}\nclassification_required = {}\nexpires_or_review_after_required = {}\nallow_bare_allow_attributes = {}\nstale_entries_fail = {}\n\n", cfg.requirements.owner_required, cfg.requirements.reason_required, cfg.requirements.classification_required, cfg.requirements.expires_or_review_after_required, cfg.requirements.allow_bare_allow_attributes, cfg.requirements.stale_entries_fail));
+    out.push_str(&format!("owner_required = {}\nreason_required = {}\nclassification_required = {}\nexpires_or_review_after_required = {}\nallow_bare_allow_attributes = {}\nlint_policy_id_required = {}\nstale_entries_fail = {}\n\n", cfg.requirements.owner_required, cfg.requirements.reason_required, cfg.requirements.classification_required, cfg.requirements.expires_or_review_after_required, cfg.requirements.allow_bare_allow_attributes, cfg.requirements.lint_policy_id_required, cfg.requirements.stale_entries_fail));
     out.push_str("[requirements.unsafe]\n");
     out.push_str(&format!(
         "evidence_required = {}\nsafety_comment_required = {}\n",
@@ -907,6 +913,7 @@ mod tests {
 
                 [requirements]
                 expires_or_review_after_required = true
+                lint_policy_id_required = true
 
                 [[allow]]
                 id = "allow-0001"
@@ -926,6 +933,7 @@ mod tests {
         )
         .expect("policy parses");
         assert_eq!(cfg.allow.len(), 1);
+        assert!(cfg.requirements.lint_policy_id_required);
         assert_eq!(cfg.allow[0].selector.callee.as_deref(), Some("unwrap"));
     }
 
