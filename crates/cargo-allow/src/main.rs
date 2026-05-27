@@ -1773,7 +1773,8 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         &report_cfg,
         items.len() + 1,
     ));
-    let items = filter_work_items(items, args.risk.as_deref(), args.difficulty.as_deref());
+    let mut items = filter_work_items(items, args.risk.as_deref(), args.difficulty.as_deref());
+    sort_work_items(&mut items);
     let root_text = source_tree_root_text(&root);
     let context = WorklistContext {
         inventory_source: inventory_facts.source.as_str(),
@@ -1868,6 +1869,38 @@ fn filter_work_items(
                     .unwrap_or(true)
         })
         .collect()
+}
+
+fn sort_work_items(items: &mut [WorkItem]) {
+    items.sort_by(|left, right| {
+        work_item_risk_rank(left.risk)
+            .cmp(&work_item_risk_rank(right.risk))
+            .then_with(|| {
+                work_item_difficulty_rank(left.difficulty)
+                    .cmp(&work_item_difficulty_rank(right.difficulty))
+            })
+            .then_with(|| left.kind.cmp(&right.kind))
+            .then_with(|| left.path.cmp(&right.path))
+            .then_with(|| left.allow_id.cmp(&right.allow_id))
+            .then_with(|| left.id.cmp(&right.id))
+    });
+}
+
+fn work_item_risk_rank(risk: &str) -> u8 {
+    match risk {
+        "high" => 0,
+        "medium" => 1,
+        "low" => 2,
+        _ => 3,
+    }
+}
+
+fn work_item_difficulty_rank(difficulty: &str) -> u8 {
+    match difficulty {
+        "small" => 0,
+        "medium" => 1,
+        _ => 2,
+    }
 }
 
 fn work_item_from_outcome(
@@ -4830,6 +4863,63 @@ mod tests {
         assert_eq!(item.risk, "medium");
         assert_eq!(item.difficulty, "small");
         assert_eq!(item.path.as_deref(), Some("scripts/new.sh"));
+    }
+
+    #[test]
+    fn worklist_sort_prioritizes_risk_then_difficulty() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow
+            .push(test_entry("allow-stale", FindingKind::NonRustFile));
+        let findings = vec![
+            test_finding(
+                FindingKind::Panic,
+                Some("unwrap"),
+                "src/panic.rs",
+                "method_call",
+            ),
+            test_finding(
+                FindingKind::PolicyException,
+                Some("process_spawn"),
+                ".github/workflows/ci.yml",
+                "process_spawn",
+            ),
+            test_finding(
+                FindingKind::NonRustFile,
+                Some("shell_script"),
+                "scripts/new.sh",
+                "tracked_file",
+            ),
+        ];
+        let outcomes = vec![
+            test_outcome(MatchStatus::New, None, Some(0), "unreceipted panic.unwrap"),
+            test_outcome(
+                MatchStatus::New,
+                None,
+                Some(1),
+                "unreceipted process policy exception",
+            ),
+            test_outcome(MatchStatus::New, None, Some(2), "unreceipted shell script"),
+            test_outcome(
+                MatchStatus::Stale,
+                Some("allow-stale"),
+                None,
+                "allow-stale is stale",
+            ),
+        ];
+
+        let mut items = work_items_from_outcomes(&cfg, &findings, &outcomes);
+        sort_work_items(&mut items);
+
+        assert_eq!(items[0].risk, "high");
+        assert_eq!(items[0].family.as_deref(), Some("process_spawn"));
+        assert_eq!(items[1].risk, "medium");
+        assert_eq!(items[1].difficulty, "small");
+        assert_eq!(items[1].family.as_deref(), Some("shell_script"));
+        assert_eq!(items[2].risk, "medium");
+        assert_eq!(items[2].difficulty, "medium");
+        assert_eq!(items[2].family.as_deref(), Some("unwrap"));
+        assert_eq!(items[3].risk, "low");
+        assert_eq!(items[3].kind, "stale_allow");
     }
 
     #[test]
