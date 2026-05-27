@@ -8,8 +8,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 
 use crate::{
-    RootArgs, json_string_array, root_relative_path, source_tree_root_text, write_file,
-    write_file_no_overwrite,
+    RootArgs, root_relative_path, source_tree_root_text, write_file, write_file_no_overwrite,
 };
 
 #[derive(Debug, Clone, Parser)]
@@ -182,14 +181,23 @@ fn render_migrate_summary_json(
     out.push_str("  \"command\": \"migrate\",\n");
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
-        json_string_array(allow_report::CLAIM_BOUNDARY)
+        allow_report::render_claim_boundary_json()
     ));
     out.push_str(&format!(
         "  \"scanner_limitations\": {},\n",
-        json_string_array(allow_report::SCANNER_LIMITATIONS)
+        allow_report::render_scanner_limitations_json()
     ));
     out.push_str("  \"inventory\": ");
-    out.push_str(&migrate_inventory_json(context, "  "));
+    out.push_str(&allow_report::render_inventory_json(
+        allow_report::InventoryContext::new(
+            "source_tree",
+            "policy_migration",
+            &context.inventory_source,
+            context.source_tree_root.as_deref(),
+            context.inventory_files,
+        ),
+        "  ",
+    ));
     out.push_str(",\n");
     out.push_str("  \"input\": {\n");
     out.push_str(&format!(
@@ -225,25 +233,6 @@ fn render_migrate_summary_json(
     out.push_str("  },\n");
     out.push_str(&format!("  \"notes\": \"{}\"\n", json_escape(notes)));
     out.push_str("}\n");
-    out
-}
-
-fn migrate_inventory_json(context: &MigrateContext, indent: &str) -> String {
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str(&format!("{indent}  \"scope\": \"source_tree\",\n"));
-    out.push_str(&format!("{indent}  \"scanner\": \"policy_migration\",\n"));
-    out.push_str(&format!(
-        "{indent}  \"source\": \"{}\"",
-        json_escape(&context.inventory_source)
-    ));
-    if let Some(root) = &context.source_tree_root {
-        out.push_str(&format!(",\n{indent}  \"root\": \"{}\"", json_escape(root)));
-    }
-    if let Some(files) = context.inventory_files {
-        out.push_str(&format!(",\n{indent}  \"files_scanned\": {files}"));
-    }
-    out.push_str(&format!("\n{indent}}}"));
     out
 }
 

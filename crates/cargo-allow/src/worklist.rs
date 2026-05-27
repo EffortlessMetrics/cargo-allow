@@ -784,14 +784,21 @@ fn render_worklist_json_with_context(items: &[WorkItem], context: WorklistContex
     out.push_str("  \"command\": \"worklist\",\n");
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
-        json_string_array(allow_report::CLAIM_BOUNDARY)
+        allow_report::render_claim_boundary_json()
     ));
     out.push_str(&format!(
         "  \"scanner_limitations\": {},\n",
-        json_string_array(allow_report::SCANNER_LIMITATIONS)
+        allow_report::render_scanner_limitations_json()
     ));
     out.push_str("  \"inventory\": ");
-    out.push_str(&worklist_inventory_json(context, "  "));
+    out.push_str(&allow_report::render_inventory_json(
+        allow_report::InventoryContext::source_syntax(
+            context.inventory_source,
+            context.source_tree_root,
+            context.inventory_files,
+        ),
+        "  ",
+    ));
     out.push_str(",\n");
     out.push_str("  \"filters\": ");
     out.push_str(&worklist_filters_json(context.filters, "  "));
@@ -995,25 +1002,6 @@ fn render_worklist_human_with_context(items: &[WorkItem], context: WorklistConte
     out.push('\n');
     out.push_str(allow_report::CLAIM_BOUNDARY_TEXT);
     out.push('\n');
-    out
-}
-
-fn worklist_inventory_json(context: WorklistContext<'_>, indent: &str) -> String {
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str(&format!("{indent}  \"scope\": \"source_tree\",\n"));
-    out.push_str(&format!("{indent}  \"scanner\": \"source_syntax\",\n"));
-    out.push_str(&format!(
-        "{indent}  \"source\": \"{}\"",
-        json_escape(context.inventory_source)
-    ));
-    if let Some(root) = context.source_tree_root {
-        out.push_str(&format!(",\n{indent}  \"root\": \"{}\"", json_escape(root)));
-    }
-    if let Some(files) = context.inventory_files {
-        out.push_str(&format!(",\n{indent}  \"files_scanned\": {files}"));
-    }
-    out.push_str(&format!("\n{indent}}}"));
     out
 }
 
