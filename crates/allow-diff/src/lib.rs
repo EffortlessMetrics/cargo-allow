@@ -3,7 +3,7 @@ use allow_core::{
     finding_identity_key as core_finding_identity_key, glob_matches, normalize_path,
 };
 use allow_policy::parse_policy;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -215,6 +215,7 @@ pub struct PolicyChange {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PolicyChangeKind {
     AddedAllow,
+    RemovedAllow,
     BaselineDebtAdded,
     ScopeBroadened,
     SelectorPrecisionDecreased,
@@ -231,6 +232,7 @@ impl PolicyChangeKind {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::AddedAllow => "added_allow",
+            Self::RemovedAllow => "removed_allow",
             Self::BaselineDebtAdded => "baseline_debt_added",
             Self::ScopeBroadened => "scope_broadened",
             Self::SelectorPrecisionDecreased => "selector_precision_decreased",
@@ -247,6 +249,7 @@ impl PolicyChangeKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PolicyChangeSeverity {
+    Improvement,
     Review,
     Fail,
 }
@@ -254,6 +257,7 @@ pub enum PolicyChangeSeverity {
 impl PolicyChangeSeverity {
     pub fn as_str(self) -> &'static str {
         match self {
+            Self::Improvement => "improvement",
             Self::Review => "review",
             Self::Fail => "fail",
         }
@@ -326,6 +330,11 @@ pub fn policy_changes(base: &AllowConfig, head: &AllowConfig) -> Vec<PolicyChang
         .iter()
         .map(|entry| (entry.id.as_str(), entry))
         .collect::<BTreeMap<_, _>>();
+    let head_ids = head
+        .allow
+        .iter()
+        .map(|entry| entry.id.as_str())
+        .collect::<BTreeSet<_>>();
     let mut changes = Vec::new();
     for head_entry in &head.allow {
         let Some(base_entry) = base_by_id.get(head_entry.id.as_str()).copied() else {
@@ -333,6 +342,11 @@ pub fn policy_changes(base: &AllowConfig, head: &AllowConfig) -> Vec<PolicyChang
             continue;
         };
         changes.extend(entry_policy_changes(base_entry, head_entry));
+    }
+    for base_entry in &base.allow {
+        if !head_ids.contains(base_entry.id.as_str()) {
+            changes.push(removed_allow_change(base_entry));
+        }
     }
     changes
 }
@@ -356,6 +370,15 @@ fn added_allow_change(entry: &AllowEntry) -> PolicyChange {
         } else {
             format!("{} added a new allow entry", entry.id)
         },
+    }
+}
+
+fn removed_allow_change(entry: &AllowEntry) -> PolicyChange {
+    PolicyChange {
+        allow_id: entry.id.clone(),
+        kind: PolicyChangeKind::RemovedAllow,
+        severity: PolicyChangeSeverity::Improvement,
+        message: format!("{} removed an allow entry", entry.id),
     }
 }
 
@@ -791,6 +814,21 @@ mod tests {
         assert!(changes.iter().any(|change| {
             change.kind == PolicyChangeKind::BaselineDebtAdded
                 && change.severity == PolicyChangeSeverity::Fail
+        }));
+    }
+
+    #[test]
+    fn detects_removed_allow_as_improvement() {
+        let mut base = config_with(entry("allow-1"));
+        base.allow.push(entry("allow-2"));
+        let head = config_with(entry("allow-1"));
+
+        let changes = policy_changes(&base, &head);
+
+        assert!(changes.iter().any(|change| {
+            change.allow_id == "allow-2"
+                && change.kind == PolicyChangeKind::RemovedAllow
+                && change.severity == PolicyChangeSeverity::Improvement
         }));
     }
 

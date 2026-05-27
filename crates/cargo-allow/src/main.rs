@@ -686,6 +686,10 @@ fn render_diff_pr_summary_markdown(
         summary.policy_review_items
     ));
     out.push_str(&format!(
+        "| Policy improvements | {} |\n",
+        summary.policy_improvements
+    ));
+    out.push_str(&format!(
         "\n**Reviewer action:** {}\n\n",
         posture.reviewer_action()
     ));
@@ -699,6 +703,7 @@ struct DiffPostureSummary {
     removed_findings: usize,
     policy_failures: usize,
     policy_review_items: usize,
+    policy_improvements: usize,
 }
 
 impl DiffPostureSummary {
@@ -709,6 +714,7 @@ impl DiffPostureSummary {
             self.removed_findings,
             self.policy_failures,
             self.policy_review_items,
+            self.policy_improvements,
         )
     }
 }
@@ -738,6 +744,10 @@ fn diff_posture_summary(
         policy_review_items: policy_changes
             .iter()
             .filter(|change| change.severity == allow_diff::PolicyChangeSeverity::Review)
+            .count(),
+        policy_improvements: policy_changes
+            .iter()
+            .filter(|change| change.severity == allow_diff::PolicyChangeSeverity::Improvement)
             .count(),
     }
 }
@@ -778,6 +788,7 @@ fn diff_net_posture(
     removed_findings: usize,
     policy_failures: usize,
     policy_review_items: usize,
+    policy_improvements: usize,
 ) -> DiffNetPosture {
     if current_failures > 0 || policy_failures > 0 {
         return DiffNetPosture::Worse;
@@ -785,7 +796,7 @@ fn diff_net_posture(
     if new_findings > 0 || policy_review_items > 0 {
         return DiffNetPosture::ReviewRequired;
     }
-    if removed_findings > 0 {
+    if removed_findings > 0 || policy_improvements > 0 {
         return DiffNetPosture::Improved;
     }
     DiffNetPosture::Unchanged
@@ -851,8 +862,12 @@ fn render_diff_posture_json(
         summary.policy_failures
     ));
     out.push_str(&format!(
-        "      \"policy_review_items\": {}\n",
+        "      \"policy_review_items\": {},\n",
         summary.policy_review_items
+    ));
+    out.push_str(&format!(
+        "      \"policy_improvements\": {}\n",
+        summary.policy_improvements
     ));
     out.push_str("    },\n");
     out.push_str("    \"finding_changes\": [\n");
@@ -3697,6 +3712,20 @@ mod tests {
     }
 
     #[test]
+    fn diff_markdown_pr_summary_reports_improved_for_removed_policy_entry() {
+        let changes = vec![policy_change(
+            allow_diff::PolicyChangeSeverity::Improvement,
+            allow_diff::PolicyChangeKind::RemovedAllow,
+        )];
+
+        let text = render_diff_pr_summary_markdown(&[], &[], &changes);
+
+        assert!(text.contains("**Net posture:** `improved`"));
+        assert!(text.contains("| Policy improvements | 1 |"));
+        assert!(text.contains("keep the narrower posture"));
+    }
+
+    #[test]
     fn diff_json_report_includes_structured_posture_changes() {
         let outcomes = vec![test_outcome(
             MatchStatus::New,
@@ -3727,6 +3756,7 @@ mod tests {
         assert!(json.contains("\"current_failures\": 1"));
         assert!(json.contains("\"new_findings\": 1"));
         assert!(json.contains("\"policy_failures\": 1"));
+        assert!(json.contains("\"policy_improvements\": 0"));
         assert!(json.contains("\"finding_changes\""));
         assert!(json.contains("\"change\": \"new\""));
         assert!(json.contains("\"family\": \"unwrap\""));
@@ -3754,6 +3784,8 @@ mod tests {
         assert!(schema.contains("\"finding_changes\""));
         assert!(schema.contains("\"policy_changes\""));
         assert!(schema.contains("\"scope_broadened\""));
+        assert!(schema.contains("\"removed_allow\""));
+        assert!(schema.contains("\"policy_improvements\""));
     }
 
     #[test]

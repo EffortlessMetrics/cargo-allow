@@ -192,6 +192,8 @@ Completed:
   no-new failures, source finding changes, and policy weakening counts.
 - Emit structured JSON diff posture data with net posture, finding changes, and
   policy changes for automated PR consumers.
+- Report removed allow entries as policy improvements so stale-ledger cleanup
+  is visible in PR summaries and structured JSON.
 - Add GitHub Actions examples for PR posture diff and mainline no-new check
   workflows.
 
