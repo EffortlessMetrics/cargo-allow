@@ -5,6 +5,8 @@ pub const REPORT_SCHEMA_VERSION: u32 = 1;
 pub const REPORT_SCHEMA_ID: &str = "cargo-allow.report.v1";
 pub const RECEIPT_SCHEMA_VERSION: u32 = 1;
 pub const RECEIPT_SCHEMA_ID: &str = "cargo-allow.receipt.v1";
+pub const WORKLIST_SCHEMA_VERSION: u32 = 1;
+pub const WORKLIST_SCHEMA_ID: &str = "cargo-allow.worklist.v1";
 
 pub const CLAIM_BOUNDARY: &[&str] = &[
     "source_tree_inventory",
@@ -1373,8 +1375,10 @@ mod tests {
     fn schemas_reference_current_contract_ids() {
         let report_schema = include_str!("../../../docs/schemas/report.schema.json");
         let receipt_schema = include_str!("../../../docs/schemas/receipt.schema.json");
+        let worklist_schema = include_str!("../../../docs/schemas/worklist.schema.json");
         assert!(report_schema.contains(REPORT_SCHEMA_ID));
         assert!(receipt_schema.contains(RECEIPT_SCHEMA_ID));
+        assert!(worklist_schema.contains(WORKLIST_SCHEMA_ID));
         assert!(report_schema.contains("\"files_scanned\""));
         assert!(receipt_schema.contains("\"files_scanned\""));
         assert!(report_schema.contains("\"root\""));
