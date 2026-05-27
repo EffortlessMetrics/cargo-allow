@@ -202,10 +202,11 @@ only, with no macro expansion, macro token-tree expression parsing, type
 analysis, build output, control-flow analysis, or data-flow analysis.
 
 `cargo-allow list` shows allow entries with current status, match count, kind,
-family, owner, classification, scope, lifecycle dates, and reason. It supports
-maintenance filters such as `--kind`, `--owner`, `--expired`, `--review-due`,
-`--stale`, and `--baseline-debt`. Stale status is computed from current
-source-syntax findings; line and column hints are not identity.
+family, owner, classification, scope, scanner-provided source package context,
+lifecycle dates, and reason. It supports maintenance filters such as `--kind`,
+`--owner`, `--expired`, `--review-due`, `--stale`, and `--baseline-debt`. Stale
+status is computed from current source-syntax findings; line and column hints
+are not identity.
 
 `cargo-allow prune --stale --dry-run` previews stale allow entries that no
 current source-syntax finding matched. The command is dry-run only in the
