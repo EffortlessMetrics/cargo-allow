@@ -32,6 +32,8 @@ reported by the scanner; do not treat that as Cargo metadata or build proof.
 Use `--owner <owner>` and `--classification <classification>` to take a bounded
 policy-owner or debt-class slice, such as `--owner unowned --classification
 baseline_debt`.
+Use `--missing-evidence` to focus policy-backed entries that have no evidence
+references yet.
 Saved worklist artifacts record the applied filters; preserve that context in
 handoffs.
 The default order already puts high-risk work first, then lower estimated

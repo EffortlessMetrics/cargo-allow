@@ -390,6 +390,9 @@ struct WorklistArgs {
     /// Filter work items by estimated difficulty.
     #[arg(long, value_parser = ["small", "medium"])]
     difficulty: Option<String>,
+    /// Include only policy-backed work items with no evidence references.
+    #[arg(long)]
+    missing_evidence: bool,
     /// Include untracked files in addition to git-tracked files.
     #[arg(long)]
     include_untracked: bool,
@@ -1906,6 +1909,7 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         classification: args.classification.as_deref(),
         risk: args.risk.as_deref(),
         difficulty: args.difficulty.as_deref(),
+        missing_evidence: args.missing_evidence,
     };
     let mut items = filter_work_items(items, filters);
     sort_work_items(&mut items);
@@ -1975,6 +1979,7 @@ struct WorklistFilters<'a> {
     classification: Option<&'a str>,
     risk: Option<&'a str>,
     difficulty: Option<&'a str>,
+    missing_evidence: bool,
 }
 
 impl Default for WorklistContext<'static> {
@@ -2047,6 +2052,7 @@ fn filter_work_items(items: Vec<WorkItem>, filters: WorklistFilters<'_>) -> Vec<
                     .difficulty
                     .map(|difficulty| item.difficulty == difficulty)
                     .unwrap_or(true)
+                && (!filters.missing_evidence || item.evidence_count == Some(0))
         })
         .collect()
 }
@@ -2853,8 +2859,12 @@ fn worklist_filters_json(filters: WorklistFilters<'_>, indent: &str) -> String {
         option_json_string(filters.risk)
     ));
     out.push_str(&format!(
-        "{indent}  \"difficulty\": {}\n",
+        "{indent}  \"difficulty\": {},\n",
         option_json_string(filters.difficulty)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"missing_evidence\": {}\n",
+        filters.missing_evidence
     ));
     out.push_str(&format!("{indent}}}"));
     out
@@ -2894,6 +2904,9 @@ fn worklist_filters_human(filters: WorklistFilters<'_>) -> String {
     }
     if let Some(difficulty) = filters.difficulty {
         parts.push(format!("difficulty={difficulty}"));
+    }
+    if filters.missing_evidence {
+        parts.push("missing_evidence=true".to_string());
     }
     if parts.is_empty() {
         "Filters: none\n".to_string()
@@ -4982,6 +4995,7 @@ mod tests {
             "medium",
             "--difficulty",
             "small",
+            "--missing-evidence",
             "--format",
             "json",
             "--output",
@@ -5005,6 +5019,7 @@ mod tests {
                 classification: Some(classification),
                 risk: Some(risk),
                 difficulty: Some(difficulty),
+                missing_evidence: true,
                 format: WorklistFormat::Json,
                 output: Some(path),
                 ..
@@ -5225,6 +5240,7 @@ mod tests {
         assert!(schema.contains("\"allow_id\""));
         assert!(schema.contains("\"path\""));
         assert!(schema.contains("\"source_package\""));
+        assert!(schema.contains("\"missing_evidence\""));
         assert!(schema.contains("\"inventory\""));
         assert!(schema.contains("\"git_tracked\""));
         assert!(schema.contains("\"source_tree_inventory\""));
@@ -5278,6 +5294,7 @@ mod tests {
                 classification: Some("baseline_debt"),
                 risk: Some("high"),
                 difficulty: Some("medium"),
+                missing_evidence: true,
             },
         };
 
@@ -5296,8 +5313,9 @@ mod tests {
         assert!(json.contains("\"classification\": \"baseline_debt\""));
         assert!(json.contains("\"risk\": \"high\""));
         assert!(json.contains("\"difficulty\": \"medium\""));
+        assert!(json.contains("\"missing_evidence\": true"));
         assert!(human.contains(
-            "Filters: kind=unsafe, family=unsafe_fn, item_kind=baseline_debt, status=baseline_debt, allow_id=allow-0001, path=crates/allow-core, source_package=allow-core, owner=runtime, classification=baseline_debt, risk=high, difficulty=medium"
+            "Filters: kind=unsafe, family=unsafe_fn, item_kind=baseline_debt, status=baseline_debt, allow_id=allow-0001, path=crates/allow-core, source_package=allow-core, owner=runtime, classification=baseline_debt, risk=high, difficulty=medium, missing_evidence=true"
         ));
     }
 
@@ -5735,6 +5753,60 @@ mod tests {
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
         assert_eq!(item.allow_id.as_deref(), Some("allow-second"));
+    }
+
+    #[test]
+    fn worklist_filters_by_missing_evidence() {
+        let missing = WorkItem {
+            id: "work-missing-evidence-0001".to_string(),
+            kind: "missing_evidence".to_string(),
+            exception_kind: Some("unsafe".to_string()),
+            family: Some("unsafe_block".to_string()),
+            owner: Some("runtime".to_string()),
+            classification: Some("reviewed_unsafe_boundary".to_string()),
+            reason: Some("fixture".to_string()),
+            created: None,
+            review_after: None,
+            expires: None,
+            evidence_count: Some(0),
+            risk: "high",
+            difficulty: "small",
+            status: MatchStatus::EvidenceMissing,
+            allow_id: Some("allow-missing".to_string()),
+            finding_index: None,
+            path: Some("src/lib.rs".to_string()),
+            source_package: None,
+            message: "allow-missing requires evidence".to_string(),
+            suggested_actions: Vec::new(),
+            proof_commands: Vec::new(),
+        };
+        let mut evidenced = missing.clone();
+        evidenced.id = "work-review-due-0002".to_string();
+        evidenced.kind = "review_due".to_string();
+        evidenced.evidence_count = Some(2);
+        evidenced.status = MatchStatus::ReviewDue;
+        evidenced.allow_id = Some("allow-evidenced".to_string());
+        let mut new_finding = missing.clone();
+        new_finding.id = "work-new-unreceipted-finding-0003".to_string();
+        new_finding.kind = "new_unreceipted_finding".to_string();
+        new_finding.evidence_count = None;
+        new_finding.status = MatchStatus::New;
+        new_finding.allow_id = None;
+
+        let filtered = filter_work_items(
+            vec![missing, evidenced, new_finding],
+            WorklistFilters {
+                missing_evidence: true,
+                ..WorklistFilters::default()
+            },
+        );
+
+        assert_eq!(filtered.len(), 1);
+        let item = filtered
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected missing evidence work item"));
+        assert_eq!(item.allow_id.as_deref(), Some("allow-missing"));
+        assert_eq!(item.evidence_count, Some(0));
     }
 
     #[test]
