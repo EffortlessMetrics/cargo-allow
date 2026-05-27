@@ -21,6 +21,8 @@ Completed:
 - Define the product lane and claim boundaries in docs.
 - Stabilize current JSON reports and receipt schemas.
 - Enumerate supported scanner limitation values in report and receipt schemas.
+- Share claim-boundary and scanner-limitation flags between report, receipt,
+  and worklist JSON producers to prevent contract drift.
 - Thread source-tree root and inventory file-count facts into reports and
   receipts without requiring Cargo project metadata or a successful build.
 - Replace handwritten TOML parsing with typed serde/toml policy loading.
