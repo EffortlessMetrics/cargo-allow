@@ -210,6 +210,23 @@ struct ListArgs {
     /// Filter allow entries by scanner-provided source-tree package context.
     #[arg(long)]
     source_package: Option<String>,
+    /// Filter allow entries by current match status.
+    #[arg(
+        long,
+        value_parser = [
+            "matched",
+            "new",
+            "stale",
+            "expired",
+            "review_due",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "evidence_missing",
+            "baseline_debt"
+        ]
+    )]
+    status: Option<String>,
     /// Include only expired allow entries.
     #[arg(long)]
     expired: bool,
@@ -1093,6 +1110,7 @@ fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         classification: args.classification.as_deref(),
         path: args.path.as_deref(),
         source_package: args.source_package.as_deref(),
+        status: args.status.as_deref(),
         expired: args.expired,
         review_due: args.review_due,
         stale: args.stale,
@@ -1125,6 +1143,7 @@ struct ListFilters<'a> {
     classification: Option<&'a str>,
     path: Option<&'a str>,
     source_package: Option<&'a str>,
+    status: Option<&'a str>,
     expired: bool,
     review_due: bool,
     stale: bool,
@@ -1265,6 +1284,11 @@ fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
     }
     if let Some(source_package) = filters.source_package {
         if row.source_package.as_deref() != Some(source_package) {
+            return false;
+        }
+    }
+    if let Some(status) = filters.status {
+        if row.status.as_str() != status {
             return false;
         }
     }
@@ -3955,6 +3979,8 @@ mod tests {
             "crates/allow-core",
             "--source-package",
             "allow-core",
+            "--status",
+            "baseline_debt",
             "--expired",
             "--review-due",
             "--stale",
@@ -3971,6 +3997,7 @@ mod tests {
                 classification: Some(classification),
                 path: Some(path),
                 source_package: Some(source_package),
+                status: Some(status),
                 expired: true,
                 review_due: true,
                 stale: true,
@@ -3982,6 +4009,7 @@ mod tests {
                 && classification == "baseline_debt"
                 && path == "crates/allow-core"
                 && source_package == "allow-core"
+                && status == "baseline_debt"
         ));
     }
 
@@ -4268,6 +4296,7 @@ mod tests {
             classification: Some("baseline_debt"),
             path: None,
             source_package: None,
+            status: None,
             expired: false,
             review_due: false,
             stale: false,
@@ -4303,6 +4332,7 @@ mod tests {
             classification: Some("reviewed_exception"),
             path: None,
             source_package: None,
+            status: None,
             expired: false,
             review_due: false,
             stale: false,
@@ -4329,6 +4359,7 @@ mod tests {
             classification: None,
             path: None,
             source_package: Some("allow-core"),
+            status: None,
             expired: false,
             review_due: false,
             stale: false,
@@ -4339,6 +4370,42 @@ mod tests {
 
         assert!(text.contains("allow-core"));
         assert!(!text.contains("allow-rust"));
+    }
+
+    #[test]
+    fn render_list_rows_filters_status() {
+        let mut baseline = list_row(
+            "allow-baseline",
+            FindingKind::Panic,
+            "parser",
+            "baseline_debt",
+        );
+        baseline.status = MatchStatus::BaselineDebt;
+        let mut stale = list_row(
+            "allow-stale",
+            FindingKind::Panic,
+            "parser",
+            "reviewed_exception",
+        );
+        stale.status = MatchStatus::Stale;
+        let rows = vec![baseline, stale];
+        let filters = ListFilters {
+            kind: None,
+            owner: None,
+            classification: None,
+            path: None,
+            source_package: None,
+            status: Some("stale"),
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(!text.contains("allow-baseline"));
+        assert!(text.contains("allow-stale"));
     }
 
     #[test]
@@ -4361,6 +4428,7 @@ mod tests {
             classification: None,
             path: Some(r"crates\allow-core"),
             source_package: None,
+            status: None,
             expired: false,
             review_due: false,
             stale: false,
