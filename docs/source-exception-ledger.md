@@ -213,8 +213,9 @@ Stale status is computed from current source-syntax findings; line and column
 hints are not identity. `--broad-scope` lists entries whose source-tree scope
 uses wildcard syntax, which is useful for reviewing intentionally wide policy
 receipts before they become normalized debt. `--format json` emits the same
-filtered ledger rows with source-tree inventory context, scanner limitations,
-and applied filters so saved artifacts do not require parsing the human table.
+filtered ledger rows as `cargo-allow.list.v1` with source-tree inventory
+context, scanner limitations, and applied filters so saved artifacts do not
+require parsing the human table.
 
 `cargo-allow prune --stale` previews stale allow entries that no current
 source-syntax finding matched. Dry-run is the default; `--dry-run` makes that
@@ -246,8 +247,8 @@ to the matching shortcut queues.
 When the human view is truncated, it says how many work items were omitted and
 points to JSON for the full queue. Filtered worklist output records the applied
 filters so saved artifacts are not mistaken for the full ledger queue. The
-report, receipt, and worklist schemas enumerate scanner limitation values rather
-than treating claim-boundary facts as open-ended prose.
+report, receipt, list, and worklist schemas enumerate scanner limitation values
+rather than treating claim-boundary facts as open-ended prose.
 Work items are ordered for routing: high risk first, then lower estimated
 difficulty, then stable source and allow identifiers.
 `work-*` IDs are artifact-local queue handles assigned after filtering and
