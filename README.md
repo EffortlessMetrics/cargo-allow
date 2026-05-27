@@ -1,70 +1,186 @@
-# cargo-allow source exception ledger
+# cargo-allow
 
-This repository contains the repo-ready MVP for `cargo-allow`.
+No invisible exceptions.
 
-cargo-allow is a direct source-tree exception ledger. It scans repository files
-and source syntax, matches findings to `policy/allow.toml`, and reports whether
-exceptions are owned, scoped, receipted, stale, expired, ambiguous, or new.
+`cargo-allow` is a source-tree exception ledger for Rust repositories. It scans
+repository files and source syntax, matches exception findings to
+`policy/allow.toml`, and reports whether each retained exception is owned,
+scoped, evidenced, current, stale, expired, ambiguous, or new.
 
-The product boundary is source-tree policy. cargo-allow may be installed as a
-Cargo external subcommand, but the primary UX is the standalone `cargo-allow`
-binary. `cargo allow ...` remains compatibility syntax for users who invoke it
-through Cargo.
+It is not a linter, compiler wrapper, dependency policy tool, unsafe proof
+system, or coverage tool. Its job is governance: make allowed source-level
+exceptions visible, durable, reviewable, and removable.
 
-The current MVP uses `serde`/`toml` for policy loading and `clap` for the CLI.
-Inventory resolves an explicit `--root`, then the nearest git root, then the
-current directory. `Cargo.toml` and `Cargo.lock` are files in the scanned source
-tree, not required build metadata.
+## What It Answers
 
-## What currently works
+- What source-level exceptions exist in this repository?
+- Why is each retained exception allowed?
+- Who owns it?
+- What exact source/file surface does it cover?
+- What evidence supports it?
+- When does it expire or require review?
+- Did this PR add, remove, broaden, weaken, or clean up exceptions?
+- What work should humans or agents do next?
+
+## Source-Tree Boundary
+
+`cargo-allow` scans repository files directly. It may be installed as a Cargo
+external subcommand, but the primary UX is the standalone `cargo-allow` binary.
+`cargo allow ...` remains compatibility syntax for users who invoke it through
+Cargo.
+
+The scanner does **not** require a successful build and does **not** invoke
+Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros,
+`cargo-deny`, `cargo-vet`, `ripr`, `unsafe-review`, or coverage tooling.
+`Cargo.toml` and `Cargo.lock` are files in the scanned source tree, not required
+build metadata.
+
+Current reports may claim:
+
+```text
+No new unreceipted findings were found in scanned source-tree inventory.
+```
+
+They must not claim that no unsafe, panic, lint suppression, or other exception
+exists outside the syntax-visible surface that was scanned.
+
+## Quickstart
+
+Before the first crates.io release, install from a checkout:
+
+```bash
+cargo install --path crates/cargo-allow
+```
+
+Create a policy file:
 
 ```bash
 cargo-allow init --strict
+```
+
+Inventory the current source-tree exception posture:
+
+```bash
 cargo-allow audit --format human
-cargo-allow audit --format json
-cargo-allow audit --kind non-rust --format human
-cargo-allow audit --kind non-rust --format markdown --output target/cargo-allow/non-rust-audit.md
-cargo-allow audit --kind non-rust --include-untracked
-cargo-allow check --compat --kind non-rust --mode no-new
-cargo-allow check --compat --kind generated --mode no-new
-cargo-allow check --compat --kind executable --mode no-new
-cargo-allow check --compat --kind workflow --mode no-new
-cargo-allow check --compat --kind dependency-surface --mode no-new
-cargo-allow check --compat --kind process --mode no-new
-cargo-allow check --compat --kind network --mode no-new
+cargo-allow audit --format json --output target/cargo-allow/audit.json
+cargo-allow audit --format markdown --output target/cargo-allow/audit.md
+cargo-allow audit --format html --output target/cargo-allow/audit.html
+```
+
+Gate CI against the current policy:
+
+```bash
 cargo-allow check --mode no-new
-cargo-allow propose --write policy/allow.proposed.toml
-cargo-allow migrate --repo-policy policy/ --out policy/allow.toml
-cargo-allow list
-cargo-allow doctor
+cargo-allow check --mode no-new \
+  --format markdown \
+  --receipt target/cargo-allow/check.receipt.json \
+  --output target/cargo-allow/check.md
+```
+
+Review PR posture:
+
+```bash
+cargo-allow diff --base origin/main \
+  --format markdown \
+  --output target/cargo-allow/pr-summary.md
+```
+
+Generate an agent-safe worklist:
+
+```bash
+cargo-allow worklist --format json --output target/cargo-allow/worklist.json
 ```
 
 When developing this repository before installing the binary, run the same
-subcommands through the local package, for example
-`cargo run -p cargo-allow -- allow check --mode no-new`.
+subcommands through the local package:
 
-## Current claim boundary
+```bash
+cargo run -p cargo-allow -- allow check --mode no-new
+```
 
-The MVP scanner is source-tree and source-syntax based.
+## Governed Surfaces
 
-It reads files from the scanned inventory. It does **not** compile code, run
-build scripts, expand macros, type-check expressions, analyze MIR, inspect build
-output, run control-flow or data-flow analysis, or execute repository code.
+The current implementation inventories these source-tree surfaces:
 
-Reports use this wording intentionally: "No new unreceipted findings were found
-in scanned source-tree inventory," not "no unsafe exists" or "no panic exists."
+- unsafe syntax
+- panic-family calls and macros
+- indexing and slicing syntax
+- lint suppressions
+- non-Rust tracked files
+- generated-code policy
+- legacy policy exceptions
 
-## Implemented crates
+Every retained exception should carry owner, reason, classification, lifecycle,
+scope, and evidence. Generated baselines are temporary `baseline_debt`, not a
+claim of cleanliness.
 
-| Crate | Status |
+## Policy Model
+
+A retained exception is a receipt, not a suppression. A mature entry answers:
+
+```toml
+[[allow]]
+id = "allow-0042"
+kind = "panic"
+family = "indexing_slicing"
+path = "crates/parser/src/span.rs"
+owner = "parser"
+classification = "validated_span_invariant"
+reason = "Parser validates the text range before slicing."
+created = "2026-05-26"
+review_after = "2026-08-01"
+expires = "2026-11-01"
+evidence = [
+  "test:parser_rejects_invalid_text_range",
+  "doc:docs/specs/parser-span-invariants.md",
+]
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "slice_checked_text_range"
+symbol = "source[range]"
+normalized_snippet_hash = "fnv1a64:..."
+```
+
+Matching is structural first: kind and path plus selector fields such as AST
+kind, container, callee, macro, lint, and snippet hash. Line and column values
+are hints only. Ambiguous matches fail closed.
+
+## Common Commands
+
+```bash
+cargo-allow audit
+cargo-allow check --mode no-new
+cargo-allow diff --base origin/main
+cargo-allow explain allow-0042
+cargo-allow list --kind unsafe
+cargo-allow prune --stale --dry-run
+cargo-allow propose --write policy/allow.proposed.toml
+cargo-allow migrate --repo-policy policy/ --out policy/allow.toml
+cargo-allow doctor
+```
+
+## Repository Layout
+
+| Crate | Role |
 |---|---|
 | `allow-core` | Core data model, simple glob matching, stable FNV hash, dates |
 | `allow-policy` | Canonical `policy/allow.toml` parser, writer, validation |
-| `allow-inventory` | Source-tree root discovery and file inventory, with git-tracked inventory and recursive fallback |
-| `allow-files` | Non-Rust/generated-file finding generation with configured generated globs |
+| `allow-inventory` | Source-tree root discovery and file inventory |
+| `allow-files` | Non-Rust and generated-file finding generation |
 | `allow-rust` | Source-syntax scanner for panic, unsafe, lint suppressions, indexing |
 | `allow-match` | Structural matcher, lifecycle classification, stale/new/ambiguous statuses |
-| `allow-report` | Human, Markdown, JSON report and receipt rendering, including non-Rust file inventory summaries |
+| `allow-report` | Human, Markdown, JSON, SARIF, HTML report and receipt rendering |
 | `allow-diff` | Git changed-file helper and lightweight diff wrapper |
-| `allow-policy-legacy` | Legacy policy adapters, including shiplog-style non-Rust/file companion allowlists |
-| `cargo-allow` | clap-based CLI wiring for init/audit/check/list/explain/propose/doctor/diff |
+| `allow-policy-legacy` | Legacy policy adapters |
+| `cargo-allow` | clap-based CLI wiring |
+
+## Documentation
+
+- [Design](docs/design.md)
+- [Claim boundaries](docs/claim-boundaries.md)
+- [Roadmap](docs/roadmap.md)
+- [Source exception ledger](docs/source-exception-ledger.md)
+- [Migration from xtask](docs/migration-from-xtask.md)
+- [CI examples](docs/ci.md)
+- [Agent worklist prompt](docs/agents/cargo-allow-worklist.md)
