@@ -59,6 +59,37 @@ references must point to source-tree-relative paths that exist. `test:`,
 `cargo:`, `issue:`, and `pr:` references are treated as traceability strings in
 the current implementation and are not executed or resolved over the network.
 
+Illustrative local evidence references:
+
+```toml
+evidence = [
+  "unsafe-review:docs/evidence/unsafe-review/ffi-read-buffer.json",
+  "test:ffi_read_buffer_rejects_null_pointer",
+  "doc:docs/safety/ffi-read-buffer.md",
+]
+```
+
+```toml
+evidence = [
+  "ripr:docs/evidence/ripr/parser-span-gap.json",
+  "test:parser_rejects_invalid_text_range",
+  "spec:docs/specs/parser-span-invariants.md",
+]
+```
+
+```toml
+evidence = [
+  "coverage:docs/evidence/coverage/parser-span.lcov.info",
+  "cargo:cargo llvm-cov --package parser",
+]
+```
+
+When these appear in a real policy, the local files must exist before
+`cargo-allow check` runs. cargo-allow validates the reference shape and local
+path existence only; it does not execute ripr, unsafe-review, coverage tools,
+Cargo commands, tests, or repository code, and it does not interpret those
+receipt formats as proof.
+
 ## Selector Precision
 
 Selectors should be as narrow as practical. Strong selectors include:

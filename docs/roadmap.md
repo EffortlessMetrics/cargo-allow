@@ -190,11 +190,12 @@ Completed:
 
 - Parse evidence references and validate local file evidence prefixes when a
   policy is loaded from a source tree.
+- Explain evidence reference status from `cargo-allow explain`, including
+  present, missing, invalid, traceability, and unstructured references.
+- Add examples for ripr, unsafe-review, and coverage evidence references while
+  keeping the no-execution claim boundary explicit.
 
 Planned work:
-
-- Explain broken evidence.
-- Add examples for ripr, unsafe-review, and coverage evidence.
 
 ## Phase 12: Agent-Native Worklists
 

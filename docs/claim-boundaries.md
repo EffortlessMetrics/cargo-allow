@@ -85,6 +85,8 @@ Examples:
 
 - `test:*` means a named test is cited. It does not prove the test covers every
   behavior unless another tool establishes that claim.
+- `doc:docs/safety/ffi-read-buffer.md` means a local rationale document exists.
+  It does not prove the rationale is correct.
 - `ripr:*` means ripr evidence is linked. It does not make cargo-allow a test
   adequacy engine.
 - `unsafe-review:*` means unsafe-review evidence is linked. It does not make
