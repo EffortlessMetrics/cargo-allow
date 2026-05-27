@@ -2313,6 +2313,21 @@ fn load_compat_world(
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
+    if is_panic_compat_kind(compat_kind) {
+        let policy_path = config
+            .map(PathBuf::from)
+            .unwrap_or_else(|| root.join("policy/no-panic-baseline.toml"));
+        let cfg = allow_policy_legacy::load_no_panic_baseline_compat_config(policy_path)?;
+        let opts = InventoryOptions {
+            ignored: cfg.workspace.ignored.clone(),
+            generated: cfg.workspace.generated.clone(),
+            include_untracked,
+        };
+        let inventory = inventory(&root, &opts)?;
+        let mut findings = allow_rust::scan_rust_files(&root, &inventory.files)?;
+        findings.retain(|finding| finding.kind == FindingKind::Panic);
+        return Ok((root, cfg, findings, inventory.source));
+    }
     if is_executable_compat_kind(compat_kind) {
         let policy_path = config
             .map(PathBuf::from)
@@ -2363,7 +2378,7 @@ fn load_compat_world(
     }
     if parsed_filter.kind != FindingKind::NonRustFile {
         return Err(CargoAllowError::new(
-            "--compat currently supports only --kind non-rust, --kind generated, --kind executable, --kind workflow, --kind dependency-surface, --kind process, or --kind network",
+            "--compat currently supports only --kind non-rust, --kind generated, --kind panic, --kind executable, --kind workflow, --kind dependency-surface, --kind process, or --kind network",
         ));
     }
     let opts = InventoryOptions {
@@ -2418,6 +2433,12 @@ impl FamilyFilter {
 }
 
 fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
+    if is_panic_compat_kind(kind) {
+        return Ok(KindFilter {
+            kind: FindingKind::Panic,
+            family: FamilyFilter::Any,
+        });
+    }
     if is_executable_compat_kind(kind) {
         return Ok(KindFilter {
             kind: FindingKind::PolicyException,
@@ -2452,6 +2473,19 @@ fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
         kind: FindingKind::from_str(kind)?,
         family: FamilyFilter::Any,
     })
+}
+
+fn is_panic_compat_kind(kind: &str) -> bool {
+    matches!(
+        kind.trim(),
+        "panic"
+            | "panic-family"
+            | "panic_family"
+            | "no-panic"
+            | "no_panic"
+            | "no-panic-baseline"
+            | "no_panic_baseline"
+    )
 }
 
 fn is_executable_compat_kind(kind: &str) -> bool {
@@ -3580,6 +3614,29 @@ mod tests {
     }
 
     #[test]
+    fn clap_parses_panic_compat_check() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--compat",
+            "--kind",
+            "panic",
+        ]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse panic compat check: {err}"))
+        });
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(CheckArgs {
+                compat: true,
+                kind: Some(kind),
+                ..
+            })) if kind == "panic"
+        ));
+    }
+
+    #[test]
     fn clap_parses_executable_compat_check() {
         let parsed = CargoAllowCli::try_parse_from(argv(vec![
             "cargo-allow",
@@ -3887,6 +3944,64 @@ mod tests {
                 .iter()
                 .all(|outcome| outcome.status == MatchStatus::Matched),
             "expected every migrated companion entry to match current canonical findings: {outcomes:?}"
+        );
+    }
+
+    #[test]
+    fn panic_compat_loads_no_panic_baseline_and_scans_source_tree_findings() {
+        let dir = migrate_fixture_dir();
+        let policy_dir = dir.join("policy");
+        let src_dir = dir.join("src");
+        fs::create_dir_all(&policy_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::create_dir_all(&src_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+        let snippet = "let value = maybe.unwrap();";
+        fs::write(
+            policy_dir.join("no-panic-baseline.toml"),
+            format!(
+                r#"schema_version = 1
+policy = "no-panic-baseline"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[entry]]
+path = "src/lib.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "{snippet}"
+count = 1
+"#
+            ),
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("no-panic policy write: {err}")));
+        fs::write(
+            src_dir.join("lib.rs"),
+            format!("fn load(maybe: Option<u8>) {{\n    {snippet}\n}}\n"),
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rust fixture write: {err}")));
+
+        let (_root, cfg, findings, inventory_source) =
+            load_compat_world(Some(&dir), None, Some("panic"), false).unwrap_or_else(|err| {
+                std::panic::panic_any(format!("panic compat world loads: {err}"))
+            });
+        let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+
+        assert_eq!(inventory_source, InventorySource::FilesystemFallback);
+        assert!(
+            cfg.allow
+                .iter()
+                .any(|entry| entry.classification == "baseline_debt"
+                    && entry.occurrence_limit == Some(1))
+        );
+        assert!(findings.iter().any(|finding| {
+            finding.kind == FindingKind::Panic && finding.family.as_deref() == Some("unwrap")
+        }));
+        assert!(
+            outcomes
+                .iter()
+                .any(|outcome| outcome.status == MatchStatus::Matched)
         );
     }
 

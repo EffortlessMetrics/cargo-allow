@@ -167,6 +167,23 @@ pub fn load_generated_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<
     config_from_generated_rules(&table, &rules)
 }
 
+pub fn load_no_panic_baseline_compat_config(
+    path: impl AsRef<Path>,
+) -> CargoAllowResult<AllowConfig> {
+    let text = read_policy(path.as_ref())?;
+    let table = legacy_table(&text)?.ok_or_else(|| {
+        CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
+    })?;
+    if table.get("policy").and_then(Value::as_str) != Some("no-panic-baseline") {
+        return Err(CargoAllowError::new(format!(
+            "{} is not a no-panic-baseline policy",
+            path.as_ref().display()
+        )));
+    }
+    let entries = parse_no_panic_baseline_entries(&table)?;
+    config_from_no_panic_baseline_entries(&table, &entries)
+}
+
 pub fn load_executable_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
     let text = read_policy(path.as_ref())?;
     let table = legacy_table(&text)?.ok_or_else(|| {
@@ -1931,6 +1948,16 @@ expires = "permanent"
         assert_eq!(panic.selector.ast_kind.as_deref(), Some("macro_call"));
         assert_eq!(panic.selector.macro_name.as_deref(), Some("panic"));
         assert_eq!(panic.occurrence_limit, Some(1));
+    }
+
+    #[test]
+    fn no_panic_compat_loader_requires_no_panic_policy() {
+        let policy = generated_policy_fixture_path();
+
+        let err = load_no_panic_baseline_compat_config(&policy)
+            .expect_err("generated policy should not load as no-panic compat");
+
+        assert!(err.to_string().contains("not a no-panic-baseline policy"));
     }
 
     #[test]
