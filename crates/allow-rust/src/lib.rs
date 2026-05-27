@@ -78,6 +78,50 @@ struct UnsafeSyntaxConstruct {
     column: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PanicMacroKind {
+    Panic,
+    Todo,
+    Unimplemented,
+    Unreachable,
+}
+
+impl PanicMacroKind {
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "panic" => Some(Self::Panic),
+            "todo" => Some(Self::Todo),
+            "unimplemented" => Some(Self::Unimplemented),
+            "unreachable" => Some(Self::Unreachable),
+            _ => None,
+        }
+    }
+
+    fn macro_name(self) -> &'static str {
+        match self {
+            Self::Panic => "panic",
+            Self::Todo => "todo",
+            Self::Unimplemented => "unimplemented",
+            Self::Unreachable => "unreachable",
+        }
+    }
+
+    fn family(self) -> &'static str {
+        match self {
+            Self::Panic => "panic_macro",
+            Self::Todo => "todo",
+            Self::Unimplemented => "unimplemented",
+            Self::Unreachable => "unreachable",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PanicMacroInvocation {
+    kind: PanicMacroKind,
+    column: u32,
+}
+
 impl RustSyntaxContainer {
     pub fn module(&self) -> Option<String> {
         if self.module_path.is_empty() {
@@ -246,6 +290,11 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
                     .get(&line_no)
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),
+                panic_macros: syntax
+                    .panic_macros
+                    .get(&line_no)
+                    .map(Vec::as_slice)
+                    .unwrap_or(&[]),
                 index_column: syntax.index_columns.get(&line_no).copied(),
                 unsafe_construct: syntax.unsafe_constructs.get(&line_no).copied(),
                 unsafe_attribute: syntax.unsafe_attribute_lines.contains(&line_no),
@@ -365,32 +414,24 @@ fn scan_line(
         }
     }
 
-    for macro_name in ["panic", "todo", "unimplemented", "unreachable"] {
-        let needle = format!("{macro_name}!(");
-        if let Some(pos) = line.find(&needle) {
-            let family = if macro_name == "panic" {
-                "panic_macro"
-            } else {
-                macro_name
-            };
-            push_finding(
-                FindingSite {
-                    path,
-                    line,
-                    line_no,
-                    column: pos as u32 + 1,
-                    container,
-                    module_stack,
-                },
-                FindingKind::Panic,
-                family,
-                "macro_call",
-                |id| {
-                    id.macro_name = Some(macro_name.to_string());
-                },
-                findings,
-            );
-        }
+    for macro_invocation in syntax.panic_macros {
+        push_finding(
+            FindingSite {
+                path,
+                line,
+                line_no,
+                column: macro_invocation.column,
+                container,
+                module_stack,
+            },
+            FindingKind::Panic,
+            macro_invocation.kind.family(),
+            "macro_call",
+            |id| {
+                id.macro_name = Some(macro_invocation.kind.macro_name().to_string());
+            },
+            findings,
+        );
     }
 
     if let Some(index_column) = syntax.index_column {
@@ -433,6 +474,7 @@ fn scan_line(
 struct RustSyntaxFacts {
     index_columns: BTreeMap<u32, u32>,
     lint_attributes: BTreeMap<u32, Vec<LintAttributeKind>>,
+    panic_macros: BTreeMap<u32, Vec<PanicMacroInvocation>>,
     unsafe_constructs: BTreeMap<u32, UnsafeSyntaxConstruct>,
     unsafe_attribute_lines: BTreeSet<u32>,
 }
@@ -463,6 +505,9 @@ fn collect_syntax_facts(node: Node<'_>, source: &str, facts: &mut RustSyntaxFact
     if let Some((line, construct)) = unsafe_syntax_construct(node) {
         record_unsafe_construct(facts, line, construct);
     }
+    if let Some((line, invocation)) = panic_macro_invocation(node, source) {
+        facts.panic_macros.entry(line).or_default().push(invocation);
+    }
     if matches!(node.kind(), "attribute_item" | "inner_attribute_item") {
         if let Some(text) = node_text(source, node) {
             let line = node.start_position().row as u32 + 1;
@@ -478,6 +523,25 @@ fn collect_syntax_facts(node: Node<'_>, source: &str, facts: &mut RustSyntaxFact
     for child in node.children(&mut cursor) {
         collect_syntax_facts(child, source, facts);
     }
+}
+
+fn panic_macro_invocation(node: Node<'_>, source: &str) -> Option<(u32, PanicMacroInvocation)> {
+    if node.kind() != "macro_invocation" {
+        return None;
+    }
+    let macro_node = node.child_by_field_name("macro")?;
+    let macro_text = node_text(source, macro_node)?;
+    let base_name = macro_text.rsplit("::").next().unwrap_or(macro_text);
+    let kind = PanicMacroKind::from_name(base_name)?;
+    let start = macro_node.start_position();
+    let base_offset = macro_text.len().saturating_sub(base_name.len()) as u32;
+    Some((
+        start.row as u32 + 1,
+        PanicMacroInvocation {
+            kind,
+            column: start.column as u32 + base_offset + 1,
+        },
+    ))
 }
 
 fn unsafe_syntax_construct(node: Node<'_>) -> Option<(u32, UnsafeSyntaxConstruct)> {
@@ -574,6 +638,7 @@ fn unsafe_attribute_text(text: &str) -> bool {
 
 struct SyntaxLineFacts<'a> {
     lint_attributes: &'a [LintAttributeKind],
+    panic_macros: &'a [PanicMacroInvocation],
     index_column: Option<u32>,
     unsafe_construct: Option<UnsafeSyntaxConstruct>,
     unsafe_attribute: bool,
@@ -739,6 +804,55 @@ mod tests {
             findings
                 .iter()
                 .any(|f| f.family.as_deref() == Some("panic_macro"))
+        );
+    }
+
+    #[test]
+    fn detects_panic_macros_from_syntax() {
+        let src = r#"
+        fn load() {
+            panic!("bad");
+            todo!("later");
+            unimplemented!("later");
+            unreachable!("bad state");
+            std::panic!("scoped");
+        }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        for family in ["panic_macro", "todo", "unimplemented", "unreachable"] {
+            assert!(
+                findings
+                    .iter()
+                    .any(|f| f.kind == FindingKind::Panic && f.family.as_deref() == Some(family)),
+                "missing {family}"
+            );
+        }
+        assert_eq!(
+            findings
+                .iter()
+                .filter(
+                    |f| f.kind == FindingKind::Panic && f.family.as_deref() == Some("panic_macro")
+                )
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn syntax_panic_macros_ignore_text_in_strings_and_comments() {
+        let src = r##"
+        fn load() {
+            // panic!("comment");
+            let text = "todo!(\"string\") unimplemented!(\"string\") unreachable!(\"string\")";
+        }
+        "##;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        assert!(
+            !findings
+                .iter()
+                .any(|f| f.kind == FindingKind::Panic && f.identity.ast_kind == "macro_call")
         );
     }
 
