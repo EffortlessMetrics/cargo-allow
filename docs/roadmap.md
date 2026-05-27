@@ -283,6 +283,8 @@ Completed:
 - Summarize worklist difficulty counts and include source-tree inventory
   context, including `files_scanned`, in worklist JSON and human output.
 - Add a versioned JSON schema for `cargo-allow.worklist.v1`.
+- Emit advisory `broad_scope` work items for matched allow entries that still
+  use wildcard source-tree scopes.
 
 Planned work:
 
