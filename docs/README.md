@@ -9,6 +9,8 @@ beyond the MVP scaffold.
 - [Roadmap](roadmap.md): the PR-sized path from MVP to useful product.
 - [Source exception ledger](source-exception-ledger.md): the policy concepts and
   entry model.
+- [Structural identity v1](identity.md): the source-syntax identity contract
+  used by matching and diff posture.
 - [Migration from xtask](migration-from-xtask.md): how bespoke allowlist tasks
   should move into cargo-allow.
 - [CI](ci.md): GitHub Actions examples for PR posture diffs and mainline

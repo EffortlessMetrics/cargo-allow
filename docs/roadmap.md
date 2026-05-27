@@ -83,9 +83,12 @@ Next:
 
 Goal: move from line-oriented scanning toward durable source identity.
 
-Planned PRs:
+Completed:
 
 - Define `StructuralIdentity` v1 as a stable contract.
+
+Planned PRs:
+
 - Integrate a lossless Rust syntax parser foundation.
 - Implement container identity.
 - Replace ad hoc matching with a scored structural matcher.
