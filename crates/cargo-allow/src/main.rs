@@ -4,7 +4,6 @@ use allow_core::{AllowEntry, Lifecycle, Selector, normalize_path};
 use allow_inventory::{InventoryOptions, InventorySource, inventory, resolve_source_tree_root};
 #[cfg(test)]
 use allow_match::{CheckMode, evaluate};
-use allow_policy::{find_config, load_policy, validate_local_evidence_references};
 use clap::{CommandFactory, Parser, Subcommand};
 use std::env;
 #[cfg(test)]
@@ -24,6 +23,7 @@ mod io;
 mod kind_filter;
 mod list;
 mod migrate;
+mod policy_config;
 mod propose;
 mod prune;
 mod render;
@@ -37,6 +37,10 @@ pub(crate) use kind_filter::{
     is_executable_compat_kind, is_network_compat_kind, is_no_panic_allowlist_compat_kind,
     is_panic_compat_kind, is_process_compat_kind, is_unsafe_compat_kind, is_workflow_compat_kind,
     parse_kind_filter,
+};
+pub(crate) use policy_config::{
+    config_path, git_relative_config_path, load_config_optional, load_config_required,
+    root_relative_path,
 };
 pub(crate) use render::{
     allow_entry_json, explain_finding_json, json_string_array, last_seen_json, markdown_cell,
@@ -437,77 +441,6 @@ fn policy_baseline_debt_entries(cfg: &AllowConfig) -> usize {
         .iter()
         .filter(|entry| entry.classification == "baseline_debt")
         .count()
-}
-
-fn load_config_required(
-    root: &Path,
-    config: Option<&Path>,
-    validate_local_evidence: bool,
-) -> CargoAllowResult<AllowConfig> {
-    let path = config_path(root, config).ok_or_else(|| {
-        CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
-    })?;
-    load_policy_for_root(root, path, validate_local_evidence)
-}
-
-fn load_config_optional(
-    root: &Path,
-    config: Option<&Path>,
-    validate_local_evidence: bool,
-) -> CargoAllowResult<Option<AllowConfig>> {
-    match config_path(root, config) {
-        Some(path) => Ok(Some(load_policy_for_root(
-            root,
-            path,
-            validate_local_evidence,
-        )?)),
-        None => Ok(None),
-    }
-}
-
-fn load_policy_for_root(
-    root: &Path,
-    path: PathBuf,
-    validate_local_evidence: bool,
-) -> CargoAllowResult<AllowConfig> {
-    let cfg = load_policy(path)?;
-    if validate_local_evidence {
-        validate_local_evidence_references(root, &cfg)?;
-    }
-    Ok(cfg)
-}
-
-fn config_path(root: &Path, config: Option<&Path>) -> Option<PathBuf> {
-    config
-        .map(|path| root_relative_path(root, path))
-        .or_else(|| find_config(root))
-}
-
-fn root_relative_path(root: &Path, path: &Path) -> PathBuf {
-    if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        root.join(path)
-    }
-}
-
-fn git_relative_config_path(root: &Path, config: Option<&Path>) -> CargoAllowResult<PathBuf> {
-    let path = config_path(root, config).ok_or_else(|| {
-        CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
-    })?;
-    let root = root.canonicalize().map_err(|e| {
-        CargoAllowError::new(format!("failed to canonicalize {}: {e}", root.display()))
-    })?;
-    let path = path.canonicalize().map_err(|e| {
-        CargoAllowError::new(format!("failed to canonicalize {}: {e}", path.display()))
-    })?;
-    path.strip_prefix(&root).map(PathBuf::from).map_err(|_| {
-        CargoAllowError::new(format!(
-            "policy config {} is not inside source tree {}",
-            path.display(),
-            root.display()
-        ))
-    })
 }
 
 #[cfg(test)]
