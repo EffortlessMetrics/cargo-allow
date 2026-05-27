@@ -5160,13 +5160,38 @@ container = "read"
             std::process::id()
         ));
         if dir.exists() {
-            fs::remove_dir_all(&dir).unwrap_or_else(|err| {
+            remove_fixture_dir_all(&dir).unwrap_or_else(|err| {
                 std::panic::panic_any(format!("remove stale fixture dir: {err}"))
             });
         }
         fs::create_dir_all(&dir)
             .unwrap_or_else(|err| std::panic::panic_any(format!("fixture dir: {err}")));
         dir
+    }
+
+    fn remove_fixture_dir_all(path: &Path) -> std::io::Result<()> {
+        #[cfg(windows)]
+        clear_readonly_recursive(path)?;
+        fs::remove_dir_all(path)
+    }
+
+    #[cfg(windows)]
+    // This helper is Windows-only; clearing the read-only bit is required before
+    // removing stale fixture directories that contain Git object files.
+    #[allow(clippy::permissions_set_readonly_false)]
+    fn clear_readonly_recursive(path: &Path) -> std::io::Result<()> {
+        let metadata = fs::symlink_metadata(path)?;
+        if metadata.file_type().is_dir() {
+            for entry in fs::read_dir(path)? {
+                clear_readonly_recursive(&entry?.path())?;
+            }
+        }
+        let mut permissions = metadata.permissions();
+        if permissions.readonly() {
+            permissions.set_readonly(false);
+            fs::set_permissions(path, permissions)?;
+        }
+        Ok(())
     }
 
     fn process_policy_fixture_text() -> &'static str {
