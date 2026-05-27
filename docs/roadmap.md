@@ -48,35 +48,35 @@ Goal: ship the first low-parser-risk lane that real repositories can adopt.
 
 Completed:
 
-- Add `--compat --kind non-rust` for shiplog-style
-  `policy/non-rust-allowlist.toml` and prove it side-by-side against shiplog's
-  blocking file-policy xtask.
-- Add `--compat --kind generated` for shiplog-style
-  `policy/generated-allowlist.toml` and prove it side-by-side against shiplog's
-  generated-file xtask.
-- Add `--compat --kind executable` for shiplog-style
-  `policy/executable-allowlist.toml` and prove it side-by-side against
-  shiplog's executable-bit xtask.
-- Add `--compat --kind workflow` for shiplog-style
-  `policy/workflow-allowlist.toml` and prove it side-by-side against shiplog's
-  workflow xtask.
-- Add `--compat --kind dependency-surface` for shiplog-style
-  `policy/dependency-surface-allowlist.toml` and prove it side-by-side against
-  shiplog's dependency-surface xtask.
-- Add `--compat --kind process` for shiplog-style
-  `policy/process-allowlist.toml` and prove it side-by-side against shiplog's
-  process-policy xtask.
-- Add `--compat --kind network` for shiplog-style
-  `policy/network-allowlist.toml` and prove it side-by-side against shiplog's
-  network-policy xtask.
+- Add `--compat --kind non-rust` for the shiplog-style legacy
+  `policy/non-rust-allowlist.toml` shape and validate it side-by-side against a
+  blocking file-policy xtask fixture.
+- Add `--compat --kind generated` for the shiplog-style legacy
+  `policy/generated-allowlist.toml` shape and validate it side-by-side against a
+  generated-file xtask fixture.
+- Add `--compat --kind executable` for the shiplog-style legacy
+  `policy/executable-allowlist.toml` shape and validate it side-by-side against
+  an executable-bit xtask fixture.
+- Add `--compat --kind workflow` for the shiplog-style legacy
+  `policy/workflow-allowlist.toml` shape and validate it side-by-side against a
+  workflow xtask fixture.
+- Add `--compat --kind dependency-surface` for the shiplog-style legacy
+  `policy/dependency-surface-allowlist.toml` shape and validate it side-by-side
+  against a dependency-surface xtask fixture.
+- Add `--compat --kind process` for the shiplog-style legacy
+  `policy/process-allowlist.toml` shape and validate it side-by-side against a
+  process-policy xtask fixture.
+- Add `--compat --kind network` for the shiplog-style legacy
+  `policy/network-allowlist.toml` shape and validate it side-by-side against a
+  network-policy xtask fixture.
 - Add `cargo-allow migrate --repo-policy policy/ --out policy/allow.toml` for
   combining supported shiplog-style legacy files into one canonical policy.
 - Let canonical checks collect migrated generated, executable, workflow,
   dependency-surface, process, and network companion findings without requiring
   `--compat`.
-- Dogfood the migrated canonical policy against shiplog's current non-Rust,
+- Dogfood the migrated canonical policy against real legacy non-Rust,
   generated, executable, workflow, dependency-surface, process, and network
-  policy surfaces.
+  policy fixtures.
 
 External dogfood:
 
@@ -112,12 +112,12 @@ receipts.
 
 Completed:
 
-- Add count-limited migration for generated shiplog-style
+- Add count-limited migration for generated shiplog-style legacy
   `policy/no-panic-baseline.toml` into temporary `baseline_debt` entries.
 - Scan panic-family method calls and macros from source syntax.
 - Scan indexing and slicing expressions from source syntax.
 - Apply shared no-new and strict matching behavior to panic-family findings.
-- Add `--compat --kind panic` for generated shiplog-style
+- Add `--compat --kind panic` for generated shiplog-style legacy
   `policy/no-panic-baseline.toml`, preserving legacy `count` as
   `occurrence_limit`.
 - Add `--compat --kind no-panic-allowlist` for legacy
