@@ -285,6 +285,8 @@ Completed:
 - Add a versioned JSON schema for `cargo-allow.worklist.v1`.
 - Emit advisory `broad_scope` work items for matched allow entries that still
   use wildcard source-tree scopes.
+- Show suggested actions in human worklist output so maintainers can triage
+  without switching to JSON.
 
 Planned work:
 
