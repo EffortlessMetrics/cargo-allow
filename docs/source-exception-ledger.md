@@ -231,8 +231,8 @@ arbitrary annotations. `source_package` fields are scanner-provided context
 only; they are not Cargo metadata or build-membership proof.
 Worklist output can be filtered by governed kind, scanner family, policy owner,
 policy classification, work item queue kind, match status, source-tree path,
-missing evidence, risk, and difficulty; filtered artifacts record all applied
-filters.
+baseline debt, broad source-tree scopes, missing evidence, risk, and
+difficulty; filtered artifacts record all applied filters.
 Policy-backed slices can also be filtered by durable allow ID with `--allow-id`,
 and scanner-provided source-tree package context can be filtered with
 `--source-package`.
