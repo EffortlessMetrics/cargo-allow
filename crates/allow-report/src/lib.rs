@@ -691,7 +691,11 @@ fn render_sarif_result(outcome: &MatchOutcome, finding: Option<&Finding>) -> Str
             .map(|idx| idx.to_string())
             .unwrap_or_else(|| "null".to_string())
     ));
-    out.push_str(&format!("            \"score\": {}\n", outcome.score));
+    out.push_str(&format!("            \"score\": {},\n", outcome.score));
+    out.push_str(&format!(
+        "            \"source_package\": {}\n",
+        option_json(finding.and_then(|finding| finding.identity.crate_name.as_deref()))
+    ));
     out.push_str("          }");
     if let Some(finding) = finding {
         out.push_str(",\n");
@@ -1308,6 +1312,32 @@ mod tests {
         assert!(sarif.contains("\"source_tree_inventory\""));
         assert!(sarif.contains("\"cargo_commands_not_invoked\""));
         assert!(!sarif.contains("\"ruleId\": \"cargo-allow/matched\""));
+    }
+
+    #[test]
+    fn sarif_result_properties_include_source_package_context() {
+        let mut identity = StructuralIdentity::new("rust", "method_call");
+        identity.crate_name = Some("parser".to_string());
+        let findings = vec![Finding {
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            path: PathBuf::from("crates/parser/src/lib.rs"),
+            span: Some(Span { line: 4, column: 9 }),
+            identity,
+            message: "unwrap call".to_string(),
+        }];
+        let outcomes = vec![MatchOutcome {
+            status: MatchStatus::New,
+            allow_id: None,
+            finding_index: Some(0),
+            message: "unreceipted unwrap".to_string(),
+            score: 0,
+        }];
+
+        let sarif = render_sarif("check", &findings, &outcomes, true);
+
+        assert!(sarif.contains("\"source_package\": \"parser\""));
+        assert!(sarif.contains("\"uri\": \"crates/parser/src/lib.rs\""));
     }
 
     #[test]
