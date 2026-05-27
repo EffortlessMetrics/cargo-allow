@@ -526,20 +526,31 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         allow_diff::policy_changes_from_git(&root, &args.base, &policy_path, &head_cfg_for_diff)?;
     let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
     let failed = outcomes.iter().any(|o| CheckMode::NoNew.fails(o.status)) || policy_failed;
+    let report_context = allow_report::ReportContext {
+        inventory_source: inventory_source.as_str(),
+    };
     let mut text = match args.format {
         OutputFormat::Json => allow_report::render_json_with_context(
             "diff",
             &findings,
             &outcomes,
             failed,
-            allow_report::ReportContext {
-                inventory_source: inventory_source.as_str(),
-            },
+            report_context,
         ),
-        OutputFormat::Markdown => {
-            allow_report::render_markdown("diff", &findings, &outcomes, failed)
-        }
-        OutputFormat::Human => allow_report::render_human("diff", &findings, &outcomes, failed),
+        OutputFormat::Markdown => allow_report::render_markdown_with_context(
+            "diff",
+            &findings,
+            &outcomes,
+            failed,
+            report_context,
+        ),
+        OutputFormat::Human => allow_report::render_human_with_context(
+            "diff",
+            &findings,
+            &outcomes,
+            failed,
+            report_context,
+        ),
     };
     if args.format == OutputFormat::Markdown {
         let summary = render_diff_pr_summary_markdown(&outcomes, &finding_changes, &policy_changes);
