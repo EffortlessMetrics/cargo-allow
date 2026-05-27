@@ -1,6 +1,6 @@
 use allow_core::{
     CargoAllowError, CargoAllowResult, Finding, FindingKind, Span, StructuralIdentity,
-    normalize_snippet, stable_hash_hex,
+    normalize_path, normalize_snippet, stable_hash_hex,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -299,6 +299,7 @@ pub fn scan_rust_files(
 ) -> CargoAllowResult<Vec<Finding>> {
     let root = root.as_ref();
     let mut out = Vec::new();
+    let packages = source_package_contexts(root, files)?;
     for rel in files {
         if rel.extension().and_then(|e| e.to_str()) != Some("rs") {
             continue;
@@ -306,9 +307,74 @@ pub fn scan_rust_files(
         let path = root.join(rel);
         let text = fs::read_to_string(&path)
             .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))?;
-        out.extend(scan_rust_source(rel, &text));
+        let mut findings = scan_rust_source(rel, &text);
+        if let Some(package) = source_package_for_path(rel, &packages) {
+            for finding in &mut findings {
+                finding.identity.crate_name = Some(package.name.clone());
+            }
+        }
+        out.extend(findings);
     }
     Ok(out)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SourcePackageContext {
+    root: String,
+    name: String,
+}
+
+fn source_package_contexts(
+    root: &Path,
+    files: &[PathBuf],
+) -> CargoAllowResult<Vec<SourcePackageContext>> {
+    let mut packages = Vec::new();
+    for rel in files {
+        let normalized = normalize_path(rel);
+        if normalized.rsplit('/').next() != Some("Cargo.toml") {
+            continue;
+        }
+        let path = root.join(rel);
+        let text = fs::read_to_string(&path)
+            .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))?;
+        if let Some(name) = source_package_name(&text) {
+            let package_root = normalized
+                .strip_suffix("Cargo.toml")
+                .unwrap_or("")
+                .trim_end_matches('/')
+                .to_string();
+            packages.push(SourcePackageContext {
+                root: package_root,
+                name,
+            });
+        }
+    }
+    packages.sort_by(|left, right| right.root.len().cmp(&left.root.len()));
+    Ok(packages)
+}
+
+fn source_package_name(manifest: &str) -> Option<String> {
+    toml::from_str::<toml::Table>(manifest)
+        .ok()?
+        .get("package")?
+        .as_table()?
+        .get("name")?
+        .as_str()
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn source_package_for_path<'a>(
+    path: &Path,
+    packages: &'a [SourcePackageContext],
+) -> Option<&'a SourcePackageContext> {
+    let normalized = normalize_path(path);
+    packages.iter().find(|package| {
+        package.root.is_empty()
+            || normalized == package.root
+            || normalized.starts_with(&format!("{}/", package.root))
+    })
 }
 
 pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
@@ -1068,6 +1134,105 @@ mod tests {
     }
 
     #[test]
+    fn scan_rust_files_adds_source_package_context_from_manifest() {
+        let root = temp_root("source-package");
+        let crate_dir = root.join("crates").join("parser");
+        fs::create_dir_all(crate_dir.join("src"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("crate dir: {err}")));
+        fs::write(
+            crate_dir.join("Cargo.toml"),
+            "[package]\nname = \"parser\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("manifest write: {err}")));
+        fs::write(
+            crate_dir.join("src").join("lib.rs"),
+            "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
+        let files = vec![
+            PathBuf::from("crates/parser/Cargo.toml"),
+            PathBuf::from("crates/parser/src/lib.rs"),
+        ];
+        assert_eq!(
+            source_package_name("[package]\nname = \"parser\"\n"),
+            Some("parser".to_string())
+        );
+        let packages = source_package_contexts(&root, &files)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("package contexts: {err}")));
+        assert_eq!(
+            packages,
+            vec![SourcePackageContext {
+                root: "crates/parser".to_string(),
+                name: "parser".to_string()
+            }]
+        );
+        assert!(source_package_for_path(&files[1], &packages).is_some());
+
+        let findings = scan_rust_files(&root, &files)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
+
+        let unwrap = findings
+            .iter()
+            .find(|finding| finding.family.as_deref() == Some("unwrap"))
+            .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
+        assert_eq!(unwrap.identity.crate_name.as_deref(), Some("parser"));
+        fs::remove_dir_all(root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
+    }
+
+    #[test]
+    fn scan_rust_files_ignores_workspace_manifest_without_package_name() {
+        let root = temp_root("workspace-manifest");
+        fs::create_dir_all(root.join("src"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+        fs::write(root.join("Cargo.toml"), "[workspace]\nmembers = []\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("manifest write: {err}")));
+        fs::write(
+            root.join("src").join("lib.rs"),
+            "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
+        let files = vec![PathBuf::from("Cargo.toml"), PathBuf::from("src/lib.rs")];
+
+        let findings = scan_rust_files(&root, &files)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
+
+        let unwrap = findings
+            .iter()
+            .find(|finding| finding.family.as_deref() == Some("unwrap"))
+            .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
+        assert_eq!(unwrap.identity.crate_name, None);
+        fs::remove_dir_all(root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
+    }
+
+    #[test]
+    fn scan_rust_files_ignores_invalid_manifest_source_text() {
+        let root = temp_root("invalid-manifest");
+        fs::create_dir_all(root.join("src"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+        fs::write(root.join("Cargo.toml"), "[package\nname = \"broken\"\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("manifest write: {err}")));
+        fs::write(
+            root.join("src").join("lib.rs"),
+            "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
+        let files = vec![PathBuf::from("Cargo.toml"), PathBuf::from("src/lib.rs")];
+
+        let findings = scan_rust_files(&root, &files)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
+
+        let unwrap = findings
+            .iter()
+            .find(|finding| finding.family.as_deref() == Some("unwrap"))
+            .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
+        assert_eq!(unwrap.identity.crate_name, None);
+        fs::remove_dir_all(root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
+    }
+
+    #[test]
     fn syntax_panic_methods_do_not_parse_macro_token_trees() {
         let src = r#"
         fn load(value: Result<(), ()>) {
@@ -1651,5 +1816,19 @@ fn load() {}
                 .iter()
                 .any(|container| container.name == "parsed_before_error")
         );
+    }
+
+    fn temp_root(label: &str) -> PathBuf {
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("system clock: {err}")))
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-rust-{label}-{}-{unique}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("temp root: {err}")));
+        root
     }
 }

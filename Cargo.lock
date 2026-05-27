@@ -77,6 +77,7 @@ name = "allow-rust"
 version = "0.1.0"
 dependencies = [
  "allow-core",
+ "toml",
  "tree-sitter",
  "tree-sitter-rust",
 ]
