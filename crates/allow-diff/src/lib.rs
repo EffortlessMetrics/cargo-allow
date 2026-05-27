@@ -222,6 +222,7 @@ pub enum PolicyChangeKind {
     SelectorPrecisionIncreased,
     ExpiryExtended,
     ReviewAfterExtended,
+    EvidenceAdded,
     EvidenceRemoved,
     OwnerRemoved,
     ReasonRemoved,
@@ -240,6 +241,7 @@ impl PolicyChangeKind {
             Self::SelectorPrecisionIncreased => "selector_precision_increased",
             Self::ExpiryExtended => "expiry_extended",
             Self::ReviewAfterExtended => "review_after_extended",
+            Self::EvidenceAdded => "evidence_added",
             Self::EvidenceRemoved => "evidence_removed",
             Self::OwnerRemoved => "owner_removed",
             Self::ReasonRemoved => "reason_removed",
@@ -447,6 +449,14 @@ fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<PolicyChang
             "evidence removed",
         ));
     }
+    if added_values(&base.evidence, &head.evidence) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::EvidenceAdded,
+            PolicyChangeSeverity::Improvement,
+            "evidence added",
+        ));
+    }
     if removed_required_text(&base.owner, &head.owner) {
         changes.push(change(
             head,
@@ -609,6 +619,11 @@ fn date_extended(base: Option<&str>, head: Option<&str>) -> bool {
 fn removed_values(base: &[String], head: &[String]) -> bool {
     base.iter()
         .any(|item| !head.iter().any(|head| head == item))
+}
+
+fn added_values(base: &[String], head: &[String]) -> bool {
+    head.iter()
+        .any(|item| !base.iter().any(|base| base == item))
 }
 
 fn removed_required_text(base: &str, head: &str) -> bool {
@@ -794,6 +809,21 @@ mod tests {
                 .iter()
                 .any(|change| change.kind == PolicyChangeKind::ReviewAfterExtended)
         );
+    }
+
+    #[test]
+    fn detects_evidence_added_as_improvement() {
+        let mut base_entry = entry("allow-1");
+        base_entry.evidence.clear();
+        let base = config_with(base_entry);
+        let head = config_with(entry("allow-1"));
+
+        let changes = policy_changes(&base, &head);
+
+        assert!(changes.iter().any(|change| {
+            change.kind == PolicyChangeKind::EvidenceAdded
+                && change.severity == PolicyChangeSeverity::Improvement
+        }));
     }
 
     #[test]

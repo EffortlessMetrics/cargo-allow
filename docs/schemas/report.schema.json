@@ -470,6 +470,7 @@
             "selector_precision_increased",
             "expiry_extended",
             "review_after_extended",
+            "evidence_added",
             "evidence_removed",
             "owner_removed",
             "reason_removed",

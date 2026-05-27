@@ -51,7 +51,9 @@ evidence = [
 ```
 
 The presence of evidence is not proof that the exception is correct. It is a
-traceable claim that reviewers and tools can inspect.
+traceable claim that reviewers and tools can inspect. Diff mode reports removed
+evidence as policy weakening and newly added evidence references as policy
+improvements.
 
 Known local evidence prefixes are parsed when a policy is loaded from a source
 tree. `doc:`, `spec:`, `adr:`, `ripr:`, `unsafe-review:`, and `coverage:`
