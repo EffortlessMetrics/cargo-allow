@@ -1,7 +1,7 @@
-use allow_core::{CargoAllowResult, Finding, MatchOutcome};
+use allow_core::{AllowConfig, CargoAllowResult, Finding, MatchOutcome};
 use std::path::Path;
 
-use crate::{InventoryFacts, OutputFormat, source_tree_root_text, write_file};
+use crate::{InventoryFacts, OutputFormat, parse_kind_filter, source_tree_root_text, write_file};
 
 pub(crate) struct ReportRenderArgs<'a> {
     pub(crate) command: &'a str,
@@ -66,4 +66,24 @@ pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
         println!("{text}");
     }
     Ok(())
+}
+
+pub(crate) fn report_config(
+    cfg: &AllowConfig,
+    kind_filter: Option<&str>,
+) -> CargoAllowResult<AllowConfig> {
+    let Some(kind) = kind_filter else {
+        return Ok(cfg.clone());
+    };
+    let parsed = parse_kind_filter(kind)?;
+    let mut filtered = cfg.clone();
+    filtered.allow.retain(|entry| parsed.matches_entry(entry));
+    Ok(filtered)
+}
+
+pub(crate) fn policy_baseline_debt_entries(cfg: &AllowConfig) -> usize {
+    cfg.allow
+        .iter()
+        .filter(|entry| entry.classification == "baseline_debt")
+        .count()
 }
