@@ -227,6 +227,7 @@ pub enum PolicyChangeKind {
     OwnerRemoved,
     ReasonRemoved,
     ClassificationRemoved,
+    OccurrenceLimitTightened,
     OccurrenceLimitLoosened,
 }
 
@@ -246,6 +247,7 @@ impl PolicyChangeKind {
             Self::OwnerRemoved => "owner_removed",
             Self::ReasonRemoved => "reason_removed",
             Self::ClassificationRemoved => "classification_removed",
+            Self::OccurrenceLimitTightened => "occurrence_limit_tightened",
             Self::OccurrenceLimitLoosened => "occurrence_limit_loosened",
         }
     }
@@ -489,6 +491,14 @@ fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<PolicyChang
             "occurrence_limit increased or removed",
         ));
     }
+    if occurrence_limit_tightened(base.occurrence_limit, head.occurrence_limit) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::OccurrenceLimitTightened,
+            PolicyChangeSeverity::Improvement,
+            "occurrence_limit tightened",
+        ));
+    }
     changes
 }
 
@@ -634,6 +644,14 @@ fn occurrence_limit_loosened(base: Option<u32>, head: Option<u32>) -> bool {
     match (base, head) {
         (Some(_), None) => true,
         (Some(base), Some(head)) => head > base,
+        _ => false,
+    }
+}
+
+fn occurrence_limit_tightened(base: Option<u32>, head: Option<u32>) -> bool {
+    match (base, head) {
+        (None, Some(_)) => true,
+        (Some(base), Some(head)) => head < base,
         _ => false,
     }
 }
@@ -858,6 +876,38 @@ mod tests {
                 .iter()
                 .any(|change| change.kind == PolicyChangeKind::OccurrenceLimitLoosened)
         );
+    }
+
+    #[test]
+    fn detects_occurrence_limit_tightened_as_improvement() {
+        let mut base_entry = entry("allow-1");
+        base_entry.occurrence_limit = Some(4);
+        let base = config_with(base_entry);
+        let mut head_entry = entry("allow-1");
+        head_entry.occurrence_limit = Some(2);
+        let head = config_with(head_entry);
+
+        let changes = policy_changes(&base, &head);
+
+        assert!(changes.iter().any(|change| {
+            change.kind == PolicyChangeKind::OccurrenceLimitTightened
+                && change.severity == PolicyChangeSeverity::Improvement
+        }));
+    }
+
+    #[test]
+    fn detects_new_occurrence_limit_as_improvement() {
+        let mut base_entry = entry("allow-1");
+        base_entry.occurrence_limit = None;
+        let base = config_with(base_entry);
+        let head = config_with(entry("allow-1"));
+
+        let changes = policy_changes(&base, &head);
+
+        assert!(changes.iter().any(|change| {
+            change.kind == PolicyChangeKind::OccurrenceLimitTightened
+                && change.severity == PolicyChangeSeverity::Improvement
+        }));
     }
 
     #[test]

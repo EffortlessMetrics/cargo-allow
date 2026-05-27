@@ -189,6 +189,8 @@ Completed:
   structurally strengthened receipts are visible in PR posture.
 - Report evidence additions as policy improvements so proof-link strengthening
   is visible in PR posture.
+- Report occurrence-limit additions and reductions as policy improvements so
+  counted-baseline tightening is visible in PR posture.
 - Compare base and head source findings in `cargo-allow diff` using durable
   finding keys, so reviewers can see new and removed syntax-visible exception
   posture independent of line movement.
