@@ -142,6 +142,40 @@ pub struct PruneCandidate<'a> {
     pub reason: &'a str,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ListFilters<'a> {
+    pub kind: Option<&'a str>,
+    pub family: Option<&'a str>,
+    pub owner: Option<&'a str>,
+    pub classification: Option<&'a str>,
+    pub path: Option<&'a str>,
+    pub source_package: Option<&'a str>,
+    pub status: Option<&'a str>,
+    pub expired: bool,
+    pub review_due: bool,
+    pub stale: bool,
+    pub baseline_debt: bool,
+    pub broad_scope: bool,
+    pub missing_evidence: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ListRow<'a> {
+    pub id: &'a str,
+    pub status: &'a str,
+    pub matches: usize,
+    pub kind: &'a str,
+    pub family: Option<&'a str>,
+    pub owner: &'a str,
+    pub classification: &'a str,
+    pub scope: &'a str,
+    pub source_package: Option<&'a str>,
+    pub evidence_count: usize,
+    pub review_after: Option<&'a str>,
+    pub expires: Option<&'a str>,
+    pub reason: &'a str,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
     pub total: usize,
@@ -998,6 +1032,153 @@ pub fn render_prune_json(
     out
 }
 
+pub fn render_list_json(
+    rows: &[ListRow<'_>],
+    filters: ListFilters<'_>,
+    inventory: InventoryContext<'_>,
+) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("  \"schema_version\": {LIST_SCHEMA_VERSION},\n"));
+    out.push_str(&format!("  \"schema_id\": \"{LIST_SCHEMA_ID}\",\n"));
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"list\",\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        render_claim_boundary_json()
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        render_scanner_limitations_json()
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&render_inventory_json(inventory, "  "));
+    out.push_str(",\n");
+    out.push_str("  \"filters\": ");
+    out.push_str(&render_list_filters_json(filters, "  "));
+    out.push_str(",\n");
+    out.push_str(&format!(
+        "  \"summary\": {{\n    \"allow_entries\": {}\n  }},\n",
+        rows.len()
+    ));
+    out.push_str("  \"allow_entries\": [\n");
+    for (index, row) in rows.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&render_list_row_json(row));
+    }
+    out.push_str("\n  ]\n");
+    out.push_str("}\n");
+    out
+}
+
+fn render_list_row_json(row: &ListRow<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("    {\n");
+    out.push_str(&format!("      \"id\": \"{}\",\n", json_escape(row.id)));
+    out.push_str(&format!(
+        "      \"status\": \"{}\",\n",
+        json_escape(row.status)
+    ));
+    out.push_str(&format!("      \"matches\": {},\n", row.matches));
+    out.push_str(&format!("      \"kind\": \"{}\",\n", json_escape(row.kind)));
+    out.push_str(&format!("      \"family\": {},\n", option_json(row.family)));
+    out.push_str(&format!(
+        "      \"owner\": \"{}\",\n",
+        json_escape(row.owner)
+    ));
+    out.push_str(&format!(
+        "      \"classification\": \"{}\",\n",
+        json_escape(row.classification)
+    ));
+    out.push_str(&format!(
+        "      \"scope\": \"{}\",\n",
+        json_escape(row.scope)
+    ));
+    out.push_str(&format!(
+        "      \"source_package\": {},\n",
+        option_json(row.source_package)
+    ));
+    out.push_str(&format!(
+        "      \"evidence_count\": {},\n",
+        row.evidence_count
+    ));
+    out.push_str(&format!(
+        "      \"review_after\": {},\n",
+        option_json(row.review_after)
+    ));
+    out.push_str(&format!(
+        "      \"expires\": {},\n",
+        option_json(row.expires)
+    ));
+    out.push_str(&format!(
+        "      \"reason\": \"{}\"\n",
+        json_escape(row.reason)
+    ));
+    out.push_str("    }");
+    out
+}
+
+fn render_list_filters_json(filters: ListFilters<'_>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "{indent}  \"kind\": {},\n",
+        option_json(filters.kind)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"family\": {},\n",
+        option_json(filters.family)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"owner\": {},\n",
+        option_json(filters.owner)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"classification\": {},\n",
+        option_json(filters.classification)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"path\": {},\n",
+        option_json(filters.path)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"source_package\": {},\n",
+        option_json(filters.source_package)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"status\": {},\n",
+        option_json(filters.status)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"expired\": {},\n",
+        bool_json(filters.expired)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"review_due\": {},\n",
+        bool_json(filters.review_due)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"stale\": {},\n",
+        bool_json(filters.stale)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"baseline_debt\": {},\n",
+        bool_json(filters.baseline_debt)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"broad_scope\": {},\n",
+        bool_json(filters.broad_scope)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"missing_evidence\": {}\n",
+        bool_json(filters.missing_evidence)
+    ));
+    out.push_str(&format!("{indent}}}"));
+    out
+}
+
 fn render_prune_candidate_json(candidate: &PruneCandidate<'_>, indent: &str) -> String {
     format!(
         "{indent}  {{\n{indent}    \"id\": \"{}\",\n{indent}    \"kind\": \"{}\",\n{indent}    \"family\": {},\n{indent}    \"owner\": \"{}\",\n{indent}    \"classification\": \"{}\",\n{indent}    \"scope\": \"{}\",\n{indent}    \"reason\": \"{}\"\n{indent}  }}",
@@ -1441,6 +1622,56 @@ mod tests {
         assert!(json.contains("\"id\": \"allow-stale\""));
         assert!(json.contains("\"kind\": \"panic\""));
         assert!(json.contains("\"family\": \"unwrap\""));
+    }
+
+    #[test]
+    fn list_json_renderer_records_filters_context_and_rows() {
+        let rows = vec![ListRow {
+            id: "allow-json",
+            status: "baseline_debt",
+            matches: 1,
+            kind: "panic",
+            family: Some("unwrap"),
+            owner: "parser",
+            classification: "baseline_debt",
+            scope: "crates/parser/src/lib.rs",
+            source_package: Some("parser"),
+            evidence_count: 2,
+            review_after: Some("2026-07-01"),
+            expires: None,
+            reason: "generated baseline",
+        }];
+
+        let json = render_list_json(
+            &rows,
+            ListFilters {
+                kind: Some("panic"),
+                family: Some("unwrap"),
+                owner: Some("parser"),
+                baseline_debt: true,
+                ..ListFilters::default()
+            },
+            InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(46),
+            ),
+        );
+
+        assert!(json.contains("\"schema_id\": \"cargo-allow.list.v1\""));
+        assert!(json.contains("\"command\": \"list\""));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
+        assert!(json.contains("\"files_scanned\": 46"));
+        assert!(json.contains("\"kind\": \"panic\""));
+        assert!(json.contains("\"family\": \"unwrap\""));
+        assert!(json.contains("\"owner\": \"parser\""));
+        assert!(json.contains("\"baseline_debt\": true"));
+        assert!(json.contains("\"allow_entries\": 1"));
+        assert!(json.contains("\"id\": \"allow-json\""));
+        assert!(json.contains("\"source_package\": \"parser\""));
+        assert!(json.contains("\"review_after\": \"2026-07-01\""));
+        assert!(json.contains("\"expires\": null"));
     }
 
     #[test]
