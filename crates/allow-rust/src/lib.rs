@@ -376,6 +376,7 @@ fn scan_line(
             continue;
         };
         let lint = extract_first_lint(attr_text);
+        let policy_id = lint_policy_reference(trimmed);
         push_finding(
             FindingSite {
                 path,
@@ -394,6 +395,7 @@ fn scan_line(
             |id| {
                 id.lint = lint;
                 id.symbol = Some(trimmed.to_string());
+                id.target_fingerprint = policy_id.map(|policy_id| format!("policy:{policy_id}"));
             },
             findings,
         );
@@ -916,6 +918,15 @@ fn extract_first_lint(text: &str) -> Option<String> {
     }
 }
 
+fn lint_policy_reference(text: &str) -> Option<String> {
+    let (_, after) = text.split_once("policy:")?;
+    let id = after
+        .chars()
+        .take_while(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_'))
+        .collect::<String>();
+    if id.is_empty() { None } else { Some(id) }
+}
+
 fn column(line: &str, needle: &str) -> u32 {
     line.find(needle).map(|idx| idx as u32 + 1).unwrap_or(1)
 }
@@ -1388,6 +1399,10 @@ fn load() {}
                 .symbol
                 .as_deref()
                 .is_some_and(|symbol| symbol.contains("policy:allow-lint"))
+        );
+        assert_eq!(
+            expect.identity.target_fingerprint.as_deref(),
+            Some("policy:allow-lint")
         );
         assert_eq!(expect.span.as_ref().map(|span| span.column), Some(3));
     }

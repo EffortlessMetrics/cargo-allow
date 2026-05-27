@@ -84,7 +84,7 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
                 }
                 used_entries.insert(*entry_index);
                 entry_occurrences.insert(*entry_index, current_count + 1);
-                let (status, message) = classify_matched(entry, *score, today, cfg, mode);
+                let (status, message) = classify_matched(entry, finding, *score, today, cfg, mode);
                 outcomes.push(MatchOutcome {
                     status,
                     allow_id: Some(entry.id.clone()),
@@ -257,6 +257,7 @@ fn path_matches(entry: &AllowEntry, finding: &Finding) -> bool {
 
 fn classify_matched(
     entry: &AllowEntry,
+    finding: &Finding,
     score: u32,
     today: SimpleDate,
     cfg: &AllowConfig,
@@ -282,6 +283,24 @@ fn classify_matched(
             MatchStatus::EvidenceMissing,
             format!("{} matched unsafe finding but has no evidence", entry.id),
         );
+    }
+    if entry.kind == FindingKind::LintException {
+        if let Some(policy_id) = finding
+            .identity
+            .target_fingerprint
+            .as_deref()
+            .and_then(|value| value.strip_prefix("policy:"))
+        {
+            if policy_id != entry.id {
+                return (
+                    MatchStatus::InvalidSelector,
+                    format!(
+                        "{} matched lint suppression that references policy:{policy_id}",
+                        entry.id
+                    ),
+                );
+            }
+        }
     }
     if entry.classification == "baseline_debt" && matches!(mode, CheckMode::Release) {
         return (
@@ -426,6 +445,35 @@ mod tests {
     }
 
     #[test]
+    fn lint_policy_reference_must_match_entry_id() {
+        let finding = lint_finding_with_policy("allow-other");
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(lint_entry("allow-lint"));
+
+        let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+        assert!(outcomes.iter().any(|outcome| {
+            outcome.status == MatchStatus::InvalidSelector
+                && outcome.message.contains("policy:allow-other")
+        }));
+    }
+
+    #[test]
+    fn lint_policy_reference_matching_entry_id_passes() {
+        let finding = lint_finding_with_policy("allow-lint");
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(lint_entry("allow-lint"));
+
+        let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+        assert!(
+            outcomes
+                .iter()
+                .any(|outcome| outcome.status == MatchStatus::Matched)
+        );
+    }
+
+    #[test]
     fn occurrence_limit_caps_matched_findings() {
         let finding = finding_with_hash("fnv1a64:actual");
         let mut entry = entry_with_hash("fnv1a64:actual");
@@ -501,6 +549,50 @@ mod tests {
             span: Some(Span {
                 line: 50,
                 column: 12,
+            }),
+            identity: id,
+            message: String::new(),
+        }
+    }
+
+    fn lint_entry(id: &str) -> AllowEntry {
+        AllowEntry {
+            id: id.to_string(),
+            kind: FindingKind::LintException,
+            family: Some("expect_attribute".to_string()),
+            path: Some(PathBuf::from("src/lib.rs")),
+            glob: None,
+            owner: "core".to_string(),
+            classification: "reviewed_exception".to_string(),
+            reason: "Lint suppression is linked to policy.".to_string(),
+            evidence: Vec::new(),
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle {
+                created: None,
+                review_after: None,
+                expires: Some("2026-12-31".to_string()),
+            },
+            selector: Selector {
+                ast_kind: Some("attribute".to_string()),
+                lint: Some("clippy::unwrap_used".to_string()),
+                ..Selector::default()
+            },
+            last_seen: None,
+        }
+    }
+
+    fn lint_finding_with_policy(policy_id: &str) -> Finding {
+        let mut id = StructuralIdentity::new("rust", "attribute");
+        id.lint = Some("clippy::unwrap_used".to_string());
+        id.target_fingerprint = Some(format!("policy:{policy_id}"));
+        Finding {
+            kind: FindingKind::LintException,
+            family: Some("expect_attribute".to_string()),
+            path: PathBuf::from("src/lib.rs"),
+            span: Some(Span {
+                line: 10,
+                column: 1,
             }),
             identity: id,
             message: String::new(),

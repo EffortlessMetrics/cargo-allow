@@ -145,11 +145,14 @@ Completed:
 
 - Scan outer and inner `allow` and `expect` attributes from source syntax,
   including visible lint names, source text, and attribute column hints.
+- Extract visible `policy:<allow-id>` references from lint attribute source text
+  and fail closed when a matched lint suppression references a different allow
+  entry.
 
 Planned work:
 
 - Enforce suppression policy.
-- Verify policy ID linkage.
+- Require policy ID linkage where configured.
 - Add a legacy clippy exceptions adapter.
 
 ## Phase 8: PR Diff As Flagship
