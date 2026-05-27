@@ -343,6 +343,9 @@ struct WorklistArgs {
     /// Filter work items by durable allow entry ID.
     #[arg(long)]
     allow_id: Option<String>,
+    /// Filter work items by source-tree path or path prefix.
+    #[arg(long)]
+    path: Option<String>,
     /// Filter work items by scanner-provided source-tree package context.
     #[arg(long)]
     source_package: Option<String>,
@@ -1834,6 +1837,7 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         item_kind: args.item_kind.as_deref(),
         status: args.status.as_deref(),
         allow_id: args.allow_id.as_deref(),
+        path: args.path.as_deref(),
         source_package: args.source_package.as_deref(),
         owner: args.owner.as_deref(),
         classification: args.classification.as_deref(),
@@ -1902,6 +1906,7 @@ struct WorklistFilters<'a> {
     item_kind: Option<&'a str>,
     status: Option<&'a str>,
     allow_id: Option<&'a str>,
+    path: Option<&'a str>,
     source_package: Option<&'a str>,
     owner: Option<&'a str>,
     classification: Option<&'a str>,
@@ -1954,6 +1959,15 @@ fn filter_work_items(items: Vec<WorkItem>, filters: WorklistFilters<'_>) -> Vec<
                     .map(|allow_id| item.allow_id.as_deref() == Some(allow_id))
                     .unwrap_or(true)
                 && filters
+                    .path
+                    .map(|path| {
+                        item.path
+                            .as_deref()
+                            .map(|item_path| worklist_path_matches(item_path, path))
+                            .unwrap_or(false)
+                    })
+                    .unwrap_or(true)
+                && filters
                     .source_package
                     .map(|source_package| item.source_package.as_deref() == Some(source_package))
                     .unwrap_or(true)
@@ -1972,6 +1986,20 @@ fn filter_work_items(items: Vec<WorkItem>, filters: WorklistFilters<'_>) -> Vec<
                     .unwrap_or(true)
         })
         .collect()
+}
+
+fn worklist_path_matches(item_path: &str, filter_path: &str) -> bool {
+    let item_path = normalize_path(item_path);
+    let filter_path = normalize_path(filter_path);
+    let filter_path = filter_path.trim_end_matches('/');
+    if filter_path.is_empty() || filter_path == "." {
+        return true;
+    }
+    item_path == filter_path
+        || item_path
+            .strip_prefix(filter_path)
+            .map(|suffix| suffix.starts_with('/'))
+            .unwrap_or(false)
 }
 
 fn sort_work_items(items: &mut [WorkItem]) {
@@ -2741,6 +2769,10 @@ fn worklist_filters_json(filters: WorklistFilters<'_>, indent: &str) -> String {
         option_json_string(filters.allow_id)
     ));
     out.push_str(&format!(
+        "{indent}  \"path\": {},\n",
+        option_json_string(filters.path)
+    ));
+    out.push_str(&format!(
         "{indent}  \"source_package\": {},\n",
         option_json_string(filters.source_package)
     ));
@@ -2780,6 +2812,9 @@ fn worklist_filters_human(filters: WorklistFilters<'_>) -> String {
     }
     if let Some(allow_id) = filters.allow_id {
         parts.push(format!("allow_id={allow_id}"));
+    }
+    if let Some(path) = filters.path {
+        parts.push(format!("path={path}"));
     }
     if let Some(source_package) = filters.source_package {
         parts.push(format!("source_package={source_package}"));
@@ -4656,6 +4691,8 @@ mod tests {
             "baseline_debt",
             "--allow-id",
             "allow-0001",
+            "--path",
+            "crates/allow-core",
             "--source-package",
             "allow-core",
             "--owner",
@@ -4683,6 +4720,7 @@ mod tests {
                 item_kind: Some(item_kind),
                 status: Some(status),
                 allow_id: Some(allow_id),
+                path: Some(path_filter),
                 source_package: Some(source_package),
                 owner: Some(owner),
                 classification: Some(classification),
@@ -4696,6 +4734,7 @@ mod tests {
                 && item_kind == "baseline_debt"
                 && status == "baseline_debt"
                 && allow_id == "allow-0001"
+                && path_filter == "crates/allow-core"
                 && source_package == "allow-core"
                 && owner == "runtime"
                 && classification == "baseline_debt"
@@ -4905,6 +4944,7 @@ mod tests {
         assert!(schema.contains("\"item_kind\""));
         assert!(schema.contains("\"status\""));
         assert!(schema.contains("\"allow_id\""));
+        assert!(schema.contains("\"path\""));
         assert!(schema.contains("\"source_package\""));
         assert!(schema.contains("\"inventory\""));
         assert!(schema.contains("\"git_tracked\""));
@@ -4953,6 +4993,7 @@ mod tests {
                 item_kind: Some("baseline_debt"),
                 status: Some("baseline_debt"),
                 allow_id: Some("allow-0001"),
+                path: Some("crates/allow-core"),
                 source_package: Some("allow-core"),
                 owner: Some("runtime"),
                 classification: Some("baseline_debt"),
@@ -4970,13 +5011,14 @@ mod tests {
         assert!(json.contains("\"item_kind\": \"baseline_debt\""));
         assert!(json.contains("\"status\": \"baseline_debt\""));
         assert!(json.contains("\"allow_id\": \"allow-0001\""));
+        assert!(json.contains("\"path\": \"crates/allow-core\""));
         assert!(json.contains("\"source_package\": \"allow-core\""));
         assert!(json.contains("\"owner\": \"runtime\""));
         assert!(json.contains("\"classification\": \"baseline_debt\""));
         assert!(json.contains("\"risk\": \"high\""));
         assert!(json.contains("\"difficulty\": \"medium\""));
         assert!(human.contains(
-            "Filters: kind=unsafe, family=unsafe_fn, item_kind=baseline_debt, status=baseline_debt, allow_id=allow-0001, source_package=allow-core, owner=runtime, classification=baseline_debt, risk=high, difficulty=medium"
+            "Filters: kind=unsafe, family=unsafe_fn, item_kind=baseline_debt, status=baseline_debt, allow_id=allow-0001, path=crates/allow-core, source_package=allow-core, owner=runtime, classification=baseline_debt, risk=high, difficulty=medium"
         ));
     }
 
@@ -5414,6 +5456,44 @@ mod tests {
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
         assert_eq!(item.allow_id.as_deref(), Some("allow-second"));
+    }
+
+    #[test]
+    fn worklist_filters_by_path_prefix() {
+        let cfg = AllowConfig::empty();
+        let findings = vec![
+            test_finding(
+                FindingKind::Panic,
+                Some("unwrap"),
+                "crates/allow-core/src/lib.rs",
+                "method_call",
+            ),
+            test_finding(
+                FindingKind::Panic,
+                Some("expect"),
+                "crates/allow-rust/src/lib.rs",
+                "method_call",
+            ),
+        ];
+        let outcomes = vec![
+            test_outcome(MatchStatus::New, None, Some(0), "unreceipted unwrap"),
+            test_outcome(MatchStatus::New, None, Some(1), "unreceipted expect"),
+        ];
+
+        let items = work_items_from_outcomes(&cfg, &findings, &outcomes);
+        let filtered = filter_work_items(
+            items,
+            WorklistFilters {
+                path: Some(r"crates\allow-core"),
+                ..WorklistFilters::default()
+            },
+        );
+
+        assert_eq!(filtered.len(), 1);
+        let item = filtered
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
+        assert_eq!(item.path.as_deref(), Some("crates/allow-core/src/lib.rs"));
     }
 
     #[test]

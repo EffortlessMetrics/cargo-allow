@@ -342,6 +342,8 @@ Completed:
   take bounded exception-family slices.
 - Filter worklist output by match status so humans and agents can take bounded
   new, stale, expired, review-due, or baseline-debt slices.
+- Filter worklist output by source-tree path prefix so agents can take bounded
+  file or subtree-local queues.
 
 Planned work:
 

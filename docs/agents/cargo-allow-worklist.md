@@ -25,6 +25,8 @@ Use `--item-kind <kind>` for queue-type slices such as `stale_allow`,
 Use `--status <status>` for match-status slices such as `new`, `stale`,
 `expired`, `review_due`, or `baseline_debt`.
 Use `--allow-id <id>` when the assignment is tied to one durable policy entry.
+Use `--path <path>` to focus one source-tree path or subtree before assigning
+file-local cleanup.
 Use `--source-package <name>` to focus a source-tree package context already
 reported by the scanner; do not treat that as Cargo metadata or build proof.
 Use `--owner <owner>` and `--classification <classification>` to take a bounded
