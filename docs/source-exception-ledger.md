@@ -167,7 +167,10 @@ absent, the tool's deterministic fixture date.
 `cargo-allow propose --write <path>` refuses to overwrite an existing file unless
 `--force` is passed. The command writes only TOML to stdout or the requested
 file, and emits its proposal summary to stderr so generated policy remains
-parseable.
+parseable. `--summary-format json --summary-output <path>` writes that summary
+as `cargo-allow.propose.v1`, including source-tree inventory context, proposal
+options, proposed `baseline_debt` count, and the generated-entry defaults that
+must remain visibly temporary until reviewed.
 
 `cargo-allow add --kind <kind> --path <path> --line <line>` generates a reviewed
 allow entry from the nearest current finding at that location. It copies the
@@ -262,9 +265,9 @@ to the matching shortcut queues.
 When the human view is truncated, it says how many work items were omitted and
 points to JSON for the full queue. Filtered worklist output records the applied
 filters so saved artifacts are not mistaken for the full ledger queue. The
-doctor, report, receipt, explain, list, prune, and worklist schemas enumerate
-scanner limitation values rather than treating claim-boundary facts as
-open-ended prose.
+doctor, report, receipt, explain, list, prune, propose, and worklist schemas
+enumerate scanner limitation values rather than treating claim-boundary facts
+as open-ended prose.
 Work items are ordered for routing: high risk first, then lower estimated
 difficulty, then stable source and allow identifiers.
 `work-*` IDs are artifact-local queue handles assigned after filtering and
