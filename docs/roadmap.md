@@ -150,10 +150,11 @@ Completed:
   entry.
 - Enforce `allow_bare_allow_attributes = false` by failing matched bare
   `#[allow]` suppressions instead of treating the receipt as approval.
+- Require visible `policy:<allow-id>` references for matched lint suppressions
+  when `lint_policy_id_required = true`.
 
 Planned work:
 
-- Require policy ID linkage where configured.
 - Add a legacy clippy exceptions adapter.
 
 ## Phase 8: PR Diff As Flagship

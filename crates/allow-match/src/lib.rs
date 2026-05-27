@@ -297,12 +297,21 @@ fn classify_matched(
         );
     }
     if entry.kind == FindingKind::LintException {
-        if let Some(policy_id) = finding
+        let policy_id = finding
             .identity
             .target_fingerprint
             .as_deref()
-            .and_then(|value| value.strip_prefix("policy:"))
-        {
+            .and_then(|value| value.strip_prefix("policy:"));
+        if cfg.requirements.lint_policy_id_required && policy_id.is_none() {
+            return (
+                MatchStatus::InvalidSelector,
+                format!(
+                    "{} matched lint suppression without required policy:<allow-id> reference",
+                    entry.id
+                ),
+            );
+        }
+        if let Some(policy_id) = policy_id {
             if policy_id != entry.id {
                 return (
                     MatchStatus::InvalidSelector,
@@ -510,6 +519,38 @@ mod tests {
         cfg.requirements.allow_bare_allow_attributes = true;
         cfg.allow
             .push(lint_entry_with_family("allow-lint", "allow_attribute"));
+
+        let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+        assert!(
+            outcomes
+                .iter()
+                .any(|outcome| outcome.status == MatchStatus::Matched)
+        );
+    }
+
+    #[test]
+    fn lint_policy_id_is_required_when_configured() {
+        let finding = lint_finding("expect_attribute");
+        let mut cfg = AllowConfig::empty();
+        cfg.requirements.lint_policy_id_required = true;
+        cfg.allow.push(lint_entry("allow-lint"));
+
+        let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+        assert!(outcomes.iter().any(|outcome| {
+            outcome.status == MatchStatus::InvalidSelector
+                && outcome
+                    .message
+                    .contains("without required policy:<allow-id> reference")
+        }));
+    }
+
+    #[test]
+    fn lint_policy_id_is_optional_by_default() {
+        let finding = lint_finding("expect_attribute");
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(lint_entry("allow-lint"));
 
         let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
 

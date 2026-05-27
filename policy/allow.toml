@@ -16,6 +16,7 @@ reason_required = true
 classification_required = true
 expires_or_review_after_required = true
 allow_bare_allow_attributes = false
+lint_policy_id_required = true
 stale_entries_fail = false
 
 [requirements.unsafe]
