@@ -263,7 +263,7 @@ Completed:
 - Surface explicit source-tree package context in work items when a scanner
   provides it, without inferring Cargo metadata or build facts.
 - Summarize worklist difficulty counts and include source-tree inventory
-  context in worklist JSON and human output.
+  context, including `files_scanned`, in worklist JSON and human output.
 - Add a versioned JSON schema for `cargo-allow.worklist.v1`.
 
 Planned work:
@@ -280,8 +280,9 @@ Completed:
   count tables.
 - Add optional JSON report trend metrics for review items, lifecycle pressure,
   evidence gaps, and baseline debt.
-- Expose optional source-derived package context in JSON report findings and
-  SARIF result properties, without treating it as Cargo metadata.
+- Expose optional source-derived package context as `source_package` in JSON
+  report findings and SARIF result properties, without treating it as Cargo
+  metadata.
 - Emit SARIF output for non-matched source-tree outcomes in audit/check style
   reports.
 - Emit static HTML reports for source-tree audit/check output.

@@ -196,9 +196,9 @@ confirm the exception is gone before deleting the entry.
 agent-safe work items. Each item includes a kind, risk, difficulty, current
 status, path or allow ID where available, suggested actions, and proof commands.
 The worklist summary rolls up both risk and difficulty counts, and the artifact
-records the source-tree inventory source, root, and scanned-file count when
-available. Source package fields are scanner-provided context only; they are not
-Cargo metadata or build-membership proof.
+records the source-tree inventory source, root, and `files_scanned` count when
+available. `source_package` fields are scanner-provided context only; they are
+not Cargo metadata or build-membership proof.
 It is a routing surface, not an auto-fix plan: agents and humans should fix,
 prove, narrow, or remove the exception instead of adding suppressions just to
 silence cargo-allow.
