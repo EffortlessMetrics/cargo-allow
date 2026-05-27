@@ -1733,6 +1733,8 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
 struct WorkItem {
     id: String,
     kind: String,
+    exception_kind: Option<String>,
+    family: Option<String>,
     risk: &'static str,
     difficulty: &'static str,
     status: MatchStatus,
@@ -1810,6 +1812,8 @@ fn work_item_from_outcome(
         .map(|finding| normalize_path(&finding.path))
         .or_else(|| entry.map(|entry| entry.path_or_glob()));
     let source_package = finding.and_then(source_package_name);
+    let exception_kind = work_item_exception_kind(finding, entry);
+    let family = exception_family(finding, entry).map(ToOwned::to_owned);
     let mut suggested_actions = suggested_actions(&kind);
     if let Some(package) = &source_package {
         suggested_actions.push(format!(
@@ -1818,6 +1822,8 @@ fn work_item_from_outcome(
     }
     WorkItem {
         id: format!("work-{}-{item_index:04}", kind.replace('_', "-")),
+        exception_kind,
+        family,
         risk: work_item_risk(&kind, outcome.status, finding, entry),
         difficulty: work_item_difficulty(&kind, finding, entry),
         status: outcome.status,
@@ -1854,6 +1860,8 @@ fn work_items_from_evidence_diagnostics(
             items.push(WorkItem {
                 id: format!("work-broken-evidence-link-{item_index:04}"),
                 kind,
+                exception_kind: Some(entry.kind.as_str().to_string()),
+                family: entry.family.clone(),
                 risk: if entry.kind == FindingKind::Unsafe {
                     "high"
                 } else {
@@ -1891,6 +1899,16 @@ fn source_package_name(finding: &Finding) -> Option<String> {
         .as_deref()
         .map(str::trim)
         .filter(|name| !name.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn work_item_exception_kind(
+    finding: Option<&Finding>,
+    entry: Option<&AllowEntry>,
+) -> Option<String> {
+    finding
+        .map(|finding| finding.kind.as_str())
+        .or_else(|| entry.map(|entry| entry.kind.as_str()))
         .map(ToOwned::to_owned)
 }
 
@@ -2152,6 +2170,14 @@ fn render_work_item_json(item: &WorkItem) -> String {
         "      \"kind\": \"{}\",\n",
         json_escape(&item.kind)
     ));
+    out.push_str(&format!(
+        "      \"exception_kind\": {},\n",
+        option_json_string(item.exception_kind.as_deref())
+    ));
+    out.push_str(&format!(
+        "      \"family\": {},\n",
+        option_json_string(item.family.as_deref())
+    ));
     out.push_str(&format!("      \"risk\": \"{}\",\n", item.risk));
     out.push_str(&format!("      \"difficulty\": \"{}\",\n", item.difficulty));
     out.push_str(&format!(
@@ -2230,6 +2256,13 @@ fn render_worklist_human_with_context(items: &[WorkItem], context: WorklistConte
         }
         if let Some(allow_id) = &item.allow_id {
             out.push_str(&format!("  allow: {allow_id}\n"));
+        }
+        if let Some(exception_kind) = &item.exception_kind {
+            out.push_str(&format!("  exception: {exception_kind}"));
+            if let Some(family) = &item.family {
+                out.push_str(&format!(".{family}"));
+            }
+            out.push('\n');
         }
         out.push_str(&format!("  status: {}\n", item.status.as_str()));
         out.push_str(&format!("  message: {}\n", item.message));
@@ -3953,6 +3986,8 @@ mod tests {
         assert!(json.contains("\"inventory\""));
         assert!(json.contains("\"source\": \"unknown\""));
         assert!(json.contains("\"kind\": \"stale_allow\""));
+        assert!(json.contains("\"exception_kind\": \"non_rust_file\""));
+        assert!(json.contains("\"family\": null"));
         assert!(json.contains("\"risk\": \"low\""));
         assert!(json.contains("\"small_difficulty\": 1"));
         assert!(json.contains("\"medium_difficulty\": 0"));
@@ -3966,6 +4001,8 @@ mod tests {
         let schema = include_str!("../../../docs/schemas/worklist.schema.json");
 
         assert!(schema.contains("\"cargo-allow.worklist.v1\""));
+        assert!(schema.contains("\"exception_kind\""));
+        assert!(schema.contains("\"family\""));
         assert!(schema.contains("\"source_package\""));
         assert!(schema.contains("\"proof_commands\""));
         assert!(schema.contains("\"small_difficulty\""));
@@ -4023,6 +4060,8 @@ mod tests {
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
         assert_eq!(item.kind, "new_unreceipted_finding");
+        assert_eq!(item.exception_kind.as_deref(), Some("unsafe"));
+        assert_eq!(item.family.as_deref(), Some("unsafe_fn"));
         assert_eq!(item.risk, "high");
         assert!(
             item.proof_commands
@@ -4040,6 +4079,7 @@ mod tests {
                 .all(|command| command.starts_with("cargo-allow "))
         );
         assert!(text.contains("work-new-unreceipted-finding-0001"));
+        assert!(text.contains("exception: unsafe.unsafe_fn"));
         assert!(text.contains("Difficulty:"));
         assert!(text.contains("  medium    1"));
     }
@@ -4069,13 +4109,18 @@ mod tests {
             .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
 
         assert_eq!(item.source_package.as_deref(), Some("parser"));
+        assert_eq!(item.exception_kind.as_deref(), Some("panic"));
+        assert_eq!(item.family.as_deref(), Some("unwrap"));
         assert!(
             item.suggested_actions
                 .iter()
                 .any(|action| action.contains("package `parser`"))
         );
         assert!(json.contains("\"source_package\": \"parser\""));
+        assert!(json.contains("\"exception_kind\": \"panic\""));
+        assert!(json.contains("\"family\": \"unwrap\""));
         assert!(human.contains("source package: parser"));
+        assert!(human.contains("exception: panic.unwrap"));
         assert!(
             item.proof_commands
                 .iter()
@@ -4105,6 +4150,8 @@ mod tests {
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
         assert_eq!(item.kind, "new_unreceipted_finding");
+        assert_eq!(item.exception_kind.as_deref(), Some("policy_exception"));
+        assert_eq!(item.family.as_deref(), Some("process_spawn"));
         assert_eq!(item.risk, "high");
         assert_eq!(item.difficulty, "medium");
         assert!(
@@ -4141,6 +4188,8 @@ mod tests {
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
         assert_eq!(item.kind, "new_unreceipted_finding");
+        assert_eq!(item.exception_kind.as_deref(), Some("non_rust_file"));
+        assert_eq!(item.family.as_deref(), Some("shell_script"));
         assert_eq!(item.risk, "medium");
         assert_eq!(item.difficulty, "small");
         assert!(
@@ -4168,6 +4217,7 @@ mod tests {
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
         assert_eq!(item.kind, "stale_allow");
+        assert_eq!(item.exception_kind.as_deref(), Some("unsafe"));
         assert_eq!(item.risk, "low");
         assert_eq!(item.difficulty, "small");
     }
@@ -4196,6 +4246,7 @@ mod tests {
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
         assert_eq!(item.kind, "occurrence_limit_exceeded");
+        assert_eq!(item.exception_kind.as_deref(), Some("non_rust_file"));
         assert_eq!(item.risk, "medium");
         assert!(
             item.suggested_actions
@@ -4219,6 +4270,7 @@ mod tests {
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
         assert_eq!(item.kind, "broken_evidence_link");
+        assert_eq!(item.exception_kind.as_deref(), Some("unsafe"));
         assert_eq!(item.risk, "high");
         assert_eq!(item.difficulty, "small");
         assert_eq!(item.status, MatchStatus::EvidenceMissing);
@@ -4226,6 +4278,7 @@ mod tests {
         assert_eq!(item.path.as_deref(), Some("docs/missing.md"));
         assert!(item.message.contains("local evidence file is missing"));
         assert!(json.contains("\"kind\": \"broken_evidence_link\""));
+        assert!(json.contains("\"exception_kind\": \"unsafe\""));
         assert!(json.contains("\"cargo-allow explain allow-unsafe\""));
         fs::remove_dir_all(root)
             .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));

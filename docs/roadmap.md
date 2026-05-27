@@ -278,6 +278,8 @@ Completed:
   vague external validation placeholders.
 - Surface explicit source-tree package context in work items when a scanner
   provides it, without inferring Cargo metadata or build facts.
+- Surface explicit governed exception kind and family in work items so agents
+  can route work without parsing messages.
 - Summarize worklist difficulty counts and include source-tree inventory
   context, including `files_scanned`, in worklist JSON and human output.
 - Add a versioned JSON schema for `cargo-allow.worklist.v1`.
