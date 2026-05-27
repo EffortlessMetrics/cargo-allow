@@ -9,6 +9,12 @@ pub const RECEIPT_SCHEMA_ID: &str = "cargo-allow.receipt.v1";
 const CLAIM_BOUNDARY: &[&str] = &[
     "source_tree_inventory",
     "source_syntax_only",
+    "cargo_metadata_not_invoked",
+    "cargo_commands_not_invoked",
+    "rustc_not_invoked",
+    "clippy_not_invoked",
+    "build_scripts_not_executed",
+    "proc_macros_not_executed",
     "macro_expansion_not_analyzed",
     "macro_token_tree_contents_not_analyzed",
     "type_information_not_analyzed",
@@ -20,6 +26,12 @@ const CLAIM_BOUNDARY: &[&str] = &[
 ];
 
 const SCANNER_LIMITATIONS: &[&str] = &[
+    "cargo_metadata_not_invoked",
+    "cargo_commands_not_invoked",
+    "rustc_not_invoked",
+    "clippy_not_invoked",
+    "build_scripts_not_executed",
+    "proc_macros_not_executed",
     "macro_expansion_not_analyzed",
     "macro_token_tree_contents_not_analyzed",
     "type_information_not_analyzed",
@@ -29,6 +41,8 @@ const SCANNER_LIMITATIONS: &[&str] = &[
     "data_flow_not_analyzed",
     "repository_code_not_executed",
 ];
+
+pub const CLAIM_BOUNDARY_TEXT: &str = "Claim boundary: scanned source-tree/source syntax only; cargo-allow did not invoke Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros, or repository code. Macro expansion, macro token-tree contents, type information, MIR, build output, control flow, and data flow were not analyzed.";
 
 #[derive(Debug, Clone, Copy)]
 pub struct ReportContext<'a> {
@@ -106,7 +120,9 @@ pub fn render_human(
             outcome.message
         ));
     }
-    out.push_str("\nClaim boundary: source syntax only; macro expansion, macro token-tree contents, and type information were not analyzed.\n");
+    out.push('\n');
+    out.push_str(CLAIM_BOUNDARY_TEXT);
+    out.push('\n');
     out.push_str(if failed {
         "Result: failed\n"
     } else {
@@ -159,7 +175,9 @@ pub fn render_markdown(
             ));
         }
     }
-    out.push_str("\n> Claim boundary: source syntax only; macro expansion, macro token-tree contents, and type information were not analyzed.\n");
+    out.push_str("\n> ");
+    out.push_str(CLAIM_BOUNDARY_TEXT);
+    out.push('\n');
     out
 }
 
@@ -522,6 +540,12 @@ mod tests {
     fn json_contains_claim_boundary() {
         let json = render_json("audit", &[], &[], false);
         assert!(json.contains("source_tree_inventory"));
+        assert!(json.contains("cargo_metadata_not_invoked"));
+        assert!(json.contains("cargo_commands_not_invoked"));
+        assert!(json.contains("rustc_not_invoked"));
+        assert!(json.contains("clippy_not_invoked"));
+        assert!(json.contains("build_scripts_not_executed"));
+        assert!(json.contains("proc_macros_not_executed"));
         assert!(json.contains("macro_expansion_not_analyzed"));
         assert!(json.contains("macro_token_tree_contents_not_analyzed"));
         assert!(json.contains("repository_code_not_executed"));
@@ -555,6 +579,8 @@ mod tests {
         assert!(json.contains("\"schema_id\": \"cargo-allow.receipt.v1\""));
         assert!(json.contains("\"failed\": true"));
         assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"cargo_metadata_not_invoked\""));
+        assert!(json.contains("\"cargo_commands_not_invoked\""));
         assert!(json.contains("\"build_output_not_analyzed\""));
         assert!(json.contains("\"macro_token_tree_contents_not_analyzed\""));
         assert!(json.contains("\"missing_required_field\": 0"));
@@ -594,6 +620,8 @@ mod tests {
         assert!(text.contains("generated_code"));
         assert!(text.contains("    matched      configuration            .gitignore"));
         assert!(text.contains("schemas/api.yaml"));
+        assert!(text.contains("did not invoke Cargo metadata"));
+        assert!(text.contains("repository code"));
     }
 
     #[test]
@@ -612,6 +640,8 @@ mod tests {
         assert!(text.contains("| `ci_declarative` | 1 |"));
         assert!(text.contains("| `matched` | `ci_declarative` | `.github/workflows/ci.yml` |"));
         assert!(!text.contains("## Non-matched outcomes"));
+        assert!(text.contains("did not invoke Cargo metadata"));
+        assert!(text.contains("proc macros"));
     }
 
     fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {

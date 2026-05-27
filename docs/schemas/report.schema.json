@@ -41,6 +41,15 @@
       "items": {
         "type": "string"
       },
+      "examples": [
+        [
+          "source_tree_inventory",
+          "source_syntax_only",
+          "cargo_metadata_not_invoked",
+          "cargo_commands_not_invoked",
+          "repository_code_not_executed"
+        ]
+      ],
       "contains": {
         "const": "source_tree_inventory"
       }
@@ -50,6 +59,18 @@
       "items": {
         "type": "string"
       },
+      "examples": [
+        [
+          "cargo_metadata_not_invoked",
+          "cargo_commands_not_invoked",
+          "rustc_not_invoked",
+          "clippy_not_invoked",
+          "build_scripts_not_executed",
+          "proc_macros_not_executed",
+          "macro_expansion_not_analyzed",
+          "macro_token_tree_contents_not_analyzed"
+        ]
+      ],
       "allOf": [
         {
           "contains": {
