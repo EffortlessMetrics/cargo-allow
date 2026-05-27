@@ -122,6 +122,10 @@ lint, symbol/fingerprints, snippet hash, and occurrence limits. It deliberately
 does not reward line hints, because line and column are review hints rather than
 identity.
 
+Diff mode also reports scope broadening as policy weakening and scope narrowing
+as a policy improvement when an allow entry moves from a broader glob to a
+narrower glob or exact path.
+
 ## Lifecycle
 
 Lifecycle fields prevent exceptions from becoming invisible permanent debt.
