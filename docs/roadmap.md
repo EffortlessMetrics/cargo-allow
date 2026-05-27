@@ -270,6 +270,10 @@ Completed:
   cleanup previews and write receipts.
 - Publish a versioned `cargo-allow.prune.v1` JSON schema for saved stale-prune
   artifacts.
+- Add `doctor --format json --output <path>` for machine-readable source-tree
+  setup diagnostics.
+- Publish a versioned `cargo-allow.doctor.v1` JSON schema for saved setup
+  diagnostics.
 - Make baseline proposal output safer by refusing accidental overwrites and
   emitting a proposal summary.
 - Add allow entries from current findings with structural selectors and

@@ -230,6 +230,13 @@ entries from the selected policy file after revalidating the rendered policy.
 limitations, mode flags, written path when write mode changed the policy, and
 the stale entries selected for removal.
 
+`cargo-allow doctor` validates local setup without executing repository code.
+It reports source-tree root discovery, whether a policy config was found, and
+the source-tree inventory source and file count. `--format json` emits the same
+setup diagnostics as `cargo-allow.doctor.v1` so CI or agent runners can verify
+which source tree and inventory mode a command would use before running wider
+policy checks.
+
 `cargo-allow worklist --format json` turns non-matched no-new outcomes and
 matched `baseline_debt` entries into agent-safe work items. Each item includes a
 kind, risk, difficulty, current status, governed exception kind, family where
@@ -255,8 +262,9 @@ to the matching shortcut queues.
 When the human view is truncated, it says how many work items were omitted and
 points to JSON for the full queue. Filtered worklist output records the applied
 filters so saved artifacts are not mistaken for the full ledger queue. The
-report, receipt, explain, list, prune, and worklist schemas enumerate scanner limitation values
-rather than treating claim-boundary facts as open-ended prose.
+doctor, report, receipt, explain, list, prune, and worklist schemas enumerate
+scanner limitation values rather than treating claim-boundary facts as
+open-ended prose.
 Work items are ordered for routing: high risk first, then lower estimated
 difficulty, then stable source and allow identifiers.
 `work-*` IDs are artifact-local queue handles assigned after filtering and

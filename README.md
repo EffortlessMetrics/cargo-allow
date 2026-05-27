@@ -189,6 +189,7 @@ cargo-allow prune --stale --format json --output target/cargo-allow/prune.json
 cargo-allow propose --write policy/allow.proposed.toml
 cargo-allow migrate --repo-policy policy/ --out policy/allow.toml
 cargo-allow doctor
+cargo-allow doctor --format json --output target/cargo-allow/doctor.json
 ```
 
 ## Repository Layout
