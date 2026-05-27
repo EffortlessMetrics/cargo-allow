@@ -1377,6 +1377,10 @@ mod tests {
         assert!(report_schema.contains("\"root\""));
         assert!(receipt_schema.contains("\"root\""));
         assert!(report_schema.contains("\"source_package\""));
+        assert!(report_schema.contains("\"scanner_limitation\""));
+        assert!(receipt_schema.contains("\"scanner_limitation\""));
+        assert!(report_schema.contains("\"repository_code_not_executed\""));
+        assert!(receipt_schema.contains("\"repository_code_not_executed\""));
     }
 
     #[test]
