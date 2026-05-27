@@ -381,7 +381,7 @@ fn scan_line(
                 path,
                 line,
                 line_no,
-                column: 1,
+                column: attribute_column(line),
                 container,
                 module_stack,
             },
@@ -920,6 +920,12 @@ fn column(line: &str, needle: &str) -> u32 {
     line.find(needle).map(|idx| idx as u32 + 1).unwrap_or(1)
 }
 
+fn attribute_column(line: &str) -> u32 {
+    line.find("#[")
+        .or_else(|| line.find("#!["))
+        .map_or(1, |idx| idx as u32 + 1)
+}
+
 fn receiver_before_method_column(line: &str, method_column: u32) -> String {
     let Some(dot_pos) = method_column.checked_sub(2).map(|pos| pos as usize) else {
         return String::new();
@@ -1347,6 +1353,43 @@ mod tests {
                 .iter()
                 .any(|f| f.kind == FindingKind::LintException)
         );
+    }
+
+    #[test]
+    fn detects_outer_and_inner_lint_attributes_from_syntax() {
+        let src = r#"
+#![allow(dead_code)]
+
+  #[expect(clippy::unwrap_used, reason = "policy:allow-lint")]
+fn load() {}
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        let allow = findings
+            .iter()
+            .find(|f| {
+                f.kind == FindingKind::LintException
+                    && f.family.as_deref() == Some("allow_attribute")
+            })
+            .unwrap_or_else(|| std::panic::panic_any("inner allow attribute should be found"));
+        assert_eq!(allow.identity.lint.as_deref(), Some("dead_code"));
+
+        let expect = findings
+            .iter()
+            .find(|f| {
+                f.kind == FindingKind::LintException
+                    && f.family.as_deref() == Some("expect_attribute")
+            })
+            .unwrap_or_else(|| std::panic::panic_any("outer expect attribute should be found"));
+        assert_eq!(expect.identity.lint.as_deref(), Some("clippy::unwrap_used"));
+        assert!(
+            expect
+                .identity
+                .symbol
+                .as_deref()
+                .is_some_and(|symbol| symbol.contains("policy:allow-lint"))
+        );
+        assert_eq!(expect.span.as_ref().map(|span| span.column), Some(3));
     }
 
     #[test]

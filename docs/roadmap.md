@@ -141,9 +141,13 @@ Planned work:
 
 Goal: make source suppressions link back to the ledger.
 
+Completed:
+
+- Scan outer and inner `allow` and `expect` attributes from source syntax,
+  including visible lint names, source text, and attribute column hints.
+
 Planned work:
 
-- Scan allow and expect attributes.
 - Enforce suppression policy.
 - Verify policy ID linkage.
 - Add a legacy clippy exceptions adapter.
