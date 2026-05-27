@@ -330,6 +330,8 @@ Completed:
   expiry pressure and weak evidence are visible in the queue.
 - Filter worklist output by policy owner and classification so humans and
   agents can take bounded ownership or debt-class slices.
+- Filter worklist output by queue item kind so agents can take targeted stale,
+  broad-scope, baseline-debt, or broken-evidence slices.
 
 Planned work:
 

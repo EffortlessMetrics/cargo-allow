@@ -90,6 +90,7 @@ Generate an agent-safe worklist:
 ```bash
 cargo-allow worklist --format json --output target/cargo-allow/worklist.json
 cargo-allow worklist --difficulty small --format human
+cargo-allow worklist --item-kind stale_allow --format human
 cargo-allow worklist --owner unowned --classification baseline_debt --format human
 ```
 

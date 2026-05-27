@@ -314,6 +314,9 @@ struct WorklistArgs {
     /// Filter findings by kind.
     #[arg(long)]
     kind: Option<String>,
+    /// Filter work items by queue item kind, such as stale_allow or baseline_debt.
+    #[arg(long)]
+    item_kind: Option<String>,
     /// Filter work items by policy owner.
     #[arg(long)]
     owner: Option<String>,
@@ -1791,6 +1794,7 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     ));
     let mut items = filter_work_items(
         items,
+        args.item_kind.as_deref(),
         args.owner.as_deref(),
         args.classification.as_deref(),
         args.risk.as_deref(),
@@ -1805,6 +1809,7 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         inventory_files: inventory_facts.files_scanned,
         filters: WorklistFilters {
             kind: args.kind.as_deref(),
+            item_kind: args.item_kind.as_deref(),
             owner: args.owner.as_deref(),
             classification: args.classification.as_deref(),
             risk: args.risk.as_deref(),
@@ -1859,6 +1864,7 @@ struct WorklistContext<'a> {
 #[derive(Debug, Clone, Copy, Default)]
 struct WorklistFilters<'a> {
     kind: Option<&'a str>,
+    item_kind: Option<&'a str>,
     owner: Option<&'a str>,
     classification: Option<&'a str>,
     risk: Option<&'a str>,
@@ -1891,6 +1897,7 @@ fn work_items_from_outcomes(
 
 fn filter_work_items(
     items: Vec<WorkItem>,
+    item_kind: Option<&str>,
     owner: Option<&str>,
     classification: Option<&str>,
     risk: Option<&str>,
@@ -1899,9 +1906,12 @@ fn filter_work_items(
     items
         .into_iter()
         .filter(|item| {
-            owner
-                .map(|owner| item.owner.as_deref() == Some(owner))
+            item_kind
+                .map(|item_kind| item.kind == item_kind)
                 .unwrap_or(true)
+                && owner
+                    .map(|owner| item.owner.as_deref() == Some(owner))
+                    .unwrap_or(true)
                 && classification
                     .map(|classification| item.classification.as_deref() == Some(classification))
                     .unwrap_or(true)
@@ -2664,6 +2674,10 @@ fn worklist_filters_json(filters: WorklistFilters<'_>, indent: &str) -> String {
         option_json_string(filters.kind)
     ));
     out.push_str(&format!(
+        "{indent}  \"item_kind\": {},\n",
+        option_json_string(filters.item_kind)
+    ));
+    out.push_str(&format!(
         "{indent}  \"owner\": {},\n",
         option_json_string(filters.owner)
     ));
@@ -2687,6 +2701,9 @@ fn worklist_filters_human(filters: WorklistFilters<'_>) -> String {
     let mut parts = Vec::new();
     if let Some(kind) = filters.kind {
         parts.push(format!("kind={kind}"));
+    }
+    if let Some(item_kind) = filters.item_kind {
+        parts.push(format!("item_kind={item_kind}"));
     }
     if let Some(owner) = filters.owner {
         parts.push(format!("owner={owner}"));
@@ -4522,6 +4539,8 @@ mod tests {
             "worklist",
             "--kind",
             "unsafe",
+            "--item-kind",
+            "baseline_debt",
             "--owner",
             "runtime",
             "--classification",
@@ -4543,6 +4562,7 @@ mod tests {
             parsed.command,
             Some(CargoAllowCommand::Worklist(WorklistArgs {
                 kind: Some(kind),
+                item_kind: Some(item_kind),
                 owner: Some(owner),
                 classification: Some(classification),
                 risk: Some(risk),
@@ -4551,6 +4571,7 @@ mod tests {
                 output: Some(path),
                 ..
             })) if kind == "unsafe"
+                && item_kind == "baseline_debt"
                 && owner == "runtime"
                 && classification == "baseline_debt"
                 && risk == "medium"
@@ -4755,6 +4776,7 @@ mod tests {
         assert!(schema.contains("\"small_difficulty\""));
         assert!(schema.contains("\"medium_difficulty\""));
         assert!(schema.contains("\"filters\""));
+        assert!(schema.contains("\"item_kind\""));
         assert!(schema.contains("\"inventory\""));
         assert!(schema.contains("\"git_tracked\""));
         assert!(schema.contains("\"source_tree_inventory\""));
@@ -4798,6 +4820,7 @@ mod tests {
             inventory_files: Some(46),
             filters: WorklistFilters {
                 kind: Some("unsafe"),
+                item_kind: Some("baseline_debt"),
                 owner: Some("runtime"),
                 classification: Some("baseline_debt"),
                 risk: Some("high"),
@@ -4810,12 +4833,13 @@ mod tests {
 
         assert!(json.contains("\"filters\""));
         assert!(json.contains("\"kind\": \"unsafe\""));
+        assert!(json.contains("\"item_kind\": \"baseline_debt\""));
         assert!(json.contains("\"owner\": \"runtime\""));
         assert!(json.contains("\"classification\": \"baseline_debt\""));
         assert!(json.contains("\"risk\": \"high\""));
         assert!(json.contains("\"difficulty\": \"medium\""));
         assert!(human.contains(
-            "Filters: kind=unsafe, owner=runtime, classification=baseline_debt, risk=high, difficulty=medium"
+            "Filters: kind=unsafe, item_kind=baseline_debt, owner=runtime, classification=baseline_debt, risk=high, difficulty=medium"
         ));
     }
 
@@ -5076,7 +5100,7 @@ mod tests {
         ];
 
         let items = work_items_from_outcomes(&cfg, &findings, &outcomes);
-        let filtered = filter_work_items(items, None, None, Some("medium"), Some("small"));
+        let filtered = filter_work_items(items, None, None, None, Some("medium"), Some("small"));
 
         assert_eq!(filtered.len(), 1);
         let item = filtered
@@ -5116,7 +5140,14 @@ mod tests {
         ];
 
         let items = work_items_from_outcomes(&cfg, &[], &outcomes);
-        let filtered = filter_work_items(items, Some("team-a"), Some("baseline_debt"), None, None);
+        let filtered = filter_work_items(
+            items,
+            None,
+            Some("team-a"),
+            Some("baseline_debt"),
+            None,
+            None,
+        );
 
         assert_eq!(filtered.len(), 1);
         let item = filtered
@@ -5125,6 +5156,38 @@ mod tests {
         assert_eq!(item.allow_id.as_deref(), Some("allow-first"));
         assert_eq!(item.owner.as_deref(), Some("team-a"));
         assert_eq!(item.classification.as_deref(), Some("baseline_debt"));
+    }
+
+    #[test]
+    fn worklist_filters_by_item_kind() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow
+            .push(test_entry("allow-stale", FindingKind::NonRustFile));
+        let findings = vec![test_finding(
+            FindingKind::Panic,
+            Some("unwrap"),
+            "src/lib.rs",
+            "method_call",
+        )];
+        let outcomes = vec![
+            test_outcome(MatchStatus::New, None, Some(0), "unreceipted panic.unwrap"),
+            test_outcome(
+                MatchStatus::Stale,
+                Some("allow-stale"),
+                None,
+                "allow-stale is stale",
+            ),
+        ];
+
+        let items = work_items_from_outcomes(&cfg, &findings, &outcomes);
+        let filtered = filter_work_items(items, Some("stale_allow"), None, None, None, None);
+
+        assert_eq!(filtered.len(), 1);
+        let item = filtered
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
+        assert_eq!(item.kind, "stale_allow");
+        assert_eq!(item.allow_id.as_deref(), Some("allow-stale"));
     }
 
     #[test]

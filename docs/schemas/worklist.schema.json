@@ -144,6 +144,10 @@
           "type": ["string", "null"],
           "description": "Applied --kind filter, or null when the worklist includes all governed kinds."
         },
+        "item_kind": {
+          "type": ["string", "null"],
+          "description": "Applied --item-kind filter, or null when all work item queue kinds are included."
+        },
         "owner": {
           "type": ["string", "null"],
           "description": "Applied --owner filter, or null when all policy owners are included."
