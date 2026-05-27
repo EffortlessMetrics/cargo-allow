@@ -331,6 +331,12 @@ struct AddArgs {
     /// Overwrite an existing output policy file.
     #[arg(long)]
     force: bool,
+    /// Summary output format. Policy output remains TOML.
+    #[arg(long, value_enum, default_value_t = AddSummaryFormat::Human)]
+    summary_format: AddSummaryFormat,
+    /// Write add summary to a file instead of stderr.
+    #[arg(long)]
+    summary_output: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -524,6 +530,12 @@ enum DoctorFormat {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum ProposeSummaryFormat {
+    Human,
+    Json,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum AddSummaryFormat {
     Human,
     Json,
 }
@@ -1658,7 +1670,7 @@ fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
 
 fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let parsed_kind = parse_kind_filter(&args.kind)?;
-    let (root, mut cfg, findings, _inventory_source) = load_world(
+    let (root, mut cfg, findings, inventory_facts) = load_world(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
@@ -1694,7 +1706,18 @@ fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         review_after: args.review_after.clone(),
         expires: args.expires.clone(),
     });
-    let summary = render_add_summary(&entry, finding, args.write.as_deref());
+    let root_text = source_tree_root_text(&root);
+    let context = AddContext {
+        inventory_source: inventory_facts.source.as_str(),
+        source_tree_root: Some(&root_text),
+        inventory_files: inventory_facts.files_scanned,
+    };
+    let summary = match args.summary_format {
+        AddSummaryFormat::Human => render_add_summary(&entry, finding, args.write.as_deref()),
+        AddSummaryFormat::Json => {
+            render_add_summary_json(&entry, finding, args.write.as_deref(), args.force, context)
+        }
+    };
     cfg.allow.push(entry);
     validate_policy(&cfg)?;
     validate_local_evidence_references(&root, &cfg)?;
@@ -1704,7 +1727,11 @@ fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     } else {
         println!("{rendered}");
     }
-    eprintln!("{summary}");
+    if let Some(path) = &args.summary_output {
+        write_file(path, &summary)?;
+    } else {
+        eprintln!("{summary}");
+    }
     Ok(())
 }
 
@@ -1813,6 +1840,143 @@ fn render_add_summary(entry: &AllowEntry, finding: &Finding, output: Option<&Pat
         out.push_str("output: stdout\n");
     }
     out.push_str("claim boundary: generated policy entry requires human review before merge.\n");
+    out
+}
+
+#[derive(Debug, Clone, Copy)]
+struct AddContext<'a> {
+    inventory_source: &'a str,
+    source_tree_root: Option<&'a str>,
+    inventory_files: Option<usize>,
+}
+
+impl Default for AddContext<'static> {
+    fn default() -> Self {
+        Self {
+            inventory_source: "unknown",
+            source_tree_root: None,
+            inventory_files: None,
+        }
+    }
+}
+
+fn render_add_summary_json(
+    entry: &AllowEntry,
+    finding: &Finding,
+    output: Option<&Path>,
+    force: bool,
+    context: AddContext<'_>,
+) -> String {
+    let policy_output = output.map(|path| path.display().to_string());
+    let path = entry.path.as_ref().map(normalize_path);
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "  \"schema_version\": {},\n",
+        allow_report::ADD_SCHEMA_VERSION
+    ));
+    out.push_str(&format!(
+        "  \"schema_id\": \"{}\",\n",
+        allow_report::ADD_SCHEMA_ID
+    ));
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"add\",\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        json_string_array(allow_report::CLAIM_BOUNDARY)
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        json_string_array(allow_report::SCANNER_LIMITATIONS)
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&add_inventory_json(context, "  "));
+    out.push_str(",\n");
+    out.push_str("  \"options\": {\n");
+    out.push_str(&format!(
+        "    \"policy_output\": {},\n",
+        option_json_string(policy_output.as_deref())
+    ));
+    out.push_str(&format!("    \"force\": {}\n", force));
+    out.push_str("  },\n");
+    out.push_str("  \"summary\": {\n");
+    out.push_str(&format!(
+        "    \"entry_id\": \"{}\",\n",
+        json_escape(&entry.id)
+    ));
+    out.push_str(&format!(
+        "    \"selected_finding\": \"{}\",\n",
+        json_escape(&finding_location(finding))
+    ));
+    out.push_str("    \"human_review_required\": true\n");
+    out.push_str("  },\n");
+    out.push_str("  \"allow_entry\": {\n");
+    out.push_str(&format!("    \"id\": \"{}\",\n", json_escape(&entry.id)));
+    out.push_str(&format!("    \"kind\": \"{}\",\n", entry.kind));
+    out.push_str(&format!(
+        "    \"family\": {},\n",
+        option_json_string(entry.family.as_deref())
+    ));
+    out.push_str(&format!(
+        "    \"path\": {},\n",
+        option_json_string(path.as_deref())
+    ));
+    out.push_str(&format!(
+        "    \"glob\": {},\n",
+        option_json_string(entry.glob.as_deref())
+    ));
+    out.push_str(&format!(
+        "    \"owner\": \"{}\",\n",
+        json_escape(&entry.owner)
+    ));
+    out.push_str(&format!(
+        "    \"classification\": \"{}\",\n",
+        json_escape(&entry.classification)
+    ));
+    out.push_str(&format!(
+        "    \"reason\": \"{}\",\n",
+        json_escape(&entry.reason)
+    ));
+    out.push_str(&format!(
+        "    \"review_after\": {},\n",
+        option_json_string(entry.lifecycle.review_after.as_deref())
+    ));
+    out.push_str(&format!(
+        "    \"expires\": {},\n",
+        option_json_string(entry.lifecycle.expires.as_deref())
+    ));
+    out.push_str(&format!(
+        "    \"evidence_count\": {},\n",
+        entry.evidence.len()
+    ));
+    out.push_str("    \"selector\": ");
+    out.push_str(&selector_json(&entry.selector, "    "));
+    out.push_str(",\n");
+    out.push_str("    \"last_seen\": ");
+    out.push_str(&last_seen_json(entry.last_seen.as_ref(), "    "));
+    out.push_str("\n  },\n");
+    out.push_str("  \"selected_finding\": ");
+    out.push_str(&explain_finding_json(finding, "selected", "  "));
+    out.push_str("\n}\n");
+    out
+}
+
+fn add_inventory_json(context: AddContext<'_>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("{indent}  \"scope\": \"source_tree\",\n"));
+    out.push_str(&format!("{indent}  \"scanner\": \"source_syntax\",\n"));
+    out.push_str(&format!(
+        "{indent}  \"source\": \"{}\"",
+        json_escape(context.inventory_source)
+    ));
+    if let Some(root) = context.source_tree_root {
+        out.push_str(&format!(",\n{indent}  \"root\": \"{}\"", json_escape(root)));
+    }
+    if let Some(files) = context.inventory_files {
+        out.push_str(&format!(",\n{indent}  \"files_scanned\": {files}"));
+    }
+    out.push_str(&format!("\n{indent}}}"));
     out
 }
 
@@ -5347,6 +5511,40 @@ mod tests {
             "explain allow id"
         );
 
+        let add_finding = test_finding(
+            FindingKind::Panic,
+            Some("unwrap"),
+            "src/lib.rs",
+            "method_call",
+        );
+        let add_entry = allow_entry_from_finding(AddEntryRequest {
+            finding: &add_finding,
+            id: "allow-add-json".to_string(),
+            owner: "parser".to_string(),
+            classification: "reviewed_exception".to_string(),
+            reason: "Parser validates the input before unwrapping.".to_string(),
+            evidence: vec!["test:parser_validates_input".to_string()],
+            review_after: "2026-11-01".to_string(),
+            expires: None,
+        });
+        let add_json = render_add_summary_json(
+            &add_entry,
+            &add_finding,
+            Some(Path::new("policy/allow.proposed.toml")),
+            false,
+            AddContext {
+                inventory_source: "git_tracked",
+                source_tree_root: Some("H:/Code/Rust/cargo-allow"),
+                inventory_files: Some(48),
+            },
+        );
+        let add = parse_json_artifact("add", &add_json, allow_report::ADD_SCHEMA_ID, "add");
+        assert_eq!(
+            add.pointer("/allow_entry/id").and_then(Value::as_str),
+            Some("allow-add-json"),
+            "add allow id"
+        );
+
         let work_items = Vec::new();
         let worklist_json = render_worklist_json_with_context(
             &work_items,
@@ -5460,6 +5658,10 @@ mod tests {
             "--write",
             "policy/allow.proposed.toml",
             "--force",
+            "--summary-format",
+            "json",
+            "--summary-output",
+            "target/add-summary.json",
         ]))
         .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
 
@@ -5474,6 +5676,8 @@ mod tests {
                 evidence,
                 write: Some(write),
                 force: true,
+                summary_format: AddSummaryFormat::Json,
+                summary_output: Some(summary_output),
                 ..
             })) if kind == "panic"
                 && path == Path::new("src/lib.rs")
@@ -5481,6 +5685,7 @@ mod tests {
                 && reason == "validated invariant"
                 && evidence == vec!["test:parser_invariant".to_string()]
                 && write == Path::new("policy/allow.proposed.toml")
+                && summary_output == Path::new("target/add-summary.json")
         ));
     }
 
@@ -5589,6 +5794,95 @@ mod tests {
             Some("fnv1a64:1234")
         );
         assert_eq!(entry.last_seen.as_ref().map(|last| last.line), Some(42));
+    }
+
+    #[test]
+    fn render_add_summary_json_records_entry_and_selected_finding() {
+        let mut finding = test_finding_at_line(
+            FindingKind::Panic,
+            Some("unwrap"),
+            "src/lib.rs",
+            "method_call",
+            42,
+        );
+        finding.identity.crate_name = Some("parser".to_string());
+        finding.identity.container = Some("parse_span".to_string());
+        finding.identity.callee = Some("unwrap".to_string());
+        let mut entry = allow_entry_from_finding(AddEntryRequest {
+            finding: &finding,
+            id: "allow-0101".to_string(),
+            owner: "parser".to_string(),
+            classification: "validated_invariant".to_string(),
+            reason: "Parser validates the span before unwrapping.".to_string(),
+            evidence: vec!["test:parser_validates_span".to_string()],
+            review_after: "2026-11-01".to_string(),
+            expires: Some("2027-01-01".to_string()),
+        });
+        entry.selector.normalized_snippet_hash = Some("fnv1a64:1234".to_string());
+
+        let json = render_add_summary_json(
+            &entry,
+            &finding,
+            Some(Path::new("policy/allow.proposed.toml")),
+            true,
+            AddContext {
+                inventory_source: "git_tracked",
+                source_tree_root: Some("H:/Code/Rust/cargo-allow"),
+                inventory_files: Some(52),
+            },
+        );
+        let value = parse_json_artifact("add", &json, allow_report::ADD_SCHEMA_ID, "add");
+
+        assert_inventory_contract(
+            "add",
+            &value,
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(52),
+        );
+        assert_eq!(
+            value
+                .pointer("/options/policy_output")
+                .and_then(Value::as_str),
+            Some("policy/allow.proposed.toml"),
+            "add policy output"
+        );
+        assert_eq!(
+            value.pointer("/options/force").and_then(Value::as_bool),
+            Some(true),
+            "add force"
+        );
+        assert_eq!(
+            value.pointer("/summary/entry_id").and_then(Value::as_str),
+            Some("allow-0101"),
+            "add summary entry id"
+        );
+        assert_eq!(
+            value
+                .pointer("/summary/human_review_required")
+                .and_then(Value::as_bool),
+            Some(true),
+            "add human_review_required"
+        );
+        assert_eq!(
+            value.pointer("/allow_entry/id").and_then(Value::as_str),
+            Some("allow-0101"),
+            "add allow id"
+        );
+        assert_eq!(
+            value
+                .pointer("/allow_entry/evidence_count")
+                .and_then(Value::as_u64),
+            Some(1),
+            "add evidence count"
+        );
+        assert_eq!(
+            value
+                .pointer("/selected_finding/source_package")
+                .and_then(Value::as_str),
+            Some("parser"),
+            "add selected finding source package"
+        );
     }
 
     #[test]
@@ -6821,6 +7115,22 @@ mod tests {
         assert!(schema.contains("\"policy_output\""));
         assert!(schema.contains("\"baseline_debt_entries_proposed\""));
         assert!(schema.contains("\"generated_entry_defaults\""));
+        assert!(schema.contains("\"scanner_limitations\""));
+        assert!(schema.contains("\"scanner_limitation\""));
+        assert!(schema.contains("\"cargo_metadata_not_invoked\""));
+        assert!(schema.contains("\"repository_code_not_executed\""));
+    }
+
+    #[test]
+    fn add_schema_documents_current_contract() {
+        let schema = include_str!("../../../docs/schemas/add.schema.json");
+
+        assert!(schema.contains(allow_report::ADD_SCHEMA_ID));
+        assert!(schema.contains("\"options\""));
+        assert!(schema.contains("\"policy_output\""));
+        assert!(schema.contains("\"allow_entry\""));
+        assert!(schema.contains("\"selected_finding\""));
+        assert!(schema.contains("\"human_review_required\""));
         assert!(schema.contains("\"scanner_limitations\""));
         assert!(schema.contains("\"scanner_limitation\""));
         assert!(schema.contains("\"cargo_metadata_not_invoked\""));

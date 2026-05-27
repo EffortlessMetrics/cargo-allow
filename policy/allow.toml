@@ -1016,6 +1016,28 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0100"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/add.schema.json"
+owner = "core/policy"
+classification = "add_contract_schema"
+reason = "Defines the stable v1 JSON add summary contract emitted by cargo-allow."
+created = "2026-05-27"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/add.schema.json"
+target_fingerprint = "json"
+line_hint = 1
+glob = "docs/schemas/add.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0085"
 kind = "non_rust_file"
 family = "documentation"
