@@ -46,10 +46,10 @@ exists outside the syntax-visible surface that was scanned.
 
 ## Quickstart
 
-Before the first crates.io release, install from a checkout:
+Install from crates.io:
 
 ```bash
-cargo install --path crates/cargo-allow
+cargo install cargo-allow --locked
 ```
 
 Create a policy file:
