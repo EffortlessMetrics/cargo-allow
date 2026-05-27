@@ -251,9 +251,6 @@ Completed:
 - crates.io-compatible version requirements for internal workspace
   dependencies.
 - 0.1.0 release runbook.
-
-Planned work:
-
 - 0.1.0 dry-run.
 - 0.1.0 publish.
 
