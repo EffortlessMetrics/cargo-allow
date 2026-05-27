@@ -205,9 +205,11 @@ analysis, build output, control-flow analysis, or data-flow analysis.
 `cargo-allow list` shows allow entries with current status, match count, kind,
 family, owner, classification, scope, scanner-provided source package context,
 lifecycle dates, and reason. It supports maintenance filters such as `--kind`,
-`--owner`, `--classification`, `--source-package`, `--expired`, `--review-due`,
-`--stale`, and `--baseline-debt`. Stale status is computed from current
-source-syntax findings; line and column hints are not identity.
+`--owner`, `--classification`, `--path`, `--source-package`, `--expired`,
+`--review-due`, `--stale`, and `--baseline-debt`. Path filtering uses
+normalized source-tree paths and includes broad glob scopes that cover the
+selected path. Stale status is computed from current source-syntax findings;
+line and column hints are not identity.
 
 `cargo-allow prune --stale` previews stale allow entries that no current
 source-syntax finding matched. Dry-run is the default; `--dry-run` makes that

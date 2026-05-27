@@ -163,6 +163,7 @@ cargo-allow diff --base origin/main
 cargo-allow explain allow-0042
 cargo-allow list --kind unsafe
 cargo-allow list --classification baseline_debt
+cargo-allow list --path crates/allow-core
 cargo-allow list --source-package allow-core
 cargo-allow prune --stale --dry-run
 cargo-allow propose --write policy/allow.proposed.toml
