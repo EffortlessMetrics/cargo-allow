@@ -7,7 +7,7 @@ use allow_inventory::{InventoryOptions, InventorySource, inventory, resolve_sour
 #[cfg(test)]
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{find_config, load_policy, validate_local_evidence_references};
-use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
+use clap::{CommandFactory, Parser, Subcommand};
 use std::env;
 #[cfg(test)]
 use std::fs;
@@ -18,6 +18,7 @@ use std::str::FromStr;
 mod add;
 mod audit;
 mod check;
+mod cli_types;
 mod diff;
 mod doctor;
 mod explain;
@@ -31,6 +32,7 @@ mod render;
 mod reporting;
 mod worklist;
 
+pub(crate) use cli_types::{InventoryFacts, OutputFormat, RootArgs};
 pub(crate) use io::{write_file, write_file_no_overwrite};
 pub(crate) use render::{
     allow_entry_json, explain_finding_json, json_string_array, last_seen_json, markdown_cell,
@@ -76,45 +78,6 @@ enum CargoAllowCommand {
     Prune(prune::PruneArgs),
     /// Validate local setup.
     Doctor(doctor::DoctorArgs),
-}
-
-#[derive(Debug, Clone, Default, Args)]
-struct RootArgs {
-    /// Source tree root. Defaults to the nearest git root, then current directory.
-    #[arg(long)]
-    root: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct InventoryFacts {
-    source: InventorySource,
-    files_scanned: Option<usize>,
-}
-
-impl InventoryFacts {
-    fn source_only(source: InventorySource) -> Self {
-        Self {
-            source,
-            files_scanned: None,
-        }
-    }
-
-    fn scanned(source: InventorySource, files_scanned: usize) -> Self {
-        Self {
-            source,
-            files_scanned: Some(files_scanned),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum OutputFormat {
-    Human,
-    Html,
-    Json,
-    Sarif,
-    #[value(alias = "md")]
-    Markdown,
 }
 
 fn main() {
