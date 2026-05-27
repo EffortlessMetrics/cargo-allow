@@ -185,6 +185,7 @@ cargo-allow worklist --baseline-debt --format human
 cargo-allow worklist --broad-scope --format human
 cargo-allow worklist --missing-evidence --format human
 cargo-allow prune --stale --dry-run
+cargo-allow prune --stale --format json --output target/cargo-allow/prune.json
 cargo-allow propose --write policy/allow.proposed.toml
 cargo-allow migrate --repo-policy policy/ --out policy/allow.toml
 cargo-allow doctor

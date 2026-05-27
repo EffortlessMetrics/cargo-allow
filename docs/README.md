@@ -20,4 +20,4 @@ beyond the MVP scaffold.
 - [Agent worklist prompt](agents/cargo-allow-worklist.md): bounded agent use of
   `cargo-allow worklist`.
 - [Schemas](schemas/README.md): JSON schemas for report, receipt, explain,
-  list, and worklist artifacts.
+  list, prune, and worklist artifacts.

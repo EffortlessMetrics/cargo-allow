@@ -266,6 +266,10 @@ Completed:
 - Implement dry-run-first stale pruning.
 - Support explicit `prune --stale --write` removal of stale entries while
   keeping dry-run as the default.
+- Add `prune --stale --format json --output <path>` for machine-readable stale
+  cleanup previews and write receipts.
+- Publish a versioned `cargo-allow.prune.v1` JSON schema for saved stale-prune
+  artifacts.
 - Make baseline proposal output safer by refusing accidental overwrites and
   emitting a proposal summary.
 - Add allow entries from current findings with structural selectors and
