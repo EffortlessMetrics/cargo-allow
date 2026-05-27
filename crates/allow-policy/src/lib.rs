@@ -363,6 +363,102 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
     Ok(())
 }
 
+pub fn validate_local_evidence_references(
+    root: impl AsRef<Path>,
+    cfg: &AllowConfig,
+) -> CargoAllowResult<()> {
+    let root = root.as_ref();
+    for entry in &cfg.allow {
+        for evidence in &entry.evidence {
+            let Some(reference) = EvidenceReference::parse(evidence) else {
+                continue;
+            };
+            if reference.kind.is_local_file() {
+                validate_path_scope(
+                    &format!("{} evidence `{}`", entry.id, reference.raw),
+                    reference.value.as_ref(),
+                )?;
+                let path = root.join(&reference.value);
+                if !path.exists() {
+                    return Err(CargoAllowError::new(format!(
+                        "{} evidence `{}` references missing local file {}",
+                        entry.id,
+                        reference.raw,
+                        reference.value.display()
+                    )));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EvidenceKind {
+    Test,
+    Cargo,
+    Ripr,
+    UnsafeReview,
+    Coverage,
+    Doc,
+    Spec,
+    Adr,
+    Issue,
+    Pr,
+    Unknown,
+}
+
+impl EvidenceKind {
+    fn parse(prefix: &str) -> Self {
+        match prefix {
+            "test" => Self::Test,
+            "cargo" => Self::Cargo,
+            "ripr" => Self::Ripr,
+            "unsafe-review" | "unsafe_review" => Self::UnsafeReview,
+            "coverage" => Self::Coverage,
+            "doc" => Self::Doc,
+            "spec" => Self::Spec,
+            "adr" => Self::Adr,
+            "issue" => Self::Issue,
+            "pr" => Self::Pr,
+            _ => Self::Unknown,
+        }
+    }
+
+    fn is_local_file(self) -> bool {
+        matches!(
+            self,
+            Self::Ripr | Self::UnsafeReview | Self::Coverage | Self::Doc | Self::Spec | Self::Adr
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct EvidenceReference<'a> {
+    raw: &'a str,
+    kind: EvidenceKind,
+    value: PathBuf,
+}
+
+impl<'a> EvidenceReference<'a> {
+    fn parse(raw: &'a str) -> Option<Self> {
+        let (prefix, value) = raw.split_once(':')?;
+        let value = value.trim();
+        if value.is_empty() {
+            return Some(Self {
+                raw,
+                kind: EvidenceKind::parse(prefix.trim()),
+                value: PathBuf::new(),
+            });
+        }
+        Some(Self {
+            raw,
+            kind: EvidenceKind::parse(prefix.trim()),
+            value: PathBuf::from(value),
+        })
+    }
+}
+
 fn validate_path_scope(id: &str, path: &Path) -> CargoAllowResult<()> {
     let text = path.to_string_lossy().replace('\\', "/");
     if text.trim().is_empty() {
@@ -802,6 +898,95 @@ mod tests {
     }
 
     #[test]
+    fn validates_existing_local_evidence_references() {
+        let root = unique_test_dir("evidence-existing");
+        fs::create_dir_all(root.join("docs"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+        fs::write(root.join("docs/safety.md"), "review notes")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence: {err}")));
+        let cfg = parse_policy(
+            r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-doc"
+                kind = "unsafe"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["doc:docs/safety.md", "test:safety_fixture"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "unsafe_block"
+                container = "load"
+            "#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy parses: {err}")));
+
+        validate_local_evidence_references(&root, &cfg)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("evidence validates: {err}")));
+        remove_test_dir(root);
+    }
+
+    #[test]
+    fn rejects_missing_local_evidence_references() {
+        let root = unique_test_dir("evidence-missing");
+        fs::create_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create root: {err}")));
+        let cfg = parse_policy(
+            r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-doc"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["doc:docs/missing.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy parses: {err}")));
+
+        let err = validate_local_evidence_references(&root, &cfg).unwrap_err();
+        assert!(err.to_string().contains("allow-doc evidence"));
+        assert!(err.to_string().contains("missing local file"));
+        remove_test_dir(root);
+    }
+
+    #[test]
+    fn rejects_escaping_local_evidence_references() {
+        let cfg = parse_policy(
+            r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-doc"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["doc:../outside.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy parses: {err}")));
+
+        let err = validate_local_evidence_references(".", &cfg).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("must not contain parent directory segments")
+        );
+    }
+
+    #[test]
     fn reports_toml_parse_errors() {
         let err = parse_policy("policy = [").unwrap_err();
 
@@ -1030,6 +1215,24 @@ mod tests {
         );
 
         assert!(err.contains("baseline_debt expires must be within"));
+    }
+
+    fn unique_test_dir(slug: &str) -> PathBuf {
+        let mut path = std::env::temp_dir();
+        path.push(format!("cargo-allow-policy-{slug}-{}", std::process::id()));
+        remove_test_dir(path.clone());
+        path
+    }
+
+    fn remove_test_dir(path: PathBuf) {
+        match fs::remove_dir_all(&path) {
+            Ok(()) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => std::panic::panic_any(format!(
+                "failed to remove test dir {}: {err}",
+                path.display()
+            )),
+        }
     }
 
     fn parse_err(input: &str) -> String {

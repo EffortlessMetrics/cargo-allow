@@ -53,6 +53,12 @@ evidence = [
 The presence of evidence is not proof that the exception is correct. It is a
 traceable claim that reviewers and tools can inspect.
 
+Known local evidence prefixes are parsed when a policy is loaded from a source
+tree. `doc:`, `spec:`, `adr:`, `ripr:`, `unsafe-review:`, and `coverage:`
+references must point to source-tree-relative paths that exist. `test:`,
+`cargo:`, `issue:`, and `pr:` references are treated as traceability strings in
+the current implementation and are not executed or resolved over the network.
+
 ## Selector Precision
 
 Selectors should be as narrow as practical. Strong selectors include:

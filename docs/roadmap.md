@@ -186,10 +186,13 @@ Planned work:
 
 Goal: connect source exceptions to proof artifacts.
 
+Completed:
+
+- Parse evidence references and validate local file evidence prefixes when a
+  policy is loaded from a source tree.
+
 Planned work:
 
-- Parse evidence references.
-- Validate local evidence files.
 - Explain broken evidence.
 - Add examples for ripr, unsafe-review, and coverage evidence.
 
