@@ -176,6 +176,49 @@ pub struct ListRow<'a> {
     pub reason: &'a str,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct WorklistFilters<'a> {
+    pub kind: Option<&'a str>,
+    pub family: Option<&'a str>,
+    pub item_kind: Option<&'a str>,
+    pub status: Option<&'a str>,
+    pub allow_id: Option<&'a str>,
+    pub path: Option<&'a str>,
+    pub source_package: Option<&'a str>,
+    pub owner: Option<&'a str>,
+    pub classification: Option<&'a str>,
+    pub baseline_debt: bool,
+    pub broad_scope: bool,
+    pub risk: Option<&'a str>,
+    pub difficulty: Option<&'a str>,
+    pub missing_evidence: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct WorklistItem<'a> {
+    pub id: &'a str,
+    pub kind: &'a str,
+    pub exception_kind: Option<&'a str>,
+    pub family: Option<&'a str>,
+    pub owner: Option<&'a str>,
+    pub classification: Option<&'a str>,
+    pub reason: Option<&'a str>,
+    pub created: Option<&'a str>,
+    pub review_after: Option<&'a str>,
+    pub expires: Option<&'a str>,
+    pub evidence_count: Option<usize>,
+    pub risk: &'a str,
+    pub difficulty: &'a str,
+    pub status: &'a str,
+    pub allow_id: Option<&'a str>,
+    pub finding_index: Option<usize>,
+    pub path: Option<&'a str>,
+    pub source_package: Option<&'a str>,
+    pub message: &'a str,
+    pub suggested_actions: &'a [String],
+    pub proof_commands: &'a [String],
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
     pub total: usize,
@@ -929,12 +972,12 @@ fn bool_json(value: bool) -> &'static str {
     if value { "true" } else { "false" }
 }
 
-fn json_string_array(values: &[&str]) -> String {
+fn json_string_array<T: AsRef<str>>(values: &[T]) -> String {
     format!(
         "[{}]",
         values
             .iter()
-            .map(|value| format!("\"{}\"", json_escape(value)))
+            .map(|value| format!("\"{}\"", json_escape(value.as_ref())))
             .collect::<Vec<_>>()
             .join(", ")
     )
@@ -1071,6 +1114,228 @@ pub fn render_list_json(
     out.push_str("\n  ]\n");
     out.push_str("}\n");
     out
+}
+
+pub fn render_worklist_json(
+    items: &[WorklistItem<'_>],
+    filters: WorklistFilters<'_>,
+    inventory: InventoryContext<'_>,
+) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "  \"schema_version\": {WORKLIST_SCHEMA_VERSION},\n"
+    ));
+    out.push_str(&format!("  \"schema_id\": \"{WORKLIST_SCHEMA_ID}\",\n"));
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"worklist\",\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        render_claim_boundary_json()
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        render_scanner_limitations_json()
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&render_inventory_json(inventory, "  "));
+    out.push_str(",\n");
+    out.push_str("  \"filters\": ");
+    out.push_str(&render_worklist_filters_json(filters, "  "));
+    out.push_str(",\n");
+    out.push_str("  \"summary\": {\n");
+    out.push_str(&format!("    \"work_items\": {},\n", items.len()));
+    out.push_str(&format!(
+        "    \"high\": {},\n",
+        worklist_risk_count(items, "high")
+    ));
+    out.push_str(&format!(
+        "    \"medium\": {},\n",
+        worklist_risk_count(items, "medium")
+    ));
+    out.push_str(&format!(
+        "    \"low\": {},\n",
+        worklist_risk_count(items, "low")
+    ));
+    out.push_str(&format!(
+        "    \"small_difficulty\": {},\n",
+        worklist_difficulty_count(items, "small")
+    ));
+    out.push_str(&format!(
+        "    \"medium_difficulty\": {}\n",
+        worklist_difficulty_count(items, "medium")
+    ));
+    out.push_str("  },\n");
+    out.push_str("  \"work_items\": [\n");
+    for (index, item) in items.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&render_work_item_json(item));
+    }
+    out.push_str("\n  ]\n");
+    out.push_str("}\n");
+    out
+}
+
+fn render_work_item_json(item: &WorklistItem<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("    {\n");
+    out.push_str(&format!("      \"id\": \"{}\",\n", json_escape(item.id)));
+    out.push_str(&format!(
+        "      \"kind\": \"{}\",\n",
+        json_escape(item.kind)
+    ));
+    out.push_str(&format!(
+        "      \"exception_kind\": {},\n",
+        option_json(item.exception_kind)
+    ));
+    out.push_str(&format!(
+        "      \"family\": {},\n",
+        option_json(item.family)
+    ));
+    out.push_str(&format!("      \"owner\": {},\n", option_json(item.owner)));
+    out.push_str(&format!(
+        "      \"classification\": {},\n",
+        option_json(item.classification)
+    ));
+    out.push_str(&format!(
+        "      \"reason\": {},\n",
+        option_json(item.reason)
+    ));
+    out.push_str(&format!(
+        "      \"created\": {},\n",
+        option_json(item.created)
+    ));
+    out.push_str(&format!(
+        "      \"review_after\": {},\n",
+        option_json(item.review_after)
+    ));
+    out.push_str(&format!(
+        "      \"expires\": {},\n",
+        option_json(item.expires)
+    ));
+    out.push_str(&format!(
+        "      \"evidence_count\": {},\n",
+        item.evidence_count
+            .map(|count| count.to_string())
+            .unwrap_or_else(|| "null".to_string())
+    ));
+    out.push_str(&format!(
+        "      \"risk\": \"{}\",\n",
+        json_escape(item.risk)
+    ));
+    out.push_str(&format!(
+        "      \"difficulty\": \"{}\",\n",
+        json_escape(item.difficulty)
+    ));
+    out.push_str(&format!(
+        "      \"status\": \"{}\",\n",
+        json_escape(item.status)
+    ));
+    out.push_str(&format!(
+        "      \"allow_id\": {},\n",
+        option_json(item.allow_id)
+    ));
+    out.push_str(&format!(
+        "      \"finding_index\": {},\n",
+        item.finding_index
+            .map(|index| index.to_string())
+            .unwrap_or_else(|| "null".to_string())
+    ));
+    out.push_str(&format!("      \"path\": {},\n", option_json(item.path)));
+    out.push_str(&format!(
+        "      \"source_package\": {},\n",
+        option_json(item.source_package)
+    ));
+    out.push_str(&format!(
+        "      \"message\": \"{}\",\n",
+        json_escape(item.message)
+    ));
+    out.push_str(&format!(
+        "      \"suggested_actions\": {},\n",
+        json_string_array(item.suggested_actions)
+    ));
+    out.push_str(&format!(
+        "      \"proof_commands\": {}\n",
+        json_string_array(item.proof_commands)
+    ));
+    out.push_str("    }");
+    out
+}
+
+fn render_worklist_filters_json(filters: WorklistFilters<'_>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "{indent}  \"kind\": {},\n",
+        option_json(filters.kind)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"family\": {},\n",
+        option_json(filters.family)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"item_kind\": {},\n",
+        option_json(filters.item_kind)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"status\": {},\n",
+        option_json(filters.status)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"allow_id\": {},\n",
+        option_json(filters.allow_id)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"path\": {},\n",
+        option_json(filters.path)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"source_package\": {},\n",
+        option_json(filters.source_package)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"owner\": {},\n",
+        option_json(filters.owner)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"classification\": {},\n",
+        option_json(filters.classification)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"baseline_debt\": {},\n",
+        bool_json(filters.baseline_debt)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"broad_scope\": {},\n",
+        bool_json(filters.broad_scope)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"risk\": {},\n",
+        option_json(filters.risk)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"difficulty\": {},\n",
+        option_json(filters.difficulty)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"missing_evidence\": {}\n",
+        bool_json(filters.missing_evidence)
+    ));
+    out.push_str(&format!("{indent}}}"));
+    out
+}
+
+fn worklist_risk_count(items: &[WorklistItem<'_>], risk: &str) -> usize {
+    items.iter().filter(|item| item.risk == risk).count()
+}
+
+fn worklist_difficulty_count(items: &[WorklistItem<'_>], difficulty: &str) -> usize {
+    items
+        .iter()
+        .filter(|item| item.difficulty == difficulty)
+        .count()
 }
 
 fn render_list_row_json(row: &ListRow<'_>) -> String {
@@ -1672,6 +1937,71 @@ mod tests {
         assert!(json.contains("\"source_package\": \"parser\""));
         assert!(json.contains("\"review_after\": \"2026-07-01\""));
         assert!(json.contains("\"expires\": null"));
+    }
+
+    #[test]
+    fn worklist_json_renderer_records_filters_summary_and_items() {
+        let suggested_actions = vec!["review stale allow".to_string()];
+        let proof_commands = vec!["cargo-allow check --mode no-new".to_string()];
+        let items = vec![WorklistItem {
+            id: "work-0001",
+            kind: "stale_allow",
+            exception_kind: Some("panic"),
+            family: Some("unwrap"),
+            owner: Some("parser"),
+            classification: Some("baseline_debt"),
+            reason: Some("generated baseline"),
+            created: Some("2026-05-27"),
+            review_after: Some("2026-07-01"),
+            expires: Some("2026-08-02"),
+            evidence_count: Some(1),
+            risk: "high",
+            difficulty: "small",
+            status: "stale",
+            allow_id: Some("allow-0001"),
+            finding_index: None,
+            path: Some("crates/parser/src/lib.rs"),
+            source_package: Some("parser"),
+            message: "stale allow",
+            suggested_actions: &suggested_actions,
+            proof_commands: &proof_commands,
+        }];
+
+        let json = render_worklist_json(
+            &items,
+            WorklistFilters {
+                kind: Some("panic"),
+                item_kind: Some("stale_allow"),
+                risk: Some("high"),
+                baseline_debt: true,
+                missing_evidence: true,
+                ..WorklistFilters::default()
+            },
+            InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(47),
+            ),
+        );
+
+        assert!(json.contains("\"schema_id\": \"cargo-allow.worklist.v1\""));
+        assert!(json.contains("\"command\": \"worklist\""));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"files_scanned\": 47"));
+        assert!(json.contains("\"kind\": \"panic\""));
+        assert!(json.contains("\"item_kind\": \"stale_allow\""));
+        assert!(json.contains("\"baseline_debt\": true"));
+        assert!(json.contains("\"missing_evidence\": true"));
+        assert!(json.contains("\"work_items\": 1"));
+        assert!(json.contains("\"high\": 1"));
+        assert!(json.contains("\"small_difficulty\": 1"));
+        assert!(json.contains("\"id\": \"work-0001\""));
+        assert!(json.contains("\"exception_kind\": \"panic\""));
+        assert!(json.contains("\"evidence_count\": 1"));
+        assert!(json.contains("\"finding_index\": null"));
+        assert!(json.contains("\"source_package\": \"parser\""));
+        assert!(json.contains("\"suggested_actions\": [\"review stale allow\"]"));
+        assert!(json.contains("\"proof_commands\": [\"cargo-allow check --mode no-new\"]"));
     }
 
     #[test]
