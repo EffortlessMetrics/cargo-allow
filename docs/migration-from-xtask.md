@@ -53,6 +53,11 @@ Compat mode is a bridge, not the final policy shape. It provides side-by-side
 proof for current compatibility lanes, but the canonical replacement should
 still be a deliberate migration to `policy/allow.toml`.
 
+References to "shiplog-style" describe a legacy policy file shape that
+cargo-allow can read. They are not a standing instruction to leave this
+repository or open replacement PRs in shiplog; target-repo dogfood should be
+selected explicitly.
+
 Generated-file compat is also available for shiplog-style
 `policy/generated-allowlist.toml`:
 
@@ -244,7 +249,7 @@ Compatibility adapters may support:
 - `policy/dependency-surface-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/process-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/network-allowlist.toml` (initial shiplog-style adapter exists)
-- `policy/clippy-exceptions.toml`
+- `policy/clippy-exceptions.toml` (initial legacy lint adapter exists)
 - `policy/unsafe-allowlist.toml` (initial legacy unsafe adapter exists)
 - `policy/ripr-suppressions.toml`
 
