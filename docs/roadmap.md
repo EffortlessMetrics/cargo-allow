@@ -248,6 +248,8 @@ Completed:
 - Public README.
 - Examples.
 - crates.io metadata.
+- crates.io-compatible version requirements for internal workspace
+  dependencies.
 
 Planned work:
 
