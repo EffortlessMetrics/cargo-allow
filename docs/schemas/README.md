@@ -12,6 +12,7 @@ macro-expansion, or proof-level coverage.
 | Single-entry explanation | `cargo-allow.explain.v1` | `cargo-allow explain <id> --format json` |
 | Filtered ledger list | `cargo-allow.list.v1` | `cargo-allow list --format json` |
 | Stale prune preview/result | `cargo-allow.prune.v1` | `cargo-allow prune --stale --format json` |
+| Baseline proposal summary | `cargo-allow.propose.v1` | `cargo-allow propose --summary-format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
 
 ## Files
@@ -22,6 +23,7 @@ macro-expansion, or proof-level coverage.
 - [explain.schema.json](explain.schema.json)
 - [list.schema.json](list.schema.json)
 - [prune.schema.json](prune.schema.json)
+- [propose.schema.json](propose.schema.json)
 - [worklist.schema.json](worklist.schema.json)
 
 ## Boundary

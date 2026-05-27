@@ -276,6 +276,11 @@ Completed:
   diagnostics.
 - Make baseline proposal output safer by refusing accidental overwrites and
   emitting a proposal summary.
+- Add `propose --summary-format json --summary-output <path>` for
+  machine-readable generated-baseline summaries while keeping policy output as
+  TOML.
+- Publish a versioned `cargo-allow.propose.v1` JSON schema for saved proposal
+  summaries.
 - Add allow entries from current findings with structural selectors and
   fail-closed nearest-finding selection.
 

@@ -187,6 +187,9 @@ cargo-allow worklist --missing-evidence --format human
 cargo-allow prune --stale --dry-run
 cargo-allow prune --stale --format json --output target/cargo-allow/prune.json
 cargo-allow propose --write policy/allow.proposed.toml
+cargo-allow propose --write policy/allow.proposed.toml \
+  --summary-format json \
+  --summary-output target/cargo-allow/propose.json
 cargo-allow migrate --repo-policy policy/ --out policy/allow.toml
 cargo-allow doctor
 cargo-allow doctor --format json --output target/cargo-allow/doctor.json

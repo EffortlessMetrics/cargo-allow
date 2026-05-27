@@ -355,6 +355,12 @@ struct ProposeArgs {
     /// Overwrite an existing output policy file.
     #[arg(long)]
     force: bool,
+    /// Summary output format. Policy output remains TOML.
+    #[arg(long, value_enum, default_value_t = ProposeSummaryFormat::Human)]
+    summary_format: ProposeSummaryFormat,
+    /// Write proposal summary to a file instead of stderr.
+    #[arg(long)]
+    summary_output: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -512,6 +518,12 @@ enum PruneFormat {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum DoctorFormat {
+    Human,
+    Json,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum ProposeSummaryFormat {
     Human,
     Json,
 }
@@ -2429,7 +2441,7 @@ fn outcome_summary(outcomes: &[MatchOutcome]) -> String {
 }
 
 fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
-    let (_root, cfg, findings, _inventory_source) = load_world(
+    let (root, cfg, findings, inventory_facts) = load_world(
         args.root.root.as_deref(),
         args.config.as_deref(),
         false,
@@ -2458,16 +2470,54 @@ fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     } else {
         println!("{rendered}");
     }
-    eprintln!(
-        "{}",
-        render_propose_summary(
+    let root_text = source_tree_root_text(&root);
+    let context = ProposeContext {
+        inventory_source: inventory_facts.source.as_str(),
+        source_tree_root: Some(&root_text),
+        inventory_files: inventory_facts.files_scanned,
+        kind_filter: args.kind.as_deref(),
+    };
+    let summary = match args.summary_format {
+        ProposeSummaryFormat::Human => render_propose_summary(
             findings.len(),
             proposed_entries,
             args.expires.as_str(),
-            args.write.as_deref()
-        )
-    );
+            args.write.as_deref(),
+        ),
+        ProposeSummaryFormat::Json => render_propose_summary_json(
+            findings.len(),
+            proposed_entries,
+            args.expires.as_str(),
+            args.write.as_deref(),
+            args.force,
+            context,
+        ),
+    };
+    if let Some(path) = &args.summary_output {
+        write_file(path, &summary)?;
+    } else {
+        eprintln!("{summary}");
+    }
     Ok(())
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ProposeContext<'a> {
+    inventory_source: &'a str,
+    source_tree_root: Option<&'a str>,
+    inventory_files: Option<usize>,
+    kind_filter: Option<&'a str>,
+}
+
+impl Default for ProposeContext<'static> {
+    fn default() -> Self {
+        Self {
+            inventory_source: "unknown",
+            source_tree_root: None,
+            inventory_files: None,
+            kind_filter: None,
+        }
+    }
 }
 
 fn render_propose_summary(
@@ -2494,6 +2544,85 @@ fn render_propose_summary(
     out.push_str(
         "claim boundary: proposal only; generated debt still requires human review and evidence.\n",
     );
+    out
+}
+
+fn render_propose_summary_json(
+    findings: usize,
+    proposed_entries: usize,
+    expires: &str,
+    output: Option<&Path>,
+    force: bool,
+    context: ProposeContext<'_>,
+) -> String {
+    let output_text = output.map(|path| path.display().to_string());
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "  \"schema_version\": {},\n",
+        allow_report::PROPOSE_SCHEMA_VERSION
+    ));
+    out.push_str(&format!(
+        "  \"schema_id\": \"{}\",\n",
+        allow_report::PROPOSE_SCHEMA_ID
+    ));
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"propose\",\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        json_string_array(allow_report::CLAIM_BOUNDARY)
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        json_string_array(allow_report::SCANNER_LIMITATIONS)
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&propose_inventory_json(context, "  "));
+    out.push_str(",\n");
+    out.push_str("  \"options\": {\n");
+    out.push_str(&format!(
+        "    \"kind\": {},\n",
+        option_json_string(context.kind_filter)
+    ));
+    out.push_str(&format!("    \"expires\": \"{}\",\n", json_escape(expires)));
+    out.push_str(&format!(
+        "    \"policy_output\": {},\n",
+        option_json_string(output_text.as_deref())
+    ));
+    out.push_str(&format!("    \"force\": {}\n", force));
+    out.push_str("  },\n");
+    out.push_str("  \"summary\": {\n");
+    out.push_str(&format!("    \"findings_scanned\": {findings},\n"));
+    out.push_str(&format!(
+        "    \"baseline_debt_entries_proposed\": {proposed_entries}\n"
+    ));
+    out.push_str("  },\n");
+    out.push_str("  \"generated_entry_defaults\": {\n");
+    out.push_str("    \"owner\": \"unowned\",\n");
+    out.push_str("    \"classification\": \"baseline_debt\",\n");
+    out.push_str("    \"reason\": \"Generated by cargo-allow propose; requires human review.\",\n");
+    out.push_str(&format!("    \"expires\": \"{}\"\n", json_escape(expires)));
+    out.push_str("  }\n");
+    out.push_str("}\n");
+    out
+}
+
+fn propose_inventory_json(context: ProposeContext<'_>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("{indent}  \"scope\": \"source_tree\",\n"));
+    out.push_str(&format!("{indent}  \"scanner\": \"source_syntax\",\n"));
+    out.push_str(&format!(
+        "{indent}  \"source\": \"{}\"",
+        json_escape(context.inventory_source)
+    ));
+    if let Some(root) = context.source_tree_root {
+        out.push_str(&format!(",\n{indent}  \"root\": \"{}\"", json_escape(root)));
+    }
+    if let Some(files) = context.inventory_files {
+        out.push_str(&format!(",\n{indent}  \"files_scanned\": {files}"));
+    }
+    out.push_str(&format!("\n{indent}}}"));
     out
 }
 
@@ -4992,6 +5121,10 @@ mod tests {
             "--write",
             "target/proposed.toml",
             "--force",
+            "--summary-format",
+            "json",
+            "--summary-output",
+            "target/propose-summary.json",
         ]))
         .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
 
@@ -5000,8 +5133,11 @@ mod tests {
             Some(CargoAllowCommand::Propose(ProposeArgs {
                 write: Some(path),
                 force: true,
+                summary_format: ProposeSummaryFormat::Json,
+                summary_output: Some(summary_output),
                 ..
             })) if path == Path::new("target/proposed.toml")
+                && summary_output == Path::new("target/propose-summary.json")
         ));
     }
 
@@ -5020,6 +5156,43 @@ mod tests {
         assert!(text.contains("classification: baseline_debt"));
         assert!(text.contains("output: policy/allow.proposed.toml"));
         assert!(text.contains("generated debt still requires human review"));
+    }
+
+    #[test]
+    fn render_propose_summary_json_records_generated_baseline_boundary() {
+        let json = render_propose_summary_json(
+            12,
+            3,
+            "2026-08-01",
+            Some(Path::new("policy/allow.proposed.toml")),
+            true,
+            ProposeContext {
+                inventory_source: "git_tracked",
+                source_tree_root: Some("H:/Code/Rust/cargo-allow"),
+                inventory_files: Some(51),
+                kind_filter: Some("panic"),
+            },
+        );
+
+        assert!(json.contains("\"schema_version\": 1"));
+        assert!(json.contains(&format!(
+            "\"schema_id\": \"{}\"",
+            allow_report::PROPOSE_SCHEMA_ID
+        )));
+        assert!(json.contains("\"command\": \"propose\""));
+        assert!(json.contains("\"claim_boundary\""));
+        assert!(json.contains("\"scanner_limitations\""));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
+        assert!(json.contains("\"files_scanned\": 51"));
+        assert!(json.contains("\"kind\": \"panic\""));
+        assert!(json.contains("\"policy_output\": \"policy/allow.proposed.toml\""));
+        assert!(json.contains("\"force\": true"));
+        assert!(json.contains("\"findings_scanned\": 12"));
+        assert!(json.contains("\"baseline_debt_entries_proposed\": 3"));
+        assert!(json.contains("\"owner\": \"unowned\""));
+        assert!(json.contains("\"classification\": \"baseline_debt\""));
+        assert!(json.contains("\"repository_code_not_executed\""));
     }
 
     #[test]
@@ -6415,6 +6588,21 @@ mod tests {
         assert!(schema.contains("\"config\""));
         assert!(schema.contains("\"inventory\""));
         assert!(schema.contains("\"files_scanned\""));
+        assert!(schema.contains("\"scanner_limitations\""));
+        assert!(schema.contains("\"scanner_limitation\""));
+        assert!(schema.contains("\"cargo_metadata_not_invoked\""));
+        assert!(schema.contains("\"repository_code_not_executed\""));
+    }
+
+    #[test]
+    fn propose_schema_documents_current_contract() {
+        let schema = include_str!("../../../docs/schemas/propose.schema.json");
+
+        assert!(schema.contains(allow_report::PROPOSE_SCHEMA_ID));
+        assert!(schema.contains("\"options\""));
+        assert!(schema.contains("\"policy_output\""));
+        assert!(schema.contains("\"baseline_debt_entries_proposed\""));
+        assert!(schema.contains("\"generated_entry_defaults\""));
         assert!(schema.contains("\"scanner_limitations\""));
         assert!(schema.contains("\"scanner_limitation\""));
         assert!(schema.contains("\"cargo_metadata_not_invoked\""));
