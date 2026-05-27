@@ -221,7 +221,9 @@ pub enum PolicyChangeKind {
     SelectorPrecisionDecreased,
     SelectorPrecisionIncreased,
     ExpiryExtended,
+    ExpiryShortened,
     ReviewAfterExtended,
+    ReviewAfterShortened,
     EvidenceAdded,
     EvidenceRemoved,
     OwnerRemoved,
@@ -241,7 +243,9 @@ impl PolicyChangeKind {
             Self::SelectorPrecisionDecreased => "selector_precision_decreased",
             Self::SelectorPrecisionIncreased => "selector_precision_increased",
             Self::ExpiryExtended => "expiry_extended",
+            Self::ExpiryShortened => "expiry_shortened",
             Self::ReviewAfterExtended => "review_after_extended",
+            Self::ReviewAfterShortened => "review_after_shortened",
             Self::EvidenceAdded => "evidence_added",
             Self::EvidenceRemoved => "evidence_removed",
             Self::OwnerRemoved => "owner_removed",
@@ -432,6 +436,17 @@ fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<PolicyChang
             "expiry extended or removed",
         ));
     }
+    if date_shortened(
+        base.lifecycle.expires.as_deref(),
+        head.lifecycle.expires.as_deref(),
+    ) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::ExpiryShortened,
+            PolicyChangeSeverity::Improvement,
+            "expiry shortened or added",
+        ));
+    }
     if date_extended(
         base.lifecycle.review_after.as_deref(),
         head.lifecycle.review_after.as_deref(),
@@ -441,6 +456,17 @@ fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<PolicyChang
             PolicyChangeKind::ReviewAfterExtended,
             PolicyChangeSeverity::Review,
             "review_after extended or removed",
+        ));
+    }
+    if date_shortened(
+        base.lifecycle.review_after.as_deref(),
+        head.lifecycle.review_after.as_deref(),
+    ) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::ReviewAfterShortened,
+            PolicyChangeSeverity::Improvement,
+            "review_after shortened or added",
         ));
     }
     if removed_values(&base.evidence, &head.evidence) {
@@ -622,6 +648,20 @@ fn date_extended(base: Option<&str>, head: Option<&str>) -> bool {
             _ => false,
         },
         (Some(base), None) => base != "never",
+        _ => false,
+    }
+}
+
+fn date_shortened(base: Option<&str>, head: Option<&str>) -> bool {
+    match (base, head) {
+        (_, Some("never")) => false,
+        (Some(base), Some(head)) if base == head => false,
+        (Some("never"), Some(head)) => SimpleDate::parse(head).is_some(),
+        (Some(base), Some(head)) => match (SimpleDate::parse(base), SimpleDate::parse(head)) {
+            (Some(base_date), Some(head_date)) => head_date < base_date,
+            _ => false,
+        },
+        (None, Some(head)) => SimpleDate::parse(head).is_some(),
         _ => false,
     }
 }
@@ -827,6 +867,46 @@ mod tests {
                 .iter()
                 .any(|change| change.kind == PolicyChangeKind::ReviewAfterExtended)
         );
+    }
+
+    #[test]
+    fn detects_lifecycle_shortened_as_improvement() {
+        let base = config_with(entry("allow-1"));
+        let mut tighter = entry("allow-1");
+        tighter.lifecycle.expires = Some("2026-08-15".to_string());
+        tighter.lifecycle.review_after = Some("2026-07-01".to_string());
+        let head = config_with(tighter);
+
+        let changes = policy_changes(&base, &head);
+
+        assert!(changes.iter().any(|change| {
+            change.kind == PolicyChangeKind::ExpiryShortened
+                && change.severity == PolicyChangeSeverity::Improvement
+        }));
+        assert!(changes.iter().any(|change| {
+            change.kind == PolicyChangeKind::ReviewAfterShortened
+                && change.severity == PolicyChangeSeverity::Improvement
+        }));
+    }
+
+    #[test]
+    fn detects_added_lifecycle_as_improvement() {
+        let mut base_entry = entry("allow-1");
+        base_entry.lifecycle.expires = None;
+        base_entry.lifecycle.review_after = None;
+        let base = config_with(base_entry);
+        let head = config_with(entry("allow-1"));
+
+        let changes = policy_changes(&base, &head);
+
+        assert!(changes.iter().any(|change| {
+            change.kind == PolicyChangeKind::ExpiryShortened
+                && change.severity == PolicyChangeSeverity::Improvement
+        }));
+        assert!(changes.iter().any(|change| {
+            change.kind == PolicyChangeKind::ReviewAfterShortened
+                && change.severity == PolicyChangeSeverity::Improvement
+        }));
     }
 
     #[test]
