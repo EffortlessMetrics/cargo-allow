@@ -136,6 +136,9 @@ The validator rejects invalid calendar dates, lifecycle dates that move backward
 from `created`, empty or parent-directory scopes, and selectors that contain no
 structural identity beyond line hints.
 
+Diff mode reports expiry or review-date extensions/removals as policy weakening
+and added or earlier lifecycle dates as policy improvements.
+
 ## Baseline Debt
 
 `cargo-allow propose` may generate temporary adoption entries. Those entries
