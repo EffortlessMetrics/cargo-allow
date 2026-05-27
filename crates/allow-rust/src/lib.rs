@@ -330,10 +330,10 @@ fn source_package_contexts(
 ) -> CargoAllowResult<Vec<SourcePackageContext>> {
     let mut packages = Vec::new();
     for rel in files {
-        let normalized = normalize_path(rel);
-        if normalized.rsplit('/').next() != Some("Cargo.toml") {
+        if rel.file_name().and_then(|name| name.to_str()) != Some("Cargo.toml") {
             continue;
         }
+        let normalized = normalize_path(rel);
         let path = root.join(rel);
         let text = fs::read_to_string(&path)
             .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))?;
@@ -373,7 +373,8 @@ fn source_package_for_path<'a>(
     packages.iter().find(|package| {
         package.root.is_empty()
             || normalized == package.root
-            || normalized.starts_with(&format!("{}/", package.root))
+            || (normalized.starts_with(package.root.as_str())
+                && normalized.as_bytes().get(package.root.len()) == Some(&b'/'))
     })
 }
 
