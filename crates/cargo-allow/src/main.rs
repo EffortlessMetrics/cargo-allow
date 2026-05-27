@@ -1536,6 +1536,24 @@ fn render_explain_entry(
                 out.push_str(&format!("- proof: {command}\n"));
             }
         }
+    } else if entry.classification == "baseline_debt" {
+        out.push_str("\nattention:\n");
+        out.push_str(&format!(
+            "- baseline_debt: {} is generated baseline_debt and still needs human review\n",
+            entry.id
+        ));
+        let finding = findings.first();
+        let kind = "baseline_debt";
+        out.push_str("\nnext:\n");
+        for action in suggested_actions(kind).into_iter().take(2) {
+            out.push_str(&format!("- action: {action}\n"));
+        }
+        for command in proof_commands(kind, finding, Some(entry))
+            .into_iter()
+            .take(3)
+        {
+            out.push_str(&format!("- proof: {command}\n"));
+        }
     }
     out.push('\n');
     out.push_str(allow_report::CLAIM_BOUNDARY_TEXT);
@@ -4252,6 +4270,30 @@ mod tests {
         assert!(text.contains("source_package=fixture-package"));
         assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
         assert!(text.contains("did not invoke Cargo metadata"));
+    }
+
+    #[test]
+    fn explain_entry_text_reports_baseline_debt_next_actions() {
+        let mut cfg = AllowConfig::empty();
+        let mut entry = test_entry("allow-baseline", FindingKind::Panic);
+        entry.classification = "baseline_debt".to_string();
+        entry.family = Some("unwrap".to_string());
+        cfg.allow.push(entry.clone());
+        let finding = test_finding(
+            FindingKind::Panic,
+            Some("unwrap"),
+            "tracked.file",
+            "tracked_file",
+        );
+
+        let text = explain_entry_text(Path::new("."), &cfg, &entry, &[finding]);
+
+        assert!(text.contains("current_status: matched"));
+        assert!(text.contains("baseline_debt and still needs human review"));
+        assert!(text.contains("next:"));
+        assert!(text.contains("action: replace generated baseline debt"));
+        assert!(text.contains("proof: cargo-allow explain allow-baseline"));
+        assert!(text.contains("proof: cargo-allow check --kind panic --mode no-new"));
     }
 
     #[test]
