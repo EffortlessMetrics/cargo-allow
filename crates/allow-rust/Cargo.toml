@@ -1,9 +1,14 @@
 [package]
 name = "allow-rust"
+description = "Source-syntax Rust scanners for cargo-allow exception findings."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 allow-core.workspace = true

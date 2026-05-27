@@ -1,9 +1,14 @@
 [package]
 name = "cargo-allow"
+description = "Source-tree exception ledger and policy scanner for Rust repositories."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 allow-core.workspace = true

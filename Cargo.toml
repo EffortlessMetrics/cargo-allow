@@ -18,6 +18,10 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 version = "0.1.0"
 rust-version = "1.85"
+repository = "https://github.com/EffortlessMetrics/cargo-allow"
+homepage = "https://github.com/EffortlessMetrics/cargo-allow"
+keywords = ["rust", "policy", "audit", "governance", "scanner"]
+categories = ["development-tools"]
 
 [workspace.dependencies]
 allow-core = { path = "crates/allow-core" }
