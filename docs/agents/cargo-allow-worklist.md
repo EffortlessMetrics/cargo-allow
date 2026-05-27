@@ -20,6 +20,7 @@ Use `--risk low`, `--risk medium`, `--risk high`, `--difficulty small`, or
 mistake a filter for approval to ignore the rest of the ledger.
 Use `--item-kind <kind>` for queue-type slices such as `stale_allow`,
 `baseline_debt`, `broad_scope`, or `broken_evidence_link`.
+Use `--allow-id <id>` when the assignment is tied to one durable policy entry.
 Use `--owner <owner>` and `--classification <classification>` to take a bounded
 policy-owner or debt-class slice, such as `--owner unowned --classification
 baseline_debt`.
@@ -28,7 +29,8 @@ handoffs.
 The default order already puts high-risk work first, then lower estimated
 difficulty.
 Treat `work-*` IDs as queue-local handles; cite `allow_id` when you need a
-durable policy reference.
+durable policy reference, and use `--allow-id <id>` to reopen that policy-backed
+slice.
 Use the included owner, classification, and reason fields to route the work, but
 verify details with `cargo-allow explain <allow_id>` before changing policy.
 Use lifecycle dates and evidence counts to prioritize expiring or weakly

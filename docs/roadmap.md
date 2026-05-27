@@ -332,6 +332,8 @@ Completed:
   agents can take bounded ownership or debt-class slices.
 - Filter worklist output by queue item kind so agents can take targeted stale,
   broad-scope, baseline-debt, or broken-evidence slices.
+- Filter worklist output by durable allow ID so policy-backed queue slices can
+  be reopened without relying on artifact-local `work-*` handles.
 
 Planned work:
 

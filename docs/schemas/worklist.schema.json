@@ -148,6 +148,10 @@
           "type": ["string", "null"],
           "description": "Applied --item-kind filter, or null when all work item queue kinds are included."
         },
+        "allow_id": {
+          "type": ["string", "null"],
+          "description": "Applied --allow-id filter, or null when all allow entries are included."
+        },
         "owner": {
           "type": ["string", "null"],
           "description": "Applied --owner filter, or null when all policy owners are included."
