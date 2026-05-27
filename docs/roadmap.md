@@ -124,9 +124,14 @@ Planned work:
 Goal: make every retained unsafe site carry reason, evidence, ownership, scope,
 and lifecycle.
 
+Completed:
+
+- Scan unsafe functions, impls, traits, extern blocks, unsafe blocks, and unsafe
+  attributes from source syntax, including multiple unsafe constructs on the
+  same line.
+
 Planned work:
 
-- Syntax scanner for unsafe forms.
 - Safety-comment and evidence metadata.
 - unsafe-review evidence references.
 - Legacy unsafe allowlist adapter.

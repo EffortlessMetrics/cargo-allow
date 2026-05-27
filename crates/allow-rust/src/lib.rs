@@ -344,7 +344,11 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),
                 index_column: syntax.index_columns.get(&line_no).copied(),
-                unsafe_construct: syntax.unsafe_constructs.get(&line_no).copied(),
+                unsafe_constructs: syntax
+                    .unsafe_constructs
+                    .get(&line_no)
+                    .map(Vec::as_slice)
+                    .unwrap_or(&[]),
                 unsafe_attribute: syntax.unsafe_attribute_lines.contains(&line_no),
             },
             &mut findings,
@@ -395,7 +399,7 @@ fn scan_line(
         );
     }
 
-    if let Some(unsafe_construct) = syntax.unsafe_construct {
+    for unsafe_construct in syntax.unsafe_constructs {
         push_finding(
             FindingSite {
                 path,
@@ -515,7 +519,7 @@ struct RustSyntaxFacts {
     panic_macros: BTreeMap<u32, Vec<PanicMacroInvocation>>,
     panic_methods: BTreeMap<u32, Vec<PanicMethodCall>>,
     scopes: BTreeMap<u32, RustLineScope>,
-    unsafe_constructs: BTreeMap<u32, UnsafeSyntaxConstruct>,
+    unsafe_constructs: BTreeMap<u32, Vec<UnsafeSyntaxConstruct>>,
     unsafe_attribute_lines: BTreeSet<u32>,
 }
 
@@ -815,18 +819,14 @@ fn record_unsafe_construct(
     line: u32,
     construct: UnsafeSyntaxConstruct,
 ) {
-    facts
-        .unsafe_constructs
-        .entry(line)
-        .and_modify(|existing| {
-            if construct.kind.priority() < existing.kind.priority()
-                || (construct.kind.priority() == existing.kind.priority()
-                    && construct.column < existing.column)
-            {
-                *existing = construct;
-            }
-        })
-        .or_insert(construct);
+    let constructs = facts.unsafe_constructs.entry(line).or_default();
+    if !constructs
+        .iter()
+        .any(|existing| existing.kind == construct.kind && existing.column == construct.column)
+    {
+        constructs.push(construct);
+        constructs.sort_by_key(|construct| (construct.column, construct.kind.priority()));
+    }
 }
 
 fn lint_attribute_kind(text: &str) -> Option<LintAttributeKind> {
@@ -850,7 +850,7 @@ struct SyntaxLineFacts<'a> {
     panic_macros: &'a [PanicMacroInvocation],
     panic_methods: &'a [PanicMethodCall],
     index_column: Option<u32>,
-    unsafe_construct: Option<UnsafeSyntaxConstruct>,
+    unsafe_constructs: &'a [UnsafeSyntaxConstruct],
     unsafe_attribute: bool,
 }
 
@@ -1254,6 +1254,37 @@ mod tests {
             .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_fn"))
             .count();
         assert_eq!(unsafe_fn_count, 2);
+    }
+
+    #[test]
+    fn detects_multiple_unsafe_constructs_on_one_line() {
+        let src = r#"
+        unsafe fn read(ptr: *const u8) -> u8 { unsafe { core::ptr::read(ptr) } }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        assert!(findings.iter().any(|f| {
+            f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_fn")
+        }));
+        assert!(findings.iter().any(|f| {
+            f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_block")
+        }));
+    }
+
+    #[test]
+    fn detects_repeated_unsafe_blocks_on_one_line() {
+        let src = r#"
+        fn read(left: *const u8, right: *const u8) { unsafe { core::ptr::read(left); } unsafe { core::ptr::read(right); } }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+        let unsafe_blocks = findings
+            .iter()
+            .filter(|f| {
+                f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_block")
+            })
+            .count();
+
+        assert_eq!(unsafe_blocks, 2);
     }
 
     #[test]
