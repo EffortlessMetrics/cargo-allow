@@ -1,6 +1,6 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, LastSeen,
-    Lifecycle, Requirements, Selector, WorkspaceConfig, glob_matches, normalize_path,
+    Lifecycle, Requirements, Selector, SimpleDate, WorkspaceConfig, glob_matches, normalize_path,
     normalize_snippet, stable_hash_hex,
 };
 use allow_policy::{parse_policy, validate_policy};
@@ -23,6 +23,17 @@ const LEGACY_POLICY_FILES: &[&str] = &[
     "process-allowlist.toml",
     "network-allowlist.toml",
 ];
+const BASELINE_DEBT_DEFAULT_DAYS: i64 = 67;
+
+fn default_baseline_created() -> String {
+    SimpleDate::today_utc_approx().to_string()
+}
+
+fn default_baseline_expires() -> String {
+    SimpleDate::today_utc_approx()
+        .add_days(BASELINE_DEBT_DEFAULT_DAYS)
+        .to_string()
+}
 
 pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
     let text = read_policy(path.as_ref())?;
@@ -851,7 +862,7 @@ fn parse_no_panic_allowlist_entry(
     let last_seen_table = table.get("last_seen").and_then(Value::as_table);
     let review_after = string_field(table, "review_after");
     let expires = normalize_legacy_expires(string_field(table, "expires"))
-        .or_else(|| review_after.is_none().then(|| "2026-08-01".to_string()));
+        .or_else(|| review_after.is_none().then(default_baseline_expires));
     let last_seen = optional_last_seen(last_seen_table);
     Ok(LegacyNoPanicAllowEntry {
         index,
@@ -873,7 +884,7 @@ fn parse_no_panic_allowlist_entry(
             .unwrap_or_else(|| {
                 "Generated from legacy no-panic allowlist; requires human review.".to_string()
             }),
-        created: string_field(table, "created").or_else(|| Some("2026-05-26".to_string())),
+        created: string_field(table, "created").or_else(|| Some(default_baseline_created())),
         review_after,
         expires,
         line_hint: selector
@@ -903,7 +914,7 @@ fn parse_clippy_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyClip
     let id = string_field(table, "id").unwrap_or_else(|| format!("legacy-clippy-{index:04}"));
     let review_after = string_field(table, "review_after");
     let expires = normalize_legacy_expires(string_field(table, "expires"))
-        .or_else(|| review_after.is_none().then(|| "2026-08-01".to_string()));
+        .or_else(|| review_after.is_none().then(default_baseline_expires));
     Ok(LegacyClippyRule {
         path: required_string_field(table, "path", &id)?,
         lint: required_string_field(table, "lint", &id)?,
@@ -920,7 +931,7 @@ fn parse_clippy_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyClip
         symbol: string_field(table, "symbol"),
         target_fingerprint: string_field(table, "target_fingerprint")
             .or_else(|| string_field(table, "policy_id").map(|id| format!("policy:{id}"))),
-        created: string_field(table, "created").or_else(|| Some("2026-05-26".to_string())),
+        created: string_field(table, "created").or_else(|| Some(default_baseline_created())),
         review_after,
         expires,
         id,
@@ -949,7 +960,7 @@ fn parse_unsafe_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyUnsa
     let last_seen_table = table.get("last_seen").and_then(Value::as_table);
     let review_after = string_field(table, "review_after");
     let expires = normalize_legacy_expires(string_field(table, "expires"))
-        .or_else(|| review_after.is_none().then(|| "2026-08-01".to_string()));
+        .or_else(|| review_after.is_none().then(default_baseline_expires));
     let family = string_field(table, "family")
         .or_else(|| {
             selector.and_then(|selector| {
@@ -980,7 +991,7 @@ fn parse_unsafe_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyUnsa
                 "Generated from legacy unsafe allowlist; requires human review.".to_string()
             }),
         evidence: legacy_evidence(table),
-        created: string_field(table, "created").or_else(|| Some("2026-05-26".to_string())),
+        created: string_field(table, "created").or_else(|| Some(default_baseline_created())),
         review_after,
         expires,
         line_hint: selector
@@ -1427,9 +1438,9 @@ fn entry_from_no_panic_baseline_entry(rule: &LegacyNoPanicBaselineEntry) -> Allo
         links: vec!["legacy-policy:no-panic-baseline".to_string()],
         occurrence_limit: Some(rule.count),
         lifecycle: Lifecycle {
-            created: Some("2026-05-26".to_string()),
+            created: Some(default_baseline_created()),
             review_after: None,
-            expires: Some("2026-08-01".to_string()),
+            expires: Some(default_baseline_expires()),
         },
         selector: Selector {
             ast_kind: Some(ast_kind.clone()),
@@ -2282,6 +2293,26 @@ mod tests {
     use std::fs;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
+    fn assert_current_baseline_window(lifecycle: &Lifecycle) {
+        let created = lifecycle
+            .created
+            .as_deref()
+            .and_then(SimpleDate::parse)
+            .unwrap_or_else(|| std::panic::panic_any("baseline should have valid created date"));
+        let expires = lifecycle
+            .expires
+            .as_deref()
+            .and_then(SimpleDate::parse)
+            .unwrap_or_else(|| std::panic::panic_any("baseline should have valid expires date"));
+        let today = SimpleDate::today_utc_approx();
+
+        assert!(
+            today.add_days(-1) <= created && created <= today.add_days(1),
+            "baseline created date should track the current UTC day"
+        );
+        assert_eq!(created.days_until(expires), BASELINE_DEBT_DEFAULT_DAYS);
+    }
+
     #[test]
     fn migrates_non_rust_allowlist_to_canonical_policy() {
         let policy = policy_fixture_path();
@@ -2433,8 +2464,7 @@ expires = "permanent"
         assert_eq!(unwrap.classification, "baseline_debt");
         assert_eq!(unwrap.owner, "unowned");
         assert_eq!(unwrap.occurrence_limit, Some(2));
-        assert_eq!(unwrap.lifecycle.created.as_deref(), Some("2026-05-26"));
-        assert_eq!(unwrap.lifecycle.expires.as_deref(), Some("2026-08-01"));
+        assert_current_baseline_window(&unwrap.lifecycle);
         assert_eq!(unwrap.selector.ast_kind.as_deref(), Some("method_call"));
         assert_eq!(unwrap.selector.callee.as_deref(), Some("unwrap"));
         assert!(unwrap.selector.normalized_snippet_hash.is_some());
@@ -2540,7 +2570,7 @@ expires = "permanent"
         assert_eq!(generated.classification, "baseline_debt");
         assert_eq!(generated.owner, "unowned");
         assert_eq!(generated.selector.macro_name.as_deref(), Some("panic"));
-        assert_eq!(generated.lifecycle.expires.as_deref(), Some("2026-08-01"));
+        assert_current_baseline_window(&generated.lifecycle);
     }
 
     #[test]
@@ -2703,8 +2733,7 @@ lint = "clippy::unwrap_used"
         assert_eq!(entry.owner, "unowned");
         assert_eq!(entry.classification, "baseline_debt");
         assert!(entry.reason.contains("requires human review"));
-        assert_eq!(entry.lifecycle.created.as_deref(), Some("2026-05-26"));
-        assert_eq!(entry.lifecycle.expires.as_deref(), Some("2026-08-01"));
+        assert_current_baseline_window(&entry.lifecycle);
     }
 
     #[test]
@@ -2764,7 +2793,7 @@ lint = "clippy::unwrap_used"
                 .iter()
                 .any(|item| item.contains("TODO: add unsafe-review"))
         );
-        assert_eq!(generated.lifecycle.expires.as_deref(), Some("2026-08-01"));
+        assert_current_baseline_window(&generated.lifecycle);
     }
 
     #[test]

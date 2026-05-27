@@ -12,6 +12,8 @@ use crate::{
     source_tree_root_text, write_file, write_file_no_overwrite,
 };
 
+const BASELINE_DEBT_DEFAULT_DAYS: i64 = 67;
+
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ProposeArgs {
     #[command(flatten)]
@@ -25,9 +27,9 @@ pub(crate) struct ProposeArgs {
     /// Include untracked files in addition to git-tracked files.
     #[arg(long)]
     include_untracked: bool,
-    /// Expiry date for generated baseline_debt entries.
-    #[arg(long, default_value = "2026-08-01")]
-    expires: String,
+    /// Expiry date for generated baseline_debt entries. Defaults to 67 days from today.
+    #[arg(long)]
+    expires: Option<String>,
     /// Write proposed policy to this path.
     #[arg(long)]
     write: Option<PathBuf>,
@@ -60,6 +62,7 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     let mut proposed = cfg.clone();
     let start = proposed.allow.len() + 1;
     let mut proposed_entries = 0;
+    let expires = args.expires.clone().unwrap_or_else(default_baseline_expiry);
     for (n, outcome) in outcomes
         .iter()
         .filter(|o| o.status == MatchStatus::New)
@@ -68,7 +71,7 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         if let Some(finding) = outcome.finding_index.and_then(|idx| findings.get(idx)) {
             proposed
                 .allow
-                .push(entry_from_finding(finding, start + n, &args.expires));
+                .push(entry_from_finding(finding, start + n, &expires));
             proposed_entries += 1;
         }
     }
@@ -89,13 +92,13 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         ProposeSummaryFormat::Human => render_propose_summary(
             findings.len(),
             proposed_entries,
-            args.expires.as_str(),
+            expires.as_str(),
             args.write.as_deref(),
         ),
         ProposeSummaryFormat::Json => render_propose_summary_json(
             findings.len(),
             proposed_entries,
-            args.expires.as_str(),
+            expires.as_str(),
             args.write.as_deref(),
             args.force,
             context,
@@ -126,6 +129,12 @@ impl Default for ProposeContext<'static> {
             kind_filter: None,
         }
     }
+}
+
+fn default_baseline_expiry() -> String {
+    SimpleDate::today_utc_approx()
+        .add_days(BASELINE_DEBT_DEFAULT_DAYS)
+        .to_string()
 }
 
 fn render_propose_summary(
@@ -332,6 +341,20 @@ mod tests {
         assert!(text.contains("classification: baseline_debt"));
         assert!(text.contains("output: policy/allow.proposed.toml"));
         assert!(text.contains("generated debt still requires human review"));
+    }
+
+    #[test]
+    fn default_baseline_expiry_is_relative_to_current_date() {
+        let before = SimpleDate::today_utc_approx().add_days(BASELINE_DEBT_DEFAULT_DAYS);
+        let expires = default_baseline_expiry();
+        let after = SimpleDate::today_utc_approx().add_days(BASELINE_DEBT_DEFAULT_DAYS);
+        let parsed = SimpleDate::parse(&expires)
+            .unwrap_or_else(|| std::panic::panic_any("default expiry should be a valid date"));
+
+        assert!(
+            before <= parsed && parsed <= after,
+            "default baseline expiry should stay relative to the current UTC date"
+        );
     }
 
     #[test]

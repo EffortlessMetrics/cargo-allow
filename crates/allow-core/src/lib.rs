@@ -51,6 +51,10 @@ impl SimpleDate {
         other.days_since_unix_epoch() - self.days_since_unix_epoch()
     }
 
+    pub fn add_days(self, days: i64) -> Self {
+        Self::from_days_since_unix_epoch(self.days_since_unix_epoch() + days)
+    }
+
     fn days_since_unix_epoch(self) -> i64 {
         // Howard Hinnant's civil date algorithm. This keeps lifecycle validation
         // deterministic without adding a date dependency to the core crate.
@@ -797,6 +801,14 @@ mod tests {
             .unwrap_or_else(|| std::panic::panic_any("valid end date"));
 
         assert_eq!(start.days_until(end), 67);
+    }
+
+    #[test]
+    fn simple_date_adds_days_across_months() {
+        let start = SimpleDate::parse("2026-05-26")
+            .unwrap_or_else(|| std::panic::panic_any("valid start date"));
+
+        assert_eq!(start.add_days(67).to_string(), "2026-08-01");
     }
 
     #[test]
