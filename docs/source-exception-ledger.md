@@ -225,19 +225,19 @@ limitation values so consumers can distinguish source-tree boundaries from
 arbitrary annotations. `source_package` fields are scanner-provided context
 only; they are not Cargo metadata or build-membership proof.
 Worklist output can be filtered by governed kind, scanner family, policy owner,
-policy classification, work item queue kind, match status, risk, and difficulty;
-filtered artifacts record all applied filters. Policy-backed slices can also be
-filtered by durable allow ID with `--allow-id`, and scanner-provided source-tree
-package context can be filtered with `--source-package`.
+policy classification, work item queue kind, match status, source-tree path,
+risk, and difficulty; filtered artifacts record all applied filters.
+Policy-backed slices can also be filtered by durable allow ID with `--allow-id`,
+and scanner-provided source-tree package context can be filtered with
+`--source-package`.
 
 The human worklist output includes the same first-step suggested actions and
 proof commands so a maintainer can triage the queue without switching to JSON.
 When the human view is truncated, it says how many work items were omitted and
 points to JSON for the full queue. Filtered worklist output records the applied
-`kind`, `risk`, and `difficulty` filters so saved artifacts are not mistaken for
-the full ledger queue. The report, receipt, and worklist schemas enumerate
-scanner limitation values rather than treating claim-boundary facts as open-ended
-prose.
+filters so saved artifacts are not mistaken for the full ledger queue. The
+report, receipt, and worklist schemas enumerate scanner limitation values rather
+than treating claim-boundary facts as open-ended prose.
 Work items are ordered for routing: high risk first, then lower estimated
 difficulty, then stable source and allow identifiers.
 `work-*` IDs are artifact-local queue handles assigned after filtering and

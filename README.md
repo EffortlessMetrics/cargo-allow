@@ -94,6 +94,7 @@ cargo-allow worklist --family unwrap --format human
 cargo-allow worklist --item-kind stale_allow --format human
 cargo-allow worklist --status baseline_debt --format human
 cargo-allow worklist --allow-id allow-0042 --format human
+cargo-allow worklist --path crates/allow-core --format human
 cargo-allow worklist --source-package allow-core --format human
 cargo-allow worklist --owner unowned --classification baseline_debt --format human
 ```
