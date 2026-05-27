@@ -50,7 +50,7 @@ enum CargoAllowCommand {
     Worklist(WorklistArgs),
     /// Convert compatible legacy policy files.
     Migrate(MigrateArgs),
-    /// Dry-run stale cleanup guidance.
+    /// Preview or remove stale allow entries.
     Prune(PruneArgs),
     /// Validate local setup.
     Doctor(ConfigArgs),
