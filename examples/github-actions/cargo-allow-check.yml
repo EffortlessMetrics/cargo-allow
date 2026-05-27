@@ -22,11 +22,18 @@ jobs:
           cargo-allow audit \
             --format json \
             --output target/cargo-allow/audit.json
+          cargo-allow audit \
+            --format html \
+            --output target/cargo-allow/audit.html
           cargo-allow check \
             --mode no-new \
             --format markdown \
             --receipt target/cargo-allow/check.receipt.json \
             --output target/cargo-allow/check.md
+          cargo-allow check \
+            --mode no-new \
+            --format sarif \
+            --output target/cargo-allow/check.sarif
       - name: Publish cargo-allow summary
         if: always()
         shell: bash
