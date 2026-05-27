@@ -52,8 +52,8 @@ pub(crate) use policy_config::{
     root_relative_path,
 };
 pub(crate) use render::{
-    markdown_cell, option_json_string, scope_has_wildcard, selector_from_finding,
-    source_package_name, source_tree_path_matches_filter, source_tree_root_text,
+    markdown_cell, scope_has_wildcard, selector_from_finding, source_package_name,
+    source_tree_path_matches_filter, source_tree_root_text,
 };
 pub(crate) use reporting::{
     ReportRenderArgs, policy_baseline_debt_entries, print_report, report_config,
