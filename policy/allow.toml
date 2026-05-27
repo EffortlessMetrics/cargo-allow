@@ -1234,3 +1234,25 @@ glob = "docs/identity.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0102"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/crate-namespace.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Defines the first-party crate namespace policy for cargo-allow libraries."
+created = "2026-05-27"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/crate-namespace.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/crate-namespace.md"
+
+[allow.last_seen]
+line = 1
+column = 1

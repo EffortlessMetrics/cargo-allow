@@ -212,7 +212,9 @@ the `allow-*` crate namespace. Future scanners, matchers, policy adapters,
 exporters, report formats, evidence integrations, fixtures, and schema helpers
 should stay in that namespace unless they are separately installed
 user-facing binaries or services. Do not create a parallel `cargo-allow-*`
-library namespace for integrations or plugins.
+library namespace for integrations or plugins. See the
+[crate namespace policy](docs/crate-namespace.md) before adding a new public
+crate.
 
 | Crate | Role |
 |---|---|
@@ -231,6 +233,7 @@ library namespace for integrations or plugins.
 
 - [Design](docs/design.md)
 - [Claim boundaries](docs/claim-boundaries.md)
+- [Crate namespace policy](docs/crate-namespace.md)
 - [Roadmap](docs/roadmap.md)
 - [Source exception ledger](docs/source-exception-ledger.md)
 - [Migration from xtask](docs/migration-from-xtask.md)
