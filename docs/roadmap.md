@@ -322,6 +322,8 @@ Completed:
   high-priority work without requiring filters.
 - Assign worklist item IDs after filtering and sorting so artifact-local queue
   handles match the presented order.
+- Include owner, classification, and reason on policy-backed worklist items so
+  humans and agents can route work before running `explain`.
 
 Planned work:
 

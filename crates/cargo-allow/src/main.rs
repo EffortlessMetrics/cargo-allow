@@ -1805,6 +1805,9 @@ struct WorkItem {
     kind: String,
     exception_kind: Option<String>,
     family: Option<String>,
+    owner: Option<String>,
+    classification: Option<String>,
+    reason: Option<String>,
     risk: &'static str,
     difficulty: &'static str,
     status: MatchStatus,
@@ -1938,6 +1941,9 @@ fn work_item_from_outcome(
         id: format!("work-{}-{item_index:04}", kind.replace('_', "-")),
         exception_kind,
         family,
+        owner: entry.map(|entry| entry.owner.clone()),
+        classification: entry.map(|entry| entry.classification.clone()),
+        reason: entry.map(|entry| entry.reason.clone()),
         risk: work_item_risk(&kind, outcome.status, finding, entry),
         difficulty: work_item_difficulty(&kind, finding, entry),
         status: outcome.status,
@@ -1976,6 +1982,9 @@ fn work_items_from_evidence_diagnostics(
                 kind,
                 exception_kind: Some(entry.kind.as_str().to_string()),
                 family: entry.family.clone(),
+                owner: Some(entry.owner.clone()),
+                classification: Some(entry.classification.clone()),
+                reason: Some(entry.reason.clone()),
                 risk: if entry.kind == FindingKind::Unsafe {
                     "high"
                 } else {
@@ -2025,6 +2034,9 @@ fn work_items_from_policy_advisories(
                 id: format!("work-baseline-debt-{item_index:04}"),
                 exception_kind: Some(entry.kind.as_str().to_string()),
                 family: exception_family(finding, Some(entry)).map(ToOwned::to_owned),
+                owner: Some(entry.owner.clone()),
+                classification: Some(entry.classification.clone()),
+                reason: Some(entry.reason.clone()),
                 risk: work_item_risk(&kind, MatchStatus::BaselineDebt, finding, Some(entry)),
                 difficulty: work_item_difficulty(&kind, finding, Some(entry)),
                 status: MatchStatus::BaselineDebt,
@@ -2052,6 +2064,9 @@ fn work_items_from_policy_advisories(
                 kind,
                 exception_kind: Some(entry.kind.as_str().to_string()),
                 family: entry.family.clone(),
+                owner: Some(entry.owner.clone()),
+                classification: Some(entry.classification.clone()),
+                reason: Some(entry.reason.clone()),
                 risk: "medium",
                 difficulty: "small",
                 status: MatchStatus::Matched,
@@ -2404,6 +2419,18 @@ fn render_work_item_json(item: &WorkItem) -> String {
         "      \"family\": {},\n",
         option_json_string(item.family.as_deref())
     ));
+    out.push_str(&format!(
+        "      \"owner\": {},\n",
+        option_json_string(item.owner.as_deref())
+    ));
+    out.push_str(&format!(
+        "      \"classification\": {},\n",
+        option_json_string(item.classification.as_deref())
+    ));
+    out.push_str(&format!(
+        "      \"reason\": {},\n",
+        option_json_string(item.reason.as_deref())
+    ));
     out.push_str(&format!("      \"risk\": \"{}\",\n", item.risk));
     out.push_str(&format!("      \"difficulty\": \"{}\",\n", item.difficulty));
     out.push_str(&format!(
@@ -2483,6 +2510,15 @@ fn render_worklist_human_with_context(items: &[WorkItem], context: WorklistConte
         }
         if let Some(allow_id) = &item.allow_id {
             out.push_str(&format!("  allow: {allow_id}\n"));
+        }
+        if let Some(owner) = &item.owner {
+            out.push_str(&format!("  owner: {owner}\n"));
+        }
+        if let Some(classification) = &item.classification {
+            out.push_str(&format!("  classification: {classification}\n"));
+        }
+        if let Some(reason) = &item.reason {
+            out.push_str(&format!("  reason: {reason}\n"));
         }
         if let Some(exception_kind) = &item.exception_kind {
             out.push_str(&format!("  exception: {exception_kind}"));
@@ -4506,6 +4542,7 @@ mod tests {
 
         let items = work_items_from_outcomes(&cfg, &[], &outcomes);
         let json = render_worklist_json_with_context(&items, WorklistContext::default());
+        let human = render_worklist_human_with_context(&items, WorklistContext::default());
 
         assert_eq!(items.len(), 1);
         assert!(json.contains(&format!(
@@ -4521,12 +4558,18 @@ mod tests {
         assert!(json.contains("\"kind\": \"stale_allow\""));
         assert!(json.contains("\"exception_kind\": \"non_rust_file\""));
         assert!(json.contains("\"family\": null"));
+        assert!(json.contains("\"owner\": \"owner\""));
+        assert!(json.contains("\"classification\": \"classification\""));
+        assert!(json.contains("\"reason\": \"reason\""));
         assert!(json.contains("\"risk\": \"low\""));
         assert!(json.contains("\"small_difficulty\": 1"));
         assert!(json.contains("\"medium_difficulty\": 0"));
         assert!(json.contains("\"source_package\": null"));
         assert!(json.contains("\"cargo-allow explain allow-file\""));
         assert!(json.contains("\"cargo-allow check --kind non-rust --mode no-new\""));
+        assert!(human.contains("owner: owner"));
+        assert!(human.contains("classification: classification"));
+        assert!(human.contains("reason: reason"));
     }
 
     #[test]
@@ -4536,6 +4579,9 @@ mod tests {
         assert!(schema.contains(allow_report::WORKLIST_SCHEMA_ID));
         assert!(schema.contains("\"exception_kind\""));
         assert!(schema.contains("\"family\""));
+        assert!(schema.contains("\"owner\""));
+        assert!(schema.contains("\"classification\""));
+        assert!(schema.contains("\"reason\""));
         assert!(schema.contains("\"source_package\""));
         assert!(schema.contains("\"proof_commands\""));
         assert!(schema.contains("\"scanner_limitations\""));

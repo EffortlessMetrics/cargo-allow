@@ -239,6 +239,18 @@
           "type": ["string", "null"],
           "description": "More specific scanner or policy family behind the work item, when known."
         },
+        "owner": {
+          "type": ["string", "null"],
+          "description": "Policy owner for the related allow entry, when the work item is tied to policy."
+        },
+        "classification": {
+          "type": ["string", "null"],
+          "description": "Policy classification for the related allow entry, when available."
+        },
+        "reason": {
+          "type": ["string", "null"],
+          "description": "Policy reason for the related allow entry, when available."
+        },
         "risk": {
           "enum": ["high", "medium", "low"]
         },
