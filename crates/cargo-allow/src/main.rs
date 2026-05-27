@@ -245,6 +245,9 @@ struct ListArgs {
     /// Include only entries with wildcard source-tree scopes.
     #[arg(long)]
     broad_scope: bool,
+    /// Include only entries with no evidence references.
+    #[arg(long)]
+    missing_evidence: bool,
     /// Include untracked files when determining current match status.
     #[arg(long)]
     include_untracked: bool,
@@ -1123,6 +1126,7 @@ fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         stale: args.stale,
         baseline_debt: args.baseline_debt,
         broad_scope: args.broad_scope,
+        missing_evidence: args.missing_evidence,
     };
     println!("{}", render_list_rows(&rows, &filters));
     Ok(())
@@ -1139,6 +1143,7 @@ struct ListRow {
     classification: String,
     scope: String,
     source_package: Option<String>,
+    evidence_count: usize,
     review_after: String,
     expires: String,
     reason: String,
@@ -1158,6 +1163,7 @@ struct ListFilters<'a> {
     stale: bool,
     baseline_debt: bool,
     broad_scope: bool,
+    missing_evidence: bool,
 }
 
 fn list_rows(cfg: &AllowConfig, findings: &[Finding], outcomes: &[MatchOutcome]) -> Vec<ListRow> {
@@ -1186,6 +1192,7 @@ fn list_rows(cfg: &AllowConfig, findings: &[Finding], outcomes: &[MatchOutcome])
                     .filter_map(|outcome| outcome.finding_index)
                     .filter_map(|index| findings.get(index))
                     .find_map(source_package_name),
+                evidence_count: entry.evidence.len(),
                 review_after: entry
                     .lifecycle
                     .review_after
@@ -1245,12 +1252,12 @@ fn date_is_due(date: Option<&str>, today: SimpleDate) -> bool {
 
 fn render_list_rows(rows: &[ListRow], filters: &ListFilters<'_>) -> String {
     let mut out = String::new();
-    out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\treview_after\texpires\treason\n");
+    out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\tevidence_count\treview_after\texpires\treason\n");
     let mut count = 0;
     for row in rows.iter().filter(|row| list_row_matches(row, filters)) {
         count += 1;
         out.push_str(&format!(
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
             row.id,
             row.status.as_str(),
             row.matches,
@@ -1260,6 +1267,7 @@ fn render_list_rows(rows: &[ListRow], filters: &ListFilters<'_>) -> String {
             empty_as_dash(&row.classification),
             row.scope,
             row.source_package.as_deref().unwrap_or("-"),
+            row.evidence_count,
             row.review_after,
             row.expires,
             row.reason
@@ -1320,6 +1328,9 @@ fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
         return false;
     }
     if filters.broad_scope && !scope_has_wildcard(&row.scope) {
+        return false;
+    }
+    if filters.missing_evidence && row.evidence_count != 0 {
         return false;
     }
     true
@@ -4006,6 +4017,7 @@ mod tests {
             "--stale",
             "--baseline-debt",
             "--broad-scope",
+            "--missing-evidence",
             "--include-untracked",
         ]))
         .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
@@ -4025,6 +4037,7 @@ mod tests {
                 stale: true,
                 baseline_debt: true,
                 broad_scope: true,
+                missing_evidence: true,
                 include_untracked: true,
                 ..
             })) if kind == "unsafe"
@@ -4327,6 +4340,7 @@ mod tests {
             stale: false,
             baseline_debt: true,
             broad_scope: false,
+            missing_evidence: false,
         };
 
         let text = render_list_rows(&rows, &filters);
@@ -4365,6 +4379,7 @@ mod tests {
             stale: false,
             baseline_debt: false,
             broad_scope: false,
+            missing_evidence: false,
         };
 
         let text = render_list_rows(&rows, &filters);
@@ -4394,6 +4409,7 @@ mod tests {
             stale: false,
             baseline_debt: false,
             broad_scope: false,
+            missing_evidence: false,
         };
 
         let text = render_list_rows(&rows, &filters);
@@ -4427,6 +4443,7 @@ mod tests {
             stale: false,
             baseline_debt: false,
             broad_scope: false,
+            missing_evidence: false,
         };
 
         let text = render_list_rows(&rows, &filters);
@@ -4465,6 +4482,7 @@ mod tests {
             stale: false,
             baseline_debt: false,
             broad_scope: false,
+            missing_evidence: false,
         };
 
         let text = render_list_rows(&rows, &filters);
@@ -4500,6 +4518,7 @@ mod tests {
             stale: false,
             baseline_debt: false,
             broad_scope: false,
+            missing_evidence: false,
         };
 
         let text = render_list_rows(&rows, &filters);
@@ -4534,12 +4553,53 @@ mod tests {
             stale: false,
             baseline_debt: false,
             broad_scope: true,
+            missing_evidence: false,
         };
 
         let text = render_list_rows(&rows, &filters);
 
         assert!(!text.contains("allow-exact"));
         assert!(text.contains("allow-broad"));
+    }
+
+    #[test]
+    fn render_list_rows_reports_and_filters_missing_evidence() {
+        let mut missing = list_row(
+            "allow-missing",
+            FindingKind::Panic,
+            "parser",
+            "baseline_debt",
+        );
+        missing.evidence_count = 0;
+        let mut evidenced = list_row(
+            "allow-evidenced",
+            FindingKind::Unsafe,
+            "runtime",
+            "reviewed_exception",
+        );
+        evidenced.evidence_count = 2;
+        let rows = vec![missing, evidenced];
+        let filters = ListFilters {
+            kind: None,
+            family: None,
+            owner: None,
+            classification: None,
+            path: None,
+            source_package: None,
+            status: None,
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+            broad_scope: false,
+            missing_evidence: true,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(text.contains("evidence_count"));
+        assert!(text.contains("allow-missing"));
+        assert!(!text.contains("allow-evidenced"));
     }
 
     #[test]
@@ -7163,6 +7223,7 @@ expires = "permanent"
             classification: classification.to_string(),
             scope: "src/lib.rs".to_string(),
             source_package: None,
+            evidence_count: 0,
             review_after: "-".to_string(),
             expires: "-".to_string(),
             reason: "reason".to_string(),

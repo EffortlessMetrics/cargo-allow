@@ -249,6 +249,8 @@ Completed:
   specific exception-family ledgers.
 - Filter `list` output to broad source-tree scopes so maintainers can audit
   wildcard policy receipts directly.
+- Include evidence-reference counts in `list` output and filter missing-evidence
+  entries for ledger evidence review.
 - Implement dry-run-first stale pruning.
 - Support explicit `prune --stale --write` removal of stale entries while
   keeping dry-run as the default.
