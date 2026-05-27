@@ -7,14 +7,6 @@ pub(crate) fn allow_entry_json(entry: &AllowEntry, indent: &str) -> String {
     allow_report::render_allow_entry_json(entry, indent)
 }
 
-pub(crate) fn selector_json(selector: &Selector, indent: &str) -> String {
-    allow_report::render_selector_json(selector, indent)
-}
-
-pub(crate) fn last_seen_json(last_seen: Option<&allow_core::LastSeen>, indent: &str) -> String {
-    allow_report::render_last_seen_json(last_seen, indent)
-}
-
 pub(crate) fn explain_finding_json(finding: &Finding, status: &str, indent: &str) -> String {
     allow_report::render_explain_finding_json(finding, status, indent)
 }
