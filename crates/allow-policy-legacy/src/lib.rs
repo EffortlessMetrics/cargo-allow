@@ -14,6 +14,7 @@ const LEGACY_POLICY_FILES: &[&str] = &[
     "non-rust-allowlist.toml",
     "generated-allowlist.toml",
     "no-panic-baseline.toml",
+    "clippy-exceptions.toml",
     "executable-allowlist.toml",
     "workflow-allowlist.toml",
     "dependency-surface-allowlist.toml",
@@ -40,6 +41,12 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
     {
         let entries = parse_no_panic_baseline_entries(&table)?;
         return config_from_no_panic_baseline_entries(&table, &entries);
+    }
+    if let Some(table) = legacy_table(&text)?
+        && is_clippy_exceptions_policy(&table)
+    {
+        let rules = parse_clippy_rules(&table)?;
+        return config_from_clippy_rules(&table, &rules);
     }
     if let Some(table) = legacy_table(&text)?
         && table.get("policy").and_then(Value::as_str) == Some("executable-allowlist")
@@ -182,6 +189,23 @@ pub fn load_no_panic_baseline_compat_config(
     }
     let entries = parse_no_panic_baseline_entries(&table)?;
     config_from_no_panic_baseline_entries(&table, &entries)
+}
+
+pub fn load_clippy_exceptions_compat_config(
+    path: impl AsRef<Path>,
+) -> CargoAllowResult<AllowConfig> {
+    let text = read_policy(path.as_ref())?;
+    let table = legacy_table(&text)?.ok_or_else(|| {
+        CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
+    })?;
+    if !is_clippy_exceptions_policy(&table) {
+        return Err(CargoAllowError::new(format!(
+            "{} is not a clippy-exceptions policy",
+            path.as_ref().display()
+        )));
+    }
+    let rules = parse_clippy_rules(&table)?;
+    config_from_clippy_rules(&table, &rules)
 }
 
 pub fn load_executable_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
@@ -409,7 +433,7 @@ pub fn network_findings_from_config(cfg: &AllowConfig) -> Vec<Finding> {
 }
 
 pub fn migration_notes() -> &'static str {
-    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, no-panic-baseline, executable, workflow, dependency-surface, process, and network allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; no-panic baseline migration emits count-limited baseline_debt entries; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns; network compat validates retained network policy entries and does not scan source code or runtime traffic."
+    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, no-panic-baseline, clippy-exceptions, executable, workflow, dependency-surface, process, and network allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; no-panic baseline migration emits count-limited baseline_debt entries; clippy-exceptions compat maps retained lint suppression entries to source-syntax lint_exception receipts and uses cargo-allow's Rust source scanner for current findings; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns; network compat validates retained network policy entries and does not scan source code or runtime traffic."
 }
 
 fn read_policy(path: &Path) -> CargoAllowResult<String> {
@@ -461,6 +485,22 @@ struct LegacyNoPanicBaselineEntry {
     selector_callee: String,
     snippet: String,
     count: u32,
+}
+
+#[derive(Debug, Clone)]
+struct LegacyClippyRule {
+    id: String,
+    path: String,
+    lint: String,
+    family: String,
+    owner: String,
+    classification: String,
+    reason: String,
+    symbol: Option<String>,
+    target_fingerprint: Option<String>,
+    created: Option<String>,
+    review_after: Option<String>,
+    expires: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -700,6 +740,50 @@ fn parse_no_panic_baseline_entry(
     })
 }
 
+fn parse_clippy_rules(table: &toml::Table) -> CargoAllowResult<Vec<LegacyClippyRule>> {
+    let entries = table
+        .get("allow")
+        .or_else(|| table.get("entry"))
+        .and_then(Value::as_array)
+        .ok_or_else(|| CargoAllowError::new("clippy-exceptions missing allow entries"))?;
+    entries
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| parse_clippy_rule(index, entry))
+        .collect()
+}
+
+fn parse_clippy_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyClippyRule> {
+    let table = entry.as_table().ok_or_else(|| {
+        CargoAllowError::new(format!("clippy exception entry {index} is not a table"))
+    })?;
+    let id = string_field(table, "id").unwrap_or_else(|| format!("legacy-clippy-{index:04}"));
+    let review_after = string_field(table, "review_after");
+    let expires = normalize_legacy_expires(string_field(table, "expires"))
+        .or_else(|| review_after.is_none().then(|| "2026-08-01".to_string()));
+    Ok(LegacyClippyRule {
+        path: required_string_field(table, "path", &id)?,
+        lint: required_string_field(table, "lint", &id)?,
+        family: string_field(table, "family")
+            .or_else(|| string_field(table, "attribute"))
+            .map(|family| normalize_lint_attribute_family(&family))
+            .unwrap_or_else(|| "expect_attribute".to_string()),
+        owner: string_field(table, "owner").unwrap_or_else(|| "unowned".to_string()),
+        classification: string_field(table, "classification")
+            .unwrap_or_else(|| "baseline_debt".to_string()),
+        reason: string_field(table, "reason").unwrap_or_else(|| {
+            "Generated from legacy Clippy exceptions policy; requires human review.".to_string()
+        }),
+        symbol: string_field(table, "symbol"),
+        target_fingerprint: string_field(table, "target_fingerprint")
+            .or_else(|| string_field(table, "policy_id").map(|id| format!("policy:{id}"))),
+        created: string_field(table, "created").or_else(|| Some("2026-05-26".to_string())),
+        review_after,
+        expires,
+        id,
+    })
+}
+
 fn parse_executable_rules(table: &toml::Table) -> CargoAllowResult<Vec<LegacyExecutableRule>> {
     let entries = table
         .get("allow")
@@ -900,6 +984,16 @@ fn config_from_no_panic_baseline_entries(
         .iter()
         .map(entry_from_no_panic_baseline_entry)
         .collect();
+    validate_policy(&cfg)?;
+    Ok(cfg)
+}
+
+fn config_from_clippy_rules(
+    table: &toml::Table,
+    rules: &[LegacyClippyRule],
+) -> CargoAllowResult<AllowConfig> {
+    let mut cfg = base_config(table);
+    cfg.allow = rules.iter().map(entry_from_clippy_rule).collect();
     validate_policy(&cfg)?;
     Ok(cfg)
 }
@@ -1113,6 +1207,37 @@ fn entry_from_no_panic_baseline_entry(rule: &LegacyNoPanicBaselineEntry) -> Allo
             callee: (ast_kind == "method_call").then(|| family.clone()),
             macro_name: (ast_kind == "macro_call").then(|| no_panic_macro_name(&rule.family)),
             normalized_snippet_hash: Some(snippet_hash),
+            glob: Some(path),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
+fn entry_from_clippy_rule(rule: &LegacyClippyRule) -> AllowEntry {
+    let path = normalize_path(&rule.path);
+    AllowEntry {
+        id: rule.id.clone(),
+        kind: FindingKind::LintException,
+        family: Some(rule.family.clone()),
+        path: Some(PathBuf::from(&path)),
+        glob: None,
+        owner: rule.owner.clone(),
+        classification: rule.classification.clone(),
+        reason: rule.reason.clone(),
+        evidence: vec![format!("lint:{}", rule.lint)],
+        links: vec![format!("legacy-policy:{}", rule.id)],
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: rule.created.clone(),
+            review_after: rule.review_after.clone(),
+            expires: rule.expires.clone(),
+        },
+        selector: Selector {
+            ast_kind: Some("attribute".to_string()),
+            lint: Some(rule.lint.clone()),
+            symbol: rule.symbol.clone(),
+            target_fingerprint: rule.target_fingerprint.clone(),
             glob: Some(path),
             ..Selector::default()
         },
@@ -1758,6 +1883,21 @@ fn normalize_legacy_expires(expires: Option<String>) -> Option<String> {
     })
 }
 
+fn is_clippy_exceptions_policy(table: &toml::Table) -> bool {
+    matches!(
+        table.get("policy").and_then(Value::as_str),
+        Some("clippy-exceptions" | "clippy-exception-allowlist" | "clippy-allowlist")
+    )
+}
+
+fn normalize_lint_attribute_family(family: &str) -> String {
+    match family.trim() {
+        "allow" | "allow-attribute" | "allow_attribute" => "allow_attribute".to_string(),
+        "expect" | "expect-attribute" | "expect_attribute" => "expect_attribute".to_string(),
+        other => other.to_string(),
+    }
+}
+
 fn slug_id(input: &str) -> String {
     let mut out = String::new();
     for ch in input.chars() {
@@ -1995,6 +2135,121 @@ expires = "permanent"
                 .any(|outcome| outcome.status == allow_core::MatchStatus::New
                     && outcome.message.contains("occurrence_limit exceeded"))
         );
+    }
+
+    #[test]
+    fn migrates_clippy_exceptions_to_lint_policy_entries() {
+        let policy = clippy_policy_fixture_path();
+        let cfg = load_legacy_or_canonical(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("clippy exceptions migrate: {err}"))
+        });
+
+        assert_eq!(cfg.policy, "cargo-allow");
+        assert_eq!(cfg.allow.len(), 1);
+        let entry = cfg
+            .allow
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected clippy exception entry"));
+        assert_eq!(entry.id, "clippy-unwrap-policy");
+        assert_eq!(entry.kind, FindingKind::LintException);
+        assert_eq!(entry.family.as_deref(), Some("expect_attribute"));
+        assert_eq!(entry.path.as_deref(), Some(Path::new("src/lib.rs")));
+        assert_eq!(entry.owner, "lint");
+        assert_eq!(entry.classification, "reviewed_lint_exception");
+        assert_eq!(entry.selector.ast_kind.as_deref(), Some("attribute"));
+        assert_eq!(entry.selector.lint.as_deref(), Some("clippy::unwrap_used"));
+        assert_eq!(
+            entry.selector.target_fingerprint.as_deref(),
+            Some("policy:clippy-unwrap-policy")
+        );
+        assert_eq!(entry.lifecycle.review_after.as_deref(), Some("2026-09-09"));
+    }
+
+    #[test]
+    fn clippy_compat_preserves_matched_new_and_stale_drift() {
+        let policy = clippy_policy_fixture_path();
+        let cfg = load_clippy_exceptions_compat_config(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("clippy compat config loads: {err}"))
+        });
+
+        let matched = allow_match::evaluate(
+            &cfg,
+            &[lint_finding(
+                "src/lib.rs",
+                "expect_attribute",
+                "clippy::unwrap_used",
+                Some("clippy-unwrap-policy"),
+            )],
+            allow_match::CheckMode::NoNew,
+        );
+        assert!(
+            matched
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::Matched)
+        );
+
+        let missing_allow = allow_match::evaluate(
+            &cfg,
+            &[lint_finding(
+                "src/lib.rs",
+                "expect_attribute",
+                "clippy::panic",
+                None,
+            )],
+            allow_match::CheckMode::NoNew,
+        );
+        assert!(
+            missing_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::New)
+        );
+
+        let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+        assert!(
+            stale_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::Stale)
+        );
+    }
+
+    #[test]
+    fn clippy_compat_accepts_minimal_legacy_entries_as_baseline_debt() {
+        let path = fixture_dir().join("clippy-exceptions.toml");
+        fs::write(
+            &path,
+            r#"schema_version = 1
+policy = "clippy-exceptions"
+
+[[allow]]
+path = "src/lib.rs"
+lint = "clippy::unwrap_used"
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+        let cfg = load_clippy_exceptions_compat_config(&path).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("minimal clippy compat config loads: {err}"))
+        });
+
+        let entry = cfg
+            .allow
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected clippy exception entry"));
+        assert_eq!(entry.owner, "unowned");
+        assert_eq!(entry.classification, "baseline_debt");
+        assert!(entry.reason.contains("requires human review"));
+        assert_eq!(entry.lifecycle.created.as_deref(), Some("2026-05-26"));
+        assert_eq!(entry.lifecycle.expires.as_deref(), Some("2026-08-01"));
+    }
+
+    #[test]
+    fn clippy_compat_loader_requires_clippy_policy() {
+        let policy = generated_policy_fixture_path();
+
+        let err = load_clippy_exceptions_compat_config(&policy)
+            .expect_err("generated policy should not load as clippy compat");
+
+        assert!(err.to_string().contains("not a clippy-exceptions policy"));
     }
 
     #[test]
@@ -2629,6 +2884,13 @@ status = "advisory"
         path
     }
 
+    fn clippy_policy_fixture_path() -> PathBuf {
+        let path = fixture_dir().join("clippy-exceptions.toml");
+        fs::write(&path, clippy_policy_fixture_text())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+        path
+    }
+
     fn executable_policy_fixture_path() -> PathBuf {
         let path = fixture_dir().join("executable-allowlist.toml");
         fs::write(&path, executable_policy_fixture_text())
@@ -2859,6 +3121,32 @@ count = 1
         )
     }
 
+    fn clippy_policy_fixture_text() -> String {
+        let mut text = String::from(
+            r#"schema_version = 1
+policy = "clippy-exceptions"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+"#,
+        );
+        push_allow(
+            &mut text,
+            r#"id = "clippy-unwrap-policy"
+path = "src/lib.rs"
+lint = "clippy::unwrap_used"
+family = "expect"
+owner = "lint"
+classification = "reviewed_lint_exception"
+reason = "Fixture keeps an explicit lint suppression linked to policy."
+policy_id = "clippy-unwrap-policy"
+created = "2026-05-09"
+review_after = "2026-09-09"
+"#,
+        );
+        text
+    }
+
     fn executable_policy_fixture_text() -> String {
         let mut text = String::from(
             r#"schema_version = 1
@@ -3071,6 +3359,24 @@ expires = "permanent"
         identity.normalized_snippet_hash = Some(stable_hash_hex(&normalize_snippet(snippet)));
         Finding {
             kind: FindingKind::Panic,
+            family: Some(family.to_string()),
+            path: PathBuf::from(path),
+            span: Some(Span { line: 1, column: 1 }),
+            identity,
+            message: String::new(),
+        }
+    }
+
+    fn lint_finding(path: &str, family: &str, lint: &str, policy_id: Option<&str>) -> Finding {
+        let mut identity = StructuralIdentity::new("rust", "attribute");
+        identity.lint = Some(lint.to_string());
+        identity.symbol = Some(format!(
+            "#[expect({lint}, reason = \"policy:{}\")]",
+            policy_id.unwrap_or("unlinked")
+        ));
+        identity.target_fingerprint = policy_id.map(|id| format!("policy:{id}"));
+        Finding {
+            kind: FindingKind::LintException,
             family: Some(family.to_string()),
             path: PathBuf::from(path),
             span: Some(Span { line: 1, column: 1 }),
