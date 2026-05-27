@@ -213,10 +213,13 @@ Completed:
   source-tree scanner limitations.
 - Refine worklist risk and difficulty heuristics for source-tree policy
   exception families without using Cargo package metadata.
+- Keep worklist proof commands as executable cargo-allow commands and avoid
+  vague external validation placeholders.
 
 Planned work:
 
-- Expand suggested proof commands with crate-local and tool-specific commands.
+- Add crate-local validation suggestions only when cargo-allow has explicit
+  source-tree package context that does not require Cargo metadata.
 
 ## Phase 13: Audit Reports
 
