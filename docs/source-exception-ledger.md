@@ -234,6 +234,11 @@ no-new or policy-weakening signal. `review-required` means posture changed
 without a failing signal, such as a receipted new source finding or a new allow
 entry. `improved` means source findings were removed without new failures.
 
+JSON diff output includes the same posture signals under the optional `diff`
+object. That object contains `net_posture`, a summary of current failures and
+posture-change counts, `finding_changes`, and `policy_changes`, so automated PR
+consumers do not need to parse human or Markdown text.
+
 ## Non-Rust Files
 
 Source trees often contain non-Rust operational surface:
