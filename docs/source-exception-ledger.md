@@ -194,7 +194,9 @@ count, outcome counts, stale state, occurrence-limit overruns, and evidence
 reference diagnostics. When the entry needs attention, it also includes
 suggested next actions and proof commands. Local evidence references are shown
 as present, missing, or invalid; traceability strings are identified as not
-executed or resolved. The
+executed or resolved. Current findings include scanner-provided `source_package`
+context when available; that field is not Cargo metadata or build-membership
+proof. The
 command is still bounded by the normal cargo-allow claim boundary: source syntax
 only, with no macro expansion, macro token-tree expression parsing, type
 analysis, build output, control-flow analysis, or data-flow analysis.

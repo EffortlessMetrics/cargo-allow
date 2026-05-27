@@ -1478,10 +1478,14 @@ fn render_explain_entry(
                 .find(|outcome| outcome.finding_index == Some(index))
                 .map(|outcome| outcome.status.as_str())
                 .unwrap_or("unmatched");
+            let package = source_package_name(finding)
+                .map(|package| format!(", source_package={package}"))
+                .unwrap_or_default();
             out.push_str(&format!(
-                "- {status}: {} ({})\n",
+                "- {status}: {} ({}{})\n",
                 finding_location(finding),
-                finding.identity.ast_kind
+                finding.identity.ast_kind,
+                package
             ));
         }
         if findings.len() > 20 {
@@ -3965,12 +3969,14 @@ mod tests {
         let mut cfg = AllowConfig::empty();
         let entry = test_entry("allow-file", FindingKind::NonRustFile);
         cfg.allow.push(entry.clone());
-        let findings = vec![test_finding(
+        let mut finding = test_finding(
             FindingKind::NonRustFile,
             None,
             "tracked.file",
             "tracked_file",
-        )];
+        );
+        finding.identity.crate_name = Some("fixture-package".to_string());
+        let findings = vec![finding];
 
         let text = explain_entry_text(Path::new("."), &cfg, &entry, &findings);
 
@@ -3978,6 +3984,7 @@ mod tests {
         assert!(text.contains("current_matches: 1"));
         assert!(text.contains("match_outcomes: matched=1"));
         assert!(text.contains("matched: tracked.file:1:1"));
+        assert!(text.contains("source_package=fixture-package"));
         assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
         assert!(text.contains("did not invoke Cargo metadata"));
     }
