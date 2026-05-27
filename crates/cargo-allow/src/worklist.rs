@@ -994,5 +994,11 @@ pub(crate) fn sample_worklist_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
+#[path = "worklist_render_tests.rs"]
+mod render_tests;
+#[cfg(test)]
+#[path = "worklist_test_support.rs"]
+mod test_support;
+#[cfg(test)]
 #[path = "worklist_tests.rs"]
 mod tests;
