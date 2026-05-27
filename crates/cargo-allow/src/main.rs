@@ -13,6 +13,7 @@ use std::process;
 use std::str::FromStr;
 
 mod add;
+mod audit;
 mod doctor;
 mod explain;
 mod init;
@@ -38,7 +39,7 @@ enum CargoAllowCommand {
     /// Create policy/allow.toml.
     Init(init::InitArgs),
     /// Inventory exceptions and policy health.
-    Audit(ReportArgs),
+    Audit(audit::ReportArgs),
     /// CI gate for the exception ledger.
     Check(CheckArgs),
     /// PR-oriented report with git changed files.
@@ -88,30 +89,6 @@ impl InventoryFacts {
             files_scanned: Some(files_scanned),
         }
     }
-}
-
-#[derive(Debug, Clone, Parser)]
-struct ReportArgs {
-    #[command(flatten)]
-    root: RootArgs,
-    /// Policy config path.
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Use a compatible legacy policy for the selected kind.
-    #[arg(long)]
-    compat: bool,
-    /// Filter findings by kind.
-    #[arg(long)]
-    kind: Option<String>,
-    /// Include untracked files in addition to git-tracked files.
-    #[arg(long)]
-    include_untracked: bool,
-    /// Output format.
-    #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
-    format: OutputFormat,
-    /// Write report to a file instead of stdout.
-    #[arg(long)]
-    output: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -199,7 +176,7 @@ fn run() -> CargoAllowResult<()> {
     };
     match command {
         CargoAllowCommand::Init(args) => init::cmd_init(&args),
-        CargoAllowCommand::Audit(args) => cmd_audit(&args),
+        CargoAllowCommand::Audit(args) => audit::cmd_audit(&args),
         CargoAllowCommand::Check(args) => cmd_check(&args),
         CargoAllowCommand::Diff(args) => cmd_diff(&args),
         CargoAllowCommand::List(args) => list::cmd_list(&args),
@@ -219,40 +196,6 @@ fn normalized_args(args: impl IntoIterator<Item = String>) -> Vec<String> {
         args.remove(1);
     }
     args
-}
-
-fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, inventory_facts) = if args.compat {
-        load_compat_world(
-            args.root.root.as_deref(),
-            args.config.as_deref(),
-            args.kind.as_deref(),
-            args.include_untracked,
-        )?
-    } else {
-        load_world(
-            args.root.root.as_deref(),
-            args.config.as_deref(),
-            false,
-            args.kind.as_deref(),
-            args.include_untracked,
-        )?
-    };
-    let report_cfg = report_config(&cfg, args.kind.as_deref())?;
-    let outcomes = evaluate(&report_cfg, &findings, CheckMode::Audit);
-    print_report(ReportRenderArgs {
-        command: "audit",
-        format: args.format,
-        baseline_debt_entries: policy_baseline_debt_entries(&report_cfg),
-        findings: &findings,
-        outcomes: &outcomes,
-        failed: false,
-        output: args.output.as_deref(),
-        root: &root,
-        inventory_facts,
-    })?;
-    eprintln!("source tree: {}", root.display());
-    Ok(())
 }
 
 fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
@@ -2139,26 +2082,6 @@ mod tests {
         assert!(schema.contains("\"scanner_limitation\""));
         assert!(schema.contains("\"cargo_metadata_not_invoked\""));
         assert!(schema.contains("\"repository_code_not_executed\""));
-    }
-
-    #[test]
-    fn clap_parses_include_untracked_audit_flag() {
-        let parsed = CargoAllowCli::try_parse_from(argv(vec![
-            "cargo-allow",
-            "audit",
-            "--include-untracked",
-        ]))
-        .unwrap_or_else(|err| {
-            std::panic::panic_any(format!("CLI should parse include-untracked: {err}"))
-        });
-
-        assert!(matches!(
-            parsed.command,
-            Some(CargoAllowCommand::Audit(ReportArgs {
-                include_untracked: true,
-                ..
-            }))
-        ));
     }
 
     #[test]
