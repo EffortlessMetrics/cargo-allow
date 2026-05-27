@@ -330,6 +330,10 @@
         "container": {
           "type": ["string", "null"]
         },
+        "source_package": {
+          "type": ["string", "null"],
+          "description": "Optional source-derived package context from scanned repository files; not Cargo metadata or build proof."
+        },
         "ast_kind": {
           "type": "string",
           "minLength": 1
