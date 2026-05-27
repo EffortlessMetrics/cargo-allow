@@ -229,6 +229,8 @@ Completed:
 
 - Add a Markdown audit summary and review queue for non-matched source-tree
   outcomes.
+- Include review-due and invalid-selector statuses in human and Markdown report
+  count tables.
 
 Planned work:
 
