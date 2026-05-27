@@ -2530,6 +2530,11 @@ fn proof_commands(
     }
     if let Some(kind_arg) = worklist_kind_arg(finding, entry) {
         commands.push(format!("cargo-allow check --kind {kind_arg} --mode no-new"));
+        if let Some(shortcut_arg) = worklist_shortcut_arg(kind) {
+            commands.push(format!(
+                "cargo-allow worklist --{shortcut_arg} --format json"
+            ));
+        }
         commands.push(format!(
             "cargo-allow worklist --kind {kind_arg} --format json"
         ));
@@ -2541,6 +2546,14 @@ fn proof_commands(
         commands.push("cargo-allow check --kind unsafe --mode no-new".to_string());
     }
     commands
+}
+
+fn worklist_shortcut_arg(kind: &str) -> Option<&'static str> {
+    match kind {
+        "baseline_debt" => Some("baseline-debt"),
+        "broad_scope" => Some("broad-scope"),
+        _ => None,
+    }
 }
 
 fn worklist_kind_arg(
@@ -6158,8 +6171,14 @@ mod tests {
                 .iter()
                 .any(|action| action.contains("narrower glob"))
         );
+        assert!(
+            item.proof_commands
+                .iter()
+                .any(|command| command == "cargo-allow worklist --broad-scope --format json")
+        );
         assert!(json.contains("\"kind\": \"broad_scope\""));
         assert!(json.contains("\"status\": \"matched\""));
+        assert!(human.contains("proof: cargo-allow worklist --broad-scope --format json"));
         assert!(human.contains("exception: non_rust_file.shell_script"));
     }
 
@@ -6207,8 +6226,14 @@ mod tests {
                 .iter()
                 .any(|action| action.contains("reviewed allow entry"))
         );
+        assert!(
+            item.proof_commands
+                .iter()
+                .any(|command| command == "cargo-allow worklist --baseline-debt --format json")
+        );
         assert!(json.contains("\"kind\": \"baseline_debt\""));
         assert!(json.contains("\"status\": \"baseline_debt\""));
+        assert!(human.contains("proof: cargo-allow worklist --baseline-debt --format json"));
         assert!(human.contains("source package: parser"));
         assert!(human.contains("exception: panic.unwrap"));
     }
