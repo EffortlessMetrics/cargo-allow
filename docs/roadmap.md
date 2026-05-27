@@ -3,6 +3,11 @@
 The roadmap is intentionally PR-sized. Each PR should include purpose,
 non-goals, validation, claim boundary, and rollback path.
 
+External dogfood is validation evidence, not the default next local task. Do
+not switch into another repository from this roadmap unless that dogfood run is
+explicitly selected for the current PR. Keep cargo-allow repo work focused on
+in-repo product, scanner, policy, report, and documentation slices.
+
 ## Phase 1: Stabilize The MVP
 
 Goal: make the imported MVP boring, tested, documented, and safe to evolve.
@@ -27,9 +32,9 @@ Completed:
 - Support generated-code and ignored-surface policy.
 - Improve human and Markdown non-Rust audit output.
 
-Next:
+External dogfood:
 
-- Dogfood non-Rust governance against an existing bespoke file-policy xtask.
+- Non-Rust governance against an existing bespoke file-policy xtask.
 
 ## Phase 2: Replace Temporary Foundations
 
@@ -73,10 +78,11 @@ Completed:
   generated, executable, workflow, dependency-surface, process, and network
   policy surfaces.
 
-Next:
+External dogfood:
 
-- Prepare the first shiplog replacement PR for a file-policy lane while keeping
-  panic, unsafe, and lint source lanes out of scope.
+- Prepare a target-repo replacement PR for a file-policy lane while keeping
+  panic, unsafe, and lint source lanes out of scope. This belongs in the target
+  repository, not as an implicit cargo-allow repo task.
 
 ## Phase 4: Build Structural Identity
 
@@ -116,7 +122,7 @@ Completed:
   `policy/no-panic-allowlist.toml`, mapping `explanation` to `reason`,
   `selector.kind` to `selector.ast_kind`, and `last_seen` to hints only.
 
-Planned work:
+External dogfood:
 
 - Side-by-side dogfood against a strict repo.
 
@@ -139,7 +145,7 @@ Completed:
 - Validate `unsafe-review:` evidence references as local source-tree files
   without executing unsafe-review.
 
-Planned work:
+External dogfood:
 
 - Side-by-side dogfood against a repo with existing unsafe policy.
 
@@ -162,7 +168,7 @@ Completed:
   files, mapping retained suppression entries to source-syntax
   `lint_exception` receipts.
 
-Planned work:
+External dogfood:
 
 - Dogfood lint-exception compat against a repo with an existing Clippy
   exceptions policy.
@@ -205,14 +211,17 @@ Completed:
 Planned work:
 
 
-## Phase 10: Migration And Dogfood
+## Phase 10: Migration And External Dogfood
 
 Goal: replace bespoke xtask lanes.
 
-Planned work:
+Completed:
 
 - Canonical `allow.toml` writer.
 - Multi-file legacy config compatibility.
+
+External dogfood:
+
 - Dogfood all compat lanes in one repo.
 - Replace non-Rust, panic, lint, and unsafe xtasks incrementally.
 
