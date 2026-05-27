@@ -19,6 +19,8 @@ pub const PROPOSE_SCHEMA_VERSION: u32 = 1;
 pub const PROPOSE_SCHEMA_ID: &str = "cargo-allow.propose.v1";
 pub const ADD_SCHEMA_VERSION: u32 = 1;
 pub const ADD_SCHEMA_ID: &str = "cargo-allow.add.v1";
+pub const MIGRATE_SCHEMA_VERSION: u32 = 1;
+pub const MIGRATE_SCHEMA_ID: &str = "cargo-allow.migrate.v1";
 
 pub const CLAIM_BOUNDARY: &[&str] = &[
     "source_tree_inventory",
@@ -1444,6 +1446,7 @@ mod tests {
         let doctor_schema = include_str!("../../../docs/schemas/doctor.schema.json");
         let propose_schema = include_str!("../../../docs/schemas/propose.schema.json");
         let add_schema = include_str!("../../../docs/schemas/add.schema.json");
+        let migrate_schema = include_str!("../../../docs/schemas/migrate.schema.json");
         assert!(report_schema.contains(REPORT_SCHEMA_ID));
         assert!(receipt_schema.contains(RECEIPT_SCHEMA_ID));
         assert!(worklist_schema.contains(WORKLIST_SCHEMA_ID));
@@ -1453,6 +1456,7 @@ mod tests {
         assert!(doctor_schema.contains(DOCTOR_SCHEMA_ID));
         assert!(propose_schema.contains(PROPOSE_SCHEMA_ID));
         assert!(add_schema.contains(ADD_SCHEMA_ID));
+        assert!(migrate_schema.contains(MIGRATE_SCHEMA_ID));
         assert!(report_schema.contains("\"files_scanned\""));
         assert!(receipt_schema.contains("\"files_scanned\""));
         assert!(list_schema.contains("\"files_scanned\""));
@@ -1461,6 +1465,7 @@ mod tests {
         assert!(doctor_schema.contains("\"files_scanned\""));
         assert!(propose_schema.contains("\"files_scanned\""));
         assert!(add_schema.contains("\"files_scanned\""));
+        assert!(migrate_schema.contains("\"files_scanned\""));
         assert!(report_schema.contains("\"root\""));
         assert!(receipt_schema.contains("\"root\""));
         assert!(list_schema.contains("\"root\""));
@@ -1469,6 +1474,7 @@ mod tests {
         assert!(doctor_schema.contains("\"root\""));
         assert!(propose_schema.contains("\"root\""));
         assert!(add_schema.contains("\"root\""));
+        assert!(migrate_schema.contains("\"root\""));
         assert!(report_schema.contains("\"source_package\""));
         assert!(list_schema.contains("\"source_package\""));
         assert!(explain_schema.contains("\"source_package\""));
@@ -1481,6 +1487,7 @@ mod tests {
         assert!(doctor_schema.contains("\"scanner_limitation\""));
         assert!(propose_schema.contains("\"scanner_limitation\""));
         assert!(add_schema.contains("\"scanner_limitation\""));
+        assert!(migrate_schema.contains("\"scanner_limitation\""));
         assert!(report_schema.contains("\"repository_code_not_executed\""));
         assert!(receipt_schema.contains("\"repository_code_not_executed\""));
         assert!(list_schema.contains("\"repository_code_not_executed\""));
@@ -1489,6 +1496,7 @@ mod tests {
         assert!(doctor_schema.contains("\"repository_code_not_executed\""));
         assert!(propose_schema.contains("\"repository_code_not_executed\""));
         assert!(add_schema.contains("\"repository_code_not_executed\""));
+        assert!(migrate_schema.contains("\"repository_code_not_executed\""));
         for limitation in SCANNER_LIMITATIONS {
             assert!(report_schema.contains(limitation));
             assert!(receipt_schema.contains(limitation));
@@ -1499,6 +1507,7 @@ mod tests {
             assert!(doctor_schema.contains(limitation));
             assert!(propose_schema.contains(limitation));
             assert!(add_schema.contains(limitation));
+            assert!(migrate_schema.contains(limitation));
         }
         for claim in CLAIM_BOUNDARY {
             assert!(report_schema.contains(claim));
@@ -1510,6 +1519,7 @@ mod tests {
             assert!(doctor_schema.contains(claim));
             assert!(propose_schema.contains(claim));
             assert!(add_schema.contains(claim));
+            assert!(migrate_schema.contains(claim));
         }
     }
 

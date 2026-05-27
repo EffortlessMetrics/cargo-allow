@@ -295,6 +295,11 @@ Completed:
 
 - Canonical `allow.toml` writer.
 - Multi-file legacy config compatibility.
+- Add `migrate --summary-format json --summary-output <path>` for
+  machine-readable legacy conversion receipts while keeping policy output as
+  TOML.
+- Publish a versioned `cargo-allow.migrate.v1` JSON schema for saved migration
+  summaries.
 
 External dogfood:
 

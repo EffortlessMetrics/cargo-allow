@@ -198,7 +198,9 @@ cargo-allow propose --write policy/allow.proposed.toml
 cargo-allow propose --write policy/allow.proposed.toml \
   --summary-format json \
   --summary-output target/cargo-allow/propose.json
-cargo-allow migrate --repo-policy policy/ --out policy/allow.toml
+cargo-allow migrate --repo-policy policy/ --out policy/allow.toml \
+  --summary-format json \
+  --summary-output target/cargo-allow/migrate.json
 cargo-allow doctor
 cargo-allow doctor --format json --output target/cargo-allow/doctor.json
 ```
@@ -230,5 +232,6 @@ cargo-allow doctor --format json --output target/cargo-allow/doctor.json
 - [Agent worklist prompt](docs/agents/cargo-allow-worklist.md)
 - [JSON schema index](docs/schemas/README.md)
 - [Add JSON schema](docs/schemas/add.schema.json)
+- [Migrate JSON schema](docs/schemas/migrate.schema.json)
 - [Explain JSON schema](docs/schemas/explain.schema.json)
 - [List JSON schema](docs/schemas/list.schema.json)

@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/migrate.v1.schema.json",
+  "title": "cargo-allow migrate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "command",
+    "claim_boundary",
+    "scanner_limitations",
+    "inventory",
+    "input",
+    "output",
+    "summary",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "schema_id": {
+      "const": "cargo-allow.migrate.v1"
+    },
+    "tool": {
+      "const": "cargo-allow"
+    },
+    "command": {
+      "const": "migrate"
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/claim_boundary_flag"
+      }
+    },
+    "scanner_limitations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/scanner_limitation"
+      }
+    },
+    "inventory": {
+      "$ref": "#/$defs/inventory"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "from",
+            "repo_policy"
+          ]
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "force"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Path where canonical TOML policy was written."
+        },
+        "force": {
+          "type": "boolean"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allow_entries",
+        "baseline_debt",
+        "unsafe_entries",
+        "entries_with_evidence"
+      ],
+      "properties": {
+        "allow_entries": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "baseline_debt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unsafe_entries": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "entries_with_evidence": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "claim_boundary_flag": {
+      "type": "string",
+      "enum": [
+        "source_tree_inventory",
+        "source_syntax_only",
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "repository_code_not_executed"
+      ]
+    },
+    "scanner_limitation": {
+      "type": "string",
+      "enum": [
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "repository_code_not_executed"
+      ]
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "scanner",
+        "source"
+      ],
+      "properties": {
+        "scope": {
+          "const": "source_tree"
+        },
+        "scanner": {
+          "const": "policy_migration"
+        },
+        "source": {
+          "enum": [
+            "git_tracked",
+            "filesystem_fallback",
+            "filesystem_include_untracked",
+            "unknown"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "description": "Local source-tree root used for repo-policy migration, when available."
+        },
+        "files_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of source-tree inventory files considered during repo-policy migration, when collected."
+        }
+      }
+    }
+  }
+}
