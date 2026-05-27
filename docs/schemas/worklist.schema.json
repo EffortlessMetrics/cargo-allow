@@ -66,6 +66,16 @@
         "low": {
           "type": "integer",
           "minimum": 0
+        },
+        "small_difficulty": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of work items estimated as small difficulty."
+        },
+        "medium_difficulty": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of work items estimated as medium difficulty."
         }
       }
     },
