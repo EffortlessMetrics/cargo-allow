@@ -52,9 +52,9 @@ pub(crate) use policy_config::{
     root_relative_path,
 };
 pub(crate) use render::{
-    allow_entry_json, explain_finding_json, json_string_array, last_seen_json, markdown_cell,
-    option_json_string, option_usize_json, scope_has_wildcard, selector_from_finding,
-    selector_json, source_package_name, source_tree_path_matches_filter, source_tree_root_text,
+    allow_entry_json, explain_finding_json, json_string_array, markdown_cell, option_json_string,
+    option_usize_json, scope_has_wildcard, selector_from_finding, source_package_name,
+    source_tree_path_matches_filter, source_tree_root_text,
 };
 pub(crate) use reporting::{
     ReportRenderArgs, policy_baseline_debt_entries, print_report, report_config,

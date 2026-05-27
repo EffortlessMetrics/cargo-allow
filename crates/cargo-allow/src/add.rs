@@ -1,6 +1,6 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, LastSeen,
-    Lifecycle, MatchStatus, SimpleDate, json_escape, normalize_path,
+    Lifecycle, MatchStatus, SimpleDate, normalize_path,
 };
 use allow_match::{CheckMode, evaluate, finding_location};
 use allow_policy::{render_policy, validate_local_evidence_references, validate_policy};
@@ -8,9 +8,8 @@ use clap::{Parser, ValueEnum};
 use std::path::{Path, PathBuf};
 
 use crate::{
-    KindFilter, RootArgs, explain_finding_json, last_seen_json, load_world, option_json_string,
-    parse_kind_filter, selector_from_finding, selector_json, source_tree_root_text, write_file,
-    write_file_no_overwrite,
+    KindFilter, RootArgs, load_world, parse_kind_filter, selector_from_finding,
+    source_tree_root_text, write_file, write_file_no_overwrite,
 };
 
 #[derive(Debug, Clone, Parser)]
@@ -273,104 +272,17 @@ fn render_add_summary_json(
     context: AddContext<'_>,
 ) -> String {
     let policy_output = output.map(|path| path.display().to_string());
-    let path = entry.path.as_ref().map(normalize_path);
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str(&format!(
-        "  \"schema_version\": {},\n",
-        allow_report::ADD_SCHEMA_VERSION
-    ));
-    out.push_str(&format!(
-        "  \"schema_id\": \"{}\",\n",
-        allow_report::ADD_SCHEMA_ID
-    ));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"add\",\n");
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        allow_report::render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        allow_report::render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&allow_report::render_inventory_json(
-        allow_report::InventoryContext::source_syntax(
+    allow_report::render_add_json(allow_report::AddReport {
+        inventory: allow_report::InventoryContext::source_syntax(
             context.inventory_source,
             context.source_tree_root,
             context.inventory_files,
         ),
-        "  ",
-    ));
-    out.push_str(",\n");
-    out.push_str("  \"options\": {\n");
-    out.push_str(&format!(
-        "    \"policy_output\": {},\n",
-        option_json_string(policy_output.as_deref())
-    ));
-    out.push_str(&format!("    \"force\": {}\n", force));
-    out.push_str("  },\n");
-    out.push_str("  \"summary\": {\n");
-    out.push_str(&format!(
-        "    \"entry_id\": \"{}\",\n",
-        json_escape(&entry.id)
-    ));
-    out.push_str(&format!(
-        "    \"selected_finding\": \"{}\",\n",
-        json_escape(&finding_location(finding))
-    ));
-    out.push_str("    \"human_review_required\": true\n");
-    out.push_str("  },\n");
-    out.push_str("  \"allow_entry\": {\n");
-    out.push_str(&format!("    \"id\": \"{}\",\n", json_escape(&entry.id)));
-    out.push_str(&format!("    \"kind\": \"{}\",\n", entry.kind));
-    out.push_str(&format!(
-        "    \"family\": {},\n",
-        option_json_string(entry.family.as_deref())
-    ));
-    out.push_str(&format!(
-        "    \"path\": {},\n",
-        option_json_string(path.as_deref())
-    ));
-    out.push_str(&format!(
-        "    \"glob\": {},\n",
-        option_json_string(entry.glob.as_deref())
-    ));
-    out.push_str(&format!(
-        "    \"owner\": \"{}\",\n",
-        json_escape(&entry.owner)
-    ));
-    out.push_str(&format!(
-        "    \"classification\": \"{}\",\n",
-        json_escape(&entry.classification)
-    ));
-    out.push_str(&format!(
-        "    \"reason\": \"{}\",\n",
-        json_escape(&entry.reason)
-    ));
-    out.push_str(&format!(
-        "    \"review_after\": {},\n",
-        option_json_string(entry.lifecycle.review_after.as_deref())
-    ));
-    out.push_str(&format!(
-        "    \"expires\": {},\n",
-        option_json_string(entry.lifecycle.expires.as_deref())
-    ));
-    out.push_str(&format!(
-        "    \"evidence_count\": {},\n",
-        entry.evidence.len()
-    ));
-    out.push_str("    \"selector\": ");
-    out.push_str(&selector_json(&entry.selector, "    "));
-    out.push_str(",\n");
-    out.push_str("    \"last_seen\": ");
-    out.push_str(&last_seen_json(entry.last_seen.as_ref(), "    "));
-    out.push_str("\n  },\n");
-    out.push_str("  \"selected_finding\": ");
-    out.push_str(&explain_finding_json(finding, "selected", "  "));
-    out.push_str("\n}\n");
-    out
+        entry,
+        selected_finding: finding,
+        policy_output: policy_output.as_deref(),
+        force,
+    })
 }
 
 fn next_allow_id(cfg: &AllowConfig) -> String {

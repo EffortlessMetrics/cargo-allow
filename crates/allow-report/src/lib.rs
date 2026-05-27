@@ -243,6 +243,15 @@ pub struct ProposeReport<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct AddReport<'a> {
+    pub inventory: InventoryContext<'a>,
+    pub entry: &'a AllowEntry,
+    pub selected_finding: &'a Finding,
+    pub policy_output: Option<&'a str>,
+    pub force: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct MigrateReport<'a> {
     pub inventory: InventoryContext<'a>,
     pub input_kind: &'a str,
@@ -1180,6 +1189,18 @@ pub fn render_explain_finding_json(finding: &Finding, status: &str, indent: &str
     )
 }
 
+fn finding_location_text(finding: &Finding) -> String {
+    match &finding.span {
+        Some(span) => format!(
+            "{}:{}:{}",
+            normalize_path(&finding.path),
+            span.line,
+            span.column
+        ),
+        None => normalize_path(&finding.path),
+    }
+}
+
 fn structural_identity_json(identity: &StructuralIdentity, indent: &str) -> String {
     format!(
         "{{\n{indent}      \"language\": \"{}\",\n{indent}      \"crate_name\": {},\n{indent}      \"module\": {},\n{indent}      \"container\": {},\n{indent}      \"ast_kind\": \"{}\",\n{indent}      \"symbol\": {},\n{indent}      \"callee\": {},\n{indent}      \"macro_name\": {},\n{indent}      \"lint\": {},\n{indent}      \"receiver_fingerprint\": {},\n{indent}      \"target_fingerprint\": {},\n{indent}      \"normalized_snippet_hash\": {},\n{indent}      \"line_hint\": {},\n{indent}      \"column_hint\": {}\n{indent}    }}",
@@ -1469,6 +1490,100 @@ pub fn render_propose_json(report: ProposeReport<'_>) -> String {
     ));
     out.push_str("  }\n");
     out.push_str("}\n");
+    out
+}
+
+pub fn render_add_json(report: AddReport<'_>) -> String {
+    let entry = report.entry;
+    let selected_finding = report.selected_finding;
+    let path = entry.path.as_ref().map(normalize_path);
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("  \"schema_version\": {ADD_SCHEMA_VERSION},\n"));
+    out.push_str(&format!("  \"schema_id\": \"{ADD_SCHEMA_ID}\",\n"));
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"add\",\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        render_claim_boundary_json()
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        render_scanner_limitations_json()
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&render_inventory_json(report.inventory, "  "));
+    out.push_str(",\n");
+    out.push_str("  \"options\": {\n");
+    out.push_str(&format!(
+        "    \"policy_output\": {},\n",
+        option_json(report.policy_output)
+    ));
+    out.push_str(&format!("    \"force\": {}\n", bool_json(report.force)));
+    out.push_str("  },\n");
+    out.push_str("  \"summary\": {\n");
+    out.push_str(&format!(
+        "    \"entry_id\": \"{}\",\n",
+        json_escape(&entry.id)
+    ));
+    out.push_str(&format!(
+        "    \"selected_finding\": \"{}\",\n",
+        json_escape(&finding_location_text(selected_finding))
+    ));
+    out.push_str("    \"human_review_required\": true\n");
+    out.push_str("  },\n");
+    out.push_str("  \"allow_entry\": {\n");
+    out.push_str(&format!("    \"id\": \"{}\",\n", json_escape(&entry.id)));
+    out.push_str(&format!("    \"kind\": \"{}\",\n", entry.kind));
+    out.push_str(&format!(
+        "    \"family\": {},\n",
+        option_json(entry.family.as_deref())
+    ));
+    out.push_str(&format!(
+        "    \"path\": {},\n",
+        option_json(path.as_deref())
+    ));
+    out.push_str(&format!(
+        "    \"glob\": {},\n",
+        option_json(entry.glob.as_deref())
+    ));
+    out.push_str(&format!(
+        "    \"owner\": \"{}\",\n",
+        json_escape(&entry.owner)
+    ));
+    out.push_str(&format!(
+        "    \"classification\": \"{}\",\n",
+        json_escape(&entry.classification)
+    ));
+    out.push_str(&format!(
+        "    \"reason\": \"{}\",\n",
+        json_escape(&entry.reason)
+    ));
+    out.push_str(&format!(
+        "    \"review_after\": {},\n",
+        option_json(entry.lifecycle.review_after.as_deref())
+    ));
+    out.push_str(&format!(
+        "    \"expires\": {},\n",
+        option_json(entry.lifecycle.expires.as_deref())
+    ));
+    out.push_str(&format!(
+        "    \"evidence_count\": {},\n",
+        entry.evidence.len()
+    ));
+    out.push_str("    \"selector\": ");
+    out.push_str(&render_selector_json(&entry.selector, "    "));
+    out.push_str(",\n");
+    out.push_str("    \"last_seen\": ");
+    out.push_str(&render_last_seen_json(entry.last_seen.as_ref(), "    "));
+    out.push_str("\n  },\n");
+    out.push_str("  \"selected_finding\": ");
+    out.push_str(&render_explain_finding_json(
+        selected_finding,
+        "selected",
+        "  ",
+    ));
+    out.push_str("\n}\n");
     out
 }
 
@@ -2268,6 +2383,90 @@ mod tests {
         assert!(finding_json.contains("\"path\": \"crates/parser/src/lib.rs\""));
         assert!(finding_json.contains("\"source_package\": \"parser\""));
         assert!(finding_json.contains("\"container\": \"parse\""));
+    }
+
+    #[test]
+    fn add_json_renderer_records_entry_and_selected_finding() {
+        let entry = AllowEntry {
+            id: "allow-add-json".to_string(),
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            path: Some(PathBuf::from("src\\lib.rs")),
+            glob: None,
+            owner: "parser".to_string(),
+            classification: "reviewed_exception".to_string(),
+            reason: "Parser validates input before unwrapping.".to_string(),
+            evidence: vec!["test:parser_validates_input".to_string()],
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle {
+                created: Some("2026-05-27".to_string()),
+                review_after: Some("2026-11-01".to_string()),
+                expires: Some("2027-01-01".to_string()),
+            },
+            selector: Selector {
+                ast_kind: Some("method_call".to_string()),
+                container: Some("parse_span".to_string()),
+                callee: Some("unwrap".to_string()),
+                macro_name: None,
+                lint: None,
+                symbol: Some("value.unwrap()".to_string()),
+                receiver_fingerprint: None,
+                target_fingerprint: None,
+                normalized_snippet_hash: Some("fnv1a64:add".to_string()),
+                line_hint: Some(42),
+                glob: None,
+            },
+            last_seen: Some(LastSeen {
+                line: 42,
+                column: 13,
+            }),
+        };
+        let mut identity = StructuralIdentity::new("rust", "method_call");
+        identity.crate_name = Some("parser".to_string());
+        identity.container = Some("parse_span".to_string());
+        identity.callee = Some("unwrap".to_string());
+        let finding = Finding {
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            path: PathBuf::from("src\\lib.rs"),
+            span: Some(Span {
+                line: 42,
+                column: 13,
+            }),
+            identity,
+            message: "unwrap call".to_string(),
+        };
+
+        let json = render_add_json(AddReport {
+            inventory: InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(52),
+            ),
+            entry: &entry,
+            selected_finding: &finding,
+            policy_output: Some("policy/allow.proposed.toml"),
+            force: true,
+        });
+
+        assert!(json.contains("\"schema_id\": \"cargo-allow.add.v1\""));
+        assert!(json.contains("\"command\": \"add\""));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
+        assert!(json.contains("\"files_scanned\": 52"));
+        assert!(json.contains("\"policy_output\": \"policy/allow.proposed.toml\""));
+        assert!(json.contains("\"force\": true"));
+        assert!(json.contains("\"entry_id\": \"allow-add-json\""));
+        assert!(json.contains("\"selected_finding\": \"src/lib.rs:42:13\""));
+        assert!(json.contains("\"human_review_required\": true"));
+        assert!(json.contains("\"id\": \"allow-add-json\""));
+        assert!(json.contains("\"path\": \"src/lib.rs\""));
+        assert!(json.contains("\"review_after\": \"2026-11-01\""));
+        assert!(json.contains("\"expires\": \"2027-01-01\""));
+        assert!(json.contains("\"evidence_count\": 1"));
+        assert!(json.contains("\"source_package\": \"parser\""));
+        assert!(json.contains("\"normalized_snippet_hash\": \"fnv1a64:add\""));
     }
 
     #[test]
