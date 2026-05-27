@@ -251,6 +251,8 @@ Completed:
   wildcard policy receipts directly.
 - Include evidence-reference counts in `list` output and filter missing-evidence
   entries for ledger evidence review.
+- Add `list --format json --output <path>` for machine-readable filtered ledger
+  snapshots with source-tree inventory context.
 - Implement dry-run-first stale pruning.
 - Support explicit `prune --stale --write` removal of stale entries while
   keeping dry-run as the default.
