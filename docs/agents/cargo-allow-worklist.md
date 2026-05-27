@@ -14,6 +14,9 @@ cargo-allow worklist --format json --output target/cargo-allow/worklist.json
 Choose one actionable work item with a clear proof path. Prefer small,
 low-overlap items such as stale allows, broken local evidence links, narrow
 missing-owner non-Rust entries, or baseline debt that can be removed cleanly.
+If a work item includes `source_package`, use it only as source-tree context for
+where to focus review; do not infer Cargo metadata, build success, or package
+test coverage from that field.
 
 Do not add suppressions just to silence cargo-allow.
 Do not broaden selectors, globs, occurrence limits, or expiry dates.
