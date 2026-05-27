@@ -1,4 +1,5 @@
 use super::{WorkItem, WorklistContext, WorklistFilters};
+use crate::source_syntax_inventory_context;
 
 pub(super) fn render_worklist_json_with_context(
     items: &[WorkItem],
@@ -48,7 +49,7 @@ pub(super) fn render_worklist_json_with_context(
             difficulty: context.filters.difficulty,
             missing_evidence: context.filters.missing_evidence,
         },
-        allow_report::InventoryContext::source_syntax(
+        source_syntax_inventory_context(
             context.inventory_source,
             context.source_tree_root,
             context.inventory_files,

@@ -1,5 +1,5 @@
 use super::{PruneCandidate, PruneContext};
-use crate::markdown_cell;
+use crate::{markdown_cell, source_syntax_inventory_context};
 use std::path::Path;
 
 pub(super) fn render_prune_stale_result(
@@ -77,7 +77,7 @@ pub(super) fn render_prune_stale_json(
             write_requested,
             written_path: written.as_deref(),
         },
-        allow_report::InventoryContext::source_syntax(
+        source_syntax_inventory_context(
             context.inventory_source,
             context.source_tree_root,
             context.inventory_files,
