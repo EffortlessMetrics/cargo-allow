@@ -13,6 +13,7 @@ use toml::Value;
 const LEGACY_POLICY_FILES: &[&str] = &[
     "non-rust-allowlist.toml",
     "generated-allowlist.toml",
+    "no-panic-allowlist.toml",
     "no-panic-baseline.toml",
     "clippy-exceptions.toml",
     "executable-allowlist.toml",
@@ -35,6 +36,12 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
     {
         let rules = parse_generated_rules(&table)?;
         return config_from_generated_rules(&table, &rules);
+    }
+    if let Some(table) = legacy_table(&text)?
+        && table.get("policy").and_then(Value::as_str) == Some("no-panic-allowlist")
+    {
+        let entries = parse_no_panic_allowlist_entries(&table)?;
+        return config_from_no_panic_allowlist_entries(&table, &entries);
     }
     if let Some(table) = legacy_table(&text)?
         && table.get("policy").and_then(Value::as_str) == Some("no-panic-baseline")
@@ -189,6 +196,23 @@ pub fn load_no_panic_baseline_compat_config(
     }
     let entries = parse_no_panic_baseline_entries(&table)?;
     config_from_no_panic_baseline_entries(&table, &entries)
+}
+
+pub fn load_no_panic_allowlist_compat_config(
+    path: impl AsRef<Path>,
+) -> CargoAllowResult<AllowConfig> {
+    let text = read_policy(path.as_ref())?;
+    let table = legacy_table(&text)?.ok_or_else(|| {
+        CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
+    })?;
+    if table.get("policy").and_then(Value::as_str) != Some("no-panic-allowlist") {
+        return Err(CargoAllowError::new(format!(
+            "{} is not a no-panic-allowlist policy",
+            path.as_ref().display()
+        )));
+    }
+    let entries = parse_no_panic_allowlist_entries(&table)?;
+    config_from_no_panic_allowlist_entries(&table, &entries)
 }
 
 pub fn load_clippy_exceptions_compat_config(
@@ -433,7 +457,7 @@ pub fn network_findings_from_config(cfg: &AllowConfig) -> Vec<Finding> {
 }
 
 pub fn migration_notes() -> &'static str {
-    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, no-panic-baseline, clippy-exceptions, executable, workflow, dependency-surface, process, and network allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; no-panic baseline migration emits count-limited baseline_debt entries; clippy-exceptions compat maps retained lint suppression entries to source-syntax lint_exception receipts and uses cargo-allow's Rust source scanner for current findings; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns; network compat validates retained network policy entries and does not scan source code or runtime traffic."
+    "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, no-panic-allowlist, no-panic-baseline, clippy-exceptions, executable, workflow, dependency-surface, process, and network allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; no-panic allowlist migration maps retained source exceptions to structural panic receipts and treats last_seen as a hint only; no-panic baseline migration emits count-limited baseline_debt entries; clippy-exceptions compat maps retained lint suppression entries to source-syntax lint_exception receipts and uses cargo-allow's Rust source scanner for current findings; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns; network compat validates retained network policy entries and does not scan source code or runtime traffic."
 }
 
 fn read_policy(path: &Path) -> CargoAllowResult<String> {
@@ -485,6 +509,25 @@ struct LegacyNoPanicBaselineEntry {
     selector_callee: String,
     snippet: String,
     count: u32,
+}
+
+#[derive(Debug, Clone)]
+struct LegacyNoPanicAllowEntry {
+    index: usize,
+    id: String,
+    path: String,
+    family: String,
+    selector_kind: String,
+    selector_callee: Option<String>,
+    selector_container: Option<String>,
+    owner: String,
+    classification: String,
+    reason: String,
+    created: Option<String>,
+    review_after: Option<String>,
+    expires: Option<String>,
+    line_hint: Option<u32>,
+    last_seen: Option<LastSeen>,
 }
 
 #[derive(Debug, Clone)]
@@ -653,7 +696,7 @@ fn parse_non_rust_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyNo
         (None, None) => String::new(),
     };
     Ok(LegacyNonRustRule {
-        id,
+        id: id.clone(),
         pattern,
         is_path,
         owner: string_field(table, "owner").unwrap_or_default(),
@@ -737,6 +780,64 @@ fn parse_no_panic_baseline_entry(
         selector_callee: required_string_field(table, "selector_callee", &context)?,
         snippet: required_string_field(table, "snippet", &context)?,
         count,
+    })
+}
+
+fn parse_no_panic_allowlist_entries(
+    table: &toml::Table,
+) -> CargoAllowResult<Vec<LegacyNoPanicAllowEntry>> {
+    let entries = table
+        .get("allow")
+        .and_then(Value::as_array)
+        .ok_or_else(|| CargoAllowError::new("no-panic-allowlist missing allow entries"))?;
+    entries
+        .iter()
+        .enumerate()
+        .map(|(index, entry)| parse_no_panic_allowlist_entry(index, entry))
+        .collect()
+}
+
+fn parse_no_panic_allowlist_entry(
+    index: usize,
+    entry: &Value,
+) -> CargoAllowResult<LegacyNoPanicAllowEntry> {
+    let table = entry.as_table().ok_or_else(|| {
+        CargoAllowError::new(format!("no-panic allow entry {index} is not a table"))
+    })?;
+    let id = string_field(table, "id").unwrap_or_else(|| format!("legacy-no-panic-{index:04}"));
+    let selector = table.get("selector").and_then(Value::as_table);
+    let last_seen_table = table.get("last_seen").and_then(Value::as_table);
+    let review_after = string_field(table, "review_after");
+    let expires = normalize_legacy_expires(string_field(table, "expires"))
+        .or_else(|| review_after.is_none().then(|| "2026-08-01".to_string()));
+    let last_seen = optional_last_seen(last_seen_table);
+    Ok(LegacyNoPanicAllowEntry {
+        index,
+        id: id.clone(),
+        path: required_string_field(table, "path", &id)?,
+        family: required_string_field(table, "family", &id)?,
+        selector_kind: selector
+            .and_then(|selector| {
+                string_field(selector, "kind").or_else(|| string_field(selector, "ast_kind"))
+            })
+            .ok_or_else(|| CargoAllowError::new(format!("{id} missing selector.kind")))?,
+        selector_callee: selector.and_then(|selector| string_field(selector, "callee")),
+        selector_container: selector.and_then(|selector| string_field(selector, "container")),
+        owner: string_field(table, "owner").unwrap_or_else(|| "unowned".to_string()),
+        classification: string_field(table, "classification")
+            .unwrap_or_else(|| "baseline_debt".to_string()),
+        reason: string_field(table, "reason")
+            .or_else(|| string_field(table, "explanation"))
+            .unwrap_or_else(|| {
+                "Generated from legacy no-panic allowlist; requires human review.".to_string()
+            }),
+        created: string_field(table, "created").or_else(|| Some("2026-05-26".to_string())),
+        review_after,
+        expires,
+        line_hint: selector
+            .and_then(|selector| optional_u32_field(selector, "line_hint"))
+            .or_else(|| last_seen.as_ref().map(|seen| seen.line)),
+        last_seen,
     })
 }
 
@@ -988,6 +1089,19 @@ fn config_from_no_panic_baseline_entries(
     Ok(cfg)
 }
 
+fn config_from_no_panic_allowlist_entries(
+    table: &toml::Table,
+    entries: &[LegacyNoPanicAllowEntry],
+) -> CargoAllowResult<AllowConfig> {
+    let mut cfg = base_config(table);
+    cfg.allow = entries
+        .iter()
+        .map(entry_from_no_panic_allow_entry)
+        .collect();
+    validate_policy(&cfg)?;
+    Ok(cfg)
+}
+
 fn config_from_clippy_rules(
     table: &toml::Table,
     rules: &[LegacyClippyRule],
@@ -1211,6 +1325,45 @@ fn entry_from_no_panic_baseline_entry(rule: &LegacyNoPanicBaselineEntry) -> Allo
             ..Selector::default()
         },
         last_seen: None,
+    }
+}
+
+fn entry_from_no_panic_allow_entry(rule: &LegacyNoPanicAllowEntry) -> AllowEntry {
+    let path = normalize_path(&rule.path);
+    let family = cargo_allow_panic_family(&rule.family);
+    let ast_kind = normalize_selector_kind(&rule.selector_kind);
+    AllowEntry {
+        id: rule.id.clone(),
+        kind: FindingKind::Panic,
+        family: Some(family.clone()),
+        path: Some(PathBuf::from(&path)),
+        glob: None,
+        owner: rule.owner.clone(),
+        classification: rule.classification.clone(),
+        reason: rule.reason.clone(),
+        evidence: vec![
+            "legacy_policy:no-panic-allowlist".to_string(),
+            format!("legacy_index:{}", rule.index),
+        ],
+        links: vec!["legacy-policy:no-panic-allowlist".to_string()],
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: rule.created.clone(),
+            review_after: rule.review_after.clone(),
+            expires: rule.expires.clone(),
+        },
+        selector: Selector {
+            ast_kind: Some(ast_kind.clone()),
+            container: rule.selector_container.clone(),
+            callee: (ast_kind == "method_call")
+                .then(|| no_panic_method_callee(&family, rule.selector_callee.as_deref())),
+            macro_name: (ast_kind == "macro_call")
+                .then(|| no_panic_macro_name(rule.selector_callee.as_deref().unwrap_or(&family))),
+            line_hint: rule.line_hint,
+            glob: Some(path),
+            ..Selector::default()
+        },
+        last_seen: rule.last_seen.clone(),
     }
 }
 
@@ -1709,6 +1862,19 @@ fn no_panic_macro_name(family: &str) -> String {
     }
 }
 
+fn no_panic_method_callee(family: &str, selector_callee: Option<&str>) -> String {
+    match selector_callee.map(str::trim) {
+        Some(callee) if callee.ends_with("unwrap") || callee.contains("::unwrap") => {
+            "unwrap".to_string()
+        }
+        Some(callee) if callee.ends_with("expect") || callee.contains("::expect") => {
+            "expect".to_string()
+        }
+        Some(callee) if !callee.is_empty() => callee.to_string(),
+        _ => family.to_string(),
+    }
+}
+
 fn dependency_entry_matches_path(entry: &AllowEntry, path: &Path) -> bool {
     entry
         .path
@@ -1865,6 +2031,22 @@ fn required_bool_field(table: &toml::Table, field: &str, context: &str) -> Cargo
         .get(field)
         .and_then(Value::as_bool)
         .ok_or_else(|| CargoAllowError::new(format!("{context} missing {field}")))
+}
+
+fn optional_u32_field(table: &toml::Table, field: &str) -> Option<u32> {
+    table
+        .get(field)
+        .and_then(Value::as_integer)
+        .filter(|value| *value > 0)
+        .and_then(|value| u32::try_from(value).ok())
+}
+
+fn optional_last_seen(table: Option<&toml::Table>) -> Option<LastSeen> {
+    let table = table?;
+    Some(LastSeen {
+        line: optional_u32_field(table, "line")?,
+        column: optional_u32_field(table, "column").unwrap_or(1),
+    })
 }
 
 fn has_glob_meta(input: &str) -> bool {
@@ -2135,6 +2317,106 @@ expires = "permanent"
                 .any(|outcome| outcome.status == allow_core::MatchStatus::New
                     && outcome.message.contains("occurrence_limit exceeded"))
         );
+    }
+
+    #[test]
+    fn migrates_no_panic_allowlist_to_structural_panic_entries() {
+        let policy = no_panic_allowlist_fixture_path();
+        let cfg = load_legacy_or_canonical(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("no-panic allowlist migrates: {err}"))
+        });
+
+        assert_eq!(cfg.policy, "cargo-allow");
+        assert_eq!(cfg.allow.len(), 2);
+        let unwrap = cfg
+            .allow
+            .iter()
+            .find(|entry| entry.id == "no-panic-unwrap")
+            .unwrap_or_else(|| std::panic::panic_any("expected unwrap allow entry"));
+        assert_eq!(unwrap.kind, FindingKind::Panic);
+        assert_eq!(unwrap.family.as_deref(), Some("unwrap"));
+        assert_eq!(unwrap.reason, "Parser validates the optional value.");
+        assert_eq!(unwrap.selector.ast_kind.as_deref(), Some("method_call"));
+        assert_eq!(unwrap.selector.callee.as_deref(), Some("unwrap"));
+        assert_eq!(unwrap.selector.container.as_deref(), Some("load"));
+        assert_eq!(unwrap.selector.line_hint, Some(7));
+        assert_eq!(
+            unwrap
+                .last_seen
+                .as_ref()
+                .map(|seen| (seen.line, seen.column)),
+            Some((7, 12))
+        );
+        assert_eq!(unwrap.lifecycle.review_after.as_deref(), Some("2026-09-09"));
+
+        let generated = cfg
+            .allow
+            .iter()
+            .find(|entry| entry.id.starts_with("legacy-no-panic-"))
+            .unwrap_or_else(|| std::panic::panic_any("expected generated no-panic entry"));
+        assert_eq!(generated.classification, "baseline_debt");
+        assert_eq!(generated.owner, "unowned");
+        assert_eq!(generated.selector.macro_name.as_deref(), Some("panic"));
+        assert_eq!(generated.lifecycle.expires.as_deref(), Some("2026-08-01"));
+    }
+
+    #[test]
+    fn no_panic_allowlist_compat_preserves_matched_new_and_stale_drift() {
+        let policy = no_panic_allowlist_fixture_path();
+        let cfg = load_no_panic_allowlist_compat_config(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("no-panic allowlist compat config loads: {err}"))
+        });
+
+        let mut finding = panic_finding(
+            "src/lib.rs",
+            "unwrap",
+            "method_call",
+            Some("unwrap"),
+            None,
+            "let value = maybe.unwrap();",
+        );
+        finding.identity.container = Some("load".to_string());
+        let matched = allow_match::evaluate(&cfg, &[finding], allow_match::CheckMode::NoNew);
+        assert!(
+            matched
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::Matched)
+        );
+
+        let missing_allow = allow_match::evaluate(
+            &cfg,
+            &[panic_finding(
+                "src/lib.rs",
+                "expect",
+                "method_call",
+                Some("expect"),
+                None,
+                "let value = maybe.expect(\"value\");",
+            )],
+            allow_match::CheckMode::NoNew,
+        );
+        assert!(
+            missing_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::New)
+        );
+
+        let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+        assert!(
+            stale_allow
+                .iter()
+                .any(|outcome| outcome.status == allow_core::MatchStatus::Stale)
+        );
+    }
+
+    #[test]
+    fn no_panic_allowlist_loader_requires_allowlist_policy() {
+        let policy = no_panic_baseline_fixture_path();
+
+        let err = load_no_panic_allowlist_compat_config(&policy)
+            .expect_err("baseline policy should not load as no-panic allowlist compat");
+
+        assert!(err.to_string().contains("not a no-panic-allowlist policy"));
     }
 
     #[test]
@@ -2884,6 +3166,13 @@ status = "advisory"
         path
     }
 
+    fn no_panic_allowlist_fixture_path() -> PathBuf {
+        let path = fixture_dir().join("no-panic-allowlist.toml");
+        fs::write(&path, no_panic_allowlist_fixture_text())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+        path
+    }
+
     fn clippy_policy_fixture_path() -> PathBuf {
         let path = fixture_dir().join("clippy-exceptions.toml");
         fs::write(&path, clippy_policy_fixture_text())
@@ -3119,6 +3408,43 @@ snippet = '{panic_snippet}'
 count = 1
 "#,
         )
+    }
+
+    fn no_panic_allowlist_fixture_text() -> String {
+        r#"schema_version = 1
+policy = "no-panic-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "no-panic-unwrap"
+path = "src/lib.rs"
+family = "unwrap"
+owner = "parser"
+classification = "reviewed_panic_exception"
+explanation = "Parser validates the optional value."
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "method-call"
+callee = "Option/Result::unwrap"
+container = "load"
+line_hint = 7
+
+[allow.last_seen]
+line = 7
+column = 12
+
+[[allow]]
+path = "src/lib.rs"
+family = "panic"
+
+[allow.selector]
+kind = "macro-call"
+callee = "panic"
+"#
+        .to_string()
     }
 
     fn clippy_policy_fixture_text() -> String {

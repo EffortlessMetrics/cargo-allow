@@ -129,12 +129,26 @@ network policy entries and reports them as matched
 `policy_exception.network_destination` entries. It does not scan source code,
 workflow logs, or runtime traffic for outbound network discovery.
 
+No-panic allowlist migration is available for legacy
+`policy/no-panic-allowlist.toml` files:
+
+```bash
+cargo-allow check --compat --kind no-panic-allowlist
+cargo-allow migrate --from policy/no-panic-allowlist.toml --out target/no-panic.allow.toml
+```
+
+Compat maps retained panic-family entries to canonical `panic` receipts.
+Legacy `explanation` fields become `reason`, `selector.kind` becomes
+`selector.ast_kind`, and `last_seen` line/column values remain hints only. It
+does not run Cargo, rustc, Clippy, macro expansion, type analysis, control
+flow, or data flow.
+
 No-panic baseline migration is available for shiplog-style
 `policy/no-panic-baseline.toml`:
 
 ```bash
 cargo-allow check --compat --kind panic
-cargo-allow migrate --from policy/no-panic-baseline.toml --out target/no-panic.allow.toml
+cargo-allow migrate --from policy/no-panic-baseline.toml --out target/no-panic-baseline.allow.toml
 ```
 
 Compat check loads the generated baseline and compares it with current
@@ -207,7 +221,7 @@ not source-code or runtime discovery.
 
 Compatibility adapters may support:
 
-- `policy/no-panic-allowlist.toml`
+- `policy/no-panic-allowlist.toml` (initial legacy allowlist adapter exists)
 - `policy/no-panic-baseline.toml` (initial generated baseline adapter exists)
 - `policy/non-rust-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/generated-allowlist.toml` (initial shiplog-style adapter exists)
