@@ -198,6 +198,9 @@ struct ListArgs {
     /// Filter allow entries by kind.
     #[arg(long)]
     kind: Option<String>,
+    /// Filter allow entries by scanner or policy family.
+    #[arg(long)]
+    family: Option<String>,
     /// Filter allow entries by owner.
     #[arg(long)]
     owner: Option<String>,
@@ -1106,6 +1109,7 @@ fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
     let rows = list_rows(&cfg, &findings, &outcomes);
     let filters = ListFilters {
         kind: parsed_filter,
+        family: args.family.as_deref(),
         owner: args.owner.as_deref(),
         classification: args.classification.as_deref(),
         path: args.path.as_deref(),
@@ -1139,6 +1143,7 @@ struct ListRow {
 #[derive(Debug, Clone, Copy)]
 struct ListFilters<'a> {
     kind: Option<KindFilter>,
+    family: Option<&'a str>,
     owner: Option<&'a str>,
     classification: Option<&'a str>,
     path: Option<&'a str>,
@@ -1264,6 +1269,11 @@ fn render_list_rows(rows: &[ListRow], filters: &ListFilters<'_>) -> String {
 fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
     if let Some(kind) = filters.kind {
         if row.kind != kind.kind || !kind.family.matches(row.family.as_deref()) {
+            return false;
+        }
+    }
+    if let Some(family) = filters.family {
+        if row.family.as_deref() != Some(family) {
             return false;
         }
     }
@@ -3971,6 +3981,8 @@ mod tests {
             "list",
             "--kind",
             "unsafe",
+            "--family",
+            "unsafe_fn",
             "--owner",
             "runtime",
             "--classification",
@@ -3993,6 +4005,7 @@ mod tests {
             parsed.command,
             Some(CargoAllowCommand::List(ListArgs {
                 kind: Some(kind),
+                family: Some(family),
                 owner: Some(owner),
                 classification: Some(classification),
                 path: Some(path),
@@ -4005,6 +4018,7 @@ mod tests {
                 include_untracked: true,
                 ..
             })) if kind == "unsafe"
+                && family == "unsafe_fn"
                 && owner == "runtime"
                 && classification == "baseline_debt"
                 && path == "crates/allow-core"
@@ -4292,6 +4306,7 @@ mod tests {
             kind: Some(parse_kind_filter("unsafe").unwrap_or_else(|err| {
                 std::panic::panic_any(format!("kind filter should parse: {err}"))
             })),
+            family: None,
             owner: Some("runtime"),
             classification: Some("baseline_debt"),
             path: None,
@@ -4328,6 +4343,7 @@ mod tests {
         ];
         let filters = ListFilters {
             kind: None,
+            family: None,
             owner: None,
             classification: Some("reviewed_exception"),
             path: None,
@@ -4355,6 +4371,7 @@ mod tests {
         let rows = vec![allow_core, allow_rust];
         let filters = ListFilters {
             kind: None,
+            family: None,
             owner: None,
             classification: None,
             path: None,
@@ -4370,6 +4387,38 @@ mod tests {
 
         assert!(text.contains("allow-core"));
         assert!(!text.contains("allow-rust"));
+    }
+
+    #[test]
+    fn render_list_rows_filters_family() {
+        let mut indexing = list_row("allow-index", FindingKind::Panic, "parser", "baseline_debt");
+        indexing.family = Some("indexing".to_string());
+        let mut unwrap = list_row(
+            "allow-unwrap",
+            FindingKind::Panic,
+            "parser",
+            "baseline_debt",
+        );
+        unwrap.family = Some("unwrap".to_string());
+        let rows = vec![indexing, unwrap];
+        let filters = ListFilters {
+            kind: None,
+            family: Some("unwrap"),
+            owner: None,
+            classification: None,
+            path: None,
+            source_package: None,
+            status: None,
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(!text.contains("allow-index"));
+        assert!(text.contains("allow-unwrap"));
     }
 
     #[test]
@@ -4391,6 +4440,7 @@ mod tests {
         let rows = vec![baseline, stale];
         let filters = ListFilters {
             kind: None,
+            family: None,
             owner: None,
             classification: None,
             path: None,
@@ -4424,6 +4474,7 @@ mod tests {
         let rows = vec![allow_core, broad, allow_rust];
         let filters = ListFilters {
             kind: None,
+            family: None,
             owner: None,
             classification: None,
             path: Some(r"crates\allow-core"),
