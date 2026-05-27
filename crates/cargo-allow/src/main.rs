@@ -2337,6 +2337,9 @@ fn render_worklist_human_with_context(items: &[WorkItem], context: WorklistConte
         }
         out.push_str(&format!("  status: {}\n", item.status.as_str()));
         out.push_str(&format!("  message: {}\n", item.message));
+        for action in item.suggested_actions.iter().take(2) {
+            out.push_str(&format!("  action: {action}\n"));
+        }
         if let Some(command) = item.proof_commands.first() {
             out.push_str(&format!("  proof: {command}\n"));
         }
@@ -4151,6 +4154,7 @@ mod tests {
         );
         assert!(text.contains("work-new-unreceipted-finding-0001"));
         assert!(text.contains("exception: unsafe.unsafe_fn"));
+        assert!(text.contains("action: remove the new source exception if it is accidental"));
         assert!(text.contains("Difficulty:"));
         assert!(text.contains("  medium    1"));
     }

@@ -216,6 +216,9 @@ and difficulty counts, and the artifact records the source-tree inventory
 source, root, and `files_scanned` count when available. `source_package` fields
 are scanner-provided context only; they are not Cargo metadata or
 build-membership proof.
+
+The human worklist output includes the same first-step suggested actions so a
+maintainer can triage the queue without switching to JSON.
 It is a routing surface, not an auto-fix plan: agents and humans should fix,
 prove, narrow, or remove the exception instead of adding suppressions just to
 silence cargo-allow.
