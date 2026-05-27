@@ -246,10 +246,10 @@ Goal: make cargo-allow installable, understandable, and publishable.
 Completed:
 
 - Public README.
+- Examples.
 
 Planned work:
 
-- Examples.
 - crates.io metadata.
 - 0.1.0 dry-run.
 - 0.1.0 publish.

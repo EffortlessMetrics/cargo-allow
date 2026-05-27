@@ -968,3 +968,25 @@ glob = "docs/agents/cargo-allow-worklist.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0090"
+kind = "non_rust_file"
+family = "documentation"
+path = "examples/README.md"
+owner = "core/docs"
+classification = "product_examples"
+reason = "Documents copyable source-tree policy examples for public users."
+created = "2026-05-27"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "examples/README.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "examples/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1

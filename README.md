@@ -183,4 +183,5 @@ cargo-allow doctor
 - [Source exception ledger](docs/source-exception-ledger.md)
 - [Migration from xtask](docs/migration-from-xtask.md)
 - [CI examples](docs/ci.md)
+- [Examples](examples/README.md)
 - [Agent worklist prompt](docs/agents/cargo-allow-worklist.md)
