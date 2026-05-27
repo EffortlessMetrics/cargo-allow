@@ -323,6 +323,23 @@ struct WorklistArgs {
     /// Filter work items by queue item kind, such as stale_allow or baseline_debt.
     #[arg(long)]
     item_kind: Option<String>,
+    /// Filter work items by match status.
+    #[arg(
+        long,
+        value_parser = [
+            "matched",
+            "new",
+            "stale",
+            "expired",
+            "review_due",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "evidence_missing",
+            "baseline_debt"
+        ]
+    )]
+    status: Option<String>,
     /// Filter work items by durable allow entry ID.
     #[arg(long)]
     allow_id: Option<String>,
@@ -1815,6 +1832,7 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         kind: args.kind.as_deref(),
         family: args.family.as_deref(),
         item_kind: args.item_kind.as_deref(),
+        status: args.status.as_deref(),
         allow_id: args.allow_id.as_deref(),
         source_package: args.source_package.as_deref(),
         owner: args.owner.as_deref(),
@@ -1882,6 +1900,7 @@ struct WorklistFilters<'a> {
     kind: Option<&'a str>,
     family: Option<&'a str>,
     item_kind: Option<&'a str>,
+    status: Option<&'a str>,
     allow_id: Option<&'a str>,
     source_package: Option<&'a str>,
     owner: Option<&'a str>,
@@ -1925,6 +1944,10 @@ fn filter_work_items(items: Vec<WorkItem>, filters: WorklistFilters<'_>) -> Vec<
                 && filters
                     .item_kind
                     .map(|item_kind| item.kind == item_kind)
+                    .unwrap_or(true)
+                && filters
+                    .status
+                    .map(|status| item.status.as_str() == status)
                     .unwrap_or(true)
                 && filters
                     .allow_id
@@ -2710,6 +2733,10 @@ fn worklist_filters_json(filters: WorklistFilters<'_>, indent: &str) -> String {
         option_json_string(filters.item_kind)
     ));
     out.push_str(&format!(
+        "{indent}  \"status\": {},\n",
+        option_json_string(filters.status)
+    ));
+    out.push_str(&format!(
         "{indent}  \"allow_id\": {},\n",
         option_json_string(filters.allow_id)
     ));
@@ -2747,6 +2774,9 @@ fn worklist_filters_human(filters: WorklistFilters<'_>) -> String {
     }
     if let Some(item_kind) = filters.item_kind {
         parts.push(format!("item_kind={item_kind}"));
+    }
+    if let Some(status) = filters.status {
+        parts.push(format!("status={status}"));
     }
     if let Some(allow_id) = filters.allow_id {
         parts.push(format!("allow_id={allow_id}"));
@@ -4622,6 +4652,8 @@ mod tests {
             "unsafe_fn",
             "--item-kind",
             "baseline_debt",
+            "--status",
+            "baseline_debt",
             "--allow-id",
             "allow-0001",
             "--source-package",
@@ -4649,6 +4681,7 @@ mod tests {
                 kind: Some(kind),
                 family: Some(family),
                 item_kind: Some(item_kind),
+                status: Some(status),
                 allow_id: Some(allow_id),
                 source_package: Some(source_package),
                 owner: Some(owner),
@@ -4661,6 +4694,7 @@ mod tests {
             })) if kind == "unsafe"
                 && family == "unsafe_fn"
                 && item_kind == "baseline_debt"
+                && status == "baseline_debt"
                 && allow_id == "allow-0001"
                 && source_package == "allow-core"
                 && owner == "runtime"
@@ -4869,6 +4903,7 @@ mod tests {
         assert!(schema.contains("\"filters\""));
         assert!(schema.contains("\"family\""));
         assert!(schema.contains("\"item_kind\""));
+        assert!(schema.contains("\"status\""));
         assert!(schema.contains("\"allow_id\""));
         assert!(schema.contains("\"source_package\""));
         assert!(schema.contains("\"inventory\""));
@@ -4916,6 +4951,7 @@ mod tests {
                 kind: Some("unsafe"),
                 family: Some("unsafe_fn"),
                 item_kind: Some("baseline_debt"),
+                status: Some("baseline_debt"),
                 allow_id: Some("allow-0001"),
                 source_package: Some("allow-core"),
                 owner: Some("runtime"),
@@ -4932,6 +4968,7 @@ mod tests {
         assert!(json.contains("\"kind\": \"unsafe\""));
         assert!(json.contains("\"family\": \"unsafe_fn\""));
         assert!(json.contains("\"item_kind\": \"baseline_debt\""));
+        assert!(json.contains("\"status\": \"baseline_debt\""));
         assert!(json.contains("\"allow_id\": \"allow-0001\""));
         assert!(json.contains("\"source_package\": \"allow-core\""));
         assert!(json.contains("\"owner\": \"runtime\""));
@@ -4939,7 +4976,7 @@ mod tests {
         assert!(json.contains("\"risk\": \"high\""));
         assert!(json.contains("\"difficulty\": \"medium\""));
         assert!(human.contains(
-            "Filters: kind=unsafe, family=unsafe_fn, item_kind=baseline_debt, allow_id=allow-0001, source_package=allow-core, owner=runtime, classification=baseline_debt, risk=high, difficulty=medium"
+            "Filters: kind=unsafe, family=unsafe_fn, item_kind=baseline_debt, status=baseline_debt, allow_id=allow-0001, source_package=allow-core, owner=runtime, classification=baseline_debt, risk=high, difficulty=medium"
         ));
     }
 
@@ -5300,6 +5337,44 @@ mod tests {
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
         assert_eq!(item.kind, "stale_allow");
+        assert_eq!(item.allow_id.as_deref(), Some("allow-stale"));
+    }
+
+    #[test]
+    fn worklist_filters_by_status() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow
+            .push(test_entry("allow-stale", FindingKind::NonRustFile));
+        let findings = vec![test_finding(
+            FindingKind::Panic,
+            Some("unwrap"),
+            "src/lib.rs",
+            "method_call",
+        )];
+        let outcomes = vec![
+            test_outcome(MatchStatus::New, None, Some(0), "unreceipted panic.unwrap"),
+            test_outcome(
+                MatchStatus::Stale,
+                Some("allow-stale"),
+                None,
+                "allow-stale is stale",
+            ),
+        ];
+
+        let items = work_items_from_outcomes(&cfg, &findings, &outcomes);
+        let filtered = filter_work_items(
+            items,
+            WorklistFilters {
+                status: Some("stale"),
+                ..WorklistFilters::default()
+            },
+        );
+
+        assert_eq!(filtered.len(), 1);
+        let item = filtered
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
+        assert_eq!(item.status, MatchStatus::Stale);
         assert_eq!(item.allow_id.as_deref(), Some("allow-stale"));
     }
 

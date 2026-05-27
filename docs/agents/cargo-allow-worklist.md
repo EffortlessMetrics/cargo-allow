@@ -22,6 +22,8 @@ Use `--family <family>` for scanner-family slices such as `unwrap`, `indexing`,
 `unsafe_fn`, or `ci_declarative`.
 Use `--item-kind <kind>` for queue-type slices such as `stale_allow`,
 `baseline_debt`, `broad_scope`, or `broken_evidence_link`.
+Use `--status <status>` for match-status slices such as `new`, `stale`,
+`expired`, `review_due`, or `baseline_debt`.
 Use `--allow-id <id>` when the assignment is tied to one durable policy entry.
 Use `--source-package <name>` to focus a source-tree package context already
 reported by the scanner; do not treat that as Cargo metadata or build proof.
