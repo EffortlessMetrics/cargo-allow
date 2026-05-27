@@ -71,9 +71,9 @@ Line numbers are hints. They are not durable identity.
 
 `allow-rust` also has a tree-sitter Rust parser foundation. It can parse source
 files and report syntax errors without compiling the repository, running
-repository build scripts, expanding proc macros, or loading Cargo metadata. The
-active scanners remain line-oriented until later PRs replace each lane with
-syntax-tree walks.
+repository build scripts, expanding proc macros, or loading Cargo metadata.
+Current Rust scanner lanes use source syntax facts for syntax-visible exception
+surfaces, but they do not parse macro token-tree contents as Rust expressions.
 
 Inventory follows the source-tree boundary: explicit `--root`, nearest git root,
 then current directory. Cargo manifests and lockfiles are scanned as files, not
