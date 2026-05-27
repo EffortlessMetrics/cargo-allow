@@ -226,8 +226,11 @@ pub enum PolicyChangeKind {
     ReviewAfterShortened,
     EvidenceAdded,
     EvidenceRemoved,
+    OwnerAdded,
     OwnerRemoved,
+    ReasonAdded,
     ReasonRemoved,
+    ClassificationAdded,
     ClassificationRemoved,
     OccurrenceLimitTightened,
     OccurrenceLimitLoosened,
@@ -248,8 +251,11 @@ impl PolicyChangeKind {
             Self::ReviewAfterShortened => "review_after_shortened",
             Self::EvidenceAdded => "evidence_added",
             Self::EvidenceRemoved => "evidence_removed",
+            Self::OwnerAdded => "owner_added",
             Self::OwnerRemoved => "owner_removed",
+            Self::ReasonAdded => "reason_added",
             Self::ReasonRemoved => "reason_removed",
+            Self::ClassificationAdded => "classification_added",
             Self::ClassificationRemoved => "classification_removed",
             Self::OccurrenceLimitTightened => "occurrence_limit_tightened",
             Self::OccurrenceLimitLoosened => "occurrence_limit_loosened",
@@ -493,6 +499,14 @@ fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<PolicyChang
             "owner removed",
         ));
     }
+    if added_required_text(&base.owner, &head.owner) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::OwnerAdded,
+            PolicyChangeSeverity::Improvement,
+            "owner added",
+        ));
+    }
     if removed_required_text(&base.reason, &head.reason) {
         changes.push(change(
             head,
@@ -501,12 +515,28 @@ fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<PolicyChang
             "reason removed",
         ));
     }
+    if added_required_text(&base.reason, &head.reason) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::ReasonAdded,
+            PolicyChangeSeverity::Improvement,
+            "reason added",
+        ));
+    }
     if removed_required_text(&base.classification, &head.classification) {
         changes.push(change(
             head,
             PolicyChangeKind::ClassificationRemoved,
             PolicyChangeSeverity::Fail,
             "classification removed",
+        ));
+    }
+    if added_required_text(&base.classification, &head.classification) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::ClassificationAdded,
+            PolicyChangeSeverity::Improvement,
+            "classification added",
         ));
     }
     if occurrence_limit_loosened(base.occurrence_limit, head.occurrence_limit) {
@@ -678,6 +708,10 @@ fn added_values(base: &[String], head: &[String]) -> bool {
 
 fn removed_required_text(base: &str, head: &str) -> bool {
     !base.trim().is_empty() && head.trim().is_empty()
+}
+
+fn added_required_text(base: &str, head: &str) -> bool {
+    base.trim().is_empty() && !head.trim().is_empty()
 }
 
 fn occurrence_limit_loosened(base: Option<u32>, head: Option<u32>) -> bool {
@@ -956,6 +990,31 @@ mod tests {
                 .iter()
                 .any(|change| change.kind == PolicyChangeKind::OccurrenceLimitLoosened)
         );
+    }
+
+    #[test]
+    fn detects_required_metadata_added_as_improvement() {
+        let mut base_entry = entry("allow-1");
+        base_entry.owner.clear();
+        base_entry.reason.clear();
+        base_entry.classification.clear();
+        let base = config_with(base_entry);
+        let head = config_with(entry("allow-1"));
+
+        let changes = policy_changes(&base, &head);
+
+        assert!(changes.iter().any(|change| {
+            change.kind == PolicyChangeKind::OwnerAdded
+                && change.severity == PolicyChangeSeverity::Improvement
+        }));
+        assert!(changes.iter().any(|change| {
+            change.kind == PolicyChangeKind::ReasonAdded
+                && change.severity == PolicyChangeSeverity::Improvement
+        }));
+        assert!(changes.iter().any(|change| {
+            change.kind == PolicyChangeKind::ClassificationAdded
+                && change.severity == PolicyChangeSeverity::Improvement
+        }));
     }
 
     #[test]

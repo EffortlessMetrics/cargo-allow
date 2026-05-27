@@ -33,6 +33,9 @@ Each retained exception should have:
 - `[allow.selector]`: structural selector.
 - `[allow.last_seen]`: review hint only.
 
+Diff mode reports owner, reason, or classification removals as policy weakening
+and additions of those required metadata fields as policy improvements.
+
 ## Reason And Evidence
 
 `reason` is the human rationale.

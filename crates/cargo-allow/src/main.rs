@@ -3789,6 +3789,9 @@ mod tests {
         assert!(schema.contains("\"evidence_added\""));
         assert!(schema.contains("\"expiry_shortened\""));
         assert!(schema.contains("\"review_after_shortened\""));
+        assert!(schema.contains("\"owner_added\""));
+        assert!(schema.contains("\"reason_added\""));
+        assert!(schema.contains("\"classification_added\""));
         assert!(schema.contains("\"occurrence_limit_tightened\""));
         assert!(schema.contains("\"policy_improvements\""));
     }

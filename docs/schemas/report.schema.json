@@ -474,8 +474,11 @@
             "review_after_shortened",
             "evidence_added",
             "evidence_removed",
+            "owner_added",
             "owner_removed",
+            "reason_added",
             "reason_removed",
+            "classification_added",
             "classification_removed",
             "occurrence_limit_tightened",
             "occurrence_limit_loosened"
