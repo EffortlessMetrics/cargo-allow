@@ -169,6 +169,21 @@ cargo-allow diff --base origin/main \
   --output target/cargo-allow/pr-summary.md
 ```
 
+The mainline lane should publish the full local artifact set under
+`target/cargo-allow/`:
+
+```bash
+cargo-allow audit --format json --output target/cargo-allow/audit.json
+cargo-allow audit --format html --output target/cargo-allow/audit.html
+cargo-allow check --mode no-new \
+  --format markdown \
+  --receipt target/cargo-allow/check.receipt.json \
+  --output target/cargo-allow/check.md
+cargo-allow check --mode no-new \
+  --format sarif \
+  --output target/cargo-allow/check.sarif
+```
+
 ## Agent Worklist
 
 Use worklists to route cleanup work without asking agents to invent scope:

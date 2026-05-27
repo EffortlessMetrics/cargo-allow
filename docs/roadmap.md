@@ -219,6 +219,8 @@ Completed:
   is visible in PR summaries and structured JSON.
 - Add GitHub Actions examples for PR posture diff and mainline no-new check
   workflows.
+- Align the mainline GitHub Actions example with the documented local artifact
+  set: JSON audit, HTML audit, Markdown check/receipt, and SARIF check output.
 
 ## Phase 9: Human UX Commands
 
