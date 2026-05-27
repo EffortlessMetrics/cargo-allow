@@ -205,9 +205,9 @@ analysis, build output, control-flow analysis, or data-flow analysis.
 `cargo-allow list` shows allow entries with current status, match count, kind,
 family, owner, classification, scope, scanner-provided source package context,
 lifecycle dates, and reason. It supports maintenance filters such as `--kind`,
-`--owner`, `--classification`, `--path`, `--source-package`, `--expired`,
-`--review-due`, `--stale`, and `--baseline-debt`. Path filtering uses
-normalized source-tree paths and includes broad glob scopes that cover the
+`--owner`, `--classification`, `--path`, `--source-package`, `--status`,
+`--expired`, `--review-due`, `--stale`, and `--baseline-debt`. Path filtering
+uses normalized source-tree paths and includes broad glob scopes that cover the
 selected path. Stale status is computed from current source-syntax findings;
 line and column hints are not identity.
 

@@ -243,6 +243,8 @@ Completed:
   treating that context as Cargo metadata or build proof.
 - Filter `list` output by source-tree path so maintainers can inspect policy
   entries for one file or subtree.
+- Filter `list` output by current match status so maintainers can browse any
+  ledger status without relying only on shortcut flags.
 - Implement dry-run-first stale pruning.
 - Support explicit `prune --stale --write` removal of stale entries while
   keeping dry-run as the default.
