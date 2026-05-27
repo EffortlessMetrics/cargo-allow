@@ -13,6 +13,7 @@ macro-expansion, or proof-level coverage.
 | Filtered ledger list | `cargo-allow.list.v1` | `cargo-allow list --format json` |
 | Stale prune preview/result | `cargo-allow.prune.v1` | `cargo-allow prune --stale --format json` |
 | Baseline proposal summary | `cargo-allow.propose.v1` | `cargo-allow propose --summary-format json` |
+| Single-entry add summary | `cargo-allow.add.v1` | `cargo-allow add --summary-format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
 
 ## Files
@@ -24,6 +25,7 @@ macro-expansion, or proof-level coverage.
 - [list.schema.json](list.schema.json)
 - [prune.schema.json](prune.schema.json)
 - [propose.schema.json](propose.schema.json)
+- [add.schema.json](add.schema.json)
 - [worklist.schema.json](worklist.schema.json)
 
 ## Contract Status
@@ -58,7 +60,7 @@ covered by their individual schema files. Consumers should branch on
 ## Compatibility Coverage
 
 The test suite parses the current report, receipt, diff, list, explain,
-worklist, prune, propose, and doctor JSON renderers as JSON and checks the
+worklist, prune, propose, add, and doctor JSON renderers as JSON and checks the
 shared v1 source-tree contract fields. That protects the artifact root shape
 from accidental manual-rendering drift.
 
@@ -76,6 +78,7 @@ Use JSON artifacts for automation:
 - `list` and `explain` for policy lookup and interactive tooling.
 - `doctor` for setup diagnostics before wider scans.
 - `propose` for generated-baseline review.
+- `add` for one finding-to-policy-entry proposal summary.
 - `prune` for stale-entry cleanup previews or write receipts.
 
 Do not parse human, Markdown, SARIF, or HTML output as the primary contract when

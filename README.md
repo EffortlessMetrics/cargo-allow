@@ -186,6 +186,14 @@ cargo-allow worklist --broad-scope --format human
 cargo-allow worklist --missing-evidence --format human
 cargo-allow prune --stale --dry-run
 cargo-allow prune --stale --format json --output target/cargo-allow/prune.json
+cargo-allow add \
+  --kind panic \
+  --path crates/foo/src/lib.rs \
+  --line 42 \
+  --owner parser \
+  --reason "Parser validates range before slicing" \
+  --summary-format json \
+  --summary-output target/cargo-allow/add.json
 cargo-allow propose --write policy/allow.proposed.toml
 cargo-allow propose --write policy/allow.proposed.toml \
   --summary-format json \
@@ -221,5 +229,6 @@ cargo-allow doctor --format json --output target/cargo-allow/doctor.json
 - [Examples](examples/README.md)
 - [Agent worklist prompt](docs/agents/cargo-allow-worklist.md)
 - [JSON schema index](docs/schemas/README.md)
+- [Add JSON schema](docs/schemas/add.schema.json)
 - [Explain JSON schema](docs/schemas/explain.schema.json)
 - [List JSON schema](docs/schemas/list.schema.json)

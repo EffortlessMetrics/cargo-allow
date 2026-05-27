@@ -283,6 +283,9 @@ Completed:
   summaries.
 - Add allow entries from current findings with structural selectors and
   fail-closed nearest-finding selection.
+- Add `add --summary-format json --summary-output <path>` for machine-readable
+  single-entry add summaries while keeping policy output as TOML.
+- Publish a versioned `cargo-allow.add.v1` JSON schema for saved add summaries.
 
 Planned work:
 
