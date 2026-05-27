@@ -1271,7 +1271,7 @@ fn render_explain_entry(
             ));
         }
     }
-    out.push_str("\nclaim boundary: source syntax only; macro expansion and type information were not analyzed.");
+    out.push_str("\nclaim boundary: source syntax only; macro expansion, macro token-tree contents, and type information were not analyzed.");
     out
 }
 
@@ -1722,7 +1722,7 @@ fn render_worklist_json(items: &[WorkItem]) -> String {
     out.push_str("  \"schema_id\": \"cargo-allow.worklist.v1\",\n");
     out.push_str("  \"tool\": \"cargo-allow\",\n");
     out.push_str("  \"command\": \"worklist\",\n");
-    out.push_str("  \"claim_boundary\": [\"source_syntax_only\", \"macro_expansion_not_analyzed\", \"type_information_not_analyzed\"],\n");
+    out.push_str("  \"claim_boundary\": [\"source_syntax_only\", \"macro_expansion_not_analyzed\", \"macro_token_tree_contents_not_analyzed\", \"type_information_not_analyzed\"],\n");
     out.push_str("  \"summary\": {\n");
     out.push_str(&format!("    \"work_items\": {},\n", items.len()));
     out.push_str(&format!("    \"high\": {},\n", risk_count(items, "high")));
@@ -1812,7 +1812,7 @@ fn render_worklist_human(items: &[WorkItem]) -> String {
             out.push_str(&format!("  proof: {command}\n"));
         }
     }
-    out.push_str("\nClaim boundary: source syntax only; macro expansion and type information were not analyzed.\n");
+    out.push_str("\nClaim boundary: source syntax only; macro expansion, macro token-tree contents, and type information were not analyzed.\n");
     out
 }
 
@@ -2005,7 +2005,7 @@ fn cmd_doctor(args: &ConfigArgs) -> CargoAllowResult<()> {
     let files = inventory_files(&root, &opts)?;
     println!("tracked/scanned files: {}", files.len());
     println!(
-        "claim boundary: source syntax only; macro expansion and type information are not analyzed"
+        "claim boundary: source syntax only; macro expansion, macro token-tree contents, and type information are not analyzed"
     );
     Ok(())
 }
