@@ -1,6 +1,6 @@
 use allow_core::{
     AllowEntry, CargoAllowResult, Finding, FindingKind, LastSeen, Lifecycle, MatchStatus,
-    json_escape,
+    SimpleDate, json_escape,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::render_policy;
@@ -252,7 +252,7 @@ fn entry_from_finding(finding: &Finding, index: usize, expires: &str) -> AllowEn
         links: Vec::new(),
         occurrence_limit: None,
         lifecycle: Lifecycle {
-            created: Some("2026-05-26".to_string()),
+            created: Some(SimpleDate::today_utc_approx().to_string()),
             review_after: None,
             expires: Some(expires.to_string()),
         },
@@ -285,6 +285,7 @@ pub(crate) fn sample_propose_json_for_contract_test() -> String {
 mod tests {
     use super::*;
     use crate::{CargoAllowCli, CargoAllowCommand};
+    use allow_core::{Span, StructuralIdentity};
     use clap::Parser;
     use std::path::Path;
 
@@ -356,6 +357,35 @@ mod tests {
         assert!(json.contains("\"owner\": \"unowned\""));
         assert!(json.contains("\"classification\": \"baseline_debt\""));
         assert!(json.contains("\"repository_code_not_executed\""));
+    }
+
+    #[test]
+    fn proposed_baseline_entry_uses_current_created_date() {
+        let before = SimpleDate::today_utc_approx();
+        let entry = entry_from_finding(
+            &Finding {
+                kind: FindingKind::Panic,
+                family: Some("unwrap".to_string()),
+                path: "src/lib.rs".into(),
+                span: Some(Span { line: 1, column: 1 }),
+                identity: StructuralIdentity::new("rust", "method_call"),
+                message: "test finding".to_string(),
+            },
+            1,
+            "2026-08-01",
+        );
+        let after = SimpleDate::today_utc_approx();
+        let created = entry
+            .lifecycle
+            .created
+            .as_deref()
+            .and_then(SimpleDate::parse)
+            .unwrap_or_else(|| std::panic::panic_any("entry should have a valid created date"));
+
+        assert!(
+            before <= created && created <= after,
+            "generated baseline entries should use the current UTC date"
+        );
     }
 
     #[test]

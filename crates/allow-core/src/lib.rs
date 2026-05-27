@@ -1,6 +1,7 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const STRUCTURAL_IDENTITY_SCHEMA_ID: &str = "cargo-allow.structural-identity.v1";
 
@@ -67,14 +68,34 @@ impl SimpleDate {
         era * 146_097 + day_of_era - 719_468
     }
 
-    pub fn today_utc_approx() -> Self {
-        // Cargo-allow should later use a real date crate. The MVP avoids external dependencies.
-        // Current artifact generation date; good enough for deterministic fixture tests.
-        Self {
-            year: 2026,
-            month: 5,
-            day: 26,
+    fn from_days_since_unix_epoch(days: i64) -> Self {
+        // Inverse of the civil date algorithm above.
+        let z = days + 719_468;
+        let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+        let day_of_era = z - era * 146_097;
+        let year_of_era =
+            (day_of_era - day_of_era / 1460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+        let mut year = year_of_era + era * 400;
+        let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+        let month_prime = (5 * day_of_year + 2) / 153;
+        let day = day_of_year - (153 * month_prime + 2) / 5 + 1;
+        let month = month_prime + if month_prime < 10 { 3 } else { -9 };
+        if month <= 2 {
+            year += 1;
         }
+        Self {
+            year: year as i32,
+            month: month as u32,
+            day: day as u32,
+        }
+    }
+
+    pub fn today_utc_approx() -> Self {
+        let seconds = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_secs())
+            .unwrap_or(0);
+        Self::from_days_since_unix_epoch((seconds / 86_400) as i64)
     }
 }
 
@@ -776,5 +797,41 @@ mod tests {
             .unwrap_or_else(|| std::panic::panic_any("valid end date"));
 
         assert_eq!(start.days_until(end), 67);
+    }
+
+    #[test]
+    fn simple_date_converts_unix_epoch_days() {
+        assert_eq!(
+            SimpleDate::from_days_since_unix_epoch(0).to_string(),
+            "1970-01-01"
+        );
+        assert_eq!(
+            SimpleDate::from_days_since_unix_epoch(
+                SimpleDate::parse("2026-05-27")
+                    .unwrap_or_else(|| std::panic::panic_any("valid date"))
+                    .days_since_unix_epoch()
+            )
+            .to_string(),
+            "2026-05-27"
+        );
+    }
+
+    #[test]
+    fn today_utc_approx_uses_system_clock_day() {
+        let before = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_secs() / 86_400)
+            .unwrap_or(0);
+        let today = SimpleDate::today_utc_approx();
+        let after = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_secs() / 86_400)
+            .unwrap_or(0);
+
+        let today_days = today.days_since_unix_epoch() as u64;
+        assert!(
+            (before..=after).contains(&today_days),
+            "today_utc_approx should use the current UTC day"
+        );
     }
 }
