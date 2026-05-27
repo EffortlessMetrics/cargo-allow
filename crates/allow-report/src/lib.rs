@@ -6,7 +6,7 @@ pub const REPORT_SCHEMA_ID: &str = "cargo-allow.report.v1";
 pub const RECEIPT_SCHEMA_VERSION: u32 = 1;
 pub const RECEIPT_SCHEMA_ID: &str = "cargo-allow.receipt.v1";
 
-const CLAIM_BOUNDARY: &[&str] = &[
+pub const CLAIM_BOUNDARY: &[&str] = &[
     "source_tree_inventory",
     "source_syntax_only",
     "cargo_metadata_not_invoked",
@@ -25,7 +25,7 @@ const CLAIM_BOUNDARY: &[&str] = &[
     "repository_code_not_executed",
 ];
 
-const SCANNER_LIMITATIONS: &[&str] = &[
+pub const SCANNER_LIMITATIONS: &[&str] = &[
     "cargo_metadata_not_invoked",
     "cargo_commands_not_invoked",
     "rustc_not_invoked",
@@ -1202,6 +1202,9 @@ mod tests {
                 inventory_files: Some(7),
             },
         );
+        assert!(CLAIM_BOUNDARY.contains(&"source_tree_inventory"));
+        assert!(SCANNER_LIMITATIONS.contains(&"cargo_metadata_not_invoked"));
+        assert_eq!(CLAIM_BOUNDARY.len(), SCANNER_LIMITATIONS.len() + 2);
         assert!(json.contains("source_tree_inventory"));
         assert!(json.contains("cargo_metadata_not_invoked"));
         assert!(json.contains("cargo_commands_not_invoked"));
