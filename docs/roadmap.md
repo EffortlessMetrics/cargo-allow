@@ -426,6 +426,8 @@ Completed:
 - 0.1.0 publish.
 - Document crate namespace policy: `cargo-allow` is the product binary, and
   `allow-*` is the canonical first-party library namespace.
+- Document CLI command module organization: `main.rs` stays thin, command
+  modules own behavior, and command tests live in sibling `*_tests.rs` modules.
 
 ## Milestone Claims
 

@@ -98,6 +98,21 @@ cleanup, and do not create duplicate `cargo-allow-*` wrapper crates around
 `allow-*` libraries. Before adding any public crate, justify why it cannot
 remain an internal module of an existing `allow-*` crate.
 
+## CLI Organization
+
+The `cargo-allow` binary should stay thin. `crates/cargo-allow/src/main.rs`
+owns process entrypoint wiring only; command parsing and dispatch live in
+`cli.rs` and the command modules.
+
+Each command module owns one command family's behavior and command-local
+helpers. Command tests should live in sibling `*_tests.rs` modules referenced
+with `#[path = "..."]` from the command module, so command implementation files
+remain reviewable as the product surface grows.
+
+Shared helpers should move out of command modules only when at least two command
+families use them. Do not create a new public crate for command organization
+unless there is a durable API boundary that cannot remain an internal module.
+
 ## Matching Direction
 
 Matching must move toward durable source identity:
