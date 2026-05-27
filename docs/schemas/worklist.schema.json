@@ -49,7 +49,14 @@
     "summary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["work_items", "high", "medium", "low"],
+      "required": [
+        "work_items",
+        "high",
+        "medium",
+        "low",
+        "small_difficulty",
+        "medium_difficulty"
+      ],
       "properties": {
         "work_items": {
           "type": "integer",
@@ -66,6 +73,16 @@
         "low": {
           "type": "integer",
           "minimum": 0
+        },
+        "small_difficulty": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of work items estimated as small difficulty."
+        },
+        "medium_difficulty": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of work items estimated as medium difficulty."
         }
       }
     },

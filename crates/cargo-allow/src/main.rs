@@ -1950,7 +1950,15 @@ fn render_worklist_json(items: &[WorkItem]) -> String {
         "    \"medium\": {},\n",
         risk_count(items, "medium")
     ));
-    out.push_str(&format!("    \"low\": {}\n", risk_count(items, "low")));
+    out.push_str(&format!("    \"low\": {},\n", risk_count(items, "low")));
+    out.push_str(&format!(
+        "    \"small_difficulty\": {},\n",
+        difficulty_count(items, "small")
+    ));
+    out.push_str(&format!(
+        "    \"medium_difficulty\": {}\n",
+        difficulty_count(items, "medium")
+    ));
     out.push_str("  },\n");
     out.push_str("  \"work_items\": [\n");
     for (index, item) in items.iter().enumerate() {
@@ -2016,9 +2024,19 @@ fn render_worklist_human(items: &[WorkItem]) -> String {
     let mut out = String::new();
     out.push_str("cargo-allow worklist\n\n");
     out.push_str(&format!("Work items: {}\n", items.len()));
+    out.push_str("Risk:\n");
     out.push_str(&format!("  high      {}\n", risk_count(items, "high")));
     out.push_str(&format!("  medium    {}\n", risk_count(items, "medium")));
     out.push_str(&format!("  low       {}\n", risk_count(items, "low")));
+    out.push_str("Difficulty:\n");
+    out.push_str(&format!(
+        "  small     {}\n",
+        difficulty_count(items, "small")
+    ));
+    out.push_str(&format!(
+        "  medium    {}\n",
+        difficulty_count(items, "medium")
+    ));
     for item in items.iter().take(80) {
         out.push_str(&format!(
             "\n{} ({}, {}) {}\n",
@@ -2047,6 +2065,13 @@ fn render_worklist_human(items: &[WorkItem]) -> String {
 
 fn risk_count(items: &[WorkItem], risk: &str) -> usize {
     items.iter().filter(|item| item.risk == risk).count()
+}
+
+fn difficulty_count(items: &[WorkItem], difficulty: &str) -> usize {
+    items
+        .iter()
+        .filter(|item| item.difficulty == difficulty)
+        .count()
 }
 
 fn option_json_string(value: Option<&str>) -> String {
@@ -3635,6 +3660,8 @@ mod tests {
         assert!(json.contains("\"repository_code_not_executed\""));
         assert!(json.contains("\"kind\": \"stale_allow\""));
         assert!(json.contains("\"risk\": \"low\""));
+        assert!(json.contains("\"small_difficulty\": 1"));
+        assert!(json.contains("\"medium_difficulty\": 0"));
         assert!(json.contains("\"source_package\": null"));
         assert!(json.contains("\"cargo-allow explain allow-file\""));
         assert!(json.contains("\"cargo-allow check --kind non-rust --mode no-new\""));
@@ -3647,6 +3674,8 @@ mod tests {
         assert!(schema.contains("\"cargo-allow.worklist.v1\""));
         assert!(schema.contains("\"source_package\""));
         assert!(schema.contains("\"proof_commands\""));
+        assert!(schema.contains("\"small_difficulty\""));
+        assert!(schema.contains("\"medium_difficulty\""));
         assert!(schema.contains("\"source_tree_inventory\""));
     }
 
@@ -3690,6 +3719,8 @@ mod tests {
                 .all(|command| command.starts_with("cargo-allow "))
         );
         assert!(text.contains("work-new-unreceipted-finding-0001"));
+        assert!(text.contains("Difficulty:"));
+        assert!(text.contains("  medium    1"));
     }
 
     #[test]
