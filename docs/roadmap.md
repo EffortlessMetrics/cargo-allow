@@ -316,6 +316,8 @@ Completed:
 - Report human worklist truncation and point to JSON for the full queue.
 - Filter worklist output by risk and difficulty so humans and agents can choose
   a bounded queue without parsing JSON.
+- Record applied worklist filters in human and JSON output so filtered artifacts
+  cannot be confused with the full ledger queue.
 
 Planned work:
 

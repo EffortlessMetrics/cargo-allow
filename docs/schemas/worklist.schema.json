@@ -49,6 +49,10 @@
     "inventory": {
       "$ref": "#/$defs/inventory"
     },
+    "filters": {
+      "$ref": "#/$defs/filters",
+      "description": "Applied worklist filters. Absent in older v1 artifacts; null fields mean no filter was applied for that dimension."
+    },
     "summary": {
       "$ref": "#/$defs/summary"
     },
@@ -128,6 +132,27 @@
           "type": "integer",
           "minimum": 0,
           "description": "Number of source-tree inventory files considered before scanner filtering, when a full inventory was collected."
+        }
+      }
+    },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "risk", "difficulty"],
+      "properties": {
+        "kind": {
+          "type": ["string", "null"],
+          "description": "Applied --kind filter, or null when the worklist includes all governed kinds."
+        },
+        "risk": {
+          "type": ["string", "null"],
+          "enum": ["low", "medium", "high", null],
+          "description": "Applied --risk filter, or null when all risk levels are included."
+        },
+        "difficulty": {
+          "type": ["string", "null"],
+          "enum": ["small", "medium", null],
+          "description": "Applied --difficulty filter, or null when all difficulty levels are included."
         }
       }
     },

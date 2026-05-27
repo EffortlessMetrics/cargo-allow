@@ -18,6 +18,8 @@ be removed cleanly.
 Use `--risk low`, `--risk medium`, `--risk high`, `--difficulty small`, or
 `--difficulty medium` when the assignment needs a narrower queue, but do not
 mistake a filter for approval to ignore the rest of the ledger.
+Saved worklist artifacts record the applied filters; preserve that context in
+handoffs.
 If a work item includes `source_package`, use it only as source-tree context for
 where to focus review; do not infer Cargo metadata, build success, or package
 test coverage from that field.
