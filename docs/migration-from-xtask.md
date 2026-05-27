@@ -178,6 +178,20 @@ Only `path` and `lint` are required in the legacy entry; missing owner,
 reason, classification, or lifecycle metadata is migrated as temporary
 `baseline_debt` requiring human review.
 
+Unsafe allowlist compat is available for legacy `policy/unsafe-allowlist.toml`
+files:
+
+```bash
+cargo-allow check --compat --kind unsafe
+cargo-allow migrate --from policy/unsafe-allowlist.toml --out target/unsafe.allow.toml
+```
+
+Compat maps retained unsafe entries to canonical `unsafe` receipts and compares
+them with current source-syntax unsafe findings. It does not run rustc, build
+scripts, proc macros, or unsafe-review. If a legacy entry is missing evidence,
+the migrated receipt remains temporary `baseline_debt` with TODO unsafe-review
+or boundary-test evidence.
+
 ## Canonical Policy Flow
 
 The target state is:
@@ -231,7 +245,7 @@ Compatibility adapters may support:
 - `policy/process-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/network-allowlist.toml` (initial shiplog-style adapter exists)
 - `policy/clippy-exceptions.toml`
-- `policy/unsafe-allowlist.toml`
+- `policy/unsafe-allowlist.toml` (initial legacy unsafe adapter exists)
 - `policy/ripr-suppressions.toml`
 
 Adapters should normalize legacy fields into canonical allow entries instead of
