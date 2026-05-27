@@ -237,6 +237,8 @@ Completed:
   filters, and baseline-debt filtering.
 - Show scanner-provided source package context in `list` rows without treating
   it as Cargo metadata.
+- Filter `list` output by policy classification for reviewed-exception and
+  baseline-debt ledger slices.
 - Implement dry-run-first stale pruning.
 - Support explicit `prune --stale --write` removal of stale entries while
   keeping dry-run as the default.

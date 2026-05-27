@@ -201,6 +201,9 @@ struct ListArgs {
     /// Filter allow entries by owner.
     #[arg(long)]
     owner: Option<String>,
+    /// Filter allow entries by classification.
+    #[arg(long)]
+    classification: Option<String>,
     /// Include only expired allow entries.
     #[arg(long)]
     expired: bool,
@@ -1049,6 +1052,7 @@ fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
     let filters = ListFilters {
         kind: parsed_filter,
         owner: args.owner.as_deref(),
+        classification: args.classification.as_deref(),
         expired: args.expired,
         review_due: args.review_due,
         stale: args.stale,
@@ -1078,6 +1082,7 @@ struct ListRow {
 struct ListFilters<'a> {
     kind: Option<KindFilter>,
     owner: Option<&'a str>,
+    classification: Option<&'a str>,
     expired: bool,
     review_due: bool,
     stale: bool,
@@ -1203,6 +1208,11 @@ fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
     }
     if let Some(owner) = filters.owner {
         if row.owner != owner {
+            return false;
+        }
+    }
+    if let Some(classification) = filters.classification {
+        if row.classification != classification {
             return false;
         }
     }
@@ -3797,6 +3807,8 @@ mod tests {
             "unsafe",
             "--owner",
             "runtime",
+            "--classification",
+            "baseline_debt",
             "--expired",
             "--review-due",
             "--stale",
@@ -3810,13 +3822,16 @@ mod tests {
             Some(CargoAllowCommand::List(ListArgs {
                 kind: Some(kind),
                 owner: Some(owner),
+                classification: Some(classification),
                 expired: true,
                 review_due: true,
                 stale: true,
                 baseline_debt: true,
                 include_untracked: true,
                 ..
-            })) if kind == "unsafe" && owner == "runtime"
+            })) if kind == "unsafe"
+                && owner == "runtime"
+                && classification == "baseline_debt"
         ));
     }
 
@@ -4080,7 +4095,7 @@ mod tests {
     }
 
     #[test]
-    fn render_list_rows_filters_owner_kind_and_baseline_debt() {
+    fn render_list_rows_filters_owner_kind_classification_and_baseline_debt() {
         let rows = vec![
             list_row(
                 "allow-runtime",
@@ -4100,6 +4115,7 @@ mod tests {
                 std::panic::panic_any(format!("kind filter should parse: {err}"))
             })),
             owner: Some("runtime"),
+            classification: Some("baseline_debt"),
             expired: false,
             review_due: false,
             stale: false,
@@ -4111,6 +4127,39 @@ mod tests {
         assert!(text.contains("allow-runtime"));
         assert!(!text.contains("allow-parser"));
         assert!(text.contains("baseline_debt"));
+    }
+
+    #[test]
+    fn render_list_rows_filters_classification_without_baseline_shortcut() {
+        let rows = vec![
+            list_row(
+                "allow-runtime",
+                FindingKind::Unsafe,
+                "runtime",
+                "baseline_debt",
+            ),
+            list_row(
+                "allow-parser",
+                FindingKind::Panic,
+                "parser",
+                "reviewed_exception",
+            ),
+        ];
+        let filters = ListFilters {
+            kind: None,
+            owner: None,
+            classification: Some("reviewed_exception"),
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(!text.contains("allow-runtime"));
+        assert!(text.contains("allow-parser"));
+        assert!(text.contains("reviewed_exception"));
     }
 
     #[test]

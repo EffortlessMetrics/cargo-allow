@@ -156,6 +156,7 @@ cargo-allow check --mode no-new
 cargo-allow diff --base origin/main
 cargo-allow explain allow-0042
 cargo-allow list --kind unsafe
+cargo-allow list --classification baseline_debt
 cargo-allow prune --stale --dry-run
 cargo-allow propose --write policy/allow.proposed.toml
 cargo-allow migrate --repo-policy policy/ --out policy/allow.toml
