@@ -1503,16 +1503,22 @@ fn render_propose_summary(
 }
 
 fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
-    let (_root, cfg, findings, _inventory_source) = load_world(
+    let (root, cfg, findings, _inventory_source) = load_world_with_evidence_validation(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         args.kind.as_deref(),
         args.include_untracked,
+        false,
     )?;
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
-    let items = work_items_from_outcomes(&report_cfg, &findings, &outcomes);
+    let mut items = work_items_from_outcomes(&report_cfg, &findings, &outcomes);
+    items.extend(work_items_from_evidence_diagnostics(
+        &root,
+        &report_cfg,
+        items.len() + 1,
+    ));
     let text = match args.format {
         WorklistFormat::Json => render_worklist_json(&items),
         WorklistFormat::Human => render_worklist_human(&items),
@@ -1581,6 +1587,57 @@ fn work_item_from_outcome(
         proof_commands: proof_commands(&kind, finding, entry),
         kind,
     }
+}
+
+fn work_items_from_evidence_diagnostics(
+    root: &Path,
+    cfg: &AllowConfig,
+    start_index: usize,
+) -> Vec<WorkItem> {
+    let mut items = Vec::new();
+    for entry in &cfg.allow {
+        for diagnostic in evidence_reference_diagnostics(root, entry)
+            .into_iter()
+            .filter(|diagnostic| {
+                matches!(
+                    diagnostic.status,
+                    allow_policy::EvidenceReferenceStatus::LocalFileMissing
+                        | allow_policy::EvidenceReferenceStatus::InvalidLocalPath
+                )
+            })
+        {
+            let item_index = start_index + items.len();
+            let kind = "broken_evidence_link".to_string();
+            items.push(WorkItem {
+                id: format!("work-broken-evidence-link-{item_index:04}"),
+                kind,
+                risk: if entry.kind == FindingKind::Unsafe {
+                    "high"
+                } else {
+                    "medium"
+                },
+                difficulty: "small",
+                status: MatchStatus::EvidenceMissing,
+                allow_id: Some(entry.id.clone()),
+                finding_index: None,
+                path: diagnostic.target.as_ref().map(normalize_path),
+                message: format!(
+                    "{} evidence `{}`: {}",
+                    entry.id, diagnostic.raw, diagnostic.message
+                ),
+                suggested_actions: vec![
+                    "restore or commit the referenced local evidence artifact".to_string(),
+                    "or update the evidence reference to a valid source-tree-relative path"
+                        .to_string(),
+                ],
+                proof_commands: vec![
+                    format!("cargo-allow explain {}", entry.id),
+                    "cargo-allow check --mode no-new".to_string(),
+                ],
+            });
+        }
+    }
+    items
 }
 
 fn work_item_kind(
@@ -3236,6 +3293,33 @@ mod tests {
                 .iter()
                 .any(|action| action.contains("baseline count"))
         );
+    }
+
+    #[test]
+    fn worklist_items_report_broken_evidence_links() {
+        let root = migrate_fixture_dir();
+        let mut cfg = AllowConfig::empty();
+        let mut entry = test_entry("allow-unsafe", FindingKind::Unsafe);
+        entry.evidence = vec!["doc:docs/missing.md".to_string()];
+        cfg.allow.push(entry);
+
+        let items = work_items_from_evidence_diagnostics(&root, &cfg, 1);
+        let json = render_worklist_json(&items);
+
+        let item = items
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+        assert_eq!(item.kind, "broken_evidence_link");
+        assert_eq!(item.risk, "high");
+        assert_eq!(item.difficulty, "small");
+        assert_eq!(item.status, MatchStatus::EvidenceMissing);
+        assert_eq!(item.allow_id.as_deref(), Some("allow-unsafe"));
+        assert_eq!(item.path.as_deref(), Some("docs/missing.md"));
+        assert!(item.message.contains("local evidence file is missing"));
+        assert!(json.contains("\"kind\": \"broken_evidence_link\""));
+        assert!(json.contains("\"cargo-allow explain allow-unsafe\""));
+        fs::remove_dir_all(root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
     }
 
     #[test]
