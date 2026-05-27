@@ -14,6 +14,7 @@ use std::str::FromStr;
 
 mod add;
 mod audit;
+mod check;
 mod doctor;
 mod explain;
 mod init;
@@ -41,7 +42,7 @@ enum CargoAllowCommand {
     /// Inventory exceptions and policy health.
     Audit(audit::ReportArgs),
     /// CI gate for the exception ledger.
-    Check(CheckArgs),
+    Check(check::CheckArgs),
     /// PR-oriented report with git changed files.
     Diff(DiffArgs),
     /// List allow entries.
@@ -89,36 +90,6 @@ impl InventoryFacts {
             files_scanned: Some(files_scanned),
         }
     }
-}
-
-#[derive(Debug, Clone, Parser)]
-struct CheckArgs {
-    #[command(flatten)]
-    root: RootArgs,
-    /// Policy config path.
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Use a compatible legacy policy for the selected kind.
-    #[arg(long)]
-    compat: bool,
-    /// Filter findings by kind.
-    #[arg(long)]
-    kind: Option<String>,
-    /// Include untracked files in addition to git-tracked files.
-    #[arg(long)]
-    include_untracked: bool,
-    /// Output format.
-    #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
-    format: OutputFormat,
-    /// Write report to a file instead of stdout.
-    #[arg(long)]
-    output: Option<PathBuf>,
-    /// Write machine-readable receipt to a file.
-    #[arg(long)]
-    receipt: Option<PathBuf>,
-    /// Check mode.
-    #[arg(long, default_value = "no-new", value_parser = ["audit", "no-new", "strict", "release"])]
-    mode: String,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -177,7 +148,7 @@ fn run() -> CargoAllowResult<()> {
     match command {
         CargoAllowCommand::Init(args) => init::cmd_init(&args),
         CargoAllowCommand::Audit(args) => audit::cmd_audit(&args),
-        CargoAllowCommand::Check(args) => cmd_check(&args),
+        CargoAllowCommand::Check(args) => check::cmd_check(&args),
         CargoAllowCommand::Diff(args) => cmd_diff(&args),
         CargoAllowCommand::List(args) => list::cmd_list(&args),
         CargoAllowCommand::Explain(args) => explain::cmd_explain(&args),
@@ -196,61 +167,6 @@ fn normalized_args(args: impl IntoIterator<Item = String>) -> Vec<String> {
         args.remove(1);
     }
     args
-}
-
-fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
-    let mode = CheckMode::parse(&args.mode);
-    let (root, cfg, findings, inventory_facts) = if args.compat {
-        load_compat_world(
-            args.root.root.as_deref(),
-            args.config.as_deref(),
-            args.kind.as_deref(),
-            args.include_untracked,
-        )?
-    } else {
-        load_world(
-            args.root.root.as_deref(),
-            args.config.as_deref(),
-            true,
-            args.kind.as_deref(),
-            args.include_untracked,
-        )?
-    };
-    let report_cfg = report_config(&cfg, args.kind.as_deref())?;
-    let outcomes = evaluate(&report_cfg, &findings, mode);
-    let failed = outcomes.iter().any(|o| mode.fails(o.status));
-    print_report(ReportRenderArgs {
-        command: "check",
-        format: args.format,
-        baseline_debt_entries: policy_baseline_debt_entries(&report_cfg),
-        findings: &findings,
-        outcomes: &outcomes,
-        failed,
-        output: args.output.as_deref(),
-        root: &root,
-        inventory_facts,
-    })?;
-    if let Some(path) = &args.receipt {
-        let root_text = source_tree_root_text(&root);
-        write_file(
-            path,
-            &allow_report::render_receipt_with_context(
-                "check",
-                &outcomes,
-                failed,
-                allow_report::ReportContext {
-                    inventory_source: inventory_facts.source.as_str(),
-                    source_tree_root: Some(&root_text),
-                    inventory_files: inventory_facts.files_scanned,
-                    ..allow_report::ReportContext::default()
-                },
-            ),
-        )?;
-    }
-    if failed {
-        process::exit(1);
-    }
-    Ok(())
 }
 
 fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
@@ -1678,7 +1594,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Check(CheckArgs {
+            Some(CargoAllowCommand::Check(check::CheckArgs {
                 format: OutputFormat::Markdown,
                 ..
             }))
@@ -1698,7 +1614,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Check(CheckArgs {
+            Some(CargoAllowCommand::Check(check::CheckArgs {
                 compat: true,
                 kind: Some(kind),
                 ..
@@ -1719,7 +1635,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Check(CheckArgs {
+            Some(CargoAllowCommand::Check(check::CheckArgs {
                 compat: true,
                 kind: Some(kind),
                 ..
@@ -1740,7 +1656,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Check(CheckArgs {
+            Some(CargoAllowCommand::Check(check::CheckArgs {
                 compat: true,
                 kind: Some(kind),
                 ..
@@ -2096,7 +2012,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Check(CheckArgs {
+            Some(CargoAllowCommand::Check(check::CheckArgs {
                 root: RootArgs { root: Some(root) },
                 ..
             })) if root == Path::new("fixtures/source-snapshot")
@@ -2118,7 +2034,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Check(CheckArgs {
+            Some(CargoAllowCommand::Check(check::CheckArgs {
                 compat: true,
                 kind: Some(kind),
                 ..
@@ -2141,7 +2057,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Check(CheckArgs {
+            Some(CargoAllowCommand::Check(check::CheckArgs {
                 compat: true,
                 kind: Some(kind),
                 ..
@@ -2164,7 +2080,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Check(CheckArgs {
+            Some(CargoAllowCommand::Check(check::CheckArgs {
                 compat: true,
                 kind: Some(kind),
                 ..
@@ -2187,7 +2103,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Check(CheckArgs {
+            Some(CargoAllowCommand::Check(check::CheckArgs {
                 compat: true,
                 kind: Some(kind),
                 ..
@@ -2210,7 +2126,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Check(CheckArgs {
+            Some(CargoAllowCommand::Check(check::CheckArgs {
                 compat: true,
                 kind: Some(kind),
                 ..
@@ -2235,7 +2151,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Check(CheckArgs {
+            Some(CargoAllowCommand::Check(check::CheckArgs {
                 compat: true,
                 kind: Some(kind),
                 ..
@@ -2258,7 +2174,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Check(CheckArgs {
+            Some(CargoAllowCommand::Check(check::CheckArgs {
                 compat: true,
                 kind: Some(kind),
                 ..
@@ -2281,7 +2197,7 @@ mod tests {
 
         assert!(matches!(
             parsed.command,
-            Some(CargoAllowCommand::Check(CheckArgs {
+            Some(CargoAllowCommand::Check(check::CheckArgs {
                 compat: true,
                 kind: Some(kind),
                 ..
