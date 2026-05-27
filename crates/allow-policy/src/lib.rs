@@ -817,6 +817,7 @@ mod tests {
         assert!(cfg.allow.iter().any(|entry| entry.id == "allow-0001"));
         assert!(cfg.allow.iter().any(|entry| entry.id == "allow-0088"));
         for removed in [
+            "allow-0019",
             "allow-0020",
             "allow-0031",
             "allow-0032",
@@ -828,10 +829,13 @@ mod tests {
             "allow-0044",
             "allow-0045",
             "allow-0046",
+            "allow-0047",
+            "allow-0048",
             "allow-0049",
             "allow-0050",
             "allow-0051",
             "allow-0056",
+            "allow-0057",
             "allow-0058",
             "allow-0059",
             "allow-0060",
