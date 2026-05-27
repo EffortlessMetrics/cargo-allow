@@ -198,6 +198,10 @@
           "type": ["string", "null"],
           "enum": ["small", "medium", null],
           "description": "Applied --difficulty filter, or null when all difficulty levels are included."
+        },
+        "missing_evidence": {
+          "type": "boolean",
+          "description": "Applied --missing-evidence filter. True means only policy-backed work items with no evidence references are included."
         }
       }
     },

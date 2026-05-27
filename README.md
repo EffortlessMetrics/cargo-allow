@@ -97,6 +97,7 @@ cargo-allow worklist --allow-id allow-0042 --format human
 cargo-allow worklist --path crates/allow-core --format human
 cargo-allow worklist --source-package allow-core --format human
 cargo-allow worklist --owner unowned --classification baseline_debt --format human
+cargo-allow worklist --missing-evidence --format human
 ```
 
 When developing this repository before installing the binary, run the same
@@ -169,6 +170,7 @@ cargo-allow list --status baseline_debt
 cargo-allow list --broad-scope
 cargo-allow list --missing-evidence
 cargo-allow list --source-package allow-core
+cargo-allow worklist --missing-evidence --format human
 cargo-allow prune --stale --dry-run
 cargo-allow propose --write policy/allow.proposed.toml
 cargo-allow migrate --repo-policy policy/ --out policy/allow.toml

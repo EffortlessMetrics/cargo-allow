@@ -354,6 +354,8 @@ Completed:
   new, stale, expired, review-due, or baseline-debt slices.
 - Filter worklist output by source-tree path prefix so agents can take bounded
   file or subtree-local queues.
+- Filter worklist output to policy-backed items with missing evidence so agents
+  can take bounded evidence-gap slices without parsing item-kind details.
 
 Planned work:
 
