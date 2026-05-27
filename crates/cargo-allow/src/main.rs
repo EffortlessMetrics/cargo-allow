@@ -3950,6 +3950,53 @@ mod tests {
     }
 
     #[test]
+    fn cmd_prune_write_removes_only_stale_entries_from_policy_file() {
+        let root = migrate_fixture_dir();
+        let policy_dir = root.join("policy");
+        let docs_dir = root.join("docs");
+        fs::create_dir_all(&policy_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::create_dir_all(&docs_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("docs dir: {err}")));
+        fs::write(docs_dir.join("live.md"), "# live\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("live doc: {err}")));
+
+        let mut cfg = AllowConfig::empty();
+        cfg.allow
+            .push(non_rust_prune_fixture_entry("allow-live", "docs/live.md"));
+        cfg.allow
+            .push(non_rust_prune_fixture_entry("allow-stale", "docs/stale.md"));
+        let policy_path = policy_dir.join("allow.toml");
+        fs::write(&policy_path, render_policy(&cfg))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+
+        cmd_prune(&PruneArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            config: Some(policy_path.clone()),
+            stale: true,
+            dry_run: false,
+            write: true,
+            include_untracked: false,
+        })
+        .unwrap_or_else(|err| std::panic::panic_any(format!("prune write: {err}")));
+
+        let rendered = fs::read_to_string(&policy_path)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy read: {err}")));
+        let loaded = load_policy(&policy_path)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy reload: {err}")));
+
+        assert!(rendered.contains("allow-live"));
+        assert!(!rendered.contains("allow-stale"));
+        assert_eq!(loaded.allow.len(), 1);
+        assert!(loaded.allow.iter().any(|entry| entry.id == "allow-live"));
+
+        fs::remove_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    }
+
+    #[test]
     fn diff_markdown_pr_summary_reports_unchanged_posture() {
         let text = render_diff_pr_summary_markdown(&[], &[], &[]);
 
@@ -5651,6 +5698,14 @@ expires = "permanent"
             },
             last_seen: None,
         }
+    }
+
+    fn non_rust_prune_fixture_entry(id: &str, path: &str) -> AllowEntry {
+        let mut entry = test_entry(id, FindingKind::NonRustFile);
+        entry.family = Some("documentation".to_string());
+        entry.path = Some(PathBuf::from(path));
+        entry.lifecycle.review_after = Some("2026-11-01".to_string());
+        entry
     }
 
     fn companion_entry(
