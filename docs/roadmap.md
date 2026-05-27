@@ -250,6 +250,7 @@ Completed:
 - crates.io metadata.
 - crates.io-compatible version requirements for internal workspace
   dependencies.
+- 0.1.0 release runbook.
 
 Planned work:
 

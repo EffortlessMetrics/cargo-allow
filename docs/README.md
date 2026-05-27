@@ -13,5 +13,7 @@ beyond the MVP scaffold.
   should move into cargo-allow.
 - [CI](ci.md): GitHub Actions examples for PR posture diffs and mainline
   checks.
+- [0.1.0 release runbook](release/0.1.0.md): publish order, dry-run sequencing,
+  and rollback limits.
 - [Agent worklist prompt](agents/cargo-allow-worklist.md): bounded agent use of
   `cargo-allow worklist`.
