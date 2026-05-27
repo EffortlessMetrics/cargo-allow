@@ -1,8 +1,6 @@
-use allow_core::{
-    AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind,
-};
+use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding, FindingKind};
 #[cfg(test)]
-use allow_core::{Lifecycle, Selector, normalize_path};
+use allow_core::{AllowEntry, Lifecycle, Selector, normalize_path};
 use allow_inventory::{InventoryOptions, InventorySource, inventory, resolve_source_tree_root};
 #[cfg(test)]
 use allow_match::{CheckMode, evaluate};
@@ -13,7 +11,6 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
-use std::str::FromStr;
 
 mod add;
 mod audit;
@@ -24,6 +21,7 @@ mod doctor;
 mod explain;
 mod init;
 mod io;
+mod kind_filter;
 mod list;
 mod migrate;
 mod propose;
@@ -34,6 +32,12 @@ mod worklist;
 
 pub(crate) use cli_types::{InventoryFacts, OutputFormat, RootArgs};
 pub(crate) use io::{write_file, write_file_no_overwrite};
+pub(crate) use kind_filter::{
+    FamilyFilter, KindFilter, is_clippy_compat_kind, is_dependency_surface_compat_kind,
+    is_executable_compat_kind, is_network_compat_kind, is_no_panic_allowlist_compat_kind,
+    is_panic_compat_kind, is_process_compat_kind, is_unsafe_compat_kind, is_workflow_compat_kind,
+    parse_kind_filter,
+};
 pub(crate) use render::{
     allow_entry_json, explain_finding_json, json_string_array, last_seen_json, markdown_cell,
     option_json_string, option_usize_json, scope_has_wildcard, selector_from_finding,
@@ -416,186 +420,6 @@ fn load_compat_world(
         .unwrap_or_else(|| root.join("policy/non-rust-allowlist.toml"));
     let cfg = allow_policy_legacy::load_non_rust_compat_config(policy_path, &findings)?;
     Ok((root, cfg, findings, inventory_facts))
-}
-
-#[derive(Debug, Clone, Copy)]
-struct KindFilter {
-    kind: FindingKind,
-    family: FamilyFilter,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum FamilyFilter {
-    Any,
-    Exact(&'static str),
-    Workflow,
-}
-
-impl KindFilter {
-    fn matches_finding(self, finding: &Finding) -> bool {
-        finding.kind == self.kind && self.family.matches(finding.family.as_deref())
-    }
-
-    fn matches_entry(self, entry: &AllowEntry) -> bool {
-        entry.kind == self.kind && self.family.matches(entry.family.as_deref())
-    }
-}
-
-impl FamilyFilter {
-    fn matches(self, family: Option<&str>) -> bool {
-        match self {
-            Self::Any => true,
-            Self::Exact(expected) => family == Some(expected),
-            Self::Workflow => {
-                matches!(family, Some("github_workflow" | "workflow_external_action"))
-            }
-        }
-    }
-}
-
-fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
-    if is_panic_compat_kind(kind) {
-        return Ok(KindFilter {
-            kind: FindingKind::Panic,
-            family: FamilyFilter::Any,
-        });
-    }
-    if is_no_panic_allowlist_compat_kind(kind) {
-        return Ok(KindFilter {
-            kind: FindingKind::Panic,
-            family: FamilyFilter::Any,
-        });
-    }
-    if is_clippy_compat_kind(kind) {
-        return Ok(KindFilter {
-            kind: FindingKind::LintException,
-            family: FamilyFilter::Any,
-        });
-    }
-    if is_unsafe_compat_kind(kind) {
-        return Ok(KindFilter {
-            kind: FindingKind::Unsafe,
-            family: FamilyFilter::Any,
-        });
-    }
-    if is_executable_compat_kind(kind) {
-        return Ok(KindFilter {
-            kind: FindingKind::PolicyException,
-            family: FamilyFilter::Exact("executable_file"),
-        });
-    }
-    if is_workflow_compat_kind(kind) {
-        return Ok(KindFilter {
-            kind: FindingKind::PolicyException,
-            family: FamilyFilter::Workflow,
-        });
-    }
-    if is_dependency_surface_compat_kind(kind) {
-        return Ok(KindFilter {
-            kind: FindingKind::PolicyException,
-            family: FamilyFilter::Exact("dependency_surface"),
-        });
-    }
-    if is_process_compat_kind(kind) {
-        return Ok(KindFilter {
-            kind: FindingKind::PolicyException,
-            family: FamilyFilter::Exact("process_spawn"),
-        });
-    }
-    if is_network_compat_kind(kind) {
-        return Ok(KindFilter {
-            kind: FindingKind::PolicyException,
-            family: FamilyFilter::Exact("network_destination"),
-        });
-    }
-    Ok(KindFilter {
-        kind: FindingKind::from_str(kind)?,
-        family: FamilyFilter::Any,
-    })
-}
-
-fn is_panic_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "panic"
-            | "panic-family"
-            | "panic_family"
-            | "no-panic"
-            | "no_panic"
-            | "no-panic-baseline"
-            | "no_panic_baseline"
-    )
-}
-
-fn is_no_panic_allowlist_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "no-panic-allowlist" | "no_panic_allowlist" | "panic-allowlist" | "panic_allowlist"
-    )
-}
-
-fn is_clippy_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "clippy"
-            | "clippy-exception"
-            | "clippy-exceptions"
-            | "clippy_exception"
-            | "clippy_exceptions"
-            | "lint"
-            | "lint-exception"
-            | "lint_exception"
-            | "lint-suppression"
-            | "lint_suppression"
-    )
-}
-
-fn is_unsafe_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "unsafe" | "unsafe-allowlist" | "unsafe_allowlist" | "unsafe-policy" | "unsafe_policy"
-    )
-}
-
-fn is_executable_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "executable" | "executable_file" | "executable-file" | "executable-bit" | "exec"
-    )
-}
-
-fn is_workflow_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "workflow" | "workflows" | "github_workflow" | "github-workflow" | "workflow-action"
-    )
-}
-
-fn is_dependency_surface_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "dependency"
-            | "dependencies"
-            | "dependency_surface"
-            | "dependency-surface"
-            | "dependency-surfaces"
-            | "dep-surface"
-            | "dep"
-    )
-}
-
-fn is_process_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "process" | "processes" | "process-policy" | "process_spawn" | "process-spawn" | "proc"
-    )
-}
-
-fn is_network_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "network" | "net" | "network-policy" | "network_destination" | "network-destination"
-    )
 }
 
 fn report_config(cfg: &AllowConfig, kind_filter: Option<&str>) -> CargoAllowResult<AllowConfig> {
