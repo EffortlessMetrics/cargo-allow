@@ -113,8 +113,10 @@ pub fn render_human_with_context(
         MatchStatus::Matched,
         MatchStatus::New,
         MatchStatus::Expired,
+        MatchStatus::ReviewDue,
         MatchStatus::Stale,
         MatchStatus::Ambiguous,
+        MatchStatus::InvalidSelector,
         MatchStatus::EvidenceMissing,
         MatchStatus::MissingRequiredField,
         MatchStatus::BaselineDebt,
@@ -190,8 +192,10 @@ pub fn render_markdown_with_context(
         MatchStatus::Matched,
         MatchStatus::New,
         MatchStatus::Expired,
+        MatchStatus::ReviewDue,
         MatchStatus::Stale,
         MatchStatus::Ambiguous,
+        MatchStatus::InvalidSelector,
         MatchStatus::EvidenceMissing,
         MatchStatus::MissingRequiredField,
         MatchStatus::BaselineDebt,
@@ -811,6 +815,34 @@ mod tests {
         assert!(text.contains(
             "- `evidence_missing`: allow-unsafe-ffi matched unsafe finding but has no evidence"
         ));
+    }
+
+    #[test]
+    fn text_reports_include_review_due_and_invalid_selector_counts() {
+        let outcomes = vec![
+            MatchOutcome {
+                status: MatchStatus::ReviewDue,
+                allow_id: Some("allow-review".to_string()),
+                finding_index: None,
+                message: "allow-review is due for review".to_string(),
+                score: 0,
+            },
+            MatchOutcome {
+                status: MatchStatus::InvalidSelector,
+                allow_id: Some("allow-invalid".to_string()),
+                finding_index: None,
+                message: "allow-invalid selector is invalid".to_string(),
+                score: 0,
+            },
+        ];
+
+        let human = render_human("check", &[], &outcomes, true);
+        let markdown = render_markdown("check", &[], &outcomes, true);
+
+        assert!(human.contains("review_due"));
+        assert!(human.contains("invalid_selector"));
+        assert!(markdown.contains("| `review_due` | 1 |"));
+        assert!(markdown.contains("| `invalid_selector` | 1 |"));
     }
 
     fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
