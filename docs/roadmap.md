@@ -211,10 +211,11 @@ Completed:
 - Document bounded agent prompt patterns for `cargo-allow worklist`.
 - Align worklist JSON claim-boundary flags with the report and receipt
   source-tree scanner limitations.
+- Refine worklist risk and difficulty heuristics for source-tree policy
+  exception families without using Cargo package metadata.
 
 Planned work:
 
-- Refine risk and difficulty heuristics with repository/package context.
 - Expand suggested proof commands with crate-local and tool-specific commands.
 
 ## Phase 13: Audit Reports
