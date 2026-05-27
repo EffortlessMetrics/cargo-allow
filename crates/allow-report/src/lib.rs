@@ -85,10 +85,30 @@ pub fn render_human(
     outcomes: &[MatchOutcome],
     failed: bool,
 ) -> String {
+    render_human_with_context(
+        command,
+        findings,
+        outcomes,
+        failed,
+        ReportContext::default(),
+    )
+}
+
+pub fn render_human_with_context(
+    command: &str,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    failed: bool,
+    context: ReportContext<'_>,
+) -> String {
     let summary = Summary::from_outcomes(outcomes);
     let mut out = String::new();
     out.push_str(&format!("cargo-allow {command}\n\n"));
     out.push_str(&format!("Findings scanned: {}\n", findings.len()));
+    out.push_str(&format!(
+        "Inventory: source_tree/source_syntax via {}\n",
+        context.inventory_source
+    ));
     for status in [
         MatchStatus::Matched,
         MatchStatus::New,
@@ -137,6 +157,22 @@ pub fn render_markdown(
     outcomes: &[MatchOutcome],
     failed: bool,
 ) -> String {
+    render_markdown_with_context(
+        command,
+        findings,
+        outcomes,
+        failed,
+        ReportContext::default(),
+    )
+}
+
+pub fn render_markdown_with_context(
+    command: &str,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    failed: bool,
+    context: ReportContext<'_>,
+) -> String {
     let summary = Summary::from_outcomes(outcomes);
     let mut out = String::new();
     out.push_str(&format!("# cargo-allow {command}\n\n"));
@@ -145,6 +181,10 @@ pub fn render_markdown(
         if failed { "failed" } else { "passed/advisory" }
     ));
     out.push_str(&format!("Findings scanned: `{}`\n\n", findings.len()));
+    out.push_str(&format!(
+        "Inventory: `source_tree` / `source_syntax` via `{}`\n\n",
+        json_escape(context.inventory_source)
+    ));
     out.push_str("| Status | Count |\n|---|---:|\n");
     for status in [
         MatchStatus::Matched,
@@ -610,8 +650,17 @@ mod tests {
             outcome(MatchStatus::New, Some(1)),
         ];
 
-        let text = render_human("audit", &findings, &outcomes, false);
+        let text = render_human_with_context(
+            "audit",
+            &findings,
+            &outcomes,
+            false,
+            ReportContext {
+                inventory_source: "filesystem_fallback",
+            },
+        );
 
+        assert!(text.contains("Inventory: source_tree/source_syntax via filesystem_fallback"));
         assert!(text.contains("Non-Rust file inventory:"));
         assert!(text.contains("files scanned              2"));
         assert!(text.contains("new                        1"));
@@ -633,8 +682,17 @@ mod tests {
         )];
         let outcomes = vec![outcome(MatchStatus::Matched, Some(0))];
 
-        let text = render_markdown("audit", &findings, &outcomes, false);
+        let text = render_markdown_with_context(
+            "audit",
+            &findings,
+            &outcomes,
+            false,
+            ReportContext {
+                inventory_source: "git_tracked",
+            },
+        );
 
+        assert!(text.contains("Inventory: `source_tree` / `source_syntax` via `git_tracked`"));
         assert!(text.contains("## Non-Rust File Inventory"));
         assert!(text.contains("| Files scanned | 1 |"));
         assert!(text.contains("| `ci_declarative` | 1 |"));

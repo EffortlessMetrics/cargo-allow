@@ -2380,19 +2380,18 @@ fn print_report(
     output: Option<&Path>,
     inventory_source: InventorySource,
 ) -> CargoAllowResult<()> {
+    let context = allow_report::ReportContext {
+        inventory_source: inventory_source.as_str(),
+    };
     let text = match format {
-        OutputFormat::Human => allow_report::render_human(command, findings, outcomes, failed),
-        OutputFormat::Json => allow_report::render_json_with_context(
-            command,
-            findings,
-            outcomes,
-            failed,
-            allow_report::ReportContext {
-                inventory_source: inventory_source.as_str(),
-            },
-        ),
+        OutputFormat::Human => {
+            allow_report::render_human_with_context(command, findings, outcomes, failed, context)
+        }
+        OutputFormat::Json => {
+            allow_report::render_json_with_context(command, findings, outcomes, failed, context)
+        }
         OutputFormat::Markdown => {
-            allow_report::render_markdown(command, findings, outcomes, failed)
+            allow_report::render_markdown_with_context(command, findings, outcomes, failed, context)
         }
     };
     if let Some(path) = output {
