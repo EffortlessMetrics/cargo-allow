@@ -2,6 +2,8 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+pub const STRUCTURAL_IDENTITY_SCHEMA_ID: &str = "cargo-allow.structural-identity.v1";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CargoAllowError {
     message: String,
@@ -174,6 +176,10 @@ pub struct StructuralIdentity {
 }
 
 impl StructuralIdentity {
+    pub fn schema_id() -> &'static str {
+        STRUCTURAL_IDENTITY_SCHEMA_ID
+    }
+
     pub fn new(language: impl Into<String>, ast_kind: impl Into<String>) -> Self {
         Self {
             language: language.into(),
@@ -650,6 +656,72 @@ mod tests {
         moved.container = Some("parse_other_span".to_string());
 
         assert_ne!(first.stable_key(), moved.stable_key());
+    }
+
+    #[test]
+    fn structural_identity_has_v1_schema_id() {
+        assert_eq!(
+            StructuralIdentity::schema_id(),
+            "cargo-allow.structural-identity.v1"
+        );
+    }
+
+    #[test]
+    fn structural_identity_key_uses_length_prefixed_parts() {
+        let mut first = StructuralIdentity::new("rust", "method_call");
+        first.container = Some("load".to_string());
+        first.callee = Some("unwrap".to_string());
+        first.normalized_snippet_hash = Some("fnv1a64:abcd".to_string());
+
+        let key = first.stable_key();
+
+        assert!(key.contains("language:4:rust"));
+        assert!(key.contains("container:4:load"));
+        assert!(key.contains("callee:6:unwrap"));
+        assert!(key.contains("normalized_snippet_hash:12:fnv1a64:abcd"));
+    }
+
+    #[test]
+    fn structural_identity_v1_fields_affect_stable_key_except_hints() {
+        let mut base = StructuralIdentity::new("rust", "method_call");
+        base.crate_name = Some("parser".to_string());
+        base.module = Some("parser::span".to_string());
+        base.container = Some("slice_checked_text_range".to_string());
+        base.symbol = Some("source[range]".to_string());
+        base.callee = Some("expect".to_string());
+        base.macro_name = Some("panic".to_string());
+        base.lint = Some("clippy::indexing_slicing".to_string());
+        base.receiver_fingerprint = Some("source".to_string());
+        base.target_fingerprint = Some("range".to_string());
+        base.normalized_snippet_hash = Some("fnv1a64:abcd".to_string());
+        base.line_hint = Some(10);
+        base.column_hint = Some(4);
+
+        let mut moved = base.clone();
+        moved.line_hint = Some(100);
+        moved.column_hint = Some(40);
+        assert_eq!(base.stable_key(), moved.stable_key());
+
+        let cases: &[fn(&mut StructuralIdentity)] = &[
+            |id| id.language = "file".to_string(),
+            |id| id.crate_name = Some("runtime".to_string()),
+            |id| id.module = Some("runtime::ffi".to_string()),
+            |id| id.container = Some("read_buffer".to_string()),
+            |id| id.ast_kind = "macro_call".to_string(),
+            |id| id.symbol = Some("buffer[index]".to_string()),
+            |id| id.callee = Some("unwrap".to_string()),
+            |id| id.macro_name = Some("todo".to_string()),
+            |id| id.lint = Some("dead_code".to_string()),
+            |id| id.receiver_fingerprint = Some("buffer".to_string()),
+            |id| id.target_fingerprint = Some("index".to_string()),
+            |id| id.normalized_snippet_hash = Some("fnv1a64:dcba".to_string()),
+        ];
+
+        for mutate in cases {
+            let mut changed = base.clone();
+            mutate(&mut changed);
+            assert_ne!(base.stable_key(), changed.stable_key());
+        }
     }
 
     #[test]
