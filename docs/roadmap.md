@@ -289,6 +289,7 @@ Completed:
   without switching to JSON.
 - Show multiple proof commands in human worklist output for local follow-up and
   refreshed worklist routing.
+- Report human worklist truncation and point to JSON for the full queue.
 
 Planned work:
 
