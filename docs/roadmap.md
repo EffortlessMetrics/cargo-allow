@@ -113,10 +113,12 @@ Completed:
 - Add `--compat --kind panic` for generated shiplog-style
   `policy/no-panic-baseline.toml`, preserving legacy `count` as
   `occurrence_limit`.
+- Add `--compat --kind no-panic-allowlist` for legacy
+  `policy/no-panic-allowlist.toml`, mapping `explanation` to `reason`,
+  `selector.kind` to `selector.ast_kind`, and `last_seen` to hints only.
 
 Planned work:
 
-- Legacy no-panic allowlist adapter.
 - Side-by-side dogfood against a strict repo.
 
 ## Phase 6: Unsafe Lane
