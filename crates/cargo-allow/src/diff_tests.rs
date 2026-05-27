@@ -1,5 +1,5 @@
 use super::*;
-use allow_core::MatchStatus;
+use allow_core::{MatchOutcome, MatchStatus};
 
 #[test]
 fn markdown_pr_summary_reports_unchanged_posture() {
