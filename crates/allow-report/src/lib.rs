@@ -541,6 +541,10 @@ pub fn render_json_with_context(
             option_json(finding.identity.container.as_deref())
         ));
         out.push_str(&format!(
+            "\"source_package\": {}, ",
+            option_json(finding.identity.crate_name.as_deref())
+        ));
+        out.push_str(&format!(
             "\"ast_kind\": \"{}\"",
             json_escape(&finding.identity.ast_kind)
         ));
@@ -1253,6 +1257,28 @@ mod tests {
     }
 
     #[test]
+    fn json_report_exposes_source_package_context_on_findings() {
+        let mut identity = StructuralIdentity::new("rust", "method_call");
+        identity.crate_name = Some("parser".to_string());
+        let findings = vec![Finding {
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            path: PathBuf::from("crates/parser/src/lib.rs"),
+            span: Some(Span {
+                line: 12,
+                column: 8,
+            }),
+            identity,
+            message: "unwrap call".to_string(),
+        }];
+
+        let json = render_json("audit", &findings, &[], false);
+
+        assert!(json.contains("\"source_package\": \"parser\""));
+        assert!(json.contains("\"path\": \"crates/parser/src/lib.rs\""));
+    }
+
+    #[test]
     fn sarif_report_emits_non_matched_results_with_locations() {
         let findings = vec![file_finding(
             FindingKind::NonRustFile,
@@ -1320,6 +1346,7 @@ mod tests {
         assert!(receipt_schema.contains("\"files_scanned\""));
         assert!(report_schema.contains("\"root\""));
         assert!(receipt_schema.contains("\"root\""));
+        assert!(report_schema.contains("\"source_package\""));
     }
 
     #[test]
