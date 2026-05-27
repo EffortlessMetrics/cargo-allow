@@ -72,6 +72,28 @@ struct ConfigArgs {
     config: Option<PathBuf>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct InventoryFacts {
+    source: InventorySource,
+    files_scanned: Option<usize>,
+}
+
+impl InventoryFacts {
+    fn source_only(source: InventorySource) -> Self {
+        Self {
+            source,
+            files_scanned: None,
+        }
+    }
+
+    fn scanned(source: InventorySource, files_scanned: usize) -> Self {
+        Self {
+            source,
+            files_scanned: Some(files_scanned),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Parser)]
 struct InitArgs {
     /// Write strict-mode defaults.
@@ -412,7 +434,7 @@ fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
 }
 
 fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, inventory_source) = if args.compat {
+    let (root, cfg, findings, inventory_facts) = if args.compat {
         load_compat_world(
             args.root.root.as_deref(),
             args.config.as_deref(),
@@ -430,22 +452,23 @@ fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
     };
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::Audit);
-    print_report(
-        "audit",
-        args.format,
-        &findings,
-        &outcomes,
-        false,
-        args.output.as_deref(),
-        inventory_source,
-    )?;
+    print_report(ReportRenderArgs {
+        command: "audit",
+        format: args.format,
+        findings: &findings,
+        outcomes: &outcomes,
+        failed: false,
+        output: args.output.as_deref(),
+        root: &root,
+        inventory_facts,
+    })?;
     eprintln!("source tree: {}", root.display());
     Ok(())
 }
 
 fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     let mode = CheckMode::parse(&args.mode);
-    let (_root, cfg, findings, inventory_source) = if args.compat {
+    let (root, cfg, findings, inventory_facts) = if args.compat {
         load_compat_world(
             args.root.root.as_deref(),
             args.config.as_deref(),
@@ -464,16 +487,18 @@ fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, mode);
     let failed = outcomes.iter().any(|o| mode.fails(o.status));
-    print_report(
-        "check",
-        args.format,
-        &findings,
-        &outcomes,
+    print_report(ReportRenderArgs {
+        command: "check",
+        format: args.format,
+        findings: &findings,
+        outcomes: &outcomes,
         failed,
-        args.output.as_deref(),
-        inventory_source,
-    )?;
+        output: args.output.as_deref(),
+        root: &root,
+        inventory_facts,
+    })?;
     if let Some(path) = &args.receipt {
+        let root_text = source_tree_root_text(&root);
         write_file(
             path,
             &allow_report::render_receipt_with_context(
@@ -481,7 +506,9 @@ fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
                 &outcomes,
                 failed,
                 allow_report::ReportContext {
-                    inventory_source: inventory_source.as_str(),
+                    inventory_source: inventory_facts.source.as_str(),
+                    source_tree_root: Some(&root_text),
+                    inventory_files: inventory_facts.files_scanned,
                 },
             ),
         )?;
@@ -493,7 +520,7 @@ fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
 }
 
 fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, inventory_source) = load_world(
+    let (root, cfg, findings, inventory_facts) = load_world(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
@@ -531,8 +558,11 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         allow_diff::policy_changes_from_git(&root, &args.base, &policy_path, &head_cfg_for_diff)?;
     let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
     let failed = outcomes.iter().any(|o| CheckMode::NoNew.fails(o.status)) || policy_failed;
+    let root_text = source_tree_root_text(&root);
     let report_context = allow_report::ReportContext {
-        inventory_source: inventory_source.as_str(),
+        inventory_source: inventory_facts.source.as_str(),
+        source_tree_root: Some(&root_text),
+        inventory_files: inventory_facts.files_scanned,
     };
     let mut text = match args.format {
         OutputFormat::Json => allow_report::render_json_with_context(
@@ -2186,7 +2216,7 @@ fn load_world(
     require_config: bool,
     kind_filter: Option<&str>,
     include_untracked: bool,
-) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>, InventorySource)> {
+) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>, InventoryFacts)> {
     load_world_with_evidence_validation(
         explicit_root,
         config,
@@ -2204,7 +2234,7 @@ fn load_world_with_evidence_validation(
     kind_filter: Option<&str>,
     include_untracked: bool,
     validate_local_evidence: bool,
-) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>, InventorySource)> {
+) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>, InventoryFacts)> {
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
@@ -2220,6 +2250,7 @@ fn load_world_with_evidence_validation(
         include_untracked,
     };
     let inventory = inventory(&root, &opts)?;
+    let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
     let files = inventory.files;
     let mut findings = Vec::new();
     findings.extend(allow_rust::scan_rust_files(&root, &files)?);
@@ -2235,7 +2266,7 @@ fn load_world_with_evidence_validation(
         let parsed = parse_kind_filter(kind)?;
         findings.retain(|f| parsed.matches_finding(f));
     }
-    Ok((root, cfg, findings, inventory.source))
+    Ok((root, cfg, findings, inventory_facts))
 }
 
 fn canonical_companion_findings(root: &Path, cfg: &AllowConfig) -> CargoAllowResult<Vec<Finding>> {
@@ -2301,7 +2332,7 @@ fn load_compat_world(
     config: Option<&Path>,
     kind_filter: Option<&str>,
     include_untracked: bool,
-) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>, InventorySource)> {
+) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>, InventoryFacts)> {
     let compat_kind = kind_filter.unwrap_or("non-rust");
     let parsed_filter = kind_filter
         .map(parse_kind_filter)
@@ -2324,9 +2355,10 @@ fn load_compat_world(
             include_untracked,
         };
         let inventory = inventory(&root, &opts)?;
+        let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
         let mut findings = allow_rust::scan_rust_files(&root, &inventory.files)?;
         findings.retain(|finding| finding.kind == FindingKind::Panic);
-        return Ok((root, cfg, findings, inventory.source));
+        return Ok((root, cfg, findings, inventory_facts));
     }
     if is_panic_compat_kind(compat_kind) {
         let policy_path = config
@@ -2339,9 +2371,10 @@ fn load_compat_world(
             include_untracked,
         };
         let inventory = inventory(&root, &opts)?;
+        let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
         let mut findings = allow_rust::scan_rust_files(&root, &inventory.files)?;
         findings.retain(|finding| finding.kind == FindingKind::Panic);
-        return Ok((root, cfg, findings, inventory.source));
+        return Ok((root, cfg, findings, inventory_facts));
     }
     if is_clippy_compat_kind(compat_kind) {
         let policy_path = config
@@ -2354,9 +2387,10 @@ fn load_compat_world(
             include_untracked,
         };
         let inventory = inventory(&root, &opts)?;
+        let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
         let mut findings = allow_rust::scan_rust_files(&root, &inventory.files)?;
         findings.retain(|finding| finding.kind == FindingKind::LintException);
-        return Ok((root, cfg, findings, inventory.source));
+        return Ok((root, cfg, findings, inventory_facts));
     }
     if is_unsafe_compat_kind(compat_kind) {
         let policy_path = config
@@ -2369,9 +2403,10 @@ fn load_compat_world(
             include_untracked,
         };
         let inventory = inventory(&root, &opts)?;
+        let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
         let mut findings = allow_rust::scan_rust_files(&root, &inventory.files)?;
         findings.retain(|finding| finding.kind == FindingKind::Unsafe);
-        return Ok((root, cfg, findings, inventory.source));
+        return Ok((root, cfg, findings, inventory_facts));
     }
     if is_executable_compat_kind(compat_kind) {
         let policy_path = config
@@ -2379,7 +2414,12 @@ fn load_compat_world(
             .unwrap_or_else(|| root.join("policy/executable-allowlist.toml"));
         let cfg = allow_policy_legacy::load_executable_compat_config(policy_path)?;
         let findings = allow_policy_legacy::executable_findings_from_git(&root)?;
-        return Ok((root, cfg, findings, InventorySource::GitTracked));
+        return Ok((
+            root,
+            cfg,
+            findings,
+            InventoryFacts::source_only(InventorySource::FilesystemFallback),
+        ));
     }
     if is_workflow_compat_kind(compat_kind) {
         let policy_path = config
@@ -2387,7 +2427,12 @@ fn load_compat_world(
             .unwrap_or_else(|| root.join("policy/workflow-allowlist.toml"));
         let cfg = allow_policy_legacy::load_workflow_compat_config(policy_path)?;
         let findings = allow_policy_legacy::workflow_findings_from_files(&root)?;
-        return Ok((root, cfg, findings, InventorySource::FilesystemFallback));
+        return Ok((
+            root,
+            cfg,
+            findings,
+            InventoryFacts::source_only(InventorySource::GitTracked),
+        ));
     }
     if is_dependency_surface_compat_kind(compat_kind) {
         let policy_path = config
@@ -2395,7 +2440,12 @@ fn load_compat_world(
             .unwrap_or_else(|| root.join("policy/dependency-surface-allowlist.toml"));
         let cfg = allow_policy_legacy::load_dependency_surface_compat_config(policy_path)?;
         let findings = allow_policy_legacy::dependency_surface_findings_from_git(&root, &cfg)?;
-        return Ok((root, cfg, findings, InventorySource::FilesystemFallback));
+        return Ok((
+            root,
+            cfg,
+            findings,
+            InventoryFacts::source_only(InventorySource::GitTracked),
+        ));
     }
     if is_process_compat_kind(compat_kind) {
         let policy_path = config
@@ -2403,7 +2453,12 @@ fn load_compat_world(
             .unwrap_or_else(|| root.join("policy/process-allowlist.toml"));
         let cfg = allow_policy_legacy::load_process_compat_config(policy_path)?;
         let findings = allow_policy_legacy::process_findings_from_config(&cfg);
-        return Ok((root, cfg, findings, InventorySource::FilesystemFallback));
+        return Ok((
+            root,
+            cfg,
+            findings,
+            InventoryFacts::source_only(InventorySource::FilesystemFallback),
+        ));
     }
     if is_network_compat_kind(compat_kind) {
         let policy_path = config
@@ -2411,7 +2466,12 @@ fn load_compat_world(
             .unwrap_or_else(|| root.join("policy/network-allowlist.toml"));
         let cfg = allow_policy_legacy::load_network_compat_config(policy_path)?;
         let findings = allow_policy_legacy::network_findings_from_config(&cfg);
-        return Ok((root, cfg, findings, InventorySource::FilesystemFallback));
+        return Ok((
+            root,
+            cfg,
+            findings,
+            InventoryFacts::source_only(InventorySource::FilesystemFallback),
+        ));
     }
     if parsed_filter.kind == FindingKind::GeneratedCode {
         let policy_path = config
@@ -2419,7 +2479,12 @@ fn load_compat_world(
             .unwrap_or_else(|| root.join("policy/generated-allowlist.toml"));
         let cfg = allow_policy_legacy::load_generated_compat_config(policy_path)?;
         let findings = allow_policy_legacy::generated_findings_from_gitattributes(&root)?;
-        return Ok((root, cfg, findings, InventorySource::FilesystemFallback));
+        return Ok((
+            root,
+            cfg,
+            findings,
+            InventoryFacts::source_only(InventorySource::FilesystemFallback),
+        ));
     }
     if parsed_filter.kind != FindingKind::NonRustFile {
         return Err(CargoAllowError::new(
@@ -2431,6 +2496,7 @@ fn load_compat_world(
         ..InventoryOptions::default()
     };
     let inventory = inventory(&root, &opts)?;
+    let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
     let findings = allow_files::scan_files(&inventory.files)
         .into_iter()
         .filter(|finding| finding.kind == FindingKind::NonRustFile)
@@ -2439,7 +2505,7 @@ fn load_compat_world(
         .map(PathBuf::from)
         .unwrap_or_else(|| root.join("policy/non-rust-allowlist.toml"));
     let cfg = allow_policy_legacy::load_non_rust_compat_config(policy_path, &findings)?;
-    Ok((root, cfg, findings, inventory.source))
+    Ok((root, cfg, findings, inventory_facts))
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -2707,36 +2773,76 @@ fn markdown_cell(value: &str) -> String {
     value.replace('|', "\\|").replace('`', "\\`")
 }
 
-fn print_report(
-    command: &str,
+fn source_tree_root_text(root: &Path) -> String {
+    let text = root.to_string_lossy().replace('\\', "/");
+    if let Some(stripped) = text.strip_prefix("//?/UNC/") {
+        return format!("//{stripped}");
+    }
+    if let Some(stripped) = text.strip_prefix("//?/") {
+        return stripped.to_string();
+    }
+    if let Some(stripped) = text.strip_prefix("/?/") {
+        return stripped.to_string();
+    }
+    normalize_path(root)
+}
+
+struct ReportRenderArgs<'a> {
+    command: &'a str,
     format: OutputFormat,
-    findings: &[Finding],
-    outcomes: &[allow_core::MatchOutcome],
+    findings: &'a [Finding],
+    outcomes: &'a [allow_core::MatchOutcome],
     failed: bool,
-    output: Option<&Path>,
-    inventory_source: InventorySource,
-) -> CargoAllowResult<()> {
+    output: Option<&'a Path>,
+    root: &'a Path,
+    inventory_facts: InventoryFacts,
+}
+
+fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
+    let root_text = source_tree_root_text(args.root);
     let context = allow_report::ReportContext {
-        inventory_source: inventory_source.as_str(),
+        inventory_source: args.inventory_facts.source.as_str(),
+        source_tree_root: Some(&root_text),
+        inventory_files: args.inventory_facts.files_scanned,
     };
-    let text = match format {
-        OutputFormat::Human => {
-            allow_report::render_human_with_context(command, findings, outcomes, failed, context)
-        }
-        OutputFormat::Json => {
-            allow_report::render_json_with_context(command, findings, outcomes, failed, context)
-        }
-        OutputFormat::Html => {
-            allow_report::render_html_with_context(command, findings, outcomes, failed, context)
-        }
-        OutputFormat::Sarif => {
-            allow_report::render_sarif_with_context(command, findings, outcomes, failed, context)
-        }
-        OutputFormat::Markdown => {
-            allow_report::render_markdown_with_context(command, findings, outcomes, failed, context)
-        }
+    let text = match args.format {
+        OutputFormat::Human => allow_report::render_human_with_context(
+            args.command,
+            args.findings,
+            args.outcomes,
+            args.failed,
+            context,
+        ),
+        OutputFormat::Json => allow_report::render_json_with_context(
+            args.command,
+            args.findings,
+            args.outcomes,
+            args.failed,
+            context,
+        ),
+        OutputFormat::Html => allow_report::render_html_with_context(
+            args.command,
+            args.findings,
+            args.outcomes,
+            args.failed,
+            context,
+        ),
+        OutputFormat::Sarif => allow_report::render_sarif_with_context(
+            args.command,
+            args.findings,
+            args.outcomes,
+            args.failed,
+            context,
+        ),
+        OutputFormat::Markdown => allow_report::render_markdown_with_context(
+            args.command,
+            args.findings,
+            args.outcomes,
+            args.failed,
+            context,
+        ),
     };
-    if let Some(path) = output {
+    if let Some(path) = args.output {
         write_file(path, &text)?;
     } else {
         println!("{text}");
@@ -2831,6 +2937,18 @@ mod tests {
         let normalized = normalized_args(argv(vec!["cargo-allow", "allow", "audit"]));
         let expected = argv(vec!["cargo-allow", "audit"]);
         assert_eq!(normalized, expected);
+    }
+
+    #[test]
+    fn source_tree_root_text_strips_windows_verbatim_prefix() {
+        assert_eq!(
+            source_tree_root_text(Path::new(r"\\?\H:\Code\Rust\cargo-allow")),
+            "H:/Code/Rust/cargo-allow"
+        );
+        assert_eq!(
+            source_tree_root_text(Path::new(r"\\?\UNC\server\share\repo")),
+            "//server/share/repo"
+        );
     }
 
     #[test]
@@ -4138,13 +4256,14 @@ count = 1
         )
         .unwrap_or_else(|err| std::panic::panic_any(format!("rust fixture write: {err}")));
 
-        let (_root, cfg, findings, inventory_source) =
+        let (_root, cfg, findings, inventory_facts) =
             load_compat_world(Some(&dir), None, Some("panic"), false).unwrap_or_else(|err| {
                 std::panic::panic_any(format!("panic compat world loads: {err}"))
             });
         let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
 
-        assert_eq!(inventory_source, InventorySource::FilesystemFallback);
+        assert_eq!(inventory_facts.source, InventorySource::FilesystemFallback);
+        assert!(inventory_facts.files_scanned.is_some());
         assert!(
             cfg.allow
                 .iter()
@@ -4199,13 +4318,14 @@ callee = "Option/Result::unwrap"
         )
         .unwrap_or_else(|err| std::panic::panic_any(format!("rust fixture write: {err}")));
 
-        let (_root, cfg, findings, inventory_source) =
+        let (_root, cfg, findings, inventory_facts) =
             load_compat_world(Some(&dir), None, Some("no-panic-allowlist"), false).unwrap_or_else(
                 |err| std::panic::panic_any(format!("no-panic allowlist world loads: {err}")),
             );
         let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
 
-        assert_eq!(inventory_source, InventorySource::FilesystemFallback);
+        assert_eq!(inventory_facts.source, InventorySource::FilesystemFallback);
+        assert!(inventory_facts.files_scanned.is_some());
         assert!(cfg.allow.iter().any(|entry| {
             entry.kind == FindingKind::Panic && entry.selector.callee.as_deref() == Some("unwrap")
         }));
@@ -4257,13 +4377,14 @@ fn load() {}
         )
         .unwrap_or_else(|err| std::panic::panic_any(format!("rust fixture write: {err}")));
 
-        let (_root, cfg, findings, inventory_source) =
+        let (_root, cfg, findings, inventory_facts) =
             load_compat_world(Some(&dir), None, Some("lint-exception"), false).unwrap_or_else(
                 |err| std::panic::panic_any(format!("clippy compat world loads: {err}")),
             );
         let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
 
-        assert_eq!(inventory_source, InventorySource::FilesystemFallback);
+        assert_eq!(inventory_facts.source, InventorySource::FilesystemFallback);
+        assert!(inventory_facts.files_scanned.is_some());
         assert!(cfg.allow.iter().any(|entry| {
             entry.kind == FindingKind::LintException
                 && entry.selector.lint.as_deref() == Some("clippy::unwrap_used")
@@ -4318,13 +4439,14 @@ container = "read"
         )
         .unwrap_or_else(|err| std::panic::panic_any(format!("rust fixture write: {err}")));
 
-        let (_root, cfg, findings, inventory_source) =
+        let (_root, cfg, findings, inventory_facts) =
             load_compat_world(Some(&dir), None, Some("unsafe"), false).unwrap_or_else(|err| {
                 std::panic::panic_any(format!("unsafe compat world loads: {err}"))
             });
         let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
 
-        assert_eq!(inventory_source, InventorySource::FilesystemFallback);
+        assert_eq!(inventory_facts.source, InventorySource::FilesystemFallback);
+        assert!(inventory_facts.files_scanned.is_some());
         assert!(cfg.allow.iter().any(|entry| {
             entry.kind == FindingKind::Unsafe
                 && entry.selector.ast_kind.as_deref() == Some("unsafe_block")
@@ -4337,6 +4459,40 @@ container = "read"
                 .iter()
                 .any(|outcome| outcome.status == MatchStatus::Matched)
         );
+    }
+
+    #[test]
+    fn dependency_surface_compat_reports_git_source_without_inventory_count() {
+        let dir = migrate_fixture_dir();
+        let policy_dir = dir.join("policy");
+        let crate_dir = dir.join("crates").join("core");
+        fs::create_dir_all(&policy_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::create_dir_all(&crate_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("crate dir: {err}")));
+        fs::write(
+            policy_dir.join("dependency-surface-allowlist.toml"),
+            dependency_surface_policy_fixture_text(),
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("dependency policy write: {err}")));
+        fs::write(
+            dir.join("Cargo.toml"),
+            "[workspace]\nmembers = [\"crates/core\"]\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("workspace manifest: {err}")));
+        fs::write(crate_dir.join("Cargo.toml"), "[package]\nname = \"core\"\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("crate manifest: {err}")));
+        run_git_for_test(&dir, &["init"]);
+        run_git_for_test(&dir, &["add", "Cargo.toml", "crates/core/Cargo.toml"]);
+
+        let (_root, _cfg, findings, inventory_facts) =
+            load_compat_world(Some(&dir), None, Some("dependency-surface"), false).unwrap_or_else(
+                |err| std::panic::panic_any(format!("dependency compat world loads: {err}")),
+            );
+
+        assert_eq!(inventory_facts.source, InventorySource::GitTracked);
+        assert_eq!(inventory_facts.files_scanned, None);
+        assert_eq!(findings.len(), 2);
     }
 
     #[test]
@@ -4561,6 +4717,43 @@ reason = "cargo fetch resolves and downloads crate dependencies."
 created = "2026-05-09"
 expires = "permanent"
 "#
+    }
+
+    fn dependency_surface_policy_fixture_text() -> &'static str {
+        r#"schema_version = 1
+policy = "dependency-surface-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "dep-workspace-cargo-toml"
+path = "Cargo.toml"
+surface = "workspace_manifest"
+owner = "release"
+reason = "Workspace dependency block."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "dep-crate-cargo-toml"
+path = "crates/*/Cargo.toml"
+surface = "crate_manifest"
+owner = "release"
+reason = "Per-crate manifests."
+broad_glob_reason = "Per-crate enumeration would duplicate the workspace member list."
+created = "2026-05-09"
+expires = "permanent"
+"#
+    }
+
+    fn run_git_for_test(root: &Path, args: &[&str]) {
+        let status = std::process::Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .status()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+        assert!(status.success(), "git {args:?} failed with {status}");
     }
 
     fn test_entry(id: &str, kind: FindingKind) -> AllowEntry {
