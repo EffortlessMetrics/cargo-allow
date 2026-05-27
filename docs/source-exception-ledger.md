@@ -225,6 +225,11 @@ The worklist command also reports broken local evidence links as
 evidence is missing so humans or agents can get a repair target; normal
 `cargo-allow check` still fails closed on broken local evidence references.
 
+The worklist may also include advisory `broad_scope` items for matched allow
+entries that use wildcard source-tree scopes. These do not mean the current
+policy failed; they route cleanup work toward narrower selectors or explicit
+review of the broad scope.
+
 `cargo-allow diff --base <rev>` compares the current policy ledger with the
 base revision's `policy/allow.toml` and reports policy weakening in human and
 Markdown output. Current detection covers scope broadening, selector precision

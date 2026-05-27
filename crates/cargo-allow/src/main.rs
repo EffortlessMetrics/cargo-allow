@@ -1706,6 +1706,11 @@ fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
     let mut items = work_items_from_outcomes(&report_cfg, &findings, &outcomes);
+    items.extend(work_items_from_policy_advisories(
+        &report_cfg,
+        &outcomes,
+        items.len() + 1,
+    ));
     items.extend(work_items_from_evidence_diagnostics(
         &root,
         &report_cfg,
@@ -1892,6 +1897,67 @@ fn work_items_from_evidence_diagnostics(
     items
 }
 
+fn work_items_from_policy_advisories(
+    cfg: &AllowConfig,
+    outcomes: &[MatchOutcome],
+    start_index: usize,
+) -> Vec<WorkItem> {
+    cfg.allow
+        .iter()
+        .filter_map(|entry| {
+            let scope = entry_broad_scope(entry)?;
+            let matched = outcomes.iter().any(|outcome| {
+                outcome.status == MatchStatus::Matched
+                    && outcome.allow_id.as_deref() == Some(entry.id.as_str())
+            });
+            matched.then_some((entry, scope))
+        })
+        .enumerate()
+        .map(|(index, (entry, scope))| {
+            let item_index = start_index + index;
+            let kind = "broad_scope".to_string();
+            WorkItem {
+                id: format!("work-broad-scope-{item_index:04}"),
+                kind,
+                exception_kind: Some(entry.kind.as_str().to_string()),
+                family: entry.family.clone(),
+                risk: "medium",
+                difficulty: "small",
+                status: MatchStatus::Matched,
+                allow_id: Some(entry.id.clone()),
+                finding_index: None,
+                path: Some(scope.clone()),
+                source_package: None,
+                message: format!("{} uses a broad source-tree scope `{}`", entry.id, scope),
+                suggested_actions: suggested_actions("broad_scope"),
+                proof_commands: proof_commands("broad_scope", None, Some(entry)),
+            }
+        })
+        .collect()
+}
+
+fn entry_broad_scope(entry: &AllowEntry) -> Option<String> {
+    entry
+        .path
+        .as_ref()
+        .map(normalize_path)
+        .filter(|scope| scope_has_wildcard(scope))
+        .or_else(|| entry.glob.clone().filter(|scope| scope_has_wildcard(scope)))
+        .or_else(|| {
+            entry
+                .selector
+                .glob
+                .clone()
+                .filter(|scope| scope_has_wildcard(scope))
+        })
+}
+
+fn scope_has_wildcard(scope: &str) -> bool {
+    scope
+        .chars()
+        .any(|ch| matches!(ch, '*' | '?' | '[' | ']' | '{' | '}'))
+}
+
 fn source_package_name(finding: &Finding) -> Option<String> {
     finding
         .identity
@@ -2059,6 +2125,11 @@ fn suggested_actions(kind: &str) -> Vec<String> {
         "review_due" => {
             vec!["review the retained exception and update evidence or remove it".to_string()]
         }
+        "broad_scope" => vec![
+            "replace the broad glob with exact paths or a narrower glob where practical"
+                .to_string(),
+            "keep broad source-tree scope intentional, reviewed, and evidenced".to_string(),
+        ],
         _ => vec!["inspect the outcome and update policy or source accordingly".to_string()],
     }
 }
@@ -4253,6 +4324,86 @@ mod tests {
                 .iter()
                 .any(|action| action.contains("baseline count"))
         );
+    }
+
+    #[test]
+    fn worklist_items_report_broad_scope_advisories() {
+        let mut cfg = AllowConfig::empty();
+        let mut entry = test_entry("allow-scripts", FindingKind::NonRustFile);
+        entry.path = None;
+        entry.glob = Some("scripts/**".to_string());
+        entry.selector.glob = Some("scripts/**".to_string());
+        entry.family = Some("shell_script".to_string());
+        cfg.allow.push(entry);
+        let outcomes = vec![MatchOutcome {
+            status: MatchStatus::Matched,
+            allow_id: Some("allow-scripts".to_string()),
+            finding_index: Some(0),
+            message: "matched".to_string(),
+            score: 100,
+        }];
+
+        let items = work_items_from_policy_advisories(&cfg, &outcomes, 1);
+        let json = render_worklist_json_with_context(&items, WorklistContext::default());
+        let human = render_worklist_human_with_context(&items, WorklistContext::default());
+
+        let item = items
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+        assert_eq!(item.kind, "broad_scope");
+        assert_eq!(item.status, MatchStatus::Matched);
+        assert_eq!(item.risk, "medium");
+        assert_eq!(item.difficulty, "small");
+        assert_eq!(item.allow_id.as_deref(), Some("allow-scripts"));
+        assert_eq!(item.path.as_deref(), Some("scripts/**"));
+        assert_eq!(item.exception_kind.as_deref(), Some("non_rust_file"));
+        assert_eq!(item.family.as_deref(), Some("shell_script"));
+        assert!(
+            item.suggested_actions
+                .iter()
+                .any(|action| action.contains("narrower glob"))
+        );
+        assert!(json.contains("\"kind\": \"broad_scope\""));
+        assert!(json.contains("\"status\": \"matched\""));
+        assert!(human.contains("exception: non_rust_file.shell_script"));
+    }
+
+    #[test]
+    fn worklist_policy_advisories_ignore_exact_selector_globs() {
+        let mut cfg = AllowConfig::empty();
+        let mut entry = test_entry("allow-doc", FindingKind::NonRustFile);
+        entry.selector.glob = Some("docs/README.md".to_string());
+        cfg.allow.push(entry);
+        let outcomes = vec![MatchOutcome {
+            status: MatchStatus::Matched,
+            allow_id: Some("allow-doc".to_string()),
+            finding_index: Some(0),
+            message: "matched".to_string(),
+            score: 100,
+        }];
+
+        let items = work_items_from_policy_advisories(&cfg, &outcomes, 1);
+
+        assert!(items.is_empty());
+    }
+
+    #[test]
+    fn worklist_policy_advisories_ignore_unmatched_broad_scopes() {
+        let mut cfg = AllowConfig::empty();
+        let mut entry = test_entry("allow-scripts", FindingKind::NonRustFile);
+        entry.glob = Some("scripts/**".to_string());
+        cfg.allow.push(entry);
+        let outcomes = vec![MatchOutcome {
+            status: MatchStatus::Stale,
+            allow_id: Some("allow-scripts".to_string()),
+            finding_index: None,
+            message: "stale".to_string(),
+            score: 0,
+        }];
+
+        let items = work_items_from_policy_advisories(&cfg, &outcomes, 1);
+
+        assert!(items.is_empty());
     }
 
     #[test]
