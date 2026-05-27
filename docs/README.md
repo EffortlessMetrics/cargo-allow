@@ -13,3 +13,5 @@ beyond the MVP scaffold.
   should move into cargo-allow.
 - [CI](ci.md): GitHub Actions examples for PR posture diffs and mainline
   checks.
+- [Agent worklist prompt](agents/cargo-allow-worklist.md): bounded agent use of
+  `cargo-allow worklist`.

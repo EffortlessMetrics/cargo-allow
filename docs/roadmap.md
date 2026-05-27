@@ -208,12 +208,12 @@ Completed:
   and proof commands.
 - Emit `broken_evidence_link` work items for missing or invalid local evidence
   references.
+- Document bounded agent prompt patterns for `cargo-allow worklist`.
 
 Planned work:
 
 - Refine risk and difficulty heuristics with repository/package context.
 - Expand suggested proof commands with crate-local and tool-specific commands.
-- Document agent prompt patterns.
 
 ## Phase 13: Audit Reports
 
