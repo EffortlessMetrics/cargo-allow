@@ -237,6 +237,8 @@ Work items are ordered for routing: high risk first, then lower estimated
 difficulty, then stable source and allow identifiers.
 `work-*` IDs are artifact-local queue handles assigned after filtering and
 sorting; use `allow_id` for durable policy references.
+Policy-backed work items include owner, classification, and reason so the queue
+can route work without requiring an immediate `explain` lookup.
 It is a routing surface, not an auto-fix plan: agents and humans should fix,
 prove, narrow, or remove the exception instead of adding suppressions just to
 silence cargo-allow.
