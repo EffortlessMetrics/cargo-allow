@@ -814,6 +814,7 @@ fn render_diff_json_with_posture(
     if let Some(prefix) = trimmed.strip_suffix('}') {
         format!("{prefix},\n  \"diff\": {diff_json}\n}}\n")
     } else {
+        eprintln!("warning: failed to append diff posture to JSON report");
         report_json
     }
 }
@@ -3733,6 +3734,15 @@ mod tests {
         assert!(json.contains("\"severity\": \"fail\""));
         assert!(json.contains("\"kind\": \"scope_broadened\""));
         assert!(json.ends_with("}\n"));
+    }
+
+    #[test]
+    fn diff_json_report_keeps_base_report_when_append_fails() {
+        let base = "not json".to_string();
+
+        let json = render_diff_json_with_posture(base.clone(), &[], &[], &[]);
+
+        assert_eq!(json, base);
     }
 
     #[test]
