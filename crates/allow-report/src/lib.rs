@@ -239,6 +239,20 @@ pub struct ProposeReport<'a> {
     pub baseline_debt_entries_proposed: usize,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct MigrateReport<'a> {
+    pub inventory: InventoryContext<'a>,
+    pub input_kind: &'a str,
+    pub input_path: &'a str,
+    pub output_path: &'a str,
+    pub force: bool,
+    pub allow_entries: usize,
+    pub baseline_debt: usize,
+    pub unsafe_entries: usize,
+    pub entries_with_evidence: usize,
+    pub notes: &'a str,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
     pub total: usize,
@@ -1301,6 +1315,66 @@ pub fn render_propose_json(report: ProposeReport<'_>) -> String {
     out
 }
 
+pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "  \"schema_version\": {MIGRATE_SCHEMA_VERSION},\n"
+    ));
+    out.push_str(&format!("  \"schema_id\": \"{MIGRATE_SCHEMA_ID}\",\n"));
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"migrate\",\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        render_claim_boundary_json()
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        render_scanner_limitations_json()
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&render_inventory_json(report.inventory, "  "));
+    out.push_str(",\n");
+    out.push_str("  \"input\": {\n");
+    out.push_str(&format!(
+        "    \"kind\": \"{}\",\n",
+        json_escape(report.input_kind)
+    ));
+    out.push_str(&format!(
+        "    \"path\": \"{}\"\n",
+        json_escape(report.input_path)
+    ));
+    out.push_str("  },\n");
+    out.push_str("  \"output\": {\n");
+    out.push_str(&format!(
+        "    \"path\": \"{}\",\n",
+        json_escape(report.output_path)
+    ));
+    out.push_str(&format!("    \"force\": {}\n", bool_json(report.force)));
+    out.push_str("  },\n");
+    out.push_str("  \"summary\": {\n");
+    out.push_str(&format!(
+        "    \"allow_entries\": {},\n",
+        report.allow_entries
+    ));
+    out.push_str(&format!(
+        "    \"baseline_debt\": {},\n",
+        report.baseline_debt
+    ));
+    out.push_str(&format!(
+        "    \"unsafe_entries\": {},\n",
+        report.unsafe_entries
+    ));
+    out.push_str(&format!(
+        "    \"entries_with_evidence\": {}\n",
+        report.entries_with_evidence
+    ));
+    out.push_str("  },\n");
+    out.push_str(&format!("  \"notes\": \"{}\"\n", json_escape(report.notes)));
+    out.push_str("}\n");
+    out
+}
+
 fn render_work_item_json(item: &WorklistItem<'_>) -> String {
     let mut out = String::new();
     out.push_str("    {\n");
@@ -2178,6 +2252,43 @@ mod tests {
         assert!(json.contains("\"baseline_debt_entries_proposed\": 2"));
         assert!(json.contains("\"owner\": \"unowned\""));
         assert!(json.contains("\"classification\": \"baseline_debt\""));
+    }
+
+    #[test]
+    fn migrate_json_renderer_records_io_summary_and_notes() {
+        let json = render_migrate_json(MigrateReport {
+            inventory: InventoryContext::new(
+                "source_tree",
+                "policy_migration",
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(76),
+            ),
+            input_kind: "repo_policy",
+            input_path: "policy",
+            output_path: "policy/allow.toml",
+            force: true,
+            allow_entries: 12,
+            baseline_debt: 5,
+            unsafe_entries: 2,
+            entries_with_evidence: 3,
+            notes: "migration notes",
+        });
+
+        assert!(json.contains("\"schema_id\": \"cargo-allow.migrate.v1\""));
+        assert!(json.contains("\"command\": \"migrate\""));
+        assert!(json.contains("\"scanner\": \"policy_migration\""));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"files_scanned\": 76"));
+        assert!(json.contains("\"kind\": \"repo_policy\""));
+        assert!(json.contains("\"path\": \"policy\""));
+        assert!(json.contains("\"path\": \"policy/allow.toml\""));
+        assert!(json.contains("\"force\": true"));
+        assert!(json.contains("\"allow_entries\": 12"));
+        assert!(json.contains("\"baseline_debt\": 5"));
+        assert!(json.contains("\"unsafe_entries\": 2"));
+        assert!(json.contains("\"entries_with_evidence\": 3"));
+        assert!(json.contains("\"notes\": \"migration notes\""));
     }
 
     #[test]

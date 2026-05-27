@@ -1,6 +1,4 @@
-use allow_core::{
-    AllowConfig, CargoAllowError, CargoAllowResult, FindingKind, json_escape, normalize_path,
-};
+use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, FindingKind, normalize_path};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use allow_policy::{render_policy, validate_policy};
 use clap::{Parser, ValueEnum};
@@ -167,73 +165,24 @@ fn render_migrate_summary_json(
     let counts = migrate_summary_counts(cfg);
     let output = output.display().to_string();
     let notes = allow_policy_legacy::migration_notes();
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str(&format!(
-        "  \"schema_version\": {},\n",
-        allow_report::MIGRATE_SCHEMA_VERSION
-    ));
-    out.push_str(&format!(
-        "  \"schema_id\": \"{}\",\n",
-        allow_report::MIGRATE_SCHEMA_ID
-    ));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"migrate\",\n");
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        allow_report::render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        allow_report::render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&allow_report::render_inventory_json(
-        allow_report::InventoryContext::new(
+    allow_report::render_migrate_json(allow_report::MigrateReport {
+        inventory: allow_report::InventoryContext::new(
             "source_tree",
             "policy_migration",
             &context.inventory_source,
             context.source_tree_root.as_deref(),
             context.inventory_files,
         ),
-        "  ",
-    ));
-    out.push_str(",\n");
-    out.push_str("  \"input\": {\n");
-    out.push_str(&format!(
-        "    \"kind\": \"{}\",\n",
-        json_escape(&context.input_kind)
-    ));
-    out.push_str(&format!(
-        "    \"path\": \"{}\"\n",
-        json_escape(&context.input_path)
-    ));
-    out.push_str("  },\n");
-    out.push_str("  \"output\": {\n");
-    out.push_str(&format!("    \"path\": \"{}\",\n", json_escape(&output)));
-    out.push_str(&format!("    \"force\": {}\n", force));
-    out.push_str("  },\n");
-    out.push_str("  \"summary\": {\n");
-    out.push_str(&format!(
-        "    \"allow_entries\": {},\n",
-        counts.allow_entries
-    ));
-    out.push_str(&format!(
-        "    \"baseline_debt\": {},\n",
-        counts.baseline_debt
-    ));
-    out.push_str(&format!(
-        "    \"unsafe_entries\": {},\n",
-        counts.unsafe_entries
-    ));
-    out.push_str(&format!(
-        "    \"entries_with_evidence\": {}\n",
-        counts.entries_with_evidence
-    ));
-    out.push_str("  },\n");
-    out.push_str(&format!("  \"notes\": \"{}\"\n", json_escape(notes)));
-    out.push_str("}\n");
-    out
+        input_kind: &context.input_kind,
+        input_path: &context.input_path,
+        output_path: &output,
+        force,
+        allow_entries: counts.allow_entries,
+        baseline_debt: counts.baseline_debt,
+        unsafe_entries: counts.unsafe_entries,
+        entries_with_evidence: counts.entries_with_evidence,
+        notes,
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
