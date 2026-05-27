@@ -208,10 +208,10 @@ lifecycle dates, and reason. It supports maintenance filters such as `--kind`,
 status is computed from current source-syntax findings; line and column hints
 are not identity.
 
-`cargo-allow prune --stale --dry-run` previews stale allow entries that no
-current source-syntax finding matched. The command is dry-run only in the
-current implementation: it does not write `policy/allow.toml`, and humans should
-confirm the exception is gone before deleting the entry.
+`cargo-allow prune --stale` previews stale allow entries that no current
+source-syntax finding matched. Dry-run is the default; `--dry-run` makes that
+choice explicit. `cargo-allow prune --stale --write` removes only those stale
+entries from the selected policy file after revalidating the rendered policy.
 
 `cargo-allow worklist --format json` turns non-matched no-new outcomes into
 agent-safe work items. Each item includes a kind, risk, difficulty, current
