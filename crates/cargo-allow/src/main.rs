@@ -49,7 +49,9 @@ pub(crate) use render::{
     option_json_string, option_usize_json, scope_has_wildcard, selector_from_finding,
     selector_json, source_package_name, source_tree_path_matches_filter, source_tree_root_text,
 };
-pub(crate) use reporting::{ReportRenderArgs, print_report};
+pub(crate) use reporting::{
+    ReportRenderArgs, policy_baseline_debt_entries, print_report, report_config,
+};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -368,23 +370,6 @@ fn load_compat_world(
         .unwrap_or_else(|| root.join("policy/non-rust-allowlist.toml"));
     let cfg = allow_policy_legacy::load_non_rust_compat_config(policy_path, &findings)?;
     Ok((root, cfg, findings, inventory_facts))
-}
-
-fn report_config(cfg: &AllowConfig, kind_filter: Option<&str>) -> CargoAllowResult<AllowConfig> {
-    let Some(kind) = kind_filter else {
-        return Ok(cfg.clone());
-    };
-    let parsed = parse_kind_filter(kind)?;
-    let mut filtered = cfg.clone();
-    filtered.allow.retain(|entry| parsed.matches_entry(entry));
-    Ok(filtered)
-}
-
-fn policy_baseline_debt_entries(cfg: &AllowConfig) -> usize {
-    cfg.allow
-        .iter()
-        .filter(|entry| entry.classification == "baseline_debt")
-        .count()
 }
 
 #[cfg(test)]
