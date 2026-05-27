@@ -728,10 +728,7 @@ pub fn render_json_with_context(
     let summary = Summary::from_outcomes(outcomes);
     let mut out = String::new();
     out.push_str("{\n");
-    out.push_str(&format!("  \"schema_version\": {REPORT_SCHEMA_VERSION},\n"));
-    out.push_str(&format!("  \"schema_id\": \"{REPORT_SCHEMA_ID}\",\n"));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str(&format!("  \"command\": \"{}\",\n", json_escape(command)));
+    push_json_artifact_header(&mut out, REPORT_SCHEMA_VERSION, REPORT_SCHEMA_ID, command);
     out.push_str(&format!(
         "  \"status\": \"{}\",\n",
         if failed { "failed" } else { "passed" }
@@ -1052,16 +1049,44 @@ pub fn render_receipt_with_context(
     context: ReportContext<'_>,
 ) -> String {
     let summary = Summary::from_outcomes(outcomes);
-    format!(
-        "{{\n  \"schema_version\": {RECEIPT_SCHEMA_VERSION},\n  \"schema_id\": \"{RECEIPT_SCHEMA_ID}\",\n  \"tool\": \"cargo-allow\",\n  \"command\": \"{}\",\n  \"status\": \"{}\",\n  \"failed\": {},\n  \"claim_boundary\": {},\n  \"scanner_limitations\": {},\n  \"inventory\": {},\n  \"counts\": {{\n{}  }}\n}}\n",
-        json_escape(command),
-        if failed { "failed" } else { "passed" },
-        bool_json(failed),
-        render_claim_boundary_json(),
-        render_scanner_limitations_json(),
-        render_inventory_json(context.into(), "  "),
-        render_counts_fields(&summary, "    ")
-    )
+    let mut out = String::new();
+    out.push_str("{\n");
+    push_json_artifact_header(&mut out, RECEIPT_SCHEMA_VERSION, RECEIPT_SCHEMA_ID, command);
+    out.push_str(&format!(
+        "  \"status\": \"{}\",\n",
+        if failed { "failed" } else { "passed" }
+    ));
+    out.push_str(&format!("  \"failed\": {},\n", bool_json(failed)));
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        render_claim_boundary_json()
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        render_scanner_limitations_json()
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&render_inventory_json(context.into(), "  "));
+    out.push_str(",\n");
+    out.push_str("  \"counts\": {\n");
+    out.push_str(&render_counts_fields(&summary, "    "));
+    out.push_str("  }\n}\n");
+    out
+}
+
+fn push_json_artifact_header(
+    out: &mut String,
+    schema_version: u32,
+    schema_id: &str,
+    command: &str,
+) {
+    out.push_str(&format!("  \"schema_version\": {schema_version},\n"));
+    out.push_str(&format!(
+        "  \"schema_id\": \"{}\",\n",
+        json_escape(schema_id)
+    ));
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str(&format!("  \"command\": \"{}\",\n", json_escape(command)));
 }
 
 fn option_json(value: Option<&str>) -> String {
@@ -1300,10 +1325,7 @@ pub fn render_prune_json(
 ) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    out.push_str(&format!("  \"schema_version\": {PRUNE_SCHEMA_VERSION},\n"));
-    out.push_str(&format!("  \"schema_id\": \"{PRUNE_SCHEMA_ID}\",\n"));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"prune\",\n");
+    push_json_artifact_header(&mut out, PRUNE_SCHEMA_VERSION, PRUNE_SCHEMA_ID, "prune");
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
         render_claim_boundary_json()
@@ -1356,10 +1378,7 @@ pub fn render_list_json(
 ) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    out.push_str(&format!("  \"schema_version\": {LIST_SCHEMA_VERSION},\n"));
-    out.push_str(&format!("  \"schema_id\": \"{LIST_SCHEMA_ID}\",\n"));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"list\",\n");
+    push_json_artifact_header(&mut out, LIST_SCHEMA_VERSION, LIST_SCHEMA_ID, "list");
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
         render_claim_boundary_json()
@@ -1397,12 +1416,12 @@ pub fn render_worklist_json(
 ) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    out.push_str(&format!(
-        "  \"schema_version\": {WORKLIST_SCHEMA_VERSION},\n"
-    ));
-    out.push_str(&format!("  \"schema_id\": \"{WORKLIST_SCHEMA_ID}\",\n"));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"worklist\",\n");
+    push_json_artifact_header(
+        &mut out,
+        WORKLIST_SCHEMA_VERSION,
+        WORKLIST_SCHEMA_ID,
+        "worklist",
+    );
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
         render_claim_boundary_json()
@@ -1455,10 +1474,7 @@ pub fn render_worklist_json(
 pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    out.push_str(&format!("  \"schema_version\": {DOCTOR_SCHEMA_VERSION},\n"));
-    out.push_str(&format!("  \"schema_id\": \"{DOCTOR_SCHEMA_ID}\",\n"));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"doctor\",\n");
+    push_json_artifact_header(&mut out, DOCTOR_SCHEMA_VERSION, DOCTOR_SCHEMA_ID, "doctor");
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
         render_claim_boundary_json()
@@ -1503,12 +1519,12 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
 pub fn render_propose_json(report: ProposeReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    out.push_str(&format!(
-        "  \"schema_version\": {PROPOSE_SCHEMA_VERSION},\n"
-    ));
-    out.push_str(&format!("  \"schema_id\": \"{PROPOSE_SCHEMA_ID}\",\n"));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"propose\",\n");
+    push_json_artifact_header(
+        &mut out,
+        PROPOSE_SCHEMA_VERSION,
+        PROPOSE_SCHEMA_ID,
+        "propose",
+    );
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
         render_claim_boundary_json()
@@ -1558,12 +1574,12 @@ pub fn render_propose_json(report: ProposeReport<'_>) -> String {
 pub fn render_explain_json(report: ExplainReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    out.push_str(&format!(
-        "  \"schema_version\": {EXPLAIN_SCHEMA_VERSION},\n"
-    ));
-    out.push_str(&format!("  \"schema_id\": \"{EXPLAIN_SCHEMA_ID}\",\n"));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"explain\",\n");
+    push_json_artifact_header(
+        &mut out,
+        EXPLAIN_SCHEMA_VERSION,
+        EXPLAIN_SCHEMA_ID,
+        "explain",
+    );
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
         render_claim_boundary_json()
@@ -1757,10 +1773,7 @@ pub fn render_add_json(report: AddReport<'_>) -> String {
     let path = entry.path.as_ref().map(normalize_path);
     let mut out = String::new();
     out.push_str("{\n");
-    out.push_str(&format!("  \"schema_version\": {ADD_SCHEMA_VERSION},\n"));
-    out.push_str(&format!("  \"schema_id\": \"{ADD_SCHEMA_ID}\",\n"));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"add\",\n");
+    push_json_artifact_header(&mut out, ADD_SCHEMA_VERSION, ADD_SCHEMA_ID, "add");
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
         render_claim_boundary_json()
@@ -1848,12 +1861,12 @@ pub fn render_add_json(report: AddReport<'_>) -> String {
 pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    out.push_str(&format!(
-        "  \"schema_version\": {MIGRATE_SCHEMA_VERSION},\n"
-    ));
-    out.push_str(&format!("  \"schema_id\": \"{MIGRATE_SCHEMA_ID}\",\n"));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str("  \"command\": \"migrate\",\n");
+    push_json_artifact_header(
+        &mut out,
+        MIGRATE_SCHEMA_VERSION,
+        MIGRATE_SCHEMA_ID,
+        "migrate",
+    );
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",
         render_claim_boundary_json()
