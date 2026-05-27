@@ -229,6 +229,8 @@ Completed:
   outcomes, and the command claim boundary.
 - Include suggested actions and proof commands in `explain` output for entries
   that need attention.
+- Show scanner-provided `source_package` context in `explain` current findings
+  without treating it as Cargo metadata.
 - Improve `list` with current status, match counts, owner/kind/lifecycle
   filters, and baseline-debt filtering.
 - Implement dry-run-first stale pruning.
