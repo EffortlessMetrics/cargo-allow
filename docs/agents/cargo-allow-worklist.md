@@ -22,6 +22,8 @@ Saved worklist artifacts record the applied filters; preserve that context in
 handoffs.
 The default order already puts high-risk work first, then lower estimated
 difficulty.
+Treat `work-*` IDs as queue-local handles; cite `allow_id` when you need a
+durable policy reference.
 If a work item includes `source_package`, use it only as source-tree context for
 where to focus review; do not infer Cargo metadata, build success, or package
 test coverage from that field.

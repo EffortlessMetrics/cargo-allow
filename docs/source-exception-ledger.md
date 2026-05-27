@@ -235,6 +235,8 @@ scanner limitation values rather than treating claim-boundary facts as open-ende
 prose.
 Work items are ordered for routing: high risk first, then lower estimated
 difficulty, then stable source and allow identifiers.
+`work-*` IDs are artifact-local queue handles assigned after filtering and
+sorting; use `allow_id` for durable policy references.
 It is a routing surface, not an auto-fix plan: agents and humans should fix,
 prove, narrow, or remove the exception instead of adding suppressions just to
 silence cargo-allow.

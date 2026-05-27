@@ -320,6 +320,8 @@ Completed:
   cannot be confused with the full ledger queue.
 - Sort worklist output by risk and difficulty so the default queue surfaces
   high-priority work without requiring filters.
+- Assign worklist item IDs after filtering and sorting so artifact-local queue
+  handles match the presented order.
 
 Planned work:
 
