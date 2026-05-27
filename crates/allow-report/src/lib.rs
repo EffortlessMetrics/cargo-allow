@@ -1388,6 +1388,16 @@ mod tests {
         assert!(receipt_schema.contains("\"scanner_limitation\""));
         assert!(report_schema.contains("\"repository_code_not_executed\""));
         assert!(receipt_schema.contains("\"repository_code_not_executed\""));
+        for limitation in SCANNER_LIMITATIONS {
+            assert!(report_schema.contains(limitation));
+            assert!(receipt_schema.contains(limitation));
+            assert!(worklist_schema.contains(limitation));
+        }
+        for claim in CLAIM_BOUNDARY {
+            assert!(report_schema.contains(claim));
+            assert!(receipt_schema.contains(claim));
+            assert!(worklist_schema.contains(claim));
+        }
     }
 
     #[test]

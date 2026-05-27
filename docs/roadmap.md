@@ -25,6 +25,10 @@ Completed:
   and worklist JSON producers to prevent contract drift.
 - Publish report, receipt, and worklist schema IDs/versions from `allow-report`
   instead of duplicating worklist literals in the CLI.
+- Assert every shared claim-boundary and scanner-limitation flag is documented
+  across report, receipt, and worklist schemas.
+- Enumerate supported claim-boundary values in report, receipt, and worklist
+  schemas.
 - Thread source-tree root and inventory file-count facts into reports and
   receipts without requiring Cargo project metadata or a successful build.
 - Replace handwritten TOML parsing with typed serde/toml policy loading.
