@@ -349,7 +349,7 @@ fn source_package_contexts(
             });
         }
     }
-    packages.sort_by(|left, right| right.root.len().cmp(&left.root.len()));
+    packages.sort_by_key(|package| std::cmp::Reverse(package.root.len()));
     Ok(packages)
 }
 
