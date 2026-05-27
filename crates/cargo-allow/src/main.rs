@@ -242,6 +242,9 @@ struct ListArgs {
     /// Include only generated baseline debt entries.
     #[arg(long)]
     baseline_debt: bool,
+    /// Include only entries with wildcard source-tree scopes.
+    #[arg(long)]
+    broad_scope: bool,
     /// Include untracked files when determining current match status.
     #[arg(long)]
     include_untracked: bool,
@@ -1119,6 +1122,7 @@ fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         review_due: args.review_due,
         stale: args.stale,
         baseline_debt: args.baseline_debt,
+        broad_scope: args.broad_scope,
     };
     println!("{}", render_list_rows(&rows, &filters));
     Ok(())
@@ -1153,6 +1157,7 @@ struct ListFilters<'a> {
     review_due: bool,
     stale: bool,
     baseline_debt: bool,
+    broad_scope: bool,
 }
 
 fn list_rows(cfg: &AllowConfig, findings: &[Finding], outcomes: &[MatchOutcome]) -> Vec<ListRow> {
@@ -1312,6 +1317,9 @@ fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
         return false;
     }
     if filters.baseline_debt && row.classification != "baseline_debt" {
+        return false;
+    }
+    if filters.broad_scope && !scope_has_wildcard(&row.scope) {
         return false;
     }
     true
@@ -3997,6 +4005,7 @@ mod tests {
             "--review-due",
             "--stale",
             "--baseline-debt",
+            "--broad-scope",
             "--include-untracked",
         ]))
         .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
@@ -4015,6 +4024,7 @@ mod tests {
                 review_due: true,
                 stale: true,
                 baseline_debt: true,
+                broad_scope: true,
                 include_untracked: true,
                 ..
             })) if kind == "unsafe"
@@ -4316,6 +4326,7 @@ mod tests {
             review_due: false,
             stale: false,
             baseline_debt: true,
+            broad_scope: false,
         };
 
         let text = render_list_rows(&rows, &filters);
@@ -4353,6 +4364,7 @@ mod tests {
             review_due: false,
             stale: false,
             baseline_debt: false,
+            broad_scope: false,
         };
 
         let text = render_list_rows(&rows, &filters);
@@ -4381,6 +4393,7 @@ mod tests {
             review_due: false,
             stale: false,
             baseline_debt: false,
+            broad_scope: false,
         };
 
         let text = render_list_rows(&rows, &filters);
@@ -4413,6 +4426,7 @@ mod tests {
             review_due: false,
             stale: false,
             baseline_debt: false,
+            broad_scope: false,
         };
 
         let text = render_list_rows(&rows, &filters);
@@ -4450,6 +4464,7 @@ mod tests {
             review_due: false,
             stale: false,
             baseline_debt: false,
+            broad_scope: false,
         };
 
         let text = render_list_rows(&rows, &filters);
@@ -4484,6 +4499,7 @@ mod tests {
             review_due: false,
             stale: false,
             baseline_debt: false,
+            broad_scope: false,
         };
 
         let text = render_list_rows(&rows, &filters);
@@ -4491,6 +4507,39 @@ mod tests {
         assert!(text.contains("allow-core"));
         assert!(text.contains("allow-broad"));
         assert!(!text.contains("allow-rust"));
+    }
+
+    #[test]
+    fn render_list_rows_filters_broad_scope() {
+        let mut exact = list_row("allow-exact", FindingKind::Panic, "parser", "baseline_debt");
+        exact.scope = "crates/allow-core/src/lib.rs".to_string();
+        let mut broad = list_row(
+            "allow-broad",
+            FindingKind::NonRustFile,
+            "tools",
+            "baseline_debt",
+        );
+        broad.scope = "crates/allow-core/**".to_string();
+        let rows = vec![exact, broad];
+        let filters = ListFilters {
+            kind: None,
+            family: None,
+            owner: None,
+            classification: None,
+            path: None,
+            source_package: None,
+            status: None,
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+            broad_scope: true,
+        };
+
+        let text = render_list_rows(&rows, &filters);
+
+        assert!(!text.contains("allow-exact"));
+        assert!(text.contains("allow-broad"));
     }
 
     #[test]

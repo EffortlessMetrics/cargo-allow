@@ -247,6 +247,8 @@ Completed:
   ledger status without relying only on shortcut flags.
 - Filter `list` output by scanner or policy family so maintainers can inspect
   specific exception-family ledgers.
+- Filter `list` output to broad source-tree scopes so maintainers can audit
+  wildcard policy receipts directly.
 - Implement dry-run-first stale pruning.
 - Support explicit `prune --stale --write` removal of stale entries while
   keeping dry-run as the default.

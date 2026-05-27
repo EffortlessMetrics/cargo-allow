@@ -209,7 +209,9 @@ lifecycle dates, and reason. It supports maintenance filters such as `--kind`,
 `--status`, `--expired`, `--review-due`, `--stale`, and `--baseline-debt`. Path
 filtering uses normalized source-tree paths and includes broad glob scopes that
 cover the selected path. Stale status is computed from current source-syntax
-findings; line and column hints are not identity.
+findings; line and column hints are not identity. `--broad-scope` lists entries
+whose source-tree scope uses wildcard syntax, which is useful for reviewing
+intentionally wide policy receipts before they become normalized debt.
 
 `cargo-allow prune --stale` previews stale allow entries that no current
 source-syntax finding matched. Dry-run is the default; `--dry-run` makes that
