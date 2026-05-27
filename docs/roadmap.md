@@ -229,6 +229,8 @@ Completed:
   outcomes, and the command claim boundary.
 - Include suggested actions and proof commands in `explain` output for entries
   that need attention.
+- Include suggested actions and proof commands in `explain` output for matched
+  `baseline_debt` entries so generated debt is not hidden by a matched status.
 - Show scanner-provided `source_package` context in `explain` current findings
   without treating it as Cargo metadata.
 - Improve `list` with current status, match counts, owner/kind/lifecycle
