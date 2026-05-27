@@ -86,11 +86,14 @@ Goal: move from line-oriented scanning toward durable source identity.
 Completed:
 
 - Define `StructuralIdentity` v1 as a stable contract.
+- Integrate a source-syntax Rust parser foundation that parses `.rs` files
+  directly without requiring Cargo metadata, compilation, build scripts, or proc
+  macro expansion.
+- Implement source-syntax container identity for modules, free functions,
+  inherent impl methods, and trait impl methods.
 
 Planned PRs:
 
-- Integrate a lossless Rust syntax parser foundation.
-- Implement container identity.
 - Replace ad hoc matching with a scored structural matcher.
 - Add selector precision scoring.
 
