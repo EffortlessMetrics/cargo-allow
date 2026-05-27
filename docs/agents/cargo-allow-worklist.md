@@ -21,6 +21,8 @@ mistake a filter for approval to ignore the rest of the ledger.
 Use `--item-kind <kind>` for queue-type slices such as `stale_allow`,
 `baseline_debt`, `broad_scope`, or `broken_evidence_link`.
 Use `--allow-id <id>` when the assignment is tied to one durable policy entry.
+Use `--source-package <name>` to focus a source-tree package context already
+reported by the scanner; do not treat that as Cargo metadata or build proof.
 Use `--owner <owner>` and `--classification <classification>` to take a bounded
 policy-owner or debt-class slice, such as `--owner unowned --classification
 baseline_debt`.
