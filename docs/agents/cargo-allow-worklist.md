@@ -1,0 +1,51 @@
+# Agent Worklist Prompt
+
+Use this pattern when asking an agent to take work from cargo-allow. The agent
+should treat the worklist as a routing surface, not permission to suppress
+findings.
+
+## Prompt
+
+```text
+Run:
+
+cargo-allow worklist --format json --output target/cargo-allow/worklist.json
+
+Choose one actionable work item with a clear proof path. Prefer small,
+low-overlap items such as stale allows, broken local evidence links, narrow
+missing-owner non-Rust entries, or baseline debt that can be removed cleanly.
+
+Do not add suppressions just to silence cargo-allow.
+Do not broaden selectors, globs, occurrence limits, or expiry dates.
+Do not convert baseline_debt into approval without owner, reason,
+classification, lifecycle, selector, and evidence.
+Do not execute external proof tools unless this task explicitly authorizes
+that tool.
+
+Fix, prove, narrow, or remove the exception. Run the proof commands suggested
+by the work item when they are in scope, then run:
+
+cargo-allow check --mode no-new
+
+Report what changed, what proof passed, what remains uncertain, and the
+source-tree claim boundary.
+```
+
+## Review Rules
+
+Before accepting an agent change, check that it did one of these:
+
+- removed stale policy.
+- repaired a broken local evidence link.
+- narrowed a selector or glob.
+- added missing owner, reason, classification, lifecycle, or evidence.
+- removed or changed source code so a finding disappeared.
+
+Reject changes that only make the policy quieter without improving the ledger.
+
+## Claim Boundary
+
+`cargo-allow worklist` uses source-tree and source-syntax findings. It does not
+compile the repository, execute Cargo, run Clippy, expand macros, type-check
+code, run tests, or validate external evidence tools. Work item proof commands
+are suggestions for humans or authorized agents, not commands cargo-allow ran.
