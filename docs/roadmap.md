@@ -245,6 +245,8 @@ Completed:
   entries for one file or subtree.
 - Filter `list` output by current match status so maintainers can browse any
   ledger status without relying only on shortcut flags.
+- Filter `list` output by scanner or policy family so maintainers can inspect
+  specific exception-family ledgers.
 - Implement dry-run-first stale pruning.
 - Support explicit `prune --stale --write` removal of stale entries while
   keeping dry-run as the default.

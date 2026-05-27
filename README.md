@@ -162,6 +162,7 @@ cargo-allow check --mode no-new
 cargo-allow diff --base origin/main
 cargo-allow explain allow-0042
 cargo-allow list --kind unsafe
+cargo-allow list --family unwrap
 cargo-allow list --classification baseline_debt
 cargo-allow list --path crates/allow-core
 cargo-allow list --status baseline_debt
