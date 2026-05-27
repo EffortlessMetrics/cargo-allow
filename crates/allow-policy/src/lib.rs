@@ -394,6 +394,105 @@ pub fn validate_local_evidence_references(
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EvidenceReferenceStatus {
+    LocalFilePresent,
+    LocalFileMissing,
+    InvalidLocalPath,
+    TraceabilityOnly,
+    Unstructured,
+}
+
+impl EvidenceReferenceStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::LocalFilePresent => "local_file_present",
+            Self::LocalFileMissing => "local_file_missing",
+            Self::InvalidLocalPath => "invalid_local_path",
+            Self::TraceabilityOnly => "traceability_only",
+            Self::Unstructured => "unstructured",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EvidenceReferenceDiagnostic {
+    pub raw: String,
+    pub prefix: Option<String>,
+    pub target: Option<PathBuf>,
+    pub status: EvidenceReferenceStatus,
+    pub message: String,
+}
+
+pub fn evidence_reference_diagnostics(
+    root: impl AsRef<Path>,
+    entry: &AllowEntry,
+) -> Vec<EvidenceReferenceDiagnostic> {
+    let root = root.as_ref();
+    entry
+        .evidence
+        .iter()
+        .map(|evidence| evidence_reference_diagnostic(root, evidence))
+        .collect()
+}
+
+fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDiagnostic {
+    let Some(reference) = EvidenceReference::parse(raw) else {
+        return EvidenceReferenceDiagnostic {
+            raw: raw.to_string(),
+            prefix: None,
+            target: None,
+            status: EvidenceReferenceStatus::Unstructured,
+            message: "unstructured evidence string; not locally validated".to_string(),
+        };
+    };
+    let prefix = Some(reference.prefix.to_string());
+    if reference.kind == EvidenceKind::Unknown {
+        return EvidenceReferenceDiagnostic {
+            raw: raw.to_string(),
+            prefix,
+            target: Some(reference.value.clone()),
+            status: EvidenceReferenceStatus::Unstructured,
+            message: "unrecognized evidence prefix; not locally validated".to_string(),
+        };
+    }
+    if !reference.kind.is_local_file() {
+        return EvidenceReferenceDiagnostic {
+            raw: raw.to_string(),
+            prefix,
+            target: Some(reference.value.clone()),
+            status: EvidenceReferenceStatus::TraceabilityOnly,
+            message: "traceability reference; not executed or resolved by cargo-allow".to_string(),
+        };
+    }
+    if let Err(err) = validate_path_scope("evidence", reference.value.as_ref()) {
+        return EvidenceReferenceDiagnostic {
+            raw: raw.to_string(),
+            prefix,
+            target: Some(reference.value.clone()),
+            status: EvidenceReferenceStatus::InvalidLocalPath,
+            message: err.to_string(),
+        };
+    }
+    if root.join(&reference.value).exists() {
+        EvidenceReferenceDiagnostic {
+            raw: raw.to_string(),
+            prefix,
+            target: Some(reference.value.clone()),
+            status: EvidenceReferenceStatus::LocalFilePresent,
+            message: "local evidence file exists".to_string(),
+        }
+    } else {
+        EvidenceReferenceDiagnostic {
+            raw: raw.to_string(),
+            prefix,
+            target: Some(reference.value.clone()),
+            status: EvidenceReferenceStatus::LocalFileMissing,
+            message: "local evidence file is missing".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum EvidenceKind {
     Test,
     Cargo,
@@ -436,6 +535,7 @@ impl EvidenceKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct EvidenceReference<'a> {
     raw: &'a str,
+    prefix: &'a str,
     kind: EvidenceKind,
     value: PathBuf,
 }
@@ -447,12 +547,14 @@ impl<'a> EvidenceReference<'a> {
         if value.is_empty() {
             return Some(Self {
                 raw,
+                prefix: prefix.trim(),
                 kind: EvidenceKind::parse(prefix.trim()),
                 value: PathBuf::new(),
             });
         }
         Some(Self {
             raw,
+            prefix: prefix.trim(),
             kind: EvidenceKind::parse(prefix.trim()),
             value: PathBuf::from(value),
         })
@@ -984,6 +1086,66 @@ mod tests {
             err.to_string()
                 .contains("must not contain parent directory segments")
         );
+    }
+
+    #[test]
+    fn reports_evidence_reference_diagnostics() {
+        let root = unique_test_dir("evidence-diagnostics");
+        fs::create_dir_all(root.join("docs"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+        fs::write(root.join("docs/safety.md"), "review notes")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence: {err}")));
+        let mut entry = AllowEntry {
+            id: "allow-doc".to_string(),
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            path: Some(PathBuf::from("src/lib.rs")),
+            glob: None,
+            owner: "core".to_string(),
+            classification: "reviewed".to_string(),
+            reason: "fixture".to_string(),
+            evidence: vec![
+                "doc:docs/safety.md".to_string(),
+                "spec:docs/missing.md".to_string(),
+                "test:parser_rejects_bad_range".to_string(),
+                "TODO: add reviewed evidence".to_string(),
+            ],
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle {
+                created: None,
+                review_after: None,
+                expires: Some("2026-08-01".to_string()),
+            },
+            selector: Selector {
+                ast_kind: Some("method_call".to_string()),
+                callee: Some("unwrap".to_string()),
+                ..Selector::default()
+            },
+            last_seen: None,
+        };
+
+        let diagnostics = evidence_reference_diagnostics(&root, &entry);
+        assert_eq!(
+            diagnostics
+                .iter()
+                .map(|diagnostic| diagnostic.status)
+                .collect::<Vec<_>>(),
+            vec![
+                EvidenceReferenceStatus::LocalFilePresent,
+                EvidenceReferenceStatus::LocalFileMissing,
+                EvidenceReferenceStatus::TraceabilityOnly,
+                EvidenceReferenceStatus::Unstructured
+            ]
+        );
+
+        entry.evidence = vec!["doc:../outside.md".to_string()];
+        let diagnostics = evidence_reference_diagnostics(&root, &entry);
+        assert_eq!(
+            diagnostics.first().map(|diagnostic| diagnostic.status),
+            Some(EvidenceReferenceStatus::InvalidLocalPath)
+        );
+        remove_test_dir(root);
     }
 
     #[test]
