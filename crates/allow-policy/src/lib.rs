@@ -289,6 +289,11 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
             cfg.policy
         )));
     }
+    if cfg.requirements.unsafe_safety_comment_required {
+        return Err(CargoAllowError::new(
+            "requirements.unsafe.safety_comment_required is not supported yet; cargo-allow does not detect SAFETY comments",
+        ));
+    }
     for pattern in &cfg.workspace.ignored {
         validate_glob("source-tree ignored glob", pattern)?;
     }
@@ -922,6 +927,33 @@ mod tests {
         .expect("policy parses");
         assert_eq!(cfg.allow.len(), 1);
         assert_eq!(cfg.allow[0].selector.callee.as_deref(), Some("unwrap"));
+    }
+
+    #[test]
+    fn rejects_unsupported_unsafe_safety_comment_requirement() {
+        let err = parse_err(
+            r#"
+                policy = "cargo-allow"
+
+                [requirements.unsafe]
+                safety_comment_required = true
+
+                [[allow]]
+                id = "allow-unsafe"
+                kind = "unsafe"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["test:unsafe_boundary"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "unsafe_block"
+                container = "load"
+            "#,
+        );
+
+        assert!(err.contains("safety_comment_required is not supported yet"));
     }
 
     #[test]

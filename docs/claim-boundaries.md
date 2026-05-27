@@ -13,6 +13,9 @@ For the MVP, a passing `cargo-allow check --mode no-new` may claim:
 - Required policy fields were present according to the current validator.
 - Unsafe entries had at least one evidence string when unsafe evidence was
   required.
+- Unsafe safety-comment enforcement is not implemented yet; enabling
+  `requirements.unsafe.safety_comment_required` fails closed instead of
+  creating a false claim.
 - Expired, review-due, stale, ambiguous, invalid, and missing-field statuses were
   classified by the current matcher.
 
