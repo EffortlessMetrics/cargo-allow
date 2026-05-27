@@ -508,7 +508,7 @@ column = 23
 [[allow]]
 id = "allow-0069"
 kind = "lint_exception"
-family = "allow_attribute"
+family = "expect_attribute"
 path = "fixtures/lint/src/lib.rs"
 owner = "unowned"
 classification = "baseline_debt"
@@ -519,8 +519,9 @@ expires = "2026-08-01"
 [allow.selector]
 ast_kind = "attribute"
 lint = "clippy::unwrap_used"
-symbol = "#[allow(clippy::unwrap_used)]"
-normalized_snippet_hash = "fnv1a64:211af87640941d94"
+symbol = "#[expect(clippy::unwrap_used, reason = \"policy:allow-0069: lint fixture exercises suppression scanning\")]"
+target_fingerprint = "policy:allow-0069"
+normalized_snippet_hash = "fnv1a64:15b5e01eae57adf1"
 line_hint = 1
 
 [allow.last_seen]

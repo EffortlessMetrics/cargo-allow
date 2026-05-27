@@ -148,10 +148,11 @@ Completed:
 - Extract visible `policy:<allow-id>` references from lint attribute source text
   and fail closed when a matched lint suppression references a different allow
   entry.
+- Enforce `allow_bare_allow_attributes = false` by failing matched bare
+  `#[allow]` suppressions instead of treating the receipt as approval.
 
 Planned work:
 
-- Enforce suppression policy.
 - Require policy ID linkage where configured.
 - Add a legacy clippy exceptions adapter.
 
