@@ -314,6 +314,8 @@ Completed:
 - Show multiple proof commands in human worklist output for local follow-up and
   refreshed worklist routing.
 - Report human worklist truncation and point to JSON for the full queue.
+- Filter worklist output by risk and difficulty so humans and agents can choose
+  a bounded queue without parsing JSON.
 
 Planned work:
 

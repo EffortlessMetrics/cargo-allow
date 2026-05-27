@@ -15,6 +15,9 @@ Choose one actionable work item with a clear proof path. Prefer small,
 low-overlap items such as stale allows, broad source-tree scopes, broken local
 evidence links, narrow missing-owner non-Rust entries, or baseline debt that can
 be removed cleanly.
+Use `--risk low`, `--risk medium`, `--risk high`, `--difficulty small`, or
+`--difficulty medium` when the assignment needs a narrower queue, but do not
+mistake a filter for approval to ignore the rest of the ledger.
 If a work item includes `source_package`, use it only as source-tree context for
 where to focus review; do not infer Cargo metadata, build success, or package
 test coverage from that field.
