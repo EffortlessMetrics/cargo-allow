@@ -54,10 +54,17 @@ cargo-allow check \
   --format markdown \
   --receipt target/cargo-allow/check.receipt.json \
   --output target/cargo-allow/check.md
+
+cargo-allow check \
+  --mode no-new \
+  --format sarif \
+  --output target/cargo-allow/check.sarif
 ```
 
 The JSON audit is useful for machines and future trend reporting. The receipt
-is the durable CI claim for the current source exception ledger.
+is the durable CI claim for the current source exception ledger. SARIF output
+contains non-matched source-tree outcomes for code-scanning surfaces; it does
+not include proof-tool results or build-derived findings.
 
 ## Artifacts
 

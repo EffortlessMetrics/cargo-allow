@@ -233,11 +233,12 @@ Completed:
   count tables.
 - Add optional JSON report trend metrics for review items, lifecycle pressure,
   evidence gaps, and baseline debt.
+- Emit SARIF output for non-matched source-tree outcomes in audit/check style
+  reports.
 
 Planned work:
 
 - HTML audit report when useful.
-- SARIF output.
 
 ## Phase 14: Public Product Polish
 

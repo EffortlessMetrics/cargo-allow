@@ -340,6 +340,7 @@ struct PruneArgs {
 enum OutputFormat {
     Human,
     Json,
+    Sarif,
     #[value(alias = "md")]
     Markdown,
 }
@@ -540,6 +541,13 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             failed,
             report_context,
         ),
+        OutputFormat::Sarif => allow_report::render_sarif_with_context(
+            "diff",
+            &findings,
+            &outcomes,
+            failed,
+            report_context,
+        ),
         OutputFormat::Markdown => allow_report::render_markdown_with_context(
             "diff",
             &findings,
@@ -717,7 +725,7 @@ fn append_finding_posture_changes(
     match format {
         OutputFormat::Human => text.push_str(&render_finding_posture_changes_human(changes)),
         OutputFormat::Markdown => text.push_str(&render_finding_posture_changes_markdown(changes)),
-        OutputFormat::Json => {}
+        OutputFormat::Json | OutputFormat::Sarif => {}
     }
 }
 
@@ -781,7 +789,7 @@ fn append_policy_changes(
     match format {
         OutputFormat::Human => text.push_str(&render_policy_changes_human(changes)),
         OutputFormat::Markdown => text.push_str(&render_policy_changes_markdown(changes)),
-        OutputFormat::Json => {}
+        OutputFormat::Json | OutputFormat::Sarif => {}
     }
 }
 
@@ -2582,6 +2590,9 @@ fn print_report(
         }
         OutputFormat::Json => {
             allow_report::render_json_with_context(command, findings, outcomes, failed, context)
+        }
+        OutputFormat::Sarif => {
+            allow_report::render_sarif_with_context(command, findings, outcomes, failed, context)
         }
         OutputFormat::Markdown => {
             allow_report::render_markdown_with_context(command, findings, outcomes, failed, context)
