@@ -191,8 +191,10 @@ and occurrence-limit additions or reductions as policy improvements.
 `cargo-allow explain <id>` reports this live posture for a single entry. It
 shows the policy metadata, selector, current match status, matched finding
 count, outcome counts, stale state, occurrence-limit overruns, and evidence
-reference diagnostics. Local evidence references are shown as present, missing,
-or invalid; traceability strings are identified as not executed or resolved. The
+reference diagnostics. When the entry needs attention, it also includes
+suggested next actions and proof commands. Local evidence references are shown
+as present, missing, or invalid; traceability strings are identified as not
+executed or resolved. The
 command is still bounded by the normal cargo-allow claim boundary: source syntax
 only, with no macro expansion, macro token-tree expression parsing, type
 analysis, build output, control-flow analysis, or data-flow analysis.
