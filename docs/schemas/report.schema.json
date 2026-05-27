@@ -90,6 +90,9 @@
     "summary": {
       "$ref": "#/$defs/summary"
     },
+    "trend": {
+      "$ref": "#/$defs/trend"
+    },
     "outcomes": {
       "type": "array",
       "items": {
@@ -152,6 +155,64 @@
           "minimum": 0
         },
         "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expired": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_due": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ambiguous": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid_selector": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_required_field": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_missing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "baseline_debt": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "trend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "review_items",
+        "new",
+        "expired",
+        "review_due",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt"
+      ],
+      "properties": {
+        "review_items": {
           "type": "integer",
           "minimum": 0
         },

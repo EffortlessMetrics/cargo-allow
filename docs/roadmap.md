@@ -231,12 +231,13 @@ Completed:
   outcomes.
 - Include review-due and invalid-selector statuses in human and Markdown report
   count tables.
+- Add optional JSON report trend metrics for review items, lifecycle pressure,
+  evidence gaps, and baseline debt.
 
 Planned work:
 
 - HTML audit report when useful.
 - SARIF output.
-- Exception trend receipt.
 
 ## Phase 14: Public Product Polish
 
