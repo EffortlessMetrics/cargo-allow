@@ -209,6 +209,8 @@ Completed:
 - Emit `broken_evidence_link` work items for missing or invalid local evidence
   references.
 - Document bounded agent prompt patterns for `cargo-allow worklist`.
+- Align worklist JSON claim-boundary flags with the report and receipt
+  source-tree scanner limitations.
 
 Planned work:
 

@@ -1546,6 +1546,25 @@ struct WorkItem {
     proof_commands: Vec<String>,
 }
 
+const WORKLIST_CLAIM_BOUNDARY: &[&str] = &[
+    "source_tree_inventory",
+    "source_syntax_only",
+    "cargo_metadata_not_invoked",
+    "cargo_commands_not_invoked",
+    "rustc_not_invoked",
+    "clippy_not_invoked",
+    "build_scripts_not_executed",
+    "proc_macros_not_executed",
+    "macro_expansion_not_analyzed",
+    "macro_token_tree_contents_not_analyzed",
+    "type_information_not_analyzed",
+    "mir_not_analyzed",
+    "build_output_not_analyzed",
+    "control_flow_not_analyzed",
+    "data_flow_not_analyzed",
+    "repository_code_not_executed",
+];
+
 fn work_items_from_outcomes(
     cfg: &AllowConfig,
     findings: &[Finding],
@@ -1822,7 +1841,10 @@ fn render_worklist_json(items: &[WorkItem]) -> String {
     out.push_str("  \"schema_id\": \"cargo-allow.worklist.v1\",\n");
     out.push_str("  \"tool\": \"cargo-allow\",\n");
     out.push_str("  \"command\": \"worklist\",\n");
-    out.push_str("  \"claim_boundary\": [\"source_syntax_only\", \"macro_expansion_not_analyzed\", \"macro_token_tree_contents_not_analyzed\", \"type_information_not_analyzed\"],\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        json_string_array(WORKLIST_CLAIM_BOUNDARY)
+    ));
     out.push_str("  \"summary\": {\n");
     out.push_str(&format!("    \"work_items\": {},\n", items.len()));
     out.push_str(&format!("    \"high\": {},\n", risk_count(items, "high")));
@@ -1928,12 +1950,12 @@ fn option_json_string(value: Option<&str>) -> String {
         .unwrap_or_else(|| "null".to_string())
 }
 
-fn json_string_array(values: &[String]) -> String {
+fn json_string_array<T: AsRef<str>>(values: &[T]) -> String {
     format!(
         "[{}]",
         values
             .iter()
-            .map(|value| format!("\"{}\"", json_escape(value)))
+            .map(|value| format!("\"{}\"", json_escape(value.as_ref())))
             .collect::<Vec<_>>()
             .join(", ")
     )
@@ -3219,6 +3241,9 @@ mod tests {
 
         assert_eq!(items.len(), 1);
         assert!(json.contains("\"schema_id\": \"cargo-allow.worklist.v1\""));
+        assert!(json.contains("\"source_tree_inventory\""));
+        assert!(json.contains("\"cargo_commands_not_invoked\""));
+        assert!(json.contains("\"repository_code_not_executed\""));
         assert!(json.contains("\"kind\": \"stale_allow\""));
         assert!(json.contains("\"risk\": \"low\""));
         assert!(json.contains("\"cargo-allow explain allow-file\""));
