@@ -508,10 +508,12 @@ fn syntax_facts(source: &str) -> RustSyntaxFacts {
     let mut facts = RustSyntaxFacts::default();
     collect_syntax_facts(tree.tree.root_node(), source, &mut facts);
     let mut module_path = Vec::new();
+    let mut impl_path = Vec::new();
     collect_line_scopes(
         tree.tree.root_node(),
         source,
         &mut module_path,
+        &mut impl_path,
         &mut facts.scopes,
     );
     facts
@@ -565,6 +567,7 @@ fn collect_line_scopes(
     node: Node<'_>,
     source: &str,
     module_path: &mut Vec<String>,
+    impl_path: &mut Vec<String>,
     scopes: &mut BTreeMap<u32, RustLineScope>,
 ) {
     if node.kind() == "mod_item" {
@@ -574,8 +577,17 @@ fn collect_line_scopes(
         {
             module_path.push(name.to_string());
             record_module_scope(node, module_path, scopes);
-            visit_child_scopes(node, source, module_path, scopes);
+            visit_child_scopes(node, source, module_path, impl_path, scopes);
             module_path.pop();
+            return;
+        }
+    }
+
+    if node.kind() == "impl_item" {
+        if let Some(name) = impl_container_name(node, source) {
+            impl_path.push(name);
+            visit_child_scopes(node, source, module_path, impl_path, scopes);
+            impl_path.pop();
             return;
         }
     }
@@ -585,23 +597,49 @@ fn collect_line_scopes(
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
         {
-            record_container_scope(node, name, module_path, scopes);
+            let container = if let Some(impl_name) = impl_path.last() {
+                format!("{impl_name}::{name}")
+            } else {
+                name.to_string()
+            };
+            record_container_scope(node, &container, module_path, scopes);
         }
     }
 
-    visit_child_scopes(node, source, module_path, scopes);
+    visit_child_scopes(node, source, module_path, impl_path, scopes);
 }
 
 fn visit_child_scopes(
     node: Node<'_>,
     source: &str,
     module_path: &mut Vec<String>,
+    impl_path: &mut Vec<String>,
     scopes: &mut BTreeMap<u32, RustLineScope>,
 ) {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        collect_line_scopes(child, source, module_path, scopes);
+        collect_line_scopes(child, source, module_path, impl_path, scopes);
     }
+}
+
+fn impl_container_name(node: Node<'_>, source: &str) -> Option<String> {
+    let impl_type = node
+        .child_by_field_name("type")
+        .and_then(|type_node| node_text(source, type_node))
+        .map(normalize_scope_text)?;
+    if let Some(trait_name) = node
+        .child_by_field_name("trait")
+        .and_then(|trait_node| node_text(source, trait_node))
+        .map(normalize_scope_text)
+    {
+        Some(format!("<{impl_type} as {trait_name}>"))
+    } else {
+        Some(impl_type)
+    }
+}
+
+fn normalize_scope_text(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn record_module_scope(
@@ -1027,6 +1065,60 @@ mod tests {
         assert_eq!(parser_finding.identity.container.as_deref(), Some("parse"));
         assert_eq!(root_finding.identity.module, None);
         assert_eq!(root_finding.identity.container.as_deref(), Some("load"));
+    }
+
+    #[test]
+    fn scan_uses_syntax_impl_method_scope() {
+        let src = r#"
+        mod parser {
+            struct Parser;
+
+            impl Parser {
+                fn parse(&self, value: Result<(), ()>) {
+                    value.unwrap();
+                }
+            }
+        }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+        let Some(finding) = findings
+            .iter()
+            .find(|f| f.family.as_deref() == Some("unwrap"))
+        else {
+            std::panic::panic_any("impl unwrap finding should exist");
+        };
+
+        assert_eq!(finding.identity.module.as_deref(), Some("parser"));
+        assert_eq!(finding.identity.container.as_deref(), Some("Parser::parse"));
+    }
+
+    #[test]
+    fn scan_uses_syntax_trait_impl_method_scope() {
+        let src = r#"
+        trait ParserApi {
+            fn parse(&self, value: Result<(), ()>);
+        }
+
+        struct Parser;
+
+        impl ParserApi for Parser {
+            fn parse(&self, value: Result<(), ()>) {
+                value.unwrap();
+            }
+        }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+        let Some(finding) = findings
+            .iter()
+            .find(|f| f.family.as_deref() == Some("unwrap"))
+        else {
+            std::panic::panic_any("trait impl unwrap finding should exist");
+        };
+
+        assert_eq!(
+            finding.identity.container.as_deref(),
+            Some("<Parser as ParserApi>::parse")
+        );
     }
 
     #[test]
