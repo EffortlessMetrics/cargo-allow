@@ -258,11 +258,10 @@ Completed:
   exception families without using Cargo package metadata.
 - Keep worklist proof commands as executable cargo-allow commands and avoid
   vague external validation placeholders.
+- Surface explicit source-tree package context in work items when a scanner
+  provides it, without inferring Cargo metadata or build facts.
 
 Planned work:
-
-- Add crate-local validation suggestions only when cargo-allow has explicit
-  source-tree package context that does not require Cargo metadata.
 
 ## Phase 13: Audit Reports
 

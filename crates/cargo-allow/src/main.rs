@@ -1587,6 +1587,7 @@ struct WorkItem {
     allow_id: Option<String>,
     finding_index: Option<usize>,
     path: Option<String>,
+    source_package: Option<String>,
     message: String,
     suggested_actions: Vec<String>,
     proof_commands: Vec<String>,
@@ -1639,6 +1640,13 @@ fn work_item_from_outcome(
     let path = finding
         .map(|finding| normalize_path(&finding.path))
         .or_else(|| entry.map(|entry| entry.path_or_glob()));
+    let source_package = finding.and_then(source_package_name);
+    let mut suggested_actions = suggested_actions(&kind);
+    if let Some(package) = &source_package {
+        suggested_actions.push(format!(
+            "focus source-tree review on package `{package}` without assuming Cargo metadata"
+        ));
+    }
     WorkItem {
         id: format!("work-{}-{item_index:04}", kind.replace('_', "-")),
         risk: work_item_risk(&kind, outcome.status, finding, entry),
@@ -1647,8 +1655,9 @@ fn work_item_from_outcome(
         allow_id: outcome.allow_id.clone(),
         finding_index: outcome.finding_index,
         path,
+        source_package,
         message: outcome.message.clone(),
-        suggested_actions: suggested_actions(&kind),
+        suggested_actions,
         proof_commands: proof_commands(&kind, finding, entry),
         kind,
     }
@@ -1686,6 +1695,7 @@ fn work_items_from_evidence_diagnostics(
                 allow_id: Some(entry.id.clone()),
                 finding_index: None,
                 path: diagnostic.target.as_ref().map(normalize_path),
+                source_package: None,
                 message: format!(
                     "{} evidence `{}`: {}",
                     entry.id, diagnostic.raw, diagnostic.message
@@ -1703,6 +1713,16 @@ fn work_items_from_evidence_diagnostics(
         }
     }
     items
+}
+
+fn source_package_name(finding: &Finding) -> Option<String> {
+    finding
+        .identity
+        .crate_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(ToOwned::to_owned)
 }
 
 fn work_item_kind(
@@ -1973,6 +1993,10 @@ fn render_work_item_json(item: &WorkItem) -> String {
         option_json_string(item.path.as_deref())
     ));
     out.push_str(&format!(
+        "      \"source_package\": {},\n",
+        option_json_string(item.source_package.as_deref())
+    ));
+    out.push_str(&format!(
         "      \"message\": \"{}\",\n",
         json_escape(&item.message)
     ));
@@ -2002,6 +2026,9 @@ fn render_worklist_human(items: &[WorkItem]) -> String {
         ));
         if let Some(path) = &item.path {
             out.push_str(&format!("  path: {path}\n"));
+        }
+        if let Some(package) = &item.source_package {
+            out.push_str(&format!("  source package: {package}\n"));
         }
         if let Some(allow_id) = &item.allow_id {
             out.push_str(&format!("  allow: {allow_id}\n"));
@@ -3652,6 +3679,45 @@ mod tests {
                 .all(|command| command.starts_with("cargo-allow "))
         );
         assert!(text.contains("work-new-unreceipted-finding-0001"));
+    }
+
+    #[test]
+    fn worklist_items_include_explicit_source_package_context() {
+        let cfg = AllowConfig::empty();
+        let mut finding = test_finding(
+            FindingKind::Panic,
+            Some("unwrap"),
+            "crates/parser/src/lib.rs",
+            "method_call",
+        );
+        finding.identity.crate_name = Some("parser".to_string());
+        let outcomes = vec![test_outcome(
+            MatchStatus::New,
+            None,
+            Some(0),
+            "unreceipted panic.unwrap at crates/parser/src/lib.rs:1:1",
+        )];
+
+        let items = work_items_from_outcomes(&cfg, &[finding], &outcomes);
+        let json = render_worklist_json(&items);
+        let human = render_worklist_human(&items);
+        let item = items
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+
+        assert_eq!(item.source_package.as_deref(), Some("parser"));
+        assert!(
+            item.suggested_actions
+                .iter()
+                .any(|action| action.contains("package `parser`"))
+        );
+        assert!(json.contains("\"source_package\": \"parser\""));
+        assert!(human.contains("source package: parser"));
+        assert!(
+            item.proof_commands
+                .iter()
+                .all(|command| command.starts_with("cargo-allow "))
+        );
     }
 
     #[test]
