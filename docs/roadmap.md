@@ -193,6 +193,8 @@ Completed:
   counted-baseline tightening is visible in PR posture.
 - Report lifecycle additions and earlier review/expiry dates as policy
   improvements so lifecycle tightening is visible in PR posture.
+- Report owner, reason, and classification additions as policy improvements so
+  required-metadata restoration is visible in PR posture.
 - Compare base and head source findings in `cargo-allow diff` using durable
   finding keys, so reviewers can see new and removed syntax-visible exception
   posture independent of line movement.
