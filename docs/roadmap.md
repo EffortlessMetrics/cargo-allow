@@ -236,6 +236,8 @@ Completed:
 - Show scanner-provided source package context in `list` rows without treating
   it as Cargo metadata.
 - Implement dry-run-first stale pruning.
+- Support explicit `prune --stale --write` removal of stale entries while
+  keeping dry-run as the default.
 - Make baseline proposal output safer by refusing accidental overwrites and
   emitting a proposal summary.
 - Add allow entries from current findings with structural selectors and
