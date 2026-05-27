@@ -1815,23 +1815,18 @@ fn proof_commands(
     finding: Option<&Finding>,
     entry: Option<&AllowEntry>,
 ) -> Vec<String> {
-    let exception_kind = finding
-        .map(|finding| finding.kind)
-        .or_else(|| entry.map(|entry| entry.kind));
     let mut commands = Vec::new();
     if let Some(allow_id) = entry.map(|entry| entry.id.as_str()) {
         commands.push(format!("cargo-allow explain {allow_id}"));
     }
     if let Some(kind_arg) = worklist_kind_arg(finding, entry) {
         commands.push(format!("cargo-allow check --kind {kind_arg} --mode no-new"));
+        commands.push(format!(
+            "cargo-allow worklist --kind {kind_arg} --format json"
+        ));
     } else {
         commands.push("cargo-allow check --mode no-new".to_string());
-    }
-    if matches!(
-        exception_kind,
-        Some(FindingKind::Panic | FindingKind::Unsafe | FindingKind::LintException)
-    ) {
-        commands.push("run the repository validation command for this source tree".to_string());
+        commands.push("cargo-allow worklist --format json".to_string());
     }
     if kind == "unsafe_missing_evidence" && !commands.iter().any(|cmd| cmd.contains("unsafe")) {
         commands.push("cargo-allow check --kind unsafe --mode no-new".to_string());
@@ -3319,8 +3314,12 @@ mod tests {
         assert!(
             item.proof_commands
                 .iter()
-                .any(|command| command
-                    == "run the repository validation command for this source tree")
+                .any(|command| command == "cargo-allow worklist --kind unsafe --format json")
+        );
+        assert!(
+            item.proof_commands
+                .iter()
+                .all(|command| command.starts_with("cargo-allow "))
         );
         assert!(text.contains("work-new-unreceipted-finding-0001"));
     }
@@ -3353,6 +3352,11 @@ mod tests {
             item.proof_commands
                 .iter()
                 .any(|command| command == "cargo-allow check --kind process --mode no-new")
+        );
+        assert!(
+            item.proof_commands
+                .iter()
+                .any(|command| command == "cargo-allow worklist --kind process --format json")
         );
     }
 
