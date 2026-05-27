@@ -239,6 +239,8 @@ Completed:
   it as Cargo metadata.
 - Filter `list` output by policy classification for reviewed-exception and
   baseline-debt ledger slices.
+- Filter `list` output by scanner-provided source package context without
+  treating that context as Cargo metadata or build proof.
 - Implement dry-run-first stale pruning.
 - Support explicit `prune --stale --write` removal of stale entries while
   keeping dry-run as the default.
