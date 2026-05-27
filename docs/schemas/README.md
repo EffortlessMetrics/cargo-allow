@@ -6,6 +6,7 @@ macro-expansion, or proof-level coverage.
 
 | Artifact | Schema ID | Producer |
 |---|---|---|
+| Setup diagnostics | `cargo-allow.doctor.v1` | `cargo-allow doctor --format json` |
 | Audit/check/diff report | `cargo-allow.report.v1` | `cargo-allow audit --format json`, `cargo-allow check --format json`, `cargo-allow diff --format json` |
 | Check receipt | `cargo-allow.receipt.v1` | `cargo-allow check --receipt <path>` |
 | Single-entry explanation | `cargo-allow.explain.v1` | `cargo-allow explain <id> --format json` |
@@ -15,6 +16,7 @@ macro-expansion, or proof-level coverage.
 
 ## Files
 
+- [doctor.schema.json](doctor.schema.json)
 - [report.schema.json](report.schema.json)
 - [receipt.schema.json](receipt.schema.json)
 - [explain.schema.json](explain.schema.json)
