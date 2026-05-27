@@ -462,6 +462,12 @@ struct PruneArgs {
     /// Include untracked files when determining stale entries.
     #[arg(long)]
     include_untracked: bool,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = PruneFormat::Human)]
+    format: PruneFormat,
+    /// Write prune preview/result to a file instead of stdout.
+    #[arg(long)]
+    output: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -488,6 +494,12 @@ enum ListFormat {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum ExplainFormat {
+    Human,
+    Json,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum PruneFormat {
     Human,
     Json,
 }
@@ -3667,7 +3679,7 @@ fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             "pass either --dry-run or --write, not both",
         ));
     }
-    let (root, cfg, findings, _inventory_source) = load_world(
+    let (root, cfg, findings, inventory_facts) = load_world(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
@@ -3687,16 +3699,50 @@ fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
     } else {
         None
     };
-    println!(
-        "{}",
-        render_prune_stale_result(
+    let root_text = source_tree_root_text(&root);
+    let context = PruneContext {
+        inventory_source: inventory_facts.source.as_str(),
+        source_tree_root: Some(&root_text),
+        inventory_files: inventory_facts.files_scanned,
+    };
+    let text = match args.format {
+        PruneFormat::Human => render_prune_stale_result(
             &candidates,
             args.dry_run,
             args.write,
-            written_path.as_deref()
-        )
-    );
+            written_path.as_deref(),
+        ),
+        PruneFormat::Json => render_prune_stale_json(
+            &candidates,
+            args.dry_run,
+            args.write,
+            written_path.as_deref(),
+            context,
+        ),
+    };
+    if let Some(path) = &args.output {
+        write_file(path, &text)?;
+    } else {
+        println!("{text}");
+    }
     Ok(())
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PruneContext<'a> {
+    inventory_source: &'a str,
+    source_tree_root: Option<&'a str>,
+    inventory_files: Option<usize>,
+}
+
+impl Default for PruneContext<'static> {
+    fn default() -> Self {
+        Self {
+            inventory_source: "unknown",
+            source_tree_root: None,
+            inventory_files: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -3787,6 +3833,97 @@ fn render_prune_stale_result(
         );
     }
     out
+}
+
+fn render_prune_stale_json(
+    candidates: &[PruneCandidate],
+    explicit_dry_run: bool,
+    write_requested: bool,
+    written_path: Option<&Path>,
+    context: PruneContext<'_>,
+) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "  \"schema_version\": {},\n",
+        allow_report::PRUNE_SCHEMA_VERSION
+    ));
+    out.push_str(&format!(
+        "  \"schema_id\": \"{}\",\n",
+        allow_report::PRUNE_SCHEMA_ID
+    ));
+    out.push_str("  \"tool\": \"cargo-allow\",\n");
+    out.push_str("  \"command\": \"prune\",\n");
+    out.push_str(&format!(
+        "  \"claim_boundary\": {},\n",
+        json_string_array(allow_report::CLAIM_BOUNDARY)
+    ));
+    out.push_str(&format!(
+        "  \"scanner_limitations\": {},\n",
+        json_string_array(allow_report::SCANNER_LIMITATIONS)
+    ));
+    out.push_str("  \"inventory\": ");
+    out.push_str(&prune_inventory_json(context, "  "));
+    out.push_str(",\n");
+    out.push_str("  \"mode\": {\n");
+    out.push_str(&format!("    \"dry_run\": {},\n", !write_requested));
+    out.push_str(&format!("    \"write_requested\": {},\n", write_requested));
+    out.push_str(&format!(
+        "    \"explicit_dry_run\": {},\n",
+        explicit_dry_run
+    ));
+    let written = written_path.map(|path| path.display().to_string());
+    out.push_str(&format!(
+        "    \"written_path\": {}\n",
+        option_json_string(written.as_deref())
+    ));
+    out.push_str("  },\n");
+    out.push_str(&format!(
+        "  \"summary\": {{\n    \"stale_entries\": {}\n  }},\n",
+        candidates.len()
+    ));
+    out.push_str("  \"stale_entries\": [\n");
+    for (index, candidate) in candidates.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&prune_candidate_json(candidate, "  "));
+    }
+    out.push_str("\n  ]\n");
+    out.push_str("}\n");
+    out
+}
+
+fn prune_inventory_json(context: PruneContext<'_>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("{indent}  \"scope\": \"source_tree\",\n"));
+    out.push_str(&format!("{indent}  \"scanner\": \"source_syntax\",\n"));
+    out.push_str(&format!(
+        "{indent}  \"source\": \"{}\"",
+        json_escape(context.inventory_source)
+    ));
+    if let Some(root) = context.source_tree_root {
+        out.push_str(&format!(",\n{indent}  \"root\": \"{}\"", json_escape(root)));
+    }
+    if let Some(files) = context.inventory_files {
+        out.push_str(&format!(",\n{indent}  \"files_scanned\": {files}"));
+    }
+    out.push_str(&format!("\n{indent}}}"));
+    out
+}
+
+fn prune_candidate_json(candidate: &PruneCandidate, indent: &str) -> String {
+    format!(
+        "{indent}  {{\n{indent}    \"id\": \"{}\",\n{indent}    \"kind\": \"{}\",\n{indent}    \"family\": {},\n{indent}    \"owner\": \"{}\",\n{indent}    \"classification\": \"{}\",\n{indent}    \"scope\": \"{}\",\n{indent}    \"reason\": \"{}\"\n{indent}  }}",
+        json_escape(&candidate.id),
+        candidate.kind,
+        option_json_string(candidate.family.as_deref()),
+        json_escape(&candidate.owner),
+        json_escape(&candidate.classification),
+        json_escape(&candidate.scope),
+        json_escape(&candidate.reason)
+    )
 }
 
 fn cmd_doctor(args: &ConfigArgs) -> CargoAllowResult<()> {
@@ -5326,6 +5463,10 @@ mod tests {
             "--stale",
             "--dry-run",
             "--include-untracked",
+            "--format",
+            "json",
+            "--output",
+            "target/prune.json",
         ]))
         .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
 
@@ -5335,8 +5476,10 @@ mod tests {
                 stale: true,
                 dry_run: true,
                 include_untracked: true,
+                format: PruneFormat::Json,
+                output: Some(path),
                 ..
-            }))
+            })) if path == Path::new("target/prune.json")
         ));
     }
 
@@ -5434,6 +5577,51 @@ mod tests {
     }
 
     #[test]
+    fn render_prune_stale_json_records_context_and_candidates() {
+        let candidates = vec![PruneCandidate {
+            id: "allow-stale".to_string(),
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            owner: "parser".to_string(),
+            classification: "baseline_debt".to_string(),
+            scope: "crates/parser/src/lib.rs".to_string(),
+            reason: "old baseline entry".to_string(),
+        }];
+
+        let json = render_prune_stale_json(
+            &candidates,
+            true,
+            false,
+            None,
+            PruneContext {
+                inventory_source: "git_tracked",
+                source_tree_root: Some("H:/Code/Rust/cargo-allow"),
+                inventory_files: Some(49),
+            },
+        );
+
+        assert!(json.contains("\"schema_version\": 1"));
+        assert!(json.contains(&format!(
+            "\"schema_id\": \"{}\"",
+            allow_report::PRUNE_SCHEMA_ID
+        )));
+        assert!(json.contains("\"command\": \"prune\""));
+        assert!(json.contains("\"claim_boundary\""));
+        assert!(json.contains("\"scanner_limitations\""));
+        assert!(json.contains("\"source\": \"git_tracked\""));
+        assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
+        assert!(json.contains("\"files_scanned\": 49"));
+        assert!(json.contains("\"dry_run\": true"));
+        assert!(json.contains("\"write_requested\": false"));
+        assert!(json.contains("\"explicit_dry_run\": true"));
+        assert!(json.contains("\"written_path\": null"));
+        assert!(json.contains("\"stale_entries\": 1"));
+        assert!(json.contains("\"id\": \"allow-stale\""));
+        assert!(json.contains("\"kind\": \"panic\""));
+        assert!(json.contains("\"family\": \"unwrap\""));
+    }
+
+    #[test]
     fn render_prune_stale_result_reports_written_policy() {
         let candidates = vec![PruneCandidate {
             id: "allow-stale".to_string(),
@@ -5495,6 +5683,8 @@ mod tests {
             dry_run: false,
             write: true,
             include_untracked: false,
+            format: PruneFormat::Human,
+            output: None,
         })
         .unwrap_or_else(|err| std::panic::panic_any(format!("prune write: {err}")));
 
@@ -6033,6 +6223,21 @@ mod tests {
         assert!(schema.contains("\"scanner_limitations\""));
         assert!(schema.contains("\"scanner_limitation\""));
         assert!(schema.contains("\"source_package\""));
+        assert!(schema.contains("\"cargo_metadata_not_invoked\""));
+        assert!(schema.contains("\"repository_code_not_executed\""));
+    }
+
+    #[test]
+    fn prune_schema_documents_current_contract() {
+        let schema = include_str!("../../../docs/schemas/prune.schema.json");
+
+        assert!(schema.contains(allow_report::PRUNE_SCHEMA_ID));
+        assert!(schema.contains("\"mode\""));
+        assert!(schema.contains("\"dry_run\""));
+        assert!(schema.contains("\"written_path\""));
+        assert!(schema.contains("\"stale_entries\""));
+        assert!(schema.contains("\"scanner_limitations\""));
+        assert!(schema.contains("\"scanner_limitation\""));
         assert!(schema.contains("\"cargo_metadata_not_invoked\""));
         assert!(schema.contains("\"repository_code_not_executed\""));
     }

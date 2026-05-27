@@ -10,6 +10,7 @@ macro-expansion, or proof-level coverage.
 | Check receipt | `cargo-allow.receipt.v1` | `cargo-allow check --receipt <path>` |
 | Single-entry explanation | `cargo-allow.explain.v1` | `cargo-allow explain <id> --format json` |
 | Filtered ledger list | `cargo-allow.list.v1` | `cargo-allow list --format json` |
+| Stale prune preview/result | `cargo-allow.prune.v1` | `cargo-allow prune --stale --format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
 
 ## Files
@@ -18,6 +19,7 @@ macro-expansion, or proof-level coverage.
 - [receipt.schema.json](receipt.schema.json)
 - [explain.schema.json](explain.schema.json)
 - [list.schema.json](list.schema.json)
+- [prune.schema.json](prune.schema.json)
 - [worklist.schema.json](worklist.schema.json)
 
 ## Boundary

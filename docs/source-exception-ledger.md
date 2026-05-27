@@ -225,6 +225,10 @@ require parsing the human table.
 source-syntax finding matched. Dry-run is the default; `--dry-run` makes that
 choice explicit. `cargo-allow prune --stale --write` removes only those stale
 entries from the selected policy file after revalidating the rendered policy.
+`--format json` emits the stale cleanup preview or write result as
+`cargo-allow.prune.v1`, including source-tree inventory context, scanner
+limitations, mode flags, written path when write mode changed the policy, and
+the stale entries selected for removal.
 
 `cargo-allow worklist --format json` turns non-matched no-new outcomes and
 matched `baseline_debt` entries into agent-safe work items. Each item includes a
@@ -251,7 +255,7 @@ to the matching shortcut queues.
 When the human view is truncated, it says how many work items were omitted and
 points to JSON for the full queue. Filtered worklist output records the applied
 filters so saved artifacts are not mistaken for the full ledger queue. The
-report, receipt, explain, list, and worklist schemas enumerate scanner limitation values
+report, receipt, explain, list, prune, and worklist schemas enumerate scanner limitation values
 rather than treating claim-boundary facts as open-ended prose.
 Work items are ordered for routing: high risk first, then lower estimated
 difficulty, then stable source and allow identifiers.
