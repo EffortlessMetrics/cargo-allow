@@ -387,7 +387,8 @@
         "new_findings",
         "removed_findings",
         "policy_failures",
-        "policy_review_items"
+        "policy_review_items",
+        "policy_improvements"
       ],
       "properties": {
         "current_failures": {
@@ -407,6 +408,10 @@
           "minimum": 0
         },
         "policy_review_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy_improvements": {
           "type": "integer",
           "minimum": 0
         }
@@ -449,7 +454,7 @@
       "required": ["severity", "allow_id", "kind", "message"],
       "properties": {
         "severity": {
-          "enum": ["review", "fail"]
+          "enum": ["improvement", "review", "fail"]
         },
         "allow_id": {
           "type": "string",
@@ -458,6 +463,7 @@
         "kind": {
           "enum": [
             "added_allow",
+            "removed_allow",
             "baseline_debt_added",
             "scope_broadened",
             "selector_precision_decreased",
