@@ -51,7 +51,8 @@ External dogfood:
 
 Goal: make the product surface stable enough for real users.
 
-Planned PRs:
+Status: completed through the foundation entries listed in Phase 1; no
+remaining in-repo PRs are currently listed for this phase.
 
 ## Phase 3: Make Non-Rust Governance Useful
 
@@ -113,8 +114,6 @@ Completed:
   kind/path compatibility plus selector field agreement and fails closed on
   ambiguity.
 - Add selector precision scoring for diff-time policy weakening detection.
-
-Planned PRs:
 
 ## Phase 5: Panic-Family Lane
 
@@ -287,8 +286,6 @@ Completed:
   single-entry add summaries while keeping policy output as TOML.
 - Publish a versioned `cargo-allow.add.v1` JSON schema for saved add summaries.
 
-Planned work:
-
 
 ## Phase 10: Migration And External Dogfood
 
@@ -316,8 +313,6 @@ Completed:
   present, missing, invalid, traceability, and unstructured references.
 - Add examples for ripr, unsafe-review, and coverage evidence references while
   keeping the no-execution claim boundary explicit.
-
-Planned work:
 
 ## Phase 12: Agent-Native Worklists
 
@@ -389,8 +384,6 @@ Completed:
 - Point baseline-debt and broad-scope work item proof commands at those shortcut
   queues so follow-up artifacts reopen the same advisory slice.
 
-Planned work:
-
 ## Phase 13: Audit Reports
 
 Goal: make output useful beyond developers.
@@ -411,8 +404,6 @@ Completed:
 - Emit SARIF output for non-matched source-tree outcomes in audit/check style
   reports.
 - Emit static HTML reports for source-tree audit/check output.
-
-Planned work:
 
 ## Phase 14: Public Product Polish
 
