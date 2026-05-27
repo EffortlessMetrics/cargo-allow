@@ -233,6 +233,10 @@ Completed:
   `baseline_debt` entries so generated debt is not hidden by a matched status.
 - Show scanner-provided `source_package` context in `explain` current findings
   without treating it as Cargo metadata.
+- Add `explain --format json --output <path>` for machine-readable single-entry
+  policy explanations with source-tree inventory context.
+- Publish a versioned `cargo-allow.explain.v1` JSON schema for saved
+  explanation artifacts.
 - Improve `list` with current status, match counts, owner/kind/lifecycle
   filters, and baseline-debt filtering.
 - Show scanner-provided source package context in `list` rows without treating
