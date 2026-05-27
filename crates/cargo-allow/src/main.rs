@@ -339,6 +339,7 @@ struct PruneArgs {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum OutputFormat {
     Human,
+    Html,
     Json,
     Sarif,
     #[value(alias = "md")]
@@ -541,6 +542,13 @@ fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             failed,
             report_context,
         ),
+        OutputFormat::Html => allow_report::render_html_with_context(
+            "diff",
+            &findings,
+            &outcomes,
+            failed,
+            report_context,
+        ),
         OutputFormat::Sarif => allow_report::render_sarif_with_context(
             "diff",
             &findings,
@@ -725,7 +733,7 @@ fn append_finding_posture_changes(
     match format {
         OutputFormat::Human => text.push_str(&render_finding_posture_changes_human(changes)),
         OutputFormat::Markdown => text.push_str(&render_finding_posture_changes_markdown(changes)),
-        OutputFormat::Json | OutputFormat::Sarif => {}
+        OutputFormat::Html | OutputFormat::Json | OutputFormat::Sarif => {}
     }
 }
 
@@ -789,7 +797,7 @@ fn append_policy_changes(
     match format {
         OutputFormat::Human => text.push_str(&render_policy_changes_human(changes)),
         OutputFormat::Markdown => text.push_str(&render_policy_changes_markdown(changes)),
-        OutputFormat::Json | OutputFormat::Sarif => {}
+        OutputFormat::Html | OutputFormat::Json | OutputFormat::Sarif => {}
     }
 }
 
@@ -2590,6 +2598,9 @@ fn print_report(
         }
         OutputFormat::Json => {
             allow_report::render_json_with_context(command, findings, outcomes, failed, context)
+        }
+        OutputFormat::Html => {
+            allow_report::render_html_with_context(command, findings, outcomes, failed, context)
         }
         OutputFormat::Sarif => {
             allow_report::render_sarif_with_context(command, findings, outcomes, failed, context)

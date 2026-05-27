@@ -235,10 +235,9 @@ Completed:
   evidence gaps, and baseline debt.
 - Emit SARIF output for non-matched source-tree outcomes in audit/check style
   reports.
+- Emit static HTML reports for source-tree audit/check output.
 
 Planned work:
-
-- HTML audit report when useful.
 
 ## Phase 14: Public Product Polish
 
