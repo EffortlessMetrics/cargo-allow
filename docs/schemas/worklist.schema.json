@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/worklist.v1.schema.json",
+  "title": "cargo-allow worklist v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "command",
+    "claim_boundary",
+    "summary",
+    "work_items"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "schema_id": {
+      "const": "cargo-allow.worklist.v1"
+    },
+    "tool": {
+      "const": "cargo-allow"
+    },
+    "command": {
+      "const": "worklist"
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "contains": {
+        "const": "source_tree_inventory"
+      }
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "work_items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/work_item"
+      }
+    }
+  },
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_items", "high", "medium", "low"],
+      "properties": {
+        "work_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "high": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "medium": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "low": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "work_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "risk",
+        "difficulty",
+        "status",
+        "allow_id",
+        "finding_index",
+        "path",
+        "source_package",
+        "message",
+        "suggested_actions",
+        "proof_commands"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^work-[a-z0-9-]+-[0-9]{4}$"
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "risk": {
+          "enum": ["high", "medium", "low"]
+        },
+        "difficulty": {
+          "enum": ["small", "medium"]
+        },
+        "status": {
+          "enum": [
+            "matched",
+            "new",
+            "stale",
+            "expired",
+            "review_due",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "evidence_missing",
+            "baseline_debt"
+          ]
+        },
+        "allow_id": {
+          "type": ["string", "null"]
+        },
+        "finding_index": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "path": {
+          "type": ["string", "null"]
+        },
+        "source_package": {
+          "type": ["string", "null"],
+          "description": "Explicit source-tree package context when provided by a scanner; not Cargo metadata or build proof."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suggested_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "proof_commands": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^cargo-allow "
+          }
+        }
+      }
+    }
+  }
+}
