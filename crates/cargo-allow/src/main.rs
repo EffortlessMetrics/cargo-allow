@@ -1,15 +1,17 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding};
 #[cfg(test)]
-use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, normalize_path};
+use allow_core::{
+    AllowConfig, AllowEntry, Finding, FindingKind, Lifecycle, Selector, normalize_path,
+};
+use allow_core::{CargoAllowError, CargoAllowResult};
 #[cfg(test)]
 use allow_inventory::InventorySource;
-use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 #[cfg(test)]
 use allow_match::{CheckMode, evaluate};
 use clap::{CommandFactory, Parser, Subcommand};
 use std::env;
 #[cfg(test)]
 use std::fs;
+#[cfg(test)]
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -33,6 +35,7 @@ mod prune;
 mod render;
 mod reporting;
 mod worklist;
+mod world;
 
 pub(crate) use cli_types::{InventoryFacts, OutputFormat, RootArgs};
 pub(crate) use companion::{canonical_companion_findings, extend_unique_findings};
@@ -56,6 +59,7 @@ pub(crate) use render::{
 pub(crate) use reporting::{
     ReportRenderArgs, policy_baseline_debt_entries, print_report, report_config,
 };
+pub(crate) use world::{load_world, load_world_with_evidence_validation};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -134,65 +138,6 @@ fn normalized_args(args: impl IntoIterator<Item = String>) -> Vec<String> {
         args.remove(1);
     }
     args
-}
-
-fn load_world(
-    explicit_root: Option<&Path>,
-    config: Option<&Path>,
-    require_config: bool,
-    kind_filter: Option<&str>,
-    include_untracked: bool,
-) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>, InventoryFacts)> {
-    load_world_with_evidence_validation(
-        explicit_root,
-        config,
-        require_config,
-        kind_filter,
-        include_untracked,
-        true,
-    )
-}
-
-fn load_world_with_evidence_validation(
-    explicit_root: Option<&Path>,
-    config: Option<&Path>,
-    require_config: bool,
-    kind_filter: Option<&str>,
-    include_untracked: bool,
-    validate_local_evidence: bool,
-) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>, InventoryFacts)> {
-    let cwd =
-        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
-    let root = resolve_source_tree_root(explicit_root, cwd)?;
-    let cfg = if require_config {
-        load_config_required(&root, config, validate_local_evidence)?
-    } else {
-        load_config_optional(&root, config, validate_local_evidence)?
-            .unwrap_or_else(AllowConfig::empty)
-    };
-    let opts = InventoryOptions {
-        ignored: cfg.workspace.ignored.clone(),
-        generated: cfg.workspace.generated.clone(),
-        include_untracked,
-    };
-    let inventory = inventory(&root, &opts)?;
-    let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
-    let files = inventory.files;
-    let mut findings = Vec::new();
-    findings.extend(allow_rust::scan_rust_files(&root, &files)?);
-    findings.extend(allow_files::scan_files_with_options(
-        &files,
-        &allow_files::FileScanOptions {
-            generated: opts.generated.clone(),
-        },
-    ));
-    let companion_findings = canonical_companion_findings(&root, &cfg)?;
-    extend_unique_findings(&mut findings, companion_findings);
-    if let Some(kind) = kind_filter {
-        let parsed = parse_kind_filter(kind)?;
-        findings.retain(|f| parsed.matches_finding(f));
-    }
-    Ok((root, cfg, findings, inventory_facts))
 }
 
 #[cfg(test)]
