@@ -36,6 +36,7 @@ The MVP scanner reads source-tree files and source text. It does not require a
 successful build and does not execute repository code. It does not analyze:
 
 - macro expansion.
+- macro token-tree contents as Rust expressions.
 - type information.
 - trait resolution.
 - MIR.
@@ -47,6 +48,11 @@ successful build and does not execute repository code. It does not analyze:
 
 If a future scanner adds any of these capabilities, the report wording should
 name the exact capability and the version that introduced it.
+
+For example, a syntax-visible `unwrap()` call can be reported, but an `unwrap()`
+written inside an `assert!(...)` token tree is outside the current scanner
+surface. That boundary is intentional until cargo-allow has a parser lane that
+explicitly understands macro token-tree contents without executing macros.
 
 Root and inventory discovery is source-tree based: explicit root, git root, then
 current directory, with git-tracked inventory preferred and symlink-safe

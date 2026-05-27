@@ -918,6 +918,22 @@ mod tests {
     }
 
     #[test]
+    fn syntax_panic_methods_do_not_parse_macro_token_trees() {
+        let src = r#"
+        fn load(value: Result<(), ()>) {
+            assert!(value.unwrap() == ());
+        }
+        "#;
+        let findings = scan_rust_source("src/lib.rs", src);
+
+        assert!(
+            !findings
+                .iter()
+                .any(|f| f.kind == FindingKind::Panic && f.identity.ast_kind == "method_call")
+        );
+    }
+
+    #[test]
     fn detects_panic_macros_from_syntax() {
         let src = r#"
         fn load() {

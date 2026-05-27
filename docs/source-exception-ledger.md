@@ -135,8 +135,8 @@ instead of silently broadening the exception.
 shows the policy metadata, selector, current match status, matched finding
 count, outcome counts, stale state, and occurrence-limit overruns. The command
 is still bounded by the normal cargo-allow claim boundary: source syntax only,
-with no macro expansion, type analysis, build output, control-flow analysis, or
-data-flow analysis.
+with no macro expansion, macro token-tree expression parsing, type analysis,
+build output, control-flow analysis, or data-flow analysis.
 
 `cargo-allow list` shows allow entries with current status, match count, kind,
 family, owner, classification, scope, lifecycle dates, and reason. It supports
@@ -171,8 +171,9 @@ normalized snippet hash. Line and column remain hints, not identity: moving a
 finding without changing its structural source surface should not appear as a
 new exception. The diff reports new and removed syntax-visible exception
 findings, including count changes for repeated matching finding keys; it still
-does not claim macro expansion, type information, build awareness, proof
-adequacy, control-flow analysis, or data-flow analysis.
+does not claim macro expansion, macro token-tree expression parsing, type
+information, build awareness, proof adequacy, control-flow analysis, or
+data-flow analysis.
 
 Markdown diff output starts with a PR summary. The summary reports net posture,
 reviewer action, current no-new failures, new and removed source findings,
