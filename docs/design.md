@@ -79,6 +79,25 @@ Inventory follows the source-tree boundary: explicit `--root`, nearest git root,
 then current directory. Cargo manifests and lockfiles are scanned as files, not
 used as required build metadata.
 
+## Crate Namespace
+
+`cargo-allow` is the product binary and Cargo external
+subcommand-compatible package. First-party library crates use the canonical
+`allow-*` namespace.
+
+New scanners, matchers, policy adapters, exporters, report formats, evidence
+integrations, fixtures, schema helpers, and other libraries should use
+`allow-*` names. Do not split the crate family into `allow-*` for core crates
+and `cargo-allow-*` for integrations or plugins; that creates a durable
+semantic distinction users cannot reliably interpret.
+
+Use `cargo-allow-*` only for a separately installed user-facing binary or
+service, and only after documenting why it is not a normal library crate in the
+`allow-*` family. Do not rename published `allow-*` crates for branding
+cleanup, and do not create duplicate `cargo-allow-*` wrapper crates around
+`allow-*` libraries. Before adding any public crate, justify why it cannot
+remain an internal module of an existing `allow-*` crate.
+
 ## Matching Direction
 
 Matching must move toward durable source identity:

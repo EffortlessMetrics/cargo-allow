@@ -424,6 +424,8 @@ Completed:
 - 0.1.0 release runbook.
 - 0.1.0 dry-run.
 - 0.1.0 publish.
+- Document crate namespace policy: `cargo-allow` is the product binary, and
+  `allow-*` is the canonical first-party library namespace.
 
 ## Milestone Claims
 

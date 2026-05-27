@@ -207,6 +207,13 @@ cargo-allow doctor --format json --output target/cargo-allow/doctor.json
 
 ## Repository Layout
 
+`cargo-allow` is the product binary. First-party implementation libraries use
+the `allow-*` crate namespace. Future scanners, matchers, policy adapters,
+exporters, report formats, evidence integrations, fixtures, and schema helpers
+should stay in that namespace unless they are separately installed
+user-facing binaries or services. Do not create a parallel `cargo-allow-*`
+library namespace for integrations or plugins.
+
 | Crate | Role |
 |---|---|
 | `allow-core` | Core data model, simple glob matching, stable FNV hash, dates |
