@@ -10,6 +10,7 @@
     "tool",
     "command",
     "claim_boundary",
+    "scanner_limitations",
     "inventory",
     "summary",
     "work_items"

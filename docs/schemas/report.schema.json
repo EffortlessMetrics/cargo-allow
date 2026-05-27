@@ -12,6 +12,8 @@
     "status",
     "failed",
     "claim_boundary",
+    "scanner_limitations",
+    "inventory",
     "summary",
     "outcomes",
     "findings"
