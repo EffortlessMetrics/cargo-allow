@@ -1,26 +1,22 @@
-use allow_core::{
-    AllowConfig, AllowEntry, CargoAllowResult, Finding, FindingKind, LastSeen, Lifecycle,
-    Requirements, Selector, WorkspaceConfig, normalize_path, normalize_snippet, stable_hash_hex,
-};
+use allow_core::{AllowConfig, CargoAllowResult, Finding, Requirements, WorkspaceConfig};
 use allow_policy::validate_policy;
-use std::path::{Path, PathBuf};
 
 use crate::converter_policy_entries::{
     entries_from_workflow_rule, entry_from_dependency_surface_rule, entry_from_executable_rule,
     entry_from_network_rule, entry_from_process_rule,
 };
-use crate::converter_support::{
-    best_rule_index, cargo_allow_panic_family, generated_evidence, lifecycle_from_rule,
-    no_panic_macro_name, no_panic_method_callee, normalize_selector_kind, unsafe_evidence,
+use crate::converter_source_entries::{
+    entry_from_clippy_rule, entry_from_finding, entry_from_generated_rule,
+    entry_from_no_panic_allow_entry, entry_from_no_panic_baseline_entry, entry_from_rule,
+    entry_from_unsafe_rule,
 };
+use crate::converter_support::best_rule_index;
 use crate::fields::string_field;
-use crate::findings::file_fingerprint;
 use crate::types::{
     LegacyClippyRule, LegacyDependencySurfaceRule, LegacyExecutableRule, LegacyGeneratedRule,
     LegacyNetworkRule, LegacyNoPanicAllowEntry, LegacyNoPanicBaselineEntry, LegacyNonRustRule,
     LegacyProcessRule, LegacyUnsafeRule, LegacyWorkflowRule,
 };
-use crate::{default_baseline_created, default_baseline_expires};
 
 pub(crate) fn config_from_non_rust_rules(
     table: &toml::Table,
@@ -169,228 +165,5 @@ fn base_config(table: &toml::Table) -> AllowConfig {
         workspace: WorkspaceConfig::default(),
         requirements: Requirements::default(),
         allow: Vec::new(),
-    }
-}
-
-fn entry_from_rule(rule: &LegacyNonRustRule) -> AllowEntry {
-    let (path, glob) = if rule.is_path {
-        (Some(PathBuf::from(&rule.pattern)), None)
-    } else {
-        (None, Some(rule.pattern.clone()))
-    };
-    AllowEntry {
-        id: rule.id.clone(),
-        kind: FindingKind::NonRustFile,
-        family: None,
-        path,
-        glob: glob.clone(),
-        owner: rule.owner.clone(),
-        classification: rule.classification.clone(),
-        reason: rule.reason.clone(),
-        evidence: Vec::new(),
-        links: Vec::new(),
-        occurrence_limit: None,
-        lifecycle: lifecycle_from_rule(rule),
-        selector: Selector {
-            glob: Some(rule.pattern.clone()),
-            ..Selector::default()
-        },
-        last_seen: None,
-    }
-}
-
-fn entry_from_finding(rule: &LegacyNonRustRule, finding: &Finding, index: usize) -> AllowEntry {
-    let path = normalize_path(&finding.path);
-    AllowEntry {
-        id: format!("{}--{index:04}", rule.id),
-        kind: finding.kind,
-        family: None,
-        path: Some(PathBuf::from(&path)),
-        glob: None,
-        owner: rule.owner.clone(),
-        classification: rule.classification.clone(),
-        reason: rule.reason.clone(),
-        evidence: Vec::new(),
-        links: vec![format!("legacy-policy:{}", rule.id)],
-        occurrence_limit: None,
-        lifecycle: lifecycle_from_rule(rule),
-        selector: Selector {
-            ast_kind: Some(finding.identity.ast_kind.clone()),
-            symbol: Some(path.clone()),
-            glob: Some(path),
-            ..Selector::default()
-        },
-        last_seen: finding.span.as_ref().map(|span| LastSeen {
-            line: span.line,
-            column: span.column,
-        }),
-    }
-}
-
-fn entry_from_generated_rule(rule: &LegacyGeneratedRule) -> AllowEntry {
-    let path = normalize_path(&rule.path);
-    AllowEntry {
-        id: rule.id.clone(),
-        kind: FindingKind::GeneratedCode,
-        family: Some("generated_code".to_string()),
-        path: Some(PathBuf::from(&path)),
-        glob: None,
-        owner: rule.owner.clone(),
-        classification: "generated_code".to_string(),
-        reason: rule.reason.clone(),
-        evidence: generated_evidence(rule),
-        links: vec![format!("legacy-policy:{}", rule.id)],
-        occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: rule.created.clone(),
-            review_after: None,
-            expires: rule.expires.clone(),
-        },
-        selector: Selector {
-            ast_kind: Some("tracked_file".to_string()),
-            symbol: Some(path.clone()),
-            target_fingerprint: file_fingerprint(Path::new(&path)),
-            glob: Some(path),
-            ..Selector::default()
-        },
-        last_seen: None,
-    }
-}
-
-fn entry_from_no_panic_baseline_entry(rule: &LegacyNoPanicBaselineEntry) -> AllowEntry {
-    let path = normalize_path(&rule.path);
-    let family = cargo_allow_panic_family(&rule.family);
-    let ast_kind = normalize_selector_kind(&rule.selector_kind);
-    let snippet_hash = stable_hash_hex(&normalize_snippet(&rule.snippet));
-    AllowEntry {
-        id: format!("panic-baseline-{:04}", rule.index + 1),
-        kind: FindingKind::Panic,
-        family: Some(family.clone()),
-        path: Some(PathBuf::from(&path)),
-        glob: None,
-        owner: "unowned".to_string(),
-        classification: "baseline_debt".to_string(),
-        reason: "Generated from legacy no-panic baseline; requires human review.".to_string(),
-        evidence: vec![
-            "legacy_policy:no-panic-baseline".to_string(),
-            format!("legacy_selector_callee:{}", rule.selector_callee),
-            format!("baseline_count:{}", rule.count),
-        ],
-        links: vec!["legacy-policy:no-panic-baseline".to_string()],
-        occurrence_limit: Some(rule.count),
-        lifecycle: Lifecycle {
-            created: Some(default_baseline_created()),
-            review_after: None,
-            expires: Some(default_baseline_expires()),
-        },
-        selector: Selector {
-            ast_kind: Some(ast_kind.clone()),
-            callee: (ast_kind == "method_call").then(|| family.clone()),
-            macro_name: (ast_kind == "macro_call").then(|| no_panic_macro_name(&rule.family)),
-            normalized_snippet_hash: Some(snippet_hash),
-            glob: Some(path),
-            ..Selector::default()
-        },
-        last_seen: None,
-    }
-}
-
-fn entry_from_no_panic_allow_entry(rule: &LegacyNoPanicAllowEntry) -> AllowEntry {
-    let path = normalize_path(&rule.path);
-    let family = cargo_allow_panic_family(&rule.family);
-    let ast_kind = normalize_selector_kind(&rule.selector_kind);
-    AllowEntry {
-        id: rule.id.clone(),
-        kind: FindingKind::Panic,
-        family: Some(family.clone()),
-        path: Some(PathBuf::from(&path)),
-        glob: None,
-        owner: rule.owner.clone(),
-        classification: rule.classification.clone(),
-        reason: rule.reason.clone(),
-        evidence: vec![
-            "legacy_policy:no-panic-allowlist".to_string(),
-            format!("legacy_index:{}", rule.index),
-        ],
-        links: vec!["legacy-policy:no-panic-allowlist".to_string()],
-        occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: rule.created.clone(),
-            review_after: rule.review_after.clone(),
-            expires: rule.expires.clone(),
-        },
-        selector: Selector {
-            ast_kind: Some(ast_kind.clone()),
-            container: rule.selector_container.clone(),
-            callee: (ast_kind == "method_call")
-                .then(|| no_panic_method_callee(&family, rule.selector_callee.as_deref())),
-            macro_name: (ast_kind == "macro_call")
-                .then(|| no_panic_macro_name(rule.selector_callee.as_deref().unwrap_or(&family))),
-            line_hint: rule.line_hint,
-            glob: Some(path),
-            ..Selector::default()
-        },
-        last_seen: rule.last_seen.clone(),
-    }
-}
-
-fn entry_from_clippy_rule(rule: &LegacyClippyRule) -> AllowEntry {
-    let path = normalize_path(&rule.path);
-    AllowEntry {
-        id: rule.id.clone(),
-        kind: FindingKind::LintException,
-        family: Some(rule.family.clone()),
-        path: Some(PathBuf::from(&path)),
-        glob: None,
-        owner: rule.owner.clone(),
-        classification: rule.classification.clone(),
-        reason: rule.reason.clone(),
-        evidence: vec![format!("lint:{}", rule.lint)],
-        links: vec![format!("legacy-policy:{}", rule.id)],
-        occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: rule.created.clone(),
-            review_after: rule.review_after.clone(),
-            expires: rule.expires.clone(),
-        },
-        selector: Selector {
-            ast_kind: Some("attribute".to_string()),
-            lint: Some(rule.lint.clone()),
-            symbol: rule.symbol.clone(),
-            target_fingerprint: rule.target_fingerprint.clone(),
-            glob: Some(path),
-            ..Selector::default()
-        },
-        last_seen: None,
-    }
-}
-
-fn entry_from_unsafe_rule(rule: &LegacyUnsafeRule) -> AllowEntry {
-    let path = normalize_path(&rule.path);
-    AllowEntry {
-        id: rule.id.clone(),
-        kind: FindingKind::Unsafe,
-        family: Some(rule.family.clone()),
-        path: Some(PathBuf::from(&path)),
-        glob: None,
-        owner: rule.owner.clone(),
-        classification: rule.classification.clone(),
-        reason: rule.reason.clone(),
-        evidence: unsafe_evidence(rule),
-        links: vec![format!("legacy-policy:{}", rule.id)],
-        occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: rule.created.clone(),
-            review_after: rule.review_after.clone(),
-            expires: rule.expires.clone(),
-        },
-        selector: Selector {
-            ast_kind: Some(rule.selector_kind.clone()),
-            container: rule.selector_container.clone(),
-            line_hint: rule.line_hint,
-            glob: Some(path),
-            ..Selector::default()
-        },
-        last_seen: rule.last_seen.clone(),
     }
 }
