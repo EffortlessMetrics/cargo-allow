@@ -14,6 +14,8 @@ mod migrate;
 mod non_rust;
 mod propose;
 mod prune;
+#[cfg(test)]
+mod prune_tests;
 mod receipt;
 mod report_json;
 mod report_text;
