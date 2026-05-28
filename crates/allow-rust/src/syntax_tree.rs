@@ -1,0 +1,172 @@
+use allow_core::{CargoAllowError, CargoAllowResult};
+use tree_sitter::{Node, Parser, Tree};
+
+pub struct RustSyntaxTree {
+    pub(crate) tree: Tree,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RustSyntaxContainer {
+    pub kind: String,
+    pub name: String,
+    pub module_path: Vec<String>,
+    pub start_line: u32,
+    pub start_column: u32,
+    pub end_line: u32,
+    pub end_column: u32,
+}
+
+impl RustSyntaxContainer {
+    pub fn module(&self) -> Option<String> {
+        if self.module_path.is_empty() {
+            None
+        } else {
+            Some(self.module_path.join("::"))
+        }
+    }
+}
+
+impl RustSyntaxTree {
+    pub fn root_kind(&self) -> &'static str {
+        self.tree.root_node().kind()
+    }
+
+    pub fn has_error(&self) -> bool {
+        self.tree.root_node().has_error()
+    }
+
+    pub fn named_node_count(&self) -> usize {
+        named_node_count(self.tree.root_node())
+    }
+
+    pub fn containers(&self, source: &str) -> Vec<RustSyntaxContainer> {
+        let mut containers = Vec::new();
+        let mut module_path = Vec::new();
+        let mut impl_path = Vec::new();
+        collect_containers(
+            self.tree.root_node(),
+            source,
+            &mut module_path,
+            &mut impl_path,
+            &mut containers,
+        );
+        containers
+    }
+}
+
+pub fn parse_rust_syntax(source: &str) -> CargoAllowResult<RustSyntaxTree> {
+    let mut parser = Parser::new();
+    let language = tree_sitter_rust::LANGUAGE.into();
+    parser
+        .set_language(&language)
+        .map_err(|e| CargoAllowError::new(format!("failed to load Rust parser: {e}")))?;
+    let tree = parser
+        .parse(source, None)
+        .ok_or_else(|| CargoAllowError::new("failed to parse Rust source"))?;
+    Ok(RustSyntaxTree { tree })
+}
+
+pub(crate) fn node_text<'a>(source: &'a str, node: Node<'a>) -> Option<&'a str> {
+    node.utf8_text(source.as_bytes()).ok()
+}
+
+pub(crate) fn impl_container_name(node: Node<'_>, source: &str) -> Option<String> {
+    let impl_type = node
+        .child_by_field_name("type")
+        .and_then(|type_node| node_text(source, type_node))
+        .map(normalize_scope_text)?;
+    if let Some(trait_name) = node
+        .child_by_field_name("trait")
+        .and_then(|trait_node| node_text(source, trait_node))
+        .map(normalize_scope_text)
+    {
+        Some(format!("<{impl_type} as {trait_name}>"))
+    } else {
+        Some(impl_type)
+    }
+}
+
+fn named_node_count(node: Node<'_>) -> usize {
+    let mut cursor = node.walk();
+    let children = node
+        .children(&mut cursor)
+        .map(named_node_count)
+        .sum::<usize>();
+    if node.is_named() {
+        children + 1
+    } else {
+        children
+    }
+}
+
+fn collect_containers(
+    node: Node<'_>,
+    source: &str,
+    module_path: &mut Vec<String>,
+    impl_path: &mut Vec<String>,
+    containers: &mut Vec<RustSyntaxContainer>,
+) {
+    if node.kind() == "mod_item" {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| node_text(source, name))
+        {
+            module_path.push(name.to_string());
+            visit_child_containers(node, source, module_path, impl_path, containers);
+            module_path.pop();
+            return;
+        }
+    }
+
+    if node.kind() == "impl_item" {
+        if let Some(name) = impl_container_name(node, source) {
+            impl_path.push(name);
+            visit_child_containers(node, source, module_path, impl_path, containers);
+            impl_path.pop();
+            return;
+        }
+    }
+
+    if node.kind() == "function_item" {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| node_text(source, name))
+        {
+            let (kind, name) = if let Some(impl_name) = impl_path.last() {
+                ("method", format!("{impl_name}::{name}"))
+            } else {
+                ("function", name.to_string())
+            };
+            let start = node.start_position();
+            let end = node.end_position();
+            containers.push(RustSyntaxContainer {
+                kind: kind.to_string(),
+                name,
+                module_path: module_path.clone(),
+                start_line: start.row as u32 + 1,
+                start_column: start.column as u32 + 1,
+                end_line: end.row as u32 + 1,
+                end_column: end.column as u32 + 1,
+            });
+        }
+    }
+
+    visit_child_containers(node, source, module_path, impl_path, containers);
+}
+
+fn visit_child_containers(
+    node: Node<'_>,
+    source: &str,
+    module_path: &mut Vec<String>,
+    impl_path: &mut Vec<String>,
+    containers: &mut Vec<RustSyntaxContainer>,
+) {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_containers(child, source, module_path, impl_path, containers);
+    }
+}
+
+fn normalize_scope_text(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
