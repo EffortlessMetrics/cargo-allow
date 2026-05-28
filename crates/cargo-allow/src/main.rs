@@ -40,6 +40,8 @@ mod artifact_contract_support;
 #[cfg(test)]
 mod artifact_contract_tests;
 #[cfg(test)]
+mod artifact_schema_add_tests;
+#[cfg(test)]
 mod artifact_schema_common_tests;
 #[cfg(test)]
 mod artifact_schema_explain_tests;
