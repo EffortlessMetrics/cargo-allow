@@ -9,10 +9,11 @@ use crate::converter_panic_entries::{
     entry_from_no_panic_allow_entry, entry_from_no_panic_baseline_entry,
 };
 use crate::converter_policy_entries::{
-    entries_from_workflow_rule, entry_from_dependency_surface_rule, entry_from_executable_rule,
-    entry_from_network_rule, entry_from_process_rule,
+    entry_from_dependency_surface_rule, entry_from_executable_rule, entry_from_network_rule,
+    entry_from_process_rule,
 };
 use crate::converter_support::best_rule_index;
+use crate::converter_workflow_entries::entries_from_workflow_rule;
 use crate::fields::string_field;
 use crate::types::{
     LegacyClippyRule, LegacyDependencySurfaceRule, LegacyExecutableRule, LegacyGeneratedRule,
