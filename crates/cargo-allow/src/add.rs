@@ -1,15 +1,17 @@
 use allow_core::{CargoAllowError, CargoAllowResult, FindingKind};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_local_evidence_references, validate_policy};
-use clap::{Parser, ValueEnum};
-use std::path::PathBuf;
 
+#[path = "add_args.rs"]
+mod add_args;
 #[path = "add_entry.rs"]
 mod add_entry;
 #[path = "add_render.rs"]
 mod add_render;
 #[path = "add_types.rs"]
 mod add_types;
+pub(crate) use add_args::AddArgs;
+use add_args::AddSummaryFormat;
 use add_entry::{
     AddEntryRequest, allow_entry_from_finding, ensure_addable_outcome, next_allow_id,
     select_add_finding,
@@ -18,74 +20,13 @@ use add_render::{render_add_summary, render_add_summary_json};
 pub(super) use add_types::AddContext;
 
 use crate::{
-    RootArgs, SourceTreeReportContext, load_world, parse_kind_filter, write_file,
-    write_file_no_overwrite,
+    SourceTreeReportContext, load_world, parse_kind_filter, write_file, write_file_no_overwrite,
 };
 
 #[cfg(test)]
 use allow_core::{Finding, MatchStatus};
 #[cfg(test)]
-use std::path::Path;
-
-#[derive(Debug, Clone, Parser)]
-pub(crate) struct AddArgs {
-    #[command(flatten)]
-    root: RootArgs,
-    /// Policy config path.
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Finding kind to add.
-    #[arg(long)]
-    kind: String,
-    /// Path containing the finding.
-    #[arg(long)]
-    path: PathBuf,
-    /// Line near the finding.
-    #[arg(long)]
-    line: u32,
-    /// Owner for the retained exception.
-    #[arg(long)]
-    owner: String,
-    /// Reason this exception is acceptable.
-    #[arg(long)]
-    reason: String,
-    /// Classification for the retained exception.
-    #[arg(long, default_value = "reviewed_exception")]
-    classification: String,
-    /// Review date for the retained exception.
-    #[arg(long, default_value = "2026-11-01")]
-    review_after: String,
-    /// Optional expiry date for the retained exception.
-    #[arg(long)]
-    expires: Option<String>,
-    /// Evidence reference supporting this exception.
-    #[arg(long)]
-    evidence: Vec<String>,
-    /// Entry ID. Defaults to the next allow-NNNN ID.
-    #[arg(long)]
-    id: Option<String>,
-    /// Include untracked files in addition to git-tracked files.
-    #[arg(long)]
-    include_untracked: bool,
-    /// Write proposed policy to this path.
-    #[arg(long)]
-    write: Option<PathBuf>,
-    /// Overwrite an existing output policy file.
-    #[arg(long)]
-    force: bool,
-    /// Summary output format. Policy output remains TOML.
-    #[arg(long, value_enum, default_value_t = AddSummaryFormat::Human)]
-    summary_format: AddSummaryFormat,
-    /// Write add summary to a file instead of stderr.
-    #[arg(long)]
-    summary_output: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum AddSummaryFormat {
-    Human,
-    Json,
-}
+use std::path::{Path, PathBuf};
 
 pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let parsed_kind = parse_kind_filter(&args.kind)?;
