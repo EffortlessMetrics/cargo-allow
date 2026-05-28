@@ -1,6 +1,4 @@
-use allow_core::{
-    AllowConfig, CargoAllowError, CargoAllowResult, FindingKind, MatchOutcome, MatchStatus,
-};
+use allow_core::{CargoAllowError, CargoAllowResult, FindingKind};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 use clap::{Parser, ValueEnum};
@@ -10,7 +8,13 @@ use crate::{RootArgs, config_path, load_world, source_tree_root_text, write_file
 
 #[path = "prune_render.rs"]
 mod prune_render;
+#[path = "prune_stale.rs"]
+mod prune_stale;
 use prune_render::{render_prune_stale_json, render_prune_stale_result};
+use prune_stale::{config_without_prune_candidates, prune_stale_candidates};
+
+#[cfg(test)]
+use allow_core::{AllowConfig, MatchOutcome, MatchStatus};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct PruneArgs {
@@ -131,37 +135,6 @@ struct PruneCandidate {
     classification: String,
     scope: String,
     reason: String,
-}
-
-fn prune_stale_candidates(cfg: &AllowConfig, outcomes: &[MatchOutcome]) -> Vec<PruneCandidate> {
-    outcomes
-        .iter()
-        .filter(|outcome| outcome.status == MatchStatus::Stale)
-        .filter_map(|outcome| {
-            let id = outcome.allow_id.as_deref()?;
-            let entry = cfg.allow.iter().find(|entry| entry.id == id)?;
-            Some(PruneCandidate {
-                id: entry.id.clone(),
-                kind: entry.kind,
-                family: entry.family.clone(),
-                owner: entry.owner.clone(),
-                classification: entry.classification.clone(),
-                scope: entry.path_or_glob(),
-                reason: entry.reason.clone(),
-            })
-        })
-        .collect()
-}
-
-fn config_without_prune_candidates(
-    cfg: &AllowConfig,
-    candidates: &[PruneCandidate],
-) -> AllowConfig {
-    let mut pruned = cfg.clone();
-    pruned
-        .allow
-        .retain(|entry| !candidates.iter().any(|candidate| candidate.id == entry.id));
-    pruned
 }
 
 #[cfg(test)]
