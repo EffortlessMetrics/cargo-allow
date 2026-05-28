@@ -4,7 +4,8 @@ use std::path::Path;
 use crate::finding_builder::{FindingSite, push_finding};
 use crate::line_facts::SyntaxLineFacts;
 use crate::line_lint_findings::scan_lint_attributes;
-use crate::text::{column, index_symbol, index_target_fingerprint, receiver_before_method_column};
+use crate::line_unsafe_findings::{UnsafeLineContext, scan_unsafe_constructs};
+use crate::text::{index_symbol, index_target_fingerprint, receiver_before_method_column};
 
 pub(crate) fn scan_line(
     path: &Path,
@@ -30,48 +31,19 @@ pub(crate) fn scan_line(
         findings,
     );
 
-    for unsafe_construct in syntax.unsafe_constructs {
-        push_finding(
-            FindingSite {
-                path,
-                line,
-                line_no,
-                column: unsafe_construct.column,
-                container,
-                module_stack,
-            },
-            FindingKind::Unsafe,
-            unsafe_construct.kind.family(),
-            unsafe_construct.kind.ast_kind(),
-            |id| {
-                if syntax.safety_comment_nearby {
-                    id.target_fingerprint = Some("safety-comment:present".to_string());
-                }
-            },
-            findings,
-        );
-    }
-    if syntax.unsafe_attribute {
-        push_finding(
-            FindingSite {
-                path,
-                line,
-                line_no,
-                column: column(line, "unsafe"),
-                container,
-                module_stack,
-            },
-            FindingKind::Unsafe,
-            "unsafe_attr",
-            "unsafe_attr",
-            |id| {
-                if syntax.safety_comment_nearby {
-                    id.target_fingerprint = Some("safety-comment:present".to_string());
-                }
-            },
-            findings,
-        );
-    }
+    scan_unsafe_constructs(
+        UnsafeLineContext {
+            path,
+            line,
+            line_no,
+            container,
+            module_stack,
+            safety_comment_nearby: syntax.safety_comment_nearby,
+        },
+        syntax.unsafe_constructs,
+        syntax.unsafe_attribute,
+        findings,
+    );
 
     for method_call in syntax.panic_methods {
         let receiver = receiver_before_method_column(line, method_call.column);
