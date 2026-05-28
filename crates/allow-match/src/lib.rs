@@ -1,10 +1,13 @@
-use allow_core::{AllowConfig, Finding, MatchOutcome, MatchStatus, SimpleDate, normalize_path};
+use allow_core::{AllowConfig, Finding, MatchOutcome, MatchStatus, SimpleDate};
 use std::collections::{BTreeMap, BTreeSet};
 
 mod classification;
+mod messages;
 mod mode;
 mod scoring;
 use classification::classify_matched;
+use messages::family_suffix;
+pub use messages::finding_location;
 pub use mode::CheckMode;
 pub use scoring::{STRUCTURAL_MATCH_THRESHOLD, score_match};
 
@@ -105,26 +108,6 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
         });
     }
     outcomes
-}
-
-fn family_suffix(finding: &Finding) -> String {
-    finding
-        .family
-        .as_ref()
-        .map(|f| format!(".{f}"))
-        .unwrap_or_default()
-}
-
-pub fn finding_location(finding: &Finding) -> String {
-    match &finding.span {
-        Some(span) => format!(
-            "{}:{}:{}",
-            normalize_path(&finding.path),
-            span.line,
-            span.column
-        ),
-        None => normalize_path(&finding.path),
-    }
 }
 
 #[cfg(test)]
