@@ -1,9 +1,13 @@
-use allow_core::{AllowConfig, AllowEntry, CargoAllowResult, SimpleDate};
+use allow_core::{AllowConfig, AllowEntry, CargoAllowResult};
 use allow_policy::parse_policy;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use crate::policy_change::{PolicyChange, PolicyChangeKind, PolicyChangeSeverity};
+use crate::policy_compare::{
+    added_required_text, added_values, date_extended, date_shortened, occurrence_limit_loosened,
+    occurrence_limit_tightened, removed_required_text, removed_values,
+};
 use crate::policy_scope::{scope_broadened, scope_narrowed, selector_precision_score};
 
 pub fn policy_changes_from_git(
@@ -266,66 +270,5 @@ fn change(
         kind,
         severity,
         message: format!("{} {message}", entry.id),
-    }
-}
-
-fn date_extended(base: Option<&str>, head: Option<&str>) -> bool {
-    match (base, head) {
-        (Some(base), Some(head)) if base == head => false,
-        (Some(base), Some("never")) if base != "never" => true,
-        (Some(base), Some(head)) => match (SimpleDate::parse(base), SimpleDate::parse(head)) {
-            (Some(base_date), Some(head_date)) => head_date > base_date,
-            _ => false,
-        },
-        (Some(base), None) => base != "never",
-        _ => false,
-    }
-}
-
-fn date_shortened(base: Option<&str>, head: Option<&str>) -> bool {
-    match (base, head) {
-        (_, Some("never")) => false,
-        (Some(base), Some(head)) if base == head => false,
-        (Some("never"), Some(head)) => SimpleDate::parse(head).is_some(),
-        (Some(base), Some(head)) => match (SimpleDate::parse(base), SimpleDate::parse(head)) {
-            (Some(base_date), Some(head_date)) => head_date < base_date,
-            _ => false,
-        },
-        (None, Some(head)) => SimpleDate::parse(head).is_some(),
-        _ => false,
-    }
-}
-
-fn removed_values(base: &[String], head: &[String]) -> bool {
-    base.iter()
-        .any(|item| !head.iter().any(|head| head == item))
-}
-
-fn added_values(base: &[String], head: &[String]) -> bool {
-    head.iter()
-        .any(|item| !base.iter().any(|base| base == item))
-}
-
-fn removed_required_text(base: &str, head: &str) -> bool {
-    !base.trim().is_empty() && head.trim().is_empty()
-}
-
-fn added_required_text(base: &str, head: &str) -> bool {
-    base.trim().is_empty() && !head.trim().is_empty()
-}
-
-fn occurrence_limit_loosened(base: Option<u32>, head: Option<u32>) -> bool {
-    match (base, head) {
-        (Some(_), None) => true,
-        (Some(base), Some(head)) => head > base,
-        _ => false,
-    }
-}
-
-fn occurrence_limit_tightened(base: Option<u32>, head: Option<u32>) -> bool {
-    match (base, head) {
-        (None, Some(_)) => true,
-        (Some(base), Some(head)) => head < base,
-        _ => false,
     }
 }
