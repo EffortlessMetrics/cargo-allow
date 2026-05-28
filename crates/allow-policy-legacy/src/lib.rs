@@ -4,7 +4,6 @@ mod converter_exception_entries;
 mod converter_file_entries;
 mod converter_panic_entries;
 mod converter_policy_entries;
-mod converter_source_entries;
 mod converter_support;
 mod converters;
 mod fields;
