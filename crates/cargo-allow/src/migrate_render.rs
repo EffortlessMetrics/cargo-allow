@@ -8,26 +8,8 @@ pub(super) fn render_migrate_summary(
     output: &Path,
     force: bool,
 ) -> String {
-    let counts = migrate_summary_counts(cfg);
-    let notes = allow_policy_legacy::migration_notes();
-    let mut out = String::new();
-    out.push_str("cargo-allow migrate summary\n");
-    out.push_str(&format!("input_kind: {}\n", context.input_kind));
-    out.push_str(&format!("input: {}\n", context.input_path));
-    out.push_str(&format!("output: {}\n", output.display()));
-    out.push_str(&format!("force: {force}\n"));
-    out.push_str(&format!("allow_entries: {}\n", counts.allow_entries));
-    out.push_str(&format!("baseline_debt: {}\n", counts.baseline_debt));
-    out.push_str(&format!("unsafe_entries: {}\n", counts.unsafe_entries));
-    if let Some(root) = &context.source_tree_root {
-        out.push_str(&format!("source_tree_root: {root}\n"));
-    }
-    out.push_str(&format!("inventory_source: {}\n", context.inventory_source));
-    if let Some(files) = context.inventory_files {
-        out.push_str(&format!("files_scanned: {files}\n"));
-    }
-    out.push_str(notes);
-    out
+    let output = output.display().to_string();
+    allow_report::render_migrate_human(migrate_report(cfg, context, &output, force))
 }
 
 pub(super) fn render_migrate_summary_json(
@@ -36,10 +18,19 @@ pub(super) fn render_migrate_summary_json(
     output: &Path,
     force: bool,
 ) -> String {
-    let counts = migrate_summary_counts(cfg);
     let output = output.display().to_string();
+    allow_report::render_migrate_json(migrate_report(cfg, context, &output, force))
+}
+
+fn migrate_report<'a>(
+    cfg: &'a AllowConfig,
+    context: &'a MigrateContext,
+    output: &'a str,
+    force: bool,
+) -> allow_report::MigrateReport<'a> {
+    let counts = migrate_summary_counts(cfg);
     let notes = allow_policy_legacy::migration_notes();
-    allow_report::render_migrate_json(allow_report::MigrateReport {
+    allow_report::MigrateReport {
         inventory: allow_report::InventoryContext::new(
             "source_tree",
             "policy_migration",
@@ -49,14 +40,14 @@ pub(super) fn render_migrate_summary_json(
         ),
         input_kind: &context.input_kind,
         input_path: &context.input_path,
-        output_path: &output,
+        output_path: output,
         force,
         allow_entries: counts.allow_entries,
         baseline_debt: counts.baseline_debt,
         unsafe_entries: counts.unsafe_entries,
         entries_with_evidence: counts.entries_with_evidence,
         notes,
-    })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
