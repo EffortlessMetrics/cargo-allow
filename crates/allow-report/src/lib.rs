@@ -7,6 +7,8 @@ mod contracts;
 mod diff;
 mod doctor;
 mod explain;
+#[cfg(test)]
+mod explain_tests;
 mod html;
 mod json;
 mod list;
