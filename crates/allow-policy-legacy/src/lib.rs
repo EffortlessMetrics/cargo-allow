@@ -34,6 +34,7 @@ mod loader_policy_dir;
 mod loader_process_network_compat;
 mod loader_source_compat;
 mod loader_source_exception_compat;
+mod loader_workflow_dependency_compat;
 mod loaders;
 mod parser_clippy_entries;
 mod parser_dependency_entries;
