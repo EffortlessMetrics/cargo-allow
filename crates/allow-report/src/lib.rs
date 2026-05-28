@@ -2,6 +2,8 @@ mod add;
 #[cfg(test)]
 mod add_tests;
 mod allow_entry_json;
+#[cfg(test)]
+mod allow_entry_json_tests;
 mod artifacts;
 mod contracts;
 mod diff;
@@ -31,6 +33,8 @@ mod prune;
 #[cfg(test)]
 mod prune_tests;
 mod receipt;
+#[cfg(test)]
+mod receipt_tests;
 mod report_json;
 mod report_text;
 mod sarif;
