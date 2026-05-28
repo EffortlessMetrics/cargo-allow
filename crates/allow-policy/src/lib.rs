@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 mod evidence;
 mod render;
+mod toml_de;
 mod toml_model;
 mod validation;
 pub use evidence::{
