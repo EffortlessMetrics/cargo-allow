@@ -5,6 +5,7 @@ mod converter_source_entries;
 mod converter_support;
 mod converters;
 mod fields;
+mod finding_config;
 mod findings;
 mod io;
 mod loader_compat;
