@@ -9,12 +9,13 @@ pub(super) fn render_add_summary(
     output: Option<&Path>,
 ) -> String {
     let policy_output = output.map(|path| path.display().to_string());
-    allow_report::render_add_human(add_report(
+    let context = AddContext::default();
+    allow_report::render_add_human(allow_report::AddReport::new(
+        context.inventory,
         entry,
         finding,
         policy_output.as_deref(),
         false,
-        AddContext::default(),
     ))
 }
 
@@ -26,27 +27,11 @@ pub(super) fn render_add_summary_json(
     context: AddContext<'_>,
 ) -> String {
     let policy_output = output.map(|path| path.display().to_string());
-    allow_report::render_add_json(add_report(
+    allow_report::render_add_json(allow_report::AddReport::new(
+        context.inventory,
         entry,
         finding,
         policy_output.as_deref(),
         force,
-        context,
     ))
-}
-
-fn add_report<'a>(
-    entry: &'a AllowEntry,
-    finding: &'a Finding,
-    policy_output: Option<&'a str>,
-    force: bool,
-    context: AddContext<'a>,
-) -> allow_report::AddReport<'a> {
-    allow_report::AddReport {
-        inventory: context.inventory,
-        entry,
-        selected_finding: finding,
-        policy_output,
-        force,
-    }
 }

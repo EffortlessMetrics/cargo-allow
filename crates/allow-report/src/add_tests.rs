@@ -57,17 +57,13 @@ fn add_json_renderer_records_entry_and_selected_finding() {
         message: "unwrap call".to_string(),
     };
 
-    let json = render_add_json(AddReport {
-        inventory: InventoryContext::source_syntax(
-            "git_tracked",
-            Some("H:/Code/Rust/cargo-allow"),
-            Some(52),
-        ),
-        entry: &entry,
-        selected_finding: &finding,
-        policy_output: Some("policy/allow.proposed.toml"),
-        force: true,
-    });
+    let json = render_add_json(AddReport::new(
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(52)),
+        &entry,
+        &finding,
+        Some("policy/allow.proposed.toml"),
+        true,
+    ));
 
     assert!(json.contains("\"schema_id\": \"cargo-allow.add.v1\""));
     assert!(json.contains("\"command\": \"add\""));
@@ -87,13 +83,13 @@ fn add_json_renderer_records_entry_and_selected_finding() {
     assert!(json.contains("\"source_package\": \"parser\""));
     assert!(json.contains("\"normalized_snippet_hash\": \"fnv1a64:add\""));
 
-    let text = render_add_human(AddReport {
-        inventory: InventoryContext::source_syntax("git_tracked", None, None),
-        entry: &entry,
-        selected_finding: &finding,
-        policy_output: Some("policy/allow.proposed.toml"),
-        force: false,
-    });
+    let text = render_add_human(AddReport::new(
+        InventoryContext::source_syntax("git_tracked", None, None),
+        &entry,
+        &finding,
+        Some("policy/allow.proposed.toml"),
+        false,
+    ));
 
     assert!(text.contains("cargo-allow add summary"));
     assert!(text.contains("id: allow-add-json"));
