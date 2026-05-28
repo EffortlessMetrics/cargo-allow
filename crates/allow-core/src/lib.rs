@@ -265,6 +265,16 @@ pub struct Finding {
     pub message: String,
 }
 
+impl Finding {
+    pub fn source_package_name(&self) -> Option<&str> {
+        self.identity
+            .crate_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+    }
+}
+
 pub fn finding_identity_key(finding: &Finding) -> String {
     let mut parts = vec![
         ("kind", finding.kind.as_str().to_string()),
@@ -785,6 +795,26 @@ mod tests {
         moved.path = first.path.clone();
         first.family = Some("expect".to_string());
         assert_ne!(finding_identity_key(&first), finding_identity_key(&moved));
+    }
+
+    #[test]
+    fn finding_source_package_name_trims_source_derived_crate_name() {
+        let mut finding = Finding {
+            kind: FindingKind::Panic,
+            family: None,
+            path: PathBuf::from("src/lib.rs"),
+            span: None,
+            identity: StructuralIdentity::new("rust", "method_call"),
+            message: "test finding".to_string(),
+        };
+
+        assert_eq!(finding.source_package_name(), None);
+
+        finding.identity.crate_name = Some("  allow-core  ".to_string());
+        assert_eq!(finding.source_package_name(), Some("allow-core"));
+
+        finding.identity.crate_name = Some("   ".to_string());
+        assert_eq!(finding.source_package_name(), None);
     }
 
     #[test]

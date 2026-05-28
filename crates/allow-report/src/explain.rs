@@ -20,7 +20,7 @@ pub fn render_explain_finding_json(finding: &Finding, status: &str, indent: &str
         json_escape(&normalize_path(&finding.path)),
         option_u32_json(span.map(|span| span.line)),
         option_u32_json(span.map(|span| span.column)),
-        option_json(source_package_name(finding).as_deref()),
+        option_json(finding.source_package_name()),
         structural_identity_json(&finding.identity, indent),
         json_escape(&finding.message)
     )
@@ -56,16 +56,6 @@ fn structural_identity_json(identity: &StructuralIdentity, indent: &str) -> Stri
         option_u32_json(identity.line_hint),
         option_u32_json(identity.column_hint)
     )
-}
-
-fn source_package_name(finding: &Finding) -> Option<String> {
-    finding
-        .identity
-        .crate_name
-        .as_deref()
-        .map(str::trim)
-        .filter(|name| !name.is_empty())
-        .map(ToOwned::to_owned)
 }
 
 pub fn render_explain_json(report: ExplainReport<'_>) -> String {
@@ -337,7 +327,8 @@ pub fn render_explain_human(report: ExplainReport<'_>) -> String {
                 .find(|outcome| outcome.finding_index == Some(index))
                 .map(|outcome| outcome.status.as_str())
                 .unwrap_or("unmatched");
-            let package = source_package_name(finding)
+            let package = finding
+                .source_package_name()
                 .map(|package| format!(", source_package={package}"))
                 .unwrap_or_default();
             out.push_str(&format!(

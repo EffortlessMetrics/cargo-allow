@@ -3,7 +3,6 @@ use super::worklist_actions::{proof_commands, suggested_actions};
 use super::worklist_scoring::{
     exception_family, work_item_difficulty, work_item_kind, work_item_risk,
 };
-use crate::source_package_name;
 use allow_core::{AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path};
 
 pub(super) fn work_items_from_outcomes(
@@ -34,7 +33,8 @@ fn work_item_from_outcome(
     let path = finding
         .map(|finding| normalize_path(&finding.path))
         .or_else(|| entry.map(|entry| entry.path_or_glob()));
-    let source_package = finding.and_then(source_package_name);
+    let source_package =
+        finding.and_then(|finding| finding.source_package_name().map(ToOwned::to_owned));
     let exception_kind = work_item_exception_kind(finding, entry);
     let family = exception_family(finding, entry).map(ToOwned::to_owned);
     let mut suggested_actions = suggested_actions(&kind);

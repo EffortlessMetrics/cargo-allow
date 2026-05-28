@@ -1,7 +1,7 @@
 use super::WorkItem;
 use super::worklist_actions::{proof_commands, suggested_actions};
 use super::worklist_scoring::{exception_family, work_item_difficulty, work_item_risk};
-use crate::{scope_has_wildcard, source_package_name};
+use crate::scope_has_wildcard;
 use allow_core::{AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path};
 
 pub(super) fn work_items_from_policy_advisories(
@@ -38,7 +38,7 @@ pub(super) fn work_items_from_policy_advisories(
                 path: finding
                     .map(|finding| normalize_path(&finding.path))
                     .or_else(|| Some(entry.path_or_glob())),
-                source_package: finding.and_then(source_package_name),
+                source_package: source_package_name(finding),
                 message: format!(
                     "{} is generated baseline_debt and still needs human review",
                     entry.id
@@ -70,7 +70,7 @@ pub(super) fn work_items_from_policy_advisories(
                 allow_id: Some(entry.id.clone()),
                 finding_index: outcome.finding_index,
                 path: Some(scope.clone()),
-                source_package: finding.and_then(source_package_name),
+                source_package: source_package_name(finding),
                 message: format!("{} uses a broad source-tree scope `{}`", entry.id, scope),
                 suggested_actions: suggested_actions("broad_scope"),
                 proof_commands: proof_commands("broad_scope", finding, Some(entry)),
@@ -88,6 +88,10 @@ fn matched_outcome_for_entry<'a>(
         outcome.status == MatchStatus::Matched
             && outcome.allow_id.as_deref() == Some(entry.id.as_str())
     })
+}
+
+fn source_package_name(finding: Option<&Finding>) -> Option<String> {
+    finding.and_then(|finding| finding.source_package_name().map(ToOwned::to_owned))
 }
 
 fn entry_broad_scope(entry: &AllowEntry) -> Option<String> {
