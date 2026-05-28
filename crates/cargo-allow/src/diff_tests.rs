@@ -1,5 +1,6 @@
 use super::*;
 use allow_core::{MatchOutcome, MatchStatus};
+use serde_json::Value;
 
 #[test]
 fn markdown_pr_summary_reports_unchanged_posture() {
@@ -95,19 +96,72 @@ fn json_report_includes_structured_posture_changes() {
         &finding_changes,
         &policy_changes,
     );
+    let value = parse_json("diff report", &json);
 
-    assert!(json.contains("\"diff\""));
-    assert!(json.contains("\"net_posture\": \"worse\""));
-    assert!(json.contains("\"current_failures\": 1"));
-    assert!(json.contains("\"new_findings\": 1"));
-    assert!(json.contains("\"policy_failures\": 1"));
-    assert!(json.contains("\"policy_improvements\": 0"));
-    assert!(json.contains("\"finding_changes\""));
-    assert!(json.contains("\"change\": \"new\""));
-    assert!(json.contains("\"family\": \"unwrap\""));
-    assert!(json.contains("\"policy_changes\""));
-    assert!(json.contains("\"severity\": \"fail\""));
-    assert!(json.contains("\"kind\": \"scope_broadened\""));
+    assert_eq!(
+        value.pointer("/diff/net_posture").and_then(Value::as_str),
+        Some("worse")
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/reviewer_action")
+            .and_then(Value::as_str),
+        Some("block until failing source exception changes are fixed, narrowed, or receipted.")
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/current_failures")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/new_findings")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_failures")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_improvements")
+            .and_then(Value::as_u64),
+        Some(0)
+    );
+    let finding_change = first_array_item(&value, "/diff/finding_changes");
+    assert_eq!(
+        finding_change.get("change").and_then(Value::as_str),
+        Some("new")
+    );
+    assert_eq!(
+        finding_change.get("kind").and_then(Value::as_str),
+        Some("panic")
+    );
+    assert_eq!(
+        finding_change.get("family").and_then(Value::as_str),
+        Some("unwrap")
+    );
+    assert_eq!(
+        finding_change.get("path").and_then(Value::as_str),
+        Some("src/lib.rs")
+    );
+    let policy_change = first_array_item(&value, "/diff/policy_changes");
+    assert_eq!(
+        policy_change.get("severity").and_then(Value::as_str),
+        Some("fail")
+    );
+    assert_eq!(
+        policy_change.get("allow_id").and_then(Value::as_str),
+        Some("allow-0001")
+    );
+    assert_eq!(
+        policy_change.get("kind").and_then(Value::as_str),
+        Some("scope_broadened")
+    );
     assert!(json.ends_with("}\n"));
 }
 
@@ -160,4 +214,21 @@ fn policy_change(
         severity,
         message: "allow-0001 changed".to_string(),
     }
+}
+
+fn parse_json(name: &str, json: &str) -> Value {
+    match serde_json::from_str(json) {
+        Ok(value) => value,
+        Err(err) => std::panic::panic_any(format!("{name} should parse as JSON: {err}\n{json}")),
+    }
+}
+
+fn first_array_item<'a>(value: &'a Value, pointer: &str) -> &'a Value {
+    let Some(items) = value.pointer(pointer).and_then(Value::as_array) else {
+        std::panic::panic_any(format!("{pointer} should be an array"));
+    };
+    let Some(item) = items.first() else {
+        std::panic::panic_any(format!("{pointer} should contain at least one item"));
+    };
+    item
 }
