@@ -1,21 +1,22 @@
-use allow_core::{CargoAllowResult, FindingKind, MatchStatus};
+use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::{
-    KindFilter, RootArgs, load_world, parse_kind_filter, source_tree_root_text, write_file,
-};
+use crate::{RootArgs, load_world, parse_kind_filter, source_tree_root_text, write_file};
 
 #[path = "list_render.rs"]
 mod list_render;
 #[path = "list_rows.rs"]
 mod list_rows;
+#[path = "list_types.rs"]
+mod list_types;
 use list_render::{render_list_rows, render_list_rows_json};
 use list_rows::list_rows;
+use list_types::{ListContext, ListFilters, ListRow};
 
 #[cfg(test)]
-use allow_core::{AllowConfig, AllowEntry, Finding, MatchOutcome};
+use allow_core::{AllowConfig, AllowEntry, Finding, FindingKind, MatchOutcome, MatchStatus};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ListArgs {
@@ -137,59 +138,6 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         println!("{text}");
     }
     Ok(())
-}
-
-#[derive(Debug, Clone)]
-struct ListRow {
-    id: String,
-    status: MatchStatus,
-    matches: usize,
-    kind: FindingKind,
-    family: Option<String>,
-    owner: String,
-    classification: String,
-    scope: String,
-    source_package: Option<String>,
-    evidence_count: usize,
-    review_after: String,
-    expires: String,
-    reason: String,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct ListFilters<'a> {
-    kind: Option<KindFilter>,
-    family: Option<&'a str>,
-    owner: Option<&'a str>,
-    classification: Option<&'a str>,
-    path: Option<&'a str>,
-    source_package: Option<&'a str>,
-    status: Option<&'a str>,
-    expired: bool,
-    review_due: bool,
-    stale: bool,
-    baseline_debt: bool,
-    broad_scope: bool,
-    missing_evidence: bool,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct ListContext<'a> {
-    inventory_source: &'a str,
-    source_tree_root: Option<&'a str>,
-    inventory_files: Option<usize>,
-    kind_arg: Option<&'a str>,
-}
-
-impl Default for ListContext<'static> {
-    fn default() -> Self {
-        Self {
-            inventory_source: "unknown",
-            source_tree_root: None,
-            inventory_files: None,
-            kind_arg: None,
-        }
-    }
 }
 
 #[cfg(test)]
