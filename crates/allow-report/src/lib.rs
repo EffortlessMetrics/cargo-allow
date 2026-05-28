@@ -17,6 +17,7 @@ mod migrate;
 mod non_rust;
 mod propose;
 mod prune;
+mod receipt;
 mod sarif;
 mod text;
 mod worklist;
@@ -52,6 +53,7 @@ pub use list::{render_list_human, render_list_json};
 pub use migrate::{render_migrate_human, render_migrate_json};
 pub use propose::{render_propose_human, render_propose_json};
 pub use prune::{render_prune_human, render_prune_json};
+pub use receipt::{render_receipt, render_receipt_with_context};
 pub use sarif::{render_sarif, render_sarif_with_context};
 pub use worklist::{render_worklist_human, render_worklist_json};
 
@@ -412,32 +414,6 @@ pub fn render_json_with_context(
     out
 }
 
-pub fn render_receipt(command: &str, outcomes: &[MatchOutcome], failed: bool) -> String {
-    render_receipt_with_context(command, outcomes, failed, ReportContext::default())
-}
-
-pub fn render_receipt_with_context(
-    command: &str,
-    outcomes: &[MatchOutcome],
-    failed: bool,
-    context: ReportContext<'_>,
-) -> String {
-    let summary = Summary::from_outcomes(outcomes);
-    let mut out = String::new();
-    out.push_str("{\n");
-    push_json_artifact_header(&mut out, RECEIPT_SCHEMA_VERSION, RECEIPT_SCHEMA_ID, command);
-    out.push_str(&format!(
-        "  \"status\": \"{}\",\n",
-        if failed { "failed" } else { "passed" }
-    ));
-    out.push_str(&format!("  \"failed\": {},\n", bool_json(failed)));
-    push_json_artifact_source_context(&mut out, context.into());
-    out.push_str("  \"counts\": {\n");
-    out.push_str(&render_counts_fields(&summary, "    "));
-    out.push_str("  }\n}\n");
-    out
-}
-
 pub fn render_allow_entry_json(entry: &AllowEntry, indent: &str) -> String {
     let path = entry.path.as_ref().map(normalize_path);
     let mut out = String::new();
@@ -554,7 +530,7 @@ fn inventory_files_markdown_suffix(context: ReportContext<'_>) -> String {
         .unwrap_or_default()
 }
 
-fn render_counts_fields(summary: &Summary, indent: &str) -> String {
+pub(crate) fn render_counts_fields(summary: &Summary, indent: &str) -> String {
     let statuses = [
         MatchStatus::Matched,
         MatchStatus::New,
