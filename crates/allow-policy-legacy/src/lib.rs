@@ -50,6 +50,8 @@ mod process_network_tests;
 #[cfg(test)]
 mod test_findings;
 #[cfg(test)]
+mod test_fixture_text;
+#[cfg(test)]
 mod test_support;
 #[cfg(test)]
 mod workflow_dependency_tests;
