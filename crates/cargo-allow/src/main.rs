@@ -48,6 +48,8 @@ mod artifact_schema_doctor_tests;
 #[cfg(test)]
 mod artifact_schema_explain_tests;
 #[cfg(test)]
+mod artifact_schema_propose_tests;
+#[cfg(test)]
 mod artifact_schema_prune_tests;
 #[cfg(test)]
 mod artifact_schema_support;
