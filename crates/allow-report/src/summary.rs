@@ -1,5 +1,5 @@
 use crate::ReportContext;
-use allow_core::{MatchOutcome, MatchStatus};
+use allow_core::{AllowConfig, MatchOutcome, MatchStatus};
 use std::collections::BTreeMap;
 
 pub(crate) const STATUS_COUNT_ORDER: [MatchStatus; 10] = [
@@ -91,6 +91,13 @@ pub(crate) fn baseline_debt_count(summary: &Summary, context: ReportContext<'_>)
     context
         .baseline_debt_entries
         .unwrap_or_else(|| summary.count(MatchStatus::BaselineDebt))
+}
+
+pub fn policy_baseline_debt_entries(cfg: &AllowConfig) -> usize {
+    cfg.allow
+        .iter()
+        .filter(|entry| entry.classification == "baseline_debt")
+        .count()
 }
 
 pub(crate) fn audit_review_queue(outcomes: &[MatchOutcome]) -> Vec<&MatchOutcome> {
