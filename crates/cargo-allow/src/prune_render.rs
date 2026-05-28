@@ -7,16 +7,9 @@ pub(super) fn render_prune_stale_result(
     write_requested: bool,
     written_path: Option<&Path>,
 ) -> String {
-    let written = written_path.map(|path| path.display().to_string());
+    let mode = PruneRenderMode::new(explicit_dry_run, write_requested, written_path);
     let report_candidates = report_prune_candidates(candidates);
-    allow_report::render_prune_human(
-        &report_candidates,
-        allow_report::PruneModeContext {
-            explicit_dry_run,
-            write_requested,
-            written_path: written.as_deref(),
-        },
-    )
+    allow_report::render_prune_human(&report_candidates, mode.context())
 }
 
 pub(super) fn render_prune_stale_json(
@@ -26,17 +19,9 @@ pub(super) fn render_prune_stale_json(
     written_path: Option<&Path>,
     context: PruneContext<'_>,
 ) -> String {
-    let written = written_path.map(|path| path.display().to_string());
+    let mode = PruneRenderMode::new(explicit_dry_run, write_requested, written_path);
     let report_candidates = report_prune_candidates(candidates);
-    allow_report::render_prune_json(
-        &report_candidates,
-        allow_report::PruneModeContext {
-            explicit_dry_run,
-            write_requested,
-            written_path: written.as_deref(),
-        },
-        context.inventory,
-    )
+    allow_report::render_prune_json(&report_candidates, mode.context(), context.inventory)
 }
 
 fn report_prune_candidates(candidates: &[PruneCandidate]) -> Vec<allow_report::PruneCandidate<'_>> {
@@ -52,4 +37,28 @@ fn report_prune_candidates(candidates: &[PruneCandidate]) -> Vec<allow_report::P
             reason: &candidate.reason,
         })
         .collect()
+}
+
+struct PruneRenderMode {
+    explicit_dry_run: bool,
+    write_requested: bool,
+    written_path: Option<String>,
+}
+
+impl PruneRenderMode {
+    fn new(explicit_dry_run: bool, write_requested: bool, written_path: Option<&Path>) -> Self {
+        Self {
+            explicit_dry_run,
+            write_requested,
+            written_path: written_path.map(|path| path.display().to_string()),
+        }
+    }
+
+    fn context(&self) -> allow_report::PruneModeContext<'_> {
+        allow_report::PruneModeContext {
+            explicit_dry_run: self.explicit_dry_run,
+            write_requested: self.write_requested,
+            written_path: self.written_path.as_deref(),
+        }
+    }
 }
