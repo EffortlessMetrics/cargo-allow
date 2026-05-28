@@ -5,14 +5,8 @@ use std::path::Path;
 
 #[path = "doctor_args.rs"]
 mod doctor_args;
-#[path = "doctor_render.rs"]
-mod doctor_render;
-#[path = "doctor_types.rs"]
-mod doctor_types;
 pub(crate) use doctor_args::DoctorArgs;
 use doctor_args::DoctorFormat;
-use doctor_render::{render_doctor_human, render_doctor_json};
-use doctor_types::DoctorFacts;
 
 use crate::{InventoryFacts, SourceTreeReportContext, config_path, write_file};
 
@@ -32,7 +26,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let config_text = config
         .as_ref()
         .map(|path| allow_report::source_tree_path_text(path));
-    let facts = DoctorFacts {
+    let report = allow_report::DoctorReport {
         source_tree_root: source_context.source_tree_root(),
         root_discovery,
         config_path: config_text.as_deref(),
@@ -40,8 +34,8 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         files_scanned,
     };
     let text = match args.format {
-        DoctorFormat::Human => render_doctor_human(facts),
-        DoctorFormat::Json => render_doctor_json(facts),
+        DoctorFormat::Human => allow_report::render_doctor_human(report),
+        DoctorFormat::Json => allow_report::render_doctor_json(report),
     };
     if let Some(path) = &args.output {
         write_file(path, &text)?;
@@ -63,7 +57,7 @@ fn root_discovery_kind(explicit_root: Option<&Path>, root: &Path) -> &'static st
 
 #[cfg(test)]
 pub(crate) fn sample_doctor_json_for_contract_test() -> String {
-    render_doctor_json(DoctorFacts {
+    allow_report::render_doctor_json(allow_report::DoctorReport {
         source_tree_root: "H:/Code/Rust/cargo-allow",
         root_discovery: "nearest_git_root",
         config_path: Some("H:/Code/Rust/cargo-allow/policy/allow.toml"),

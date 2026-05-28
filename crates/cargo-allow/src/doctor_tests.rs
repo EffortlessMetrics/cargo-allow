@@ -38,7 +38,7 @@ fn clap_parses_doctor_json_output() {
 
 #[test]
 fn render_doctor_json_records_setup_context() {
-    let json = render_doctor_json(DoctorFacts {
+    let json = allow_report::render_doctor_json(allow_report::DoctorReport {
         source_tree_root: "H:/Code/Rust/cargo-allow",
         root_discovery: "nearest_git_root",
         config_path: Some("H:/Code/Rust/cargo-allow/policy/allow.toml"),
