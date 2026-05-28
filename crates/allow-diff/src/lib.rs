@@ -2,6 +2,7 @@ mod finding;
 mod policy;
 mod policy_change;
 mod policy_compare;
+mod policy_entry;
 mod policy_scope;
 mod revision;
 
