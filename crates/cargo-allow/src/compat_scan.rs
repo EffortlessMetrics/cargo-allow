@@ -21,3 +21,20 @@ pub(super) fn scan_legacy_rust_compat(
     findings.retain(|finding| finding.kind == kind);
     Ok((findings, inventory_facts))
 }
+
+pub(super) fn scan_non_rust_compat(
+    root: &Path,
+    include_untracked: bool,
+) -> CargoAllowResult<(Vec<Finding>, InventoryFacts)> {
+    let opts = InventoryOptions {
+        include_untracked,
+        ..InventoryOptions::default()
+    };
+    let inventory = inventory(root, &opts)?;
+    let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
+    let findings = allow_files::scan_files(&inventory.files)
+        .into_iter()
+        .filter(|finding| finding.kind == FindingKind::NonRustFile)
+        .collect::<Vec<_>>();
+    Ok((findings, inventory_facts))
+}
