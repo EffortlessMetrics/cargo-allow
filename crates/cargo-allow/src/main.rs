@@ -50,6 +50,8 @@ mod compat_dependency_tests;
 #[cfg(test)]
 mod compat_integration_tests;
 #[cfg(test)]
+mod compat_panic_integration_tests;
+#[cfg(test)]
 mod compat_test_support;
 #[cfg(test)]
 mod report_config_tests;
