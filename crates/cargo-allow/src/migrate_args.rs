@@ -1,0 +1,34 @@
+use clap::{Parser, ValueEnum};
+use std::path::PathBuf;
+
+use crate::RootArgs;
+
+#[derive(Debug, Clone, Parser)]
+pub(crate) struct MigrateArgs {
+    #[command(flatten)]
+    pub(super) root: RootArgs,
+    /// Legacy or canonical policy file to migrate.
+    #[arg(long)]
+    pub(super) from: Option<PathBuf>,
+    /// Directory containing compatible legacy policy files.
+    #[arg(long)]
+    pub(super) repo_policy: Option<PathBuf>,
+    /// Output canonical policy path.
+    #[arg(long, default_value = "policy/allow.toml")]
+    pub(super) out: PathBuf,
+    /// Overwrite an existing output policy file.
+    #[arg(long)]
+    pub(super) force: bool,
+    /// Summary output format. Policy output remains TOML.
+    #[arg(long, value_enum, default_value_t = MigrateSummaryFormat::Human)]
+    pub(super) summary_format: MigrateSummaryFormat,
+    /// Write migration summary to a file instead of stderr.
+    #[arg(long)]
+    pub(super) summary_output: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(super) enum MigrateSummaryFormat {
+    Human,
+    Json,
+}
