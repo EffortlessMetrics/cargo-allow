@@ -1,7 +1,6 @@
 use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, normalize_path};
 use std::path::PathBuf;
 
-use crate::converter_evidence::unsafe_evidence;
 use crate::types::LegacyUnsafeRule;
 
 pub(crate) fn entry_from_unsafe_rule(rule: &LegacyUnsafeRule) -> AllowEntry {
@@ -31,5 +30,13 @@ pub(crate) fn entry_from_unsafe_rule(rule: &LegacyUnsafeRule) -> AllowEntry {
             ..Selector::default()
         },
         last_seen: rule.last_seen.clone(),
+    }
+}
+
+fn unsafe_evidence(rule: &LegacyUnsafeRule) -> Vec<String> {
+    if rule.evidence.is_empty() {
+        vec!["TODO: add unsafe-review or boundary-test evidence".to_string()]
+    } else {
+        rule.evidence.clone()
     }
 }

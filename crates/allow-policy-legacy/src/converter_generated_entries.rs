@@ -1,7 +1,6 @@
 use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, normalize_path};
 use std::path::{Path, PathBuf};
 
-use crate::converter_evidence::generated_evidence;
 use crate::findings::file_fingerprint;
 use crate::types::LegacyGeneratedRule;
 
@@ -33,4 +32,15 @@ pub(crate) fn entry_from_generated_rule(rule: &LegacyGeneratedRule) -> AllowEntr
         },
         last_seen: None,
     }
+}
+
+fn generated_evidence(rule: &LegacyGeneratedRule) -> Vec<String> {
+    let mut evidence = Vec::new();
+    if let Some(generator) = &rule.generator {
+        evidence.push(format!("generator:{generator}"));
+    }
+    if let Some(command) = &rule.regenerate_command {
+        evidence.push(format!("cargo:{command}"));
+    }
+    evidence
 }
