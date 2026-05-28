@@ -3,11 +3,8 @@ use std::path::Path;
 
 use crate::finding_builder::{FindingSite, push_finding};
 use crate::line_facts::SyntaxLineFacts;
-use crate::syntax_kinds::LintAttributeKind;
-use crate::text::{
-    attribute_column, column, detect_attr, extract_first_lint, index_symbol,
-    index_target_fingerprint, lint_policy_reference, receiver_before_method_column,
-};
+use crate::line_lint_findings::scan_lint_attributes;
+use crate::text::{column, index_symbol, index_target_fingerprint, receiver_before_method_column};
 
 pub(crate) fn scan_line(
     path: &Path,
@@ -23,35 +20,15 @@ pub(crate) fn scan_line(
         return;
     }
 
-    for attr_kind in syntax.lint_attributes {
-        let Some(attr_text) = detect_attr(trimmed, attr_kind.name()) else {
-            continue;
-        };
-        let lint = extract_first_lint(attr_text);
-        let policy_id = lint_policy_reference(trimmed);
-        push_finding(
-            FindingSite {
-                path,
-                line,
-                line_no,
-                column: attribute_column(line),
-                container,
-                module_stack,
-            },
-            FindingKind::LintException,
-            match attr_kind {
-                LintAttributeKind::Allow => "allow_attribute",
-                LintAttributeKind::Expect => "expect_attribute",
-            },
-            "attribute",
-            |id| {
-                id.lint = lint;
-                id.symbol = Some(trimmed.to_string());
-                id.target_fingerprint = policy_id.map(|policy_id| format!("policy:{policy_id}"));
-            },
-            findings,
-        );
-    }
+    scan_lint_attributes(
+        path,
+        line,
+        line_no,
+        container,
+        module_stack,
+        syntax.lint_attributes,
+        findings,
+    );
 
     for unsafe_construct in syntax.unsafe_constructs {
         push_finding(
