@@ -63,6 +63,8 @@ mod artifact_schema_tests;
 #[cfg(test)]
 mod compat_companion_tests;
 #[cfg(test)]
+mod compat_dependency_tests;
+#[cfg(test)]
 mod compat_integration_tests;
 #[cfg(test)]
 mod compat_test_support;
