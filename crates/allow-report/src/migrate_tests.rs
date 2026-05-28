@@ -53,3 +53,74 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(text.contains("files_scanned: 76"));
     assert!(text.contains("migration notes"));
 }
+
+#[test]
+fn migrate_report_from_config_counts_summary_fields() {
+    let mut cfg = allow_core::AllowConfig::empty();
+    cfg.allow = vec![
+        allow_entry(
+            "allow-baseline",
+            allow_core::FindingKind::Panic,
+            "baseline_debt",
+            &[],
+        ),
+        allow_entry(
+            "allow-unsafe",
+            allow_core::FindingKind::Unsafe,
+            "ffi_boundary",
+            &["doc:docs/safety.md"],
+        ),
+        allow_entry(
+            "allow-non-rust",
+            allow_core::FindingKind::NonRustFile,
+            "release_script",
+            &["issue:123"],
+        ),
+    ];
+
+    let report = MigrateReport::from_config(
+        InventoryContext::new(
+            "source_tree",
+            "policy_migration",
+            "filesystem_fallback",
+            Some("snapshot"),
+            Some(3),
+        ),
+        &cfg,
+        "repo_policy",
+        "policy",
+        "policy/allow.toml",
+        false,
+        "migration notes",
+    );
+
+    assert_eq!(report.allow_entries, 3);
+    assert_eq!(report.baseline_debt, 1);
+    assert_eq!(report.unsafe_entries, 1);
+    assert_eq!(report.entries_with_evidence, 2);
+    assert_eq!(report.inventory.scanner, "policy_migration");
+}
+
+fn allow_entry(
+    id: &str,
+    kind: allow_core::FindingKind,
+    classification: &str,
+    evidence: &[&str],
+) -> allow_core::AllowEntry {
+    allow_core::AllowEntry {
+        id: id.to_string(),
+        kind,
+        family: None,
+        path: None,
+        glob: None,
+        owner: "owner".to_string(),
+        classification: classification.to_string(),
+        reason: "reason".to_string(),
+        evidence: evidence.iter().map(|item| (*item).to_string()).collect(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: allow_core::Lifecycle::empty(),
+        selector: allow_core::Selector::default(),
+        last_seen: None,
+    }
+}

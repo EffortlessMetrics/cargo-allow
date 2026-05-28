@@ -1,4 +1,4 @@
-use allow_core::{AllowEntry, Finding, MatchOutcome};
+use allow_core::{AllowConfig, AllowEntry, Finding, FindingKind, MatchOutcome};
 
 use crate::InventoryContext;
 
@@ -158,6 +158,63 @@ pub struct MigrateReport<'a> {
     pub unsafe_entries: usize,
     pub entries_with_evidence: usize,
     pub notes: &'a str,
+}
+
+impl<'a> MigrateReport<'a> {
+    pub fn from_config(
+        inventory: InventoryContext<'a>,
+        cfg: &AllowConfig,
+        input_kind: &'a str,
+        input_path: &'a str,
+        output_path: &'a str,
+        force: bool,
+        notes: &'a str,
+    ) -> Self {
+        let counts = MigrateSummaryCounts::from_config(cfg);
+        Self {
+            inventory,
+            input_kind,
+            input_path,
+            output_path,
+            force,
+            allow_entries: counts.allow_entries,
+            baseline_debt: counts.baseline_debt,
+            unsafe_entries: counts.unsafe_entries,
+            entries_with_evidence: counts.entries_with_evidence,
+            notes,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct MigrateSummaryCounts {
+    allow_entries: usize,
+    baseline_debt: usize,
+    unsafe_entries: usize,
+    entries_with_evidence: usize,
+}
+
+impl MigrateSummaryCounts {
+    fn from_config(cfg: &AllowConfig) -> Self {
+        Self {
+            allow_entries: cfg.allow.len(),
+            baseline_debt: cfg
+                .allow
+                .iter()
+                .filter(|entry| entry.classification == "baseline_debt")
+                .count(),
+            unsafe_entries: cfg
+                .allow
+                .iter()
+                .filter(|entry| entry.kind == FindingKind::Unsafe)
+                .count(),
+            entries_with_evidence: cfg
+                .allow
+                .iter()
+                .filter(|entry| !entry.evidence.is_empty())
+                .count(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
