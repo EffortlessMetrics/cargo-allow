@@ -10,6 +10,12 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use toml::Value;
 
+mod fields;
+use fields::{
+    legacy_evidence, optional_last_seen, optional_u32_field, raw_string_field, required_bool_field,
+    required_string_array_field, required_string_field, string_array_field, string_field,
+};
+
 const LEGACY_POLICY_FILES: &[&str] = &[
     "non-rust-allowlist.toml",
     "generated-allowlist.toml",
@@ -2151,96 +2157,6 @@ fn lifecycle_from_workflow_rule(rule: &LegacyWorkflowRule) -> Lifecycle {
         review_after: rule.review_after.clone(),
         expires: rule.expires.clone(),
     }
-}
-
-fn string_field(table: &toml::Table, field: &str) -> Option<String> {
-    table
-        .get(field)
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string)
-}
-
-fn raw_string_field(table: &toml::Table, field: &str) -> Option<String> {
-    table.get(field).and_then(Value::as_str).map(str::to_string)
-}
-
-fn string_array_field(table: &toml::Table, field: &str) -> Vec<String> {
-    table
-        .get(field)
-        .and_then(Value::as_array)
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(Value::as_str)
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-fn string_or_array_field(table: &toml::Table, field: &str) -> Vec<String> {
-    match table.get(field) {
-        Some(Value::String(value)) if !value.trim().is_empty() => vec![value.trim().to_string()],
-        Some(Value::Array(_)) => string_array_field(table, field),
-        _ => Vec::new(),
-    }
-}
-
-fn legacy_evidence(table: &toml::Table) -> Vec<String> {
-    let mut evidence = string_or_array_field(table, "evidence");
-    if evidence.is_empty() {
-        evidence = string_or_array_field(table, "covered_by");
-    }
-    evidence
-}
-
-fn required_string_field(
-    table: &toml::Table,
-    field: &str,
-    context: &str,
-) -> CargoAllowResult<String> {
-    string_field(table, field)
-        .ok_or_else(|| CargoAllowError::new(format!("{context} missing {field}")))
-}
-
-fn required_string_array_field(
-    table: &toml::Table,
-    field: &str,
-    context: &str,
-) -> CargoAllowResult<Vec<String>> {
-    let values = string_array_field(table, field);
-    if values.is_empty() {
-        Err(CargoAllowError::new(format!("{context} missing {field}")))
-    } else {
-        Ok(values)
-    }
-}
-
-fn required_bool_field(table: &toml::Table, field: &str, context: &str) -> CargoAllowResult<bool> {
-    table
-        .get(field)
-        .and_then(Value::as_bool)
-        .ok_or_else(|| CargoAllowError::new(format!("{context} missing {field}")))
-}
-
-fn optional_u32_field(table: &toml::Table, field: &str) -> Option<u32> {
-    table
-        .get(field)
-        .and_then(Value::as_integer)
-        .filter(|value| *value > 0)
-        .and_then(|value| u32::try_from(value).ok())
-}
-
-fn optional_last_seen(table: Option<&toml::Table>) -> Option<LastSeen> {
-    let table = table?;
-    Some(LastSeen {
-        line: optional_u32_field(table, "line")?,
-        column: optional_u32_field(table, "column").unwrap_or(1),
-    })
 }
 
 fn has_glob_meta(input: &str) -> bool {
