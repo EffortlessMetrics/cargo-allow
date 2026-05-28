@@ -12,6 +12,8 @@ mod explain;
 #[cfg(test)]
 mod explain_tests;
 mod html;
+#[cfg(test)]
+mod html_tests;
 mod json;
 mod list;
 #[cfg(test)]
