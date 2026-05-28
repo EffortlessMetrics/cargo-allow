@@ -32,6 +32,7 @@ mod loader_panic_compat;
 mod loader_policy_compat;
 mod loader_policy_dir;
 mod loader_source_compat;
+mod loader_source_exception_compat;
 mod loaders;
 mod parser_clippy_entries;
 mod parser_dependency_entries;
