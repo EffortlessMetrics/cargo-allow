@@ -35,6 +35,7 @@ mod parser_unsafe_entries;
 mod parser_workflow_entries;
 mod parsers;
 mod types;
+mod types_panic_entries;
 mod types_source_entries;
 
 pub use findings::{
