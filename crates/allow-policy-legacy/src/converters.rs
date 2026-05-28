@@ -6,10 +6,9 @@ use allow_policy::validate_policy;
 use crate::converter_clippy_entries::entry_from_clippy_rule;
 use crate::converter_dependency_entries::entry_from_dependency_surface_rule;
 use crate::converter_executable_entries::entry_from_executable_rule;
-use crate::converter_file_entries::{
-    entry_from_finding, entry_from_generated_rule, entry_from_rule,
-};
+use crate::converter_file_entries::{entry_from_finding, entry_from_rule};
 use crate::converter_file_support::best_rule_index;
+use crate::converter_generated_entries::entry_from_generated_rule;
 use crate::converter_panic_entries::{
     entry_from_no_panic_allow_entry, entry_from_no_panic_baseline_entry,
 };

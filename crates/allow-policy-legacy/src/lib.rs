@@ -6,6 +6,7 @@ mod converter_evidence;
 mod converter_executable_entries;
 mod converter_file_entries;
 mod converter_file_support;
+mod converter_generated_entries;
 mod converter_panic_entries;
 mod converter_panic_support;
 mod converter_process_network_entries;
