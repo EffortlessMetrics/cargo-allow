@@ -67,6 +67,8 @@ pub(crate) use summary::{
 };
 
 #[cfg(test)]
+mod diff_tests;
+#[cfg(test)]
 mod schema_tests;
 #[cfg(test)]
 mod tests;
