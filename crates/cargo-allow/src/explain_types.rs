@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Copy)]
-pub(super) struct ExplainContext<'a> {
+pub(crate) struct ExplainContext<'a> {
     pub(super) inventory_source: &'a str,
     pub(super) source_tree_root: Option<&'a str>,
     pub(super) inventory_files: Option<usize>,

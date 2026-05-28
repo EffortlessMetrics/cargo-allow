@@ -12,7 +12,7 @@ mod explain_render;
 #[path = "explain_types.rs"]
 mod explain_types;
 use explain_render::{render_explain_entry, render_explain_entry_json};
-use explain_types::ExplainContext;
+pub(super) use explain_types::ExplainContext;
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ExplainArgs {
