@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult, FindingKind};
+use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 use clap::{Parser, ValueEnum};
@@ -10,11 +10,14 @@ use crate::{RootArgs, config_path, load_world, source_tree_root_text, write_file
 mod prune_render;
 #[path = "prune_stale.rs"]
 mod prune_stale;
+#[path = "prune_types.rs"]
+mod prune_types;
 use prune_render::{render_prune_stale_json, render_prune_stale_result};
 use prune_stale::{config_without_prune_candidates, prune_stale_candidates};
+use prune_types::{PruneCandidate, PruneContext};
 
 #[cfg(test)]
-use allow_core::{AllowConfig, MatchOutcome, MatchStatus};
+use allow_core::{AllowConfig, FindingKind, MatchOutcome, MatchStatus};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct PruneArgs {
@@ -107,34 +110,6 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         println!("{text}");
     }
     Ok(())
-}
-
-#[derive(Debug, Clone, Copy)]
-struct PruneContext<'a> {
-    inventory_source: &'a str,
-    source_tree_root: Option<&'a str>,
-    inventory_files: Option<usize>,
-}
-
-impl Default for PruneContext<'static> {
-    fn default() -> Self {
-        Self {
-            inventory_source: "unknown",
-            source_tree_root: None,
-            inventory_files: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct PruneCandidate {
-    id: String,
-    kind: FindingKind,
-    family: Option<String>,
-    owner: String,
-    classification: String,
-    scope: String,
-    reason: String,
 }
 
 #[cfg(test)]
