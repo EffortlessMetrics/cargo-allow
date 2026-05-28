@@ -1,8 +1,8 @@
 use crate::non_rust::{render_non_rust_human, render_non_rust_markdown};
 use crate::text::markdown_inline_code;
 use crate::{
-    CLAIM_BOUNDARY_TEXT, ReportContext, Summary, baseline_debt_count,
-    review_item_count_with_baseline,
+    AUDIT_REVIEW_QUEUE_STATUSES, CLAIM_BOUNDARY_TEXT, ReportContext, STATUS_COUNT_ORDER, Summary,
+    baseline_debt_count, review_item_count_with_baseline,
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape};
 
@@ -40,18 +40,7 @@ pub fn render_human_with_context(
     if let Some(root) = context.source_tree_root {
         out.push_str(&format!("Source tree root: {root}\n"));
     }
-    for status in [
-        MatchStatus::Matched,
-        MatchStatus::New,
-        MatchStatus::Expired,
-        MatchStatus::ReviewDue,
-        MatchStatus::Stale,
-        MatchStatus::Ambiguous,
-        MatchStatus::InvalidSelector,
-        MatchStatus::EvidenceMissing,
-        MatchStatus::MissingRequiredField,
-        MatchStatus::BaselineDebt,
-    ] {
+    for status in STATUS_COUNT_ORDER {
         let count = summary.count(status);
         if count > 0 {
             out.push_str(&format!("  {:24} {}\n", status.as_str(), count));
@@ -126,18 +115,7 @@ pub fn render_markdown_with_context(
         ));
     }
     out.push_str("| Status | Count |\n|---|---:|\n");
-    for status in [
-        MatchStatus::Matched,
-        MatchStatus::New,
-        MatchStatus::Expired,
-        MatchStatus::ReviewDue,
-        MatchStatus::Stale,
-        MatchStatus::Ambiguous,
-        MatchStatus::InvalidSelector,
-        MatchStatus::EvidenceMissing,
-        MatchStatus::MissingRequiredField,
-        MatchStatus::BaselineDebt,
-    ] {
+    for status in STATUS_COUNT_ORDER {
         let count = summary.count(status);
         out.push_str(&format!("| `{}` | {} |\n", status.as_str(), count));
     }
@@ -172,21 +150,11 @@ fn render_audit_summary_markdown(
     context: ReportContext<'_>,
     out: &mut String,
 ) {
-    let review_statuses = [
-        MatchStatus::New,
-        MatchStatus::Expired,
-        MatchStatus::Ambiguous,
-        MatchStatus::EvidenceMissing,
-        MatchStatus::MissingRequiredField,
-        MatchStatus::BaselineDebt,
-        MatchStatus::Stale,
-        MatchStatus::ReviewDue,
-    ];
     let baseline_debt = baseline_debt_count(summary, context);
     let review_items = review_item_count_with_baseline(summary, baseline_debt);
     let queue = outcomes
         .iter()
-        .filter(|outcome| review_statuses.contains(&outcome.status))
+        .filter(|outcome| AUDIT_REVIEW_QUEUE_STATUSES.contains(&outcome.status))
         .take(20)
         .collect::<Vec<_>>();
     out.push_str("\n## Audit Summary\n\n");
