@@ -9,6 +9,8 @@ mod converter_file_entries;
 mod converter_file_support;
 mod converter_generated_entries;
 mod converter_network_entries;
+mod converter_no_panic_allow_entries;
+mod converter_no_panic_baseline_entries;
 mod converter_panic_configs;
 mod converter_panic_entries;
 mod converter_panic_support;
