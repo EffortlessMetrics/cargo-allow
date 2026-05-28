@@ -129,17 +129,21 @@ pub fn git_ls_files(root: impl AsRef<Path>) -> CargoAllowResult<Vec<PathBuf>> {
         .arg("-C")
         .arg(root.as_ref())
         .arg("ls-files")
+        .arg("-z")
         .output()
         .map_err(|e| CargoAllowError::new(format!("failed to invoke git ls-files: {e}")))?;
     if !output.status.success() {
         return Err(CargoAllowError::new("git ls-files failed"));
     }
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    Ok(stdout
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .map(PathBuf::from)
-        .collect())
+    Ok(parse_git_ls_files_z(&output.stdout))
+}
+
+fn parse_git_ls_files_z(stdout: &[u8]) -> Vec<PathBuf> {
+    stdout
+        .split(|byte| *byte == 0)
+        .filter(|path| !path.is_empty())
+        .map(|path| PathBuf::from(String::from_utf8_lossy(path).into_owned()))
+        .collect()
 }
 
 fn recursive_files(root: &Path) -> CargoAllowResult<Vec<PathBuf>> {
@@ -240,6 +244,19 @@ mod tests {
         assert!(with_untracked.contains(&PathBuf::from("tracked.txt")));
         assert!(with_untracked.contains(&PathBuf::from("untracked.txt")));
         remove_dir(&root);
+    }
+
+    #[test]
+    fn git_ls_files_z_parser_preserves_newlines_inside_paths() {
+        let files = super::parse_git_ls_files_z(b"src/lib.rs\0fixtures/line\nbreak.rs\0");
+
+        assert_eq!(
+            files,
+            vec![
+                PathBuf::from("src/lib.rs"),
+                PathBuf::from("fixtures/line\nbreak.rs")
+            ]
+        );
     }
 
     #[test]
