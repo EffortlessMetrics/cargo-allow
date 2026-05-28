@@ -5,8 +5,10 @@ use std::str::FromStr;
 pub const STRUCTURAL_IDENTITY_SCHEMA_ID: &str = "cargo-allow.structural-identity.v1";
 
 mod date;
+mod fingerprint;
 mod source_tree_path;
 pub use date::SimpleDate;
+pub use fingerprint::{maybe_line_distance_score, normalize_snippet, stable_hash_hex};
 pub use source_tree_path::{
     glob_matches, glob_matches_str, normalize_path, source_tree_path_matches_filter,
     source_tree_scope_has_wildcard,
@@ -405,40 +407,6 @@ pub struct MatchOutcome {
     pub finding_index: Option<usize>,
     pub message: String,
     pub score: u32,
-}
-
-pub fn normalize_snippet(input: &str) -> String {
-    input.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-pub fn stable_hash_hex(input: &str) -> String {
-    // FNV-1a 64-bit. Not cryptographic; stable across platforms and enough for drift hints.
-    let mut hash: u64 = 0xcbf29ce484222325;
-    for byte in input.as_bytes() {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-    format!("fnv1a64:{hash:016x}")
-}
-
-pub fn maybe_line_distance_score(hint: Option<u32>, actual: Option<u32>) -> u32 {
-    match (hint, actual) {
-        (Some(h), Some(a)) => {
-            let diff = h.abs_diff(a);
-            if diff == 0 {
-                15
-            } else if diff <= 3 {
-                12
-            } else if diff <= 10 {
-                8
-            } else if diff <= 25 {
-                3
-            } else {
-                0
-            }
-        }
-        _ => 0,
-    }
 }
 
 pub fn json_escape(input: &str) -> String {
