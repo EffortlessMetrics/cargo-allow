@@ -11,6 +11,9 @@ mod doctor;
 #[cfg(test)]
 mod doctor_tests;
 mod explain;
+mod explain_common;
+mod explain_human;
+mod explain_json;
 #[cfg(test)]
 mod explain_tests;
 mod html;
