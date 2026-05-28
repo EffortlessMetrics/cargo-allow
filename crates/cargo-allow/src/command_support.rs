@@ -15,8 +15,8 @@ pub(crate) use crate::policy_config::{
     root_relative_path,
 };
 pub(crate) use crate::reporting::{
-    ReportRenderArgs, SourceTreeReportContext, policy_baseline_debt_entries, print_report,
-    report_config,
+    ReportRenderArgs, SourceTreeReportContext, print_report, report_config,
 };
 pub(crate) use crate::selector::selector_from_finding;
 pub(crate) use crate::world::{load_world, load_world_with_evidence_validation};
+pub(crate) use allow_report::policy_baseline_debt_entries;

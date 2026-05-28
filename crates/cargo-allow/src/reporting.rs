@@ -122,10 +122,3 @@ pub(crate) fn report_config(
     filtered.allow.retain(|entry| parsed.matches_entry(entry));
     Ok(filtered)
 }
-
-pub(crate) fn policy_baseline_debt_entries(cfg: &AllowConfig) -> usize {
-    cfg.allow
-        .iter()
-        .filter(|entry| entry.classification == "baseline_debt")
-        .count()
-}
