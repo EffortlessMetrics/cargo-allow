@@ -34,6 +34,10 @@ fn main() {
 }
 
 #[cfg(test)]
+mod artifact_command_contract_tests;
+#[cfg(test)]
+mod artifact_contract_support;
+#[cfg(test)]
 mod artifact_contract_tests;
 #[cfg(test)]
 mod artifact_schema_common_tests;
