@@ -5,6 +5,7 @@ mod audit;
 mod check;
 mod cli;
 mod cli_types;
+mod command_support;
 mod companion;
 mod compat;
 mod diff;
@@ -24,30 +25,7 @@ mod source_tree;
 mod worklist;
 mod world;
 
-#[cfg(test)]
-pub(crate) use cli::{CargoAllowCli, CargoAllowCommand, normalized_args};
-pub(crate) use cli_types::{InventoryFacts, OutputFormat, RootArgs};
-pub(crate) use companion::{canonical_companion_findings, extend_unique_findings};
-pub(crate) use compat::load_compat_world;
-pub(crate) use io::{write_file, write_file_no_overwrite};
-pub(crate) use kind_filter::{
-    FamilyFilter, KindFilter, is_clippy_compat_kind, is_dependency_surface_compat_kind,
-    is_executable_compat_kind, is_network_compat_kind, is_no_panic_allowlist_compat_kind,
-    is_panic_compat_kind, is_process_compat_kind, is_unsafe_compat_kind, is_workflow_compat_kind,
-    parse_kind_filter,
-};
-pub(crate) use policy_config::{
-    config_path, git_relative_config_path, load_config_optional, load_config_required,
-    root_relative_path,
-};
-pub(crate) use reporting::{
-    ReportRenderArgs, policy_baseline_debt_entries, print_report, report_config,
-};
-pub(crate) use selector::selector_from_finding;
-pub(crate) use source_tree::{
-    scope_has_wildcard, source_package_name, source_tree_path_matches_filter,
-};
-pub(crate) use world::{load_world, load_world_with_evidence_validation};
+pub(crate) use command_support::*;
 
 fn main() {
     if let Err(err) = cli::run() {
