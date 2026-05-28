@@ -1,4 +1,5 @@
 use super::*;
+use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
