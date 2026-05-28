@@ -32,15 +32,8 @@ pub(crate) fn load_compat_world(
             .map(PathBuf::from)
             .unwrap_or_else(|| root.join("policy/no-panic-allowlist.toml"));
         let cfg = allow_policy_legacy::load_no_panic_allowlist_compat_config(policy_path)?;
-        let opts = InventoryOptions {
-            ignored: cfg.workspace.ignored.clone(),
-            generated: cfg.workspace.generated.clone(),
-            include_untracked,
-        };
-        let inventory = inventory(&root, &opts)?;
-        let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
-        let mut findings = allow_rust::scan_rust_files(&root, &inventory.files)?;
-        findings.retain(|finding| finding.kind == FindingKind::Panic);
+        let (findings, inventory_facts) =
+            scan_legacy_rust_compat(&root, &cfg, include_untracked, FindingKind::Panic)?;
         return Ok((root, cfg, findings, inventory_facts));
     }
     if is_panic_compat_kind(compat_kind) {
@@ -48,15 +41,8 @@ pub(crate) fn load_compat_world(
             .map(PathBuf::from)
             .unwrap_or_else(|| root.join("policy/no-panic-baseline.toml"));
         let cfg = allow_policy_legacy::load_no_panic_baseline_compat_config(policy_path)?;
-        let opts = InventoryOptions {
-            ignored: cfg.workspace.ignored.clone(),
-            generated: cfg.workspace.generated.clone(),
-            include_untracked,
-        };
-        let inventory = inventory(&root, &opts)?;
-        let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
-        let mut findings = allow_rust::scan_rust_files(&root, &inventory.files)?;
-        findings.retain(|finding| finding.kind == FindingKind::Panic);
+        let (findings, inventory_facts) =
+            scan_legacy_rust_compat(&root, &cfg, include_untracked, FindingKind::Panic)?;
         return Ok((root, cfg, findings, inventory_facts));
     }
     if is_clippy_compat_kind(compat_kind) {
@@ -64,15 +50,8 @@ pub(crate) fn load_compat_world(
             .map(PathBuf::from)
             .unwrap_or_else(|| root.join("policy/clippy-exceptions.toml"));
         let cfg = allow_policy_legacy::load_clippy_exceptions_compat_config(policy_path)?;
-        let opts = InventoryOptions {
-            ignored: cfg.workspace.ignored.clone(),
-            generated: cfg.workspace.generated.clone(),
-            include_untracked,
-        };
-        let inventory = inventory(&root, &opts)?;
-        let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
-        let mut findings = allow_rust::scan_rust_files(&root, &inventory.files)?;
-        findings.retain(|finding| finding.kind == FindingKind::LintException);
+        let (findings, inventory_facts) =
+            scan_legacy_rust_compat(&root, &cfg, include_untracked, FindingKind::LintException)?;
         return Ok((root, cfg, findings, inventory_facts));
     }
     if is_unsafe_compat_kind(compat_kind) {
@@ -80,15 +59,8 @@ pub(crate) fn load_compat_world(
             .map(PathBuf::from)
             .unwrap_or_else(|| root.join("policy/unsafe-allowlist.toml"));
         let cfg = allow_policy_legacy::load_unsafe_allowlist_compat_config(policy_path)?;
-        let opts = InventoryOptions {
-            ignored: cfg.workspace.ignored.clone(),
-            generated: cfg.workspace.generated.clone(),
-            include_untracked,
-        };
-        let inventory = inventory(&root, &opts)?;
-        let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
-        let mut findings = allow_rust::scan_rust_files(&root, &inventory.files)?;
-        findings.retain(|finding| finding.kind == FindingKind::Unsafe);
+        let (findings, inventory_facts) =
+            scan_legacy_rust_compat(&root, &cfg, include_untracked, FindingKind::Unsafe)?;
         return Ok((root, cfg, findings, inventory_facts));
     }
     if is_executable_compat_kind(compat_kind) {
@@ -189,4 +161,22 @@ pub(crate) fn load_compat_world(
         .unwrap_or_else(|| root.join("policy/non-rust-allowlist.toml"));
     let cfg = allow_policy_legacy::load_non_rust_compat_config(policy_path, &findings)?;
     Ok((root, cfg, findings, inventory_facts))
+}
+
+fn scan_legacy_rust_compat(
+    root: &Path,
+    cfg: &AllowConfig,
+    include_untracked: bool,
+    kind: FindingKind,
+) -> CargoAllowResult<(Vec<Finding>, InventoryFacts)> {
+    let opts = InventoryOptions {
+        ignored: cfg.workspace.ignored.clone(),
+        generated: cfg.workspace.generated.clone(),
+        include_untracked,
+    };
+    let inventory = inventory(root, &opts)?;
+    let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
+    let mut findings = allow_rust::scan_rust_files(root, &inventory.files)?;
+    findings.retain(|finding| finding.kind == kind);
+    Ok((findings, inventory_facts))
 }
