@@ -4,7 +4,7 @@ use allow_core::{
 };
 use std::path::PathBuf;
 
-use crate::converter_support::{
+use crate::converter_panic_support::{
     cargo_allow_panic_family, no_panic_macro_name, no_panic_method_callee, normalize_selector_kind,
 };
 use crate::types::{LegacyNoPanicAllowEntry, LegacyNoPanicBaselineEntry};
