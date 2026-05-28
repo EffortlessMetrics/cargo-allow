@@ -8,6 +8,8 @@ mod explain;
 mod html;
 mod json;
 mod list;
+#[cfg(test)]
+mod list_tests;
 mod migrate;
 mod non_rust;
 mod propose;
