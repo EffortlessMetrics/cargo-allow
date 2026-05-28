@@ -2,43 +2,20 @@ use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, MatchOutcome,
 };
 use allow_match::{CheckMode, evaluate, score_match};
-use clap::{Parser, ValueEnum};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use crate::{RootArgs, SourceTreeReportContext, load_world_with_evidence_validation, write_file};
+use crate::{SourceTreeReportContext, load_world_with_evidence_validation, write_file};
 
+#[path = "explain_args.rs"]
+mod explain_args;
 #[path = "explain_render.rs"]
 mod explain_render;
 #[path = "explain_types.rs"]
 mod explain_types;
+pub(crate) use explain_args::ExplainArgs;
+use explain_args::ExplainFormat;
 use explain_render::{render_explain_entry, render_explain_entry_json};
 pub(super) use explain_types::ExplainContext;
-
-#[derive(Debug, Clone, Parser)]
-pub(crate) struct ExplainArgs {
-    /// Allow entry ID.
-    id: String,
-    #[command(flatten)]
-    root: RootArgs,
-    /// Policy config path.
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Include untracked files in addition to git-tracked files.
-    #[arg(long)]
-    include_untracked: bool,
-    /// Output format.
-    #[arg(long, value_enum, default_value_t = ExplainFormat::Human)]
-    format: ExplainFormat,
-    /// Write explanation output to a file instead of stdout.
-    #[arg(long)]
-    output: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum ExplainFormat {
-    Human,
-    Json,
-}
 
 pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
     let (root, cfg, findings, inventory_facts) = load_world_with_evidence_validation(
