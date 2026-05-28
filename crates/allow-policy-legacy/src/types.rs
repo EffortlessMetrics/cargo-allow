@@ -1,26 +1,7 @@
-use allow_core::LastSeen;
-
 pub(crate) use crate::types_lint_entries::LegacyClippyRule;
 pub(crate) use crate::types_panic_entries::{LegacyNoPanicAllowEntry, LegacyNoPanicBaselineEntry};
 pub(crate) use crate::types_source_entries::{LegacyGeneratedRule, LegacyNonRustRule};
-
-#[derive(Debug, Clone)]
-pub(crate) struct LegacyUnsafeRule {
-    pub(crate) id: String,
-    pub(crate) path: String,
-    pub(crate) family: String,
-    pub(crate) selector_kind: String,
-    pub(crate) selector_container: Option<String>,
-    pub(crate) owner: String,
-    pub(crate) classification: String,
-    pub(crate) reason: String,
-    pub(crate) evidence: Vec<String>,
-    pub(crate) created: Option<String>,
-    pub(crate) review_after: Option<String>,
-    pub(crate) expires: Option<String>,
-    pub(crate) line_hint: Option<u32>,
-    pub(crate) last_seen: Option<LastSeen>,
-}
+pub(crate) use crate::types_unsafe_entries::LegacyUnsafeRule;
 
 #[derive(Debug, Clone)]
 pub(crate) struct LegacyExecutableRule {
