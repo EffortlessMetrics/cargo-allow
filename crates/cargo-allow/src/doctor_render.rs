@@ -1,11 +1,4 @@
-#[derive(Debug, Clone, Copy)]
-pub(super) struct DoctorFacts<'a> {
-    pub(super) source_tree_root: &'a str,
-    pub(super) root_discovery: &'a str,
-    pub(super) config_path: Option<&'a str>,
-    pub(super) inventory_source: &'a str,
-    pub(super) files_scanned: usize,
-}
+use super::DoctorFacts;
 
 pub(super) fn render_doctor_human(facts: DoctorFacts<'_>) -> String {
     allow_report::render_doctor_human(doctor_report(facts))
