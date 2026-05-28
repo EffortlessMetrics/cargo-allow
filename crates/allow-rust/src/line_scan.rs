@@ -2,11 +2,9 @@ use allow_core::{Finding, FindingKind, normalize_snippet};
 use std::path::Path;
 
 use crate::finding_builder::{FindingSite, push_finding};
+use crate::line_facts::SyntaxLineFacts;
 use crate::safety_comments::{has_nearby_safety_comment, safety_comment_lines};
-use crate::syntax_kinds::{
-    LintAttributeKind, PanicMacroInvocation, PanicMethodCall, RustSyntaxFacts,
-    UnsafeSyntaxConstruct,
-};
+use crate::syntax_kinds::{LintAttributeKind, RustSyntaxFacts};
 use crate::text::{
     attribute_column, column, detect_attr, extract_first_lint, index_symbol, lint_policy_reference,
     receiver_before_method_column,
@@ -226,14 +224,4 @@ fn scan_line(
             findings,
         );
     }
-}
-
-struct SyntaxLineFacts<'a> {
-    lint_attributes: &'a [LintAttributeKind],
-    panic_macros: &'a [PanicMacroInvocation],
-    panic_methods: &'a [PanicMethodCall],
-    index_column: Option<u32>,
-    unsafe_constructs: &'a [UnsafeSyntaxConstruct],
-    unsafe_attribute: bool,
-    safety_comment_nearby: bool,
 }

@@ -3,6 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 mod finding_builder;
+mod line_facts;
 mod line_scan;
 mod package;
 mod safety_comments;
