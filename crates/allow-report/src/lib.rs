@@ -27,6 +27,8 @@ mod migrate;
 mod migrate_tests;
 mod non_rust;
 mod path_text;
+#[cfg(test)]
+mod path_text_tests;
 mod propose;
 #[cfg(test)]
 mod propose_tests;
