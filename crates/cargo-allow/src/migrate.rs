@@ -126,5 +126,8 @@ pub(crate) fn sample_migrate_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
+#[path = "migrate_artifact_tests.rs"]
+mod artifact_tests;
+#[cfg(test)]
 #[path = "migrate_tests.rs"]
 mod tests;
