@@ -9,7 +9,10 @@ use crate::{RootArgs, load_world_with_evidence_validation, source_tree_root_text
 
 #[path = "explain_render.rs"]
 mod explain_render;
+#[path = "explain_types.rs"]
+mod explain_types;
 use explain_render::{render_explain_entry, render_explain_entry_json};
+pub(super) use explain_types::ExplainContext;
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ExplainArgs {
@@ -67,23 +70,6 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         println!("{text}");
     }
     Ok(())
-}
-
-#[derive(Debug, Clone, Copy)]
-struct ExplainContext<'a> {
-    inventory_source: &'a str,
-    source_tree_root: Option<&'a str>,
-    inventory_files: Option<usize>,
-}
-
-impl Default for ExplainContext<'static> {
-    fn default() -> Self {
-        Self {
-            inventory_source: "unknown",
-            source_tree_root: None,
-            inventory_files: None,
-        }
-    }
 }
 
 fn explain_entry_text(
