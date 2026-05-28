@@ -1,6 +1,8 @@
 use super::test_support::{test_entry, test_finding};
 use super::*;
+use crate::artifact_contract_support::{assert_inventory_contract, parse_json_artifact};
 use allow_core::FindingKind;
+use serde_json::Value;
 use std::path::Path;
 
 #[test]
@@ -33,43 +35,69 @@ fn explain_entry_json_records_context_and_live_status() {
             ),
         },
     );
+    let value = parse_json_artifact("explain", &json, allow_report::EXPLAIN_SCHEMA_ID, "explain");
 
-    assert!(json.contains("\"schema_version\": 1"));
-    assert!(json.contains(&format!(
-        "\"schema_id\": \"{}\"",
-        allow_report::EXPLAIN_SCHEMA_ID
-    )));
-    assert!(json.contains("\"command\": \"explain\""));
-    assert!(json.contains("\"claim_boundary\""));
-    assert!(json.contains("\"scanner_limitations\""));
-    assert!(json.contains("\"cargo_metadata_not_invoked\""));
-    assert!(json.contains("\"repository_code_not_executed\""));
-    assert!(json.contains("\"source\": \"git_tracked\""));
-    assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
-    assert!(json.contains("\"files_scanned\": 47"));
-    assert!(json.contains("\"id\": \"allow-json\""));
-    assert!(json.contains("\"current_status\": \"matched\""));
-    assert!(json.contains("\"current_matches\": 1"));
-    assert!(json.contains("\"path\": \"tracked.file\""));
-    assert!(json.contains("\"source_package\": \"allow-core\""));
-    assert!(json.contains("\"status\": \"traceability_only\""));
-    assert!(json.contains("\"suggested_actions\": []"));
-    assert!(json.contains("\"proof_commands\": []"));
-}
-
-#[test]
-fn explain_schema_documents_current_contract() {
-    let schema = include_str!("../../../docs/schemas/explain.schema.json");
-
-    assert!(schema.contains(allow_report::EXPLAIN_SCHEMA_ID));
-    assert!(schema.contains("\"allow_entry\""));
-    assert!(schema.contains("\"evidence_references\""));
-    assert!(schema.contains("\"current_findings\""));
-    assert!(schema.contains("\"match_outcomes\""));
-    assert!(schema.contains("\"next\""));
-    assert!(schema.contains("\"scanner_limitations\""));
-    assert!(schema.contains("\"scanner_limitation\""));
-    assert!(schema.contains("\"source_package\""));
-    assert!(schema.contains("\"cargo_metadata_not_invoked\""));
-    assert!(schema.contains("\"repository_code_not_executed\""));
+    assert_inventory_contract(
+        "explain",
+        &value,
+        "git_tracked",
+        Some("H:/Code/Rust/cargo-allow"),
+        Some(47),
+    );
+    assert_eq!(
+        value.pointer("/allow_entry/id").and_then(Value::as_str),
+        Some("allow-json"),
+        "explain allow id"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/current_status")
+            .and_then(Value::as_str),
+        Some("matched"),
+        "explain current status"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/current_matches")
+            .and_then(Value::as_u64),
+        Some(1),
+        "explain current match count"
+    );
+    assert_eq!(
+        value
+            .pointer("/current_findings/0/path")
+            .and_then(Value::as_str),
+        Some("tracked.file"),
+        "explain current finding path"
+    );
+    assert_eq!(
+        value
+            .pointer("/current_findings/0/source_package")
+            .and_then(Value::as_str),
+        Some("allow-core"),
+        "explain current finding source package"
+    );
+    assert_eq!(
+        value
+            .pointer("/evidence_references/0/status")
+            .and_then(Value::as_str),
+        Some("traceability_only"),
+        "explain evidence status"
+    );
+    assert_eq!(
+        value
+            .pointer("/next/suggested_actions")
+            .and_then(Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "explain suggested actions"
+    );
+    assert_eq!(
+        value
+            .pointer("/next/proof_commands")
+            .and_then(Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "explain proof commands"
+    );
 }
