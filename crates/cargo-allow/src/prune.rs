@@ -1,56 +1,29 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
-use clap::{Parser, ValueEnum};
-use std::path::PathBuf;
 
-use crate::{RootArgs, SourceTreeReportContext, config_path, load_world, write_file};
+use crate::{SourceTreeReportContext, config_path, load_world, write_file};
 
+#[path = "prune_args.rs"]
+mod prune_args;
 #[path = "prune_render.rs"]
 mod prune_render;
 #[path = "prune_stale.rs"]
 mod prune_stale;
 #[path = "prune_types.rs"]
 mod prune_types;
+pub(crate) use prune_args::PruneArgs;
+use prune_args::PruneFormat;
 use prune_render::{render_prune_stale_json, render_prune_stale_result};
 use prune_stale::{config_without_prune_candidates, prune_stale_candidates};
 use prune_types::{PruneCandidate, PruneContext};
 
 #[cfg(test)]
+use crate::RootArgs;
+#[cfg(test)]
 use allow_core::{AllowConfig, FindingKind, MatchOutcome, MatchStatus};
-
-#[derive(Debug, Clone, Parser)]
-pub(crate) struct PruneArgs {
-    #[command(flatten)]
-    root: RootArgs,
-    /// Policy config path.
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Preview stale allow entries.
-    #[arg(long)]
-    stale: bool,
-    /// Explicitly run without writing policy changes.
-    #[arg(long, conflicts_with = "write")]
-    dry_run: bool,
-    /// Remove stale entries from the policy file.
-    #[arg(long, conflicts_with = "dry_run")]
-    write: bool,
-    /// Include untracked files when determining stale entries.
-    #[arg(long)]
-    include_untracked: bool,
-    /// Output format.
-    #[arg(long, value_enum, default_value_t = PruneFormat::Human)]
-    format: PruneFormat,
-    /// Write prune preview/result to a file instead of stdout.
-    #[arg(long)]
-    output: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum PruneFormat {
-    Human,
-    Json,
-}
+#[cfg(test)]
+use std::path::PathBuf;
 
 pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
     if !args.stale {
