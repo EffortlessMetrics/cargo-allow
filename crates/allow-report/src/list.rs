@@ -1,0 +1,170 @@
+use crate::json::{
+    bool_json, option_json, push_json_artifact_header, push_json_artifact_source_context,
+};
+use crate::{InventoryContext, LIST_SCHEMA_ID, LIST_SCHEMA_VERSION, ListFilters, ListRow};
+use allow_core::json_escape;
+
+pub fn render_list_json(
+    rows: &[ListRow<'_>],
+    filters: ListFilters<'_>,
+    inventory: InventoryContext<'_>,
+) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    push_json_artifact_header(&mut out, LIST_SCHEMA_VERSION, LIST_SCHEMA_ID, "list");
+    push_json_artifact_source_context(&mut out, inventory);
+    out.push_str("  \"filters\": ");
+    out.push_str(&render_list_filters_json(filters, "  "));
+    out.push_str(",\n");
+    out.push_str(&format!(
+        "  \"summary\": {{\n    \"allow_entries\": {}\n  }},\n",
+        rows.len()
+    ));
+    out.push_str("  \"allow_entries\": [\n");
+    for (index, row) in rows.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&render_list_row_json(row));
+    }
+    out.push_str("\n  ]\n");
+    out.push_str("}\n");
+    out
+}
+
+pub fn render_list_human(rows: &[ListRow<'_>]) -> String {
+    let mut out = String::new();
+    out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\tevidence_count\treview_after\texpires\treason\n");
+    for row in rows {
+        out.push_str(&format!(
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+            row.id,
+            row.status,
+            row.matches,
+            row.kind,
+            row.family.unwrap_or("-"),
+            empty_as_dash(row.owner),
+            empty_as_dash(row.classification),
+            row.scope,
+            row.source_package.unwrap_or("-"),
+            row.evidence_count,
+            row.review_after.unwrap_or("-"),
+            row.expires.unwrap_or("-"),
+            row.reason
+        ));
+    }
+    if rows.is_empty() {
+        out.push_str("(no allow entries matched filters)\n");
+    }
+    out
+}
+
+fn empty_as_dash(value: &str) -> &str {
+    if value.trim().is_empty() { "-" } else { value }
+}
+
+fn render_list_row_json(row: &ListRow<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("    {\n");
+    out.push_str(&format!("      \"id\": \"{}\",\n", json_escape(row.id)));
+    out.push_str(&format!(
+        "      \"status\": \"{}\",\n",
+        json_escape(row.status)
+    ));
+    out.push_str(&format!("      \"matches\": {},\n", row.matches));
+    out.push_str(&format!("      \"kind\": \"{}\",\n", json_escape(row.kind)));
+    out.push_str(&format!("      \"family\": {},\n", option_json(row.family)));
+    out.push_str(&format!(
+        "      \"owner\": \"{}\",\n",
+        json_escape(row.owner)
+    ));
+    out.push_str(&format!(
+        "      \"classification\": \"{}\",\n",
+        json_escape(row.classification)
+    ));
+    out.push_str(&format!(
+        "      \"scope\": \"{}\",\n",
+        json_escape(row.scope)
+    ));
+    out.push_str(&format!(
+        "      \"source_package\": {},\n",
+        option_json(row.source_package)
+    ));
+    out.push_str(&format!(
+        "      \"evidence_count\": {},\n",
+        row.evidence_count
+    ));
+    out.push_str(&format!(
+        "      \"review_after\": {},\n",
+        option_json(row.review_after)
+    ));
+    out.push_str(&format!(
+        "      \"expires\": {},\n",
+        option_json(row.expires)
+    ));
+    out.push_str(&format!(
+        "      \"reason\": \"{}\"\n",
+        json_escape(row.reason)
+    ));
+    out.push_str("    }");
+    out
+}
+
+fn render_list_filters_json(filters: ListFilters<'_>, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "{indent}  \"kind\": {},\n",
+        option_json(filters.kind)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"family\": {},\n",
+        option_json(filters.family)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"owner\": {},\n",
+        option_json(filters.owner)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"classification\": {},\n",
+        option_json(filters.classification)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"path\": {},\n",
+        option_json(filters.path)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"source_package\": {},\n",
+        option_json(filters.source_package)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"status\": {},\n",
+        option_json(filters.status)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"expired\": {},\n",
+        bool_json(filters.expired)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"review_due\": {},\n",
+        bool_json(filters.review_due)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"stale\": {},\n",
+        bool_json(filters.stale)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"baseline_debt\": {},\n",
+        bool_json(filters.baseline_debt)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"broad_scope\": {},\n",
+        bool_json(filters.broad_scope)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"missing_evidence\": {}\n",
+        bool_json(filters.missing_evidence)
+    ));
+    out.push_str(&format!("{indent}}}"));
+    out
+}
