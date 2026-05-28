@@ -3,6 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 mod finding_builder;
+mod line_context;
 mod line_facts;
 mod line_findings;
 mod line_index_findings;

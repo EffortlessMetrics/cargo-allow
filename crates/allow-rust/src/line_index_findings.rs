@@ -1,11 +1,11 @@
 use allow_core::{Finding, FindingKind};
-use std::path::Path;
 
-use crate::finding_builder::{FindingSite, push_finding};
+use crate::finding_builder::push_finding;
+use crate::line_context::LineContext;
 use crate::text::{index_symbol, index_target_fingerprint};
 
 pub(crate) fn scan_index_expr(
-    context: IndexLineContext<'_>,
+    context: LineContext<'_>,
     index_column: Option<u32>,
     findings: &mut Vec<Finding>,
 ) {
@@ -16,14 +16,7 @@ pub(crate) fn scan_index_expr(
             "indexing"
         };
         push_finding(
-            FindingSite {
-                path: context.path,
-                line: context.line,
-                line_no: context.line_no,
-                column: index_column,
-                container: context.container,
-                module_stack: context.module_stack,
-            },
+            context.site(index_column),
             FindingKind::Panic,
             family,
             "index_expr",
@@ -34,12 +27,4 @@ pub(crate) fn scan_index_expr(
             findings,
         );
     }
-}
-
-pub(crate) struct IndexLineContext<'a> {
-    pub(crate) path: &'a Path,
-    pub(crate) line: &'a str,
-    pub(crate) line_no: u32,
-    pub(crate) container: &'a Option<String>,
-    pub(crate) module_stack: &'a [String],
 }
