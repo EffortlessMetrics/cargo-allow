@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 mod line_scan;
 mod package;
+mod safety_comments;
 mod syntax_facts;
 mod syntax_kinds;
 mod syntax_tree;
