@@ -1,12 +1,15 @@
 use allow_core::{AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, Selector, normalize_path};
 use std::path::{Path, PathBuf};
 
+pub(crate) use crate::converter_exception_entries::{
+    entry_from_clippy_rule, entry_from_unsafe_rule,
+};
 pub(crate) use crate::converter_panic_entries::{
     entry_from_no_panic_allow_entry, entry_from_no_panic_baseline_entry,
 };
-use crate::converter_support::{generated_evidence, lifecycle_from_rule, unsafe_evidence};
+use crate::converter_support::{generated_evidence, lifecycle_from_rule};
 use crate::findings::file_fingerprint;
-use crate::types::{LegacyClippyRule, LegacyGeneratedRule, LegacyNonRustRule, LegacyUnsafeRule};
+use crate::types::{LegacyGeneratedRule, LegacyNonRustRule};
 
 pub(crate) fn entry_from_rule(rule: &LegacyNonRustRule) -> AllowEntry {
     let (path, glob) = if rule.is_path {
@@ -94,66 +97,5 @@ pub(crate) fn entry_from_generated_rule(rule: &LegacyGeneratedRule) -> AllowEntr
             ..Selector::default()
         },
         last_seen: None,
-    }
-}
-
-pub(crate) fn entry_from_clippy_rule(rule: &LegacyClippyRule) -> AllowEntry {
-    let path = normalize_path(&rule.path);
-    AllowEntry {
-        id: rule.id.clone(),
-        kind: FindingKind::LintException,
-        family: Some(rule.family.clone()),
-        path: Some(PathBuf::from(&path)),
-        glob: None,
-        owner: rule.owner.clone(),
-        classification: rule.classification.clone(),
-        reason: rule.reason.clone(),
-        evidence: vec![format!("lint:{}", rule.lint)],
-        links: vec![format!("legacy-policy:{}", rule.id)],
-        occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: rule.created.clone(),
-            review_after: rule.review_after.clone(),
-            expires: rule.expires.clone(),
-        },
-        selector: Selector {
-            ast_kind: Some("attribute".to_string()),
-            lint: Some(rule.lint.clone()),
-            symbol: rule.symbol.clone(),
-            target_fingerprint: rule.target_fingerprint.clone(),
-            glob: Some(path),
-            ..Selector::default()
-        },
-        last_seen: None,
-    }
-}
-
-pub(crate) fn entry_from_unsafe_rule(rule: &LegacyUnsafeRule) -> AllowEntry {
-    let path = normalize_path(&rule.path);
-    AllowEntry {
-        id: rule.id.clone(),
-        kind: FindingKind::Unsafe,
-        family: Some(rule.family.clone()),
-        path: Some(PathBuf::from(&path)),
-        glob: None,
-        owner: rule.owner.clone(),
-        classification: rule.classification.clone(),
-        reason: rule.reason.clone(),
-        evidence: unsafe_evidence(rule),
-        links: vec![format!("legacy-policy:{}", rule.id)],
-        occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: rule.created.clone(),
-            review_after: rule.review_after.clone(),
-            expires: rule.expires.clone(),
-        },
-        selector: Selector {
-            ast_kind: Some(rule.selector_kind.clone()),
-            container: rule.selector_container.clone(),
-            line_hint: rule.line_hint,
-            glob: Some(path),
-            ..Selector::default()
-        },
-        last_seen: rule.last_seen.clone(),
     }
 }
