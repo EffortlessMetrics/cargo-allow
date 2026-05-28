@@ -1,8 +1,7 @@
-use allow_core::{
-    Finding, FindingKind, Span, StructuralIdentity, normalize_snippet, stable_hash_hex,
-};
+use allow_core::{Finding, FindingKind, normalize_snippet};
 use std::path::Path;
 
+use crate::finding_builder::{FindingSite, push_finding};
 use crate::safety_comments::{has_nearby_safety_comment, safety_comment_lines};
 use crate::syntax_kinds::{
     LintAttributeKind, PanicMacroInvocation, PanicMethodCall, RustSyntaxFacts,
@@ -237,45 +236,4 @@ struct SyntaxLineFacts<'a> {
     unsafe_constructs: &'a [UnsafeSyntaxConstruct],
     unsafe_attribute: bool,
     safety_comment_nearby: bool,
-}
-
-struct FindingSite<'a> {
-    path: &'a Path,
-    line: &'a str,
-    line_no: u32,
-    column: u32,
-    container: &'a Option<String>,
-    module_stack: &'a [String],
-}
-
-fn push_finding<F>(
-    site: FindingSite<'_>,
-    kind: FindingKind,
-    family: &str,
-    ast_kind: &str,
-    enrich: F,
-    findings: &mut Vec<Finding>,
-) where
-    F: FnOnce(&mut StructuralIdentity),
-{
-    let mut identity = StructuralIdentity::new("rust", ast_kind);
-    identity.container = site.container.clone();
-    if !site.module_stack.is_empty() {
-        identity.module = Some(site.module_stack.join("::"));
-    }
-    identity.normalized_snippet_hash = Some(stable_hash_hex(&normalize_snippet(site.line)));
-    identity.line_hint = Some(site.line_no);
-    identity.column_hint = Some(site.column);
-    enrich(&mut identity);
-    findings.push(Finding {
-        kind,
-        family: Some(family.to_string()),
-        path: site.path.to_path_buf(),
-        span: Some(Span {
-            line: site.line_no,
-            column: site.column,
-        }),
-        identity,
-        message: format!("{kind} {family} syntax found"),
-    });
 }

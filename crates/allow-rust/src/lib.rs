@@ -2,6 +2,7 @@ use allow_core::{CargoAllowError, CargoAllowResult, Finding};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+mod finding_builder;
 mod line_scan;
 mod package;
 mod safety_comments;
