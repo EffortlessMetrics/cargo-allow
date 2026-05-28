@@ -1,6 +1,7 @@
 use allow_core::{AllowEntry, Finding};
 use std::path::Path;
 
+use super::AddContext;
 use crate::source_syntax_inventory_context;
 
 pub(super) fn render_add_summary(
@@ -16,23 +17,6 @@ pub(super) fn render_add_summary(
         false,
         AddContext::default(),
     ))
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(super) struct AddContext<'a> {
-    pub(super) inventory_source: &'a str,
-    pub(super) source_tree_root: Option<&'a str>,
-    pub(super) inventory_files: Option<usize>,
-}
-
-impl Default for AddContext<'static> {
-    fn default() -> Self {
-        Self {
-            inventory_source: "unknown",
-            source_tree_root: None,
-            inventory_files: None,
-        }
-    }
 }
 
 pub(super) fn render_add_summary_json(
