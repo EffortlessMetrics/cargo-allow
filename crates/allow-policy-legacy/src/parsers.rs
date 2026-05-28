@@ -5,6 +5,11 @@ use crate::fields::{
     legacy_evidence, optional_last_seen, optional_u32_field, raw_string_field, required_bool_field,
     required_string_array_field, required_string_field, string_array_field, string_field,
 };
+pub(crate) use crate::parser_support::is_clippy_exceptions_policy;
+use crate::parser_support::{
+    has_glob_meta, normalize_legacy_expires, normalize_lint_attribute_family,
+    normalize_unsafe_family,
+};
 use crate::types::{
     LegacyClippyRule, LegacyDependencySurfaceRule, LegacyExecutableRule, LegacyGeneratedRule,
     LegacyNetworkRule, LegacyNoPanicAllowEntry, LegacyNoPanicBaselineEntry, LegacyNonRustRule,
@@ -497,49 +502,4 @@ fn parse_network_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyNet
         expires: normalize_legacy_expires(string_field(table, "expires")),
         id,
     })
-}
-
-fn normalize_unsafe_family(kind: &str) -> String {
-    match kind.trim() {
-        "unsafe-block" | "unsafe block" => "unsafe_block".to_string(),
-        "unsafe-fn" | "unsafe function" | "unsafe_fn" => "unsafe_fn".to_string(),
-        "unsafe-impl" | "unsafe impl" => "unsafe_impl".to_string(),
-        "unsafe-trait" | "unsafe trait" => "unsafe_trait".to_string(),
-        "unsafe-extern" | "unsafe extern" | "unsafe-extern-block" | "unsafe extern block" => {
-            "unsafe_extern_block".to_string()
-        }
-        "unsafe-attr" | "unsafe attribute" | "unsafe-attribute" => "unsafe_attr".to_string(),
-        other => other.replace('-', "_"),
-    }
-}
-
-fn has_glob_meta(input: &str) -> bool {
-    input
-        .chars()
-        .any(|ch| matches!(ch, '*' | '?' | '[' | ']' | '{' | '}' | ','))
-}
-
-fn normalize_legacy_expires(expires: Option<String>) -> Option<String> {
-    expires.map(|value| {
-        if value == "permanent" {
-            "never".to_string()
-        } else {
-            value
-        }
-    })
-}
-
-pub(crate) fn is_clippy_exceptions_policy(table: &toml::Table) -> bool {
-    matches!(
-        table.get("policy").and_then(Value::as_str),
-        Some("clippy-exceptions" | "clippy-exception-allowlist" | "clippy-allowlist")
-    )
-}
-
-fn normalize_lint_attribute_family(family: &str) -> String {
-    match family.trim() {
-        "allow" | "allow-attribute" | "allow_attribute" => "allow_attribute".to_string(),
-        "expect" | "expect-attribute" | "expect_attribute" => "expect_attribute".to_string(),
-        other => other.to_string(),
-    }
 }
