@@ -6,6 +6,7 @@ mod converter_support;
 mod converters;
 mod fields;
 mod finding_config;
+mod finding_generated_executable;
 mod findings;
 mod io;
 mod loader_compat;
