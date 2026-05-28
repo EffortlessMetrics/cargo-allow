@@ -21,6 +21,7 @@ mod loader_policy_compat;
 mod loader_source_compat;
 mod loaders;
 mod parser_exception_entries;
+mod parser_executable_entries;
 mod parser_file_entries;
 mod parser_panic_entries;
 mod parser_policy_entries;
