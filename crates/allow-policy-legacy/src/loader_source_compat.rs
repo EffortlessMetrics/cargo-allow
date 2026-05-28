@@ -2,10 +2,12 @@ use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding};
 use std::path::Path;
 use toml::Value;
 
+use crate::converter_file_configs::{
+    config_from_current_non_rust_findings, config_from_generated_rules,
+};
 use crate::converters::{
-    config_from_clippy_rules, config_from_current_non_rust_findings, config_from_generated_rules,
-    config_from_no_panic_allowlist_entries, config_from_no_panic_baseline_entries,
-    config_from_unsafe_rules,
+    config_from_clippy_rules, config_from_no_panic_allowlist_entries,
+    config_from_no_panic_baseline_entries, config_from_unsafe_rules,
 };
 use crate::io::{legacy_table, read_policy};
 use crate::parsers::{
