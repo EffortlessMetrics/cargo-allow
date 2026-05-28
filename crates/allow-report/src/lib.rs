@@ -1003,6 +1003,27 @@ pub fn render_add_json(report: AddReport<'_>) -> String {
     out
 }
 
+pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("cargo-allow migrate summary\n");
+    out.push_str(&format!("input_kind: {}\n", report.input_kind));
+    out.push_str(&format!("input: {}\n", report.input_path));
+    out.push_str(&format!("output: {}\n", report.output_path));
+    out.push_str(&format!("force: {}\n", report.force));
+    out.push_str(&format!("allow_entries: {}\n", report.allow_entries));
+    out.push_str(&format!("baseline_debt: {}\n", report.baseline_debt));
+    out.push_str(&format!("unsafe_entries: {}\n", report.unsafe_entries));
+    if let Some(root) = report.inventory.root {
+        out.push_str(&format!("source_tree_root: {root}\n"));
+    }
+    out.push_str(&format!("inventory_source: {}\n", report.inventory.source));
+    if let Some(files) = report.inventory.files_scanned {
+        out.push_str(&format!("files_scanned: {files}\n"));
+    }
+    out.push_str(report.notes);
+    out
+}
+
 pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
@@ -2116,7 +2137,7 @@ mod tests {
 
     #[test]
     fn migrate_json_renderer_records_io_summary_and_notes() {
-        let json = render_migrate_json(MigrateReport {
+        let report = MigrateReport {
             inventory: InventoryContext::new(
                 "source_tree",
                 "policy_migration",
@@ -2133,7 +2154,9 @@ mod tests {
             unsafe_entries: 2,
             entries_with_evidence: 3,
             notes: "migration notes",
-        });
+        };
+
+        let json = render_migrate_json(report);
 
         assert!(json.contains("\"schema_id\": \"cargo-allow.migrate.v1\""));
         assert!(json.contains("\"command\": \"migrate\""));
@@ -2149,6 +2172,21 @@ mod tests {
         assert!(json.contains("\"unsafe_entries\": 2"));
         assert!(json.contains("\"entries_with_evidence\": 3"));
         assert!(json.contains("\"notes\": \"migration notes\""));
+
+        let text = render_migrate_human(report);
+
+        assert!(text.contains("cargo-allow migrate summary"));
+        assert!(text.contains("input_kind: repo_policy"));
+        assert!(text.contains("input: policy"));
+        assert!(text.contains("output: policy/allow.toml"));
+        assert!(text.contains("force: true"));
+        assert!(text.contains("allow_entries: 12"));
+        assert!(text.contains("baseline_debt: 5"));
+        assert!(text.contains("unsafe_entries: 2"));
+        assert!(text.contains("source_tree_root: H:/Code/Rust/cargo-allow"));
+        assert!(text.contains("inventory_source: git_tracked"));
+        assert!(text.contains("files_scanned: 76"));
+        assert!(text.contains("migration notes"));
     }
 
     #[test]
