@@ -1,0 +1,28 @@
+use super::*;
+
+#[test]
+fn receipt_exposes_v1_schema_contract() {
+    let json = render_receipt_with_context(
+        "check",
+        &[],
+        true,
+        ReportContext {
+            inventory_source: "git_tracked",
+            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
+            inventory_files: Some(42),
+            ..ReportContext::default()
+        },
+    );
+    assert!(json.contains("\"schema_version\": 1"));
+    assert!(json.contains("\"schema_id\": \"cargo-allow.receipt.v1\""));
+    assert!(json.contains("\"failed\": true"));
+    assert!(json.contains("\"source\": \"git_tracked\""));
+    assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
+    assert!(json.contains("\"files_scanned\": 42"));
+    assert!(json.contains("\"cargo_metadata_not_invoked\""));
+    assert!(json.contains("\"cargo_commands_not_invoked\""));
+    assert!(json.contains("\"build_output_not_analyzed\""));
+    assert!(json.contains("\"macro_token_tree_contents_not_analyzed\""));
+    assert!(json.contains("\"missing_required_field\": 0"));
+    assert!(json.contains("\"evidence_missing\": 0"));
+}
