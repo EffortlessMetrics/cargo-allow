@@ -2,19 +2,15 @@ use super::*;
 
 #[test]
 fn propose_json_renderer_records_options_summary_and_defaults() {
-    let report = ProposeReport {
-        inventory: InventoryContext::source_syntax(
-            "git_tracked",
-            Some("H:/Code/Rust/cargo-allow"),
-            Some(76),
-        ),
-        kind: Some("panic"),
-        expires: "2026-08-02",
-        policy_output: Some("target/cargo-allow/proposed.toml"),
-        force: true,
-        findings_scanned: 54,
-        baseline_debt_entries_proposed: 2,
-    };
+    let report = ProposeReport::new(
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(76)),
+        Some("panic"),
+        "2026-08-02",
+        Some("target/cargo-allow/proposed.toml"),
+        true,
+        54,
+        2,
+    );
 
     let json = render_propose_json(report);
 

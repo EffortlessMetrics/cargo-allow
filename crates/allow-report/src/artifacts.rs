@@ -137,6 +137,28 @@ pub struct ProposeReport<'a> {
     pub baseline_debt_entries_proposed: usize,
 }
 
+impl<'a> ProposeReport<'a> {
+    pub fn new(
+        inventory: InventoryContext<'a>,
+        kind: Option<&'a str>,
+        expires: &'a str,
+        policy_output: Option<&'a str>,
+        force: bool,
+        findings_scanned: usize,
+        baseline_debt_entries_proposed: usize,
+    ) -> Self {
+        Self {
+            inventory,
+            kind,
+            expires,
+            policy_output,
+            force,
+            findings_scanned,
+            baseline_debt_entries_proposed,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct AddReport<'a> {
     pub inventory: InventoryContext<'a>,
@@ -144,6 +166,24 @@ pub struct AddReport<'a> {
     pub selected_finding: &'a Finding,
     pub policy_output: Option<&'a str>,
     pub force: bool,
+}
+
+impl<'a> AddReport<'a> {
+    pub fn new(
+        inventory: InventoryContext<'a>,
+        entry: &'a AllowEntry,
+        selected_finding: &'a Finding,
+        policy_output: Option<&'a str>,
+        force: bool,
+    ) -> Self {
+        Self {
+            inventory,
+            entry,
+            selected_finding,
+            policy_output,
+            force,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
