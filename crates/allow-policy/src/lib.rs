@@ -42,6 +42,8 @@ struct RequirementsToml {
     #[serde(default, deserialize_with = "option_bool_or_string")]
     classification_required: Option<bool>,
     #[serde(default, deserialize_with = "option_bool_or_string")]
+    evidence_required: Option<bool>,
+    #[serde(default, deserialize_with = "option_bool_or_string")]
     expires_or_review_after_required: Option<bool>,
     #[serde(default, deserialize_with = "option_bool_or_string")]
     allow_bare_allow_attributes: Option<bool>,
@@ -217,6 +219,7 @@ impl RequirementsToml {
             classification_required: self
                 .classification_required
                 .unwrap_or(default.classification_required),
+            evidence_required: self.evidence_required.unwrap_or(default.evidence_required),
             expires_or_review_after_required: self
                 .expires_or_review_after_required
                 .unwrap_or(default.expires_or_review_after_required),
@@ -355,6 +358,12 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
         {
             return Err(CargoAllowError::new(format!(
                 "{} unsafe entry missing evidence",
+                entry.id
+            )));
+        }
+        if cfg.requirements.evidence_required && entry.evidence.is_empty() {
+            return Err(CargoAllowError::new(format!(
+                "{} missing evidence",
                 entry.id
             )));
         }
@@ -706,6 +715,7 @@ generated = ["target/**", "vendor/**"]
 owner_required = true
 reason_required = true
 classification_required = true
+evidence_required = false
 expires_or_review_after_required = true
 allow_bare_allow_attributes = false
 lint_policy_id_required = false
@@ -748,7 +758,7 @@ pub fn render_policy(cfg: &AllowConfig) -> String {
         render_array(&cfg.workspace.generated)
     ));
     out.push_str("[requirements]\n");
-    out.push_str(&format!("owner_required = {}\nreason_required = {}\nclassification_required = {}\nexpires_or_review_after_required = {}\nallow_bare_allow_attributes = {}\nlint_policy_id_required = {}\nstale_entries_fail = {}\n\n", cfg.requirements.owner_required, cfg.requirements.reason_required, cfg.requirements.classification_required, cfg.requirements.expires_or_review_after_required, cfg.requirements.allow_bare_allow_attributes, cfg.requirements.lint_policy_id_required, cfg.requirements.stale_entries_fail));
+    out.push_str(&format!("owner_required = {}\nreason_required = {}\nclassification_required = {}\nevidence_required = {}\nexpires_or_review_after_required = {}\nallow_bare_allow_attributes = {}\nlint_policy_id_required = {}\nstale_entries_fail = {}\n\n", cfg.requirements.owner_required, cfg.requirements.reason_required, cfg.requirements.classification_required, cfg.requirements.evidence_required, cfg.requirements.expires_or_review_after_required, cfg.requirements.allow_bare_allow_attributes, cfg.requirements.lint_policy_id_required, cfg.requirements.stale_entries_fail));
     out.push_str("[requirements.unsafe]\n");
     out.push_str(&format!(
         "evidence_required = {}\nsafety_comment_required = {}\n",
@@ -958,6 +968,70 @@ mod tests {
         .unwrap_or_else(|err| std::panic::panic_any(format!("policy should parse: {err}")));
 
         assert!(cfg.requirements.unsafe_safety_comment_required);
+    }
+
+    #[test]
+    fn parses_general_evidence_requirement() {
+        let cfg = parse_policy(
+            r#"
+                policy = "cargo-allow"
+
+                [requirements]
+                evidence_required = true
+            "#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy should parse: {err}")));
+
+        assert!(cfg.requirements.evidence_required);
+    }
+
+    #[test]
+    fn rejects_missing_general_evidence_when_required() {
+        let err = parse_err(
+            r#"
+                policy = "cargo-allow"
+
+                [requirements]
+                evidence_required = true
+
+                [[allow]]
+                id = "allow-panic"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+        );
+
+        assert!(err.contains("allow-panic missing evidence"));
+    }
+
+    #[test]
+    fn keeps_unsafe_evidence_requirement_specific() {
+        let err = parse_err(
+            r#"
+                policy = "cargo-allow"
+
+                [[allow]]
+                id = "allow-unsafe"
+                kind = "unsafe"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "unsafe_block"
+                container = "load"
+            "#,
+        );
+
+        assert!(err.contains("allow-unsafe unsafe entry missing evidence"));
     }
 
     #[test]
@@ -1366,6 +1440,18 @@ mod tests {
                 .and_then(|entry| entry.occurrence_limit),
             Some(3)
         );
+    }
+
+    #[test]
+    fn renders_and_parses_general_evidence_requirement() {
+        let mut cfg = AllowConfig::empty();
+        cfg.requirements.evidence_required = true;
+
+        let rendered = render_policy(&cfg);
+        assert!(rendered.contains("evidence_required = true"));
+        let reparsed = parse_policy(&rendered)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("rendered policy parses: {err}")));
+        assert!(reparsed.requirements.evidence_required);
     }
 
     #[test]
