@@ -171,5 +171,11 @@ pub(crate) fn sample_explain_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
+#[path = "explain_artifact_tests.rs"]
+mod artifact_tests;
+#[cfg(test)]
+#[path = "explain_test_support.rs"]
+mod test_support;
+#[cfg(test)]
 #[path = "explain_tests.rs"]
 mod tests;

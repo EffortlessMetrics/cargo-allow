@@ -1,6 +1,7 @@
+use super::test_support::{test_entry, test_finding};
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand};
-use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, Span, StructuralIdentity};
+use allow_core::FindingKind;
 use clap::Parser;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -64,58 +65,6 @@ fn explain_entry_text_reports_live_match_status() {
     assert!(text.contains("source_package=fixture-package"));
     assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
     assert!(text.contains("did not invoke Cargo metadata"));
-}
-
-#[test]
-fn explain_entry_json_records_context_and_live_status() {
-    let mut cfg = AllowConfig::empty();
-    let mut entry = test_entry("allow-json", FindingKind::NonRustFile);
-    entry.family = Some("documentation".to_string());
-    entry.evidence = vec!["test:explain_fixture".to_string()];
-    entry.lifecycle.created = Some("2026-05-27".to_string());
-    entry.lifecycle.review_after = Some("2026-11-01".to_string());
-    cfg.allow.push(entry.clone());
-    let mut finding = test_finding(
-        FindingKind::NonRustFile,
-        Some("documentation"),
-        "tracked.file",
-        "tracked_file",
-    );
-    finding.identity.crate_name = Some("allow-core".to_string());
-
-    let json = explain_entry_json(
-        Path::new("."),
-        &cfg,
-        &entry,
-        &[finding],
-        ExplainContext {
-            inventory_source: "git_tracked",
-            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
-            inventory_files: Some(47),
-        },
-    );
-
-    assert!(json.contains("\"schema_version\": 1"));
-    assert!(json.contains(&format!(
-        "\"schema_id\": \"{}\"",
-        allow_report::EXPLAIN_SCHEMA_ID
-    )));
-    assert!(json.contains("\"command\": \"explain\""));
-    assert!(json.contains("\"claim_boundary\""));
-    assert!(json.contains("\"scanner_limitations\""));
-    assert!(json.contains("\"cargo_metadata_not_invoked\""));
-    assert!(json.contains("\"repository_code_not_executed\""));
-    assert!(json.contains("\"source\": \"git_tracked\""));
-    assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
-    assert!(json.contains("\"files_scanned\": 47"));
-    assert!(json.contains("\"id\": \"allow-json\""));
-    assert!(json.contains("\"current_status\": \"matched\""));
-    assert!(json.contains("\"current_matches\": 1"));
-    assert!(json.contains("\"path\": \"tracked.file\""));
-    assert!(json.contains("\"source_package\": \"allow-core\""));
-    assert!(json.contains("\"status\": \"traceability_only\""));
-    assert!(json.contains("\"suggested_actions\": []"));
-    assert!(json.contains("\"proof_commands\": []"));
 }
 
 #[test]
@@ -211,23 +160,6 @@ fn explain_entry_text_reports_occurrence_limit_exceeded() {
     assert!(text.contains("occurrence_limit exceeded"));
 }
 
-#[test]
-fn explain_schema_documents_current_contract() {
-    let schema = include_str!("../../../docs/schemas/explain.schema.json");
-
-    assert!(schema.contains(allow_report::EXPLAIN_SCHEMA_ID));
-    assert!(schema.contains("\"allow_entry\""));
-    assert!(schema.contains("\"evidence_references\""));
-    assert!(schema.contains("\"current_findings\""));
-    assert!(schema.contains("\"match_outcomes\""));
-    assert!(schema.contains("\"next\""));
-    assert!(schema.contains("\"scanner_limitations\""));
-    assert!(schema.contains("\"scanner_limitation\""));
-    assert!(schema.contains("\"source_package\""));
-    assert!(schema.contains("\"cargo_metadata_not_invoked\""));
-    assert!(schema.contains("\"repository_code_not_executed\""));
-}
-
 static NEXT_EXPLAIN_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
 fn migrate_fixture_dir() -> PathBuf {
@@ -243,37 +175,4 @@ fn migrate_fixture_dir() -> PathBuf {
     fs::create_dir_all(&dir)
         .unwrap_or_else(|err| std::panic::panic_any(format!("fixture dir: {err}")));
     dir
-}
-
-fn test_entry(id: &str, kind: FindingKind) -> AllowEntry {
-    AllowEntry {
-        id: id.to_string(),
-        kind,
-        family: None,
-        path: Some(PathBuf::from("tracked.file")),
-        glob: None,
-        owner: "owner".to_string(),
-        classification: "classification".to_string(),
-        reason: "reason".to_string(),
-        evidence: Vec::new(),
-        links: Vec::new(),
-        occurrence_limit: None,
-        lifecycle: Lifecycle::empty(),
-        selector: Selector {
-            ast_kind: Some("tracked_file".to_string()),
-            ..Selector::default()
-        },
-        last_seen: None,
-    }
-}
-
-fn test_finding(kind: FindingKind, family: Option<&str>, path: &str, ast_kind: &str) -> Finding {
-    Finding {
-        kind,
-        family: family.map(str::to_string),
-        path: PathBuf::from(path),
-        span: Some(Span { line: 1, column: 1 }),
-        identity: StructuralIdentity::new("file", ast_kind),
-        message: "test finding".to_string(),
-    }
 }
