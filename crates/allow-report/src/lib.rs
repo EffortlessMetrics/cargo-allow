@@ -611,6 +611,33 @@ pub fn render_list_json(
     out
 }
 
+pub fn render_list_human(rows: &[ListRow<'_>]) -> String {
+    let mut out = String::new();
+    out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\tevidence_count\treview_after\texpires\treason\n");
+    for row in rows {
+        out.push_str(&format!(
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+            row.id,
+            row.status,
+            row.matches,
+            row.kind,
+            row.family.unwrap_or("-"),
+            empty_as_dash(row.owner),
+            empty_as_dash(row.classification),
+            row.scope,
+            row.source_package.unwrap_or("-"),
+            row.evidence_count,
+            row.review_after.unwrap_or("-"),
+            row.expires.unwrap_or("-"),
+            row.reason
+        ));
+    }
+    if rows.is_empty() {
+        out.push_str("(no allow entries matched filters)\n");
+    }
+    out
+}
+
 pub fn render_worklist_json(
     items: &[WorklistItem<'_>],
     filters: WorklistFilters<'_>,
@@ -1394,6 +1421,10 @@ fn worklist_difficulty_count(items: &[WorklistItem<'_>], difficulty: &str) -> us
         .count()
 }
 
+fn empty_as_dash(value: &str) -> &str {
+    if value.trim().is_empty() { "-" } else { value }
+}
+
 fn render_list_row_json(row: &ListRow<'_>) -> String {
     let mut out = String::new();
     out.push_str("    {\n");
@@ -2143,6 +2174,13 @@ mod tests {
         assert!(json.contains("\"source_package\": \"parser\""));
         assert!(json.contains("\"review_after\": \"2026-07-01\""));
         assert!(json.contains("\"expires\": null"));
+
+        let text = render_list_human(&rows);
+
+        assert!(text.starts_with("id\tstatus\tmatches\tkind\tfamily"));
+        assert!(text.contains(
+            "allow-json\tbaseline_debt\t1\tpanic\tunwrap\tparser\tbaseline_debt\tcrates/parser/src/lib.rs\tparser\t2\t2026-07-01\t-\tgenerated baseline"
+        ));
     }
 
     #[test]

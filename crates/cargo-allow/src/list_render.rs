@@ -3,32 +3,7 @@ use crate::{scope_has_wildcard, source_syntax_inventory_context, source_tree_pat
 use allow_core::MatchStatus;
 
 pub(super) fn render_list_rows(rows: &[ListRow], filters: &ListFilters<'_>) -> String {
-    let mut out = String::new();
-    out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\tevidence_count\treview_after\texpires\treason\n");
-    let mut count = 0;
-    for row in rows.iter().filter(|row| list_row_matches(row, filters)) {
-        count += 1;
-        out.push_str(&format!(
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
-            row.id,
-            row.status.as_str(),
-            row.matches,
-            row.kind,
-            row.family.as_deref().unwrap_or("-"),
-            empty_as_dash(&row.owner),
-            empty_as_dash(&row.classification),
-            row.scope,
-            row.source_package.as_deref().unwrap_or("-"),
-            row.evidence_count,
-            row.review_after,
-            row.expires,
-            row.reason
-        ));
-    }
-    if count == 0 {
-        out.push_str("(no allow entries matched filters)\n");
-    }
-    out
+    allow_report::render_list_human(&report_list_rows(rows, filters))
 }
 
 pub(super) fn render_list_rows_json(
@@ -36,28 +11,7 @@ pub(super) fn render_list_rows_json(
     filters: &ListFilters<'_>,
     context: ListContext<'_>,
 ) -> String {
-    let filtered = rows
-        .iter()
-        .filter(|row| list_row_matches(row, filters))
-        .collect::<Vec<_>>();
-    let report_rows = filtered
-        .iter()
-        .map(|row| allow_report::ListRow {
-            id: &row.id,
-            status: row.status.as_str(),
-            matches: row.matches,
-            kind: row.kind.as_str(),
-            family: row.family.as_deref(),
-            owner: &row.owner,
-            classification: &row.classification,
-            scope: &row.scope,
-            source_package: row.source_package.as_deref(),
-            evidence_count: row.evidence_count,
-            review_after: dash_as_none(&row.review_after),
-            expires: dash_as_none(&row.expires),
-            reason: &row.reason,
-        })
-        .collect::<Vec<_>>();
+    let report_rows = report_list_rows(rows, filters);
     allow_report::render_list_json(
         &report_rows,
         allow_report::ListFilters {
@@ -81,6 +35,30 @@ pub(super) fn render_list_rows_json(
             context.inventory_files,
         ),
     )
+}
+
+fn report_list_rows<'a>(
+    rows: &'a [ListRow],
+    filters: &ListFilters<'_>,
+) -> Vec<allow_report::ListRow<'a>> {
+    rows.iter()
+        .filter(|row| list_row_matches(row, filters))
+        .map(|row| allow_report::ListRow {
+            id: &row.id,
+            status: row.status.as_str(),
+            matches: row.matches,
+            kind: row.kind.as_str(),
+            family: row.family.as_deref(),
+            owner: &row.owner,
+            classification: &row.classification,
+            scope: &row.scope,
+            source_package: row.source_package.as_deref(),
+            evidence_count: row.evidence_count,
+            review_after: dash_as_none(&row.review_after),
+            expires: dash_as_none(&row.expires),
+            reason: &row.reason,
+        })
+        .collect()
 }
 
 fn dash_as_none(value: &str) -> Option<&str> {
@@ -142,8 +120,4 @@ fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
         return false;
     }
     true
-}
-
-fn empty_as_dash(value: &str) -> &str {
-    if value.trim().is_empty() { "-" } else { value }
 }
