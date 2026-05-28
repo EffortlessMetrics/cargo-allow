@@ -185,5 +185,11 @@ pub(crate) fn sample_add_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
+#[path = "add_artifact_tests.rs"]
+mod artifact_tests;
+#[cfg(test)]
+#[path = "add_test_support.rs"]
+mod test_support;
+#[cfg(test)]
 #[path = "add_tests.rs"]
 mod tests;
