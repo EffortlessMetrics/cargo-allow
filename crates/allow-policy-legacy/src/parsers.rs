@@ -1,6 +1,5 @@
 pub(crate) use crate::parser_clippy_entries::parse_clippy_rules;
 pub(crate) use crate::parser_dependency_entries::parse_dependency_surface_rules;
-pub(crate) use crate::parser_exception_entries::parse_unsafe_rules;
 pub(crate) use crate::parser_executable_entries::parse_executable_rules;
 pub(crate) use crate::parser_panic_entries::{
     parse_no_panic_allowlist_entries, parse_no_panic_baseline_entries,
@@ -8,4 +7,5 @@ pub(crate) use crate::parser_panic_entries::{
 pub(crate) use crate::parser_process_network_entries::{parse_network_rules, parse_process_rules};
 pub(crate) use crate::parser_source_entries::{parse_generated_rules, parse_non_rust_rules};
 pub(crate) use crate::parser_support::is_clippy_exceptions_policy;
+pub(crate) use crate::parser_unsafe_entries::parse_unsafe_rules;
 pub(crate) use crate::parser_workflow_entries::parse_workflow_rules;
