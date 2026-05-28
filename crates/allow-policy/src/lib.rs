@@ -43,4 +43,6 @@ pub fn parse_policy(input: &str) -> CargoAllowResult<AllowConfig> {
 }
 
 #[cfg(test)]
+mod render_tests;
+#[cfg(test)]
 mod tests;
