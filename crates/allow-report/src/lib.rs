@@ -17,6 +17,8 @@ mod list;
 #[cfg(test)]
 mod list_tests;
 mod migrate;
+#[cfg(test)]
+mod migrate_tests;
 mod non_rust;
 mod propose;
 #[cfg(test)]
