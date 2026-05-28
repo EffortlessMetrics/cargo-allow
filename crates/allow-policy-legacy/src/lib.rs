@@ -12,6 +12,7 @@ mod finding_workflow;
 mod findings;
 mod io;
 mod loader_compat;
+mod loader_source_compat;
 mod loaders;
 mod parser_policy_entries;
 mod parser_source_entries;
