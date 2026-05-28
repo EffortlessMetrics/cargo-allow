@@ -1,19 +1,8 @@
+pub(crate) use crate::types_executable_entries::LegacyExecutableRule;
 pub(crate) use crate::types_lint_entries::LegacyClippyRule;
 pub(crate) use crate::types_panic_entries::{LegacyNoPanicAllowEntry, LegacyNoPanicBaselineEntry};
 pub(crate) use crate::types_source_entries::{LegacyGeneratedRule, LegacyNonRustRule};
 pub(crate) use crate::types_unsafe_entries::LegacyUnsafeRule;
-
-#[derive(Debug, Clone)]
-pub(crate) struct LegacyExecutableRule {
-    pub(crate) id: String,
-    pub(crate) path: String,
-    pub(crate) owner: String,
-    pub(crate) reason: String,
-    pub(crate) interpreter: Option<String>,
-    pub(crate) created: Option<String>,
-    pub(crate) review_after: Option<String>,
-    pub(crate) expires: Option<String>,
-}
 
 #[derive(Debug, Clone)]
 pub(crate) struct LegacyWorkflowRule {
