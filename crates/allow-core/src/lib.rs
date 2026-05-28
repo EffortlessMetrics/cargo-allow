@@ -5,37 +5,16 @@ use std::str::FromStr;
 pub const STRUCTURAL_IDENTITY_SCHEMA_ID: &str = "cargo-allow.structural-identity.v1";
 
 mod date;
+mod error;
 mod fingerprint;
 mod source_tree_path;
 pub use date::SimpleDate;
+pub use error::{CargoAllowError, CargoAllowResult};
 pub use fingerprint::{maybe_line_distance_score, normalize_snippet, stable_hash_hex};
 pub use source_tree_path::{
     glob_matches, glob_matches_str, normalize_path, source_tree_path_matches_filter,
     source_tree_scope_has_wildcard,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CargoAllowError {
-    message: String,
-}
-
-impl CargoAllowError {
-    pub fn new(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-        }
-    }
-}
-
-impl fmt::Display for CargoAllowError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl std::error::Error for CargoAllowError {}
-
-pub type CargoAllowResult<T> = Result<T, CargoAllowError>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Span {
