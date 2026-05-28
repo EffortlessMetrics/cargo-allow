@@ -1,6 +1,6 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, LastSeen,
-    Lifecycle, Requirements, Selector, SimpleDate, WorkspaceConfig, glob_matches, normalize_path,
+    Lifecycle, Requirements, Selector, SimpleDate, WorkspaceConfig, normalize_path,
     normalize_snippet, stable_hash_hex,
 };
 use allow_policy::{parse_policy, validate_policy};
@@ -10,6 +10,7 @@ use toml::Value;
 mod fields;
 mod findings;
 mod io;
+mod types;
 use fields::{
     legacy_evidence, optional_last_seen, optional_u32_field, raw_string_field, required_bool_field,
     required_string_array_field, required_string_field, string_array_field, string_field,
@@ -26,6 +27,11 @@ pub use findings::{
 };
 use findings::{file_fingerprint, workflow_action_symbol};
 use io::{legacy_table, read_policy};
+use types::{
+    LegacyClippyRule, LegacyDependencySurfaceRule, LegacyExecutableRule, LegacyGeneratedRule,
+    LegacyNetworkRule, LegacyNoPanicAllowEntry, LegacyNoPanicBaselineEntry, LegacyNonRustRule,
+    LegacyProcessRule, LegacyUnsafeRule, LegacyWorkflowRule,
+};
 
 const LEGACY_POLICY_FILES: &[&str] = &[
     "non-rust-allowlist.toml",
@@ -363,189 +369,6 @@ pub fn load_network_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<Al
 
 pub fn migration_notes() -> &'static str {
     "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, no-panic-allowlist, no-panic-baseline, clippy-exceptions, unsafe-allowlist, executable, workflow, dependency-surface, process, and network allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; no-panic allowlist migration maps retained source exceptions to structural panic receipts and treats last_seen as a hint only; no-panic baseline migration emits count-limited baseline_debt entries; clippy-exceptions compat maps retained lint suppression entries to source-syntax lint_exception receipts and uses cargo-allow's Rust source scanner for current findings; unsafe compat maps retained unsafe entries to source-syntax unsafe receipts and keeps missing evidence as temporary baseline_debt TODO evidence; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns; network compat validates retained network policy entries and does not scan source code or runtime traffic."
-}
-
-#[derive(Debug, Clone)]
-struct LegacyNonRustRule {
-    id: String,
-    pattern: String,
-    is_path: bool,
-    owner: String,
-    classification: String,
-    reason: String,
-    created: Option<String>,
-    review_after: Option<String>,
-    expires: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-struct LegacyGeneratedRule {
-    id: String,
-    path: String,
-    owner: String,
-    reason: String,
-    generator: Option<String>,
-    regenerate_command: Option<String>,
-    created: Option<String>,
-    expires: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-struct LegacyNoPanicBaselineEntry {
-    index: usize,
-    path: String,
-    family: String,
-    selector_kind: String,
-    selector_callee: String,
-    snippet: String,
-    count: u32,
-}
-
-#[derive(Debug, Clone)]
-struct LegacyNoPanicAllowEntry {
-    index: usize,
-    id: String,
-    path: String,
-    family: String,
-    selector_kind: String,
-    selector_callee: Option<String>,
-    selector_container: Option<String>,
-    owner: String,
-    classification: String,
-    reason: String,
-    created: Option<String>,
-    review_after: Option<String>,
-    expires: Option<String>,
-    line_hint: Option<u32>,
-    last_seen: Option<LastSeen>,
-}
-
-#[derive(Debug, Clone)]
-struct LegacyClippyRule {
-    id: String,
-    path: String,
-    lint: String,
-    family: String,
-    owner: String,
-    classification: String,
-    reason: String,
-    symbol: Option<String>,
-    target_fingerprint: Option<String>,
-    created: Option<String>,
-    review_after: Option<String>,
-    expires: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-struct LegacyUnsafeRule {
-    id: String,
-    path: String,
-    family: String,
-    selector_kind: String,
-    selector_container: Option<String>,
-    owner: String,
-    classification: String,
-    reason: String,
-    evidence: Vec<String>,
-    created: Option<String>,
-    review_after: Option<String>,
-    expires: Option<String>,
-    line_hint: Option<u32>,
-    last_seen: Option<LastSeen>,
-}
-
-#[derive(Debug, Clone)]
-struct LegacyExecutableRule {
-    id: String,
-    path: String,
-    owner: String,
-    reason: String,
-    interpreter: Option<String>,
-    created: Option<String>,
-    review_after: Option<String>,
-    expires: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-struct LegacyWorkflowRule {
-    path: String,
-    owner: String,
-    reason: String,
-    permissions: Vec<String>,
-    secrets_used: Vec<String>,
-    external_actions: Vec<String>,
-    duplicate_of_lane: Option<String>,
-    created: Option<String>,
-    review_after: Option<String>,
-    expires: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-struct LegacyDependencySurfaceRule {
-    id: String,
-    pattern: String,
-    is_glob: bool,
-    surface: String,
-    owner: String,
-    reason: String,
-    broad_glob_reason: Option<String>,
-    dep_count_at_baseline: Option<i64>,
-    created: Option<String>,
-    review_after: Option<String>,
-    expires: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-struct LegacyProcessRule {
-    id: String,
-    binary: String,
-    argv_shape: Vec<String>,
-    network_reach: bool,
-    called_by: Vec<String>,
-    owner: String,
-    reason: String,
-    created: Option<String>,
-    review_after: Option<String>,
-    expires: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-struct LegacyNetworkRule {
-    id: String,
-    destination: String,
-    auth_required: bool,
-    auth_secret: Option<String>,
-    lane: String,
-    owner: String,
-    reason: String,
-    created: Option<String>,
-    review_after: Option<String>,
-    expires: Option<String>,
-}
-
-impl LegacyNonRustRule {
-    fn matches(&self, finding: &Finding) -> bool {
-        if !matches!(
-            finding.kind,
-            FindingKind::NonRustFile | FindingKind::GeneratedCode
-        ) {
-            return false;
-        }
-        if self.is_path {
-            normalize_path(&self.pattern) == normalize_path(&finding.path)
-        } else {
-            glob_matches(&self.pattern, &finding.path)
-        }
-    }
-
-    fn specificity(&self) -> usize {
-        let literal_chars = self
-            .pattern
-            .chars()
-            .filter(|ch| !matches!(ch, '*' | '?' | '[' | ']' | '{' | '}' | ',' | '!'))
-            .count();
-        literal_chars + if self.is_path { 10_000 } else { 0 }
-    }
 }
 
 fn parse_non_rust_rules(table: &toml::Table) -> CargoAllowResult<Vec<LegacyNonRustRule>> {
