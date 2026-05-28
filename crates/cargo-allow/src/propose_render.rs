@@ -1,8 +1,6 @@
 use super::ProposeContext;
 use std::path::Path;
 
-use crate::source_syntax_inventory_context;
-
 pub(super) fn render_propose_summary(
     findings: usize,
     proposed_entries: usize,
@@ -53,7 +51,7 @@ fn propose_report<'a>(
     context: ProposeContext<'a>,
 ) -> allow_report::ProposeReport<'a> {
     allow_report::ProposeReport {
-        inventory: source_syntax_inventory_context(
+        inventory: allow_report::InventoryContext::source_syntax(
             context.inventory_source,
             context.source_tree_root,
             context.inventory_files,

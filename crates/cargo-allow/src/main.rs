@@ -42,7 +42,6 @@ pub(crate) use policy_config::{
 };
 pub(crate) use reporting::{
     ReportRenderArgs, policy_baseline_debt_entries, print_report, report_config,
-    source_syntax_inventory_context, source_syntax_report_context,
 };
 pub(crate) use selector::selector_from_finding;
 pub(crate) use source_tree::{

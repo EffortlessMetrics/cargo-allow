@@ -1,5 +1,5 @@
 use super::ExplainContext;
-use crate::{source_syntax_inventory_context, worklist};
+use crate::worklist;
 use allow_core::{AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path};
 use allow_policy::evidence_reference_diagnostics;
 use std::path::Path;
@@ -64,7 +64,7 @@ fn render_explain_report<R>(
         .collect::<Vec<_>>();
 
     render(allow_report::ExplainReport {
-        inventory: source_syntax_inventory_context(
+        inventory: allow_report::InventoryContext::source_syntax(
             context.inventory_source,
             context.source_tree_root,
             context.inventory_files,
