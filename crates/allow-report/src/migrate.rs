@@ -1,0 +1,74 @@
+use crate::json::{bool_json, push_json_artifact_header, push_json_artifact_source_context};
+use crate::{MIGRATE_SCHEMA_ID, MIGRATE_SCHEMA_VERSION, MigrateReport};
+use allow_core::json_escape;
+
+pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("cargo-allow migrate summary\n");
+    out.push_str(&format!("input_kind: {}\n", report.input_kind));
+    out.push_str(&format!("input: {}\n", report.input_path));
+    out.push_str(&format!("output: {}\n", report.output_path));
+    out.push_str(&format!("force: {}\n", report.force));
+    out.push_str(&format!("allow_entries: {}\n", report.allow_entries));
+    out.push_str(&format!("baseline_debt: {}\n", report.baseline_debt));
+    out.push_str(&format!("unsafe_entries: {}\n", report.unsafe_entries));
+    if let Some(root) = report.inventory.root {
+        out.push_str(&format!("source_tree_root: {root}\n"));
+    }
+    out.push_str(&format!("inventory_source: {}\n", report.inventory.source));
+    if let Some(files) = report.inventory.files_scanned {
+        out.push_str(&format!("files_scanned: {files}\n"));
+    }
+    out.push_str(report.notes);
+    out
+}
+
+pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    push_json_artifact_header(
+        &mut out,
+        MIGRATE_SCHEMA_VERSION,
+        MIGRATE_SCHEMA_ID,
+        "migrate",
+    );
+    push_json_artifact_source_context(&mut out, report.inventory);
+    out.push_str("  \"input\": {\n");
+    out.push_str(&format!(
+        "    \"kind\": \"{}\",\n",
+        json_escape(report.input_kind)
+    ));
+    out.push_str(&format!(
+        "    \"path\": \"{}\"\n",
+        json_escape(report.input_path)
+    ));
+    out.push_str("  },\n");
+    out.push_str("  \"output\": {\n");
+    out.push_str(&format!(
+        "    \"path\": \"{}\",\n",
+        json_escape(report.output_path)
+    ));
+    out.push_str(&format!("    \"force\": {}\n", bool_json(report.force)));
+    out.push_str("  },\n");
+    out.push_str("  \"summary\": {\n");
+    out.push_str(&format!(
+        "    \"allow_entries\": {},\n",
+        report.allow_entries
+    ));
+    out.push_str(&format!(
+        "    \"baseline_debt\": {},\n",
+        report.baseline_debt
+    ));
+    out.push_str(&format!(
+        "    \"unsafe_entries\": {},\n",
+        report.unsafe_entries
+    ));
+    out.push_str(&format!(
+        "    \"entries_with_evidence\": {}\n",
+        report.entries_with_evidence
+    ));
+    out.push_str("  },\n");
+    out.push_str(&format!("  \"notes\": \"{}\"\n", json_escape(report.notes)));
+    out.push_str("}\n");
+    out
+}
