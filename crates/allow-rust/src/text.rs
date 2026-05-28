@@ -68,3 +68,16 @@ pub(crate) fn index_symbol(line: &str) -> String {
     let norm = normalize_snippet(line);
     norm.chars().take(100).collect()
 }
+
+pub(crate) fn index_target_fingerprint(line: &str) -> Option<String> {
+    line.split('[').next().map(|s| {
+        normalize_snippet(s)
+            .chars()
+            .rev()
+            .take(40)
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect()
+    })
+}

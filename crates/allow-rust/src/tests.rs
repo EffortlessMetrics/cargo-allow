@@ -1,7 +1,7 @@
 use allow_core::FindingKind;
 
 use crate::package::{source_package_for_path, source_package_name};
-use crate::text::index_symbol;
+use crate::text::{index_symbol, index_target_fingerprint};
 
 use super::*;
 
@@ -632,6 +632,14 @@ fn index_symbol_truncates_on_character_boundaries() {
     let line = format!("let actual = values[{}];", "\u{00e9}".repeat(120));
 
     assert_eq!(index_symbol(&line).chars().count(), 100);
+}
+
+#[test]
+fn index_target_fingerprint_truncates_on_character_boundaries() {
+    let line = format!("let actual = {}[0];", "\u{00e9}".repeat(60));
+    let fingerprint = index_target_fingerprint(&line);
+
+    assert_eq!(fingerprint.as_ref().map(|s| s.chars().count()), Some(40));
 }
 
 #[test]

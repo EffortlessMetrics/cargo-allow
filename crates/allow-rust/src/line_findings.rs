@@ -1,12 +1,12 @@
-use allow_core::{Finding, FindingKind, normalize_snippet};
+use allow_core::{Finding, FindingKind};
 use std::path::Path;
 
 use crate::finding_builder::{FindingSite, push_finding};
 use crate::line_facts::SyntaxLineFacts;
 use crate::syntax_kinds::LintAttributeKind;
 use crate::text::{
-    attribute_column, column, detect_attr, extract_first_lint, index_symbol, lint_policy_reference,
-    receiver_before_method_column,
+    attribute_column, column, detect_attr, extract_first_lint, index_symbol,
+    index_target_fingerprint, lint_policy_reference, receiver_before_method_column,
 };
 
 pub(crate) fn scan_line(
@@ -158,16 +158,7 @@ pub(crate) fn scan_line(
             "index_expr",
             |id| {
                 id.symbol = Some(index_symbol(line));
-                id.target_fingerprint = line.split('[').next().map(|s| {
-                    normalize_snippet(s)
-                        .chars()
-                        .rev()
-                        .take(40)
-                        .collect::<String>()
-                        .chars()
-                        .rev()
-                        .collect()
-                });
+                id.target_fingerprint = index_target_fingerprint(line);
             },
             findings,
         );
