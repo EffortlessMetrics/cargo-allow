@@ -40,6 +40,7 @@ mod types_lint_entries;
 mod types_panic_entries;
 mod types_source_entries;
 mod types_unsafe_entries;
+mod types_workflow_entries;
 
 pub use findings::{
     dependency_surface_findings_from_git, executable_findings_from_git,
