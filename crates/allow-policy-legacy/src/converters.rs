@@ -1,8 +1,8 @@
 use allow_core::{AllowConfig, CargoAllowResult, Finding, Requirements, WorkspaceConfig};
 use allow_policy::validate_policy;
 
+use crate::converter_clippy_entries::entry_from_clippy_rule;
 use crate::converter_dependency_entries::entry_from_dependency_surface_rule;
-use crate::converter_exception_entries::{entry_from_clippy_rule, entry_from_unsafe_rule};
 use crate::converter_executable_entries::entry_from_executable_rule;
 use crate::converter_file_entries::{
     entry_from_finding, entry_from_generated_rule, entry_from_rule,
@@ -12,6 +12,7 @@ use crate::converter_panic_entries::{
 };
 use crate::converter_process_network_entries::{entry_from_network_rule, entry_from_process_rule};
 use crate::converter_support::best_rule_index;
+use crate::converter_unsafe_entries::entry_from_unsafe_rule;
 use crate::converter_workflow_entries::entries_from_workflow_rule;
 use crate::fields::string_field;
 use crate::types::{
