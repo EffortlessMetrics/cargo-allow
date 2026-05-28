@@ -1,99 +1,28 @@
 use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
-use clap::{Parser, ValueEnum};
-use std::path::PathBuf;
 
-use crate::{RootArgs, SourceTreeReportContext, load_world, parse_kind_filter, write_file};
+use crate::{SourceTreeReportContext, load_world, write_file};
 
+#[path = "list_args.rs"]
+mod list_args;
 #[path = "list_render.rs"]
 mod list_render;
 #[path = "list_rows.rs"]
 mod list_rows;
 #[path = "list_types.rs"]
 mod list_types;
+pub(crate) use list_args::ListArgs;
+use list_args::{ListFormat, list_filters};
 use list_render::{render_list_rows, render_list_rows_json};
 use list_rows::list_rows;
 use list_types::{ListContext, ListFilters, ListRow};
 
 #[cfg(test)]
+use crate::parse_kind_filter;
+#[cfg(test)]
 use allow_core::{AllowConfig, AllowEntry, Finding, FindingKind, MatchOutcome, MatchStatus};
-
-#[derive(Debug, Clone, Parser)]
-pub(crate) struct ListArgs {
-    #[command(flatten)]
-    root: RootArgs,
-    /// Policy config path.
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Filter allow entries by kind.
-    #[arg(long)]
-    kind: Option<String>,
-    /// Filter allow entries by scanner or policy family.
-    #[arg(long)]
-    family: Option<String>,
-    /// Filter allow entries by owner.
-    #[arg(long)]
-    owner: Option<String>,
-    /// Filter allow entries by classification.
-    #[arg(long)]
-    classification: Option<String>,
-    /// Filter allow entries by source-tree path or path prefix.
-    #[arg(long)]
-    path: Option<String>,
-    /// Filter allow entries by scanner-provided source-tree package context.
-    #[arg(long)]
-    source_package: Option<String>,
-    /// Filter allow entries by current match status.
-    #[arg(
-        long,
-        value_parser = [
-            "matched",
-            "new",
-            "stale",
-            "expired",
-            "review_due",
-            "ambiguous",
-            "invalid_selector",
-            "missing_required_field",
-            "evidence_missing",
-            "baseline_debt"
-        ]
-    )]
-    status: Option<String>,
-    /// Include only expired allow entries.
-    #[arg(long)]
-    expired: bool,
-    /// Include only review-due allow entries.
-    #[arg(long)]
-    review_due: bool,
-    /// Include only stale allow entries.
-    #[arg(long)]
-    stale: bool,
-    /// Include only generated baseline debt entries.
-    #[arg(long)]
-    baseline_debt: bool,
-    /// Include only entries with wildcard source-tree scopes.
-    #[arg(long)]
-    broad_scope: bool,
-    /// Include only entries with no evidence references.
-    #[arg(long)]
-    missing_evidence: bool,
-    /// Output format.
-    #[arg(long, value_enum, default_value_t = ListFormat::Human)]
-    format: ListFormat,
-    /// Write list output to a file instead of stdout.
-    #[arg(long)]
-    output: Option<PathBuf>,
-    /// Include untracked files when determining current match status.
-    #[arg(long)]
-    include_untracked: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum ListFormat {
-    Human,
-    Json,
-}
+#[cfg(test)]
+use std::path::PathBuf;
 
 pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
     let (root, cfg, findings, inventory_facts) = load_world(
@@ -104,23 +33,8 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         args.include_untracked,
     )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
-    let parsed_filter = args.kind.as_deref().map(parse_kind_filter).transpose()?;
     let rows = list_rows(&cfg, &findings, &outcomes);
-    let filters = ListFilters {
-        kind: parsed_filter,
-        family: args.family.as_deref(),
-        owner: args.owner.as_deref(),
-        classification: args.classification.as_deref(),
-        path: args.path.as_deref(),
-        source_package: args.source_package.as_deref(),
-        status: args.status.as_deref(),
-        expired: args.expired,
-        review_due: args.review_due,
-        stale: args.stale,
-        baseline_debt: args.baseline_debt,
-        broad_scope: args.broad_scope,
-        missing_evidence: args.missing_evidence,
-    };
+    let filters = list_filters(args)?;
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = ListContext {
         inventory: source_context.inventory(),
