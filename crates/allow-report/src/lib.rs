@@ -6,6 +6,8 @@ mod artifacts;
 mod contracts;
 mod diff;
 mod doctor;
+#[cfg(test)]
+mod doctor_tests;
 mod explain;
 #[cfg(test)]
 mod explain_tests;
