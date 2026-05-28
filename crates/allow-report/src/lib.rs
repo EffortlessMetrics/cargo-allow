@@ -7,6 +7,10 @@ mod allow_entry_json_tests;
 mod artifacts;
 mod contracts;
 mod diff;
+mod diff_human;
+mod diff_json;
+mod diff_markdown;
+mod diff_posture;
 mod doctor;
 #[cfg(test)]
 mod doctor_tests;
