@@ -35,6 +35,8 @@ mod parser_clippy_entries;
 mod parser_dependency_entries;
 mod parser_executable_entries;
 mod parser_generated_entries;
+mod parser_no_panic_allowlist_entries;
+mod parser_no_panic_baseline_entries;
 mod parser_non_rust_entries;
 mod parser_panic_entries;
 mod parser_process_network_entries;
