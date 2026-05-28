@@ -10,6 +10,7 @@ mod diff;
 mod html;
 mod json;
 mod non_rust;
+mod prune;
 mod sarif;
 mod text;
 
@@ -36,6 +37,7 @@ pub use html::{render_html, render_html_with_context};
 pub use json::{
     render_claim_boundary_json, render_inventory_json, render_scanner_limitations_json,
 };
+pub use prune::{render_prune_human, render_prune_json};
 pub use sarif::{render_sarif, render_sarif_with_context};
 
 use json::{
@@ -579,49 +581,6 @@ fn source_package_name(finding: &Finding) -> Option<String> {
         .map(str::trim)
         .filter(|name| !name.is_empty())
         .map(ToOwned::to_owned)
-}
-
-pub fn render_prune_json(
-    candidates: &[PruneCandidate<'_>],
-    mode: PruneModeContext<'_>,
-    inventory: InventoryContext<'_>,
-) -> String {
-    let mut out = String::new();
-    out.push_str("{\n");
-    push_json_artifact_header(&mut out, PRUNE_SCHEMA_VERSION, PRUNE_SCHEMA_ID, "prune");
-    push_json_artifact_source_context(&mut out, inventory);
-    out.push_str("  \"mode\": {\n");
-    out.push_str(&format!(
-        "    \"dry_run\": {},\n",
-        bool_json(!mode.write_requested)
-    ));
-    out.push_str(&format!(
-        "    \"write_requested\": {},\n",
-        bool_json(mode.write_requested)
-    ));
-    out.push_str(&format!(
-        "    \"explicit_dry_run\": {},\n",
-        bool_json(mode.explicit_dry_run)
-    ));
-    out.push_str(&format!(
-        "    \"written_path\": {}\n",
-        option_json(mode.written_path)
-    ));
-    out.push_str("  },\n");
-    out.push_str(&format!(
-        "  \"summary\": {{\n    \"stale_entries\": {}\n  }},\n",
-        candidates.len()
-    ));
-    out.push_str("  \"stale_entries\": [\n");
-    for (index, candidate) in candidates.iter().enumerate() {
-        if index > 0 {
-            out.push_str(",\n");
-        }
-        out.push_str(&render_prune_candidate_json(candidate, "  "));
-    }
-    out.push_str("\n  ]\n");
-    out.push_str("}\n");
-    out
 }
 
 pub fn render_list_json(
@@ -1295,19 +1254,6 @@ fn render_list_filters_json(filters: ListFilters<'_>, indent: &str) -> String {
     out
 }
 
-fn render_prune_candidate_json(candidate: &PruneCandidate<'_>, indent: &str) -> String {
-    format!(
-        "{indent}  {{\n{indent}    \"id\": \"{}\",\n{indent}    \"kind\": \"{}\",\n{indent}    \"family\": {},\n{indent}    \"owner\": \"{}\",\n{indent}    \"classification\": \"{}\",\n{indent}    \"scope\": \"{}\",\n{indent}    \"reason\": \"{}\"\n{indent}  }}",
-        json_escape(candidate.id),
-        json_escape(candidate.kind),
-        option_json(candidate.family),
-        json_escape(candidate.owner),
-        json_escape(candidate.classification),
-        json_escape(candidate.scope),
-        json_escape(candidate.reason)
-    )
-}
-
 fn inventory_files_suffix(context: ReportContext<'_>) -> String {
     context
         .inventory_files
@@ -1856,6 +1802,35 @@ mod tests {
         assert!(json.contains("\"id\": \"allow-stale\""));
         assert!(json.contains("\"kind\": \"panic\""));
         assert!(json.contains("\"family\": \"unwrap\""));
+    }
+
+    #[test]
+    fn prune_human_renderer_records_mode_and_candidates() {
+        let candidates = vec![PruneCandidate {
+            id: "allow|stale",
+            kind: "panic",
+            family: Some("unwrap"),
+            owner: "parser",
+            classification: "baseline_debt",
+            scope: "crates/parser/src/lib.rs",
+            reason: "old | baseline entry",
+        }];
+
+        let text = render_prune_human(
+            &candidates,
+            PruneModeContext {
+                explicit_dry_run: true,
+                write_requested: false,
+                written_path: None,
+            },
+        );
+
+        assert!(text.contains("mode: dry-run"));
+        assert!(text.contains("requested: --dry-run"));
+        assert!(text.contains("stale entries: 1"));
+        assert!(text.contains("allow\\|stale"));
+        assert!(text.contains("old \\| baseline entry"));
+        assert!(text.contains("No files were changed"));
     }
 
     #[test]

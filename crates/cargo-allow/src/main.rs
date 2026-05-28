@@ -40,7 +40,7 @@ pub(crate) use policy_config::{
     root_relative_path,
 };
 pub(crate) use render::{
-    markdown_cell, scope_has_wildcard, selector_from_finding, source_package_name,
+    scope_has_wildcard, selector_from_finding, source_package_name,
     source_tree_path_matches_filter, source_tree_root_text,
 };
 pub(crate) use reporting::{
