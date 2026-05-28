@@ -1,12 +1,9 @@
-use allow_core::{AllowConfig, CargoAllowResult, Finding};
+use allow_core::{AllowConfig, CargoAllowResult};
 
 use crate::converter_clippy_entries::entry_from_clippy_rule;
 use crate::converter_config::config_from_entries;
 use crate::converter_dependency_entries::entry_from_dependency_surface_rule;
 use crate::converter_executable_entries::entry_from_executable_rule;
-use crate::converter_file_entries::{entry_from_finding, entry_from_rule};
-use crate::converter_file_support::best_rule_index;
-use crate::converter_generated_entries::entry_from_generated_rule;
 use crate::converter_panic_entries::{
     entry_from_no_panic_allow_entry, entry_from_no_panic_baseline_entry,
 };
@@ -14,24 +11,10 @@ use crate::converter_process_network_entries::{entry_from_network_rule, entry_fr
 use crate::converter_unsafe_entries::entry_from_unsafe_rule;
 use crate::converter_workflow_entries::entries_from_workflow_rule;
 use crate::types::{
-    LegacyClippyRule, LegacyDependencySurfaceRule, LegacyExecutableRule, LegacyGeneratedRule,
-    LegacyNetworkRule, LegacyNoPanicAllowEntry, LegacyNoPanicBaselineEntry, LegacyNonRustRule,
-    LegacyProcessRule, LegacyUnsafeRule, LegacyWorkflowRule,
+    LegacyClippyRule, LegacyDependencySurfaceRule, LegacyExecutableRule, LegacyNetworkRule,
+    LegacyNoPanicAllowEntry, LegacyNoPanicBaselineEntry, LegacyProcessRule, LegacyUnsafeRule,
+    LegacyWorkflowRule,
 };
-
-pub(crate) fn config_from_non_rust_rules(
-    table: &toml::Table,
-    rules: &[LegacyNonRustRule],
-) -> CargoAllowResult<AllowConfig> {
-    config_from_entries(table, rules.iter().map(entry_from_rule))
-}
-
-pub(crate) fn config_from_generated_rules(
-    table: &toml::Table,
-    rules: &[LegacyGeneratedRule],
-) -> CargoAllowResult<AllowConfig> {
-    config_from_entries(table, rules.iter().map(entry_from_generated_rule))
-}
 
 pub(crate) fn config_from_no_panic_baseline_entries(
     table: &toml::Table,
@@ -97,19 +80,4 @@ pub(crate) fn config_from_network_rules(
     rules: &[LegacyNetworkRule],
 ) -> CargoAllowResult<AllowConfig> {
     config_from_entries(table, rules.iter().map(entry_from_network_rule))
-}
-
-pub(crate) fn config_from_current_non_rust_findings(
-    table: &toml::Table,
-    rules: &[LegacyNonRustRule],
-    findings: &[Finding],
-) -> CargoAllowResult<AllowConfig> {
-    config_from_entries(
-        table,
-        findings.iter().enumerate().filter_map(|(index, finding)| {
-            best_rule_index(rules, finding)
-                .and_then(|rule_index| rules.get(rule_index))
-                .map(|rule| entry_from_finding(rule, finding, index + 1))
-        }),
-    )
 }

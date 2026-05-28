@@ -4,6 +4,7 @@ mod converter_clippy_entries;
 mod converter_config;
 mod converter_dependency_entries;
 mod converter_executable_entries;
+mod converter_file_configs;
 mod converter_file_entries;
 mod converter_file_support;
 mod converter_generated_entries;
