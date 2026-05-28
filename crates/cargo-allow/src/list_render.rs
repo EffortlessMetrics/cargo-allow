@@ -1,6 +1,5 @@
 use super::{ListContext, ListFilters, ListRow};
-use crate::{scope_has_wildcard, source_tree_path_matches_filter};
-use allow_core::MatchStatus;
+use allow_core::{MatchStatus, source_tree_path_matches_filter, source_tree_scope_has_wildcard};
 
 pub(super) fn render_list_rows(rows: &[ListRow], filters: &ListFilters<'_>) -> String {
     allow_report::render_list_human(&report_list_rows(rows, filters))
@@ -113,7 +112,7 @@ fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
     if filters.baseline_debt && row.classification != "baseline_debt" {
         return false;
     }
-    if filters.broad_scope && !scope_has_wildcard(&row.scope) {
+    if filters.broad_scope && !source_tree_scope_has_wildcard(&row.scope) {
         return false;
     }
     if filters.missing_evidence && row.evidence_count != 0 {

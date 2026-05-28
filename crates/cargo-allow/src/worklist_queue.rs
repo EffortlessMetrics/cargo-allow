@@ -1,6 +1,5 @@
 use super::{WorkItem, WorklistFilters};
-use crate::source_tree_path_matches_filter;
-use allow_core::MatchStatus;
+use allow_core::{MatchStatus, source_tree_path_matches_filter};
 
 pub(super) fn filter_work_items(
     items: Vec<WorkItem>,

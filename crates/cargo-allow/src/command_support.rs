@@ -18,5 +18,4 @@ pub(crate) use crate::reporting::{
     ReportRenderArgs, policy_baseline_debt_entries, print_report, report_config,
 };
 pub(crate) use crate::selector::selector_from_finding;
-pub(crate) use crate::source_tree::{scope_has_wildcard, source_tree_path_matches_filter};
 pub(crate) use crate::world::{load_world, load_world_with_evidence_validation};

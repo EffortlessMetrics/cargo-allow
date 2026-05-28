@@ -565,6 +565,27 @@ pub fn glob_matches_str(pattern: &str, path: &str) -> bool {
     glob_match_tokens(&split_glob(&p), &split_glob(path))
 }
 
+pub fn source_tree_path_matches_filter(item_path: &str, filter_path: &str) -> bool {
+    let item_path = normalize_path(item_path);
+    let filter_path = normalize_path(filter_path);
+    let filter_path = filter_path.trim_end_matches('/');
+    if filter_path.is_empty() || filter_path == "." {
+        return true;
+    }
+    item_path == filter_path
+        || item_path
+            .strip_prefix(filter_path)
+            .map(|suffix| suffix.starts_with('/'))
+            .unwrap_or(false)
+        || (source_tree_scope_has_wildcard(&item_path) && glob_matches_str(&item_path, filter_path))
+}
+
+pub fn source_tree_scope_has_wildcard(scope: &str) -> bool {
+    scope
+        .chars()
+        .any(|ch| matches!(ch, '*' | '?' | '[' | ']' | '{' | '}'))
+}
+
 fn split_glob(s: &str) -> Vec<&str> {
     s.split('/').filter(|part| !part.is_empty()).collect()
 }
@@ -636,6 +657,36 @@ mod tests {
             "scripts/*.sh",
             "scripts/release/build.sh"
         ));
+    }
+
+    #[test]
+    fn source_tree_path_filter_matches_exact_subtree_and_glob_scope() {
+        assert!(source_tree_path_matches_filter(
+            "crates/allow-core/src/lib.rs",
+            "crates/allow-core"
+        ));
+        assert!(!source_tree_path_matches_filter(
+            "crates/allow-core2/src/lib.rs",
+            "crates/allow-core"
+        ));
+        assert!(source_tree_path_matches_filter(
+            "scripts/**/*.sh",
+            "scripts/release/build.sh"
+        ));
+        assert!(source_tree_path_matches_filter("README.md", "."));
+    }
+
+    #[test]
+    fn source_tree_scope_wildcard_detection_covers_supported_glob_tokens() {
+        for scope in [
+            "scripts/*.sh",
+            "scripts/?.sh",
+            "scripts/[ab].sh",
+            "scripts/{a,b}.sh",
+        ] {
+            assert!(source_tree_scope_has_wildcard(scope));
+        }
+        assert!(!source_tree_scope_has_wildcard("scripts/release.sh"));
     }
 
     #[test]
