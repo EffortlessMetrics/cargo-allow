@@ -93,4 +93,6 @@ mod schema_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod text_tests;
+#[cfg(test)]
 mod worklist_tests;
