@@ -1,7 +1,6 @@
-use allow_core::{Finding, Lifecycle, normalize_path};
-use std::path::Path;
+use allow_core::{Finding, Lifecycle};
 
-use crate::types::{LegacyNetworkRule, LegacyNonRustRule, LegacyProcessRule, LegacyWorkflowRule};
+use crate::types::{LegacyNonRustRule, LegacyWorkflowRule};
 
 pub(crate) fn best_rule_index(rules: &[LegacyNonRustRule], finding: &Finding) -> Option<usize> {
     rules
@@ -10,37 +9,6 @@ pub(crate) fn best_rule_index(rules: &[LegacyNonRustRule], finding: &Finding) ->
         .filter(|(_, rule)| rule.matches(finding))
         .max_by_key(|(_, rule)| rule.specificity())
         .map(|(index, _)| index)
-}
-
-pub(crate) fn process_scope(rule: &LegacyProcessRule) -> String {
-    rule.called_by
-        .first()
-        .map(|path| normalize_path(Path::new(path)))
-        .unwrap_or_else(|| "policy/process-allowlist.toml".to_string())
-}
-
-pub(crate) fn process_symbol(rule: &LegacyProcessRule) -> String {
-    let args = rule.argv_shape.join(" ");
-    if args.is_empty() {
-        rule.binary.clone()
-    } else {
-        format!("{} {args}", rule.binary)
-    }
-}
-
-pub(crate) fn process_fingerprint(rule: &LegacyProcessRule) -> String {
-    format!("process:{}", process_symbol(rule))
-}
-
-pub(crate) fn network_symbol(rule: &LegacyNetworkRule) -> String {
-    format!("{} lane {}", rule.destination, rule.lane)
-}
-
-pub(crate) fn network_fingerprint(rule: &LegacyNetworkRule) -> String {
-    format!(
-        "network:{}:auth:{}:lane:{}",
-        rule.destination, rule.auth_required, rule.lane
-    )
 }
 
 pub(crate) fn lifecycle_from_rule(rule: &LegacyNonRustRule) -> Lifecycle {
