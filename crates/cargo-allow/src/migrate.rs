@@ -1,54 +1,28 @@
 use allow_core::{CargoAllowError, CargoAllowResult, normalize_path};
 use allow_policy::{render_policy, validate_policy};
-use clap::{Parser, ValueEnum};
-use std::path::PathBuf;
 
-use crate::{RootArgs, write_file, write_file_no_overwrite};
+use crate::{write_file, write_file_no_overwrite};
 
+#[path = "migrate_args.rs"]
+mod migrate_args;
 #[path = "migrate_load.rs"]
 mod migrate_load;
 #[path = "migrate_render.rs"]
 mod migrate_render;
 #[path = "migrate_types.rs"]
 mod migrate_types;
+pub(crate) use migrate_args::MigrateArgs;
+use migrate_args::MigrateSummaryFormat;
 use migrate_load::load_repo_policy_migration_config;
 use migrate_render::{render_migrate_summary, render_migrate_summary_json};
 use migrate_types::{MigrateContext, MigrationLoad};
 
 #[cfg(test)]
+use crate::RootArgs;
+#[cfg(test)]
 use allow_core::{AllowConfig, FindingKind};
 #[cfg(test)]
-use std::path::Path;
-
-#[derive(Debug, Clone, Parser)]
-pub(crate) struct MigrateArgs {
-    #[command(flatten)]
-    root: RootArgs,
-    /// Legacy or canonical policy file to migrate.
-    #[arg(long)]
-    from: Option<PathBuf>,
-    /// Directory containing compatible legacy policy files.
-    #[arg(long)]
-    repo_policy: Option<PathBuf>,
-    /// Output canonical policy path.
-    #[arg(long, default_value = "policy/allow.toml")]
-    out: PathBuf,
-    /// Overwrite an existing output policy file.
-    #[arg(long)]
-    force: bool,
-    /// Summary output format. Policy output remains TOML.
-    #[arg(long, value_enum, default_value_t = MigrateSummaryFormat::Human)]
-    summary_format: MigrateSummaryFormat,
-    /// Write migration summary to a file instead of stderr.
-    #[arg(long)]
-    summary_output: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum MigrateSummaryFormat {
-    Human,
-    Json,
-}
+use std::path::{Path, PathBuf};
 
 pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
     let migration = match (&args.from, &args.repo_policy) {
