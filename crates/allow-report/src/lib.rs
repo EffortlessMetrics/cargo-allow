@@ -46,6 +46,9 @@ mod sarif_tests;
 mod summary;
 mod text;
 mod worklist;
+mod worklist_human;
+mod worklist_json;
+mod worklist_summary;
 
 pub use add::{render_add_human, render_add_json};
 pub use allow_entry_json::{render_allow_entry_json, render_last_seen_json, render_selector_json};
