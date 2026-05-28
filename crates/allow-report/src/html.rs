@@ -2,8 +2,8 @@ use allow_core::{Finding, MatchOutcome, MatchStatus};
 
 use crate::text::html_escape;
 use crate::{
-    CLAIM_BOUNDARY_TEXT, FilePosture, ReportContext, Summary, audit_review_queue,
-    baseline_debt_count, non_rust_file_rows, review_item_count_with_baseline,
+    CLAIM_BOUNDARY_TEXT, FilePosture, ReportContext, STATUS_COUNT_ORDER, Summary,
+    audit_review_queue, baseline_debt_count, non_rust_file_rows, review_item_count_with_baseline,
 };
 
 pub fn render_html(
@@ -77,18 +77,7 @@ pub fn render_html_with_context(
 
 fn render_status_count_table_html(summary: &Summary, out: &mut String) {
     out.push_str("<table><thead><tr><th>Status</th><th>Count</th></tr></thead><tbody>\n");
-    for status in [
-        MatchStatus::Matched,
-        MatchStatus::New,
-        MatchStatus::Expired,
-        MatchStatus::ReviewDue,
-        MatchStatus::Stale,
-        MatchStatus::Ambiguous,
-        MatchStatus::InvalidSelector,
-        MatchStatus::EvidenceMissing,
-        MatchStatus::MissingRequiredField,
-        MatchStatus::BaselineDebt,
-    ] {
+    for status in STATUS_COUNT_ORDER {
         out.push_str(&format!(
             "<tr><td><code>{}</code></td><td class=\"count\">{}</td></tr>\n",
             status.as_str(),

@@ -2,6 +2,41 @@ use crate::ReportContext;
 use allow_core::{MatchOutcome, MatchStatus};
 use std::collections::BTreeMap;
 
+pub(crate) const STATUS_COUNT_ORDER: [MatchStatus; 10] = [
+    MatchStatus::Matched,
+    MatchStatus::New,
+    MatchStatus::Expired,
+    MatchStatus::ReviewDue,
+    MatchStatus::Stale,
+    MatchStatus::Ambiguous,
+    MatchStatus::InvalidSelector,
+    MatchStatus::EvidenceMissing,
+    MatchStatus::MissingRequiredField,
+    MatchStatus::BaselineDebt,
+];
+
+pub(crate) const REVIEW_ITEM_STATUSES: [MatchStatus; 8] = [
+    MatchStatus::New,
+    MatchStatus::Expired,
+    MatchStatus::ReviewDue,
+    MatchStatus::Stale,
+    MatchStatus::Ambiguous,
+    MatchStatus::InvalidSelector,
+    MatchStatus::MissingRequiredField,
+    MatchStatus::EvidenceMissing,
+];
+
+pub(crate) const AUDIT_REVIEW_QUEUE_STATUSES: [MatchStatus; 8] = [
+    MatchStatus::New,
+    MatchStatus::Expired,
+    MatchStatus::Ambiguous,
+    MatchStatus::EvidenceMissing,
+    MatchStatus::MissingRequiredField,
+    MatchStatus::BaselineDebt,
+    MatchStatus::Stale,
+    MatchStatus::ReviewDue,
+];
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
     pub total: usize,
@@ -26,23 +61,15 @@ impl Summary {
 }
 
 pub(crate) fn render_counts_fields(summary: &Summary, indent: &str) -> String {
-    let statuses = [
-        MatchStatus::Matched,
-        MatchStatus::New,
-        MatchStatus::Expired,
-        MatchStatus::ReviewDue,
-        MatchStatus::Stale,
-        MatchStatus::Ambiguous,
-        MatchStatus::InvalidSelector,
-        MatchStatus::MissingRequiredField,
-        MatchStatus::EvidenceMissing,
-        MatchStatus::BaselineDebt,
-    ];
-    statuses
+    STATUS_COUNT_ORDER
         .iter()
         .enumerate()
         .map(|(idx, status)| {
-            let comma = if idx + 1 == statuses.len() { "" } else { "," };
+            let comma = if idx + 1 == STATUS_COUNT_ORDER.len() {
+                ""
+            } else {
+                ","
+            };
             format!(
                 "{indent}\"{}\": {}{comma}\n",
                 status.as_str(),
@@ -53,19 +80,10 @@ pub(crate) fn render_counts_fields(summary: &Summary, indent: &str) -> String {
 }
 
 pub(crate) fn review_item_count_with_baseline(summary: &Summary, baseline_debt: usize) -> usize {
-    [
-        MatchStatus::New,
-        MatchStatus::Expired,
-        MatchStatus::ReviewDue,
-        MatchStatus::Stale,
-        MatchStatus::Ambiguous,
-        MatchStatus::InvalidSelector,
-        MatchStatus::MissingRequiredField,
-        MatchStatus::EvidenceMissing,
-    ]
-    .iter()
-    .map(|status| summary.count(*status))
-    .sum::<usize>()
+    REVIEW_ITEM_STATUSES
+        .iter()
+        .map(|status| summary.count(*status))
+        .sum::<usize>()
         + baseline_debt
 }
 
