@@ -11,10 +11,12 @@ use std::process::Command;
 use toml::Value;
 
 mod fields;
+mod io;
 use fields::{
     legacy_evidence, optional_last_seen, optional_u32_field, raw_string_field, required_bool_field,
     required_string_array_field, required_string_field, string_array_field, string_field,
 };
+use io::{legacy_table, read_policy};
 
 const LEGACY_POLICY_FILES: &[&str] = &[
     "non-rust-allowlist.toml",
@@ -499,21 +501,6 @@ pub fn network_findings_from_config(cfg: &AllowConfig) -> Vec<Finding> {
 
 pub fn migration_notes() -> &'static str {
     "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, no-panic-allowlist, no-panic-baseline, clippy-exceptions, unsafe-allowlist, executable, workflow, dependency-surface, process, and network allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; no-panic allowlist migration maps retained source exceptions to structural panic receipts and treats last_seen as a hint only; no-panic baseline migration emits count-limited baseline_debt entries; clippy-exceptions compat maps retained lint suppression entries to source-syntax lint_exception receipts and uses cargo-allow's Rust source scanner for current findings; unsafe compat maps retained unsafe entries to source-syntax unsafe receipts and keeps missing evidence as temporary baseline_debt TODO evidence; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns; network compat validates retained network policy entries and does not scan source code or runtime traffic."
-}
-
-fn read_policy(path: &Path) -> CargoAllowResult<String> {
-    fs::read_to_string(path).map_err(|e| {
-        CargoAllowError::new(format!(
-            "failed to read legacy policy {}: {e}",
-            path.display()
-        ))
-    })
-}
-
-fn legacy_table(input: &str) -> CargoAllowResult<Option<toml::Table>> {
-    toml::from_str::<toml::Table>(input)
-        .map(Some)
-        .map_err(|e| CargoAllowError::new(format!("failed to parse legacy policy TOML: {e}")))
 }
 
 #[derive(Debug, Clone)]
