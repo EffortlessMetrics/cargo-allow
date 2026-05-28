@@ -9,8 +9,11 @@ use crate::{RootArgs, write_file, write_file_no_overwrite};
 mod migrate_load;
 #[path = "migrate_render.rs"]
 mod migrate_render;
-use migrate_load::{MigrateContext, MigrationLoad, load_repo_policy_migration_config};
+#[path = "migrate_types.rs"]
+mod migrate_types;
+use migrate_load::load_repo_policy_migration_config;
 use migrate_render::{render_migrate_summary, render_migrate_summary_json};
+use migrate_types::{MigrateContext, MigrationLoad};
 
 #[cfg(test)]
 use allow_core::{AllowConfig, FindingKind};

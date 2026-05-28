@@ -1,24 +1,10 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, FindingKind, normalize_path};
+use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, normalize_path};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use std::env;
 use std::path::{Path, PathBuf};
 
+use super::{MigrateContext, MigrationLoad};
 use crate::{root_relative_path, source_tree_root_text};
-
-#[derive(Debug, Clone)]
-pub(super) struct MigrationLoad {
-    pub(super) cfg: AllowConfig,
-    pub(super) context: MigrateContext,
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct MigrateContext {
-    pub(super) inventory_source: String,
-    pub(super) source_tree_root: Option<String>,
-    pub(super) inventory_files: Option<usize>,
-    pub(super) input_kind: String,
-    pub(super) input_path: String,
-}
 
 pub(super) fn load_repo_policy_migration_config(
     explicit_root: Option<&Path>,
