@@ -154,5 +154,8 @@ pub(crate) fn sample_prune_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
+#[path = "prune_render_tests.rs"]
+mod render_tests;
+#[cfg(test)]
 #[path = "prune_tests.rs"]
 mod tests;
