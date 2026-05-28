@@ -116,7 +116,7 @@ impl<'a> ReportContext<'a> {
     }
 }
 
-impl Default for ReportContext<'static> {
+impl<'a> Default for ReportContext<'a> {
     fn default() -> Self {
         Self::source_syntax("unknown", None, None, None)
     }
