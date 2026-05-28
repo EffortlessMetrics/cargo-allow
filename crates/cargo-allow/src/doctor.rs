@@ -1,37 +1,20 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
-use clap::{Parser, ValueEnum};
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
+#[path = "doctor_args.rs"]
+mod doctor_args;
 #[path = "doctor_render.rs"]
 mod doctor_render;
 #[path = "doctor_types.rs"]
 mod doctor_types;
+pub(crate) use doctor_args::DoctorArgs;
+use doctor_args::DoctorFormat;
 use doctor_render::{render_doctor_human, render_doctor_json};
 use doctor_types::DoctorFacts;
 
-use crate::{InventoryFacts, RootArgs, SourceTreeReportContext, config_path, write_file};
-#[derive(Debug, Clone, Parser)]
-pub(crate) struct DoctorArgs {
-    #[command(flatten)]
-    root: RootArgs,
-    /// Policy config path.
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Output format.
-    #[arg(long, value_enum, default_value_t = DoctorFormat::Human)]
-    format: DoctorFormat,
-    /// Write doctor output to a file instead of stdout.
-    #[arg(long)]
-    output: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum DoctorFormat {
-    Human,
-    Json,
-}
+use crate::{InventoryFacts, SourceTreeReportContext, config_path, write_file};
 
 pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let cwd =
