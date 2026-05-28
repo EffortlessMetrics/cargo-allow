@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 mod artifacts;
 mod contracts;
+mod json;
 
 pub use artifacts::{
     AddReport, DiffFindingChange, DiffPolicyChange, DiffPostureSummary, DiffReport, DoctorReport,
@@ -19,6 +20,14 @@ pub use contracts::{
     PROPOSE_SCHEMA_ID, PROPOSE_SCHEMA_VERSION, PRUNE_SCHEMA_ID, PRUNE_SCHEMA_VERSION,
     RECEIPT_SCHEMA_ID, RECEIPT_SCHEMA_VERSION, REPORT_SCHEMA_ID, REPORT_SCHEMA_VERSION,
     ReportContext, SCANNER_LIMITATIONS, WORKLIST_SCHEMA_ID, WORKLIST_SCHEMA_VERSION,
+};
+pub use json::{
+    render_claim_boundary_json, render_inventory_json, render_scanner_limitations_json,
+};
+
+use json::{
+    bool_json, json_string_array, option_json, option_u32_json, option_usize_json,
+    push_json_artifact_header, push_json_artifact_source_context,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -751,104 +760,6 @@ pub fn render_receipt_with_context(
     out.push_str("  \"counts\": {\n");
     out.push_str(&render_counts_fields(&summary, "    "));
     out.push_str("  }\n}\n");
-    out
-}
-
-fn push_json_artifact_header(
-    out: &mut String,
-    schema_version: u32,
-    schema_id: &str,
-    command: &str,
-) {
-    out.push_str(&format!("  \"schema_version\": {schema_version},\n"));
-    out.push_str(&format!(
-        "  \"schema_id\": \"{}\",\n",
-        json_escape(schema_id)
-    ));
-    out.push_str("  \"tool\": \"cargo-allow\",\n");
-    out.push_str(&format!("  \"command\": \"{}\",\n", json_escape(command)));
-}
-
-fn push_json_artifact_source_context(out: &mut String, inventory: InventoryContext<'_>) {
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        render_scanner_limitations_json()
-    ));
-    out.push_str("  \"inventory\": ");
-    out.push_str(&render_inventory_json(inventory, "  "));
-    out.push_str(",\n");
-}
-
-fn option_json(value: Option<&str>) -> String {
-    value
-        .map(|v| format!("\"{}\"", json_escape(v)))
-        .unwrap_or_else(|| "null".to_string())
-}
-
-fn bool_json(value: bool) -> &'static str {
-    if value { "true" } else { "false" }
-}
-
-fn option_u32_json(value: Option<u32>) -> String {
-    value
-        .map(|value| value.to_string())
-        .unwrap_or_else(|| "null".to_string())
-}
-
-fn option_usize_json(value: Option<usize>) -> String {
-    value
-        .map(|value| value.to_string())
-        .unwrap_or_else(|| "null".to_string())
-}
-
-fn json_string_array<T: AsRef<str>>(values: &[T]) -> String {
-    format!(
-        "[{}]",
-        values
-            .iter()
-            .map(|value| format!("\"{}\"", json_escape(value.as_ref())))
-            .collect::<Vec<_>>()
-            .join(", ")
-    )
-}
-
-pub fn render_claim_boundary_json() -> String {
-    json_string_array(CLAIM_BOUNDARY)
-}
-
-pub fn render_scanner_limitations_json() -> String {
-    json_string_array(SCANNER_LIMITATIONS)
-}
-
-pub fn render_inventory_json(context: InventoryContext<'_>, indent: &str) -> String {
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str(&format!(
-        "{indent}  \"scope\": \"{}\",\n",
-        json_escape(context.scope)
-    ));
-    out.push_str(&format!(
-        "{indent}  \"scanner\": \"{}\",\n",
-        json_escape(context.scanner)
-    ));
-    out.push_str(&format!(
-        "{indent}  \"source\": \"{}\"",
-        json_escape(context.source)
-    ));
-    if let Some(root) = context.root {
-        out.push_str(",\n");
-        out.push_str(&format!("{indent}  \"root\": \"{}\"", json_escape(root)));
-    }
-    if let Some(files) = context.files_scanned {
-        out.push_str(",\n");
-        out.push_str(&format!("{indent}  \"files_scanned\": {files}"));
-    }
-    out.push('\n');
-    out.push_str(&format!("{indent}}}"));
     out
 }
 
