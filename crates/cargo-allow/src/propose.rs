@@ -1,17 +1,19 @@
 use allow_core::{CargoAllowResult, MatchStatus};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::render_policy;
-use clap::{Parser, ValueEnum};
-use std::path::PathBuf;
 
-use crate::{RootArgs, SourceTreeReportContext, load_world, write_file, write_file_no_overwrite};
+use crate::{SourceTreeReportContext, load_world, write_file, write_file_no_overwrite};
 
+#[path = "propose_args.rs"]
+mod propose_args;
 #[path = "propose_baseline.rs"]
 mod propose_baseline;
 #[path = "propose_render.rs"]
 mod propose_render;
 #[path = "propose_types.rs"]
 mod propose_types;
+pub(crate) use propose_args::ProposeArgs;
+use propose_args::ProposeSummaryFormat;
 use propose_baseline::{default_baseline_expiry, entry_from_finding};
 use propose_render::{render_propose_summary, render_propose_summary_json};
 pub(super) use propose_types::ProposeContext;
@@ -20,42 +22,6 @@ pub(super) use propose_types::ProposeContext;
 use allow_core::{Finding, FindingKind, SimpleDate};
 #[cfg(test)]
 use propose_baseline::BASELINE_DEBT_DEFAULT_DAYS;
-
-#[derive(Debug, Clone, Parser)]
-pub(crate) struct ProposeArgs {
-    #[command(flatten)]
-    root: RootArgs,
-    /// Policy config path.
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Filter findings by kind.
-    #[arg(long)]
-    kind: Option<String>,
-    /// Include untracked files in addition to git-tracked files.
-    #[arg(long)]
-    include_untracked: bool,
-    /// Expiry date for generated baseline_debt entries. Defaults to 67 days from today.
-    #[arg(long)]
-    expires: Option<String>,
-    /// Write proposed policy to this path.
-    #[arg(long)]
-    write: Option<PathBuf>,
-    /// Overwrite an existing output policy file.
-    #[arg(long)]
-    force: bool,
-    /// Summary output format. Policy output remains TOML.
-    #[arg(long, value_enum, default_value_t = ProposeSummaryFormat::Human)]
-    summary_format: ProposeSummaryFormat,
-    /// Write proposal summary to a file instead of stderr.
-    #[arg(long)]
-    summary_output: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum ProposeSummaryFormat {
-    Human,
-    Json,
-}
 
 pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     let (root, cfg, findings, inventory_facts) = load_world(
