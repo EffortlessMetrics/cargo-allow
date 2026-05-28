@@ -1,6 +1,7 @@
 use allow_core::SimpleDate;
 
 mod converter_exception_entries;
+mod converter_executable_entries;
 mod converter_file_entries;
 mod converter_panic_entries;
 mod converter_policy_entries;
