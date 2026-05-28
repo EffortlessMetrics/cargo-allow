@@ -1,0 +1,80 @@
+use super::*;
+use crate::{CargoAllowCli, CargoAllowCommand};
+use clap::Parser;
+use std::path::Path;
+
+fn argv(items: Vec<&str>) -> Vec<String> {
+    items.into_iter().map(String::from).collect()
+}
+
+#[test]
+fn clap_parses_worklist_json_output() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "worklist",
+        "--kind",
+        "unsafe",
+        "--family",
+        "unsafe_fn",
+        "--item-kind",
+        "baseline_debt",
+        "--status",
+        "baseline_debt",
+        "--allow-id",
+        "allow-0001",
+        "--path",
+        "crates/allow-core",
+        "--source-package",
+        "allow-core",
+        "--owner",
+        "runtime",
+        "--classification",
+        "baseline_debt",
+        "--baseline-debt",
+        "--broad-scope",
+        "--risk",
+        "medium",
+        "--difficulty",
+        "small",
+        "--missing-evidence",
+        "--format",
+        "json",
+        "--output",
+        "target/worklist.json",
+    ]))
+    .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse worklist args: {err}")));
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::Worklist(WorklistArgs {
+            kind: Some(kind),
+            family: Some(family),
+            item_kind: Some(item_kind),
+            status: Some(status),
+            allow_id: Some(allow_id),
+            path: Some(path_filter),
+            source_package: Some(source_package),
+            owner: Some(owner),
+            classification: Some(classification),
+            baseline_debt: true,
+            broad_scope: true,
+            risk: Some(risk),
+            difficulty: Some(difficulty),
+            missing_evidence: true,
+            format: WorklistFormat::Json,
+            output: Some(path),
+            ..
+        })) if kind == "unsafe"
+            && family == "unsafe_fn"
+            && item_kind == "baseline_debt"
+            && status == "baseline_debt"
+            && allow_id == "allow-0001"
+            && path_filter == "crates/allow-core"
+            && source_package == "allow-core"
+            && owner == "runtime"
+            && classification == "baseline_debt"
+            && risk == "medium"
+            && difficulty == "small"
+            && path == Path::new("target/worklist.json")
+    ));
+}

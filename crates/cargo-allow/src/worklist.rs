@@ -195,6 +195,9 @@ pub(crate) fn sample_worklist_json_for_contract_test() -> String {
 #[path = "worklist_advisory_tests.rs"]
 mod advisory_tests;
 #[cfg(test)]
+#[path = "worklist_cli_tests.rs"]
+mod cli_tests;
+#[cfg(test)]
 #[path = "worklist_filter_policy_tests.rs"]
 mod filter_policy_tests;
 #[cfg(test)]
@@ -204,8 +207,14 @@ mod filter_source_tests;
 #[path = "worklist_filter_tests.rs"]
 mod filter_tests;
 #[cfg(test)]
+#[path = "worklist_render_context_tests.rs"]
+mod render_context_tests;
+#[cfg(test)]
 #[path = "worklist_render_tests.rs"]
 mod render_tests;
+#[cfg(test)]
+#[path = "worklist_schema_tests.rs"]
+mod schema_tests;
 #[cfg(test)]
 #[path = "worklist_test_support.rs"]
 mod test_support;
