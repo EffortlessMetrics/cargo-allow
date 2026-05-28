@@ -2,6 +2,7 @@ use super::test_support::{row_status, test_entry, test_finding, test_outcome};
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand};
 use clap::Parser;
+use serde_json::Value;
 use std::path::Path;
 
 fn argv(items: Vec<&str>) -> Vec<String> {
@@ -143,6 +144,7 @@ fn list_rows_report_lifecycle_stale_and_baseline_status() {
 #[test]
 fn render_list_rows_json_records_context_filters_and_rows() {
     let json = sample_list_json_for_contract_test();
+    let value = parse_json("list artifact", &json);
 
     assert!(json.contains("\"schema_version\": 1"));
     assert!(json.contains(&format!(
@@ -162,4 +164,75 @@ fn render_list_rows_json_records_context_filters_and_rows() {
     assert!(json.contains("\"id\": \"allow-json\""));
     assert!(json.contains("\"source_package\": \"allow-core\""));
     assert!(json.contains("\"evidence_count\": 2"));
+    assert_eq!(
+        value.pointer("/filters/kind").and_then(Value::as_str),
+        Some("panic")
+    );
+    assert_eq!(
+        value.pointer("/filters/family").and_then(Value::as_str),
+        Some("unwrap")
+    );
+    assert_eq!(
+        value.pointer("/filters/owner").and_then(Value::as_str),
+        Some("parser")
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/classification")
+            .and_then(Value::as_str),
+        Some("baseline_debt")
+    );
+    assert_eq!(
+        value.pointer("/filters/path").and_then(Value::as_str),
+        Some("src/lib.rs")
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/source_package")
+            .and_then(Value::as_str),
+        Some("allow-core")
+    );
+    assert_eq!(
+        value.pointer("/filters/status").and_then(Value::as_str),
+        Some("baseline_debt")
+    );
+    assert_eq!(
+        value.pointer("/filters/expired").and_then(Value::as_bool),
+        Some(false)
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/review_due")
+            .and_then(Value::as_bool),
+        Some(false)
+    );
+    assert_eq!(
+        value.pointer("/filters/stale").and_then(Value::as_bool),
+        Some(false)
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/baseline_debt")
+            .and_then(Value::as_bool),
+        Some(true)
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/broad_scope")
+            .and_then(Value::as_bool),
+        Some(false)
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/missing_evidence")
+            .and_then(Value::as_bool),
+        Some(false)
+    );
+}
+
+fn parse_json(name: &str, json: &str) -> Value {
+    match serde_json::from_str(json) {
+        Ok(value) => value,
+        Err(err) => std::panic::panic_any(format!("{name} should parse as JSON: {err}\n{json}")),
+    }
 }

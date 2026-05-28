@@ -13,21 +13,7 @@ pub(super) fn render_list_rows_json(
     let report_rows = report_list_rows(rows, filters);
     allow_report::render_list_json(
         &report_rows,
-        allow_report::ListFilters {
-            kind: context.kind_arg,
-            family: filters.family,
-            owner: filters.owner,
-            classification: filters.classification,
-            path: filters.path,
-            source_package: filters.source_package,
-            status: filters.status,
-            expired: filters.expired,
-            review_due: filters.review_due,
-            stale: filters.stale,
-            baseline_debt: filters.baseline_debt,
-            broad_scope: filters.broad_scope,
-            missing_evidence: filters.missing_evidence,
-        },
+        report_list_filters(filters, context),
         context.inventory,
     )
 }
@@ -58,6 +44,27 @@ fn report_list_rows<'a>(
 
 fn dash_as_none(value: &str) -> Option<&str> {
     if value == "-" { None } else { Some(value) }
+}
+
+fn report_list_filters<'a>(
+    filters: &'a ListFilters<'a>,
+    context: ListContext<'a>,
+) -> allow_report::ListFilters<'a> {
+    allow_report::ListFilters {
+        kind: context.kind_arg,
+        family: filters.family,
+        owner: filters.owner,
+        classification: filters.classification,
+        path: filters.path,
+        source_package: filters.source_package,
+        status: filters.status,
+        expired: filters.expired,
+        review_due: filters.review_due,
+        stale: filters.stale,
+        baseline_debt: filters.baseline_debt,
+        broad_scope: filters.broad_scope,
+        missing_evidence: filters.missing_evidence,
+    }
 }
 
 fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool {
