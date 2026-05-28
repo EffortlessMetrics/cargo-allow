@@ -35,6 +35,7 @@ mod parser_unsafe_entries;
 mod parser_workflow_entries;
 mod parsers;
 mod types;
+mod types_source_entries;
 
 pub use findings::{
     dependency_surface_findings_from_git, executable_findings_from_git,
