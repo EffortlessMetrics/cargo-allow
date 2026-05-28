@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 mod finding_builder;
 mod line_facts;
 mod line_findings;
+mod line_index_findings;
 mod line_lint_findings;
 mod line_panic_findings;
 mod line_scan;

@@ -1,12 +1,11 @@
-use allow_core::{Finding, FindingKind};
+use allow_core::Finding;
 use std::path::Path;
 
-use crate::finding_builder::{FindingSite, push_finding};
 use crate::line_facts::SyntaxLineFacts;
+use crate::line_index_findings::{IndexLineContext, scan_index_expr};
 use crate::line_lint_findings::scan_lint_attributes;
 use crate::line_panic_findings::{PanicLineContext, scan_panic_calls};
 use crate::line_unsafe_findings::{UnsafeLineContext, scan_unsafe_constructs};
-use crate::text::{index_symbol, index_target_fingerprint};
 
 pub(crate) fn scan_line(
     path: &Path,
@@ -59,29 +58,15 @@ pub(crate) fn scan_line(
         findings,
     );
 
-    if let Some(index_column) = syntax.index_column {
-        let family = if line.contains("&") && line.contains("[") {
-            "string_slice"
-        } else {
-            "indexing"
-        };
-        push_finding(
-            FindingSite {
-                path,
-                line,
-                line_no,
-                column: index_column,
-                container,
-                module_stack,
-            },
-            FindingKind::Panic,
-            family,
-            "index_expr",
-            |id| {
-                id.symbol = Some(index_symbol(line));
-                id.target_fingerprint = index_target_fingerprint(line);
-            },
-            findings,
-        );
-    }
+    scan_index_expr(
+        IndexLineContext {
+            path,
+            line,
+            line_no,
+            container,
+            module_stack,
+        },
+        syntax.index_column,
+        findings,
+    );
 }
