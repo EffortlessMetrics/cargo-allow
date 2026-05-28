@@ -5,10 +5,10 @@ use crate::converter_file_configs::{config_from_generated_rules, config_from_non
 use crate::converter_panic_configs::{
     config_from_no_panic_allowlist_entries, config_from_no_panic_baseline_entries,
 };
+use crate::converter_source_configs::{config_from_clippy_rules, config_from_unsafe_rules};
 use crate::converters::{
-    config_from_clippy_rules, config_from_dependency_surface_rules, config_from_executable_rules,
-    config_from_network_rules, config_from_process_rules, config_from_unsafe_rules,
-    config_from_workflow_rules,
+    config_from_dependency_surface_rules, config_from_executable_rules, config_from_network_rules,
+    config_from_process_rules, config_from_workflow_rules,
 };
 use crate::parsers::{
     is_clippy_exceptions_policy, parse_clippy_rules, parse_dependency_surface_rules,
