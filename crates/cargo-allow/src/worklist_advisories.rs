@@ -1,8 +1,10 @@
 use super::WorkItem;
 use super::worklist_actions::{proof_commands, suggested_actions};
 use super::worklist_scoring::{exception_family, work_item_difficulty, work_item_risk};
-use crate::scope_has_wildcard;
-use allow_core::{AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path};
+use allow_core::{
+    AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path,
+    source_tree_scope_has_wildcard,
+};
 
 pub(super) fn work_items_from_policy_advisories(
     cfg: &AllowConfig,
@@ -99,13 +101,18 @@ fn entry_broad_scope(entry: &AllowEntry) -> Option<String> {
         .path
         .as_ref()
         .map(normalize_path)
-        .filter(|scope| scope_has_wildcard(scope))
-        .or_else(|| entry.glob.clone().filter(|scope| scope_has_wildcard(scope)))
+        .filter(|scope| source_tree_scope_has_wildcard(scope))
+        .or_else(|| {
+            entry
+                .glob
+                .clone()
+                .filter(|scope| source_tree_scope_has_wildcard(scope))
+        })
         .or_else(|| {
             entry
                 .selector
                 .glob
                 .clone()
-                .filter(|scope| scope_has_wildcard(scope))
+                .filter(|scope| source_tree_scope_has_wildcard(scope))
         })
 }

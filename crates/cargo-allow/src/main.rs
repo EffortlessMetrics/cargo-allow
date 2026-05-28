@@ -21,7 +21,6 @@ mod propose;
 mod prune;
 mod reporting;
 mod selector;
-mod source_tree;
 mod worklist;
 mod world;
 
