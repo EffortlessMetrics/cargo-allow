@@ -41,10 +41,12 @@ mod lint_unsafe_tests;
 #[cfg(test)]
 mod no_panic_tests;
 #[cfg(test)]
+mod non_rust_tests;
+#[cfg(test)]
+mod policy_dir_tests;
+#[cfg(test)]
 mod process_network_tests;
 #[cfg(test)]
 mod test_support;
-#[cfg(test)]
-mod tests;
 #[cfg(test)]
 mod workflow_dependency_tests;
