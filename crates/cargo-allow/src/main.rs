@@ -42,6 +42,8 @@ mod artifact_contract_tests;
 #[cfg(test)]
 mod artifact_schema_common_tests;
 #[cfg(test)]
+mod artifact_schema_support;
+#[cfg(test)]
 mod compat_companion_tests;
 #[cfg(test)]
 mod compat_dependency_tests;
