@@ -24,6 +24,7 @@ mod parser_exception_entries;
 mod parser_file_entries;
 mod parser_panic_entries;
 mod parser_policy_entries;
+mod parser_process_network_entries;
 mod parser_source_entries;
 mod parser_support;
 mod parser_workflow_entries;
