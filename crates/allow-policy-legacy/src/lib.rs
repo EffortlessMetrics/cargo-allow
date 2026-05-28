@@ -26,6 +26,7 @@ mod finding_workflow;
 mod findings;
 mod io;
 mod loader_compat;
+mod loader_executable_compat;
 mod loader_file_compat;
 mod loader_legacy_dispatch;
 mod loader_panic_compat;
