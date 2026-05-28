@@ -19,15 +19,15 @@ pub fn validate_local_evidence_references(
                     reference.value.as_ref(),
                 )?;
                 let path = root.join(&reference.value);
-                if !path.exists() {
-                    return Err(CargoAllowError::new(format!(
+                let metadata = path.metadata().map_err(|_| {
+                    CargoAllowError::new(format!(
                         "{} evidence `{}` references missing local file {}",
                         entry.id,
                         reference.raw,
                         reference.value.display()
-                    )));
-                }
-                if !path.is_file() {
+                    ))
+                })?;
+                if !metadata.is_file() {
                     return Err(CargoAllowError::new(format!(
                         "{} evidence `{}` must reference a local file, not a directory: {}",
                         entry.id,
@@ -122,30 +122,28 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
         };
     }
     let path = root.join(&reference.value);
-    if path.is_file() {
-        EvidenceReferenceDiagnostic {
+    match path.metadata() {
+        Ok(metadata) if metadata.is_file() => EvidenceReferenceDiagnostic {
             raw: raw.to_string(),
             prefix,
             target: Some(reference.value.clone()),
             status: EvidenceReferenceStatus::LocalFilePresent,
             message: "local evidence file exists".to_string(),
-        }
-    } else if path.exists() {
-        EvidenceReferenceDiagnostic {
+        },
+        Ok(_) => EvidenceReferenceDiagnostic {
             raw: raw.to_string(),
             prefix,
             target: Some(reference.value.clone()),
             status: EvidenceReferenceStatus::InvalidLocalPath,
             message: "local evidence path exists but is not a file".to_string(),
-        }
-    } else {
-        EvidenceReferenceDiagnostic {
+        },
+        Err(_) => EvidenceReferenceDiagnostic {
             raw: raw.to_string(),
             prefix,
             target: Some(reference.value.clone()),
             status: EvidenceReferenceStatus::LocalFileMissing,
             message: "local evidence file is missing".to_string(),
-        }
+        },
     }
 }
 
