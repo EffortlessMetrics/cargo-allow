@@ -1,7 +1,8 @@
 use allow_core::{AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, Selector, normalize_path};
 use std::path::{Path, PathBuf};
 
-use crate::converter_support::{generated_evidence, lifecycle_from_rule};
+use crate::converter_evidence::generated_evidence;
+use crate::converter_support::lifecycle_from_rule;
 use crate::findings::file_fingerprint;
 use crate::types::{LegacyGeneratedRule, LegacyNonRustRule};
 

@@ -2,6 +2,7 @@ use allow_core::SimpleDate;
 
 mod converter_clippy_entries;
 mod converter_dependency_entries;
+mod converter_evidence;
 mod converter_executable_entries;
 mod converter_file_entries;
 mod converter_panic_entries;

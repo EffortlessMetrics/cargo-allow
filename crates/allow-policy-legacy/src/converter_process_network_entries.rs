@@ -1,9 +1,9 @@
 use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector};
 use std::path::PathBuf;
 
+use crate::converter_evidence::{network_evidence, process_evidence};
 use crate::converter_support::{
-    network_evidence, network_fingerprint, network_symbol, process_evidence, process_fingerprint,
-    process_scope, process_symbol,
+    network_fingerprint, network_symbol, process_fingerprint, process_scope, process_symbol,
 };
 use crate::types::{LegacyNetworkRule, LegacyProcessRule};
 
