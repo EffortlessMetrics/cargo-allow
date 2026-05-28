@@ -59,6 +59,8 @@ fn main() {
 #[cfg(test)]
 mod artifact_contract_tests;
 #[cfg(test)]
+mod artifact_schema_tests;
+#[cfg(test)]
 mod compat_integration_tests;
 #[cfg(test)]
 mod report_config_tests;
