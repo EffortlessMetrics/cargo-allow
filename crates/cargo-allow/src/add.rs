@@ -8,11 +8,14 @@ use std::path::PathBuf;
 mod add_entry;
 #[path = "add_render.rs"]
 mod add_render;
+#[path = "add_types.rs"]
+mod add_types;
 use add_entry::{
     AddEntryRequest, allow_entry_from_finding, ensure_addable_outcome, next_allow_id,
     select_add_finding,
 };
-use add_render::{AddContext, render_add_summary, render_add_summary_json};
+use add_render::{render_add_summary, render_add_summary_json};
+pub(super) use add_types::AddContext;
 
 use crate::{
     RootArgs, load_world, parse_kind_filter, source_tree_root_text, write_file,
