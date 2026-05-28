@@ -13,6 +13,7 @@ mod converter_panic_entries;
 mod converter_panic_support;
 mod converter_process_network_entries;
 mod converter_process_network_support;
+mod converter_source_configs;
 mod converter_unsafe_entries;
 mod converter_workflow_entries;
 mod converter_workflow_support;

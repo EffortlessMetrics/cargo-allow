@@ -8,7 +8,7 @@ use crate::converter_file_configs::{
 use crate::converter_panic_configs::{
     config_from_no_panic_allowlist_entries, config_from_no_panic_baseline_entries,
 };
-use crate::converters::{config_from_clippy_rules, config_from_unsafe_rules};
+use crate::converter_source_configs::{config_from_clippy_rules, config_from_unsafe_rules};
 use crate::io::{legacy_table, read_policy};
 use crate::parsers::{
     is_clippy_exceptions_policy, parse_clippy_rules, parse_generated_rules,
