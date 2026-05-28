@@ -27,6 +27,14 @@ pub fn validate_local_evidence_references(
                         reference.value.display()
                     )));
                 }
+                if !path.is_file() {
+                    return Err(CargoAllowError::new(format!(
+                        "{} evidence `{}` must reference a local file, not a directory: {}",
+                        entry.id,
+                        reference.raw,
+                        reference.value.display()
+                    )));
+                }
             }
         }
     }
@@ -113,13 +121,22 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             message: err.to_string(),
         };
     }
-    if root.join(&reference.value).exists() {
+    let path = root.join(&reference.value);
+    if path.is_file() {
         EvidenceReferenceDiagnostic {
             raw: raw.to_string(),
             prefix,
             target: Some(reference.value.clone()),
             status: EvidenceReferenceStatus::LocalFilePresent,
             message: "local evidence file exists".to_string(),
+        }
+    } else if path.exists() {
+        EvidenceReferenceDiagnostic {
+            raw: raw.to_string(),
+            prefix,
+            target: Some(reference.value.clone()),
+            status: EvidenceReferenceStatus::InvalidLocalPath,
+            message: "local evidence path exists but is not a file".to_string(),
         }
     } else {
         EvidenceReferenceDiagnostic {
