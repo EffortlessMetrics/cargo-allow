@@ -3,12 +3,16 @@ use allow_inventory::{InventoryOptions, InventorySource, inventory, resolve_sour
 use std::env;
 use std::path::{Path, PathBuf};
 
+#[path = "compat_scan.rs"]
+mod compat_scan;
+
 use crate::{
     FamilyFilter, InventoryFacts, KindFilter, is_clippy_compat_kind,
     is_dependency_surface_compat_kind, is_executable_compat_kind, is_network_compat_kind,
     is_no_panic_allowlist_compat_kind, is_panic_compat_kind, is_process_compat_kind,
     is_unsafe_compat_kind, is_workflow_compat_kind, parse_kind_filter,
 };
+use compat_scan::scan_legacy_rust_compat;
 
 pub(crate) fn load_compat_world(
     explicit_root: Option<&Path>,
@@ -161,22 +165,4 @@ pub(crate) fn load_compat_world(
         .unwrap_or_else(|| root.join("policy/non-rust-allowlist.toml"));
     let cfg = allow_policy_legacy::load_non_rust_compat_config(policy_path, &findings)?;
     Ok((root, cfg, findings, inventory_facts))
-}
-
-fn scan_legacy_rust_compat(
-    root: &Path,
-    cfg: &AllowConfig,
-    include_untracked: bool,
-    kind: FindingKind,
-) -> CargoAllowResult<(Vec<Finding>, InventoryFacts)> {
-    let opts = InventoryOptions {
-        ignored: cfg.workspace.ignored.clone(),
-        generated: cfg.workspace.generated.clone(),
-        include_untracked,
-    };
-    let inventory = inventory(root, &opts)?;
-    let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
-    let mut findings = allow_rust::scan_rust_files(root, &inventory.files)?;
-    findings.retain(|finding| finding.kind == kind);
-    Ok((findings, inventory_facts))
 }
