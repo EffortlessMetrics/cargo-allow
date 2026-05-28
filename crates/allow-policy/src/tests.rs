@@ -299,6 +299,36 @@ fn rejects_missing_local_evidence_references() {
 }
 
 #[test]
+fn rejects_directory_local_evidence_references() {
+    let root = unique_test_dir("evidence-directory");
+    fs::create_dir_all(root.join("docs/safety"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create evidence dir: {err}")));
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-doc-dir"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["doc:docs/safety"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy parses: {err}")));
+
+    let err = validate_local_evidence_references(&root, &cfg).unwrap_err();
+    assert!(err.to_string().contains("allow-doc-dir evidence"));
+    assert!(err.to_string().contains("not a directory"));
+    remove_test_dir(root);
+}
+
+#[test]
 fn rejects_missing_unsafe_review_evidence_references() {
     let root = unique_test_dir("unsafe-review-evidence-missing");
     fs::create_dir_all(&root)
@@ -412,6 +442,18 @@ fn reports_evidence_reference_diagnostics() {
     assert_eq!(
         diagnostics.first().map(|diagnostic| diagnostic.status),
         Some(EvidenceReferenceStatus::InvalidLocalPath)
+    );
+
+    entry.evidence = vec!["doc:docs".to_string()];
+    let diagnostics = evidence_reference_diagnostics(&root, &entry);
+    assert_eq!(
+        diagnostics.first().map(|diagnostic| diagnostic.status),
+        Some(EvidenceReferenceStatus::InvalidLocalPath)
+    );
+    assert!(
+        diagnostics
+            .first()
+            .is_some_and(|diagnostic| diagnostic.message.contains("not a file"))
     );
     remove_test_dir(root);
 }
