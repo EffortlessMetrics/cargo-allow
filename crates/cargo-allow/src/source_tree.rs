@@ -1,4 +1,4 @@
-use allow_core::{Finding, glob_matches_str, normalize_path};
+use allow_core::{glob_matches_str, normalize_path};
 
 pub(crate) fn source_tree_path_matches_filter(item_path: &str, filter_path: &str) -> bool {
     let item_path = normalize_path(item_path);
@@ -19,14 +19,4 @@ pub(crate) fn scope_has_wildcard(scope: &str) -> bool {
     scope
         .chars()
         .any(|ch| matches!(ch, '*' | '?' | '[' | ']' | '{' | '}'))
-}
-
-pub(crate) fn source_package_name(finding: &Finding) -> Option<String> {
-    finding
-        .identity
-        .crate_name
-        .as_deref()
-        .map(str::trim)
-        .filter(|name| !name.is_empty())
-        .map(ToOwned::to_owned)
 }

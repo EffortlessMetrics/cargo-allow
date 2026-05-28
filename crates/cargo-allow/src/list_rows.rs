@@ -1,5 +1,4 @@
 use super::ListRow;
-use crate::source_package_name;
 use allow_core::{AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, SimpleDate};
 
 pub(super) fn list_rows(
@@ -31,7 +30,7 @@ pub(super) fn list_rows(
                     .iter()
                     .filter_map(|outcome| outcome.finding_index)
                     .filter_map(|index| findings.get(index))
-                    .find_map(source_package_name),
+                    .find_map(|finding| finding.source_package_name().map(ToOwned::to_owned)),
                 evidence_count: entry.evidence.len(),
                 review_after: entry
                     .lifecycle
