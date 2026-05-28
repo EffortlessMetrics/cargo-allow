@@ -237,5 +237,11 @@ pub(crate) fn sample_list_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
+#[path = "list_filter_tests.rs"]
+mod filter_tests;
+#[cfg(test)]
+#[path = "list_test_support.rs"]
+mod test_support;
+#[cfg(test)]
 #[path = "list_tests.rs"]
 mod tests;
