@@ -6,7 +6,10 @@ use std::path::{Path, PathBuf};
 
 #[path = "doctor_render.rs"]
 mod doctor_render;
-use doctor_render::{DoctorFacts, render_doctor_human, render_doctor_json};
+#[path = "doctor_types.rs"]
+mod doctor_types;
+use doctor_render::{render_doctor_human, render_doctor_json};
+use doctor_types::DoctorFacts;
 
 use crate::{RootArgs, config_path, source_tree_root_text, write_file};
 #[derive(Debug, Clone, Parser)]
