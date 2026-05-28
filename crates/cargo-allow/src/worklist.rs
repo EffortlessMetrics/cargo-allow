@@ -15,16 +15,18 @@ mod worklist_items;
 mod worklist_queue;
 #[path = "worklist_render.rs"]
 mod worklist_render;
+#[path = "worklist_scoring.rs"]
+mod worklist_scoring;
 #[path = "worklist_types.rs"]
 mod worklist_types;
 pub(crate) use worklist_actions::{proof_commands, suggested_actions};
-pub(crate) use worklist_items::work_item_kind;
 use worklist_items::{
     work_items_from_evidence_diagnostics, work_items_from_outcomes,
     work_items_from_policy_advisories,
 };
 use worklist_queue::{filter_work_items, renumber_work_items, sort_work_items};
 use worklist_render::{render_worklist_human_with_context, render_worklist_json_with_context};
+pub(crate) use worklist_scoring::work_item_kind;
 use worklist_types::{WorkItem, WorklistContext, WorklistFilters};
 
 #[cfg(test)]
