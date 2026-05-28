@@ -17,10 +17,7 @@ use add_entry::{
 use add_render::{render_add_summary, render_add_summary_json};
 pub(super) use add_types::AddContext;
 
-use crate::{
-    RootArgs, load_world, parse_kind_filter, source_tree_root_text, write_file,
-    write_file_no_overwrite,
-};
+use crate::{RootArgs, load_world, parse_kind_filter, write_file, write_file_no_overwrite};
 
 #[cfg(test)]
 use allow_core::{Finding, MatchStatus};
@@ -125,7 +122,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         review_after: args.review_after.clone(),
         expires: args.expires.clone(),
     });
-    let root_text = source_tree_root_text(&root);
+    let root_text = allow_report::source_tree_path_text(&root);
     let context = AddContext {
         inventory_source: inventory_facts.source.as_str(),
         source_tree_root: Some(&root_text),

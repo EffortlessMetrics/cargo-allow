@@ -26,6 +26,7 @@ mod migrate;
 #[cfg(test)]
 mod migrate_tests;
 mod non_rust;
+mod path_text;
 mod propose;
 #[cfg(test)]
 mod propose_tests;
@@ -74,6 +75,7 @@ pub use json::{
 };
 pub use list::{render_list_human, render_list_json};
 pub use migrate::{render_migrate_human, render_migrate_json};
+pub use path_text::source_tree_path_text;
 pub use propose::{render_propose_human, render_propose_json};
 pub use prune::{render_prune_human, render_prune_json};
 pub use receipt::{render_receipt, render_receipt_with_context};

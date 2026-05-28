@@ -3,7 +3,7 @@ use allow_match::{CheckMode, evaluate};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::{RootArgs, load_world, parse_kind_filter, source_tree_root_text, write_file};
+use crate::{RootArgs, load_world, parse_kind_filter, write_file};
 
 #[path = "list_render.rs"]
 mod list_render;
@@ -121,7 +121,7 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         broad_scope: args.broad_scope,
         missing_evidence: args.missing_evidence,
     };
-    let root_text = source_tree_root_text(&root);
+    let root_text = allow_report::source_tree_path_text(&root);
     let context = ListContext {
         inventory_source: inventory_facts.source.as_str(),
         source_tree_root: Some(&root_text),

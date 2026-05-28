@@ -6,7 +6,7 @@ use std::process;
 
 use crate::{
     OutputFormat, ReportRenderArgs, RootArgs, load_compat_world, load_world,
-    policy_baseline_debt_entries, print_report, report_config, source_tree_root_text, write_file,
+    policy_baseline_debt_entries, print_report, report_config, write_file,
 };
 
 #[derive(Debug, Clone, Parser)]
@@ -72,7 +72,7 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
         inventory_facts,
     })?;
     if let Some(path) = &args.receipt {
-        let root_text = source_tree_root_text(&root);
+        let root_text = allow_report::source_tree_path_text(&root);
         write_file(
             path,
             &allow_report::render_receipt_with_context(

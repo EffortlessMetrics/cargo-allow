@@ -4,7 +4,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 
 use super::{MigrateContext, MigrationLoad};
-use crate::{root_relative_path, source_tree_root_text};
+use crate::root_relative_path;
 
 pub(super) fn load_repo_policy_migration_config(
     explicit_root: Option<&Path>,
@@ -27,7 +27,7 @@ pub(super) fn load_repo_policy_migration_config(
         cfg,
         context: MigrateContext {
             inventory_source: inventory_source.as_str().to_string(),
-            source_tree_root: Some(source_tree_root_text(&root)),
+            source_tree_root: Some(allow_report::source_tree_path_text(&root)),
             inventory_files: Some(files_scanned),
             input_kind: "repo_policy".to_string(),
             input_path: normalize_path(&repo_policy),

@@ -5,7 +5,7 @@ use allow_match::{CheckMode, evaluate, score_match};
 use clap::{Parser, ValueEnum};
 use std::path::{Path, PathBuf};
 
-use crate::{RootArgs, load_world_with_evidence_validation, source_tree_root_text, write_file};
+use crate::{RootArgs, load_world_with_evidence_validation, write_file};
 
 #[path = "explain_render.rs"]
 mod explain_render;
@@ -54,7 +54,7 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         .iter()
         .find(|e| e.id == args.id)
         .ok_or_else(|| CargoAllowError::new(format!("no allow entry `{}`", args.id)))?;
-    let root_text = source_tree_root_text(&root);
+    let root_text = allow_report::source_tree_path_text(&root);
     let context = ExplainContext {
         inventory_source: inventory_facts.source.as_str(),
         source_tree_root: Some(&root_text),
