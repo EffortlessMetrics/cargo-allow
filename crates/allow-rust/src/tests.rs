@@ -1,4 +1,5 @@
 use crate::package::{source_package_for_path, source_package_name};
+use crate::text::index_symbol;
 
 use super::*;
 
