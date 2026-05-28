@@ -1,11 +1,12 @@
 use allow_core::{CargoAllowResult, normalize_path};
 use allow_match::{CheckMode, evaluate};
-use clap::Parser;
-use std::path::PathBuf;
 use std::process;
 
+#[path = "diff_args.rs"]
+mod diff_args;
 #[path = "diff_render.rs"]
 mod diff_render;
+pub(crate) use diff_args::DiffArgs;
 pub(crate) use diff_render::render_diff_json_with_posture;
 use diff_render::{
     append_finding_posture_changes, append_policy_changes, insert_markdown_pr_summary,
@@ -14,36 +15,9 @@ use diff_render::{
 };
 
 use crate::{
-    OutputFormat, RootArgs, SourceTreeReportContext, git_relative_config_path, load_world,
-    parse_kind_filter, policy_baseline_debt_entries, report_config, write_file,
+    OutputFormat, SourceTreeReportContext, git_relative_config_path, load_world, parse_kind_filter,
+    policy_baseline_debt_entries, report_config, write_file,
 };
-
-#[derive(Debug, Clone, Parser)]
-pub(crate) struct DiffArgs {
-    #[command(flatten)]
-    root: RootArgs,
-    /// Policy config path.
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Filter findings by kind.
-    #[arg(long)]
-    kind: Option<String>,
-    /// Include untracked files in addition to git-tracked files.
-    #[arg(long)]
-    include_untracked: bool,
-    /// Output format.
-    #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
-    format: OutputFormat,
-    /// Write report to a file instead of stdout.
-    #[arg(long)]
-    output: Option<PathBuf>,
-    /// Base git revision for changed-file listing.
-    #[arg(long)]
-    base: String,
-    /// Optional head git revision.
-    #[arg(long)]
-    head: Option<String>,
-}
 
 pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let (root, cfg, findings, inventory_facts) = load_world(
