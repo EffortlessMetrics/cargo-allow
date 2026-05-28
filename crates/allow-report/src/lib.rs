@@ -30,6 +30,8 @@ mod receipt;
 mod report_json;
 mod report_text;
 mod sarif;
+#[cfg(test)]
+mod sarif_tests;
 mod summary;
 mod text;
 mod worklist;
