@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct DoctorFacts<'a> {
+pub(super) struct DoctorFacts<'a> {
     pub(super) source_tree_root: &'a str,
     pub(super) root_discovery: &'a str,
     pub(super) config_path: Option<&'a str>,

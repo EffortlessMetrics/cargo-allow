@@ -9,7 +9,7 @@ mod doctor_render;
 #[path = "doctor_types.rs"]
 mod doctor_types;
 use doctor_render::{render_doctor_human, render_doctor_json};
-pub(super) use doctor_types::DoctorFacts;
+use doctor_types::DoctorFacts;
 
 use crate::{RootArgs, config_path, source_tree_root_text, write_file};
 #[derive(Debug, Clone, Parser)]
