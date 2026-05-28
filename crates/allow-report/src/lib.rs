@@ -18,6 +18,7 @@ mod non_rust;
 mod propose;
 mod prune;
 mod receipt;
+mod report_json;
 mod sarif;
 mod text;
 mod worklist;
@@ -54,13 +55,11 @@ pub use migrate::{render_migrate_human, render_migrate_json};
 pub use propose::{render_propose_human, render_propose_json};
 pub use prune::{render_prune_human, render_prune_json};
 pub use receipt::{render_receipt, render_receipt_with_context};
+pub use report_json::{render_json, render_json_with_context};
 pub use sarif::{render_sarif, render_sarif_with_context};
 pub use worklist::{render_worklist_human, render_worklist_json};
 
-use json::{
-    bool_json, json_string_array, option_json, option_u32_json, push_json_artifact_header,
-    push_json_artifact_source_context,
-};
+use json::{json_string_array, option_json, option_u32_json};
 pub(crate) use non_rust::{FilePosture, non_rust_file_rows};
 use non_rust::{render_non_rust_human, render_non_rust_markdown};
 use text::markdown_inline_code;
@@ -307,113 +306,6 @@ fn render_audit_summary_markdown(
     }
 }
 
-pub fn render_json(
-    command: &str,
-    findings: &[Finding],
-    outcomes: &[MatchOutcome],
-    failed: bool,
-) -> String {
-    render_json_with_context(
-        command,
-        findings,
-        outcomes,
-        failed,
-        ReportContext::default(),
-    )
-}
-
-pub fn render_json_with_context(
-    command: &str,
-    findings: &[Finding],
-    outcomes: &[MatchOutcome],
-    failed: bool,
-    context: ReportContext<'_>,
-) -> String {
-    let summary = Summary::from_outcomes(outcomes);
-    let mut out = String::new();
-    out.push_str("{\n");
-    push_json_artifact_header(&mut out, REPORT_SCHEMA_VERSION, REPORT_SCHEMA_ID, command);
-    out.push_str(&format!(
-        "  \"status\": \"{}\",\n",
-        if failed { "failed" } else { "passed" }
-    ));
-    out.push_str(&format!("  \"failed\": {},\n", bool_json(failed)));
-    push_json_artifact_source_context(&mut out, context.into());
-    out.push_str("  \"summary\": {\n");
-    out.push_str(&format!("    \"findings\": {},\n", findings.len()));
-    out.push_str(&format!("    \"outcomes\": {},\n", summary.total));
-    out.push_str(&render_counts_fields(&summary, "    "));
-    out.push_str("  },\n");
-    out.push_str("  \"trend\": {\n");
-    out.push_str(&render_trend_fields(&summary, context, "    "));
-    out.push_str("  },\n");
-    out.push_str("  \"outcomes\": [\n");
-    for (i, outcome) in outcomes.iter().enumerate() {
-        if i > 0 {
-            out.push_str(",\n");
-        }
-        out.push_str("    {");
-        out.push_str(&format!("\"status\": \"{}\", ", outcome.status.as_str()));
-        out.push_str(&format!(
-            "\"allow_id\": {}, ",
-            option_json(outcome.allow_id.as_deref())
-        ));
-        out.push_str(&format!(
-            "\"finding_index\": {}, ",
-            outcome
-                .finding_index
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| "null".to_string())
-        ));
-        out.push_str(&format!("\"score\": {}, ", outcome.score));
-        out.push_str(&format!(
-            "\"message\": \"{}\"",
-            json_escape(&outcome.message)
-        ));
-        out.push('}');
-    }
-    out.push_str("\n  ],\n");
-    out.push_str("  \"findings\": [\n");
-    for (i, finding) in findings.iter().enumerate() {
-        if i > 0 {
-            out.push_str(",\n");
-        }
-        out.push_str("    {");
-        out.push_str(&format!("\"kind\": \"{}\", ", finding.kind.as_str()));
-        out.push_str(&format!(
-            "\"family\": {}, ",
-            option_json(finding.family.as_deref())
-        ));
-        out.push_str(&format!(
-            "\"path\": \"{}\", ",
-            json_escape(&normalize_path(&finding.path))
-        ));
-        out.push_str(&format!(
-            "\"line\": {}, ",
-            finding
-                .span
-                .as_ref()
-                .map(|s| s.line.to_string())
-                .unwrap_or_else(|| "null".to_string())
-        ));
-        out.push_str(&format!(
-            "\"container\": {}, ",
-            option_json(finding.identity.container.as_deref())
-        ));
-        out.push_str(&format!(
-            "\"source_package\": {}, ",
-            option_json(finding.identity.crate_name.as_deref())
-        ));
-        out.push_str(&format!(
-            "\"ast_kind\": \"{}\"",
-            json_escape(&finding.identity.ast_kind)
-        ));
-        out.push('}');
-    }
-    out.push_str("\n  ]\n}");
-    out
-}
-
 pub fn render_allow_entry_json(entry: &AllowEntry, indent: &str) -> String {
     let path = entry.path.as_ref().map(normalize_path);
     let mut out = String::new();
@@ -555,42 +447,6 @@ pub(crate) fn render_counts_fields(summary: &Summary, indent: &str) -> String {
             )
         })
         .collect::<String>()
-}
-
-fn render_trend_fields(summary: &Summary, context: ReportContext<'_>, indent: &str) -> String {
-    let baseline_debt = baseline_debt_count(summary, context);
-    let fields = [
-        (
-            "review_items",
-            review_item_count_with_baseline(summary, baseline_debt),
-        ),
-        ("new", summary.count(MatchStatus::New)),
-        ("expired", summary.count(MatchStatus::Expired)),
-        ("review_due", summary.count(MatchStatus::ReviewDue)),
-        ("stale", summary.count(MatchStatus::Stale)),
-        ("ambiguous", summary.count(MatchStatus::Ambiguous)),
-        (
-            "invalid_selector",
-            summary.count(MatchStatus::InvalidSelector),
-        ),
-        (
-            "missing_required_field",
-            summary.count(MatchStatus::MissingRequiredField),
-        ),
-        (
-            "evidence_missing",
-            summary.count(MatchStatus::EvidenceMissing),
-        ),
-        ("baseline_debt", baseline_debt),
-    ];
-    fields
-        .iter()
-        .enumerate()
-        .map(|(idx, (name, value))| {
-            let comma = if idx + 1 == fields.len() { "" } else { "," };
-            format!("{indent}\"{name}\": {value}{comma}\n")
-        })
-        .collect()
 }
 
 pub(crate) fn review_item_count_with_baseline(summary: &Summary, baseline_debt: usize) -> usize {
