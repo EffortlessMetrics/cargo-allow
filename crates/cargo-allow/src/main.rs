@@ -48,4 +48,6 @@ mod compat_test_support;
 #[cfg(test)]
 mod report_config_tests;
 #[cfg(test)]
+mod root_cli_compat_tests;
+#[cfg(test)]
 mod root_cli_tests;
