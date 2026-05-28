@@ -43,11 +43,7 @@ fn add_report<'a>(
     context: AddContext<'a>,
 ) -> allow_report::AddReport<'a> {
     allow_report::AddReport {
-        inventory: allow_report::InventoryContext::source_syntax(
-            context.inventory_source,
-            context.source_tree_root,
-            context.inventory_files,
-        ),
+        inventory: context.inventory,
         entry,
         selected_finding: finding,
         policy_output,

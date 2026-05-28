@@ -32,9 +32,11 @@ fn render_add_summary_json_records_entry_and_selected_finding() {
         Some(Path::new("policy/allow.proposed.toml")),
         true,
         AddContext {
-            inventory_source: "git_tracked",
-            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
-            inventory_files: Some(52),
+            inventory: allow_report::InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(52),
+            ),
         },
     );
     let value = parse_json_artifact("add", &json, allow_report::ADD_SCHEMA_ID, "add");

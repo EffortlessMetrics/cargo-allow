@@ -177,9 +177,11 @@ fn worklist_schema_documents_current_contract() {
 fn worklist_renderers_include_inventory_context() {
     let items = Vec::new();
     let context = WorklistContext {
-        inventory_source: "git_tracked",
-        source_tree_root: Some("H:/Code/Rust/cargo-allow"),
-        inventory_files: Some(46),
+        inventory: allow_report::InventoryContext::source_syntax(
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(46),
+        ),
         filters: WorklistFilters::default(),
     };
 
@@ -204,9 +206,7 @@ fn worklist_renderers_include_inventory_context() {
 fn worklist_renderers_include_applied_filters() {
     let items = Vec::new();
     let context = WorklistContext {
-        inventory_source: "git_tracked",
-        source_tree_root: None,
-        inventory_files: Some(46),
+        inventory: allow_report::InventoryContext::source_syntax("git_tracked", None, Some(46)),
         filters: WorklistFilters {
             kind: Some("unsafe"),
             family: Some("unsafe_fn"),

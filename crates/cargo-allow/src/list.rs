@@ -3,7 +3,7 @@ use allow_match::{CheckMode, evaluate};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::{RootArgs, load_world, parse_kind_filter, write_file};
+use crate::{RootArgs, SourceTreeReportContext, load_world, parse_kind_filter, write_file};
 
 #[path = "list_render.rs"]
 mod list_render;
@@ -121,11 +121,9 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         broad_scope: args.broad_scope,
         missing_evidence: args.missing_evidence,
     };
-    let root_text = allow_report::source_tree_path_text(&root);
+    let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = ListContext {
-        inventory_source: inventory_facts.source.as_str(),
-        source_tree_root: Some(&root_text),
-        inventory_files: inventory_facts.files_scanned,
+        inventory: source_context.inventory(),
         kind_arg: args.kind.as_deref(),
     };
     let text = match args.format {
@@ -176,9 +174,11 @@ pub(crate) fn sample_list_json_for_contract_test() -> String {
         missing_evidence: false,
     };
     let context = ListContext {
-        inventory_source: "git_tracked",
-        source_tree_root: Some("H:/Code/Rust/cargo-allow"),
-        inventory_files: Some(46),
+        inventory: allow_report::InventoryContext::source_syntax(
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(46),
+        ),
         kind_arg: Some("panic"),
     };
     render_list_rows_json(&[row], &filters, context)

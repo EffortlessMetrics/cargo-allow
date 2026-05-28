@@ -15,14 +15,56 @@ pub(crate) struct ReportRenderArgs<'a> {
     pub(crate) inventory_facts: InventoryFacts,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct SourceTreeReportContext {
+    root: String,
+    inventory_facts: InventoryFacts,
+}
+
+impl SourceTreeReportContext {
+    pub(crate) fn new(root: &Path, inventory_facts: InventoryFacts) -> Self {
+        Self {
+            root: allow_report::source_tree_path_text(root),
+            inventory_facts,
+        }
+    }
+
+    pub(crate) fn inventory(&self) -> allow_report::InventoryContext<'_> {
+        allow_report::InventoryContext::source_syntax(
+            self.inventory_source(),
+            Some(self.source_tree_root()),
+            self.inventory_files(),
+        )
+    }
+
+    pub(crate) fn report(
+        &self,
+        baseline_debt_entries: Option<usize>,
+    ) -> allow_report::ReportContext<'_> {
+        allow_report::ReportContext::source_syntax(
+            self.inventory_source(),
+            Some(self.source_tree_root()),
+            self.inventory_files(),
+            baseline_debt_entries,
+        )
+    }
+
+    pub(crate) fn source_tree_root(&self) -> &str {
+        &self.root
+    }
+
+    pub(crate) fn inventory_source(&self) -> &str {
+        self.inventory_facts.source.as_str()
+    }
+
+    pub(crate) fn inventory_files(&self) -> Option<usize> {
+        self.inventory_facts.files_scanned
+    }
+}
+
 pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
-    let root_text = allow_report::source_tree_path_text(args.root);
-    let context = allow_report::ReportContext::source_syntax(
-        args.inventory_facts.source.as_str(),
-        Some(&root_text),
-        args.inventory_facts.files_scanned,
-        Some(args.baseline_debt_entries),
-    );
+    let source_context = SourceTreeReportContext::new(args.root, args.inventory_facts);
+    let context = source_context.report(Some(args.baseline_debt_entries));
     let text = match args.format {
         OutputFormat::Human => allow_report::render_human_with_context(
             args.command,

@@ -26,9 +26,11 @@ fn explain_entry_json_records_context_and_live_status() {
         &entry,
         &[finding],
         ExplainContext {
-            inventory_source: "git_tracked",
-            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
-            inventory_files: Some(47),
+            inventory: allow_report::InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(47),
+            ),
         },
     );
 

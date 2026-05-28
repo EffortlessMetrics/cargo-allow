@@ -17,7 +17,10 @@ use add_entry::{
 use add_render::{render_add_summary, render_add_summary_json};
 pub(super) use add_types::AddContext;
 
-use crate::{RootArgs, load_world, parse_kind_filter, write_file, write_file_no_overwrite};
+use crate::{
+    RootArgs, SourceTreeReportContext, load_world, parse_kind_filter, write_file,
+    write_file_no_overwrite,
+};
 
 #[cfg(test)]
 use allow_core::{Finding, MatchStatus};
@@ -122,11 +125,9 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         review_after: args.review_after.clone(),
         expires: args.expires.clone(),
     });
-    let root_text = allow_report::source_tree_path_text(&root);
+    let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = AddContext {
-        inventory_source: inventory_facts.source.as_str(),
-        source_tree_root: Some(&root_text),
-        inventory_files: inventory_facts.files_scanned,
+        inventory: source_context.inventory(),
     };
     let summary = match args.summary_format {
         AddSummaryFormat::Human => render_add_summary(&entry, finding, args.write.as_deref()),
@@ -177,9 +178,11 @@ pub(crate) fn sample_add_json_for_contract_test() -> String {
         Some(Path::new("policy/allow.proposed.toml")),
         false,
         AddContext {
-            inventory_source: "git_tracked",
-            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
-            inventory_files: Some(48),
+            inventory: allow_report::InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(48),
+            ),
         },
     )
 }

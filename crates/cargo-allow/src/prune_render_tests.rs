@@ -40,9 +40,11 @@ fn render_prune_stale_json_records_context_and_candidates() {
         false,
         None,
         PruneContext {
-            inventory_source: "git_tracked",
-            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
-            inventory_files: Some(49),
+            inventory: allow_report::InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(49),
+            ),
         },
     );
 

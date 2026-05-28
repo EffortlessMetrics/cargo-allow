@@ -14,8 +14,8 @@ use diff_render::{
 };
 
 use crate::{
-    OutputFormat, RootArgs, git_relative_config_path, load_world, parse_kind_filter,
-    policy_baseline_debt_entries, report_config, write_file,
+    OutputFormat, RootArgs, SourceTreeReportContext, git_relative_config_path, load_world,
+    parse_kind_filter, policy_baseline_debt_entries, report_config, write_file,
 };
 
 #[derive(Debug, Clone, Parser)]
@@ -84,13 +84,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         allow_diff::policy_changes_from_git(&root, &args.base, &policy_path, &head_cfg_for_diff)?;
     let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
     let failed = outcomes.iter().any(|o| CheckMode::NoNew.fails(o.status)) || policy_failed;
-    let root_text = allow_report::source_tree_path_text(&root);
-    let report_context = allow_report::ReportContext::source_syntax(
-        inventory_facts.source.as_str(),
-        Some(&root_text),
-        inventory_facts.files_scanned,
-        Some(policy_baseline_debt_entries(&report_cfg)),
-    );
+    let source_context = SourceTreeReportContext::new(&root, inventory_facts);
+    let report_context = source_context.report(Some(policy_baseline_debt_entries(&report_cfg)));
     let mut text = match args.format {
         OutputFormat::Json => render_diff_json_with_posture(
             allow_report::render_json_with_context(

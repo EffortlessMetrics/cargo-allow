@@ -28,11 +28,7 @@ pub(super) fn render_list_rows_json(
             broad_scope: filters.broad_scope,
             missing_evidence: filters.missing_evidence,
         },
-        allow_report::InventoryContext::source_syntax(
-            context.inventory_source,
-            context.source_tree_root,
-            context.inventory_files,
-        ),
+        context.inventory,
     )
 }
 

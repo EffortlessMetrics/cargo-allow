@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::process;
 
 use crate::{
-    OutputFormat, ReportRenderArgs, RootArgs, load_compat_world, load_world,
-    policy_baseline_debt_entries, print_report, report_config, write_file,
+    OutputFormat, ReportRenderArgs, RootArgs, SourceTreeReportContext, load_compat_world,
+    load_world, policy_baseline_debt_entries, print_report, report_config, write_file,
 };
 
 #[derive(Debug, Clone, Parser)]
@@ -72,19 +72,14 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
         inventory_facts,
     })?;
     if let Some(path) = &args.receipt {
-        let root_text = allow_report::source_tree_path_text(&root);
+        let source_context = SourceTreeReportContext::new(&root, inventory_facts);
         write_file(
             path,
             &allow_report::render_receipt_with_context(
                 "check",
                 &outcomes,
                 failed,
-                allow_report::ReportContext::source_syntax(
-                    inventory_facts.source.as_str(),
-                    Some(&root_text),
-                    inventory_facts.files_scanned,
-                    None,
-                ),
+                source_context.report(None),
             ),
         )?;
     }

@@ -64,11 +64,7 @@ fn render_explain_report<R>(
         .collect::<Vec<_>>();
 
     render(allow_report::ExplainReport {
-        inventory: allow_report::InventoryContext::source_syntax(
-            context.inventory_source,
-            context.source_tree_root,
-            context.inventory_files,
-        ),
+        inventory: context.inventory,
         entry,
         current_findings: findings,
         match_outcomes: outcomes,
