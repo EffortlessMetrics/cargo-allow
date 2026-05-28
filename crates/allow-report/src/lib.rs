@@ -19,6 +19,8 @@ mod list_tests;
 mod migrate;
 mod non_rust;
 mod propose;
+#[cfg(test)]
+mod propose_tests;
 mod prune;
 #[cfg(test)]
 mod prune_tests;
