@@ -8,10 +8,15 @@ use std::path::{Path, PathBuf};
 use tree_sitter::Node;
 
 mod package;
+mod syntax_kinds;
 mod syntax_tree;
 mod text;
 
 use package::source_package_contexts;
+use syntax_kinds::{
+    LintAttributeKind, PanicMacroInvocation, PanicMacroKind, PanicMethodCall, PanicMethodKind,
+    RustLineScope, RustSyntaxFacts, UnsafeSyntaxConstruct, UnsafeSyntaxKind,
+};
 use syntax_tree::{impl_container_name, node_text};
 use text::{
     attribute_column, column, detect_attr, extract_first_lint, index_symbol, lint_policy_reference,
@@ -22,142 +27,6 @@ pub use package::{
     SourcePackageContext, apply_source_package_context, source_package_contexts_from_sources,
 };
 pub use syntax_tree::{RustSyntaxContainer, RustSyntaxTree, parse_rust_syntax};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum LintAttributeKind {
-    Allow,
-    Expect,
-}
-
-impl LintAttributeKind {
-    fn name(self) -> &'static str {
-        match self {
-            Self::Allow => "allow",
-            Self::Expect => "expect",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum UnsafeSyntaxKind {
-    Fn,
-    Impl,
-    Trait,
-    ExternBlock,
-    Block,
-}
-
-impl UnsafeSyntaxKind {
-    fn family(self) -> &'static str {
-        match self {
-            Self::Fn => "unsafe_fn",
-            Self::Impl => "unsafe_impl",
-            Self::Trait => "unsafe_trait",
-            Self::ExternBlock => "unsafe_extern_block",
-            Self::Block => "unsafe_block",
-        }
-    }
-
-    fn ast_kind(self) -> &'static str {
-        self.family()
-    }
-
-    fn priority(self) -> u8 {
-        match self {
-            Self::Fn => 0,
-            Self::Impl => 1,
-            Self::Trait => 2,
-            Self::ExternBlock => 3,
-            Self::Block => 4,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct UnsafeSyntaxConstruct {
-    kind: UnsafeSyntaxKind,
-    column: u32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PanicMacroKind {
-    Panic,
-    Todo,
-    Unimplemented,
-    Unreachable,
-}
-
-impl PanicMacroKind {
-    fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "panic" => Some(Self::Panic),
-            "todo" => Some(Self::Todo),
-            "unimplemented" => Some(Self::Unimplemented),
-            "unreachable" => Some(Self::Unreachable),
-            _ => None,
-        }
-    }
-
-    fn macro_name(self) -> &'static str {
-        match self {
-            Self::Panic => "panic",
-            Self::Todo => "todo",
-            Self::Unimplemented => "unimplemented",
-            Self::Unreachable => "unreachable",
-        }
-    }
-
-    fn family(self) -> &'static str {
-        match self {
-            Self::Panic => "panic_macro",
-            Self::Todo => "todo",
-            Self::Unimplemented => "unimplemented",
-            Self::Unreachable => "unreachable",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct PanicMacroInvocation {
-    kind: PanicMacroKind,
-    column: u32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PanicMethodKind {
-    Unwrap,
-    Expect,
-}
-
-impl PanicMethodKind {
-    fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "unwrap" => Some(Self::Unwrap),
-            "expect" => Some(Self::Expect),
-            _ => None,
-        }
-    }
-
-    fn family(self) -> &'static str {
-        match self {
-            Self::Unwrap => "unwrap",
-            Self::Expect => "expect",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct PanicMethodCall {
-    kind: PanicMethodKind,
-    column: u32,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct RustLineScope {
-    container: Option<String>,
-    module_path: Vec<String>,
-    span_len: u32,
-}
 
 pub fn scan_rust_files(
     root: impl AsRef<Path>,
@@ -391,17 +260,6 @@ fn scan_line(
             findings,
         );
     }
-}
-
-#[derive(Default)]
-struct RustSyntaxFacts {
-    index_columns: BTreeMap<u32, u32>,
-    lint_attributes: BTreeMap<u32, Vec<LintAttributeKind>>,
-    panic_macros: BTreeMap<u32, Vec<PanicMacroInvocation>>,
-    panic_methods: BTreeMap<u32, Vec<PanicMethodCall>>,
-    scopes: BTreeMap<u32, RustLineScope>,
-    unsafe_constructs: BTreeMap<u32, Vec<UnsafeSyntaxConstruct>>,
-    unsafe_attribute_lines: BTreeSet<u32>,
 }
 
 fn syntax_facts(source: &str) -> RustSyntaxFacts {
