@@ -15,18 +15,6 @@ mod tests {
     }
 
     #[test]
-    fn source_tree_root_text_strips_windows_verbatim_prefix() {
-        assert_eq!(
-            source_tree_root_text(Path::new(r"\\?\H:\Code\Rust\cargo-allow")),
-            "H:/Code/Rust/cargo-allow"
-        );
-        assert_eq!(
-            source_tree_root_text(Path::new(r"\\?\UNC\server\share\repo")),
-            "//server/share/repo"
-        );
-    }
-
-    #[test]
     fn clap_parses_markdown_alias() {
         let parsed =
             CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "check", "--format", "md"]))

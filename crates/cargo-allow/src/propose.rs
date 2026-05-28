@@ -4,7 +4,7 @@ use allow_policy::render_policy;
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::{RootArgs, load_world, source_tree_root_text, write_file, write_file_no_overwrite};
+use crate::{RootArgs, load_world, write_file, write_file_no_overwrite};
 
 #[path = "propose_baseline.rs"]
 mod propose_baseline;
@@ -88,7 +88,7 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     } else {
         println!("{rendered}");
     }
-    let root_text = source_tree_root_text(&root);
+    let root_text = allow_report::source_tree_path_text(&root);
     let context = ProposeContext {
         inventory_source: inventory_facts.source.as_str(),
         source_tree_root: Some(&root_text),

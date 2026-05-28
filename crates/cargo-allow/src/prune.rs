@@ -4,7 +4,7 @@ use allow_policy::{render_policy, validate_policy};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::{RootArgs, config_path, load_world, source_tree_root_text, write_file};
+use crate::{RootArgs, config_path, load_world, write_file};
 
 #[path = "prune_render.rs"]
 mod prune_render;
@@ -83,7 +83,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
     } else {
         None
     };
-    let root_text = source_tree_root_text(&root);
+    let root_text = allow_report::source_tree_path_text(&root);
     let context = PruneContext {
         inventory_source: inventory_facts.source.as_str(),
         source_tree_root: Some(&root_text),

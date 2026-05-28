@@ -1,5 +1,4 @@
 use allow_core::{Finding, glob_matches_str, normalize_path};
-use std::path::Path;
 
 pub(crate) fn source_tree_path_matches_filter(item_path: &str, filter_path: &str) -> bool {
     let item_path = normalize_path(item_path);
@@ -30,18 +29,4 @@ pub(crate) fn source_package_name(finding: &Finding) -> Option<String> {
         .map(str::trim)
         .filter(|name| !name.is_empty())
         .map(ToOwned::to_owned)
-}
-
-pub(crate) fn source_tree_root_text(root: &Path) -> String {
-    let text = root.to_string_lossy().replace('\\', "/");
-    if let Some(stripped) = text.strip_prefix("//?/UNC/") {
-        return format!("//{stripped}");
-    }
-    if let Some(stripped) = text.strip_prefix("//?/") {
-        return stripped.to_string();
-    }
-    if let Some(stripped) = text.strip_prefix("/?/") {
-        return stripped.to_string();
-    }
-    normalize_path(root)
 }

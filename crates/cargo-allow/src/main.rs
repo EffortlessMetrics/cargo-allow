@@ -45,7 +45,7 @@ pub(crate) use reporting::{
 };
 pub(crate) use selector::selector_from_finding;
 pub(crate) use source_tree::{
-    scope_has_wildcard, source_package_name, source_tree_path_matches_filter, source_tree_root_text,
+    scope_has_wildcard, source_package_name, source_tree_path_matches_filter,
 };
 pub(crate) use world::{load_world, load_world_with_evidence_validation};
 

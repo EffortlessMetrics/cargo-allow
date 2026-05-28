@@ -3,9 +3,7 @@ use allow_match::{CheckMode, evaluate};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::{
-    RootArgs, load_world_with_evidence_validation, report_config, source_tree_root_text, write_file,
-};
+use crate::{RootArgs, load_world_with_evidence_validation, report_config, write_file};
 
 #[path = "worklist_actions.rs"]
 mod worklist_actions;
@@ -157,7 +155,7 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     let mut items = filter_work_items(items, filters);
     sort_work_items(&mut items);
     renumber_work_items(&mut items);
-    let root_text = source_tree_root_text(&root);
+    let root_text = allow_report::source_tree_path_text(&root);
     let context = WorklistContext {
         inventory_source: inventory_facts.source.as_str(),
         source_tree_root: Some(&root_text),
