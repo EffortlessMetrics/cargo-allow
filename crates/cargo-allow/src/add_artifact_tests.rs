@@ -1,5 +1,6 @@
 use super::test_support::test_finding_at_line;
 use super::*;
+use crate::artifact_contract_support::{assert_inventory_contract, parse_json_artifact};
 use serde_json::Value;
 
 #[test]
@@ -90,78 +91,5 @@ fn render_add_summary_json_records_entry_and_selected_finding() {
             .and_then(Value::as_str),
         Some("parser"),
         "add selected finding source package"
-    );
-}
-
-#[test]
-fn add_schema_documents_current_contract() {
-    let schema = include_str!("../../../docs/schemas/add.schema.json");
-
-    assert!(schema.contains(allow_report::ADD_SCHEMA_ID));
-    assert!(schema.contains("\"options\""));
-    assert!(schema.contains("\"policy_output\""));
-    assert!(schema.contains("\"allow_entry\""));
-    assert!(schema.contains("\"selected_finding\""));
-    assert!(schema.contains("\"human_review_required\""));
-    assert!(schema.contains("\"scanner_limitations\""));
-    assert!(schema.contains("\"scanner_limitation\""));
-    assert!(schema.contains("\"cargo_metadata_not_invoked\""));
-    assert!(schema.contains("\"repository_code_not_executed\""));
-}
-
-fn parse_json_artifact(
-    name: &str,
-    json: &str,
-    expected_schema: &str,
-    expected_command: &str,
-) -> Value {
-    let value: Value = serde_json::from_str(json)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("{name} json: {err}\n{json}")));
-    assert_eq!(
-        value.pointer("/schema_id").and_then(Value::as_str),
-        Some(expected_schema),
-        "{name} schema id"
-    );
-    assert_eq!(
-        value.pointer("/command").and_then(Value::as_str),
-        Some(expected_command),
-        "{name} command"
-    );
-    value
-}
-
-fn assert_inventory_contract(
-    name: &str,
-    value: &Value,
-    expected_source: &str,
-    expected_root: Option<&str>,
-    expected_files: Option<u64>,
-) {
-    assert_eq!(
-        value.pointer("/inventory/scope").and_then(Value::as_str),
-        Some("source_tree"),
-        "{name} inventory scope"
-    );
-    assert_eq!(
-        value.pointer("/inventory/scanner").and_then(Value::as_str),
-        Some("source_syntax"),
-        "{name} inventory scanner"
-    );
-    assert_eq!(
-        value.pointer("/inventory/source").and_then(Value::as_str),
-        Some(expected_source),
-        "{name} inventory source"
-    );
-    assert_eq!(
-        value.pointer("/inventory/root").and_then(Value::as_str),
-        expected_root,
-        "{name} inventory root"
-    );
-    assert_eq!(
-        value
-            .pointer("/inventory/files_scanned")
-            .and_then(Value::as_u64),
-        expected_files,
-        "{name} inventory files"
     );
 }
