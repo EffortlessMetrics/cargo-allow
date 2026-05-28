@@ -1,7 +1,6 @@
 use allow_core::{AllowEntry, FindingKind, Selector, normalize_path};
 use std::path::PathBuf;
 
-use crate::converter_evidence::workflow_evidence;
 use crate::converter_workflow_support::{lifecycle_from_workflow_rule, slug_id};
 use crate::findings::workflow_action_symbol;
 use crate::types::LegacyWorkflowRule;
@@ -40,6 +39,24 @@ fn workflow_file_entry(rule: &LegacyWorkflowRule) -> AllowEntry {
         },
         last_seen: None,
     }
+}
+
+fn workflow_evidence(rule: &LegacyWorkflowRule) -> Vec<String> {
+    let mut evidence = Vec::new();
+    evidence.extend(
+        rule.permissions
+            .iter()
+            .map(|permission| format!("permission:{permission}")),
+    );
+    evidence.extend(
+        rule.secrets_used
+            .iter()
+            .map(|secret| format!("secret:{secret}")),
+    );
+    if let Some(lane) = &rule.duplicate_of_lane {
+        evidence.push(format!("duplicate_of_lane:{lane}"));
+    }
+    evidence
 }
 
 fn workflow_action_entry(rule: &LegacyWorkflowRule, action: &str) -> AllowEntry {

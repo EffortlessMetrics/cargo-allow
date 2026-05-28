@@ -1,7 +1,6 @@
-use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector};
-use std::path::PathBuf;
+use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, normalize_path};
+use std::path::{Path, PathBuf};
 
-use crate::converter_evidence::{network_evidence, process_evidence};
 use crate::converter_process_network_support::{
     network_fingerprint, network_symbol, process_fingerprint, process_scope, process_symbol,
 };
@@ -40,6 +39,32 @@ pub(crate) fn entry_from_process_rule(rule: &LegacyProcessRule) -> AllowEntry {
         },
         last_seen: None,
     }
+}
+
+fn process_evidence(rule: &LegacyProcessRule) -> Vec<String> {
+    let mut evidence = vec![
+        format!("binary:{}", rule.binary),
+        format!("argv_shape:{}", rule.argv_shape.join(" ")),
+        format!("network_reach:{}", rule.network_reach),
+    ];
+    evidence.extend(
+        rule.called_by
+            .iter()
+            .map(|path| format!("called_by:{}", normalize_path(Path::new(path)))),
+    );
+    evidence
+}
+
+fn network_evidence(rule: &LegacyNetworkRule) -> Vec<String> {
+    let mut evidence = vec![
+        format!("destination:{}", rule.destination),
+        format!("lane:{}", rule.lane),
+        format!("auth_required:{}", rule.auth_required),
+    ];
+    if let Some(secret) = &rule.auth_secret {
+        evidence.push(format!("auth_secret:{secret}"));
+    }
+    evidence
 }
 
 pub(crate) fn entry_from_network_rule(rule: &LegacyNetworkRule) -> AllowEntry {

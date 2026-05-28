@@ -1,7 +1,6 @@
 use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, normalize_path};
 use std::path::PathBuf;
 
-use crate::converter_evidence::dependency_surface_evidence;
 use crate::types::LegacyDependencySurfaceRule;
 
 pub(crate) fn entry_from_dependency_surface_rule(rule: &LegacyDependencySurfaceRule) -> AllowEntry {
@@ -37,4 +36,12 @@ pub(crate) fn entry_from_dependency_surface_rule(rule: &LegacyDependencySurfaceR
         },
         last_seen: None,
     }
+}
+
+fn dependency_surface_evidence(rule: &LegacyDependencySurfaceRule) -> Vec<String> {
+    let mut evidence = vec![format!("surface:{}", rule.surface)];
+    if let Some(count) = rule.dep_count_at_baseline {
+        evidence.push(format!("dep_count_at_baseline:{count}"));
+    }
+    evidence
 }
