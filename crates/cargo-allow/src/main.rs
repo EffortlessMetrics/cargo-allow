@@ -18,8 +18,9 @@ mod migrate;
 mod policy_config;
 mod propose;
 mod prune;
-mod render;
 mod reporting;
+mod selector;
+mod source_tree;
 mod worklist;
 mod world;
 
@@ -39,13 +40,13 @@ pub(crate) use policy_config::{
     config_path, git_relative_config_path, load_config_optional, load_config_required,
     root_relative_path,
 };
-pub(crate) use render::{
-    scope_has_wildcard, selector_from_finding, source_package_name,
-    source_tree_path_matches_filter, source_tree_root_text,
-};
 pub(crate) use reporting::{
     ReportRenderArgs, policy_baseline_debt_entries, print_report, report_config,
     source_syntax_inventory_context, source_syntax_report_context,
+};
+pub(crate) use selector::selector_from_finding;
+pub(crate) use source_tree::{
+    scope_has_wildcard, source_package_name, source_tree_path_matches_filter, source_tree_root_text,
 };
 pub(crate) use world::{load_world, load_world_with_evidence_validation};
 
