@@ -9,6 +9,10 @@ use crate::{
 
 #[path = "worklist_actions.rs"]
 mod worklist_actions;
+#[path = "worklist_advisories.rs"]
+mod worklist_advisories;
+#[path = "worklist_evidence.rs"]
+mod worklist_evidence;
 #[path = "worklist_items.rs"]
 mod worklist_items;
 #[path = "worklist_queue.rs"]
@@ -20,10 +24,9 @@ mod worklist_scoring;
 #[path = "worklist_types.rs"]
 mod worklist_types;
 pub(crate) use worklist_actions::{proof_commands, suggested_actions};
-use worklist_items::{
-    work_items_from_evidence_diagnostics, work_items_from_outcomes,
-    work_items_from_policy_advisories,
-};
+use worklist_advisories::work_items_from_policy_advisories;
+use worklist_evidence::work_items_from_evidence_diagnostics;
+use worklist_items::work_items_from_outcomes;
 use worklist_queue::{filter_work_items, renumber_work_items, sort_work_items};
 use worklist_render::{render_worklist_human_with_context, render_worklist_json_with_context};
 pub(crate) use worklist_scoring::work_item_kind;
