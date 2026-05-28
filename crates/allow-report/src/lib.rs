@@ -663,6 +663,22 @@ pub fn render_worklist_json(
     out
 }
 
+pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("source tree root: {}\n", facts.source_tree_root));
+    out.push_str(&format!("root discovery: {}\n", facts.root_discovery));
+    match facts.config_path {
+        Some(path) => out.push_str(&format!("config: {path}\n")),
+        None => out.push_str("config: not found; run `cargo-allow init`\n"),
+    }
+    out.push_str(&format!(
+        "inventory: source_tree/source_syntax via {}; files scanned: {}\n",
+        facts.inventory_source, facts.files_scanned
+    ));
+    out.push_str(CLAIM_BOUNDARY_TEXT);
+    out
+}
+
 pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
@@ -1969,6 +1985,25 @@ mod tests {
         assert!(json.contains("\"scanner\": \"source_syntax\""));
         assert!(json.contains("\"source\": \"git_tracked\""));
         assert!(json.contains("\"files_scanned\": 50"));
+    }
+
+    #[test]
+    fn doctor_human_renderer_records_root_config_and_inventory() {
+        let text = render_doctor_human(DoctorReport {
+            source_tree_root: "H:/Code/Rust/cargo-allow",
+            root_discovery: "nearest_git_root",
+            config_path: None,
+            inventory_source: "filesystem_fallback",
+            files_scanned: 7,
+        });
+
+        assert!(text.contains("source tree root: H:/Code/Rust/cargo-allow"));
+        assert!(text.contains("root discovery: nearest_git_root"));
+        assert!(text.contains("config: not found; run `cargo-allow init`"));
+        assert!(text.contains(
+            "inventory: source_tree/source_syntax via filesystem_fallback; files scanned: 7"
+        ));
+        assert!(text.contains("did not invoke Cargo metadata"));
     }
 
     #[test]
