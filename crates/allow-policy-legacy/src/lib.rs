@@ -8,6 +8,7 @@ mod converter_file_configs;
 mod converter_file_entries;
 mod converter_file_support;
 mod converter_generated_entries;
+mod converter_panic_configs;
 mod converter_panic_entries;
 mod converter_panic_support;
 mod converter_process_network_entries;
