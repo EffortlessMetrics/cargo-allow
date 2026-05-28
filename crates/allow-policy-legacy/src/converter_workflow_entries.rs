@@ -1,7 +1,8 @@
 use allow_core::{AllowEntry, FindingKind, Selector, normalize_path};
 use std::path::PathBuf;
 
-use crate::converter_support::{lifecycle_from_workflow_rule, slug_id, workflow_evidence};
+use crate::converter_evidence::workflow_evidence;
+use crate::converter_support::{lifecycle_from_workflow_rule, slug_id};
 use crate::findings::workflow_action_symbol;
 use crate::types::LegacyWorkflowRule;
 

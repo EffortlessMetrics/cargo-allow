@@ -1,7 +1,7 @@
 use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, normalize_path};
 use std::path::PathBuf;
 
-use crate::converter_support::dependency_surface_evidence;
+use crate::converter_evidence::dependency_surface_evidence;
 use crate::types::LegacyDependencySurfaceRule;
 
 pub(crate) fn entry_from_dependency_surface_rule(rule: &LegacyDependencySurfaceRule) -> AllowEntry {

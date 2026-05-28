@@ -1,7 +1,7 @@
 use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, normalize_path};
 use std::path::PathBuf;
 
-use crate::converter_support::executable_evidence;
+use crate::converter_evidence::executable_evidence;
 use crate::types::LegacyExecutableRule;
 
 pub(crate) fn entry_from_executable_rule(rule: &LegacyExecutableRule) -> AllowEntry {

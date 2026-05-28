@@ -1,7 +1,7 @@
 use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, normalize_path};
 use std::path::PathBuf;
 
-use crate::converter_support::unsafe_evidence;
+use crate::converter_evidence::unsafe_evidence;
 use crate::types::LegacyUnsafeRule;
 
 pub(crate) fn entry_from_unsafe_rule(rule: &LegacyUnsafeRule) -> AllowEntry {
