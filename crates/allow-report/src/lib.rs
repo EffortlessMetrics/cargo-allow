@@ -1,4 +1,6 @@
 mod add;
+#[cfg(test)]
+mod add_tests;
 mod allow_entry_json;
 mod artifacts;
 mod contracts;
