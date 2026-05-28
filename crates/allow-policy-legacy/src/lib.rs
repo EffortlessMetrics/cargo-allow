@@ -9,6 +9,7 @@ mod findings;
 mod io;
 mod loaders;
 mod parser_policy_entries;
+mod parser_source_entries;
 mod parser_support;
 mod parsers;
 mod types;
