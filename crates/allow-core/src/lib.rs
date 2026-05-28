@@ -7,10 +7,12 @@ pub const STRUCTURAL_IDENTITY_SCHEMA_ID: &str = "cargo-allow.structural-identity
 mod date;
 mod error;
 mod fingerprint;
+mod json;
 mod source_tree_path;
 pub use date::SimpleDate;
 pub use error::{CargoAllowError, CargoAllowResult};
 pub use fingerprint::{maybe_line_distance_score, normalize_snippet, stable_hash_hex};
+pub use json::json_escape;
 pub use source_tree_path::{
     glob_matches, glob_matches_str, normalize_path, source_tree_path_matches_filter,
     source_tree_scope_has_wildcard,
@@ -386,22 +388,6 @@ pub struct MatchOutcome {
     pub finding_index: Option<usize>,
     pub message: String,
     pub score: u32,
-}
-
-pub fn json_escape(input: &str) -> String {
-    let mut out = String::new();
-    for ch in input.chars() {
-        match ch {
-            '\\' => out.push_str("\\\\"),
-            '"' => out.push_str("\\\""),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if c.is_control() => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out
 }
 
 #[cfg(test)]
