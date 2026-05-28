@@ -1,11 +1,16 @@
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 pub const STRUCTURAL_IDENTITY_SCHEMA_ID: &str = "cargo-allow.structural-identity.v1";
 
 mod date;
+mod source_tree_path;
 pub use date::SimpleDate;
+pub use source_tree_path::{
+    glob_matches, glob_matches_str, normalize_path, source_tree_path_matches_filter,
+    source_tree_scope_has_wildcard,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CargoAllowError {
@@ -402,31 +407,6 @@ pub struct MatchOutcome {
     pub score: u32,
 }
 
-pub fn normalize_path(path: impl AsRef<Path>) -> String {
-    let text = path.as_ref().to_string_lossy().replace('\\', "/");
-    let absolute = text.starts_with('/');
-    let mut parts = Vec::new();
-    for part in text.split('/') {
-        match part {
-            "" | "." => {}
-            ".." => {
-                if parts.last().is_some_and(|part| *part != "..") {
-                    parts.pop();
-                } else if !absolute {
-                    parts.push(part);
-                }
-            }
-            other => parts.push(other),
-        }
-    }
-    let normalized = parts.join("/");
-    if absolute {
-        format!("/{normalized}")
-    } else {
-        normalized
-    }
-}
-
 pub fn normalize_snippet(input: &str) -> String {
     input.split_whitespace().collect::<Vec<_>>().join(" ")
 }
@@ -458,77 +438,6 @@ pub fn maybe_line_distance_score(hint: Option<u32>, actual: Option<u32>) -> u32 
             }
         }
         _ => 0,
-    }
-}
-
-pub fn glob_matches(pattern: &str, path: &Path) -> bool {
-    let path = normalize_path(path);
-    glob_matches_str(pattern, &path)
-}
-
-pub fn glob_matches_str(pattern: &str, path: &str) -> bool {
-    let p = pattern.replace('\\', "/");
-    glob_match_tokens(&split_glob(&p), &split_glob(path))
-}
-
-pub fn source_tree_path_matches_filter(item_path: &str, filter_path: &str) -> bool {
-    let item_path = normalize_path(item_path);
-    let filter_path = normalize_path(filter_path);
-    let filter_path = filter_path.trim_end_matches('/');
-    if filter_path.is_empty() || filter_path == "." {
-        return true;
-    }
-    item_path == filter_path
-        || item_path
-            .strip_prefix(filter_path)
-            .map(|suffix| suffix.starts_with('/'))
-            .unwrap_or(false)
-        || (source_tree_scope_has_wildcard(&item_path) && glob_matches_str(&item_path, filter_path))
-}
-
-pub fn source_tree_scope_has_wildcard(scope: &str) -> bool {
-    scope
-        .chars()
-        .any(|ch| matches!(ch, '*' | '?' | '[' | ']' | '{' | '}'))
-}
-
-fn split_glob(s: &str) -> Vec<&str> {
-    s.split('/').filter(|part| !part.is_empty()).collect()
-}
-
-fn glob_match_tokens(pattern: &[&str], path: &[&str]) -> bool {
-    if pattern.is_empty() {
-        return path.is_empty();
-    }
-    if pattern[0] == "**" {
-        if glob_match_tokens(&pattern[1..], path) {
-            return true;
-        }
-        return !path.is_empty() && glob_match_tokens(pattern, &path[1..]);
-    }
-    if path.is_empty() {
-        return false;
-    }
-    segment_matches(pattern[0], path[0]) && glob_match_tokens(&pattern[1..], &path[1..])
-}
-
-fn segment_matches(pattern: &str, text: &str) -> bool {
-    segment_match_bytes(pattern.as_bytes(), text.as_bytes())
-}
-
-fn segment_match_bytes(pattern: &[u8], text: &[u8]) -> bool {
-    if pattern.is_empty() {
-        return text.is_empty();
-    }
-    match pattern[0] {
-        b'*' => {
-            segment_match_bytes(&pattern[1..], text)
-                || (!text.is_empty() && segment_match_bytes(pattern, &text[1..]))
-        }
-        b'?' => !text.is_empty() && segment_match_bytes(&pattern[1..], &text[1..]),
-        byte => {
-            !text.is_empty() && byte == text[0] && segment_match_bytes(&pattern[1..], &text[1..])
-        }
     }
 }
 
