@@ -5,14 +5,13 @@ use toml::Value;
 use crate::converter_file_configs::{
     config_from_current_non_rust_findings, config_from_generated_rules,
 };
-use crate::converter_panic_configs::{
-    config_from_no_panic_allowlist_entries, config_from_no_panic_baseline_entries,
-};
 use crate::converter_source_configs::{config_from_clippy_rules, config_from_unsafe_rules};
 use crate::io::{legacy_table, read_policy};
+pub use crate::loader_panic_compat::{
+    load_no_panic_allowlist_compat_config, load_no_panic_baseline_compat_config,
+};
 use crate::parsers::{
-    is_clippy_exceptions_policy, parse_clippy_rules, parse_generated_rules,
-    parse_no_panic_allowlist_entries, parse_no_panic_baseline_entries, parse_non_rust_rules,
+    is_clippy_exceptions_policy, parse_clippy_rules, parse_generated_rules, parse_non_rust_rules,
     parse_unsafe_rules,
 };
 
@@ -48,40 +47,6 @@ pub fn load_generated_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<
     }
     let rules = parse_generated_rules(&table)?;
     config_from_generated_rules(&table, &rules)
-}
-
-pub fn load_no_panic_baseline_compat_config(
-    path: impl AsRef<Path>,
-) -> CargoAllowResult<AllowConfig> {
-    let text = read_policy(path.as_ref())?;
-    let table = legacy_table(&text)?.ok_or_else(|| {
-        CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
-    })?;
-    if table.get("policy").and_then(Value::as_str) != Some("no-panic-baseline") {
-        return Err(CargoAllowError::new(format!(
-            "{} is not a no-panic-baseline policy",
-            path.as_ref().display()
-        )));
-    }
-    let entries = parse_no_panic_baseline_entries(&table)?;
-    config_from_no_panic_baseline_entries(&table, &entries)
-}
-
-pub fn load_no_panic_allowlist_compat_config(
-    path: impl AsRef<Path>,
-) -> CargoAllowResult<AllowConfig> {
-    let text = read_policy(path.as_ref())?;
-    let table = legacy_table(&text)?.ok_or_else(|| {
-        CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
-    })?;
-    if table.get("policy").and_then(Value::as_str) != Some("no-panic-allowlist") {
-        return Err(CargoAllowError::new(format!(
-            "{} is not a no-panic-allowlist policy",
-            path.as_ref().display()
-        )));
-    }
-    let entries = parse_no_panic_allowlist_entries(&table)?;
-    config_from_no_panic_allowlist_entries(&table, &entries)
 }
 
 pub fn load_clippy_exceptions_compat_config(
