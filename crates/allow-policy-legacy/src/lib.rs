@@ -39,6 +39,7 @@ mod types_dependency_entries;
 mod types_executable_entries;
 mod types_lint_entries;
 mod types_panic_entries;
+mod types_process_network_entries;
 mod types_source_entries;
 mod types_unsafe_entries;
 mod types_workflow_entries;
