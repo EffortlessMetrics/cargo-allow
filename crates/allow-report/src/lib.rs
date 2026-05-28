@@ -873,6 +873,32 @@ fn explain_report_status(outcomes: &[MatchOutcome]) -> MatchStatus {
     MatchStatus::Matched
 }
 
+pub fn render_add_human(report: AddReport<'_>) -> String {
+    let entry = report.entry;
+    let selected_finding = report.selected_finding;
+    let mut out = String::new();
+    out.push_str("cargo-allow add summary\n");
+    out.push_str(&format!("id: {}\n", entry.id));
+    out.push_str(&format!("kind: {}\n", entry.kind));
+    if let Some(family) = &entry.family {
+        out.push_str(&format!("family: {family}\n"));
+    }
+    out.push_str(&format!("scope: {}\n", entry.path_or_glob()));
+    out.push_str(&format!("owner: {}\n", entry.owner));
+    out.push_str(&format!("classification: {}\n", entry.classification));
+    out.push_str(&format!(
+        "matched finding: {}\n",
+        finding_location_text(selected_finding)
+    ));
+    if let Some(output) = report.policy_output {
+        out.push_str(&format!("output: {output}\n"));
+    } else {
+        out.push_str("output: stdout\n");
+    }
+    out.push_str("claim boundary: generated policy entry requires human review before merge.\n");
+    out
+}
+
 pub fn render_add_json(report: AddReport<'_>) -> String {
     let entry = report.entry;
     let selected_finding = report.selected_finding;
@@ -1563,6 +1589,22 @@ mod tests {
         assert!(json.contains("\"evidence_count\": 1"));
         assert!(json.contains("\"source_package\": \"parser\""));
         assert!(json.contains("\"normalized_snippet_hash\": \"fnv1a64:add\""));
+
+        let text = render_add_human(AddReport {
+            inventory: InventoryContext::source_syntax("git_tracked", None, None),
+            entry: &entry,
+            selected_finding: &finding,
+            policy_output: Some("policy/allow.proposed.toml"),
+            force: false,
+        });
+
+        assert!(text.contains("cargo-allow add summary"));
+        assert!(text.contains("id: allow-add-json"));
+        assert!(text.contains("kind: panic"));
+        assert!(text.contains("family: unwrap"));
+        assert!(text.contains("matched finding: src/lib.rs:42:13"));
+        assert!(text.contains("output: policy/allow.proposed.toml"));
+        assert!(text.contains("requires human review"));
     }
 
     #[test]
