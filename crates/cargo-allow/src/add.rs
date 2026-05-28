@@ -1,20 +1,28 @@
-use allow_core::{
-    AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, LastSeen,
-    Lifecycle, MatchStatus, SimpleDate, normalize_path,
-};
+use allow_core::{CargoAllowError, CargoAllowResult, FindingKind};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_local_evidence_references, validate_policy};
 use clap::{Parser, ValueEnum};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
+#[path = "add_entry.rs"]
+mod add_entry;
 #[path = "add_render.rs"]
 mod add_render;
+use add_entry::{
+    AddEntryRequest, allow_entry_from_finding, ensure_addable_outcome, next_allow_id,
+    select_add_finding,
+};
 use add_render::{AddContext, render_add_summary, render_add_summary_json};
 
 use crate::{
-    KindFilter, RootArgs, load_world, parse_kind_filter, selector_from_finding,
-    source_tree_root_text, write_file, write_file_no_overwrite,
+    RootArgs, load_world, parse_kind_filter, source_tree_root_text, write_file,
+    write_file_no_overwrite,
 };
+
+#[cfg(test)]
+use allow_core::{Finding, MatchStatus};
+#[cfg(test)]
+use std::path::Path;
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct AddArgs {
@@ -141,104 +149,6 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         eprintln!("{summary}");
     }
     Ok(())
-}
-
-fn select_add_finding<'a>(
-    findings: &'a [Finding],
-    kind: KindFilter,
-    path: &Path,
-    line: u32,
-) -> CargoAllowResult<(usize, &'a Finding)> {
-    let normalized_path = normalize_path(path);
-    let mut candidates = findings
-        .iter()
-        .enumerate()
-        .filter(|(_, finding)| kind.matches_finding(finding))
-        .filter(|(_, finding)| normalize_path(&finding.path) == normalized_path)
-        .filter_map(|(index, finding)| {
-            finding
-                .span
-                .as_ref()
-                .map(|span| (span.line.abs_diff(line), index, finding))
-        })
-        .collect::<Vec<_>>();
-    candidates.sort_by_key(|(distance, _, finding)| (*distance, normalize_path(&finding.path)));
-    let Some((distance, index, finding)) = candidates.first().copied() else {
-        return Err(CargoAllowError::new(format!(
-            "no current {} finding found near {}:{}",
-            kind.kind, normalized_path, line
-        )));
-    };
-    let tied = candidates
-        .iter()
-        .filter(|(candidate_distance, _, _)| *candidate_distance == distance)
-        .count();
-    if tied > 1 {
-        return Err(CargoAllowError::new(format!(
-            "ambiguous add request: {tied} findings are equally near {}:{}",
-            normalized_path, line
-        )));
-    }
-    Ok((index, finding))
-}
-
-fn ensure_addable_outcome(status: MatchStatus) -> CargoAllowResult<()> {
-    if status == MatchStatus::New {
-        return Ok(());
-    }
-    Err(CargoAllowError::new(format!(
-        "selected finding is already receipted or blocked with status `{}`; use list or explain before editing policy",
-        status.as_str()
-    )))
-}
-
-struct AddEntryRequest<'a> {
-    finding: &'a Finding,
-    id: String,
-    owner: String,
-    classification: String,
-    reason: String,
-    evidence: Vec<String>,
-    review_after: String,
-    expires: Option<String>,
-}
-
-fn allow_entry_from_finding(request: AddEntryRequest<'_>) -> AllowEntry {
-    let selector = selector_from_finding(request.finding);
-    AllowEntry {
-        id: request.id,
-        kind: request.finding.kind,
-        family: request.finding.family.clone(),
-        path: Some(request.finding.path.clone()),
-        glob: None,
-        owner: request.owner,
-        classification: request.classification,
-        reason: request.reason,
-        evidence: request.evidence,
-        links: Vec::new(),
-        occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: Some(SimpleDate::today_utc_approx().to_string()),
-            review_after: Some(request.review_after),
-            expires: request.expires,
-        },
-        selector,
-        last_seen: request.finding.span.as_ref().map(|s| LastSeen {
-            line: s.line,
-            column: s.column,
-        }),
-    }
-}
-
-fn next_allow_id(cfg: &AllowConfig) -> String {
-    let mut index = cfg.allow.len() + 1;
-    loop {
-        let candidate = format!("allow-{index:04}");
-        if !cfg.allow.iter().any(|entry| entry.id == candidate) {
-            return candidate;
-        }
-        index += 1;
-    }
 }
 
 #[cfg(test)]
