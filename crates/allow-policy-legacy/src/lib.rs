@@ -35,6 +35,8 @@ fn default_baseline_expires() -> String {
 }
 
 #[cfg(test)]
+mod generated_executable_tests;
+#[cfg(test)]
 mod lint_unsafe_tests;
 #[cfg(test)]
 mod no_panic_tests;
