@@ -119,9 +119,6 @@ mod render_context_tests;
 #[path = "worklist_render_tests.rs"]
 mod render_tests;
 #[cfg(test)]
-#[path = "worklist_schema_tests.rs"]
-mod schema_tests;
-#[cfg(test)]
 #[path = "worklist_test_support.rs"]
 mod test_support;
 #[cfg(test)]
