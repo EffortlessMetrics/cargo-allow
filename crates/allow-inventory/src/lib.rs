@@ -114,7 +114,10 @@ pub fn inventory(
         )
     } else {
         match git_ls_files(root) {
-            Ok(files) => (files, InventorySource::GitTracked),
+            Ok(files) => (
+                existing_regular_files(root, files),
+                InventorySource::GitTracked,
+            ),
             Err(_) => (recursive_files(root)?, InventorySource::FilesystemFallback),
         }
     };
@@ -122,6 +125,17 @@ pub fn inventory(
     files.dedup();
     files.retain(|path| !is_ignored(path, &options.ignored));
     Ok(Inventory { files, source })
+}
+
+fn existing_regular_files(root: &Path, files: Vec<PathBuf>) -> Vec<PathBuf> {
+    files
+        .into_iter()
+        .filter(|path| {
+            fs::symlink_metadata(root.join(path))
+                .map(|metadata| metadata.file_type().is_file())
+                .unwrap_or(false)
+        })
+        .collect()
 }
 
 pub fn git_ls_files(root: impl AsRef<Path>) -> CargoAllowResult<Vec<PathBuf>> {
@@ -257,6 +271,29 @@ mod tests {
                 PathBuf::from("fixtures/line\nbreak.rs")
             ]
         );
+    }
+
+    #[test]
+    fn git_tracked_inventory_skips_deleted_worktree_files() {
+        let root = temp_root("deleted-tracked-file");
+        write_file(root.join("kept.txt"), "kept");
+        write_file(root.join("deleted.txt"), "deleted");
+        run_git(&root, &["init"]);
+        run_git(&root, &["add", "kept.txt", "deleted.txt"]);
+        fs::remove_file(root.join("deleted.txt"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("delete tracked file: {err}")));
+
+        let tracked_inventory = inventory(&root, &InventoryOptions::default())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("tracked inventory: {err}")));
+
+        assert_eq!(tracked_inventory.source, InventorySource::GitTracked);
+        assert!(tracked_inventory.files.contains(&PathBuf::from("kept.txt")));
+        assert!(
+            !tracked_inventory
+                .files
+                .contains(&PathBuf::from("deleted.txt"))
+        );
+        remove_dir(&root);
     }
 
     #[test]
