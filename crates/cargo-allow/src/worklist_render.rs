@@ -8,7 +8,7 @@ pub(super) fn render_worklist_json_with_context(
     allow_report::render_worklist_json(
         &report_items,
         report_worklist_filters(context.filters),
-        report_worklist_inventory(context),
+        context.inventory,
     )
 }
 
@@ -20,7 +20,7 @@ pub(super) fn render_worklist_human_with_context(
     allow_report::render_worklist_human(
         &report_items,
         report_worklist_filters(context.filters),
-        report_worklist_inventory(context),
+        context.inventory,
     )
 }
 
@@ -70,12 +70,4 @@ fn report_worklist_filters(filters: WorklistFilters<'_>) -> allow_report::Workli
         difficulty: filters.difficulty,
         missing_evidence: filters.missing_evidence,
     }
-}
-
-fn report_worklist_inventory(context: WorklistContext<'_>) -> allow_report::InventoryContext<'_> {
-    allow_report::InventoryContext::source_syntax(
-        context.inventory_source,
-        context.source_tree_root,
-        context.inventory_files,
-    )
 }

@@ -27,9 +27,7 @@ pub(super) struct WorkItem {
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct WorklistContext<'a> {
-    pub(super) inventory_source: &'a str,
-    pub(super) source_tree_root: Option<&'a str>,
-    pub(super) inventory_files: Option<usize>,
+    pub(super) inventory: allow_report::InventoryContext<'a>,
     pub(super) filters: WorklistFilters<'a>,
 }
 
@@ -54,9 +52,7 @@ pub(super) struct WorklistFilters<'a> {
 impl<'a> Default for WorklistContext<'a> {
     fn default() -> Self {
         Self {
-            inventory_source: "unknown",
-            source_tree_root: None,
-            inventory_files: None,
+            inventory: allow_report::InventoryContext::source_syntax("unknown", None, None),
             filters: WorklistFilters::default(),
         }
     }

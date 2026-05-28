@@ -4,7 +4,7 @@ use allow_policy::render_policy;
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::{RootArgs, load_world, write_file, write_file_no_overwrite};
+use crate::{RootArgs, SourceTreeReportContext, load_world, write_file, write_file_no_overwrite};
 
 #[path = "propose_baseline.rs"]
 mod propose_baseline;
@@ -88,11 +88,9 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     } else {
         println!("{rendered}");
     }
-    let root_text = allow_report::source_tree_path_text(&root);
+    let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = ProposeContext {
-        inventory_source: inventory_facts.source.as_str(),
-        source_tree_root: Some(&root_text),
-        inventory_files: inventory_facts.files_scanned,
+        inventory: source_context.inventory(),
         kind_filter: args.kind.as_deref(),
     };
     let summary = match args.summary_format {
@@ -130,9 +128,11 @@ pub(crate) fn sample_propose_json_for_contract_test() -> String {
         Some(Path::new("policy/allow.proposed.toml")),
         true,
         ProposeContext {
-            inventory_source: "git_tracked",
-            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
-            inventory_files: Some(51),
+            inventory: allow_report::InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(51),
+            ),
             kind_filter: Some("panic"),
         },
     )

@@ -3,7 +3,10 @@ use allow_match::{CheckMode, evaluate};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::{RootArgs, load_world_with_evidence_validation, report_config, write_file};
+use crate::{
+    RootArgs, SourceTreeReportContext, load_world_with_evidence_validation, report_config,
+    write_file,
+};
 
 #[path = "worklist_actions.rs"]
 mod worklist_actions;
@@ -155,11 +158,9 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     let mut items = filter_work_items(items, filters);
     sort_work_items(&mut items);
     renumber_work_items(&mut items);
-    let root_text = allow_report::source_tree_path_text(&root);
+    let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = WorklistContext {
-        inventory_source: inventory_facts.source.as_str(),
-        source_tree_root: Some(&root_text),
-        inventory_files: inventory_facts.files_scanned,
+        inventory: source_context.inventory(),
         filters,
     };
     let text = match args.format {
@@ -180,9 +181,11 @@ pub(crate) fn sample_worklist_json_for_contract_test() -> String {
     render_worklist_json_with_context(
         &items,
         WorklistContext {
-            inventory_source: "filesystem_fallback",
-            source_tree_root: Some("fixtures/source-snapshot"),
-            inventory_files: Some(5),
+            inventory: allow_report::InventoryContext::source_syntax(
+                "filesystem_fallback",
+                Some("fixtures/source-snapshot"),
+                Some(5),
+            ),
             filters: WorklistFilters::default(),
         },
     )

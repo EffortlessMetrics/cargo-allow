@@ -14,12 +14,7 @@ pub(super) fn render_propose_summary(
         expires,
         output_text.as_deref(),
         false,
-        ProposeContext {
-            inventory_source: "unknown",
-            source_tree_root: None,
-            inventory_files: None,
-            kind_filter: None,
-        },
+        ProposeContext::default(),
     ))
 }
 
@@ -51,11 +46,7 @@ fn propose_report<'a>(
     context: ProposeContext<'a>,
 ) -> allow_report::ProposeReport<'a> {
     allow_report::ProposeReport {
-        inventory: allow_report::InventoryContext::source_syntax(
-            context.inventory_source,
-            context.source_tree_root,
-            context.inventory_files,
-        ),
+        inventory: context.inventory,
         kind: context.kind_filter,
         expires,
         policy_output,

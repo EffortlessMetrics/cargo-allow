@@ -11,7 +11,7 @@ mod doctor_types;
 use doctor_render::{render_doctor_human, render_doctor_json};
 use doctor_types::DoctorFacts;
 
-use crate::{RootArgs, config_path, write_file};
+use crate::{InventoryFacts, RootArgs, SourceTreeReportContext, config_path, write_file};
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct DoctorArgs {
     #[command(flatten)]
@@ -41,16 +41,20 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let config = config_path(&root, args.config.as_deref());
     let opts = InventoryOptions::default();
     let inventory = inventory(&root, &opts)?;
-    let root_text = allow_report::source_tree_path_text(&root);
+    let files_scanned = inventory.files.len();
+    let source_context = SourceTreeReportContext::new(
+        &root,
+        InventoryFacts::scanned(inventory.source, files_scanned),
+    );
     let config_text = config
         .as_ref()
         .map(|path| allow_report::source_tree_path_text(path));
     let facts = DoctorFacts {
-        source_tree_root: &root_text,
+        source_tree_root: source_context.source_tree_root(),
         root_discovery,
         config_path: config_text.as_deref(),
-        inventory_source: inventory.source.as_str(),
-        files_scanned: inventory.files.len(),
+        inventory_source: source_context.inventory_source(),
+        files_scanned,
     };
     let text = match args.format {
         DoctorFormat::Human => render_doctor_human(facts),

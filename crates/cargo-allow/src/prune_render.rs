@@ -35,11 +35,7 @@ pub(super) fn render_prune_stale_json(
             write_requested,
             written_path: written.as_deref(),
         },
-        allow_report::InventoryContext::source_syntax(
-            context.inventory_source,
-            context.source_tree_root,
-            context.inventory_files,
-        ),
+        context.inventory,
     )
 }
 

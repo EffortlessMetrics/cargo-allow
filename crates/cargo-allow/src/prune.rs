@@ -4,7 +4,7 @@ use allow_policy::{render_policy, validate_policy};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::{RootArgs, config_path, load_world, write_file};
+use crate::{RootArgs, SourceTreeReportContext, config_path, load_world, write_file};
 
 #[path = "prune_render.rs"]
 mod prune_render;
@@ -83,11 +83,9 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
     } else {
         None
     };
-    let root_text = allow_report::source_tree_path_text(&root);
+    let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = PruneContext {
-        inventory_source: inventory_facts.source.as_str(),
-        source_tree_root: Some(&root_text),
-        inventory_files: inventory_facts.files_scanned,
+        inventory: source_context.inventory(),
     };
     let text = match args.format {
         PruneFormat::Human => render_prune_stale_result(
@@ -121,9 +119,11 @@ pub(crate) fn sample_prune_json_for_contract_test() -> String {
         false,
         None,
         PruneContext {
-            inventory_source: "git_tracked",
-            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
-            inventory_files: Some(49),
+            inventory: allow_report::InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(49),
+            ),
         },
     )
 }
