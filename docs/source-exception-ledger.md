@@ -58,6 +58,11 @@ traceable claim that reviewers and tools can inspect. Diff mode reports removed
 evidence as policy weakening and newly added evidence references as policy
 improvements.
 
+General evidence can be required by setting `requirements.evidence_required =
+true`. It is opt-in so generated `baseline_debt` ledgers can remain adoption
+scaffolding until reviewed. Unsafe entries keep their separate
+`requirements.unsafe.evidence_required` guard.
+
 Known local evidence prefixes are parsed when a policy is loaded from a source
 tree. `doc:`, `spec:`, `adr:`, `ripr:`, `unsafe-review:`, and `coverage:`
 references must point to source-tree-relative paths that exist. `test:`,
