@@ -2,7 +2,7 @@ use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use std::path::Path;
 use toml::Value;
 
-use crate::converters::{
+use crate::converter_policy_configs::{
     config_from_dependency_surface_rules, config_from_executable_rules, config_from_network_rules,
     config_from_process_rules, config_from_workflow_rules,
 };
