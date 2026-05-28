@@ -8,6 +8,7 @@ mod artifacts;
 mod contracts;
 mod json;
 mod sarif;
+mod text;
 
 pub use artifacts::{
     AddReport, DiffFindingChange, DiffPolicyChange, DiffPostureSummary, DiffReport, DoctorReport,
@@ -31,6 +32,7 @@ use json::{
     bool_json, json_string_array, option_json, option_u32_json, option_usize_json,
     push_json_artifact_header, push_json_artifact_source_context,
 };
+use text::{html_escape, markdown_cell, markdown_inline_code};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
@@ -1537,10 +1539,6 @@ fn inventory_files_html_suffix(context: ReportContext<'_>) -> String {
         .unwrap_or_default()
 }
 
-fn markdown_inline_code(value: &str) -> String {
-    json_escape(value).replace('`', "\\`")
-}
-
 fn render_counts_fields(summary: &Summary, indent: &str) -> String {
     let statuses = [
         MatchStatus::Matched,
@@ -1814,19 +1812,6 @@ fn render_non_matched_html(outcomes: &[MatchOutcome], out: &mut String) {
         ));
     }
     out.push_str("</ul>\n");
-}
-
-fn markdown_cell(value: &str) -> String {
-    value.replace('|', "\\|").replace('`', "\\`")
-}
-
-fn html_escape(value: &str) -> String {
-    value
-        .replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-        .replace('\'', "&#39;")
 }
 
 fn is_file_finding(finding: &Finding) -> bool {
