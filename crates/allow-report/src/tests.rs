@@ -1,6 +1,7 @@
 use super::*;
 use allow_core::{
-    AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, Selector, Span, StructuralIdentity,
+    AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, MatchOutcome, MatchStatus, Selector,
+    Span, StructuralIdentity,
 };
 use std::path::PathBuf;
 
