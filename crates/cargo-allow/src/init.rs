@@ -1,21 +1,10 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_policy::starter_policy;
-use clap::Parser;
 use std::fs;
-use std::path::PathBuf;
 
-#[derive(Debug, Clone, Parser)]
-pub(crate) struct InitArgs {
-    /// Write strict-mode defaults.
-    #[arg(long)]
-    strict: bool,
-    /// Overwrite an existing policy file.
-    #[arg(long)]
-    force: bool,
-    /// Policy config path.
-    #[arg(long, default_value = "policy/allow.toml")]
-    config: PathBuf,
-}
+#[path = "init_args.rs"]
+mod init_args;
+pub(crate) use init_args::InitArgs;
 
 pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     let path = args.config.clone();
