@@ -10,8 +10,11 @@ use crate::{RootArgs, load_world, source_tree_root_text, write_file, write_file_
 mod propose_baseline;
 #[path = "propose_render.rs"]
 mod propose_render;
+#[path = "propose_types.rs"]
+mod propose_types;
 use propose_baseline::{default_baseline_expiry, entry_from_finding};
 use propose_render::{render_propose_summary, render_propose_summary_json};
+pub(super) use propose_types::ProposeContext;
 
 #[cfg(test)]
 use allow_core::{Finding, FindingKind, SimpleDate};
@@ -114,25 +117,6 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         eprintln!("{summary}");
     }
     Ok(())
-}
-
-#[derive(Debug, Clone, Copy)]
-struct ProposeContext<'a> {
-    inventory_source: &'a str,
-    source_tree_root: Option<&'a str>,
-    inventory_files: Option<usize>,
-    kind_filter: Option<&'a str>,
-}
-
-impl Default for ProposeContext<'static> {
-    fn default() -> Self {
-        Self {
-            inventory_source: "unknown",
-            source_tree_root: None,
-            inventory_files: None,
-            kind_filter: None,
-        }
-    }
 }
 
 #[cfg(test)]
