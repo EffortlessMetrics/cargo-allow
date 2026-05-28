@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 mod artifacts;
 mod contracts;
+mod diff;
 mod html;
 mod json;
 mod non_rust;
@@ -24,6 +25,12 @@ pub use contracts::{
     PROPOSE_SCHEMA_ID, PROPOSE_SCHEMA_VERSION, PRUNE_SCHEMA_ID, PRUNE_SCHEMA_VERSION,
     RECEIPT_SCHEMA_ID, RECEIPT_SCHEMA_VERSION, REPORT_SCHEMA_ID, REPORT_SCHEMA_VERSION,
     ReportContext, SCANNER_LIMITATIONS, WORKLIST_SCHEMA_ID, WORKLIST_SCHEMA_VERSION,
+};
+pub use diff::{
+    DiffNetPosture, diff_net_posture, diff_posture_summary, insert_markdown_pr_summary,
+    render_diff_finding_changes_human, render_diff_finding_changes_markdown,
+    render_diff_json_with_posture, render_diff_policy_changes_human,
+    render_diff_policy_changes_markdown, render_diff_pr_summary_markdown,
 };
 pub use html::{render_html, render_html_with_context};
 pub use json::{
@@ -889,88 +896,6 @@ fn explain_report_status(outcomes: &[MatchOutcome]) -> MatchStatus {
         }
     }
     MatchStatus::Matched
-}
-
-pub fn render_diff_json_with_posture(report_json: &str, report: DiffReport<'_>) -> Option<String> {
-    let diff_json = render_diff_posture_json(report);
-    let trimmed = report_json.trim_end();
-    trimmed
-        .strip_suffix('}')
-        .map(|prefix| format!("{prefix},\n  \"diff\": {diff_json}\n}}\n"))
-}
-
-fn render_diff_posture_json(report: DiffReport<'_>) -> String {
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str(&format!(
-        "    \"net_posture\": \"{}\",\n",
-        json_escape(report.net_posture)
-    ));
-    out.push_str(&format!(
-        "    \"reviewer_action\": \"{}\",\n",
-        json_escape(report.reviewer_action)
-    ));
-    out.push_str("    \"summary\": {\n");
-    out.push_str(&format!(
-        "      \"current_failures\": {},\n",
-        report.summary.current_failures
-    ));
-    out.push_str(&format!(
-        "      \"new_findings\": {},\n",
-        report.summary.new_findings
-    ));
-    out.push_str(&format!(
-        "      \"removed_findings\": {},\n",
-        report.summary.removed_findings
-    ));
-    out.push_str(&format!(
-        "      \"policy_failures\": {},\n",
-        report.summary.policy_failures
-    ));
-    out.push_str(&format!(
-        "      \"policy_review_items\": {},\n",
-        report.summary.policy_review_items
-    ));
-    out.push_str(&format!(
-        "      \"policy_improvements\": {}\n",
-        report.summary.policy_improvements
-    ));
-    out.push_str("    },\n");
-    out.push_str("    \"finding_changes\": [\n");
-    for (index, change) in report.finding_changes.iter().enumerate() {
-        if index > 0 {
-            out.push_str(",\n");
-        }
-        out.push_str("      {");
-        out.push_str(&format!("\"change\": \"{}\", ", json_escape(change.change)));
-        out.push_str(&format!("\"key\": \"{}\", ", json_escape(change.key)));
-        out.push_str(&format!("\"kind\": \"{}\", ", json_escape(change.kind)));
-        out.push_str(&format!("\"family\": {}, ", option_json(change.family)));
-        out.push_str(&format!("\"path\": \"{}\"", json_escape(change.path)));
-        out.push('}');
-    }
-    out.push_str("\n    ],\n");
-    out.push_str("    \"policy_changes\": [\n");
-    for (index, change) in report.policy_changes.iter().enumerate() {
-        if index > 0 {
-            out.push_str(",\n");
-        }
-        out.push_str("      {");
-        out.push_str(&format!(
-            "\"severity\": \"{}\", ",
-            json_escape(change.severity)
-        ));
-        out.push_str(&format!(
-            "\"allow_id\": \"{}\", ",
-            json_escape(change.allow_id)
-        ));
-        out.push_str(&format!("\"kind\": \"{}\", ", json_escape(change.kind)));
-        out.push_str(&format!("\"message\": \"{}\"", json_escape(change.message)));
-        out.push('}');
-    }
-    out.push_str("\n    ]\n");
-    out.push_str("  }");
-    out
 }
 
 pub fn render_add_json(report: AddReport<'_>) -> String {
@@ -1841,6 +1766,55 @@ mod tests {
             )
             .is_none()
         );
+    }
+
+    #[test]
+    fn diff_pr_summary_markdown_reports_net_posture() {
+        let finding_changes = vec![DiffFindingChange {
+            change: "removed",
+            key: "panic|unwrap|src/lib.rs",
+            kind: "panic",
+            family: Some("unwrap"),
+            path: "src/lib.rs",
+        }];
+        let policy_changes = vec![DiffPolicyChange {
+            severity: "improvement",
+            allow_id: "allow-0001",
+            kind: "selector_precision_increased",
+            message: "allow-0001 selector precision increased",
+        }];
+
+        let summary = render_diff_pr_summary_markdown(0, &finding_changes, &policy_changes);
+
+        assert!(summary.contains("**Net posture:** `improved`"));
+        assert!(summary.contains("| Removed source findings | 1 |"));
+        assert!(summary.contains("| Policy improvements | 1 |"));
+        assert!(summary.contains("keep the narrower posture"));
+    }
+
+    #[test]
+    fn diff_posture_tables_escape_markdown_cells() {
+        let finding_changes = vec![DiffFindingChange {
+            change: "new",
+            key: "panic|unwrap|src/lib.rs",
+            kind: "panic|custom",
+            family: Some("unwrap`family"),
+            path: "src/lib.rs",
+        }];
+        let policy_changes = vec![DiffPolicyChange {
+            severity: "fail",
+            allow_id: "allow|0001",
+            kind: "scope_broadened",
+            message: "message with | pipe",
+        }];
+
+        let findings = render_diff_finding_changes_markdown(&finding_changes);
+        let policy = render_diff_policy_changes_markdown(&policy_changes);
+
+        assert!(findings.contains("panic\\|custom"));
+        assert!(findings.contains("unwrap\\`family"));
+        assert!(policy.contains("allow\\|0001"));
+        assert!(policy.contains("message with \\| pipe"));
     }
 
     #[test]
