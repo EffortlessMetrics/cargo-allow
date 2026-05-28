@@ -48,3 +48,5 @@ mod evidence_tests;
 mod render_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod validation_tests;
