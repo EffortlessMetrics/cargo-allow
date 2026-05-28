@@ -1,0 +1,107 @@
+use crate::json::{
+    bool_json, option_json, push_json_artifact_header, push_json_artifact_source_context,
+};
+use crate::text::markdown_cell;
+use crate::{
+    InventoryContext, PRUNE_SCHEMA_ID, PRUNE_SCHEMA_VERSION, PruneCandidate, PruneModeContext,
+};
+use allow_core::json_escape;
+
+pub fn render_prune_human(candidates: &[PruneCandidate<'_>], mode: PruneModeContext<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("cargo-allow prune\n\n");
+    if mode.write_requested {
+        out.push_str("mode: write\n");
+    } else {
+        out.push_str("mode: dry-run\n");
+    }
+    if mode.explicit_dry_run {
+        out.push_str("requested: --dry-run\n");
+    }
+    out.push_str(&format!("stale entries: {}\n\n", candidates.len()));
+    if candidates.is_empty() {
+        out.push_str("No stale allow entries found.\n");
+        return out;
+    }
+    out.push_str("| Allow ID | Kind | Family | Owner | Classification | Scope | Reason |\n");
+    out.push_str("|---|---|---|---|---|---|---|\n");
+    for candidate in candidates {
+        out.push_str(&format!(
+            "| `{}` | `{}` | `{}` | `{}` | `{}` | `{}` | {} |\n",
+            markdown_cell(candidate.id),
+            candidate.kind,
+            markdown_cell(candidate.family.unwrap_or("-")),
+            markdown_cell(candidate.owner),
+            markdown_cell(candidate.classification),
+            markdown_cell(candidate.scope),
+            markdown_cell(candidate.reason)
+        ));
+    }
+    if let Some(path) = mode.written_path {
+        out.push_str(&format!(
+            "\nRemoved stale entries from `{}`.\n",
+            markdown_cell(path)
+        ));
+    } else {
+        out.push_str(
+            "\nNo files were changed. Remove these entries only after confirming the exception is gone.\n",
+        );
+    }
+    out
+}
+
+pub fn render_prune_json(
+    candidates: &[PruneCandidate<'_>],
+    mode: PruneModeContext<'_>,
+    inventory: InventoryContext<'_>,
+) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    push_json_artifact_header(&mut out, PRUNE_SCHEMA_VERSION, PRUNE_SCHEMA_ID, "prune");
+    push_json_artifact_source_context(&mut out, inventory);
+    out.push_str("  \"mode\": {\n");
+    out.push_str(&format!(
+        "    \"dry_run\": {},\n",
+        bool_json(!mode.write_requested)
+    ));
+    out.push_str(&format!(
+        "    \"write_requested\": {},\n",
+        bool_json(mode.write_requested)
+    ));
+    out.push_str(&format!(
+        "    \"explicit_dry_run\": {},\n",
+        bool_json(mode.explicit_dry_run)
+    ));
+    out.push_str(&format!(
+        "    \"written_path\": {}\n",
+        option_json(mode.written_path)
+    ));
+    out.push_str("  },\n");
+    out.push_str(&format!(
+        "  \"summary\": {{\n    \"stale_entries\": {}\n  }},\n",
+        candidates.len()
+    ));
+    out.push_str("  \"stale_entries\": [\n");
+    for (index, candidate) in candidates.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&render_prune_candidate_json(candidate, "  "));
+    }
+    out.push_str("\n  ]\n");
+    out.push_str("}\n");
+    out
+}
+
+fn render_prune_candidate_json(candidate: &PruneCandidate<'_>, indent: &str) -> String {
+    format!(
+        "{indent}  {{\n{indent}    \"id\": \"{}\",\n{indent}    \"kind\": \"{}\",\n{indent}    \"family\": {},\n{indent}    \"owner\": \"{}\",\n{indent}    \"classification\": \"{}\",\n{indent}    \"scope\": \"{}\",\n{indent}    \"reason\": \"{}\"\n{indent}  }}",
+        json_escape(candidate.id),
+        json_escape(candidate.kind),
+        option_json(candidate.family),
+        json_escape(candidate.owner),
+        json_escape(candidate.classification),
+        json_escape(candidate.scope),
+        json_escape(candidate.reason)
+    )
+}

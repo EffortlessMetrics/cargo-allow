@@ -32,10 +32,6 @@ pub(crate) fn source_package_name(finding: &Finding) -> Option<String> {
         .map(ToOwned::to_owned)
 }
 
-pub(crate) fn markdown_cell(value: &str) -> String {
-    value.replace('|', "\\|").replace('`', "\\`")
-}
-
 pub(crate) fn source_tree_root_text(root: &Path) -> String {
     let text = root.to_string_lossy().replace('\\', "/");
     if let Some(stripped) = text.strip_prefix("//?/UNC/") {
