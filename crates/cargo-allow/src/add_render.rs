@@ -2,7 +2,6 @@ use allow_core::{AllowEntry, Finding};
 use std::path::Path;
 
 use super::AddContext;
-use crate::source_syntax_inventory_context;
 
 pub(super) fn render_add_summary(
     entry: &AllowEntry,
@@ -44,7 +43,7 @@ fn add_report<'a>(
     context: AddContext<'a>,
 ) -> allow_report::AddReport<'a> {
     allow_report::AddReport {
-        inventory: source_syntax_inventory_context(
+        inventory: allow_report::InventoryContext::source_syntax(
             context.inventory_source,
             context.source_tree_root,
             context.inventory_files,

@@ -100,14 +100,25 @@ pub struct ReportContext<'a> {
     pub baseline_debt_entries: Option<usize>,
 }
 
-impl Default for ReportContext<'static> {
-    fn default() -> Self {
+impl<'a> ReportContext<'a> {
+    pub const fn source_syntax(
+        inventory_source: &'a str,
+        source_tree_root: Option<&'a str>,
+        inventory_files: Option<usize>,
+        baseline_debt_entries: Option<usize>,
+    ) -> Self {
         Self {
-            inventory_source: "unknown",
-            source_tree_root: None,
-            inventory_files: None,
-            baseline_debt_entries: None,
+            inventory_source,
+            source_tree_root,
+            inventory_files,
+            baseline_debt_entries,
         }
+    }
+}
+
+impl<'a> Default for ReportContext<'a> {
+    fn default() -> Self {
+        Self::source_syntax("unknown", None, None, None)
     }
 }
 

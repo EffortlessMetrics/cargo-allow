@@ -17,7 +17,7 @@ pub(crate) struct ReportRenderArgs<'a> {
 
 pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
     let root_text = source_tree_root_text(args.root);
-    let context = source_syntax_report_context(
+    let context = allow_report::ReportContext::source_syntax(
         args.inventory_facts.source.as_str(),
         Some(&root_text),
         args.inventory_facts.files_scanned,
@@ -66,32 +66,6 @@ pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
         println!("{text}");
     }
     Ok(())
-}
-
-pub(crate) fn source_syntax_inventory_context<'a>(
-    inventory_source: &'a str,
-    source_tree_root: Option<&'a str>,
-    inventory_files: Option<usize>,
-) -> allow_report::InventoryContext<'a> {
-    allow_report::InventoryContext::source_syntax(
-        inventory_source,
-        source_tree_root,
-        inventory_files,
-    )
-}
-
-pub(crate) fn source_syntax_report_context<'a>(
-    inventory_source: &'a str,
-    source_tree_root: Option<&'a str>,
-    inventory_files: Option<usize>,
-    baseline_debt_entries: Option<usize>,
-) -> allow_report::ReportContext<'a> {
-    allow_report::ReportContext {
-        inventory_source,
-        source_tree_root,
-        inventory_files,
-        baseline_debt_entries,
-    }
 }
 
 pub(crate) fn report_config(
