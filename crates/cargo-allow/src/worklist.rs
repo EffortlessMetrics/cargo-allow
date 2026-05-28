@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowResult, MatchStatus};
+use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
@@ -15,6 +15,8 @@ mod worklist_items;
 mod worklist_queue;
 #[path = "worklist_render.rs"]
 mod worklist_render;
+#[path = "worklist_types.rs"]
+mod worklist_types;
 pub(crate) use worklist_actions::{proof_commands, suggested_actions};
 pub(crate) use worklist_items::work_item_kind;
 use worklist_items::{
@@ -23,9 +25,10 @@ use worklist_items::{
 };
 use worklist_queue::{filter_work_items, renumber_work_items, sort_work_items};
 use worklist_render::{render_worklist_human_with_context, render_worklist_json_with_context};
+use worklist_types::{WorkItem, WorklistContext, WorklistFilters};
 
 #[cfg(test)]
-use allow_core::{AllowConfig, FindingKind, MatchOutcome};
+use allow_core::{AllowConfig, FindingKind, MatchOutcome, MatchStatus};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct WorklistArgs {
@@ -166,68 +169,6 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         println!("{text}");
     }
     Ok(())
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct WorkItem {
-    id: String,
-    kind: String,
-    exception_kind: Option<String>,
-    family: Option<String>,
-    owner: Option<String>,
-    classification: Option<String>,
-    reason: Option<String>,
-    created: Option<String>,
-    review_after: Option<String>,
-    expires: Option<String>,
-    evidence_count: Option<usize>,
-    risk: &'static str,
-    difficulty: &'static str,
-    status: MatchStatus,
-    allow_id: Option<String>,
-    finding_index: Option<usize>,
-    path: Option<String>,
-    source_package: Option<String>,
-    message: String,
-    suggested_actions: Vec<String>,
-    proof_commands: Vec<String>,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct WorklistContext<'a> {
-    inventory_source: &'a str,
-    source_tree_root: Option<&'a str>,
-    inventory_files: Option<usize>,
-    filters: WorklistFilters<'a>,
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-struct WorklistFilters<'a> {
-    kind: Option<&'a str>,
-    family: Option<&'a str>,
-    item_kind: Option<&'a str>,
-    status: Option<&'a str>,
-    allow_id: Option<&'a str>,
-    path: Option<&'a str>,
-    source_package: Option<&'a str>,
-    owner: Option<&'a str>,
-    classification: Option<&'a str>,
-    baseline_debt: bool,
-    broad_scope: bool,
-    risk: Option<&'a str>,
-    difficulty: Option<&'a str>,
-    missing_evidence: bool,
-}
-
-impl Default for WorklistContext<'static> {
-    fn default() -> Self {
-        Self {
-            inventory_source: "unknown",
-            source_tree_root: None,
-            inventory_files: None,
-            filters: WorklistFilters::default(),
-        }
-    }
 }
 
 #[cfg(test)]
