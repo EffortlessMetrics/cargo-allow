@@ -72,3 +72,5 @@ mod diff_tests;
 mod schema_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod worklist_tests;
