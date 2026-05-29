@@ -160,6 +160,107 @@ fn cmd_prune_write_removes_only_stale_entries_from_policy_file() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
 
+#[test]
+fn cmd_prune_write_can_remove_stale_broken_evidence_entry() {
+    let root = prune_fixture_dir();
+    let policy_dir = root.join("policy");
+    let docs_dir = root.join("docs");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::create_dir_all(&docs_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("docs dir: {err}")));
+    fs::write(docs_dir.join("live.md"), "# live\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("live doc: {err}")));
+
+    let mut cfg = AllowConfig::empty();
+    cfg.allow
+        .push(non_rust_prune_fixture_entry("allow-live", "docs/live.md"));
+    let mut stale = non_rust_prune_fixture_entry("allow-stale", "docs/stale.md");
+    stale.evidence = vec!["doc:docs/missing-stale-evidence.md".to_string()];
+    cfg.allow.push(stale);
+    let policy_path = policy_dir.join("allow.toml");
+    fs::write(&policy_path, render_policy(&cfg))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+
+    cmd_prune(&PruneArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy_path.clone()),
+        stale: true,
+        dry_run: false,
+        write: true,
+        include_untracked: false,
+        format: PruneFormat::Human,
+        output: None,
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("prune stale broken evidence: {err}")));
+
+    let rendered = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy read: {err}")));
+    assert!(rendered.contains("allow-live"));
+    assert!(!rendered.contains("allow-stale"));
+    assert!(!rendered.contains("missing-stale-evidence"));
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn cmd_prune_write_rejects_broken_evidence_that_would_remain() {
+    let root = prune_fixture_dir();
+    let policy_dir = root.join("policy");
+    let docs_dir = root.join("docs");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::create_dir_all(&docs_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("docs dir: {err}")));
+    fs::write(docs_dir.join("live.md"), "# live\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("live doc: {err}")));
+
+    let mut cfg = AllowConfig::empty();
+    let mut live = non_rust_prune_fixture_entry("allow-live", "docs/live.md");
+    live.evidence = vec!["doc:docs/missing-live-evidence.md".to_string()];
+    cfg.allow.push(live);
+    cfg.allow
+        .push(non_rust_prune_fixture_entry("allow-stale", "docs/stale.md"));
+    let policy_path = policy_dir.join("allow.toml");
+    fs::write(&policy_path, render_policy(&cfg))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+
+    let err = cmd_prune(&PruneArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy_path.clone()),
+        stale: true,
+        dry_run: false,
+        write: true,
+        include_untracked: false,
+        format: PruneFormat::Human,
+        output: None,
+    })
+    .expect_err("prune write should reject broken evidence that remains");
+
+    assert!(
+        err.to_string().contains("allow-live evidence"),
+        "diagnostic should identify the remaining allow entry: {err}"
+    );
+    assert!(
+        err.to_string().contains("docs/missing-live-evidence.md"),
+        "diagnostic should identify the missing evidence path: {err}"
+    );
+    let rendered = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy read: {err}")));
+    assert!(
+        rendered.contains("allow-stale"),
+        "policy should not be rewritten when remaining evidence is broken"
+    );
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
 static NEXT_PRUNE_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
 fn prune_fixture_dir() -> PathBuf {
