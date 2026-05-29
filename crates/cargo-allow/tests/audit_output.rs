@@ -156,6 +156,66 @@ fn audit_scans_rust_when_package_manifest_is_not_utf8() {
     remove_temp_root(root);
 }
 
+#[test]
+fn audit_scans_rust_when_package_manifest_is_invalid_toml() {
+    let root = temp_root("audit-invalid-manifest");
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source dir: {err}")));
+    fs::write(root.join("Cargo.toml"), "[package\nname = \"broken\"\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write invalid manifest: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write rust source: {err}")));
+    let output = root.join("audit.json");
+
+    let result = cargo_allow_command()
+        .arg("audit")
+        .arg("--root")
+        .arg(&root)
+        .arg("--kind")
+        .arg("panic")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow audit: {err}")));
+
+    assert_status("audit", &result, true);
+    assert_stdout_empty(
+        "audit",
+        &result,
+        "--output should not emit report JSON to stdout",
+    );
+    assert_stderr_empty(
+        "audit",
+        &result,
+        "--output should not emit human status to stderr",
+    );
+    let report = assert_saved_json_artifact(&output, "audit", "cargo-allow.report.v1", "audit");
+    assert_json_u64(
+        &report,
+        "/summary/findings",
+        1,
+        "audit should still scan panic finding",
+    );
+    assert_json_str(
+        &report,
+        "/findings/0/path",
+        "src/lib.rs",
+        "audit finding path",
+    );
+    assert_eq!(
+        report.pointer("/findings/0/source_package"),
+        Some(&Value::Null),
+        "invalid manifest TOML should not provide package context"
+    );
+
+    remove_temp_root(root);
+}
+
 fn policy_with_broken_evidence() -> &'static str {
     r#"policy = "cargo-allow"
 
