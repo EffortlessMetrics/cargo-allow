@@ -3,7 +3,7 @@ use crate::json::{
 };
 use crate::{
     REPORT_SCHEMA_ID, REPORT_SCHEMA_VERSION, ReportContext, Summary, baseline_debt_count,
-    render_counts_fields, review_item_count_with_baseline,
+    render_counts_fields_with_policy_baseline, review_item_count_with_baseline,
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
 
@@ -42,7 +42,11 @@ pub fn render_json_with_context(
     out.push_str("  \"summary\": {\n");
     out.push_str(&format!("    \"findings\": {},\n", findings.len()));
     out.push_str(&format!("    \"outcomes\": {},\n", summary.total));
-    out.push_str(&render_counts_fields(&summary, "    "));
+    out.push_str(&render_counts_fields_with_policy_baseline(
+        &summary,
+        context.baseline_debt_entries,
+        "    ",
+    ));
     out.push_str("  },\n");
     out.push_str("  \"trend\": {\n");
     out.push_str(&render_trend_fields(&summary, context, "    "));

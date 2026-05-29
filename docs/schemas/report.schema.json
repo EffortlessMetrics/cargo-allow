@@ -250,6 +250,11 @@
           "type": "integer",
           "minimum": 0,
           "description": "Outcome-status count for baseline debt outcomes. Policy-level baseline debt inventory is reported under trend.baseline_debt when available."
+        },
+        "policy_baseline_debt": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional policy-level count of generated baseline_debt entries when it exceeds baseline_debt outcomes."
         }
       }
     },
