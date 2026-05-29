@@ -34,6 +34,9 @@ Completed:
   source-tree inventory and claim-boundary checks.
 - Lock report diff enum vocabularies in schema tests so new PR-posture signals
   require an explicit reviewed contract update.
+- Harden saved JSON artifact output behavior so `--output` writes the requested
+  artifact without leaking human status or posture sidecars to stdout or stderr
+  for audit, diff, doctor, list, worklist, prune, and explain.
 - Enumerate supported claim-boundary values in report, receipt, list, and
   worklist schemas.
 - Thread source-tree root and inventory file-count facts into reports and
