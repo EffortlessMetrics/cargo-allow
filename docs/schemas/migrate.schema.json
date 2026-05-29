@@ -179,6 +179,7 @@
         },
         "root": {
           "type": "string",
+          "minLength": 1,
           "description": "Local source-tree root used for repo-policy migration, when available."
         },
         "files_scanned": {

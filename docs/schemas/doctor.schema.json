@@ -165,6 +165,11 @@
             "unknown"
           ]
         },
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Local source-tree root used for the doctor inventory. This mirrors root.path for consumers that handle the shared inventory object."
+        },
         "files_scanned": {
           "type": "integer",
           "minimum": 0,

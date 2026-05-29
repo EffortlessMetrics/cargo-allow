@@ -204,6 +204,20 @@ pub(crate) fn assert_inventory_schema(name: &str, schema: &Value, expected_scann
         "/properties/source/enum",
         &inventory_source_enum(),
     );
+    assert_eq!(
+        inventory_schema
+            .pointer("/properties/root/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "{name} inventory root type"
+    );
+    assert_eq!(
+        inventory_schema
+            .pointer("/properties/root/minLength")
+            .and_then(Value::as_u64),
+        Some(1),
+        "{name} inventory root minLength"
+    );
 }
 
 pub(crate) fn assert_enum_equals(name: &str, schema: &Value, pointer: &str, expected: &[&str]) {

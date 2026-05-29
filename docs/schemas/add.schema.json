@@ -245,6 +245,7 @@
         },
         "root": {
           "type": "string",
+          "minLength": 1,
           "description": "Local source-tree root used for this add summary. This may be an absolute path."
         },
         "files_scanned": {

@@ -24,6 +24,7 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
     assert!(json.contains("\"diagnostic\": null"));
     assert!(json.contains("\"scanner\": \"source_syntax\""));
     assert!(json.contains("\"source\": \"git_tracked\""));
+    assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
     assert!(json.contains("\"files_scanned\": 50"));
 }
 
