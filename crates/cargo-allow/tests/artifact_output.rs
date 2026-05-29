@@ -1,9 +1,11 @@
 mod support;
 
 use std::fs;
-use std::process::Command;
 
-use support::{remove_temp_root, temp_root};
+use support::{
+    assert_file_contains, assert_status, assert_stderr_empty, assert_stdout_empty,
+    cargo_allow_command, remove_temp_root, temp_root,
+};
 
 #[test]
 fn saved_json_artifact_commands_are_quiet() {
@@ -46,40 +48,28 @@ fn saved_json_artifact_commands_are_quiet() {
         let output_text = output.to_string_lossy().to_string();
         args.push(&output_text);
 
-        let result = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        let result = cargo_allow_command()
             .args(args)
             .output()
             .unwrap_or_else(|err| {
                 std::panic::panic_any(format!("run cargo-allow {}: {err}", command.name))
             });
 
-        assert!(
-            result.status.success(),
-            "{} should pass: stdout=`{}` stderr=`{}`",
+        assert_status(command.name, &result, true);
+        assert_stdout_empty(
             command.name,
-            String::from_utf8_lossy(&result.stdout),
-            String::from_utf8_lossy(&result.stderr)
+            &result,
+            "--output should not emit artifact JSON to stdout",
         );
-        assert!(
-            result.stdout.is_empty(),
-            "{} --output should not emit artifact JSON to stdout",
-            command.name
-        );
-        assert!(
-            result.stderr.is_empty(),
-            "{} --output should not emit side-channel status to stderr: `{}`",
+        assert_stderr_empty(
             command.name,
-            String::from_utf8_lossy(&result.stderr)
+            &result,
+            "--output should not emit side-channel status to stderr",
         );
-        assert!(
-            fs::read_to_string(&output)
-                .unwrap_or_else(|err| std::panic::panic_any(format!(
-                    "read {} output: {err}",
-                    command.name
-                )))
-                .contains(&format!("\"schema_id\": \"{}\"", command.schema_id)),
-            "{} output should be a saved JSON artifact",
-            command.name
+        assert_file_contains(
+            &output,
+            &format!("\"schema_id\": \"{}\"", command.schema_id),
+            &format!("{} output should be a saved JSON artifact", command.name),
         );
     }
 
