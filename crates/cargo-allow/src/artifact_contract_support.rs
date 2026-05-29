@@ -41,14 +41,17 @@ pub(crate) fn parse_json_artifact(
     );
     assert_eq!(
         value.pointer("/inventory/scope").and_then(Value::as_str),
-        Some("source_tree"),
+        Some(allow_report::INVENTORY_SCOPE_SOURCE_TREE),
         "{name} inventory scope"
     );
     assert_eq!(
         value
             .pointer("/inventory/scanner")
             .and_then(Value::as_str)
-            .map(|scanner| scanner == "source_syntax" || scanner == "policy_migration"),
+            .map(|scanner| {
+                scanner == allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX
+                    || scanner == allow_report::INVENTORY_SCANNER_POLICY_MIGRATION
+            }),
         Some(true),
         "{name} inventory scanner should be source_syntax or policy_migration"
     );
