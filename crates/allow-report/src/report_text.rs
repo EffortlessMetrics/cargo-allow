@@ -1,8 +1,8 @@
 use crate::non_rust::{render_non_rust_human, render_non_rust_markdown};
 use crate::text::markdown_inline_code;
 use crate::{
-    AUDIT_REVIEW_QUEUE_STATUSES, CLAIM_BOUNDARY_TEXT, ReportContext, STATUS_COUNT_ORDER, Summary,
-    baseline_debt_count, broken_evidence_link_count, review_item_count_with_baseline,
+    AUDIT_REVIEW_QUEUE_STATUSES, CLAIM_BOUNDARY_TEXT, ReportContext, ReviewSignals,
+    STATUS_COUNT_ORDER, Summary, baseline_debt_count, broken_evidence_link_count,
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape};
 
@@ -173,10 +173,7 @@ fn render_audit_summary_markdown(
     context: ReportContext<'_>,
     out: &mut String,
 ) {
-    let baseline_debt = baseline_debt_count(summary, context);
-    let broken_evidence_links = broken_evidence_link_count(context);
-    let review_items =
-        review_item_count_with_baseline(summary, baseline_debt, broken_evidence_links);
+    let signals = ReviewSignals::from_summary(summary, context);
     let queue = outcomes
         .iter()
         .filter(|outcome| AUDIT_REVIEW_QUEUE_STATUSES.contains(&outcome.status))
@@ -185,7 +182,7 @@ fn render_audit_summary_markdown(
     out.push_str("\n## Audit Summary\n\n");
     out.push_str("| Signal | Count |\n|---|---:|\n");
     out.push_str(&format!("| Match outcomes | {} |\n", summary.total));
-    out.push_str(&format!("| Review items | {} |\n", review_items));
+    out.push_str(&format!("| Review items | {} |\n", signals.review_items));
     out.push_str(&format!(
         "| New unreceipted | {} |\n",
         summary.count(MatchStatus::New)
@@ -200,14 +197,14 @@ fn render_audit_summary_markdown(
     ));
     out.push_str(&format!(
         "| Broken evidence links | {} |\n",
-        broken_evidence_links
+        signals.broken_evidence_links
     ));
-    out.push_str(&format!("| Baseline debt | {} |\n", baseline_debt));
-    if review_items == 0 {
+    out.push_str(&format!("| Baseline debt | {} |\n", signals.baseline_debt));
+    if signals.review_items == 0 {
         out.push_str("\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n");
-    } else if queue.is_empty() && broken_evidence_links > 0 {
+    } else if queue.is_empty() && signals.broken_evidence_links > 0 {
         out.push_str("\nRecommended next step: run `cargo-allow worklist --item-kind broken_evidence_link --format json` to repair broken local evidence references.\n");
-    } else if queue.is_empty() && baseline_debt > 0 {
+    } else if queue.is_empty() && signals.baseline_debt > 0 {
         out.push_str("\nRecommended next step: run `cargo-allow worklist --format json` to review generated baseline debt.\n");
     } else {
         out.push_str("\nRecommended next step: review the queue below before tightening policy.\n");

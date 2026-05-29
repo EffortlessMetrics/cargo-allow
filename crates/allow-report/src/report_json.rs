@@ -3,8 +3,8 @@ use crate::json::{
     render_match_outcome_json_compact,
 };
 use crate::{
-    REPORT_SCHEMA_ID, REPORT_SCHEMA_VERSION, ReportContext, Summary, baseline_debt_count,
-    render_counts_fields_with_policy_baseline, review_item_count_with_baseline,
+    REPORT_SCHEMA_ID, REPORT_SCHEMA_VERSION, ReportContext, ReviewSignals, Summary,
+    render_counts_fields_with_policy_baseline,
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
 
@@ -104,13 +104,9 @@ pub fn render_json_with_context(
 }
 
 fn render_trend_fields(summary: &Summary, context: ReportContext<'_>, indent: &str) -> String {
-    let baseline_debt = baseline_debt_count(summary, context);
-    let broken_evidence_links = crate::broken_evidence_link_count(context);
+    let signals = ReviewSignals::from_summary(summary, context);
     let mut fields = vec![
-        (
-            "review_items",
-            review_item_count_with_baseline(summary, baseline_debt, broken_evidence_links),
-        ),
+        ("review_items", signals.review_items),
         ("new", summary.count(MatchStatus::New)),
         ("expired", summary.count(MatchStatus::Expired)),
         ("review_due", summary.count(MatchStatus::ReviewDue)),
@@ -128,10 +124,10 @@ fn render_trend_fields(summary: &Summary, context: ReportContext<'_>, indent: &s
             "evidence_missing",
             summary.count(MatchStatus::EvidenceMissing),
         ),
-        ("baseline_debt", baseline_debt),
+        ("baseline_debt", signals.baseline_debt),
     ];
-    if broken_evidence_links > 0 {
-        fields.push(("broken_evidence_links", broken_evidence_links));
+    if signals.broken_evidence_links > 0 {
+        fields.push(("broken_evidence_links", signals.broken_evidence_links));
     }
     fields
         .iter()
