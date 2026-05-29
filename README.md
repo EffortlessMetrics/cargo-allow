@@ -83,6 +83,12 @@ cargo-allow check --mode no-new \
   --output target/cargo-allow/check.md
 ```
 
+`check --mode no-new` can pass while still reporting advisory policy-health
+counts such as `policy_missing_evidence` in the receipt. That field means
+retained non-baseline allow entries currently match the scanned source tree but
+still have no evidence references; route them with
+`cargo-allow worklist --missing-evidence`.
+
 Review PR posture:
 
 ```bash
@@ -138,6 +144,10 @@ The current implementation inventories these source-tree surfaces:
 Every retained exception should carry owner, reason, classification, lifecycle,
 scope, and evidence. Generated baselines are temporary `baseline_debt`, not a
 claim of cleanliness.
+
+Matched non-baseline entries with empty `evidence` are not hidden: report and
+receipt artifacts may include `policy_missing_evidence`, and the matching work
+queue is available through `cargo-allow worklist --missing-evidence`.
 
 ## Policy Model
 

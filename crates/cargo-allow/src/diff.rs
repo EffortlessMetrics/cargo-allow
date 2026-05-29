@@ -16,7 +16,7 @@ use diff_render::{
 
 use crate::{
     OutputFormat, SourceTreeReportContext, emit_text, git_relative_config_path, load_world,
-    parse_kind_filter, policy_baseline_debt_entries, policy_missing_evidence_entries,
+    matched_policy_missing_evidence_entries, parse_kind_filter, policy_baseline_debt_entries,
     report_config,
 };
 
@@ -61,7 +61,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let failed = outcomes.iter().any(|o| CheckMode::NoNew.fails(o.status)) || policy_failed;
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let mut report_context = source_context.report(Some(policy_baseline_debt_entries(&report_cfg)));
-    let policy_missing_evidence_entries = policy_missing_evidence_entries(&report_cfg);
+    let policy_missing_evidence_entries =
+        matched_policy_missing_evidence_entries(&report_cfg, &outcomes);
     report_context.policy_missing_evidence_entries =
         (policy_missing_evidence_entries > 0).then_some(policy_missing_evidence_entries);
     let mut text = match args.format {

@@ -70,6 +70,16 @@ true`. It is opt-in so generated `baseline_debt` ledgers can remain adoption
 scaffolding until reviewed. Unsafe entries keep their separate
 `requirements.unsafe.evidence_required` guard.
 
+When general evidence is not required, matched non-baseline entries with no
+evidence references still remain visible as policy-health debt. JSON reports
+may include `summary.policy_missing_evidence` and
+`trend.policy_missing_evidence`, and check receipts may include
+`counts.policy_missing_evidence`. This is distinct from outcome-level
+`evidence_missing`, which is used when evidence requirements are enforced. Use
+`cargo-allow worklist --missing-evidence --format json` to route those retained
+entries for evidence cleanup without pretending the current no-new check
+failed.
+
 Known local evidence prefixes are parsed when a policy is loaded from a source
 tree. `doc:`, `spec:`, `adr:`, `ripr:`, `unsafe-review:`, and `coverage:`
 references must point to source-tree-relative regular files that exist.
@@ -396,3 +406,8 @@ Audit reports can also count broken local evidence links. `audit` treats these
 as evidence-health findings so first-run inventory can finish and route cleanup
 to `cargo-allow worklist --item-kind broken_evidence_link`; `check` still fails
 closed on broken local evidence references.
+Audit, check, and diff artifacts can also report policy-level missing evidence
+when retained non-baseline allow entries have no evidence references but
+otherwise match the current source tree. That advisory count routes to
+`cargo-allow worklist --missing-evidence` and does not, by itself, claim the
+source-tree check failed.

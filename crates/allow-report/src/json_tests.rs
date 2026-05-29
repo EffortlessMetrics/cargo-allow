@@ -1,5 +1,8 @@
 use super::*;
-use allow_core::{Finding, FindingKind, MatchOutcome, MatchStatus, Span, StructuralIdentity};
+use allow_core::{
+    AllowConfig, AllowEntry, Finding, FindingKind, Lifecycle, MatchOutcome, MatchStatus, Selector,
+    Span, StructuralIdentity,
+};
 use std::path::PathBuf;
 
 #[test]
@@ -114,6 +117,25 @@ fn json_report_trend_counts_policy_missing_evidence_context() {
 }
 
 #[test]
+fn matched_policy_missing_evidence_counts_only_matched_non_baseline_entries() {
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(test_entry("allow-matched", "reviewed", &[]));
+    cfg.allow
+        .push(test_entry("allow-evidenced", "reviewed", &["test:covered"]));
+    cfg.allow.push(test_entry("allow-stale", "reviewed", &[]));
+    cfg.allow
+        .push(test_entry("allow-baseline", "baseline_debt", &[]));
+    let outcomes = vec![
+        outcome_with_allow(MatchStatus::Matched, Some("allow-matched")),
+        outcome_with_allow(MatchStatus::Matched, Some("allow-evidenced")),
+        outcome_with_allow(MatchStatus::Stale, Some("allow-stale")),
+        outcome_with_allow(MatchStatus::Matched, Some("allow-baseline")),
+    ];
+
+    assert_eq!(matched_policy_missing_evidence_entries(&cfg, &outcomes), 1);
+}
+
+#[test]
 fn json_report_exposes_source_package_context_on_findings() {
     let mut identity = StructuralIdentity::new("rust", "method_call");
     identity.crate_name = Some("parser".to_string());
@@ -142,5 +164,42 @@ fn outcome(status: MatchStatus, finding_index: Option<usize>) -> MatchOutcome {
         finding_index,
         message: String::new(),
         score: 0,
+    }
+}
+
+fn outcome_with_allow(status: MatchStatus, allow_id: Option<&str>) -> MatchOutcome {
+    MatchOutcome {
+        status,
+        allow_id: allow_id.map(ToOwned::to_owned),
+        finding_index: Some(0),
+        message: String::new(),
+        score: 0,
+    }
+}
+
+fn test_entry(id: &str, classification: &str, evidence: &[&str]) -> AllowEntry {
+    AllowEntry {
+        id: id.to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: Some(PathBuf::from("src/lib.rs")),
+        glob: None,
+        owner: "core".to_string(),
+        classification: classification.to_string(),
+        reason: "fixture".to_string(),
+        evidence: evidence.iter().map(|item| (*item).to_string()).collect(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: None,
+            review_after: None,
+            expires: Some("2026-08-01".to_string()),
+        },
+        selector: Selector {
+            ast_kind: Some("method_call".to_string()),
+            callee: Some("unwrap".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
     }
 }

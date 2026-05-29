@@ -345,6 +345,9 @@ Completed:
   keeping the no-execution claim boundary explicit.
 - Count broken local evidence links in audit/report artifacts so first-run
   inventory can complete while routing evidence repair through the worklist.
+- Count policy-level missing evidence in report, receipt, diff, Markdown, and
+  HTML artifacts so matched retained non-baseline entries with no evidence
+  references remain visible and route to `worklist --missing-evidence`.
 
 ## Phase 12: Agent-Native Worklists
 
@@ -433,6 +436,9 @@ Completed:
   evidence gaps, and baseline debt.
 - Count policy-level `baseline_debt` entries in audit/report trend summaries so
   matched generated debt stays visible after no-new passes.
+- Count policy-level missing evidence in audit/report trend summaries so
+  matched retained non-baseline exceptions with empty evidence stay visible
+  after no-new passes.
 - Expose optional source-derived package context as `source_package` in JSON
   report findings and SARIF result properties, without treating it as Cargo
   metadata.

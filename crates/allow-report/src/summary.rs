@@ -1,6 +1,6 @@
 use crate::ReportContext;
 use allow_core::{AllowConfig, MatchOutcome, MatchStatus};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) const STATUS_COUNT_ORDER: [MatchStatus; 10] = [
     MatchStatus::Matched,
@@ -182,6 +182,23 @@ pub fn policy_missing_evidence_entries(cfg: &AllowConfig) -> usize {
     cfg.allow
         .iter()
         .filter(|entry| entry.evidence.is_empty())
+        .count()
+}
+
+pub fn matched_policy_missing_evidence_entries(
+    cfg: &AllowConfig,
+    outcomes: &[MatchOutcome],
+) -> usize {
+    let matched_allow_ids = outcomes
+        .iter()
+        .filter(|outcome| outcome.status == MatchStatus::Matched)
+        .filter_map(|outcome| outcome.allow_id.as_deref())
+        .collect::<BTreeSet<_>>();
+    cfg.allow
+        .iter()
+        .filter(|entry| entry.classification != "baseline_debt")
+        .filter(|entry| entry.evidence.is_empty())
+        .filter(|entry| matched_allow_ids.contains(entry.id.as_str()))
         .count()
 }
 

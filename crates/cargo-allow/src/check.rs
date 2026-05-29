@@ -9,8 +9,8 @@ pub(crate) use check_args::CheckArgs;
 
 use crate::{
     ReportRenderArgs, SourceTreeReportContext, load_compat_world,
-    load_world_with_evidence_validation, policy_baseline_debt_entries,
-    policy_missing_evidence_entries, print_report, report_config, write_file,
+    load_world_with_evidence_validation, matched_policy_missing_evidence_entries,
+    policy_baseline_debt_entries, print_report, report_config, write_file,
 };
 
 pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
@@ -37,7 +37,8 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     let broken_evidence_links = broken_evidence_link_count(&root, &report_cfg);
     let failed = outcomes.iter().any(|o| mode.fails(o.status)) || broken_evidence_links > 0;
     let baseline_debt_entries = policy_baseline_debt_entries(&report_cfg);
-    let policy_missing_evidence_entries = policy_missing_evidence_entries(&report_cfg);
+    let policy_missing_evidence_entries =
+        matched_policy_missing_evidence_entries(&report_cfg, &outcomes);
     print_report(ReportRenderArgs {
         command: "check",
         format: args.format,
