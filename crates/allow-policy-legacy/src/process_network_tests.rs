@@ -50,6 +50,7 @@ fn migrates_process_allowlist_to_policy_exception_entries() {
         .unwrap_or_else(|| std::panic::panic_any("expected package proof process entry"));
     assert_eq!(local.classification, "local_process");
     assert_eq!(local.lifecycle.expires.as_deref(), Some("never"));
+    assert_eq!(local.lifecycle.review_after.as_deref(), Some("2026-05-09"));
 }
 
 #[test]
@@ -134,6 +135,7 @@ fn migrates_network_allowlist_to_policy_exception_entries() {
         Some("network:crates.io:auth:false:lane:build")
     );
     assert_eq!(public.lifecycle.expires.as_deref(), Some("never"));
+    assert_eq!(public.lifecycle.review_after.as_deref(), Some("2026-05-09"));
 
     let authenticated = cfg
         .allow

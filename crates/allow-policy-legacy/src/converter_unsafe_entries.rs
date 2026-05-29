@@ -1,6 +1,7 @@
-use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, normalize_path};
+use allow_core::{AllowEntry, FindingKind, Selector, normalize_path};
 use std::path::PathBuf;
 
+use crate::converter_lifecycle_support::lifecycle_from_legacy_fields;
 use crate::types::LegacyUnsafeRule;
 
 pub(crate) fn entry_from_unsafe_rule(rule: &LegacyUnsafeRule) -> AllowEntry {
@@ -17,11 +18,11 @@ pub(crate) fn entry_from_unsafe_rule(rule: &LegacyUnsafeRule) -> AllowEntry {
         evidence: unsafe_evidence(rule),
         links: vec![format!("legacy-policy:{}", rule.id)],
         occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: rule.created.clone(),
-            review_after: rule.review_after.clone(),
-            expires: rule.expires.clone(),
-        },
+        lifecycle: lifecycle_from_legacy_fields(
+            rule.created.clone(),
+            rule.review_after.clone(),
+            rule.expires.clone(),
+        ),
         selector: Selector {
             ast_kind: Some(rule.selector_kind.clone()),
             container: rule.selector_container.clone(),

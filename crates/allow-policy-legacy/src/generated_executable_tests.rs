@@ -23,6 +23,7 @@ fn migrates_generated_allowlist_to_canonical_policy() {
         Some(Path::new("policy/no-panic-baseline.toml"))
     );
     assert_eq!(entry.lifecycle.expires.as_deref(), Some("never"));
+    assert_eq!(entry.lifecycle.review_after.as_deref(), Some("2026-05-10"));
     assert!(entry.evidence.iter().any(|item| item.starts_with("cargo:")));
 }
 
@@ -101,6 +102,7 @@ fn migrates_executable_allowlist_to_policy_exception_entries() {
         Some(Path::new("scripts/package-proof.sh"))
     );
     assert_eq!(entry.lifecycle.expires.as_deref(), Some("never"));
+    assert_eq!(entry.lifecycle.review_after.as_deref(), Some("2026-05-09"));
     assert_eq!(entry.evidence, vec!["interpreter:bash"]);
     assert_eq!(
         entry.selector.target_fingerprint.as_deref(),

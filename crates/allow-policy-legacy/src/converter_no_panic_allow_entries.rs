@@ -1,6 +1,7 @@
-use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, normalize_path};
+use allow_core::{AllowEntry, FindingKind, Selector, normalize_path};
 use std::path::PathBuf;
 
+use crate::converter_lifecycle_support::lifecycle_from_legacy_fields;
 use crate::converter_panic_support::{
     cargo_allow_panic_family, no_panic_macro_name, no_panic_method_callee, normalize_selector_kind,
 };
@@ -25,11 +26,11 @@ pub(crate) fn entry_from_no_panic_allow_entry(rule: &LegacyNoPanicAllowEntry) ->
         ],
         links: vec!["legacy-policy:no-panic-allowlist".to_string()],
         occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: rule.created.clone(),
-            review_after: rule.review_after.clone(),
-            expires: rule.expires.clone(),
-        },
+        lifecycle: lifecycle_from_legacy_fields(
+            rule.created.clone(),
+            rule.review_after.clone(),
+            rule.expires.clone(),
+        ),
         selector: Selector {
             ast_kind: Some(ast_kind.clone()),
             container: rule.selector_container.clone(),

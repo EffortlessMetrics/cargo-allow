@@ -59,10 +59,7 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
                 entry.id
             )));
         }
-        if cfg.requirements.expires_or_review_after_required
-            && entry.lifecycle.expires.is_none()
-            && entry.lifecycle.review_after.is_none()
-        {
+        if cfg.requirements.expires_or_review_after_required && !has_real_lifecycle_review(entry) {
             return Err(CargoAllowError::new(format!(
                 "{} missing expires or review_after",
                 entry.id
@@ -91,6 +88,20 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
         }
     }
     Ok(())
+}
+
+fn has_real_lifecycle_review(entry: &AllowEntry) -> bool {
+    let has_review_after = entry
+        .lifecycle
+        .review_after
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty());
+    let has_expiry = entry
+        .lifecycle
+        .expires
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty() && value != "never");
+    has_review_after || has_expiry
 }
 
 pub(crate) fn validate_path_scope(id: &str, path: &Path) -> CargoAllowResult<()> {

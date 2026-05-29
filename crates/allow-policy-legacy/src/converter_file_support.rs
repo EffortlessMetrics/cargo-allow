@@ -1,5 +1,6 @@
 use allow_core::{Finding, Lifecycle};
 
+use crate::converter_lifecycle_support::lifecycle_from_legacy_fields;
 use crate::types::LegacyNonRustRule;
 
 pub(crate) fn best_rule_index(rules: &[LegacyNonRustRule], finding: &Finding) -> Option<usize> {
@@ -12,9 +13,9 @@ pub(crate) fn best_rule_index(rules: &[LegacyNonRustRule], finding: &Finding) ->
 }
 
 pub(crate) fn lifecycle_from_rule(rule: &LegacyNonRustRule) -> Lifecycle {
-    Lifecycle {
-        created: rule.created.clone(),
-        review_after: rule.review_after.clone(),
-        expires: rule.expires.clone(),
-    }
+    lifecycle_from_legacy_fields(
+        rule.created.clone(),
+        rule.review_after.clone(),
+        rule.expires.clone(),
+    )
 }
