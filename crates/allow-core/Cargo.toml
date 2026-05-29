@@ -11,3 +11,6 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+
+[dev-dependencies]
+proptest.workspace = true

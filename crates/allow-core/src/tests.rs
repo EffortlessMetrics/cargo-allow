@@ -1,7 +1,145 @@
 use super::*;
+use proptest::prelude::*;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+fn generated_path_segment() -> impl Strategy<Value = String> {
+    prop::string::string_regex(r"[A-Za-z0-9_-]{1,8}")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("valid path segment regex: {err}")))
+}
+
+fn generated_path_component() -> impl Strategy<Value = String> {
+    prop_oneof![
+        Just(".".to_string()),
+        Just("..".to_string()),
+        generated_path_segment(),
+    ]
+}
+
+fn generated_path() -> impl Strategy<Value = String> {
+    (
+        prop::bool::ANY,
+        prop::collection::vec(generated_path_component(), 0..16),
+        prop::bool::ANY,
+        prop::bool::ANY,
+    )
+        .prop_map(|(absolute, parts, trailing_separator, use_backslashes)| {
+            let separator = if use_backslashes { "\\" } else { "/" };
+            let mut path = parts.join(separator);
+            if absolute {
+                path.insert(0, '/');
+            }
+            if trailing_separator && !path.is_empty() {
+                path.push_str(separator);
+            }
+            path
+        })
+}
+
+fn generated_clean_relative_path() -> impl Strategy<Value = String> {
+    prop::collection::vec(generated_path_segment(), 1..8).prop_map(|parts| parts.join("/"))
+}
+
+fn generated_clean_relative_subtree() -> impl Strategy<Value = (String, String)> {
+    (
+        prop::collection::vec(generated_path_segment(), 1..6),
+        prop::collection::vec(generated_path_segment(), 0..6),
+    )
+        .prop_map(|(filter_parts, tail_parts)| {
+            let filter = filter_parts.join("/");
+            let item = if tail_parts.is_empty() {
+                filter.clone()
+            } else {
+                format!("{filter}/{}", tail_parts.join("/"))
+            };
+            (filter, item)
+        })
+}
+
+proptest! {
+    #[test]
+    fn normalize_path_is_idempotent(path in generated_path()) {
+        let once = normalize_path(&path);
+        let twice = normalize_path(&once);
+
+        prop_assert_eq!(once.clone(), twice);
+        prop_assert!(!once.contains('\\'));
+
+        let relative_body = once.strip_prefix('/').unwrap_or(&once);
+        prop_assert!(
+            relative_body.is_empty()
+                || relative_body
+                    .split('/')
+                    .all(|part| !part.is_empty() && part != ".")
+        );
+    }
+
+    #[test]
+    fn exact_glob_matches_normalized_relative_paths(path in generated_clean_relative_path()) {
+        let normalized = normalize_path(&path);
+
+        prop_assert!(glob_matches_str(&normalized, &normalized));
+        prop_assert!(glob_matches_str(&path, &normalized));
+    }
+
+    #[test]
+    fn double_star_glob_matches_clean_relative_descendants((filter, item) in generated_clean_relative_subtree()) {
+        let pattern = format!("{filter}/**");
+
+        prop_assert!(glob_matches_str(&pattern, &item));
+    }
+
+    #[test]
+    fn source_tree_filter_accepts_exact_paths_and_descendants((filter, item) in generated_clean_relative_subtree()) {
+        prop_assert!(source_tree_path_matches_filter(&filter, &filter));
+        prop_assert!(source_tree_path_matches_filter(&item, &filter));
+    }
+
+    #[test]
+    fn simple_date_roundtrips_epoch_day_offsets(days in -200_000i64..200_000i64) {
+        let date = SimpleDate::from_days_since_unix_epoch(days);
+
+        prop_assert_eq!(date.days_since_unix_epoch(), days);
+        prop_assert_eq!(SimpleDate::parse(&date.to_string()), Some(date));
+    }
+
+    #[test]
+    fn simple_date_add_days_and_days_until_are_inverse(
+        start_days in -200_000i64..200_000i64,
+        offset in -20_000i64..20_000i64,
+    ) {
+        let start = SimpleDate::from_days_since_unix_epoch(start_days);
+        let end = start.add_days(offset);
+
+        prop_assert_eq!(start.days_until(end), offset);
+        prop_assert_eq!(end.days_until(start), -offset);
+        prop_assert_eq!(end.days_since_unix_epoch(), start_days + offset);
+    }
+
+    #[test]
+    fn structural_identity_keys_stay_stable_across_location_hints(
+        line_hint in prop::option::of(0u32..10_000),
+        column_hint in prop::option::of(0u32..500),
+        moved_line_hint in prop::option::of(0u32..10_000),
+        moved_column_hint in prop::option::of(0u32..500),
+    ) {
+        let mut base = StructuralIdentity::new("rust", "method_call");
+        base.crate_name = Some("parser".to_string());
+        base.module = Some("parser::span".to_string());
+        base.container = Some("parse_span".to_string());
+        base.callee = Some("unwrap".to_string());
+        base.normalized_snippet_hash = Some("fnv1a64:abcd".to_string());
+        base.line_hint = line_hint;
+        base.column_hint = column_hint;
+
+        let mut moved = base.clone();
+        moved.line_hint = moved_line_hint;
+        moved.column_hint = moved_column_hint;
+
+        prop_assert_eq!(base.stable_key(), moved.stable_key());
+    }
+}
 
 #[test]
 fn glob_supports_double_star() {
