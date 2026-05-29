@@ -89,8 +89,18 @@ fn validate_source_tree_scope(
             diagnostic.parent_segment_message(label),
         ));
     }
-    if matches!(diagnostic, SourceTreeScopeDiagnostic::Glob) {
-        validate_supported_glob_syntax(label, &text)?;
+    match diagnostic {
+        SourceTreeScopeDiagnostic::Path => validate_exact_path_syntax(label, &text)?,
+        SourceTreeScopeDiagnostic::Glob => validate_supported_glob_syntax(label, &text)?,
+    }
+    Ok(())
+}
+
+fn validate_exact_path_syntax(label: &str, path: &str) -> CargoAllowResult<()> {
+    if let Some(ch) = path.chars().find(|ch| matches!(ch, '*' | '?')) {
+        return Err(CargoAllowError::new(format!(
+            "{label} path uses wildcard token `{ch}`; use `glob` for source-tree patterns"
+        )));
     }
     Ok(())
 }

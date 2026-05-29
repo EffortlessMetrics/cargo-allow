@@ -33,10 +33,11 @@ Each retained exception should have:
 - `[allow.selector]`: structural selector.
 - `[allow.last_seen]`: review hint only.
 
-Source-tree glob syntax is intentionally small and build-independent. Canonical
-policy globs support `*`, `?`, and whole-segment `**`. Bracket classes such as
-`[ab]` and brace alternation such as `{a,b}` are not supported; use exact
-`path` entries or explicit separate globs instead.
+`path` scopes are exact source-tree paths. Source-tree glob syntax is
+intentionally small and build-independent; canonical policy globs support `*`,
+`?`, and whole-segment `**`. Bracket classes such as `[ab]` and brace
+alternation such as `{a,b}` are not supported; use exact `path` entries or
+explicit separate globs instead.
 
 Diff mode reports owner, reason, or classification removals as policy weakening
 and additions of those required metadata fields as policy improvements.

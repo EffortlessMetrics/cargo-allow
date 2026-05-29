@@ -571,6 +571,28 @@ fn rejects_unsupported_brace_glob_syntax() {
 }
 
 #[test]
+fn rejects_wildcard_tokens_in_exact_path_scope() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "wildcard-path"
+                kind = "non_rust_file"
+                path = "scripts/*.sh"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = "scripts/*.sh"
+            "#,
+    );
+
+    assert!(err.contains("wildcard-path path uses wildcard token `*`"));
+    assert!(err.contains("use `glob`"));
+}
+
+#[test]
 fn accepts_path_with_matching_selector_glob() {
     let cfg = parse_policy(
         r#"
