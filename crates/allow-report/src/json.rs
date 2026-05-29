@@ -1,4 +1,4 @@
-use allow_core::json_escape;
+use allow_core::{MatchOutcome, json_escape};
 
 use crate::{CLAIM_BOUNDARY, InventoryContext, SCANNER_LIMITATIONS};
 
@@ -80,6 +80,42 @@ pub(crate) fn option_usize_json(value: Option<usize>) -> String {
     value
         .map(|value| value.to_string())
         .unwrap_or_else(|| "null".to_string())
+}
+
+pub(crate) fn render_match_outcome_json(outcome: &MatchOutcome, indent: &str) -> String {
+    let fields = MatchOutcomeJsonFields::new(outcome);
+    format!(
+        "{indent}  {{\n{indent}    \"status\": \"{}\",\n{indent}    \"allow_id\": {},\n{indent}    \"finding_index\": {},\n{indent}    \"score\": {},\n{indent}    \"message\": \"{}\"\n{indent}  }}",
+        fields.status, fields.allow_id, fields.finding_index, fields.score, fields.message
+    )
+}
+
+pub(crate) fn render_match_outcome_json_compact(outcome: &MatchOutcome) -> String {
+    let fields = MatchOutcomeJsonFields::new(outcome);
+    format!(
+        "{{\"status\": \"{}\", \"allow_id\": {}, \"finding_index\": {}, \"score\": {}, \"message\": \"{}\"}}",
+        fields.status, fields.allow_id, fields.finding_index, fields.score, fields.message
+    )
+}
+
+struct MatchOutcomeJsonFields {
+    status: &'static str,
+    allow_id: String,
+    finding_index: String,
+    score: u32,
+    message: String,
+}
+
+impl MatchOutcomeJsonFields {
+    fn new(outcome: &MatchOutcome) -> Self {
+        Self {
+            status: outcome.status.as_str(),
+            allow_id: option_json(outcome.allow_id.as_deref()),
+            finding_index: option_usize_json(outcome.finding_index),
+            score: outcome.score,
+            message: json_escape(&outcome.message),
+        }
+    }
 }
 
 pub(crate) fn json_string_array<T: AsRef<str>>(values: &[T]) -> String {

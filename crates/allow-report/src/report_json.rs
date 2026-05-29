@@ -1,5 +1,6 @@
 use crate::json::{
     bool_json, option_json, push_json_artifact_header, push_json_artifact_source_context,
+    render_match_outcome_json_compact,
 };
 use crate::{
     REPORT_SCHEMA_ID, REPORT_SCHEMA_VERSION, ReportContext, Summary, baseline_debt_count,
@@ -56,25 +57,8 @@ pub fn render_json_with_context(
         if i > 0 {
             out.push_str(",\n");
         }
-        out.push_str("    {");
-        out.push_str(&format!("\"status\": \"{}\", ", outcome.status.as_str()));
-        out.push_str(&format!(
-            "\"allow_id\": {}, ",
-            option_json(outcome.allow_id.as_deref())
-        ));
-        out.push_str(&format!(
-            "\"finding_index\": {}, ",
-            outcome
-                .finding_index
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| "null".to_string())
-        ));
-        out.push_str(&format!("\"score\": {}, ", outcome.score));
-        out.push_str(&format!(
-            "\"message\": \"{}\"",
-            json_escape(&outcome.message)
-        ));
-        out.push('}');
+        out.push_str("    ");
+        out.push_str(&render_match_outcome_json_compact(outcome));
     }
     out.push_str("\n  ],\n");
     out.push_str("  \"findings\": [\n");
