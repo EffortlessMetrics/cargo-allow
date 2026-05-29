@@ -137,17 +137,15 @@ fn proof_commands_cover_policy_family_aliases_and_unknown_policy_fallback() {
         let mut entry = test_entry(&format!("allow-{family}"), FindingKind::PolicyException);
         entry.family = Some(family.to_string());
 
-        let commands = proof_commands("review_due", None, Some(&entry));
-        assert_eq!(commands[0], format!("cargo-allow explain allow-{family}"));
-        assert!(
-            commands.contains(&format!(
-                "cargo-allow check --kind {kind_arg} --mode no-new"
-            )),
-            "{family} should map to --kind {kind_arg}: {commands:?}"
+        assert_eq!(
+            proof_commands("review_due", None, Some(&entry)),
+            vec![
+                format!("cargo-allow explain allow-{family}"),
+                format!("cargo-allow check --kind {kind_arg} --mode no-new"),
+                format!("cargo-allow worklist --kind {kind_arg} --format json"),
+            ],
+            "{family} should map to --kind {kind_arg}"
         );
-        assert!(commands.contains(&format!(
-            "cargo-allow worklist --kind {kind_arg} --format json"
-        )));
     }
 
     let mut unknown = test_entry("allow-policy", FindingKind::PolicyException);
