@@ -27,6 +27,42 @@ fn rejects_missing_general_evidence_when_required() {
 }
 
 #[test]
+fn rejects_blank_policy_schema_version() {
+    let err = parse_err(
+        r#"
+                schema_version = "   "
+                policy = "cargo-allow"
+            "#,
+    );
+
+    assert!(err.contains("policy schema_version must not be empty"));
+}
+
+#[test]
+fn rejects_blank_policy_owner() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                owner = ""
+            "#,
+    );
+
+    assert!(err.contains("policy owner must not be empty"));
+}
+
+#[test]
+fn rejects_blank_policy_status() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                status = "   "
+            "#,
+    );
+
+    assert!(err.contains("policy status must not be empty"));
+}
+
+#[test]
 fn keeps_unsafe_evidence_requirement_specific() {
     let err = parse_err(
         r#"
