@@ -69,6 +69,62 @@ fn validates_existing_unsafe_review_evidence_references() {
 }
 
 #[test]
+fn validates_all_local_evidence_reference_prefixes() {
+    let root = unique_test_dir("evidence-local-prefixes");
+    for path in [
+        "docs/rationale.md",
+        "docs/specs/parser.md",
+        "docs/adr/0001.md",
+        "target/ripr/parser.json",
+        "target/coverage/parser.info",
+        "docs/evidence/unsafe-review/ffi.json",
+        "docs/evidence/unsafe_review/ffi.json",
+    ] {
+        let path = root.join(path);
+        fs::create_dir_all(path.parent().unwrap_or_else(|| {
+            std::panic::panic_any(format!("evidence path has no parent: {}", path.display()))
+        }))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("create evidence parent {}: {err}", path.display()))
+        });
+        fs::write(&path, "{}").unwrap_or_else(|err| {
+            std::panic::panic_any(format!("write evidence {}: {err}", path.display()))
+        });
+    }
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-local-evidence"
+                kind = "unsafe"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = [
+                  "doc:docs/rationale.md",
+                  "spec:docs/specs/parser.md",
+                  "adr:docs/adr/0001.md",
+                  "ripr:target/ripr/parser.json",
+                  "coverage:target/coverage/parser.info",
+                  "unsafe-review:docs/evidence/unsafe-review/ffi.json",
+                  "unsafe_review:docs/evidence/unsafe_review/ffi.json",
+                ]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "unsafe_block"
+                container = "load"
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy parses: {err}")));
+
+    validate_local_evidence_references(&root, &cfg).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("local evidence prefixes validate: {err}"))
+    });
+    remove_test_dir(root);
+}
+
+#[test]
 fn rejects_missing_local_evidence_references() {
     let root = unique_test_dir("evidence-missing");
     fs::create_dir_all(&root)
@@ -125,6 +181,61 @@ fn rejects_directory_local_evidence_references() {
     let err = validate_local_evidence_references(&root, &cfg).unwrap_err();
     assert!(err.to_string().contains("allow-doc-dir evidence"));
     assert!(err.to_string().contains("not a directory"));
+    remove_test_dir(root);
+}
+
+#[test]
+fn diagnostics_classify_traceability_evidence_without_local_validation() {
+    let root = unique_test_dir("evidence-traceability-prefixes");
+    let entry = AllowEntry {
+        id: "allow-traceability".to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: Some(PathBuf::from("src/lib.rs")),
+        glob: None,
+        owner: "core".to_string(),
+        classification: "reviewed".to_string(),
+        reason: "fixture".to_string(),
+        evidence: vec![
+            "test:parser_rejects_bad_range".to_string(),
+            "cargo:cargo test -p parser".to_string(),
+            "issue:123".to_string(),
+            "pr:456".to_string(),
+        ],
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: None,
+            review_after: None,
+            expires: Some("2026-08-01".to_string()),
+        },
+        selector: Selector {
+            ast_kind: Some("method_call".to_string()),
+            callee: Some("unwrap".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    };
+
+    let diagnostics = evidence_reference_diagnostics(&root, &entry);
+
+    assert_eq!(
+        diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.status)
+            .collect::<Vec<_>>(),
+        vec![
+            EvidenceReferenceStatus::TraceabilityOnly,
+            EvidenceReferenceStatus::TraceabilityOnly,
+            EvidenceReferenceStatus::TraceabilityOnly,
+            EvidenceReferenceStatus::TraceabilityOnly
+        ]
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.message.contains("not executed"))
+    );
     remove_test_dir(root);
 }
 
