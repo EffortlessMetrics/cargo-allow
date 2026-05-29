@@ -82,10 +82,70 @@ fn generated_globs_override_file_family() {
 }
 
 #[test]
+fn configured_generated_globs_match_nested_files_and_windows_separators() {
+    let options = FileScanOptions {
+        generated: vec![r"vendor\**\*.json".to_string()],
+    };
+
+    let finding = classify_path_with_options(Path::new(r"vendor\api\schema.json"), &options)
+        .unwrap_or_else(|| std::panic::panic_any("expected generated file finding"));
+
+    assert_eq!(finding.kind, FindingKind::GeneratedCode);
+    assert_eq!(finding.family.as_deref(), Some("generated_code"));
+    assert_eq!(
+        finding.identity.symbol.as_deref(),
+        Some("vendor/api/schema.json")
+    );
+    assert_eq!(finding.identity.target_fingerprint.as_deref(), Some("json"));
+}
+
+#[test]
+fn built_in_generated_directory_markers_are_detected_at_root_and_nested() {
+    for path in ["gen/bindings.rs.snap", "src/generated/bindings.txt"] {
+        let finding = classify_path(Path::new(path))
+            .unwrap_or_else(|| std::panic::panic_any(format!("expected finding for {path}")));
+
+        assert_eq!(finding.kind, FindingKind::GeneratedCode);
+        assert_eq!(finding.family.as_deref(), Some("generated_code"));
+    }
+}
+
+#[test]
+fn hidden_configuration_and_file_name_fingerprints_are_recorded() {
+    let finding = classify_path(Path::new("config/.env"))
+        .unwrap_or_else(|| std::panic::panic_any("expected .env classification"));
+
+    assert_eq!(finding.kind, FindingKind::NonRustFile);
+    assert_eq!(finding.family.as_deref(), Some("configuration"));
+    assert_eq!(finding.identity.symbol.as_deref(), Some("config/.env"));
+    assert_eq!(finding.identity.target_fingerprint.as_deref(), Some(".env"));
+    assert_eq!(finding.span, Some(Span { line: 1, column: 1 }));
+}
+
+#[test]
+fn scan_files_filters_allowed_inputs_and_preserves_input_order() {
+    let files = vec![
+        PathBuf::from("src/lib.rs"),
+        PathBuf::from("README.md"),
+        PathBuf::from("tools/check.sh"),
+        PathBuf::from("docs/design.md"),
+    ];
+
+    let findings = scan_files(&files);
+
+    assert_eq!(findings.len(), 2);
+    assert_eq!(findings[0].path, PathBuf::from("tools/check.sh"));
+    assert_eq!(findings[0].family.as_deref(), Some("shell_script"));
+    assert_eq!(findings[1].path, PathBuf::from("docs/design.md"));
+    assert_eq!(findings[1].family.as_deref(), Some("documentation"));
+}
+
+#[test]
 fn builtin_cargo_and_license_files_are_not_findings() {
     assert!(classify_path(Path::new("Cargo.toml")).is_none());
     assert!(classify_path(Path::new("Cargo.lock")).is_none());
     assert!(classify_path(Path::new("crates/allow-files/Cargo.toml")).is_none());
+    assert!(classify_path(Path::new("crates/allow-files/README.md")).is_none());
     assert!(classify_path(Path::new("README.md")).is_none());
     assert!(classify_path(Path::new("LICENSE-MIT")).is_none());
 }
