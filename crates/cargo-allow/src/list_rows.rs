@@ -1,7 +1,7 @@
 use super::ListRow;
 use allow_core::{
-    AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, SimpleDate, normalize_path,
-    source_tree_scope_has_wildcard,
+    AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, SimpleDate,
+    allow_entry_broad_scope,
 };
 use allow_diff::selector_precision_score;
 
@@ -37,7 +37,7 @@ pub(super) fn list_rows(
                     .find_map(|finding| finding.source_package_name().map(ToOwned::to_owned)),
                 evidence_count: entry.evidence.len(),
                 selector_precision: selector_precision_score(entry),
-                broad_scope: list_entry_broad_scope(entry),
+                broad_scope: allow_entry_broad_scope(entry).is_some(),
                 review_after: entry
                     .lifecycle
                     .review_after
@@ -52,23 +52,6 @@ pub(super) fn list_rows(
             }
         })
         .collect()
-}
-
-fn list_entry_broad_scope(entry: &AllowEntry) -> bool {
-    entry
-        .path
-        .as_ref()
-        .map(normalize_path)
-        .is_some_and(|scope| source_tree_scope_has_wildcard(&scope))
-        || entry
-            .glob
-            .as_deref()
-            .is_some_and(source_tree_scope_has_wildcard)
-        || entry
-            .selector
-            .glob
-            .as_deref()
-            .is_some_and(source_tree_scope_has_wildcard)
 }
 
 fn list_entry_status(

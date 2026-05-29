@@ -1,7 +1,5 @@
 use super::{ExplainContext, explain_steps::explain_next_steps};
-use allow_core::{
-    AllowEntry, Finding, MatchOutcome, normalize_path, source_tree_scope_has_wildcard,
-};
+use allow_core::{AllowEntry, Finding, MatchOutcome, allow_entry_broad_scope, normalize_path};
 use allow_diff::selector_precision_score;
 use allow_policy::evidence_reference_diagnostics;
 use std::path::Path;
@@ -69,28 +67,11 @@ fn render_explain_report<R>(
         inventory: context.inventory,
         entry,
         selector_precision: selector_precision_score(entry),
-        broad_scope: explain_entry_broad_scope(entry),
+        broad_scope: allow_entry_broad_scope(entry).is_some(),
         current_findings: findings,
         match_outcomes: outcomes,
         evidence_references: &evidence_references,
         suggested_actions: &suggested_actions,
         proof_commands: &proof_commands,
     })
-}
-
-fn explain_entry_broad_scope(entry: &AllowEntry) -> bool {
-    entry
-        .path
-        .as_ref()
-        .map(normalize_path)
-        .is_some_and(|scope| source_tree_scope_has_wildcard(&scope))
-        || entry
-            .glob
-            .as_deref()
-            .is_some_and(source_tree_scope_has_wildcard)
-        || entry
-            .selector
-            .glob
-            .as_deref()
-            .is_some_and(source_tree_scope_has_wildcard)
 }
