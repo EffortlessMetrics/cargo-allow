@@ -50,6 +50,7 @@ evidence = [
   "test:parser_rejects_invalid_text_range",
   "ripr:target/ripr/reports/parser-span-gap.json",
   "spec:docs/specs/parser-span-invariants.md",
+  "legacy-policy:no-panic-baseline",
 ]
 ```
 
@@ -66,8 +67,9 @@ scaffolding until reviewed. Unsafe entries keep their separate
 Known local evidence prefixes are parsed when a policy is loaded from a source
 tree. `doc:`, `spec:`, `adr:`, `ripr:`, `unsafe-review:`, and `coverage:`
 references must point to source-tree-relative paths that exist. `test:`,
-`cargo:`, `issue:`, and `pr:` references are treated as traceability strings in
-the current implementation and are not executed or resolved over the network.
+`cargo:`, `issue:`, `pr:`, and `legacy-policy:` references are treated as
+traceability strings in the current implementation and are not executed or
+resolved over the network.
 
 Illustrative local evidence references:
 

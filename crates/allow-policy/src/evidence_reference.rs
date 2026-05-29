@@ -12,6 +12,7 @@ pub(crate) enum EvidenceKind {
     Adr,
     Issue,
     Pr,
+    LegacyPolicy,
     Unknown,
 }
 
@@ -28,6 +29,7 @@ impl EvidenceKind {
             "adr" => Self::Adr,
             "issue" => Self::Issue,
             "pr" => Self::Pr,
+            "legacy-policy" | "legacy_policy" => Self::LegacyPolicy,
             _ => Self::Unknown,
         }
     }

@@ -201,6 +201,7 @@ fn diagnostics_classify_traceability_evidence_without_local_validation() {
             "cargo:cargo test -p parser".to_string(),
             "issue:123".to_string(),
             "pr:456".to_string(),
+            "legacy-policy:no-panic-baseline".to_string(),
         ],
         links: Vec::new(),
         occurrence_limit: None,
@@ -225,6 +226,7 @@ fn diagnostics_classify_traceability_evidence_without_local_validation() {
             .map(|diagnostic| diagnostic.status)
             .collect::<Vec<_>>(),
         vec![
+            EvidenceReferenceStatus::TraceabilityOnly,
             EvidenceReferenceStatus::TraceabilityOnly,
             EvidenceReferenceStatus::TraceabilityOnly,
             EvidenceReferenceStatus::TraceabilityOnly,

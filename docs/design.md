@@ -152,6 +152,7 @@ Evidence references may later include:
 - `adr:`
 - `issue:`
 - `pr:`
+- `legacy-policy:`
 
 V1 may validate only local shape and file existence where practical. It must not
 claim semantic proof from the presence of a reference, and it must not execute
