@@ -107,6 +107,7 @@ cargo-allow worklist --owner unowned --classification baseline_debt --format hum
 cargo-allow worklist --baseline-debt --format human
 cargo-allow worklist --broad-scope --format human
 cargo-allow worklist --missing-evidence --format human
+cargo-allow worklist --item-kind broken_evidence_link --format human
 ```
 
 When developing this repository before installing the binary, run the same
@@ -184,6 +185,7 @@ cargo-allow list --format json --output target/cargo-allow/list.json
 cargo-allow worklist --baseline-debt --format human
 cargo-allow worklist --broad-scope --format human
 cargo-allow worklist --missing-evidence --format human
+cargo-allow worklist --item-kind broken_evidence_link --format human
 cargo-allow prune --stale --dry-run
 cargo-allow prune --stale --format json --output target/cargo-allow/prune.json
 cargo-allow add \
