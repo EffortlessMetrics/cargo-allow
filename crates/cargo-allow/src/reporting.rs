@@ -7,6 +7,7 @@ pub(crate) struct ReportRenderArgs<'a> {
     pub(crate) command: &'a str,
     pub(crate) format: OutputFormat,
     pub(crate) baseline_debt_entries: usize,
+    pub(crate) broken_evidence_links: usize,
     pub(crate) findings: &'a [Finding],
     pub(crate) outcomes: &'a [MatchOutcome],
     pub(crate) failed: bool,
@@ -64,7 +65,9 @@ impl SourceTreeReportContext {
 
 pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
     let source_context = SourceTreeReportContext::new(args.root, args.inventory_facts);
-    let context = source_context.report(Some(args.baseline_debt_entries));
+    let mut context = source_context.report(Some(args.baseline_debt_entries));
+    context.broken_evidence_links =
+        (args.broken_evidence_links > 0).then_some(args.broken_evidence_links);
     let text = match args.format {
         OutputFormat::Human => allow_report::render_human_with_context(
             args.command,

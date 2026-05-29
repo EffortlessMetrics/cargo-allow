@@ -120,6 +120,7 @@ impl<'a> Default for InventoryContext<'a> {
 pub struct ReportContext<'a> {
     pub inventory: InventoryContext<'a>,
     pub baseline_debt_entries: Option<usize>,
+    pub broken_evidence_links: Option<usize>,
 }
 
 impl<'a> ReportContext<'a> {
@@ -136,6 +137,7 @@ impl<'a> ReportContext<'a> {
                 inventory_files,
             ),
             baseline_debt_entries,
+            broken_evidence_links: None,
         }
     }
 }

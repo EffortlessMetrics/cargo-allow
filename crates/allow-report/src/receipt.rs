@@ -29,6 +29,7 @@ pub fn render_receipt_with_context(
     out.push_str(&render_counts_fields_with_policy_baseline(
         &summary,
         Some(baseline_debt_count(&summary, context)),
+        context.broken_evidence_links,
         "    ",
     ));
     out.push_str("  }\n}\n");

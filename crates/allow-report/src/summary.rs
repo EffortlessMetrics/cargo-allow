@@ -63,20 +63,28 @@ impl Summary {
 pub(crate) fn render_counts_fields_with_policy_baseline(
     summary: &Summary,
     policy_baseline_debt: Option<usize>,
+    broken_evidence_links: Option<usize>,
     indent: &str,
 ) -> String {
     let include_policy_baseline_debt =
         policy_baseline_debt.filter(|count| *count > summary.count(MatchStatus::BaselineDebt));
+    let include_broken_evidence_links = broken_evidence_links.filter(|count| *count > 0);
+    let optional_fields = [
+        ("policy_baseline_debt", include_policy_baseline_debt),
+        ("broken_evidence_links", include_broken_evidence_links),
+    ]
+    .into_iter()
+    .filter_map(|(name, value)| value.map(|value| (name, value)))
+    .collect::<Vec<_>>();
     let mut out = STATUS_COUNT_ORDER
         .iter()
         .enumerate()
         .map(|(idx, status)| {
-            let comma =
-                if idx + 1 == STATUS_COUNT_ORDER.len() && include_policy_baseline_debt.is_none() {
-                    ""
-                } else {
-                    ","
-                };
+            let comma = if idx + 1 == STATUS_COUNT_ORDER.len() && optional_fields.is_empty() {
+                ""
+            } else {
+                ","
+            };
             format!(
                 "{indent}\"{}\": {}{comma}\n",
                 status.as_str(),
@@ -84,26 +92,38 @@ pub(crate) fn render_counts_fields_with_policy_baseline(
             )
         })
         .collect::<String>();
-    if let Some(policy_baseline_debt) = include_policy_baseline_debt {
-        out.push_str(&format!(
-            "{indent}\"policy_baseline_debt\": {policy_baseline_debt}\n"
-        ));
+    for (index, (name, value)) in optional_fields.iter().enumerate() {
+        let comma = if index + 1 == optional_fields.len() {
+            ""
+        } else {
+            ","
+        };
+        out.push_str(&format!("{indent}\"{name}\": {value}{comma}\n"));
     }
     out
 }
 
-pub(crate) fn review_item_count_with_baseline(summary: &Summary, baseline_debt: usize) -> usize {
+pub(crate) fn review_item_count_with_baseline(
+    summary: &Summary,
+    baseline_debt: usize,
+    broken_evidence_links: usize,
+) -> usize {
     REVIEW_ITEM_STATUSES
         .iter()
         .map(|status| summary.count(*status))
         .sum::<usize>()
         + baseline_debt
+        + broken_evidence_links
 }
 
 pub(crate) fn baseline_debt_count(summary: &Summary, context: ReportContext<'_>) -> usize {
     context
         .baseline_debt_entries
         .unwrap_or_else(|| summary.count(MatchStatus::BaselineDebt))
+}
+
+pub(crate) fn broken_evidence_link_count(context: ReportContext<'_>) -> usize {
+    context.broken_evidence_links.unwrap_or(0)
 }
 
 pub fn policy_baseline_debt_entries(cfg: &AllowConfig) -> usize {

@@ -2,7 +2,7 @@ use crate::non_rust::{render_non_rust_human, render_non_rust_markdown};
 use crate::text::markdown_inline_code;
 use crate::{
     AUDIT_REVIEW_QUEUE_STATUSES, CLAIM_BOUNDARY_TEXT, ReportContext, STATUS_COUNT_ORDER, Summary,
-    baseline_debt_count, review_item_count_with_baseline,
+    baseline_debt_count, broken_evidence_link_count, review_item_count_with_baseline,
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape};
 
@@ -50,6 +50,13 @@ pub fn render_human_with_context(
         out.push_str(&format!(
             "  {:24} {}\n",
             "policy_baseline_debt", baseline_debt
+        ));
+    }
+    let broken_evidence_links = broken_evidence_link_count(context);
+    if broken_evidence_links > 0 {
+        out.push_str(&format!(
+            "  {:24} {}\n",
+            "broken_evidence_links", broken_evidence_links
         ));
     }
     if outcomes.is_empty() {
@@ -128,6 +135,13 @@ pub fn render_markdown_with_context(
     if let Some(baseline_debt) = policy_baseline_debt_note(&summary, context) {
         out.push_str(&format!("| `policy_baseline_debt` | {} |\n", baseline_debt));
     }
+    let broken_evidence_links = broken_evidence_link_count(context);
+    if broken_evidence_links > 0 {
+        out.push_str(&format!(
+            "| `broken_evidence_links` | {} |\n",
+            broken_evidence_links
+        ));
+    }
     if command == "audit" {
         render_audit_summary_markdown(&summary, outcomes, context, &mut out);
     }
@@ -160,7 +174,9 @@ fn render_audit_summary_markdown(
     out: &mut String,
 ) {
     let baseline_debt = baseline_debt_count(summary, context);
-    let review_items = review_item_count_with_baseline(summary, baseline_debt);
+    let broken_evidence_links = broken_evidence_link_count(context);
+    let review_items =
+        review_item_count_with_baseline(summary, baseline_debt, broken_evidence_links);
     let queue = outcomes
         .iter()
         .filter(|outcome| AUDIT_REVIEW_QUEUE_STATUSES.contains(&outcome.status))
@@ -182,9 +198,15 @@ fn render_audit_summary_markdown(
         "| Evidence gaps | {} |\n",
         summary.count(MatchStatus::EvidenceMissing)
     ));
+    out.push_str(&format!(
+        "| Broken evidence links | {} |\n",
+        broken_evidence_links
+    ));
     out.push_str(&format!("| Baseline debt | {} |\n", baseline_debt));
     if review_items == 0 {
         out.push_str("\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n");
+    } else if queue.is_empty() && broken_evidence_links > 0 {
+        out.push_str("\nRecommended next step: run `cargo-allow worklist --item-kind broken_evidence_link --format json` to repair broken local evidence references.\n");
     } else if queue.is_empty() && baseline_debt > 0 {
         out.push_str("\nRecommended next step: run `cargo-allow worklist --format json` to review generated baseline debt.\n");
     } else {

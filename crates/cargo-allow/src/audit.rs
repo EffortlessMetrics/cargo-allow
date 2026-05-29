@@ -1,13 +1,14 @@
 use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
+use allow_policy::broken_evidence_link_count;
 
 #[path = "audit_args.rs"]
 mod audit_args;
 pub(crate) use audit_args::ReportArgs;
 
 use crate::{
-    ReportRenderArgs, load_compat_world, load_world, policy_baseline_debt_entries, print_report,
-    report_config,
+    ReportRenderArgs, load_compat_world, load_world_with_evidence_validation,
+    policy_baseline_debt_entries, print_report, report_config,
 };
 
 pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
@@ -19,12 +20,13 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
             args.include_untracked,
         )?
     } else {
-        load_world(
+        load_world_with_evidence_validation(
             args.root.root.as_deref(),
             args.config.as_deref(),
             false,
             args.kind.as_deref(),
             args.include_untracked,
+            false,
         )?
     };
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
@@ -33,6 +35,7 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         command: "audit",
         format: args.format,
         baseline_debt_entries: policy_baseline_debt_entries(&report_cfg),
+        broken_evidence_links: broken_evidence_link_count(&root, &report_cfg),
         findings: &findings,
         outcomes: &outcomes,
         failed: false,

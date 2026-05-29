@@ -3,7 +3,8 @@ use allow_core::{Finding, MatchOutcome, MatchStatus};
 use crate::text::html_escape;
 use crate::{
     CLAIM_BOUNDARY_TEXT, FilePosture, ReportContext, STATUS_COUNT_ORDER, Summary,
-    audit_review_queue, baseline_debt_count, non_rust_file_rows, review_item_count_with_baseline,
+    audit_review_queue, baseline_debt_count, broken_evidence_link_count, non_rust_file_rows,
+    review_item_count_with_baseline,
 };
 
 pub fn render_html(
@@ -94,7 +95,9 @@ fn render_audit_summary_html(
     out: &mut String,
 ) {
     let baseline_debt = baseline_debt_count(summary, context);
-    let review_items = review_item_count_with_baseline(summary, baseline_debt);
+    let broken_evidence_links = broken_evidence_link_count(context);
+    let review_items =
+        review_item_count_with_baseline(summary, baseline_debt, broken_evidence_links);
     let queue = audit_review_queue(outcomes);
     out.push_str("<h2>Audit Summary</h2>\n");
     out.push_str("<table><thead><tr><th>Signal</th><th>Count</th></tr></thead><tbody>\n");
@@ -104,6 +107,7 @@ fn render_audit_summary_html(
         ("New unreceipted", summary.count(MatchStatus::New)),
         ("Expired", summary.count(MatchStatus::Expired)),
         ("Evidence gaps", summary.count(MatchStatus::EvidenceMissing)),
+        ("Broken evidence links", broken_evidence_links),
         ("Baseline debt", baseline_debt),
     ] {
         out.push_str(&format!(
@@ -115,6 +119,8 @@ fn render_audit_summary_html(
     out.push_str("</tbody></table>\n");
     if review_items == 0 {
         out.push_str("<p>Recommended next step: keep <code>cargo-allow check --mode no-new</code> in CI.</p>\n");
+    } else if queue.is_empty() && broken_evidence_links > 0 {
+        out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --item-kind broken_evidence_link --format json</code> to repair broken local evidence references.</p>\n");
     } else if queue.is_empty() && baseline_debt > 0 {
         out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --format json</code> to review generated baseline debt.</p>\n");
     } else {

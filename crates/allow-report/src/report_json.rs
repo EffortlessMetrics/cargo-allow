@@ -46,6 +46,7 @@ pub fn render_json_with_context(
     out.push_str(&render_counts_fields_with_policy_baseline(
         &summary,
         context.baseline_debt_entries,
+        context.broken_evidence_links,
         "    ",
     ));
     out.push_str("  },\n");
@@ -104,10 +105,11 @@ pub fn render_json_with_context(
 
 fn render_trend_fields(summary: &Summary, context: ReportContext<'_>, indent: &str) -> String {
     let baseline_debt = baseline_debt_count(summary, context);
-    let fields = [
+    let broken_evidence_links = crate::broken_evidence_link_count(context);
+    let mut fields = vec![
         (
             "review_items",
-            review_item_count_with_baseline(summary, baseline_debt),
+            review_item_count_with_baseline(summary, baseline_debt, broken_evidence_links),
         ),
         ("new", summary.count(MatchStatus::New)),
         ("expired", summary.count(MatchStatus::Expired)),
@@ -128,6 +130,9 @@ fn render_trend_fields(summary: &Summary, context: ReportContext<'_>, indent: &s
         ),
         ("baseline_debt", baseline_debt),
     ];
+    if broken_evidence_links > 0 {
+        fields.push(("broken_evidence_links", broken_evidence_links));
+    }
     fields
         .iter()
         .enumerate()

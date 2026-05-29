@@ -255,6 +255,11 @@
           "type": "integer",
           "minimum": 0,
           "description": "Optional policy-level count of generated baseline_debt entries when it exceeds baseline_debt outcomes."
+        },
+        "broken_evidence_links": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of missing or invalid local evidence references found while auditing policy evidence. These are source-tree evidence link problems, not executed proof failures."
         }
       }
     },
@@ -315,6 +320,11 @@
           "type": "integer",
           "minimum": 0,
           "description": "Policy-level count of generated baseline_debt entries when available; otherwise the baseline_debt outcome count. Prefer summary.policy_baseline_debt for explicit policy-level debt when present."
+        },
+        "broken_evidence_links": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of missing or invalid local evidence references included in review item totals when available."
         }
       }
     },
