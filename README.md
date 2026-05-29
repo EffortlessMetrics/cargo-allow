@@ -241,6 +241,7 @@ at your option.
 ## Documentation
 
 - [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Contributing](CONTRIBUTING.md)
 - [Design](docs/design.md)
 - [Claim boundaries](docs/claim-boundaries.md)
 - [Crate namespace policy](docs/crate-namespace.md)
