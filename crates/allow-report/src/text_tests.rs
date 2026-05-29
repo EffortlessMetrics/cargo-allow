@@ -3,10 +3,7 @@ use allow_core::{Finding, FindingKind, MatchOutcome, MatchStatus, Span, Structur
 use std::path::PathBuf;
 
 fn context(source: &'static str) -> ReportContext<'static> {
-    ReportContext {
-        inventory_source: source,
-        ..ReportContext::default()
-    }
+    ReportContext::source_syntax(source, None, None, None)
 }
 
 #[test]
@@ -29,12 +26,12 @@ fn human_report_summarizes_non_rust_inventory() {
         &findings,
         &outcomes,
         false,
-        ReportContext {
-            inventory_source: "filesystem_fallback",
-            source_tree_root: Some("fixtures/snapshot"),
-            inventory_files: Some(2),
-            ..ReportContext::default()
-        },
+        ReportContext::source_syntax(
+            "filesystem_fallback",
+            Some("fixtures/snapshot"),
+            Some(2),
+            None,
+        ),
     );
 
     assert!(text.contains(
@@ -67,12 +64,12 @@ fn markdown_report_summarizes_non_rust_inventory() {
         &findings,
         &outcomes,
         false,
-        ReportContext {
-            inventory_source: "git_tracked",
-            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
-            inventory_files: Some(1),
-            ..ReportContext::default()
-        },
+        ReportContext::source_syntax(
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(1),
+            None,
+        ),
     );
 
     assert!(text.contains(
@@ -136,11 +133,7 @@ fn markdown_audit_report_counts_policy_baseline_debt_context() {
         &[],
         &[],
         false,
-        ReportContext {
-            inventory_source: "git_tracked",
-            baseline_debt_entries: Some(3),
-            ..ReportContext::default()
-        },
+        ReportContext::source_syntax("git_tracked", None, None, Some(3)),
     );
 
     assert!(text.contains("| Review items | 3 |"));

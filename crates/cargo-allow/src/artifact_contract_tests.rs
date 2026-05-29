@@ -9,12 +9,12 @@ fn core_json_artifact_renderers_emit_parseable_v1_contracts() {
         &[],
         &[],
         false,
-        allow_report::ReportContext {
-            inventory_source: "filesystem_fallback",
-            source_tree_root: Some("fixtures/source-snapshot"),
-            inventory_files: Some(7),
-            ..allow_report::ReportContext::default()
-        },
+        allow_report::ReportContext::source_syntax(
+            "filesystem_fallback",
+            Some("fixtures/source-snapshot"),
+            Some(7),
+            None,
+        ),
     );
     let report = parse_json_artifact(
         "report",
@@ -34,12 +34,12 @@ fn core_json_artifact_renderers_emit_parseable_v1_contracts() {
         "check",
         &[],
         false,
-        allow_report::ReportContext {
-            inventory_source: "git_tracked",
-            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
-            inventory_files: Some(42),
-            ..allow_report::ReportContext::default()
-        },
+        allow_report::ReportContext::source_syntax(
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(42),
+            None,
+        ),
     );
     let receipt = parse_json_artifact(
         "receipt",
@@ -60,12 +60,12 @@ fn core_json_artifact_renderers_emit_parseable_v1_contracts() {
         &[],
         &[],
         false,
-        allow_report::ReportContext {
-            inventory_source: "git_tracked",
-            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
-            inventory_files: Some(8),
-            ..allow_report::ReportContext::default()
-        },
+        allow_report::ReportContext::source_syntax(
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(8),
+            None,
+        ),
     );
     let diff_json = diff::render_diff_json_with_posture(diff_base_json, &[], &[], &[]);
     let diff = parse_json_artifact("diff", &diff_json, allow_report::REPORT_SCHEMA_ID, "diff");

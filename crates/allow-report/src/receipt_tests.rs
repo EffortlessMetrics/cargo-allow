@@ -6,12 +6,12 @@ fn receipt_exposes_v1_schema_contract() {
         "check",
         &[],
         true,
-        ReportContext {
-            inventory_source: "git_tracked",
-            source_tree_root: Some("H:/Code/Rust/cargo-allow"),
-            inventory_files: Some(42),
-            ..ReportContext::default()
-        },
+        ReportContext::source_syntax(
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(42),
+            None,
+        ),
     );
     assert!(json.contains("\"schema_version\": 1"));
     assert!(json.contains("\"schema_id\": \"cargo-allow.receipt.v1\""));

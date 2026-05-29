@@ -9,12 +9,12 @@ fn json_contains_claim_boundary() {
         &[],
         &[],
         false,
-        ReportContext {
-            inventory_source: "filesystem_fallback",
-            source_tree_root: Some("fixtures/source-snapshot"),
-            inventory_files: Some(7),
-            ..ReportContext::default()
-        },
+        ReportContext::source_syntax(
+            "filesystem_fallback",
+            Some("fixtures/source-snapshot"),
+            Some(7),
+            None,
+        ),
     );
     assert!(CLAIM_BOUNDARY.contains(&"source_tree_inventory"));
     assert!(SCANNER_LIMITATIONS.contains(&"cargo_metadata_not_invoked"));
@@ -38,12 +38,12 @@ fn json_report_exposes_v1_schema_contract() {
         &[],
         &[],
         false,
-        ReportContext {
-            inventory_source: "filesystem_fallback",
-            source_tree_root: Some("fixtures/source-snapshot"),
-            inventory_files: Some(7),
-            ..ReportContext::default()
-        },
+        ReportContext::source_syntax(
+            "filesystem_fallback",
+            Some("fixtures/source-snapshot"),
+            Some(7),
+            None,
+        ),
     );
     assert!(json.contains("\"schema_version\": 1"));
     assert!(json.contains("\"schema_id\": \"cargo-allow.report.v1\""));
@@ -85,11 +85,7 @@ fn json_report_trend_counts_policy_baseline_debt_context() {
         &[],
         &[],
         false,
-        ReportContext {
-            inventory_source: "git_tracked",
-            baseline_debt_entries: Some(3),
-            ..ReportContext::default()
-        },
+        ReportContext::source_syntax("git_tracked", None, None, Some(3)),
     );
 
     assert!(json.contains("\"review_items\": 3"));

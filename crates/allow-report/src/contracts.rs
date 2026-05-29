@@ -116,11 +116,9 @@ impl<'a> Default for InventoryContext<'a> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct ReportContext<'a> {
-    pub inventory_source: &'a str,
-    pub source_tree_root: Option<&'a str>,
-    pub inventory_files: Option<usize>,
+    pub inventory: InventoryContext<'a>,
     pub baseline_debt_entries: Option<usize>,
 }
 
@@ -132,26 +130,18 @@ impl<'a> ReportContext<'a> {
         baseline_debt_entries: Option<usize>,
     ) -> Self {
         Self {
-            inventory_source,
-            source_tree_root,
-            inventory_files,
+            inventory: InventoryContext::source_syntax(
+                inventory_source,
+                source_tree_root,
+                inventory_files,
+            ),
             baseline_debt_entries,
         }
     }
 }
 
-impl<'a> Default for ReportContext<'a> {
-    fn default() -> Self {
-        Self::source_syntax("unknown", None, None, None)
-    }
-}
-
 impl<'a> From<ReportContext<'a>> for InventoryContext<'a> {
     fn from(context: ReportContext<'a>) -> Self {
-        Self::source_syntax(
-            context.inventory_source,
-            context.source_tree_root,
-            context.inventory_files,
-        )
+        context.inventory
     }
 }
