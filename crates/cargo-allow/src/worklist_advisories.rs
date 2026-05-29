@@ -1,6 +1,7 @@
 use super::WorkItem;
 use super::worklist_actions::{proof_commands, suggested_actions};
 use super::worklist_item_kind::{BASELINE_DEBT, BROAD_SCOPE};
+use super::worklist_priority::{DIFFICULTY_SMALL, RISK_MEDIUM};
 use super::worklist_scoring::{exception_family, work_item_difficulty, work_item_risk};
 use allow_core::{
     AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, allow_entry_broad_scope,
@@ -67,8 +68,8 @@ pub(super) fn work_items_from_policy_advisories(
                 review_after: entry.lifecycle.review_after.clone(),
                 expires: entry.lifecycle.expires.clone(),
                 evidence_count: Some(entry.evidence.len()),
-                risk: "medium",
-                difficulty: "small",
+                risk: RISK_MEDIUM,
+                difficulty: DIFFICULTY_SMALL,
                 status: MatchStatus::Matched,
                 allow_id: Some(entry.id.clone()),
                 finding_index: outcome.finding_index,

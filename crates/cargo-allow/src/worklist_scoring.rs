@@ -5,6 +5,9 @@ use super::worklist_item_kind::{
     MISSING_REQUIRED_FIELD, NEW_UNRECEIPTED_FINDING, OCCURRENCE_LIMIT_EXCEEDED, REVIEW_DUE,
     STALE_ALLOW, UNSAFE_MISSING_EVIDENCE,
 };
+use super::worklist_priority::{
+    DIFFICULTY_MEDIUM, DIFFICULTY_SMALL, RISK_HIGH, RISK_LOW, RISK_MEDIUM,
+};
 
 pub(crate) fn work_item_kind(
     outcome: &MatchOutcome,
@@ -45,7 +48,7 @@ pub(super) fn work_item_risk(
         .or_else(|| entry.map(|entry| entry.kind));
     let family = exception_family(finding, entry);
     if matches!(status, MatchStatus::Stale) {
-        return "low";
+        return RISK_LOW;
     }
     if matches!(
         (exception_kind, family),
@@ -54,18 +57,18 @@ pub(super) fn work_item_risk(
             Some("process_spawn" | "network_destination")
         )
     ) {
-        return "high";
+        return RISK_HIGH;
     }
     if matches!(exception_kind, Some(FindingKind::Unsafe)) {
-        return "high";
+        return RISK_HIGH;
     }
     match (kind, status) {
-        (AMBIGUOUS_SELECTOR, _) | (_, MatchStatus::Expired) => "high",
-        (NEW_UNRECEIPTED_FINDING, _) | (OCCURRENCE_LIMIT_EXCEEDED, _) => "medium",
-        (MISSING_EVIDENCE, _) | (MISSING_REQUIRED_FIELD, _) | (INVALID_SELECTOR, _) => "medium",
-        (BASELINE_DEBT, _) | (REVIEW_DUE, _) => "medium",
-        (STALE_ALLOW, _) => "low",
-        _ => "medium",
+        (AMBIGUOUS_SELECTOR, _) | (_, MatchStatus::Expired) => RISK_HIGH,
+        (NEW_UNRECEIPTED_FINDING, _) | (OCCURRENCE_LIMIT_EXCEEDED, _) => RISK_MEDIUM,
+        (MISSING_EVIDENCE, _) | (MISSING_REQUIRED_FIELD, _) | (INVALID_SELECTOR, _) => RISK_MEDIUM,
+        (BASELINE_DEBT, _) | (REVIEW_DUE, _) => RISK_MEDIUM,
+        (STALE_ALLOW, _) => RISK_LOW,
+        _ => RISK_MEDIUM,
     }
 }
 
@@ -78,21 +81,21 @@ pub(super) fn work_item_difficulty(
         .map(|finding| finding.kind)
         .or_else(|| entry.map(|entry| entry.kind));
     match kind {
-        STALE_ALLOW => "small",
-        AMBIGUOUS_SELECTOR | INVALID_SELECTOR => "small",
-        MISSING_REQUIRED_FIELD | MISSING_EVIDENCE => "small",
-        REVIEW_DUE | BASELINE_DEBT => "medium",
-        UNSAFE_MISSING_EVIDENCE => "medium",
+        STALE_ALLOW => DIFFICULTY_SMALL,
+        AMBIGUOUS_SELECTOR | INVALID_SELECTOR => DIFFICULTY_SMALL,
+        MISSING_REQUIRED_FIELD | MISSING_EVIDENCE => DIFFICULTY_SMALL,
+        REVIEW_DUE | BASELINE_DEBT => DIFFICULTY_MEDIUM,
+        UNSAFE_MISSING_EVIDENCE => DIFFICULTY_MEDIUM,
         NEW_UNRECEIPTED_FINDING
             if matches!(
                 exception_kind,
                 Some(FindingKind::NonRustFile | FindingKind::GeneratedCode)
             ) =>
         {
-            "small"
+            DIFFICULTY_SMALL
         }
-        NEW_UNRECEIPTED_FINDING | OCCURRENCE_LIMIT_EXCEEDED => "medium",
-        _ => "medium",
+        NEW_UNRECEIPTED_FINDING | OCCURRENCE_LIMIT_EXCEEDED => DIFFICULTY_MEDIUM,
+        _ => DIFFICULTY_MEDIUM,
     }
 }
 

@@ -1,3 +1,7 @@
+use super::worklist_item_kind::{BASELINE_DEBT, BROAD_SCOPE};
+use super::worklist_priority::{
+    DIFFICULTY_MEDIUM, DIFFICULTY_SMALL, RISK_HIGH, RISK_LOW, RISK_MEDIUM,
+};
 use super::{WorkItem, WorklistFilters};
 use allow_core::{MatchStatus, source_tree_path_matches_filter};
 
@@ -46,10 +50,10 @@ pub(super) fn filter_work_items(
                     .map(|classification| item.classification.as_deref() == Some(classification))
                     .unwrap_or(true)
                 && (!filters.baseline_debt
-                    || item.kind == "baseline_debt"
+                    || item.kind == BASELINE_DEBT
                     || item.classification.as_deref() == Some("baseline_debt")
                     || item.status == MatchStatus::BaselineDebt)
-                && (!filters.broad_scope || item.kind == "broad_scope")
+                && (!filters.broad_scope || item.kind == BROAD_SCOPE)
                 && filters.risk.map(|risk| item.risk == risk).unwrap_or(true)
                 && filters
                     .difficulty
@@ -77,17 +81,17 @@ pub(super) fn sort_work_items(items: &mut [WorkItem]) {
 
 fn work_item_risk_rank(risk: &str) -> u8 {
     match risk {
-        "high" => 0,
-        "medium" => 1,
-        "low" => 2,
+        RISK_HIGH => 0,
+        RISK_MEDIUM => 1,
+        RISK_LOW => 2,
         _ => 3,
     }
 }
 
 fn work_item_difficulty_rank(difficulty: &str) -> u8 {
     match difficulty {
-        "small" => 0,
-        "medium" => 1,
+        DIFFICULTY_SMALL => 0,
+        DIFFICULTY_MEDIUM => 1,
         _ => 2,
     }
 }
