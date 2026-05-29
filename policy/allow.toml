@@ -434,6 +434,7 @@ path = "policy/allow.toml"
 owner = "core/policy"
 classification = "source_exception_policy"
 reason = "Canonical source-exception ledger for cargo-allow's own source-tree policy receipts."
+evidence = ["doc:docs/source-exception-ledger.md", "doc:docs/claim-boundaries.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
 
