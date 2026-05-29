@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 mod evidence;
 mod render;
+mod starter;
 mod toml_de;
 mod toml_model;
 mod validation;
@@ -11,7 +12,8 @@ pub use evidence::{
     EvidenceReferenceDiagnostic, EvidenceReferenceStatus, evidence_reference_diagnostics,
     validate_local_evidence_references,
 };
-pub use render::{render_policy, starter_policy};
+pub use render::render_policy;
+pub use starter::starter_policy;
 pub use validation::validate_policy;
 
 pub fn find_config(start: impl AsRef<Path>) -> Option<PathBuf> {
@@ -47,6 +49,8 @@ pub fn parse_policy(input: &str) -> CargoAllowResult<AllowConfig> {
 mod evidence_tests;
 #[cfg(test)]
 mod render_tests;
+#[cfg(test)]
+mod starter_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
