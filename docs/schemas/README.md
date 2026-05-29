@@ -141,12 +141,19 @@ Schema compatibility tests also lock:
 - rendered sample artifacts against their registered schema top-level fields;
 - `additionalProperties = false` at the artifact root and nested object schema
   nodes;
+- shared source-tree inventory source values, including git-tracked,
+  filesystem-fallback, include-untracked filesystem inventory, and unknown
+  renderer defaults;
+- shared claim-boundary and scanner-limitation vocabularies;
+- report and receipt top-level status values;
+- match-status vocabularies where artifacts expose current ledger status;
 - governed source-exception kind vocabularies where artifacts expose finding or
   allow-entry kinds;
 - structural identity fields where artifacts expose finding identity;
-- `report.diff.policy_changes[].kind` for PR posture weakening and improvement
-  signals; and
-- the `worklist` artifact's queue item kind vocabulary.
+- `report.diff` posture, severity, finding-change, and policy-change
+  vocabularies for PR posture weakening and improvement signals; and
+- the `worklist` artifact's queue item kind, risk, and difficulty
+  vocabularies.
 
 This is not a promise that every field is permanently frozen. Breaking changes
 should either preserve the existing `*.v1` contract or introduce a new schema ID
