@@ -1,6 +1,6 @@
 use crate::artifact_schema_support::{
     assert_enum_equals, assert_required_fields, assert_schema_type_contains, governed_kind_enum,
-    parse_schema, required_schema_pointer,
+    match_status_enum, parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
 
@@ -54,6 +54,12 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
             .and_then(Value::as_str),
         Some("#/$defs/match_status"),
         "explain summary current_status should use match_status"
+    );
+    assert_enum_equals(
+        "explain match status",
+        &schema,
+        "/$defs/match_status/enum",
+        &match_status_enum(),
     );
     assert_eq!(
         schema

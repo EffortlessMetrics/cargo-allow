@@ -1,5 +1,6 @@
 use crate::artifact_schema_support::{
-    assert_enum_equals, assert_required_fields, parse_schema, required_schema_pointer,
+    assert_enum_equals, assert_required_fields, match_status_enum, parse_schema,
+    required_schema_pointer,
 };
 use allow_diff::{FindingPostureKind, PolicyChangeKind, PolicyChangeSeverity};
 use serde_json::Value;
@@ -124,6 +125,12 @@ fn report_schema_locks_diff_posture_extension_contract() {
             "policy_review_items",
             "policy_improvements",
         ],
+    );
+    assert_enum_equals(
+        "report match status",
+        &schema,
+        "/$defs/match_status/enum",
+        &match_status_enum(),
     );
     assert_required_fields(
         "report finding posture change",

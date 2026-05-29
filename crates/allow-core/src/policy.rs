@@ -163,6 +163,19 @@ pub enum MatchStatus {
 }
 
 impl MatchStatus {
+    pub const ALL: &[Self] = &[
+        Self::Matched,
+        Self::New,
+        Self::Stale,
+        Self::Expired,
+        Self::ReviewDue,
+        Self::Ambiguous,
+        Self::InvalidSelector,
+        Self::MissingRequiredField,
+        Self::EvidenceMissing,
+        Self::BaselineDebt,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Matched => "matched",
