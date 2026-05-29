@@ -63,6 +63,7 @@ pub(crate) fn sample_list_json_for_contract_test() -> String {
         scope: "src/lib.rs".to_string(),
         source_package: Some("allow-core".to_string()),
         evidence_count: 2,
+        selector_precision: 7,
         review_after: "2026-09-01".to_string(),
         expires: "2026-12-01".to_string(),
         reason: "reason".to_string(),

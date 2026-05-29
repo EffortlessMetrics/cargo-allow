@@ -164,6 +164,7 @@ fn render_list_rows_json_records_context_filters_and_rows() {
     assert!(json.contains("\"id\": \"allow-json\""));
     assert!(json.contains("\"source_package\": \"allow-core\""));
     assert!(json.contains("\"evidence_count\": 2"));
+    assert!(json.contains("\"selector_precision\": 7"));
     assert_eq!(
         value.pointer("/filters/kind").and_then(Value::as_str),
         Some("panic")

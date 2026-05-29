@@ -1,5 +1,6 @@
 use super::ListRow;
 use allow_core::{AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, SimpleDate};
+use allow_diff::selector_precision_score;
 
 pub(super) fn list_rows(
     cfg: &AllowConfig,
@@ -32,6 +33,7 @@ pub(super) fn list_rows(
                     .filter_map(|index| findings.get(index))
                     .find_map(|finding| finding.source_package_name().map(ToOwned::to_owned)),
                 evidence_count: entry.evidence.len(),
+                selector_precision: selector_precision_score(entry),
                 review_after: entry
                     .lifecycle
                     .review_after

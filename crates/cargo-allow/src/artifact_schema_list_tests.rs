@@ -41,10 +41,26 @@ fn list_schema_locks_allow_entry_kind_contract() {
             "scope",
             "source_package",
             "evidence_count",
+            "selector_precision",
             "review_after",
             "expires",
             "reason",
         ],
+    );
+    let selector_precision = required_schema_pointer(
+        "list allow entry",
+        allow_entry,
+        "/properties/selector_precision",
+    );
+    assert_eq!(
+        selector_precision.get("type").and_then(Value::as_str),
+        Some("integer"),
+        "list selector_precision type"
+    );
+    assert_eq!(
+        selector_precision.get("minimum").and_then(Value::as_u64),
+        Some(0),
+        "list selector_precision minimum"
     );
     assert_enum_equals(
         "list allow entry kind",

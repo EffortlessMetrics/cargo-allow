@@ -37,10 +37,10 @@ pub fn render_list_json(
 
 pub fn render_list_human(rows: &[ListRow<'_>]) -> String {
     let mut out = String::new();
-    out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\tevidence_count\treview_after\texpires\treason\n");
+    out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\tevidence_count\tselector_precision\treview_after\texpires\treason\n");
     for row in rows {
         out.push_str(&format!(
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
             row.id,
             row.status,
             row.matches,
@@ -51,6 +51,7 @@ pub fn render_list_human(rows: &[ListRow<'_>]) -> String {
             row.scope,
             row.source_package.unwrap_or("-"),
             row.evidence_count,
+            row.selector_precision,
             row.review_after.unwrap_or("-"),
             row.expires.unwrap_or("-"),
             row.reason
@@ -96,6 +97,10 @@ fn render_list_row_json(row: &ListRow<'_>) -> String {
     out.push_str(&format!(
         "      \"evidence_count\": {},\n",
         row.evidence_count
+    ));
+    out.push_str(&format!(
+        "      \"selector_precision\": {},\n",
+        row.selector_precision
     ));
     out.push_str(&format!(
         "      \"review_after\": {},\n",

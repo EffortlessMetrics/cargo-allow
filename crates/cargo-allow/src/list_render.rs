@@ -34,6 +34,7 @@ fn report_list_rows<'a>(
             scope: &row.scope,
             source_package: row.source_package.as_deref(),
             evidence_count: row.evidence_count,
+            selector_precision: row.selector_precision,
             review_after: dash_as_none(&row.review_after),
             expires: dash_as_none(&row.expires),
             reason: &row.reason,

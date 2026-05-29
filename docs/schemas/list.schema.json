@@ -280,6 +280,7 @@
         "scope",
         "source_package",
         "evidence_count",
+        "selector_precision",
         "review_after",
         "expires",
         "reason"
@@ -337,6 +338,11 @@
         "evidence_count": {
           "type": "integer",
           "minimum": 0
+        },
+        "selector_precision": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Relative selector precision score for this allow entry. Higher values indicate a more specific source-tree selector; line and column hints do not increase this score."
         },
         "review_after": {
           "type": ["string", "null"]
