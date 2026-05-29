@@ -31,6 +31,24 @@ pub(crate) fn push_json_artifact_source_context(out: &mut String, inventory: Inv
     out.push_str(",\n");
 }
 
+pub(crate) fn push_json_source_context_properties(
+    out: &mut String,
+    inventory: InventoryContext<'_>,
+    indent: &str,
+) {
+    out.push_str(&format!("{indent}\"inventory\": "));
+    out.push_str(&render_inventory_json(inventory, indent));
+    out.push_str(",\n");
+    out.push_str(&format!(
+        "{indent}\"claim_boundary\": {},\n",
+        render_claim_boundary_json()
+    ));
+    out.push_str(&format!(
+        "{indent}\"scanner_limitations\": {}\n",
+        render_scanner_limitations_json()
+    ));
+}
+
 pub(crate) fn option_json(value: Option<&str>) -> String {
     value
         .map(|v| format!("\"{}\"", json_escape(v)))

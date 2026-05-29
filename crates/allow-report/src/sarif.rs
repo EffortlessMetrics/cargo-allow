@@ -1,10 +1,7 @@
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
 
-use crate::json::{bool_json, option_json};
-use crate::{
-    ReportContext, render_claim_boundary_json, render_inventory_json,
-    render_scanner_limitations_json,
-};
+use crate::ReportContext;
+use crate::json::{bool_json, option_json, push_json_source_context_properties};
 
 pub fn render_sarif(
     command: &str,
@@ -64,17 +61,7 @@ pub fn render_sarif_with_context(
         if failed { "failed" } else { "passed" }
     ));
     out.push_str(&format!("        \"failed\": {},\n", bool_json(failed)));
-    out.push_str("        \"inventory\": ");
-    out.push_str(&render_inventory_json(context.into(), "        "));
-    out.push_str(",\n");
-    out.push_str(&format!(
-        "        \"claim_boundary\": {},\n",
-        render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "        \"scanner_limitations\": {}\n",
-        render_scanner_limitations_json()
-    ));
+    push_json_source_context_properties(&mut out, context.into(), "        ");
     out.push_str("      },\n");
     out.push_str("      \"results\": [\n");
     for (index, outcome) in reportable.iter().enumerate() {
