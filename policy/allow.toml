@@ -470,6 +470,7 @@ classification = "rust_package_metadata"
 reason = "Root manifest is a tracked source-tree package metadata file; cargo-allow classifies it as source text without treating it as Cargo metadata."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -492,6 +493,7 @@ classification = "rust_package_metadata"
 reason = "Root lockfile is a tracked source-tree package metadata file; cargo-allow governs its presence without using it as build metadata."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -514,6 +516,7 @@ classification = "rust_package_metadata"
 reason = "allow-core manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -536,6 +539,7 @@ classification = "rust_package_metadata"
 reason = "allow-diff manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -558,6 +562,7 @@ classification = "rust_package_metadata"
 reason = "allow-files manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -580,6 +585,7 @@ classification = "rust_package_metadata"
 reason = "allow-inventory manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -602,6 +608,7 @@ classification = "rust_package_metadata"
 reason = "allow-match manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -624,6 +631,7 @@ classification = "rust_package_metadata"
 reason = "allow-policy manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -646,6 +654,7 @@ classification = "rust_package_metadata"
 reason = "allow-policy-legacy manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -668,6 +677,7 @@ classification = "rust_package_metadata"
 reason = "allow-report manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -690,6 +700,7 @@ classification = "rust_package_metadata"
 reason = "allow-rust manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -712,6 +723,7 @@ classification = "rust_package_metadata"
 reason = "cargo-allow binary manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
