@@ -126,6 +126,21 @@ fn proof_commands_map_entry_only_kinds_and_worklist_shortcuts() {
             "cargo-allow worklist --kind dependency-surface --format json",
         ]
     );
+
+    entry.id = "allow-non-rust".to_string();
+    entry.kind = FindingKind::NonRustFile;
+    entry.family = Some("script".to_string());
+    assert_eq!(
+        proof_commands("missing_evidence", None, Some(&entry)),
+        vec![
+            "cargo-allow explain allow-non-rust",
+            "cargo-allow worklist --allow-id allow-non-rust --format json",
+            "cargo-allow check --kind non-rust --mode no-new",
+            "cargo-allow worklist --missing-evidence --format json",
+            "cargo-allow worklist --item-kind missing_evidence --format json",
+            "cargo-allow worklist --kind non-rust --format json",
+        ]
+    );
 }
 
 #[test]

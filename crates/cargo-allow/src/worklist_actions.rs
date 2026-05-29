@@ -105,6 +105,7 @@ fn worklist_shortcut_arg(kind: &str) -> Option<&'static str> {
     match kind {
         BASELINE_DEBT => Some("baseline-debt"),
         BROAD_SCOPE => Some("broad-scope"),
+        MISSING_EVIDENCE => Some("missing-evidence"),
         _ => None,
     }
 }
