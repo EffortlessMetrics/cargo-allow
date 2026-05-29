@@ -69,6 +69,9 @@ pub(crate) fn proof_commands(
     let mut commands = Vec::new();
     if let Some(allow_id) = entry.map(|entry| entry.id.as_str()) {
         commands.push(format!("cargo-allow explain {allow_id}"));
+        commands.push(format!(
+            "cargo-allow worklist --allow-id {allow_id} --format json"
+        ));
     }
     let kind_arg = worklist_kind_arg(finding, entry);
     let has_unsafe_kind_check = kind_arg == Some("unsafe");
