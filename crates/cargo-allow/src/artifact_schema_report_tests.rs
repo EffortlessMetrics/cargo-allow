@@ -1,5 +1,5 @@
 use crate::artifact_schema_support::{
-    assert_enum_contains_all, assert_required_fields, parse_schema, required_schema_pointer,
+    assert_enum_equals, assert_required_fields, parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
 
@@ -59,7 +59,7 @@ fn report_schema_locks_diff_posture_extension_contract() {
             "policy_changes",
         ],
     );
-    assert_enum_contains_all(
+    assert_enum_equals(
         "report",
         &schema,
         "/$defs/diff/properties/net_posture/enum",
@@ -104,7 +104,7 @@ fn report_schema_locks_diff_posture_extension_contract() {
         required_schema_pointer("report", &schema, "/$defs/finding_posture_change"),
         &["change", "key", "kind", "family", "path"],
     );
-    assert_enum_contains_all(
+    assert_enum_equals(
         "report",
         &schema,
         "/$defs/finding_posture_change/properties/change/enum",
@@ -115,13 +115,13 @@ fn report_schema_locks_diff_posture_extension_contract() {
         required_schema_pointer("report", &schema, "/$defs/policy_change"),
         &["severity", "allow_id", "kind", "message"],
     );
-    assert_enum_contains_all(
+    assert_enum_equals(
         "report",
         &schema,
         "/$defs/policy_change/properties/severity/enum",
         &["improvement", "review", "fail"],
     );
-    assert_enum_contains_all(
+    assert_enum_equals(
         "report",
         &schema,
         "/$defs/policy_change/properties/kind/enum",
