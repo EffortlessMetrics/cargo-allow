@@ -3,6 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 mod evidence;
+mod lifecycle;
 mod render;
 mod starter;
 mod toml_de;
