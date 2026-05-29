@@ -12,6 +12,8 @@ use support::{
 fn saved_json_outputs_keep_source_tree_contracts() {
     let fixture = SourceTreeFixture::new("saved-json-contracts");
     fixture.write_minimal_policy();
+    fixture.write_panic_source();
+    fixture.append_saved_artifact_allow_entries();
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let audit = artifact_dir.join("audit.json");
@@ -20,6 +22,8 @@ fn saved_json_outputs_keep_source_tree_contracts() {
     let list = artifact_dir.join("list.json");
     let worklist = artifact_dir.join("worklist.json");
     let doctor = artifact_dir.join("doctor.json");
+    let explain = artifact_dir.join("explain.json");
+    let prune = artifact_dir.join("prune.json");
 
     run_cargo_allow(&[
         "audit",
@@ -77,6 +81,41 @@ fn saved_json_outputs_keep_source_tree_contracts() {
         path_arg(&worklist),
     ]);
     assert_source_syntax_artifact(&worklist, allow_report::WORKLIST_SCHEMA_ID, "worklist");
+
+    run_cargo_allow(&[
+        "explain",
+        "allow-panic-fixture",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&explain),
+    ]);
+    assert_source_syntax_artifact(&explain, allow_report::EXPLAIN_SCHEMA_ID, "explain");
+
+    run_cargo_allow(&[
+        "prune",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--stale",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&prune),
+    ]);
+    let prune_value = assert_source_syntax_artifact(&prune, allow_report::PRUNE_SCHEMA_ID, "prune");
+    assert_eq!(
+        prune_value
+            .pointer("/summary/stale_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "prune saved artifact should keep stale cleanup summary shape"
+    );
 
     run_cargo_allow(&[
         "doctor",
@@ -448,6 +487,51 @@ safety_comment_required = false
             "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
         )
         .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
+    }
+
+    fn append_saved_artifact_allow_entries(&self) {
+        let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        policy.push_str(
+            r#"
+
+[[allow]]
+id = "allow-panic-fixture"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core/tests"
+classification = "reviewed_fixture"
+reason = "Fixture keeps explain/check saved artifact output covered."
+evidence = ["test:saved_json_outputs_keep_source_tree_contracts"]
+created = "2026-05-29"
+review_after = "2026-08-29"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+
+[[allow]]
+id = "allow-stale-fixture"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/missing.md"
+owner = "core/tests"
+classification = "reviewed_fixture"
+reason = "Fixture keeps prune saved artifact output covered."
+created = "2026-05-29"
+review_after = "2026-08-29"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/missing.md"
+target_fingerprint = "md"
+glob = "docs/missing.md"
+"#,
+        );
+        fs::write(self.root.join("policy/allow.toml"), policy)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
 
     fn write_policy_with_broken_evidence(&self) {
