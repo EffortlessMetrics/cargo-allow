@@ -129,10 +129,14 @@ Receipts may use the same optional count under
 `counts.policy_missing_evidence`. This is distinct from outcome-level
 `evidence_missing`, which reflects enforced evidence requirements.
 
-`audit` treats these as evidence-health signals so first-run inventory can still
-complete and route cleanup work. `check` fails closed on broken local evidence
-links while still including the count in saved report and receipt artifacts when
-those outputs are requested. Use
+Read-only reporting and adoption producers treat these as evidence-health
+signals so inventory and repair queues can still be emitted. That includes
+`audit`, `diff`, `explain`, `list`, `worklist`, `propose`, and `prune --stale`
+dry-run artifacts. `check` fails closed on broken local evidence links while
+still including the count in saved report and receipt artifacts when those
+outputs are requested. `doctor` reports invalid policy state, `add` validates
+evidence before writing a reviewed entry, and `prune --stale --write`
+revalidates the remaining policy before writing. Use
 `cargo-allow worklist --item-kind broken_evidence_link --format json` for the
 broken-link repair queue and `cargo-allow worklist --missing-evidence --format
 json` for retained entries that still need evidence references.

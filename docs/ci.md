@@ -76,3 +76,10 @@ does not include proof-tool results or build-derived findings.
 Upload `target/cargo-allow/` even on failure. The report and receipt explain
 which exception changed, whether the change was unmatched or stale, and the
 claim boundary for the command.
+
+Broken local evidence links should be treated as failing gate signals, not as
+missing artifacts. `cargo-allow check` fails closed when retained policy points
+to missing, symlinked, directory, or out-of-tree local evidence. Reporting
+commands such as `audit`, `diff`, `list`, `explain`, `worklist`, `propose`, and
+`prune --stale` dry-run can still emit artifacts that identify the broken links
+so maintainers can repair them in the next PR.
