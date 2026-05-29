@@ -1,5 +1,20 @@
-use crate::artifact_schema_support::{parse_schema, required_schema_pointer};
+use crate::artifact_schema_support::{assert_enum_equals, parse_schema, required_schema_pointer};
 use serde_json::Value;
+
+#[test]
+fn receipt_schema_locks_top_level_status_vocabulary() {
+    let schema = parse_schema(
+        "receipt",
+        include_str!("../../../docs/schemas/receipt.schema.json"),
+    );
+
+    assert_enum_equals(
+        "receipt status",
+        &schema,
+        "/properties/status/enum",
+        allow_report::ARTIFACT_STATUSES,
+    );
+}
 
 #[test]
 fn receipt_schema_allows_optional_policy_baseline_debt_count() {

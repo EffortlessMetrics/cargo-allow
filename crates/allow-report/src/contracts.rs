@@ -19,6 +19,10 @@ pub const ADD_SCHEMA_ID: &str = "cargo-allow.add.v1";
 pub const MIGRATE_SCHEMA_VERSION: u32 = 1;
 pub const MIGRATE_SCHEMA_ID: &str = "cargo-allow.migrate.v1";
 
+pub const ARTIFACT_STATUS_PASSED: &str = "passed";
+pub const ARTIFACT_STATUS_FAILED: &str = "failed";
+pub const ARTIFACT_STATUSES: &[&str] = &[ARTIFACT_STATUS_PASSED, ARTIFACT_STATUS_FAILED];
+
 pub const CLAIM_BOUNDARY: &[&str] = &[
     "source_tree_inventory",
     "source_syntax_only",

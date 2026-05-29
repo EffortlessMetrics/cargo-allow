@@ -3,8 +3,8 @@ use crate::json::{
     render_match_outcome_json_compact,
 };
 use crate::{
-    REPORT_SCHEMA_ID, REPORT_SCHEMA_VERSION, ReportContext, ReviewSignals, Summary,
-    render_counts_fields_with_policy_baseline,
+    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, REPORT_SCHEMA_ID, REPORT_SCHEMA_VERSION,
+    ReportContext, ReviewSignals, Summary, render_counts_fields_with_policy_baseline,
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
 
@@ -36,7 +36,11 @@ pub fn render_json_with_context(
     push_json_artifact_header(&mut out, REPORT_SCHEMA_VERSION, REPORT_SCHEMA_ID, command);
     out.push_str(&format!(
         "  \"status\": \"{}\",\n",
-        if failed { "failed" } else { "passed" }
+        if failed {
+            ARTIFACT_STATUS_FAILED
+        } else {
+            ARTIFACT_STATUS_PASSED
+        }
     ));
     out.push_str(&format!("  \"failed\": {},\n", bool_json(failed)));
     push_json_artifact_source_context(&mut out, context.into());

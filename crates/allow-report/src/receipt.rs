@@ -1,7 +1,7 @@
 use crate::json::{bool_json, push_json_artifact_header, push_json_artifact_source_context};
 use crate::{
-    RECEIPT_SCHEMA_ID, RECEIPT_SCHEMA_VERSION, ReportContext, Summary, baseline_debt_count,
-    render_counts_fields_with_policy_baseline,
+    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, RECEIPT_SCHEMA_ID, RECEIPT_SCHEMA_VERSION,
+    ReportContext, Summary, baseline_debt_count, render_counts_fields_with_policy_baseline,
 };
 use allow_core::MatchOutcome;
 
@@ -21,7 +21,11 @@ pub fn render_receipt_with_context(
     push_json_artifact_header(&mut out, RECEIPT_SCHEMA_VERSION, RECEIPT_SCHEMA_ID, command);
     out.push_str(&format!(
         "  \"status\": \"{}\",\n",
-        if failed { "failed" } else { "passed" }
+        if failed {
+            ARTIFACT_STATUS_FAILED
+        } else {
+            ARTIFACT_STATUS_PASSED
+        }
     ));
     out.push_str(&format!("  \"failed\": {},\n", bool_json(failed)));
     push_json_artifact_source_context(&mut out, context.into());
