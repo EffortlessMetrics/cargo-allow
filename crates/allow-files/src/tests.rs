@@ -97,3 +97,71 @@ fn assert_classification(path: &str, kind: FindingKind, family: &str) {
     assert_eq!(finding.kind, kind);
     assert_eq!(finding.family.as_deref(), Some(family));
 }
+
+#[test]
+fn scan_files_with_options_returns_only_classified_paths() {
+    let options = FileScanOptions {
+        generated: vec!["schemas/**".to_string()],
+    };
+    let files = vec![
+        PathBuf::from("src/lib.rs"),
+        PathBuf::from("Cargo.lock"),
+        PathBuf::from("schemas/api.yaml"),
+        PathBuf::from("tools/report.ts"),
+    ];
+
+    let findings = scan_files_with_options(&files, &options);
+
+    assert_eq!(findings.len(), 2);
+    assert_eq!(findings[0].path, PathBuf::from("schemas/api.yaml"));
+    assert_eq!(findings[0].kind, FindingKind::GeneratedCode);
+    assert_eq!(findings[0].family.as_deref(), Some("generated_code"));
+    assert_eq!(findings[1].path, PathBuf::from("tools/report.ts"));
+    assert_eq!(findings[1].kind, FindingKind::NonRustFile);
+    assert_eq!(findings[1].family.as_deref(), Some("javascript_tool"));
+}
+
+#[test]
+fn classification_populates_stable_identity_and_default_span() {
+    let finding = classify_path(Path::new(r"docs\Guide.MD"))
+        .unwrap_or_else(|| std::panic::panic_any("expected documentation finding"));
+
+    assert_eq!(finding.span, Some(Span { line: 1, column: 1 }));
+    assert_eq!(finding.identity.language, "file");
+    assert_eq!(finding.identity.ast_kind, "tracked_file");
+    assert_eq!(finding.identity.symbol.as_deref(), Some("docs/Guide.MD"));
+    assert_eq!(finding.identity.target_fingerprint.as_deref(), Some("md"));
+    assert!(
+        finding
+            .message
+            .contains("tracked non-Rust file classified as documentation")
+    );
+}
+
+#[test]
+fn extensionless_non_rust_files_use_file_name_fingerprint() {
+    let finding = classify_path(Path::new("scripts/deploy"))
+        .unwrap_or_else(|| std::panic::panic_any("expected extensionless script finding"));
+
+    assert_eq!(finding.family.as_deref(), Some("release_script"));
+    assert_eq!(
+        finding.identity.target_fingerprint.as_deref(),
+        Some("deploy")
+    );
+}
+
+#[test]
+fn generated_detection_covers_gen_directories_and_suffixes() {
+    for path in [
+        "gen/bindings.rs.txt",
+        "src/gen/bindings.json",
+        "src/schema.generated",
+        "src/schema.generated.yaml",
+    ] {
+        let finding = classify_path(Path::new(path)).unwrap_or_else(|| {
+            std::panic::panic_any(format!("expected generated finding for {path}"))
+        });
+        assert_eq!(finding.kind, FindingKind::GeneratedCode, "{path}");
+        assert_eq!(finding.family.as_deref(), Some("generated_code"), "{path}");
+    }
+}

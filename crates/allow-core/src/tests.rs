@@ -319,3 +319,44 @@ fn today_utc_approx_uses_system_clock_day() {
         "today_utc_approx should use the current UTC day"
     );
 }
+
+#[test]
+fn simple_date_parse_rejects_malformed_and_invalid_calendar_dates() {
+    for input in [
+        "",
+        "2024",
+        "2024-01",
+        "2024-01-01-extra",
+        "not-a-date",
+        "2024-00-01",
+        "2024-13-01",
+        "2024-04-31",
+        "2023-02-29",
+        "2024-01-00",
+    ] {
+        assert_eq!(SimpleDate::parse(input), None, "input should fail: {input}");
+    }
+}
+
+#[test]
+fn simple_date_accepts_leap_days_and_round_trips_across_epoch() {
+    let leap_day = SimpleDate::parse("2024-02-29").expect("valid leap day");
+    assert_eq!(leap_day.to_string(), "2024-02-29");
+    assert_eq!(leap_day.add_days(1).to_string(), "2024-03-01");
+    assert_eq!(leap_day.add_days(-1).to_string(), "2024-02-28");
+
+    let epoch = SimpleDate::parse("1970-01-01").expect("valid epoch");
+    assert_eq!(epoch.days_until(epoch.add_days(40_000)), 40_000);
+    assert_eq!(epoch.add_days(-1).to_string(), "1969-12-31");
+}
+
+#[test]
+fn maybe_line_distance_score_uses_expected_thresholds() {
+    assert_eq!(maybe_line_distance_score(Some(10), Some(10)), 15);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(13)), 12);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(20)), 8);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(35)), 3);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(36)), 0);
+    assert_eq!(maybe_line_distance_score(None, Some(10)), 0);
+    assert_eq!(maybe_line_distance_score(Some(10), None), 0);
+}
