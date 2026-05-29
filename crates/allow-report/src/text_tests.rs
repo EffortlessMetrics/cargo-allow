@@ -170,6 +170,18 @@ fn text_reports_include_review_due_and_invalid_selector_counts() {
     assert!(markdown.contains("| `invalid_selector` | 1 |"));
 }
 
+#[test]
+fn check_text_reports_policy_baseline_debt_context() {
+    let context = ReportContext::source_syntax("git_tracked", None, None, Some(3));
+    let human = render_human_with_context("check", &[], &[], false, context);
+    let markdown = render_markdown_with_context("check", &[], &[], false, context);
+
+    assert!(human.contains("policy_baseline_debt"));
+    assert!(human.contains("3"));
+    assert!(markdown.contains("| `baseline_debt` | 0 |"));
+    assert!(markdown.contains("| `policy_baseline_debt` | 3 |"));
+}
+
 fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
     Finding {
         kind,
