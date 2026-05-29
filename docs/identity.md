@@ -18,9 +18,11 @@ Cargo metadata, rustc, Clippy, build scripts, proc macros, repository code,
 type checking, MIR, control-flow analysis, or data-flow analysis.
 
 The identity may contain source-derived package-like context in `crate_name`
-when a tracked `Cargo.toml` has a visible `[package].name`, but that field
-remains optional. It must not become a requirement to load Cargo workspace facts
-or invoke Cargo metadata.
+when a scanned `Cargo.toml` can be read as source text and has a visible
+`[package].name`, but that field remains optional. Workspace-only, invalid,
+unreadable, or non-UTF8 manifests are ignored for this context so source scans
+can continue. The field must not become a requirement to load Cargo workspace
+facts or invoke Cargo metadata.
 
 ## Rust Parser Foundation
 

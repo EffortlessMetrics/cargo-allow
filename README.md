@@ -35,6 +35,12 @@ Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros,
 `Cargo.toml` and `Cargo.lock` are files in the scanned source tree, not required
 build metadata.
 
+When cargo-allow reports `source_package`, that value is optional context read
+from source-tree `Cargo.toml` text when a readable `[package].name` is present.
+Invalid, unreadable, or non-UTF8 manifests are ignored for that context so the
+source scan can continue; the value is not Cargo metadata or build-membership
+proof.
+
 Current reports may claim:
 
 ```text
