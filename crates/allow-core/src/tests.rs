@@ -319,3 +319,127 @@ fn today_utc_approx_uses_system_clock_day() {
         "today_utc_approx should use the current UTC day"
     );
 }
+
+#[test]
+fn json_escape_covers_quotes_slashes_controls_and_unicode() {
+    assert_eq!(
+        json_escape("quote \" slash \\ newline\ncarriage\rtab\t bell\u{0007} snowman ☃"),
+        "quote \\\" slash \\\\ newline\\ncarriage\\rtab\\t bell\\u0007 snowman ☃"
+    );
+}
+
+#[test]
+fn match_status_modes_exercise_all_variants() {
+    let cases = [
+        (MatchStatus::Matched, "matched", false, false),
+        (MatchStatus::New, "new", true, true),
+        (MatchStatus::Stale, "stale", true, false),
+        (MatchStatus::Expired, "expired", true, true),
+        (MatchStatus::ReviewDue, "review_due", false, false),
+        (MatchStatus::Ambiguous, "ambiguous", true, true),
+        (MatchStatus::InvalidSelector, "invalid_selector", true, true),
+        (
+            MatchStatus::MissingRequiredField,
+            "missing_required_field",
+            true,
+            true,
+        ),
+        (MatchStatus::EvidenceMissing, "evidence_missing", true, true),
+        (MatchStatus::BaselineDebt, "baseline_debt", true, false),
+    ];
+
+    for (status, as_str, strict_failure, no_new_failure) in cases {
+        assert_eq!(status.as_str(), as_str);
+        assert_eq!(status.is_failure_in_strict(), strict_failure, "{status:?}");
+        assert_eq!(status.is_failure_in_no_new(), no_new_failure, "{status:?}");
+    }
+}
+
+#[test]
+fn allow_entry_path_or_glob_prefers_path_then_entry_glob_then_selector_glob() {
+    let mut entry = AllowEntry {
+        id: "allow-panic".to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: Some(PathBuf::from(r"src\lib.rs")),
+        glob: Some("src/**/*.rs".to_string()),
+        owner: "runtime".to_string(),
+        classification: "accepted-risk".to_string(),
+        reason: "covered by caller contract".to_string(),
+        evidence: vec!["ADR-123".to_string()],
+        links: vec!["https://example.invalid/adr/123".to_string()],
+        occurrence_limit: Some(1),
+        lifecycle: Lifecycle::empty(),
+        selector: Selector {
+            glob: Some("fallback/**/*.rs".to_string()),
+            ..Selector::default()
+        },
+        last_seen: Some(LastSeen {
+            line: 10,
+            column: 4,
+        }),
+    };
+
+    assert_eq!(entry.path_or_glob(), "src/lib.rs");
+
+    entry.path = None;
+    assert_eq!(entry.path_or_glob(), "src/**/*.rs");
+
+    entry.glob = None;
+    assert_eq!(entry.path_or_glob(), "fallback/**/*.rs");
+
+    entry.selector.glob = None;
+    assert_eq!(entry.path_or_glob(), "");
+}
+
+#[test]
+fn finding_kind_display_and_parser_cover_aliases_and_errors() {
+    let aliases = [
+        ("panic-family", FindingKind::Panic),
+        ("indexing", FindingKind::Panic),
+        ("unsafe", FindingKind::Unsafe),
+        ("allow-attribute", FindingKind::LintException),
+        ("expect_attribute", FindingKind::LintException),
+        ("file", FindingKind::NonRustFile),
+        ("generated", FindingKind::GeneratedCode),
+        ("policy-exception", FindingKind::PolicyException),
+    ];
+
+    for (input, expected) in aliases {
+        assert_eq!(FindingKind::from_str(input), Ok(expected));
+        assert_eq!(expected.to_string(), expected.as_str());
+    }
+
+    let err = FindingKind::from_str("unknown-kind").unwrap_err();
+    assert_eq!(err.to_string(), "unsupported finding kind `unknown-kind`");
+}
+
+#[test]
+fn snippet_normalization_and_line_distance_scoring_cover_boundaries() {
+    assert_eq!(
+        normalize_snippet("  let   value =\nitems [ 0 ];\t"),
+        "let value = items [ 0 ];"
+    );
+
+    let cases = [
+        (Some(10), Some(10), 15),
+        (Some(10), Some(13), 12),
+        (Some(10), Some(20), 8),
+        (Some(10), Some(35), 3),
+        (Some(10), Some(36), 0),
+        (None, Some(10), 0),
+        (Some(10), None, 0),
+    ];
+
+    for (hint, actual, score) in cases {
+        assert_eq!(maybe_line_distance_score(hint, actual), score);
+    }
+}
+
+#[test]
+fn source_tree_glob_matches_single_character_and_backslash_patterns() {
+    assert!(glob_matches_str(r"src\?.rs", "src/a.rs"));
+    assert!(!glob_matches_str(r"src\?.rs", "src/ab.rs"));
+    assert!(glob_matches_str("**/*.rs", "crates/allow-core/src/lib.rs"));
+    assert!(glob_matches_str("scripts/*.sh", "scripts/build.sh"));
+}

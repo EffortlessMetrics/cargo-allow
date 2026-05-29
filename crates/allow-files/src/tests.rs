@@ -97,3 +97,63 @@ fn assert_classification(path: &str, kind: FindingKind, family: &str) {
     assert_eq!(finding.kind, kind);
     assert_eq!(finding.family.as_deref(), Some(family));
 }
+
+#[test]
+fn scan_files_filters_builtin_and_rust_sources_while_preserving_findings() {
+    let files = vec![
+        PathBuf::from("src/lib.rs"),
+        PathBuf::from("Cargo.toml"),
+        PathBuf::from("tools/audit.py"),
+        PathBuf::from("docs/guide.md"),
+    ];
+
+    let findings = scan_files(&files);
+
+    assert_eq!(findings.len(), 2);
+    assert_eq!(findings[0].path, PathBuf::from("tools/audit.py"));
+    assert_eq!(findings[0].family.as_deref(), Some("python_tool"));
+    assert_eq!(findings[1].path, PathBuf::from("docs/guide.md"));
+    assert_eq!(findings[1].family.as_deref(), Some("documentation"));
+}
+
+#[test]
+fn file_findings_include_stable_metadata_for_matching() {
+    let finding = classify_path(Path::new("assets/LOGO.BIN"))
+        .unwrap_or_else(|| std::panic::panic_any("expected file finding"));
+
+    assert_eq!(finding.kind, FindingKind::NonRustFile);
+    assert_eq!(
+        finding.span.as_ref().map(|span| (span.line, span.column)),
+        Some((1, 1))
+    );
+    assert_eq!(finding.identity.language, "file");
+    assert_eq!(finding.identity.ast_kind, "tracked_file");
+    assert_eq!(finding.identity.symbol.as_deref(), Some("assets/LOGO.BIN"));
+    assert_eq!(finding.identity.target_fingerprint.as_deref(), Some("bin"));
+    assert!(finding.message.contains("unknown_non_rust"));
+}
+
+#[test]
+fn generated_detection_covers_nested_dirs_gen_dirs_and_generated_suffixes() {
+    for path in [
+        "src/generated/bindings.rs.txt",
+        "gen/api.json",
+        "src/gen/api.json",
+        "src/schema.generated",
+    ] {
+        assert_classification(path, FindingKind::GeneratedCode, "generated_code");
+    }
+}
+
+#[test]
+fn builtin_tooling_files_are_not_findings() {
+    for path in [
+        "rust-toolchain.toml",
+        "rustfmt.toml",
+        "clippy.toml",
+        "crates/allow-files/README.md",
+        "LICENSE-APACHE",
+    ] {
+        assert!(classify_path(Path::new(path)).is_none(), "{path}");
+    }
+}
