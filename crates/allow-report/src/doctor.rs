@@ -34,7 +34,11 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
         DOCTOR_SCHEMA_VERSION,
         DOCTOR_SCHEMA_ID,
         "doctor",
-        InventoryContext::source_syntax(facts.inventory_source, None, Some(facts.files_scanned)),
+        InventoryContext::source_syntax(
+            facts.inventory_source,
+            Some(facts.source_tree_root),
+            Some(facts.files_scanned),
+        ),
     );
     out.push_str("  \"root\": {\n");
     out.push_str(&format!(

@@ -86,6 +86,10 @@ fn render_doctor_json_records_setup_context() {
         Some("git_tracked")
     );
     assert_eq!(
+        value.pointer("/inventory/root").and_then(Value::as_str),
+        Some("H:/Code/Rust/cargo-allow")
+    );
+    assert_eq!(
         value
             .pointer("/inventory/files_scanned")
             .and_then(Value::as_u64),
