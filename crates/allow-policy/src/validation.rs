@@ -6,12 +6,19 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 const BASELINE_DEBT_MAX_DAYS: i64 = 120;
+const SUPPORTED_SCHEMA_VERSION: &str = "0.1";
 
 pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
     if cfg.schema_version.trim().is_empty() {
         return Err(CargoAllowError::new(
             "policy schema_version must not be empty",
         ));
+    }
+    if cfg.schema_version != SUPPORTED_SCHEMA_VERSION {
+        return Err(CargoAllowError::new(format!(
+            "unsupported policy schema_version `{}`",
+            cfg.schema_version
+        )));
     }
     if cfg.policy != "cargo-allow" {
         return Err(CargoAllowError::new(format!(
