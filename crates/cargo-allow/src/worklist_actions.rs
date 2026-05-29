@@ -64,7 +64,9 @@ pub(crate) fn proof_commands(
     if let Some(allow_id) = entry.map(|entry| entry.id.as_str()) {
         commands.push(format!("cargo-allow explain {allow_id}"));
     }
-    if let Some(kind_arg) = worklist_kind_arg(finding, entry) {
+    let kind_arg = worklist_kind_arg(finding, entry);
+    let has_unsafe_kind_check = kind_arg == Some("unsafe");
+    if let Some(kind_arg) = kind_arg {
         commands.push(format!("cargo-allow check --kind {kind_arg} --mode no-new"));
         if let Some(shortcut_arg) = worklist_shortcut_arg(kind) {
             commands.push(format!(
@@ -72,13 +74,19 @@ pub(crate) fn proof_commands(
             ));
         }
         commands.push(format!(
+            "cargo-allow worklist --item-kind {kind} --format json"
+        ));
+        commands.push(format!(
             "cargo-allow worklist --kind {kind_arg} --format json"
         ));
     } else {
         commands.push("cargo-allow check --mode no-new".to_string());
+        commands.push(format!(
+            "cargo-allow worklist --item-kind {kind} --format json"
+        ));
         commands.push("cargo-allow worklist --format json".to_string());
     }
-    if kind == "unsafe_missing_evidence" && !commands.iter().any(|cmd| cmd.contains("unsafe")) {
+    if kind == "unsafe_missing_evidence" && !has_unsafe_kind_check {
         commands.push("cargo-allow check --kind unsafe --mode no-new".to_string());
     }
     commands
