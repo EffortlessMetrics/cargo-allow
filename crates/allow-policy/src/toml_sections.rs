@@ -49,7 +49,10 @@ impl WorkspaceToml {
         let default = WorkspaceConfig::default();
         WorkspaceConfig {
             root: self.root.unwrap_or(default.root),
-            inventory: self.inventory.unwrap_or(default.inventory),
+            inventory: self
+                .inventory
+                .map(normalize_inventory)
+                .unwrap_or(default.inventory),
             ignored: if self.ignored.is_empty() {
                 default.ignored
             } else {
@@ -62,6 +65,14 @@ impl WorkspaceToml {
             },
             default_mode: self.default_mode.unwrap_or(default.default_mode),
         }
+    }
+}
+
+fn normalize_inventory(inventory: String) -> String {
+    if inventory == "git_tracked" {
+        "git-tracked".to_string()
+    } else {
+        inventory
     }
 }
 

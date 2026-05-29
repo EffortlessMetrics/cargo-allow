@@ -210,6 +210,20 @@ fn rejects_unsupported_workspace_inventory() {
 }
 
 #[test]
+fn accepts_artifact_style_git_tracked_workspace_inventory_alias() {
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                inventory = "git_tracked"
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy should parse: {err}")));
+
+    assert_eq!(cfg.workspace.inventory, "git-tracked");
+}
+
+#[test]
 fn rejects_unsupported_workspace_default_mode() {
     let err = parse_err(
         r#"
