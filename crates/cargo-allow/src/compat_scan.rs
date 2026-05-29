@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::InventoryFacts;
 
-pub(super) fn scan_legacy_rust_compat(
+pub(crate) fn scan_legacy_rust_compat(
     root: &Path,
     cfg: &AllowConfig,
     include_untracked: bool,
@@ -22,7 +22,7 @@ pub(super) fn scan_legacy_rust_compat(
     Ok((findings, inventory_facts))
 }
 
-pub(super) fn scan_non_rust_compat(
+pub(crate) fn scan_non_rust_compat(
     root: &Path,
     include_untracked: bool,
 ) -> CargoAllowResult<(Vec<Finding>, InventoryFacts)> {

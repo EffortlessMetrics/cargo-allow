@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-pub(super) fn compat_policy_path(
+pub(crate) fn compat_policy_path(
     config: Option<&Path>,
     root: &Path,
     default_policy_file: &str,

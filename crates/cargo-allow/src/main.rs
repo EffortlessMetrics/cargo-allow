@@ -8,6 +8,8 @@ mod cli_types;
 mod command_support;
 mod companion;
 mod compat;
+mod compat_profiles;
+mod compat_world;
 mod diff;
 mod doctor;
 mod explain;

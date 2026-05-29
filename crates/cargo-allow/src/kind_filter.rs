@@ -1,6 +1,14 @@
 use allow_core::{AllowEntry, CargoAllowResult, Finding, FindingKind};
 use std::str::FromStr;
 
+#[path = "kind_filter/aliases.rs"]
+mod aliases;
+pub(crate) use aliases::{
+    is_clippy_compat_kind, is_dependency_surface_compat_kind, is_executable_compat_kind,
+    is_network_compat_kind, is_no_panic_allowlist_compat_kind, is_panic_compat_kind,
+    is_process_compat_kind, is_unsafe_compat_kind, is_workflow_compat_kind,
+};
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct KindFilter {
     pub(crate) kind: FindingKind,
@@ -95,88 +103,4 @@ pub(crate) fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
         kind: FindingKind::from_str(kind)?,
         family: FamilyFilter::Any,
     })
-}
-
-pub(crate) fn is_panic_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "panic"
-            | "panic-family"
-            | "panic_family"
-            | "no-panic"
-            | "no_panic"
-            | "no-panic-baseline"
-            | "no_panic_baseline"
-    )
-}
-
-pub(crate) fn is_no_panic_allowlist_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "no-panic-allowlist" | "no_panic_allowlist" | "panic-allowlist" | "panic_allowlist"
-    )
-}
-
-pub(crate) fn is_clippy_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "clippy"
-            | "clippy-exception"
-            | "clippy-exceptions"
-            | "clippy_exception"
-            | "clippy_exceptions"
-            | "lint"
-            | "lint-exception"
-            | "lint_exception"
-            | "lint-suppression"
-            | "lint_suppression"
-    )
-}
-
-pub(crate) fn is_unsafe_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "unsafe" | "unsafe-allowlist" | "unsafe_allowlist" | "unsafe-policy" | "unsafe_policy"
-    )
-}
-
-pub(crate) fn is_executable_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "executable" | "executable_file" | "executable-file" | "executable-bit" | "exec"
-    )
-}
-
-pub(crate) fn is_workflow_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "workflow" | "workflows" | "github_workflow" | "github-workflow" | "workflow-action"
-    )
-}
-
-pub(crate) fn is_dependency_surface_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "dependency"
-            | "dependencies"
-            | "dependency_surface"
-            | "dependency-surface"
-            | "dependency-surfaces"
-            | "dep-surface"
-            | "dep"
-    )
-}
-
-pub(crate) fn is_process_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "process" | "processes" | "process-policy" | "process_spawn" | "process-spawn" | "proc"
-    )
-}
-
-pub(crate) fn is_network_compat_kind(kind: &str) -> bool {
-    matches!(
-        kind.trim(),
-        "network" | "net" | "network-policy" | "network_destination" | "network-destination"
-    )
 }
