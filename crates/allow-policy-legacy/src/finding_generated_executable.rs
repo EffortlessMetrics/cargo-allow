@@ -12,10 +12,14 @@ pub fn generated_findings_from_gitattributes(
     }
     let text = fs::read_to_string(&path)
         .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))?;
-    Ok(generated_paths_from_gitattributes(&text)
+    Ok(generated_findings_from_gitattributes_text(&text))
+}
+
+pub fn generated_findings_from_gitattributes_text(input: &str) -> Vec<Finding> {
+    generated_paths_from_gitattributes(input)
         .into_iter()
         .map(generated_finding)
-        .collect())
+        .collect()
 }
 
 pub fn executable_findings_from_git(root: impl AsRef<Path>) -> CargoAllowResult<Vec<Finding>> {
