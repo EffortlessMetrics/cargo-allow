@@ -7,9 +7,7 @@ use crate::entry_validation::{
 };
 use crate::lifecycle::{has_real_lifecycle_review, validate_lifecycle};
 use crate::policy_header::validate_policy_header;
-use crate::scope_validation::{
-    validate_glob, validate_path_scope, validate_scope_consistency, validate_workspace,
-};
+use crate::scope_validation::{validate_allow_entry_scope, validate_workspace};
 use crate::selector_validation::{validate_selector, validate_source_hints};
 
 pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
@@ -24,22 +22,7 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
                 entry.id
             )));
         }
-        if entry.path.is_none() && entry.glob.is_none() && entry.selector.glob.is_none() {
-            return Err(CargoAllowError::new(format!(
-                "{} has no path or glob",
-                entry.id
-            )));
-        }
-        if let Some(path) = &entry.path {
-            validate_path_scope(&entry.id, path)?;
-        }
-        if let Some(glob) = &entry.glob {
-            validate_glob(&format!("{} glob", entry.id), glob)?;
-        }
-        if let Some(glob) = &entry.selector.glob {
-            validate_glob(&format!("{} selector glob", entry.id), glob)?;
-        }
-        validate_scope_consistency(entry)?;
+        validate_allow_entry_scope(entry)?;
         validate_selector(entry)?;
         validate_source_hints(entry)?;
         validate_lifecycle(entry)?;
