@@ -24,6 +24,7 @@ pub(super) fn list_row(id: &str, kind: FindingKind, owner: &str, classification:
         scope: "src/lib.rs".to_string(),
         source_package: None,
         evidence_count: 0,
+        selector_precision: 0,
         review_after: "-".to_string(),
         expires: "-".to_string(),
         reason: "reason".to_string(),
