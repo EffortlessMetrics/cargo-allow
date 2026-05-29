@@ -4,7 +4,7 @@ use crate::json::{
 };
 use crate::{
     ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, REPORT_SCHEMA_ID, REPORT_SCHEMA_VERSION,
-    ReportContext, ReviewSignals, Summary, render_counts_fields_with_policy_baseline,
+    ReportContext, ReviewSignals, Summary, render_count_fields_with_policy_context,
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
 
@@ -47,7 +47,7 @@ pub fn render_json_with_context(
     out.push_str("  \"summary\": {\n");
     out.push_str(&format!("    \"findings\": {},\n", findings.len()));
     out.push_str(&format!("    \"outcomes\": {},\n", summary.total));
-    out.push_str(&render_counts_fields_with_policy_baseline(
+    out.push_str(&render_count_fields_with_policy_context(
         &summary,
         context.baseline_debt_entries,
         context.policy_missing_evidence_entries,
