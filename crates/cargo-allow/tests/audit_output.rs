@@ -1,7 +1,9 @@
+mod json_assertions;
 mod support;
 
 use std::fs;
 
+use json_assertions::{assert_json_str, assert_json_u64};
 use serde_json::Value;
 use support::{
     assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
@@ -426,20 +428,4 @@ symbol = "docs/baseline.md"
 target_fingerprint = "md"
 glob = "docs/baseline.md"
 "#
-}
-
-fn assert_json_u64(value: &Value, pointer: &str, expected: u64, message: &str) {
-    assert_eq!(
-        value.pointer(pointer).and_then(Value::as_u64),
-        Some(expected),
-        "{message}"
-    );
-}
-
-fn assert_json_str(value: &Value, pointer: &str, expected: &str, message: &str) {
-    assert_eq!(
-        value.pointer(pointer).and_then(Value::as_str),
-        Some(expected),
-        "{message}"
-    );
 }
