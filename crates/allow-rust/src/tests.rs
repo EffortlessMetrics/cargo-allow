@@ -53,6 +53,44 @@ fn detects_panic_methods_from_syntax() {
 }
 
 #[test]
+fn syntax_panic_methods_record_non_empty_receiver_fingerprint() {
+    let src = r#"
+        fn load(value: Result<(), ()>) {
+            value.expect("loaded");
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let expect = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Panic && f.family.as_deref() == Some("expect"))
+        .unwrap_or_else(|| std::panic::panic_any("expected expect finding"));
+
+    assert_eq!(
+        expect.identity.receiver_fingerprint.as_deref(),
+        Some("value")
+    );
+}
+
+#[test]
+fn syntax_panic_methods_omit_empty_receiver_fingerprint() {
+    let src = r#"
+        fn load() {
+            parse_policy(
+                "policy = \"cargo-allow\""
+            )
+            .expect("policy parses");
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let expect = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Panic && f.family.as_deref() == Some("expect"))
+        .unwrap_or_else(|| std::panic::panic_any("expected expect finding"));
+
+    assert_eq!(expect.identity.receiver_fingerprint, None);
+}
+
+#[test]
 fn syntax_panic_methods_ignore_text_in_strings_and_comments() {
     let src = r#"
         fn load() {

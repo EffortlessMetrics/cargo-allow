@@ -20,7 +20,9 @@ pub(crate) fn scan_panic_calls(
             "method_call",
             |id| {
                 id.callee = Some(method_call.kind.family().to_string());
-                id.receiver_fingerprint = Some(receiver);
+                if !receiver.is_empty() {
+                    id.receiver_fingerprint = Some(receiver);
+                }
             },
             findings,
         );
