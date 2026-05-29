@@ -118,6 +118,17 @@ fn hash_is_stable() {
 }
 
 #[test]
+fn line_distance_score_uses_documented_buckets() {
+    assert_eq!(maybe_line_distance_score(Some(10), Some(10)), 15);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(13)), 12);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(20)), 8);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(35)), 3);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(36)), 0);
+    assert_eq!(maybe_line_distance_score(None, Some(10)), 0);
+    assert_eq!(maybe_line_distance_score(Some(10), None), 0);
+}
+
+#[test]
 fn structural_identity_key_excludes_line_and_column_hints() {
     let mut first = StructuralIdentity::new("rust", "method_call");
     first.module = Some("parser::span".to_string());
@@ -136,6 +147,114 @@ fn structural_identity_key_excludes_line_and_column_hints() {
     moved.container = Some("parse_other_span".to_string());
 
     assert_ne!(first.stable_key(), moved.stable_key());
+}
+
+#[test]
+fn json_escape_covers_quotes_backslashes_whitespace_and_control_chars() {
+    assert_eq!(
+        json_escape("quote: \" slash: \\ newline:\n tab:\t return:\r bell:\u{0007}"),
+        "quote: \\\" slash: \\\\ newline:\\n tab:\\t return:\\r bell:\\u0007"
+    );
+}
+
+#[test]
+fn normalize_snippet_collapses_mixed_whitespace() {
+    assert_eq!(
+        normalize_snippet("  let\tvalue =\nitems [ index ];\r\n"),
+        "let value = items [ index ];"
+    );
+}
+
+#[test]
+fn maybe_line_distance_score_covers_boundary_bands() {
+    assert_eq!(maybe_line_distance_score(Some(10), Some(10)), 15);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(13)), 12);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(20)), 8);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(35)), 3);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(36)), 0);
+    assert_eq!(maybe_line_distance_score(None, Some(10)), 0);
+    assert_eq!(maybe_line_distance_score(Some(10), None), 0);
+    assert_eq!(maybe_line_distance_score(None, None), 0);
+}
+
+#[test]
+fn allow_entry_path_or_glob_prefers_path_then_entry_glob_then_selector_glob() {
+    let mut entry = AllowEntry {
+        id: "allow-panic".to_string(),
+        kind: FindingKind::Panic,
+        family: None,
+        path: Some(PathBuf::from("src/../src/lib.rs")),
+        glob: Some("crates/**/*.rs".to_string()),
+        owner: "team-runtime".to_string(),
+        classification: "accepted-risk".to_string(),
+        reason: "test fixture".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle::empty(),
+        selector: Selector {
+            glob: Some("src/**/*.rs".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    };
+
+    assert_eq!(entry.path_or_glob(), "src/lib.rs");
+
+    entry.path = None;
+    assert_eq!(entry.path_or_glob(), "crates/**/*.rs");
+
+    entry.glob = None;
+    assert_eq!(entry.path_or_glob(), "src/**/*.rs");
+
+    entry.selector.glob = None;
+    assert_eq!(entry.path_or_glob(), "");
+}
+
+#[test]
+fn allow_config_empty_sets_document_defaults() {
+    let config = AllowConfig::empty();
+
+    assert_eq!(config.schema_version, "0.1");
+    assert_eq!(config.policy, "cargo-allow");
+    assert_eq!(config.owner, None);
+    assert_eq!(config.status.as_deref(), Some("active"));
+    assert_eq!(config.workspace, WorkspaceConfig::default());
+    assert_eq!(config.requirements, Requirements::default());
+    assert!(config.allow.is_empty());
+}
+
+#[test]
+fn match_status_strings_and_failure_modes_cover_all_statuses() {
+    for status in [
+        MatchStatus::Matched,
+        MatchStatus::New,
+        MatchStatus::Stale,
+        MatchStatus::Expired,
+        MatchStatus::ReviewDue,
+        MatchStatus::Ambiguous,
+        MatchStatus::InvalidSelector,
+        MatchStatus::MissingRequiredField,
+        MatchStatus::EvidenceMissing,
+        MatchStatus::BaselineDebt,
+    ] {
+        let (expected_name, strict_failure, no_new_failure) = match status {
+            MatchStatus::Matched => ("matched", false, false),
+            MatchStatus::New => ("new", true, true),
+            MatchStatus::Stale => ("stale", true, false),
+            MatchStatus::Expired => ("expired", true, true),
+            MatchStatus::ReviewDue => ("review_due", false, false),
+            MatchStatus::Ambiguous => ("ambiguous", true, true),
+            MatchStatus::InvalidSelector => ("invalid_selector", true, true),
+            MatchStatus::MissingRequiredField => ("missing_required_field", true, true),
+            MatchStatus::EvidenceMissing => ("evidence_missing", true, true),
+            MatchStatus::BaselineDebt => ("baseline_debt", true, false),
+        };
+
+        assert_eq!(status.as_str(), expected_name);
+        assert_eq!(status.is_failure_in_strict(), strict_failure, "{status:?}");
+        assert_eq!(status.is_failure_in_no_new(), no_new_failure, "{status:?}");
+    }
 }
 
 #[test]
@@ -256,6 +375,31 @@ fn finding_source_package_name_trims_source_derived_crate_name() {
 
     finding.identity.crate_name = Some("   ".to_string());
     assert_eq!(finding.source_package_name(), None);
+}
+
+#[test]
+fn normalize_snippet_collapses_all_whitespace_runs() {
+    assert_eq!(
+        normalize_snippet("  fn   load() {\n\tvalue . unwrap()  }  "),
+        "fn load() { value . unwrap() }"
+    );
+}
+
+#[test]
+fn finding_kind_display_and_parser_cover_policy_aliases_and_errors() {
+    assert_eq!(FindingKind::PolicyException.to_string(), "policy_exception");
+    assert_eq!(
+        FindingKind::from_str(" policy-exception "),
+        Ok(FindingKind::PolicyException)
+    );
+    assert_eq!(
+        FindingKind::from_str("generated"),
+        Ok(FindingKind::GeneratedCode)
+    );
+    let error = FindingKind::from_str("unknown-kind")
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("unsupported finding kind `unknown-kind`"));
 }
 
 #[test]
