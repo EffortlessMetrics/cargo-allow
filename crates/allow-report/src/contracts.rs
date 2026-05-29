@@ -110,6 +110,12 @@ impl<'a> InventoryContext<'a> {
     }
 }
 
+impl<'a> Default for InventoryContext<'a> {
+    fn default() -> Self {
+        Self::unknown_source_syntax()
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct ReportContext<'a> {
     pub inventory_source: &'a str,

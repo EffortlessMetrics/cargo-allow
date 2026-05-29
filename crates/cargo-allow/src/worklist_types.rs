@@ -25,7 +25,7 @@ pub(super) struct WorkItem {
     pub(super) proof_commands: Vec<String>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub(super) struct WorklistContext<'a> {
     pub(super) inventory: allow_report::InventoryContext<'a>,
     pub(super) filters: WorklistFilters<'a>,
@@ -47,13 +47,4 @@ pub(super) struct WorklistFilters<'a> {
     pub(super) risk: Option<&'a str>,
     pub(super) difficulty: Option<&'a str>,
     pub(super) missing_evidence: bool,
-}
-
-impl<'a> Default for WorklistContext<'a> {
-    fn default() -> Self {
-        Self {
-            inventory: allow_report::InventoryContext::unknown_source_syntax(),
-            filters: WorklistFilters::default(),
-        }
-    }
 }
