@@ -137,6 +137,28 @@ fn detects_selector_precision_decrease() {
 }
 
 #[test]
+fn detects_allow_entry_retargeted_to_different_kind_or_family() {
+    let base = config_with(entry("allow-1"));
+    let mut retargeted = entry("allow-1");
+    retargeted.kind = FindingKind::Unsafe;
+    retargeted.family = Some("unsafe_block".to_string());
+    let head = config_with(retargeted);
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::KindChanged
+            && change.severity == PolicyChangeSeverity::Fail
+            && change.message.contains("panic -> unsafe")
+    }));
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::FamilyChanged
+            && change.severity == PolicyChangeSeverity::Fail
+            && change.message.contains("unwrap -> unsafe_block")
+    }));
+}
+
+#[test]
 fn detects_selector_precision_increase_as_improvement() {
     let mut weaker = entry("allow-1");
     weaker.selector.normalized_snippet_hash = None;

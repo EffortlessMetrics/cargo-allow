@@ -90,7 +90,9 @@ Schema compatibility tests also lock:
   nodes;
 - governed source-exception kind vocabularies where artifacts expose finding or
   allow-entry kinds;
-- structural identity fields where artifacts expose finding identity; and
+- structural identity fields where artifacts expose finding identity;
+- `report.diff.policy_changes[].kind` for PR posture weakening and improvement
+  signals; and
 - the `worklist` artifact's queue item kind vocabulary.
 
 This is not a promise that every field is permanently frozen. Breaking changes
