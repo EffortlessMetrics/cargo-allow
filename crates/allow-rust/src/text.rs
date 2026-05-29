@@ -34,12 +34,6 @@ pub(crate) fn column(line: &str, needle: &str) -> u32 {
     line.find(needle).map(|idx| idx as u32 + 1).unwrap_or(1)
 }
 
-pub(crate) fn attribute_column(line: &str) -> u32 {
-    line.find("#[")
-        .or_else(|| line.find("#!["))
-        .map_or(1, |idx| idx as u32 + 1)
-}
-
 pub(crate) fn receiver_before_method_column(line: &str, method_column: u32) -> String {
     let Some(dot_pos) = method_column.checked_sub(2).map(|pos| pos as usize) else {
         return String::new();
