@@ -13,6 +13,8 @@ mod worklist_advisories;
 mod worklist_args;
 #[path = "worklist_evidence.rs"]
 mod worklist_evidence;
+#[path = "worklist_item_kind.rs"]
+mod worklist_item_kind;
 #[path = "worklist_items.rs"]
 mod worklist_items;
 #[path = "worklist_queue.rs"]
@@ -28,6 +30,8 @@ use worklist_advisories::work_items_from_policy_advisories;
 pub(crate) use worklist_args::WorklistArgs;
 use worklist_args::{WorklistFormat, worklist_filters};
 use worklist_evidence::work_items_from_evidence_diagnostics;
+#[cfg(test)]
+pub(crate) use worklist_item_kind::WORK_ITEM_KINDS;
 use worklist_items::work_items_from_outcomes;
 use worklist_queue::{filter_work_items, renumber_work_items, sort_work_items};
 use worklist_render::{render_worklist_human_with_context, render_worklist_json_with_context};

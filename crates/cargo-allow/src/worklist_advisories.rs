@@ -1,5 +1,6 @@
 use super::WorkItem;
 use super::worklist_actions::{proof_commands, suggested_actions};
+use super::worklist_item_kind::{BASELINE_DEBT, BROAD_SCOPE};
 use super::worklist_scoring::{exception_family, work_item_difficulty, work_item_risk};
 use allow_core::{
     AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, allow_entry_broad_scope,
@@ -20,7 +21,7 @@ pub(super) fn work_items_from_policy_advisories(
         let finding = outcome.finding_index.and_then(|idx| findings.get(idx));
         if entry.classification == "baseline_debt" {
             let item_index = start_index + items.len();
-            let kind = "baseline_debt".to_string();
+            let kind = BASELINE_DEBT.to_string();
             items.push(WorkItem {
                 id: format!("work-baseline-debt-{item_index:04}"),
                 exception_kind: Some(entry.kind.as_str().to_string()),
@@ -53,7 +54,7 @@ pub(super) fn work_items_from_policy_advisories(
         }
         if let Some(scope) = allow_entry_broad_scope(entry) {
             let item_index = start_index + items.len();
-            let kind = "broad_scope".to_string();
+            let kind = BROAD_SCOPE.to_string();
             items.push(WorkItem {
                 id: format!("work-broad-scope-{item_index:04}"),
                 kind,
@@ -74,8 +75,8 @@ pub(super) fn work_items_from_policy_advisories(
                 path: Some(scope.clone()),
                 source_package: source_package_name(finding),
                 message: format!("{} uses a broad source-tree scope `{}`", entry.id, scope),
-                suggested_actions: suggested_actions("broad_scope"),
-                proof_commands: proof_commands("broad_scope", finding, Some(entry)),
+                suggested_actions: suggested_actions(BROAD_SCOPE),
+                proof_commands: proof_commands(BROAD_SCOPE, finding, Some(entry)),
             });
         }
     }

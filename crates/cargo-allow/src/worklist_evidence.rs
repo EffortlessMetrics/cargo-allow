@@ -1,3 +1,4 @@
+use super::worklist_item_kind::BROKEN_EVIDENCE_LINK;
 use super::{WorkItem, proof_commands};
 use allow_core::{AllowConfig, FindingKind, MatchStatus, normalize_path};
 use allow_policy::evidence_reference_diagnostics;
@@ -15,7 +16,7 @@ pub(super) fn work_items_from_evidence_diagnostics(
             .filter(|diagnostic| diagnostic.status.is_broken_local_link())
         {
             let item_index = start_index + items.len();
-            let kind = "broken_evidence_link".to_string();
+            let kind = BROKEN_EVIDENCE_LINK.to_string();
             let proof_commands = proof_commands(&kind, None, Some(entry));
             items.push(WorkItem {
                 id: format!("work-broken-evidence-link-{item_index:04}"),

@@ -1,52 +1,58 @@
 use allow_core::{AllowEntry, Finding, FindingKind};
 
+use super::worklist_item_kind::{
+    AMBIGUOUS_SELECTOR, BASELINE_DEBT, BROAD_SCOPE, EXPIRED_ALLOW, INVALID_SELECTOR,
+    MISSING_EVIDENCE, MISSING_REQUIRED_FIELD, NEW_UNRECEIPTED_FINDING, OCCURRENCE_LIMIT_EXCEEDED,
+    REVIEW_DUE, STALE_ALLOW, UNSAFE_MISSING_EVIDENCE,
+};
+
 pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
     match kind {
-        "new_unreceipted_finding" => vec![
+        NEW_UNRECEIPTED_FINDING => vec![
             "remove the new source exception if it is accidental".to_string(),
             "or add a reviewed allow entry with owner, reason, scope, evidence, and lifecycle"
                 .to_string(),
         ],
-        "occurrence_limit_exceeded" => vec![
+        OCCURRENCE_LIMIT_EXCEEDED => vec![
             "reduce the current findings back to the baseline count".to_string(),
             "or split the added occurrence into a reviewed allow entry".to_string(),
         ],
-        "expired_allow" => vec![
+        EXPIRED_ALLOW => vec![
             "remove the expired allow if the exception is gone".to_string(),
             "or re-review with fresh evidence before changing lifecycle dates".to_string(),
         ],
-        "stale_allow" => vec![
+        STALE_ALLOW => vec![
             "remove the stale allow entry if the exception no longer exists".to_string(),
             "or narrow/update the selector if the code moved without broadening scope".to_string(),
         ],
-        "ambiguous_selector" => vec![
+        AMBIGUOUS_SELECTOR => vec![
             "narrow selectors so each finding matches exactly one allow entry".to_string(),
             "prefer structural fields such as container, callee, lint, and snippet hash"
                 .to_string(),
         ],
-        "unsafe_missing_evidence" => vec![
+        UNSAFE_MISSING_EVIDENCE => vec![
             "add unsafe-review, test, spec, or boundary evidence for the unsafe exception"
                 .to_string(),
             "keep the selector scoped to the reviewed unsafe boundary".to_string(),
         ],
-        "missing_evidence" => {
+        MISSING_EVIDENCE => {
             vec!["add evidence that supports the exception reason".to_string()]
         }
-        "missing_required_field" => vec![
+        MISSING_REQUIRED_FIELD => vec![
             "fill the required owner, reason, classification, lifecycle, or evidence field"
                 .to_string(),
         ],
-        "invalid_selector" => {
+        INVALID_SELECTOR => {
             vec!["replace line-only or invalid selector data with structural identity".to_string()]
         }
-        "baseline_debt" => vec![
+        BASELINE_DEBT => vec![
             "replace generated baseline debt with a reviewed allow entry".to_string(),
             "or remove the underlying exception".to_string(),
         ],
-        "review_due" => {
+        REVIEW_DUE => {
             vec!["review the retained exception and update evidence or remove it".to_string()]
         }
-        "broad_scope" => vec![
+        BROAD_SCOPE => vec![
             "replace the broad glob with exact paths or a narrower glob where practical"
                 .to_string(),
             "keep broad source-tree scope intentional, reviewed, and evidenced".to_string(),
@@ -86,7 +92,7 @@ pub(crate) fn proof_commands(
         ));
         commands.push("cargo-allow worklist --format json".to_string());
     }
-    if kind == "unsafe_missing_evidence" && !has_unsafe_kind_check {
+    if kind == UNSAFE_MISSING_EVIDENCE && !has_unsafe_kind_check {
         commands.push("cargo-allow check --kind unsafe --mode no-new".to_string());
     }
     commands
@@ -94,8 +100,8 @@ pub(crate) fn proof_commands(
 
 fn worklist_shortcut_arg(kind: &str) -> Option<&'static str> {
     match kind {
-        "baseline_debt" => Some("baseline-debt"),
-        "broad_scope" => Some("broad-scope"),
+        BASELINE_DEBT => Some("baseline-debt"),
+        BROAD_SCOPE => Some("broad-scope"),
         _ => None,
     }
 }
