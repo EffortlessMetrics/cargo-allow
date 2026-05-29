@@ -9,14 +9,34 @@ pub(super) fn record_index_expression(node: Node<'_>, source: &str, facts: &mut 
     }
 
     let start = node.start_position();
-    let bracket_offset = node_text(source, node)
-        .and_then(|text| text.find('['))
-        .unwrap_or(0);
-    let line = start.row as u32 + 1;
-    let column = start.column as u32 + bracket_offset as u32 + 1;
+    let text = node_text(source, node).unwrap_or_default();
+    let bracket_offset = text.find('[').unwrap_or(0);
+    let (row_delta, column_delta) = offset_position(text, bracket_offset);
+    let line = start.row as u32 + row_delta + 1;
+    let column = if row_delta == 0 {
+        start.column as u32 + column_delta + 1
+    } else {
+        column_delta + 1
+    };
     facts
         .index_columns
         .entry(line)
         .and_modify(|existing| *existing = (*existing).min(column))
         .or_insert(column);
+}
+
+fn offset_position(text: &str, offset: usize) -> (u32, u32) {
+    let mut row = 0;
+    let mut column = 0;
+
+    for byte in text.as_bytes().iter().take(offset) {
+        if *byte == b'\n' {
+            row += 1;
+            column = 0;
+        } else {
+            column += 1;
+        }
+    }
+
+    (row, column)
 }

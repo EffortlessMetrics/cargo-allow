@@ -819,6 +819,21 @@ fn syntax_indexing_detects_true_positive_shapes() {
 }
 
 #[test]
+fn syntax_indexing_records_multiline_bracket_span() {
+    let src = ["fn load(xs: &[u8]) -> u8 {", "    xs", "        [0]", "}"].join("\n");
+    let findings = scan_rust_source("src/lib.rs", &src);
+    let indexing = findings
+        .iter()
+        .find(|f| f.family.as_deref() == Some("indexing"))
+        .unwrap_or_else(|| std::panic::panic_any("expected indexing finding"));
+
+    assert_eq!(
+        indexing.span.as_ref().map(|span| (span.line, span.column)),
+        Some((3, 9))
+    );
+}
+
+#[test]
 fn index_symbol_truncates_on_character_boundaries() {
     let line = format!("let actual = values[{}];", "\u{00e9}".repeat(120));
 
