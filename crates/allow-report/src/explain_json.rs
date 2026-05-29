@@ -1,7 +1,6 @@
 use crate::explain_common::explain_report_status;
 use crate::json::{
-    json_string_array, option_json, option_u32_json, option_usize_json, push_json_artifact_header,
-    push_json_artifact_source_context,
+    json_string_array, option_json, option_u32_json, option_usize_json, push_json_artifact_preamble,
 };
 use crate::{
     EXPLAIN_SCHEMA_ID, EXPLAIN_SCHEMA_VERSION, EvidenceReference, ExplainReport,
@@ -48,13 +47,13 @@ fn structural_identity_json(identity: &StructuralIdentity, indent: &str) -> Stri
 pub fn render_explain_json(report: ExplainReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    push_json_artifact_header(
+    push_json_artifact_preamble(
         &mut out,
         EXPLAIN_SCHEMA_VERSION,
         EXPLAIN_SCHEMA_ID,
         "explain",
+        report.inventory,
     );
-    push_json_artifact_source_context(&mut out, report.inventory);
     out.push_str("  \"allow_entry\": ");
     out.push_str(&render_allow_entry_json(report.entry, "  "));
     out.push_str(",\n");

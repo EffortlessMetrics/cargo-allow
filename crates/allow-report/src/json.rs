@@ -17,6 +17,17 @@ pub(crate) fn push_json_artifact_header(
     out.push_str(&format!("  \"command\": \"{}\",\n", json_escape(command)));
 }
 
+pub(crate) fn push_json_artifact_preamble(
+    out: &mut String,
+    schema_version: u32,
+    schema_id: &str,
+    command: &str,
+    inventory: InventoryContext<'_>,
+) {
+    push_json_artifact_header(out, schema_version, schema_id, command);
+    push_json_artifact_source_context(out, inventory);
+}
+
 pub(crate) fn push_json_artifact_source_context(out: &mut String, inventory: InventoryContext<'_>) {
     out.push_str(&format!(
         "  \"claim_boundary\": {},\n",

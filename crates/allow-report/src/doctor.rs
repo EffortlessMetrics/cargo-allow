@@ -1,6 +1,4 @@
-use crate::json::{
-    bool_json, option_json, push_json_artifact_header, push_json_artifact_source_context,
-};
+use crate::json::{bool_json, option_json, push_json_artifact_preamble};
 use crate::{
     CLAIM_BOUNDARY_TEXT, DOCTOR_SCHEMA_ID, DOCTOR_SCHEMA_VERSION, DoctorReport, InventoryContext,
 };
@@ -25,9 +23,11 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
 pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    push_json_artifact_header(&mut out, DOCTOR_SCHEMA_VERSION, DOCTOR_SCHEMA_ID, "doctor");
-    push_json_artifact_source_context(
+    push_json_artifact_preamble(
         &mut out,
+        DOCTOR_SCHEMA_VERSION,
+        DOCTOR_SCHEMA_ID,
+        "doctor",
         InventoryContext::source_syntax(facts.inventory_source, None, Some(facts.files_scanned)),
     );
     out.push_str("  \"root\": {\n");

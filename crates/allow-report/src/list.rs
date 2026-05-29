@@ -1,6 +1,4 @@
-use crate::json::{
-    bool_json, option_json, push_json_artifact_header, push_json_artifact_source_context,
-};
+use crate::json::{bool_json, option_json, push_json_artifact_preamble};
 use crate::{InventoryContext, LIST_SCHEMA_ID, LIST_SCHEMA_VERSION, ListFilters, ListRow};
 use allow_core::json_escape;
 
@@ -11,8 +9,13 @@ pub fn render_list_json(
 ) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    push_json_artifact_header(&mut out, LIST_SCHEMA_VERSION, LIST_SCHEMA_ID, "list");
-    push_json_artifact_source_context(&mut out, inventory);
+    push_json_artifact_preamble(
+        &mut out,
+        LIST_SCHEMA_VERSION,
+        LIST_SCHEMA_ID,
+        "list",
+        inventory,
+    );
     out.push_str("  \"filters\": ");
     out.push_str(&render_list_filters_json(filters, "  "));
     out.push_str(",\n");
