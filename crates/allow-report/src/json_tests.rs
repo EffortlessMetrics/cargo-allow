@@ -104,6 +104,16 @@ fn json_report_trend_counts_broken_evidence_links_context() {
 }
 
 #[test]
+fn json_report_trend_counts_policy_missing_evidence_context() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
+    context.policy_missing_evidence_entries = Some(4);
+    let json = render_json_with_context("audit", &[], &[], false, context);
+
+    assert!(json.contains("\"review_items\": 4"));
+    assert!(json.contains("\"policy_missing_evidence\": 4"));
+}
+
+#[test]
 fn json_report_exposes_source_package_context_on_findings() {
     let mut identity = StructuralIdentity::new("rust", "method_call");
     identity.crate_name = Some("parser".to_string());

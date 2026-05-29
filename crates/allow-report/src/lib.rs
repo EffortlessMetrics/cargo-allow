@@ -99,13 +99,14 @@ pub use report_text::{
     render_human, render_human_with_context, render_markdown, render_markdown_with_context,
 };
 pub use sarif::{render_sarif, render_sarif_with_context};
-pub use summary::{Summary, policy_baseline_debt_entries};
+pub use summary::{Summary, policy_baseline_debt_entries, policy_missing_evidence_entries};
 pub use worklist::{render_worklist_human, render_worklist_json};
 
 pub(crate) use non_rust::{FilePosture, non_rust_file_rows};
 pub(crate) use summary::{
     AUDIT_REVIEW_QUEUE_STATUSES, ReviewSignals, STATUS_COUNT_ORDER, audit_review_queue,
-    baseline_debt_count, broken_evidence_link_count, render_counts_fields_with_policy_baseline,
+    baseline_debt_count, broken_evidence_link_count, policy_missing_evidence_count,
+    render_counts_fields_with_policy_baseline,
 };
 
 #[cfg(test)]

@@ -63,3 +63,27 @@ fn receipt_schema_allows_optional_broken_evidence_link_count() {
         "receipt broken_evidence_links count minimum"
     );
 }
+
+#[test]
+fn receipt_schema_allows_optional_policy_missing_evidence_count() {
+    let schema = parse_schema(
+        "receipt",
+        include_str!("../../../docs/schemas/receipt.schema.json"),
+    );
+
+    let count = required_schema_pointer(
+        "receipt",
+        &schema,
+        "/$defs/counts/properties/policy_missing_evidence",
+    );
+    assert_eq!(
+        count.get("type").and_then(Value::as_str),
+        Some("integer"),
+        "receipt policy_missing_evidence count type"
+    );
+    assert_eq!(
+        count.get("minimum").and_then(Value::as_u64),
+        Some(0),
+        "receipt policy_missing_evidence count minimum"
+    );
+}

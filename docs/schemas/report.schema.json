@@ -256,6 +256,11 @@
           "minimum": 0,
           "description": "Optional policy-level count of generated baseline_debt entries when it exceeds baseline_debt outcomes."
         },
+        "policy_missing_evidence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional policy-level count of allow entries with no evidence references when it exceeds evidence_missing outcomes."
+        },
         "broken_evidence_links": {
           "type": "integer",
           "minimum": 0,
@@ -320,6 +325,11 @@
           "type": "integer",
           "minimum": 0,
           "description": "Policy-level count of generated baseline_debt entries when available; otherwise the baseline_debt outcome count. Prefer summary.policy_baseline_debt for explicit policy-level debt when present."
+        },
+        "policy_missing_evidence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional policy-level count of allow entries with no evidence references included in review item totals when available."
         },
         "broken_evidence_links": {
           "type": "integer",

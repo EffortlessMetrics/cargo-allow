@@ -50,6 +50,7 @@ pub fn render_json_with_context(
     out.push_str(&render_counts_fields_with_policy_baseline(
         &summary,
         context.baseline_debt_entries,
+        context.policy_missing_evidence_entries,
         context.broken_evidence_links,
         "    ",
     ));
@@ -130,6 +131,9 @@ fn render_trend_fields(summary: &Summary, context: ReportContext<'_>, indent: &s
         ),
         ("baseline_debt", signals.baseline_debt),
     ];
+    if signals.policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing) {
+        fields.push(("policy_missing_evidence", signals.policy_missing_evidence));
+    }
     if signals.broken_evidence_links > 0 {
         fields.push(("broken_evidence_links", signals.broken_evidence_links));
     }

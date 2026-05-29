@@ -33,6 +33,7 @@ pub fn render_receipt_with_context(
     out.push_str(&render_counts_fields_with_policy_baseline(
         &summary,
         Some(baseline_debt_count(&summary, context)),
+        context.policy_missing_evidence_entries,
         context.broken_evidence_links,
         "    ",
     ));

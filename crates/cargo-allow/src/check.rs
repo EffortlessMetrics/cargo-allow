@@ -9,8 +9,8 @@ pub(crate) use check_args::CheckArgs;
 
 use crate::{
     ReportRenderArgs, SourceTreeReportContext, load_compat_world,
-    load_world_with_evidence_validation, policy_baseline_debt_entries, print_report, report_config,
-    write_file,
+    load_world_with_evidence_validation, policy_baseline_debt_entries,
+    policy_missing_evidence_entries, print_report, report_config, write_file,
 };
 
 pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
@@ -37,10 +37,12 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     let broken_evidence_links = broken_evidence_link_count(&root, &report_cfg);
     let failed = outcomes.iter().any(|o| mode.fails(o.status)) || broken_evidence_links > 0;
     let baseline_debt_entries = policy_baseline_debt_entries(&report_cfg);
+    let policy_missing_evidence_entries = policy_missing_evidence_entries(&report_cfg);
     print_report(ReportRenderArgs {
         command: "check",
         format: args.format,
         baseline_debt_entries,
+        policy_missing_evidence_entries,
         broken_evidence_links,
         findings: &findings,
         outcomes: &outcomes,
@@ -57,6 +59,8 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
                 let mut context = source_context.report(Some(baseline_debt_entries));
                 context.broken_evidence_links =
                     (broken_evidence_links > 0).then_some(broken_evidence_links);
+                context.policy_missing_evidence_entries = (policy_missing_evidence_entries > 0)
+                    .then_some(policy_missing_evidence_entries);
                 context
             }),
         )?;

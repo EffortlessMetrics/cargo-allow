@@ -63,6 +63,7 @@ impl Summary {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ReviewSignals {
     pub(crate) baseline_debt: usize,
+    pub(crate) policy_missing_evidence: usize,
     pub(crate) broken_evidence_links: usize,
     pub(crate) review_items: usize,
 }
@@ -70,11 +71,17 @@ pub(crate) struct ReviewSignals {
 impl ReviewSignals {
     pub(crate) fn from_summary(summary: &Summary, context: ReportContext<'_>) -> Self {
         let baseline_debt = baseline_debt_count(summary, context);
+        let policy_missing_evidence = policy_missing_evidence_count(summary, context);
         let broken_evidence_links = broken_evidence_link_count(context);
-        let review_items =
-            review_item_count_with_baseline(summary, baseline_debt, broken_evidence_links);
+        let review_items = review_item_count_with_baseline(
+            summary,
+            baseline_debt,
+            policy_missing_evidence,
+            broken_evidence_links,
+        );
         Self {
             baseline_debt,
+            policy_missing_evidence,
             broken_evidence_links,
             review_items,
         }
@@ -84,14 +91,18 @@ impl ReviewSignals {
 pub(crate) fn render_counts_fields_with_policy_baseline(
     summary: &Summary,
     policy_baseline_debt: Option<usize>,
+    policy_missing_evidence: Option<usize>,
     broken_evidence_links: Option<usize>,
     indent: &str,
 ) -> String {
     let include_policy_baseline_debt =
         policy_baseline_debt.filter(|count| *count > summary.count(MatchStatus::BaselineDebt));
+    let include_policy_missing_evidence = policy_missing_evidence
+        .filter(|count| *count > summary.count(MatchStatus::EvidenceMissing));
     let include_broken_evidence_links = broken_evidence_links.filter(|count| *count > 0);
     let optional_fields = [
         ("policy_baseline_debt", include_policy_baseline_debt),
+        ("policy_missing_evidence", include_policy_missing_evidence),
         ("broken_evidence_links", include_broken_evidence_links),
     ]
     .into_iter()
@@ -127,13 +138,17 @@ pub(crate) fn render_counts_fields_with_policy_baseline(
 pub(crate) fn review_item_count_with_baseline(
     summary: &Summary,
     baseline_debt: usize,
+    policy_missing_evidence: usize,
     broken_evidence_links: usize,
 ) -> usize {
+    let policy_missing_evidence_extra =
+        policy_missing_evidence.saturating_sub(summary.count(MatchStatus::EvidenceMissing));
     REVIEW_ITEM_STATUSES
         .iter()
         .map(|status| summary.count(*status))
         .sum::<usize>()
         + baseline_debt
+        + policy_missing_evidence_extra
         + broken_evidence_links
 }
 
@@ -147,10 +162,26 @@ pub(crate) fn broken_evidence_link_count(context: ReportContext<'_>) -> usize {
     context.broken_evidence_links.unwrap_or(0)
 }
 
+pub(crate) fn policy_missing_evidence_count(
+    summary: &Summary,
+    context: ReportContext<'_>,
+) -> usize {
+    context
+        .policy_missing_evidence_entries
+        .unwrap_or_else(|| summary.count(MatchStatus::EvidenceMissing))
+}
+
 pub fn policy_baseline_debt_entries(cfg: &AllowConfig) -> usize {
     cfg.allow
         .iter()
         .filter(|entry| entry.classification == "baseline_debt")
+        .count()
+}
+
+pub fn policy_missing_evidence_entries(cfg: &AllowConfig) -> usize {
+    cfg.allow
+        .iter()
+        .filter(|entry| entry.evidence.is_empty())
         .count()
 }
 
