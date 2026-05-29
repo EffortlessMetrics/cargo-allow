@@ -2,13 +2,11 @@ use allow_core::{CargoAllowResult, normalize_path};
 use allow_match::{CheckMode, evaluate};
 use std::process;
 
-#[path = "diff_args.rs"]
-mod diff_args;
-#[path = "diff_render.rs"]
-mod diff_render;
-pub(crate) use diff_args::DiffArgs;
-pub(crate) use diff_render::render_diff_json_with_posture;
-use diff_render::{
+mod args;
+mod render;
+pub(crate) use args::DiffArgs;
+pub(crate) use render::render_diff_json_with_posture;
+use render::{
     append_finding_posture_changes, append_policy_changes, insert_markdown_pr_summary,
     render_diff_pr_summary_markdown, render_finding_posture_changes_human,
     render_policy_changes_human,
@@ -137,5 +135,4 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
 }
 
 #[cfg(test)]
-#[path = "diff_tests.rs"]
 mod tests;

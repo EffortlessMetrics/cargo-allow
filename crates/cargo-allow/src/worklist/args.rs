@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use crate::RootArgs;
 
-use super::worklist_types::WorklistFilters;
+use super::types::WorklistFilters;
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct WorklistArgs {

@@ -3,19 +3,15 @@ use allow_policy::{render_policy, validate_policy};
 
 use crate::{emit_stderr_text, write_file_no_overwrite};
 
-#[path = "migrate_args.rs"]
-mod migrate_args;
-#[path = "migrate_load.rs"]
-mod migrate_load;
-#[path = "migrate_render.rs"]
-mod migrate_render;
-#[path = "migrate_types.rs"]
-mod migrate_types;
-pub(crate) use migrate_args::MigrateArgs;
-use migrate_args::MigrateSummaryFormat;
-use migrate_load::load_repo_policy_migration_config;
-use migrate_render::{render_migrate_summary, render_migrate_summary_json};
-use migrate_types::{MigrateContext, MigrationLoad};
+mod args;
+mod load;
+mod render;
+mod types;
+pub(crate) use args::MigrateArgs;
+use args::MigrateSummaryFormat;
+use load::load_repo_policy_migration_config;
+use render::{render_migrate_summary, render_migrate_summary_json};
+use types::{MigrateContext, MigrationLoad};
 
 #[cfg(test)]
 use crate::RootArgs;
@@ -99,8 +95,6 @@ pub(crate) fn sample_migrate_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
-#[path = "migrate_artifact_tests.rs"]
 mod artifact_tests;
 #[cfg(test)]
-#[path = "migrate_tests.rs"]
 mod tests;

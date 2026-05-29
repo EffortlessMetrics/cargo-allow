@@ -1,4 +1,4 @@
-use super::{ExplainContext, explain_steps::explain_next_steps};
+use super::{ExplainContext, steps::explain_next_steps};
 use allow_core::{AllowEntry, Finding, MatchOutcome, normalize_path};
 use allow_policy::evidence_reference_diagnostics;
 use std::path::Path;

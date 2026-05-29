@@ -2,9 +2,8 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_policy::starter_policy;
 use std::fs;
 
-#[path = "init_args.rs"]
-mod init_args;
-pub(crate) use init_args::InitArgs;
+mod args;
+pub(crate) use args::InitArgs;
 
 pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     let path = args.config.clone();
@@ -26,5 +25,4 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
 }
 
 #[cfg(test)]
-#[path = "init_tests.rs"]
 mod tests;

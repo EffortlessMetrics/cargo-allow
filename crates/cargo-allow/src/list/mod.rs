@@ -3,21 +3,16 @@ use allow_match::{CheckMode, evaluate};
 
 use crate::{SourceTreeReportContext, emit_text, load_world};
 
-#[path = "list_args.rs"]
-mod list_args;
-#[path = "list_filter.rs"]
-mod list_filter;
-#[path = "list_render.rs"]
-mod list_render;
-#[path = "list_rows.rs"]
-mod list_rows;
-#[path = "list_types.rs"]
-mod list_types;
-pub(crate) use list_args::ListArgs;
-use list_args::{ListFormat, list_filters};
-use list_render::{render_list_rows, render_list_rows_json};
-use list_rows::list_rows;
-use list_types::{ListContext, ListFilters, ListRow};
+mod args;
+mod filter;
+mod render;
+mod rows;
+mod types;
+pub(crate) use args::ListArgs;
+use args::{ListFormat, list_filters};
+use render::{render_list_rows, render_list_rows_json};
+use rows::list_rows;
+use types::{ListContext, ListFilters, ListRow};
 
 #[cfg(test)]
 use crate::parse_kind_filter;
@@ -97,17 +92,12 @@ pub(crate) fn sample_list_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
-#[path = "list_filter_policy_tests.rs"]
 mod filter_policy_tests;
 #[cfg(test)]
-#[path = "list_filter_source_tests.rs"]
 mod filter_source_tests;
 #[cfg(test)]
-#[path = "list_filter_tests.rs"]
 mod filter_tests;
 #[cfg(test)]
-#[path = "list_test_support.rs"]
 mod test_support;
 #[cfg(test)]
-#[path = "list_tests.rs"]
 mod tests;

@@ -3,10 +3,8 @@ use allow_inventory::{InventorySource, resolve_source_tree_root};
 use std::env;
 use std::path::{Path, PathBuf};
 
-#[path = "compat_paths.rs"]
-mod compat_paths;
-#[path = "compat_scan.rs"]
-mod compat_scan;
+mod paths;
+mod scan;
 
 use crate::{
     FamilyFilter, InventoryFacts, KindFilter, is_clippy_compat_kind,
@@ -14,8 +12,8 @@ use crate::{
     is_no_panic_allowlist_compat_kind, is_panic_compat_kind, is_process_compat_kind,
     is_unsafe_compat_kind, is_workflow_compat_kind, parse_kind_filter,
 };
-use compat_paths::compat_policy_path;
-use compat_scan::{scan_legacy_rust_compat, scan_non_rust_compat};
+use paths::compat_policy_path;
+use scan::{scan_legacy_rust_compat, scan_non_rust_compat};
 
 pub(crate) fn load_compat_world(
     explicit_root: Option<&Path>,

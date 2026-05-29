@@ -6,18 +6,14 @@ use std::path::Path;
 
 use crate::{SourceTreeReportContext, emit_text, load_world_with_evidence_validation};
 
-#[path = "explain_args.rs"]
-mod explain_args;
-#[path = "explain_render.rs"]
-mod explain_render;
-#[path = "explain_steps.rs"]
-mod explain_steps;
-#[path = "explain_types.rs"]
-mod explain_types;
-pub(crate) use explain_args::ExplainArgs;
-use explain_args::ExplainFormat;
-use explain_render::{render_explain_entry, render_explain_entry_json};
-pub(super) use explain_types::ExplainContext;
+mod args;
+mod render;
+mod steps;
+mod types;
+pub(crate) use args::ExplainArgs;
+use args::ExplainFormat;
+use render::{render_explain_entry, render_explain_entry_json};
+pub(super) use types::ExplainContext;
 
 pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
     let (root, cfg, findings, inventory_facts) = load_world_with_evidence_validation(
@@ -132,11 +128,8 @@ pub(crate) fn sample_explain_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
-#[path = "explain_artifact_tests.rs"]
 mod artifact_tests;
 #[cfg(test)]
-#[path = "explain_test_support.rs"]
 mod test_support;
 #[cfg(test)]
-#[path = "explain_tests.rs"]
 mod tests;

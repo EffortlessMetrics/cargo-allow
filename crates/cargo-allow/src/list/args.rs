@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use crate::{RootArgs, parse_kind_filter};
 
-use super::list_types::ListFilters;
+use super::types::ListFilters;
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ListArgs {

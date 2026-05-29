@@ -1,6 +1,6 @@
 use super::WorkItem;
-use super::worklist_actions::{proof_commands, suggested_actions};
-use super::worklist_scoring::{exception_family, work_item_difficulty, work_item_risk};
+use super::actions::{proof_commands, suggested_actions};
+use super::scoring::{exception_family, work_item_difficulty, work_item_risk};
 use allow_core::{
     AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path,
     source_tree_scope_has_wildcard,

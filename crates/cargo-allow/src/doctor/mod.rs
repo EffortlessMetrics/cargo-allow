@@ -3,10 +3,9 @@ use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use std::env;
 use std::path::Path;
 
-#[path = "doctor_args.rs"]
-mod doctor_args;
-pub(crate) use doctor_args::DoctorArgs;
-use doctor_args::DoctorFormat;
+mod args;
+pub(crate) use args::DoctorArgs;
+use args::DoctorFormat;
 
 use crate::{InventoryFacts, SourceTreeReportContext, config_path, emit_text};
 
@@ -63,5 +62,4 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
-#[path = "doctor_tests.rs"]
 mod tests;

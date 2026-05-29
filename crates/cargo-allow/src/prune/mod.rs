@@ -4,19 +4,15 @@ use allow_policy::{render_policy, validate_policy};
 
 use crate::{SourceTreeReportContext, config_path, emit_text, load_world, write_file};
 
-#[path = "prune_args.rs"]
-mod prune_args;
-#[path = "prune_render.rs"]
-mod prune_render;
-#[path = "prune_stale.rs"]
-mod prune_stale;
-#[path = "prune_types.rs"]
-mod prune_types;
-pub(crate) use prune_args::PruneArgs;
-use prune_args::PruneFormat;
-use prune_render::{render_prune_stale_json, render_prune_stale_result};
-use prune_stale::{config_without_prune_candidates, prune_stale_candidates};
-use prune_types::{PruneCandidate, PruneContext, PruneRenderMode};
+mod args;
+mod render;
+mod stale;
+mod types;
+pub(crate) use args::PruneArgs;
+use args::PruneFormat;
+use render::{render_prune_stale_json, render_prune_stale_result};
+use stale::{config_without_prune_candidates, prune_stale_candidates};
+use types::{PruneCandidate, PruneContext, PruneRenderMode};
 
 #[cfg(test)]
 use crate::RootArgs;
@@ -98,8 +94,6 @@ pub(crate) fn sample_prune_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
-#[path = "prune_render_tests.rs"]
 mod render_tests;
 #[cfg(test)]
-#[path = "prune_tests.rs"]
 mod tests;

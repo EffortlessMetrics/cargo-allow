@@ -2,22 +2,18 @@ use allow_core::{CargoAllowError, CargoAllowResult, FindingKind};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_local_evidence_references, validate_policy};
 
-#[path = "add_args.rs"]
-mod add_args;
-#[path = "add_entry.rs"]
-mod add_entry;
-#[path = "add_render.rs"]
-mod add_render;
-#[path = "add_types.rs"]
-mod add_types;
-pub(crate) use add_args::AddArgs;
-use add_args::AddSummaryFormat;
-use add_entry::{
+mod args;
+mod entry;
+mod render;
+mod types;
+pub(crate) use args::AddArgs;
+use args::AddSummaryFormat;
+use entry::{
     AddEntryRequest, allow_entry_from_finding, ensure_addable_outcome, next_allow_id,
     select_add_finding,
 };
-use add_render::{render_add_summary, render_add_summary_json};
-pub(super) use add_types::AddContext;
+use render::{render_add_summary, render_add_summary_json};
+pub(super) use types::AddContext;
 
 use crate::{
     SourceTreeReportContext, emit_stderr_text, load_world, parse_kind_filter,
@@ -126,11 +122,8 @@ pub(crate) fn sample_add_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
-#[path = "add_artifact_tests.rs"]
 mod artifact_tests;
 #[cfg(test)]
-#[path = "add_test_support.rs"]
 mod test_support;
 #[cfg(test)]
-#[path = "add_tests.rs"]
 mod tests;

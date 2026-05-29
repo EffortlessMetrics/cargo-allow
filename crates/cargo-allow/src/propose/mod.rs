@@ -4,24 +4,20 @@ use allow_policy::render_policy;
 
 use crate::{SourceTreeReportContext, emit_stderr_text, load_world, write_file_no_overwrite};
 
-#[path = "propose_args.rs"]
-mod propose_args;
-#[path = "propose_baseline.rs"]
-mod propose_baseline;
-#[path = "propose_render.rs"]
-mod propose_render;
-#[path = "propose_types.rs"]
-mod propose_types;
-pub(crate) use propose_args::ProposeArgs;
-use propose_args::ProposeSummaryFormat;
-use propose_baseline::{default_baseline_expiry, entry_from_finding};
-use propose_render::{render_propose_summary, render_propose_summary_json};
-pub(super) use propose_types::ProposeContext;
+mod args;
+mod baseline;
+mod render;
+mod types;
+pub(crate) use args::ProposeArgs;
+use args::ProposeSummaryFormat;
+use baseline::{default_baseline_expiry, entry_from_finding};
+use render::{render_propose_summary, render_propose_summary_json};
+pub(super) use types::ProposeContext;
 
 #[cfg(test)]
 use allow_core::{Finding, FindingKind, SimpleDate};
 #[cfg(test)]
-use propose_baseline::BASELINE_DEBT_DEFAULT_DAYS;
+use baseline::BASELINE_DEBT_DEFAULT_DAYS;
 
 pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     let (root, cfg, findings, inventory_facts) = load_world(
@@ -101,5 +97,4 @@ pub(crate) fn sample_propose_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
-#[path = "propose_tests.rs"]
 mod tests;

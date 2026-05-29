@@ -2,9 +2,8 @@ use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
 use std::process;
 
-#[path = "check_args.rs"]
-mod check_args;
-pub(crate) use check_args::CheckArgs;
+mod args;
+pub(crate) use args::CheckArgs;
 
 use crate::{
     ReportRenderArgs, SourceTreeReportContext, load_compat_world, load_world,

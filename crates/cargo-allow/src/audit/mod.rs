@@ -1,9 +1,8 @@
 use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
 
-#[path = "audit_args.rs"]
-mod audit_args;
-pub(crate) use audit_args::ReportArgs;
+mod args;
+pub(crate) use args::ReportArgs;
 
 use crate::{
     ReportRenderArgs, load_compat_world, load_world, policy_baseline_debt_entries, print_report,
@@ -44,5 +43,4 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
 }
 
 #[cfg(test)]
-#[path = "audit_tests.rs"]
 mod tests;
