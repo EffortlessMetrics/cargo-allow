@@ -113,7 +113,7 @@ When developing this repository before installing the binary, run the same
 subcommands through the local package:
 
 ```bash
-cargo run -p cargo-allow -- allow check --mode no-new
+cargo run -p cargo-allow -- check --mode no-new
 ```
 
 ## Governed Surfaces
