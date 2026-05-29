@@ -54,6 +54,8 @@ mod artifact_schema_propose_tests;
 #[cfg(test)]
 mod artifact_schema_prune_tests;
 #[cfg(test)]
+mod artifact_schema_report_tests;
+#[cfg(test)]
 mod artifact_schema_support;
 #[cfg(test)]
 mod artifact_schema_worklist_tests;
