@@ -496,19 +496,217 @@ column = 1
 id = "allow-0115"
 kind = "non_rust_file"
 family = "package_metadata"
-glob = "crates/*/Cargo.toml"
+path = "crates/allow-core/Cargo.toml"
 owner = "core/release"
 classification = "rust_package_metadata"
-reason = "First-party crate manifests are tracked source-tree package metadata files; occurrence_limit caps the current set so new crate manifests become new debt."
-occurrence_limit = 10
+reason = "allow-core manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
 created = "2026-05-29"
 review_after = "2026-11-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
+symbol = "crates/allow-core/Cargo.toml"
 target_fingerprint = "toml"
 line_hint = 1
-glob = "crates/*/Cargo.toml"
+glob = "crates/allow-core/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0116"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/allow-diff/Cargo.toml"
+owner = "core/release"
+classification = "rust_package_metadata"
+reason = "allow-diff manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "crates/allow-diff/Cargo.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "crates/allow-diff/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0117"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/allow-files/Cargo.toml"
+owner = "core/release"
+classification = "rust_package_metadata"
+reason = "allow-files manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "crates/allow-files/Cargo.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "crates/allow-files/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0118"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/allow-inventory/Cargo.toml"
+owner = "core/release"
+classification = "rust_package_metadata"
+reason = "allow-inventory manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "crates/allow-inventory/Cargo.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "crates/allow-inventory/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0119"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/allow-match/Cargo.toml"
+owner = "core/release"
+classification = "rust_package_metadata"
+reason = "allow-match manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "crates/allow-match/Cargo.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "crates/allow-match/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0120"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/allow-policy/Cargo.toml"
+owner = "core/release"
+classification = "rust_package_metadata"
+reason = "allow-policy manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "crates/allow-policy/Cargo.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "crates/allow-policy/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0121"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/allow-policy-legacy/Cargo.toml"
+owner = "core/release"
+classification = "rust_package_metadata"
+reason = "allow-policy-legacy manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "crates/allow-policy-legacy/Cargo.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "crates/allow-policy-legacy/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0122"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/allow-report/Cargo.toml"
+owner = "core/release"
+classification = "rust_package_metadata"
+reason = "allow-report manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "crates/allow-report/Cargo.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "crates/allow-report/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0123"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/allow-rust/Cargo.toml"
+owner = "core/release"
+classification = "rust_package_metadata"
+reason = "allow-rust manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "crates/allow-rust/Cargo.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "crates/allow-rust/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0124"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/cargo-allow/Cargo.toml"
+owner = "core/release"
+classification = "rust_package_metadata"
+reason = "cargo-allow binary manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "crates/cargo-allow/Cargo.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "crates/cargo-allow/Cargo.toml"
 
 [allow.last_seen]
 line = 1
