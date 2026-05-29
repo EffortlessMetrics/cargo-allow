@@ -357,6 +357,81 @@ fn lint_policy_id_is_optional_by_default() {
 }
 
 #[test]
+fn entry_glob_matches_finding_path_when_exact_path_is_absent() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.path = None;
+    entry.glob = Some("src/**/*.rs".to_string());
+
+    assert!(score_match(&entry, &finding).is_some());
+}
+
+#[test]
+fn selector_glob_matches_finding_path_when_entry_path_is_absent() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.path = None;
+    entry.selector.glob = Some("src/*.rs".to_string());
+
+    assert!(score_match(&entry, &finding).is_some());
+}
+
+#[test]
+fn receiver_fingerprint_scores_exact_and_partial_matches() {
+    let mut finding = finding_with_hash("fnv1a64:actual");
+    finding.identity.receiver_fingerprint = Some("config.loader.result".to_string());
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.selector.receiver_fingerprint = Some("config.loader.result".to_string());
+    let exact = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("exact receiver should match"));
+
+    entry.selector.receiver_fingerprint = Some("loader".to_string());
+    let partial = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("partial receiver should match"));
+
+    entry.selector.receiver_fingerprint = Some("other".to_string());
+    assert_eq!(score_match(&entry, &finding), None);
+    assert!(exact > partial);
+}
+
+#[test]
+fn target_and_symbol_selectors_require_substring_matches() {
+    let mut finding = finding_with_hash("fnv1a64:actual");
+    finding.identity.symbol =
+        Some(r#"#[expect(clippy::unwrap_used, reason = "policy:allow-1")]"#.to_string());
+    finding.identity.target_fingerprint = Some("policy:allow-1".to_string());
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.selector.symbol = Some("clippy::unwrap_used".to_string());
+    entry.selector.target_fingerprint = Some("allow-1".to_string());
+
+    assert!(score_match(&entry, &finding).is_some());
+
+    entry.selector.symbol = Some("clippy::panic".to_string());
+    assert_eq!(score_match(&entry, &finding), None);
+
+    entry.selector.symbol = Some("clippy::unwrap_used".to_string());
+    entry.selector.target_fingerprint = Some("allow-other".to_string());
+    assert_eq!(score_match(&entry, &finding), None);
+}
+
+#[test]
+fn last_seen_line_hint_contributes_when_selector_hint_is_absent() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    let base = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("baseline match should score"));
+
+    entry.last_seen = Some(allow_core::LastSeen {
+        line: 50,
+        column: 12,
+    });
+    let with_last_seen = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("last seen match should score"));
+
+    assert_eq!(with_last_seen, base + 15);
+}
+
+#[test]
 fn occurrence_limit_caps_matched_findings() {
     let finding = finding_with_hash("fnv1a64:actual");
     let mut entry = entry_with_hash("fnv1a64:actual");
