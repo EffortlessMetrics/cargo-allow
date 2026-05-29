@@ -274,12 +274,33 @@ fn assert_artifact_contract(
     );
     assert_top_level_keys(name, &value, expected_top_level_keys);
     assert_schema_covers_sample_top_level_keys(name, expected_schema_id, &value);
+    assert_sample_inventory_scanner_matches_schema(name, expected_schema_id, &value);
     assert_string_array_eq(name, &value, "claim_boundary", allow_report::CLAIM_BOUNDARY);
     assert_string_array_eq(
         name,
         &value,
         "scanner_limitations",
         allow_report::SCANNER_LIMITATIONS,
+    );
+}
+
+fn assert_sample_inventory_scanner_matches_schema(
+    name: &str,
+    expected_schema_id: &str,
+    value: &Value,
+) {
+    let contract = schema_contracts()
+        .into_iter()
+        .find(|contract| contract.schema_id == expected_schema_id)
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "missing schema contract for {name} schema_id {expected_schema_id}"
+            ))
+        });
+    assert_eq!(
+        value.pointer("/inventory/scanner").and_then(Value::as_str),
+        Some(contract.inventory_scanner),
+        "{name} inventory scanner"
     );
 }
 
