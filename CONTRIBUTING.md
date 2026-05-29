@@ -1,0 +1,107 @@
+# Contributing to cargo-allow
+
+Thank you for helping improve `cargo-allow`. This project is a source-tree
+exception ledger for Rust repositories, so contributions should preserve its
+core promise: exceptions are visible, durable, reviewable, and removable.
+
+## Before You Start
+
+- Read the [README](README.md) for product scope and current commands.
+- Review the [design](docs/design.md) and [claim boundaries](docs/claim-boundaries.md)
+  before changing scanner behavior, report wording, or policy semantics.
+- Check the [roadmap](docs/roadmap.md) for the preferred PR-sized sequence of
+  work.
+- Keep changes focused. One pull request should have a clear purpose,
+  non-goals, validation plan, claim boundary, and rollback path.
+
+## Development Setup
+
+This workspace uses Rust 2024 and the workspace `rust-version` declared in
+`Cargo.toml`. Install a recent stable Rust toolchain, then run commands from the
+repository root.
+
+Useful local commands:
+
+```bash
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo run -p cargo-allow -- audit --format human
+cargo run -p cargo-allow -- check --mode no-new
+```
+
+When developing the repository before installing the binary, invoke the CLI
+through the local package:
+
+```bash
+cargo run -p cargo-allow -- <subcommand>
+```
+
+## Code Organization
+
+- `cargo-allow` is the user-facing CLI package.
+- First-party libraries use the `allow-*` crate namespace.
+- Do not create a parallel `cargo-allow-*` library namespace for integrations or
+  plugins.
+- Read the [crate namespace policy](docs/crate-namespace.md) before adding a new
+  public crate.
+- Keep command tests in sibling `*_tests.rs` modules referenced from the crate
+  root so command modules remain reviewable.
+
+## Product Boundaries
+
+`cargo-allow` scans repository files directly. It must not silently expand its
+claims to depend on a successful build, Cargo metadata, rustc, Clippy, build
+scripts, proc macros, dependency policy tools, unsafe-proof tools, or coverage
+systems.
+
+When changing scanners, reports, or schemas:
+
+- State exactly what source-tree surface is scanned.
+- Preserve fail-closed behavior for ambiguous policy matches.
+- Keep line and column values as review hints rather than identity anchors.
+- Avoid wording that claims absence of exceptions outside the scanned surface.
+- Update documentation and schemas together when machine-readable contracts
+  change.
+
+## Policy and Report Changes
+
+Policy entries are receipts, not suppressions. Changes that affect policy
+loading, matching, rendering, or lifecycle classification should include tests
+for both the accepted path and the fail-closed path.
+
+For report and artifact changes:
+
+- Keep JSON schemas in `docs/schemas/` synchronized with emitted artifacts.
+- Update schema contract tests when adding or renaming fields, enum values, or
+  artifact versions.
+- Prefer stable vocabulary for automation-facing fields.
+- Keep Markdown and HTML reports human-review oriented; use JSON for automation.
+
+## Pull Request Checklist
+
+Before opening a pull request, make sure the PR description includes:
+
+- Purpose: what problem the change solves.
+- Non-goals: what the change intentionally does not solve.
+- Validation: tests and commands run locally.
+- Claim boundary: any scanner, report, schema, or policy claim affected.
+- Rollback path: how the change can be reverted or disabled if needed.
+
+Run the standard checks:
+
+```bash
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+If the change affects CLI output or source-tree posture, also run the relevant
+local `cargo run -p cargo-allow -- ...` command and include any generated
+review artifacts in the PR discussion when useful.
+
+## Documentation
+
+Documentation changes are first-class contributions. Update the README for
+user-facing workflows, `docs/README.md` for new documentation entries, and the
+specific design or schema document that owns the changed behavior.
