@@ -1,6 +1,5 @@
-use allow_core::{CargoAllowError, CargoAllowResult, Finding, normalize_path};
+use allow_core::{CargoAllowResult, Finding, normalize_path};
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,13 +20,7 @@ pub(crate) fn source_package_contexts(
         let path = root.join(rel);
         let text = match fs::read_to_string(&path) {
             Ok(text) => text,
-            Err(err) if err.kind() == io::ErrorKind::InvalidData => continue,
-            Err(err) => {
-                return Err(CargoAllowError::new(format!(
-                    "failed to read {}: {err}",
-                    path.display()
-                )));
-            }
+            Err(_) => continue,
         };
         manifests.push((rel.clone(), text));
     }

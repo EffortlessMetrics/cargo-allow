@@ -265,6 +265,31 @@ fn scan_rust_files_ignores_non_utf8_manifest_source_text() {
 }
 
 #[test]
+fn scan_rust_files_ignores_unreadable_manifest_context() {
+    let root = temp_root("unreadable-manifest");
+    fs::create_dir_all(root.join("Cargo.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("manifest dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+    fs::write(
+        root.join("src").join("lib.rs"),
+        "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
+    let files = vec![PathBuf::from("Cargo.toml"), PathBuf::from("src/lib.rs")];
+
+    let findings = scan_rust_files(&root, &files)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
+
+    let unwrap = findings
+        .iter()
+        .find(|finding| finding.family.as_deref() == Some("unwrap"))
+        .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
+    assert_eq!(unwrap.identity.crate_name, None);
+    fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
+}
+
+#[test]
 fn syntax_panic_methods_do_not_parse_macro_token_trees() {
     let src = r#"
         fn load(value: Result<(), ()>) {
