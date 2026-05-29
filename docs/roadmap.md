@@ -29,6 +29,11 @@ Completed:
   across report, receipt, list, and worklist schemas.
 - Add a schema index for the current machine-readable artifacts and their
   source-tree claim boundary.
+- Register every documented `docs/schemas/*.schema.json` artifact in the
+  shared schema-contract tests so new artifacts cannot bypass common
+  source-tree inventory and claim-boundary checks.
+- Lock report diff enum vocabularies in schema tests so new PR-posture signals
+  require an explicit reviewed contract update.
 - Enumerate supported claim-boundary values in report, receipt, list, and
   worklist schemas.
 - Thread source-tree root and inventory file-count facts into reports and
@@ -195,6 +200,8 @@ Completed:
   versus `--base`, including scope broadening, selector precision loss, expiry
   extension, evidence removal, metadata removal, occurrence-limit loosening, and
   added baseline debt.
+- Fail PR-posture diffs when an existing durable allow ID is retargeted to a
+  different governed exception kind or family.
 - Report selector precision increases as policy improvements so narrowed or
   structurally strengthened receipts are visible in PR posture.
 - Report evidence additions as policy improvements so proof-link strengthening
@@ -314,6 +321,8 @@ Completed:
 
 - Parse evidence references and validate local file evidence prefixes when a
   policy is loaded from a source tree.
+- Lock local-file-backed evidence prefixes and traceability-only prefixes in
+  regression coverage so evidence classification remains explicit.
 - Explain evidence reference status from `cargo-allow explain`, including
   present, missing, invalid, traceability, and unstructured references.
 - Add examples for ripr, unsafe-review, and coverage evidence references while
@@ -330,6 +339,9 @@ Completed:
   and proof commands.
 - Emit `broken_evidence_link` work items for missing or invalid local evidence
   references.
+- Point broken-evidence work item proof commands at kind-scoped `cargo-allow
+  check --kind ...` and matching worklist commands where the retained entry
+  provides a governed kind.
 - Document bounded agent prompt patterns for `cargo-allow worklist`.
 - Align worklist JSON claim-boundary flags with the report and receipt
   source-tree scanner limitations.
