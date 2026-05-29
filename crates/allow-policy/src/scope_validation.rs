@@ -57,39 +57,62 @@ pub(crate) fn validate_allow_entry_scope(entry: &AllowEntry) -> CargoAllowResult
 }
 
 pub(crate) fn validate_path_scope(id: &str, path: &Path) -> CargoAllowResult<()> {
-    let text = path.to_string_lossy().replace('\\', "/");
+    validate_source_tree_scope(id, &path.to_string_lossy(), SourceTreeScopeDiagnostic::Path)
+}
+
+pub(crate) fn validate_glob(label: &str, glob: &str) -> CargoAllowResult<()> {
+    validate_source_tree_scope(label, glob, SourceTreeScopeDiagnostic::Glob)
+}
+
+#[derive(Debug, Clone, Copy)]
+enum SourceTreeScopeDiagnostic {
+    Path,
+    Glob,
+}
+
+fn validate_source_tree_scope(
+    label: &str,
+    scope: &str,
+    diagnostic: SourceTreeScopeDiagnostic,
+) -> CargoAllowResult<()> {
+    let text = scope.replace('\\', "/");
     if text.trim().is_empty() {
-        return Err(CargoAllowError::new(format!("{id} has empty path")));
+        return Err(CargoAllowError::new(diagnostic.empty_message(label)));
     }
     if text.starts_with('/') || text.contains(':') {
-        return Err(CargoAllowError::new(format!(
-            "{id} path must be source-tree-relative"
-        )));
+        return Err(CargoAllowError::new(
+            diagnostic.source_tree_relative_message(label),
+        ));
     }
     if text.split('/').any(|part| part == "..") {
-        return Err(CargoAllowError::new(format!(
-            "{id} path must not contain parent directory segments"
-        )));
+        return Err(CargoAllowError::new(
+            diagnostic.parent_segment_message(label),
+        ));
     }
     Ok(())
 }
 
-pub(crate) fn validate_glob(label: &str, glob: &str) -> CargoAllowResult<()> {
-    let text = glob.replace('\\', "/");
-    if text.trim().is_empty() {
-        return Err(CargoAllowError::new(format!("{label} is empty")));
+impl SourceTreeScopeDiagnostic {
+    fn empty_message(self, label: &str) -> String {
+        match self {
+            Self::Path => format!("{label} has empty path"),
+            Self::Glob => format!("{label} is empty"),
+        }
     }
-    if text.starts_with('/') || text.contains(':') {
-        return Err(CargoAllowError::new(format!(
-            "{label} must be source-tree-relative"
-        )));
+
+    fn source_tree_relative_message(self, label: &str) -> String {
+        match self {
+            Self::Path => format!("{label} path must be source-tree-relative"),
+            Self::Glob => format!("{label} must be source-tree-relative"),
+        }
     }
-    if text.split('/').any(|part| part == "..") {
-        return Err(CargoAllowError::new(format!(
-            "{label} must not contain parent directory segments"
-        )));
+
+    fn parent_segment_message(self, label: &str) -> String {
+        match self {
+            Self::Path => format!("{label} path must not contain parent directory segments"),
+            Self::Glob => format!("{label} must not contain parent directory segments"),
+        }
     }
-    Ok(())
 }
 
 pub(crate) fn validate_scope_consistency(entry: &AllowEntry) -> CargoAllowResult<()> {
