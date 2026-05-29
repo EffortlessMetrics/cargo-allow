@@ -319,3 +319,152 @@ fn today_utc_approx_uses_system_clock_day() {
         "today_utc_approx should use the current UTC day"
     );
 }
+
+use proptest::prelude::*;
+
+fn path_segment_strategy() -> impl Strategy<Value = String> {
+    "[A-Za-z0-9_-]{1,12}".prop_map(|segment| segment)
+}
+
+fn path_with_dot_segments_strategy() -> impl Strategy<Value = String> {
+    (
+        proptest::collection::vec(
+            prop_oneof![
+                Just(".".to_string()),
+                Just("..".to_string()),
+                path_segment_strategy(),
+            ],
+            0..12,
+        ),
+        any::<bool>(),
+        any::<bool>(),
+    )
+        .prop_map(|(segments, absolute, backslash)| {
+            let separator = if backslash { "\\" } else { "/" };
+            let mut path = segments.join(separator);
+            if absolute {
+                path = format!("/{path}");
+            }
+            path
+        })
+}
+
+fn concrete_path_segments_strategy() -> impl Strategy<Value = Vec<String>> {
+    proptest::collection::vec(path_segment_strategy(), 1..6)
+}
+
+proptest! {
+    #[test]
+    fn normalize_path_is_idempotent(path in path_with_dot_segments_strategy()) {
+        let normalized = normalize_path(&path);
+
+        prop_assert_eq!(normalize_path(&normalized), normalized);
+    }
+
+    #[test]
+    fn normalize_path_removes_reducible_dot_segments(path in path_with_dot_segments_strategy()) {
+        let normalized = normalize_path(&path);
+        let body = normalized.strip_prefix('/').unwrap_or(&normalized);
+        let mut saw_non_parent_segment = false;
+
+        for segment in body.split('/').filter(|segment| !segment.is_empty()) {
+            prop_assert_ne!(segment, ".");
+            if segment == ".." {
+                prop_assert!(!normalized.starts_with('/'));
+                prop_assert!(!saw_non_parent_segment);
+            } else {
+                saw_non_parent_segment = true;
+            }
+        }
+    }
+
+    #[test]
+    fn normalize_path_treats_forward_and_backward_slashes_equivalently(
+        segments in proptest::collection::vec(
+            prop_oneof![
+                Just(".".to_string()),
+                Just("..".to_string()),
+                path_segment_strategy(),
+            ],
+            0..12,
+        ),
+        absolute in any::<bool>(),
+    ) {
+        let slash_path = format!("{}{}", if absolute { "/" } else { "" }, segments.join("/"));
+        let backslash_path = format!("{}{}", if absolute { "/" } else { "" }, segments.join("\\"));
+
+        prop_assert_eq!(normalize_path(slash_path), normalize_path(backslash_path));
+    }
+
+    #[test]
+    fn source_tree_path_filter_matches_generated_subtrees(
+        filter_segments in concrete_path_segments_strategy(),
+        child_segments in proptest::collection::vec(path_segment_strategy(), 0..5),
+    ) {
+        let filter = filter_segments.join("/");
+        let item = if child_segments.is_empty() {
+            filter.clone()
+        } else {
+            format!("{filter}/{}", child_segments.join("/"))
+        };
+
+        let non_matching_filter = format!("{filter}x");
+
+        prop_assert!(source_tree_path_matches_filter(&item, &filter));
+        prop_assert!(!source_tree_path_matches_filter(&item, &non_matching_filter));
+    }
+
+    #[test]
+    fn double_star_globs_match_any_number_of_complete_path_segments(
+        prefix_segments in concrete_path_segments_strategy(),
+        middle_segments in proptest::collection::vec(path_segment_strategy(), 0..5),
+        filename in path_segment_strategy(),
+    ) {
+        let prefix = prefix_segments.join("/");
+        let pattern = format!("{prefix}/**/*.rs");
+        let path = if middle_segments.is_empty() {
+            format!("{prefix}/{filename}.rs")
+        } else {
+            format!("{prefix}/{}/{filename}.rs", middle_segments.join("/"))
+        };
+
+        prop_assert!(glob_matches_str(&pattern, &path));
+        prop_assert!(!glob_matches_str(&pattern, &path.replace(".rs", ".txt")));
+    }
+
+    #[test]
+    fn simple_date_epoch_day_conversion_round_trips(days in -200_000_i64..200_000_i64) {
+        let date = SimpleDate::from_days_since_unix_epoch(days);
+
+        prop_assert_eq!(date.days_since_unix_epoch(), days);
+        prop_assert_eq!(SimpleDate::parse(&date.to_string()), Some(date));
+    }
+
+    #[test]
+    fn simple_date_add_days_is_reversible(
+        start_days in -200_000_i64..200_000_i64,
+        offset in -10_000_i64..10_000_i64,
+    ) {
+        let start = SimpleDate::from_days_since_unix_epoch(start_days);
+        let shifted = start.add_days(offset);
+
+        prop_assert_eq!(start.days_until(shifted), offset);
+        prop_assert_eq!(shifted.add_days(-offset), start);
+    }
+
+    #[test]
+    fn structural_identity_stable_keys_remain_unambiguous_for_delimiter_text(
+        left in ".{0,24}",
+        right in ".{0,24}",
+    ) {
+        prop_assume!(left != right);
+
+        let mut first = StructuralIdentity::new(format!("a|b:{left}"), "method_call");
+        first.container = Some(right.clone());
+
+        let mut second = StructuralIdentity::new(format!("a|b:{right}"), "method_call");
+        second.container = Some(left.clone());
+
+        prop_assert_ne!(first.stable_key(), second.stable_key());
+    }
+}
