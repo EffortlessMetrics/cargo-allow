@@ -212,7 +212,14 @@
           "type": "string"
         },
         "kind": {
-          "type": "string"
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
         },
         "family": {
           "type": [
@@ -455,7 +462,14 @@
           "type": "string"
         },
         "kind": {
-          "type": "string"
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
         },
         "family": {
           "type": [
