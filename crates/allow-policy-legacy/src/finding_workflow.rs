@@ -53,6 +53,22 @@ pub fn workflow_findings_from_files(root: impl AsRef<Path>) -> CargoAllowResult<
     Ok(findings)
 }
 
+pub fn workflow_findings_from_sources(sources: Vec<(PathBuf, String)>) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    for (path, text) in sources {
+        findings.push(workflow_file_finding(path.clone()));
+        let uses = text
+            .lines()
+            .filter_map(extract_workflow_uses)
+            .collect::<BTreeSet<_>>();
+        findings.extend(
+            uses.into_iter()
+                .map(|action| workflow_action_finding(path.clone(), action)),
+        );
+    }
+    findings
+}
+
 pub(crate) fn workflow_file_finding(path: PathBuf) -> Finding {
     let normalized = normalize_path(&path);
     let mut identity = allow_core::StructuralIdentity::new("workflow", "github_workflow");

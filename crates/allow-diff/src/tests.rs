@@ -753,6 +753,57 @@ fn findings_at_revision_includes_generated_gitattributes_companions() {
 }
 
 #[test]
+fn findings_at_revision_includes_workflow_companions() {
+    let root = temp_root("revision-workflow");
+    let workflow_dir = root.join(".github").join("workflows");
+    fs::create_dir_all(&workflow_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("workflow dir: {err}")));
+    fs::write(
+        workflow_dir.join("ci.yml"),
+        "steps:\n  - uses: actions/checkout@v4\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("workflow write: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "initial"]);
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(workflow_entry(
+        "workflow-ci",
+        "github_workflow",
+        "github_workflow",
+        ".github/workflows/ci.yml",
+        None,
+    ));
+    cfg.allow.push(workflow_entry(
+        "workflow-action-checkout",
+        "workflow_external_action",
+        "github_action_uses",
+        ".github/workflows/ci.yml",
+        Some("action:actions/checkout@v4"),
+    ));
+
+    let findings = findings_at_revision(&root, "HEAD", &cfg)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("findings: {err}")));
+
+    assert!(findings.iter().any(|finding| {
+        finding.kind == FindingKind::PolicyException
+            && finding.family.as_deref() == Some("github_workflow")
+            && finding.path.as_path() == Path::new(".github/workflows/ci.yml")
+    }));
+    assert!(findings.iter().any(|finding| {
+        finding.kind == FindingKind::PolicyException
+            && finding.family.as_deref() == Some("workflow_external_action")
+            && finding.identity.target_fingerprint.as_deref() == Some("action:actions/checkout@v4")
+    }));
+    fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
+}
+
+#[test]
 fn git_tree_revision_parser_skips_symlinks_and_preserves_newlines() {
     let output = b"100644 blob abc123\tsrc/lib.rs\0\
 120000 blob def456\tsrc/link.rs\0\
@@ -855,6 +906,40 @@ fn generated_code_entry(path: &str) -> AllowEntry {
             ast_kind: Some("tracked_file".to_string()),
             symbol: Some(path.to_string()),
             target_fingerprint: Some("json".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
+fn workflow_entry(
+    id: &str,
+    family: &str,
+    ast_kind: &str,
+    path: &str,
+    target_fingerprint: Option<&str>,
+) -> AllowEntry {
+    AllowEntry {
+        id: id.to_string(),
+        kind: FindingKind::PolicyException,
+        family: Some(family.to_string()),
+        path: Some(PathBuf::from(path)),
+        glob: None,
+        owner: "ci".to_string(),
+        classification: family.to_string(),
+        reason: "Workflow surface is governed by policy.".to_string(),
+        evidence: vec!["legacy-policy:workflow".to_string()],
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: Some("2026-05-26".to_string()),
+            review_after: Some("2026-08-01".to_string()),
+            expires: None,
+        },
+        selector: Selector {
+            ast_kind: Some(ast_kind.to_string()),
+            symbol: Some(path.to_string()),
+            target_fingerprint: target_fingerprint.map(str::to_string),
             ..Selector::default()
         },
         last_seen: None,

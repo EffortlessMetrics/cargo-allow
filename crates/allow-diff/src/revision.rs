@@ -1,5 +1,6 @@
 use allow_core::{
-    AllowConfig, CargoAllowResult, Finding, FindingKind, source_tree_path_is_ignored,
+    AllowConfig, CargoAllowResult, Finding, FindingKind, normalize_path,
+    source_tree_path_is_ignored,
 };
 use std::path::Path;
 
@@ -45,6 +46,17 @@ pub fn findings_at_revision(
             findings.extend(allow_policy_legacy::generated_findings_from_gitattributes_text(&text));
         }
     }
+    if has_policy_family(cfg, &["github_workflow", "workflow_external_action"]) {
+        let mut workflow_sources = Vec::new();
+        for rel in files.iter().filter(|path| is_workflow_path(path)) {
+            if let Some(text) = read_file_at_revision(root, revision, rel)? {
+                workflow_sources.push((rel.clone(), text));
+            }
+        }
+        findings.extend(allow_policy_legacy::workflow_findings_from_sources(
+            workflow_sources,
+        ));
+    }
     findings.extend(allow_policy_legacy::dependency_surface_findings_from_paths(
         &files, cfg,
     ));
@@ -56,4 +68,22 @@ fn has_generated_code_receipt(cfg: &AllowConfig) -> bool {
         entry.kind == FindingKind::GeneratedCode
             && entry.family.as_deref() == Some("generated_code")
     })
+}
+
+fn has_policy_family(cfg: &AllowConfig, families: &[&str]) -> bool {
+    cfg.allow.iter().any(|entry| {
+        entry.kind == FindingKind::PolicyException
+            && entry
+                .family
+                .as_deref()
+                .is_some_and(|family| families.contains(&family))
+    })
+}
+
+fn is_workflow_path(path: &Path) -> bool {
+    normalize_path(path).starts_with(".github/workflows/")
+        && matches!(
+            path.extension().and_then(|extension| extension.to_str()),
+            Some("yml" | "yaml")
+        )
 }

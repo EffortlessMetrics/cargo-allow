@@ -1,7 +1,7 @@
 use super::*;
 use crate::findings::{
     dependency_surface_finding, dependency_surface_findings_from_paths, workflow_action_finding,
-    workflow_file_finding,
+    workflow_file_finding, workflow_findings_from_sources,
 };
 use crate::test_support::*;
 use allow_core::FindingKind;
@@ -55,6 +55,29 @@ fn workflow_findings_read_workflow_files_and_uses_lines() {
     }));
     assert!(!findings.iter().any(|finding| {
         finding.identity.target_fingerprint.as_deref() == Some("action:ignored/comment@v1")
+    }));
+}
+
+#[test]
+fn workflow_findings_can_use_source_tree_text() {
+    let findings = workflow_findings_from_sources(vec![(
+        PathBuf::from(".github/workflows/ci.yml"),
+        "steps:\n  - uses: actions/checkout@v4\n  - uses: dtolnay/rust-toolchain@stable\n"
+            .to_string(),
+    )]);
+
+    assert!(findings.iter().any(|finding| {
+        finding.family.as_deref() == Some("github_workflow")
+            && finding.path == Path::new(".github/workflows/ci.yml")
+    }));
+    assert!(findings.iter().any(|finding| {
+        finding.family.as_deref() == Some("workflow_external_action")
+            && finding.identity.target_fingerprint.as_deref() == Some("action:actions/checkout@v4")
+    }));
+    assert!(findings.iter().any(|finding| {
+        finding.family.as_deref() == Some("workflow_external_action")
+            && finding.identity.target_fingerprint.as_deref()
+                == Some("action:dtolnay/rust-toolchain@stable")
     }));
 }
 
