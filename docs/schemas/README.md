@@ -116,10 +116,11 @@ source tree, point to a directory, or point to a missing file. Receipts may use
 the same optional count under `counts.broken_evidence_links`.
 
 `audit` treats these as evidence-health signals so first-run inventory can still
-complete and route cleanup work. `check` keeps its stricter validation behavior
-and may fail before writing a receipt when local evidence references are broken.
-Use `cargo-allow worklist --item-kind broken_evidence_link --format json` for
-the actionable queue.
+complete and route cleanup work. `check` fails closed on broken local evidence
+links while still including the count in saved report and receipt artifacts when
+those outputs are requested. Use
+`cargo-allow worklist --item-kind broken_evidence_link --format json` for the
+actionable queue.
 
 ## Compatibility Coverage
 
