@@ -1,5 +1,5 @@
 use crate::artifact_schema_support::{
-    assert_enum_equals, assert_required_fields, assert_schema_type_contains, governed_kind_enum,
+    assert_enum_equals, assert_required_fields, assert_schema_type_equals, governed_kind_enum,
     parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
@@ -33,17 +33,11 @@ fn add_schema_locks_selected_finding_and_review_contract() {
         "add options should reject unknown fields"
     );
     assert_required_fields("add options", options, &["policy_output", "force"]);
-    assert_schema_type_contains(
+    assert_schema_type_equals(
         "add options policy_output",
         &schema,
         "/properties/options/properties/policy_output/type",
-        "string",
-    );
-    assert_schema_type_contains(
-        "add options policy_output",
-        &schema,
-        "/properties/options/properties/policy_output/type",
-        "null",
+        &["string", "null"],
     );
     assert_eq!(
         schema
@@ -191,16 +185,10 @@ fn add_schema_locks_selected_finding_and_review_contract() {
             "column_hint",
         ],
     );
-    assert_schema_type_contains(
+    assert_schema_type_equals(
         "add selected finding source_package",
         &schema,
         "/$defs/finding/properties/source_package/type",
-        "string",
-    );
-    assert_schema_type_contains(
-        "add selected finding source_package",
-        &schema,
-        "/$defs/finding/properties/source_package/type",
-        "null",
+        &["string", "null"],
     );
 }

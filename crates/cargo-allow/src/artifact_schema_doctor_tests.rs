@@ -1,5 +1,5 @@
 use crate::artifact_schema_support::{
-    assert_enum_equals, assert_required_fields, assert_schema_type_contains, parse_schema,
+    assert_enum_equals, assert_required_fields, assert_schema_type_equals, parse_schema,
     required_schema_pointer,
 };
 use serde_json::Value;
@@ -62,41 +62,23 @@ fn doctor_schema_locks_setup_artifact_contract() {
         Some("boolean"),
         "doctor config found should be boolean"
     );
-    assert_schema_type_contains(
+    assert_schema_type_equals(
         "doctor config path",
         &schema,
         "/properties/config/properties/path/type",
-        "string",
+        &["string", "null"],
     );
-    assert_schema_type_contains(
-        "doctor config path",
-        &schema,
-        "/properties/config/properties/path/type",
-        "null",
-    );
-    assert_schema_type_contains(
+    assert_schema_type_equals(
         "doctor config valid",
         &schema,
         "/properties/config/properties/valid/type",
-        "boolean",
+        &["boolean", "null"],
     );
-    assert_schema_type_contains(
-        "doctor config valid",
-        &schema,
-        "/properties/config/properties/valid/type",
-        "null",
-    );
-    assert_schema_type_contains(
+    assert_schema_type_equals(
         "doctor config diagnostic",
         &schema,
         "/properties/config/properties/diagnostic/type",
-        "string",
-    );
-    assert_schema_type_contains(
-        "doctor config diagnostic",
-        &schema,
-        "/properties/config/properties/diagnostic/type",
-        "null",
+        &["string", "null"],
     );
 
     assert_eq!(

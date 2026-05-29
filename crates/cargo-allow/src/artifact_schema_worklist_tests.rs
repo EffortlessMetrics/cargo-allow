@@ -1,5 +1,5 @@
 use crate::artifact_schema_support::{
-    assert_enum_equals, assert_required_fields, assert_schema_type_contains, governed_kind_enum,
+    assert_enum_equals, assert_required_fields, assert_schema_type_equals, governed_kind_enum,
     match_status_enum, parse_schema, required_schema_pointer,
 };
 use crate::worklist::{DIFFICULTY_LEVELS, RISK_LEVELS, WORK_ITEM_KINDS};
@@ -67,17 +67,11 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         "owner",
         "classification",
     ] {
-        assert_schema_type_contains(
+        assert_schema_type_equals(
             "worklist filter string option",
             &schema,
             &format!("/$defs/filters/properties/{field}/type"),
-            "string",
-        );
-        assert_schema_type_contains(
-            "worklist filter null option",
-            &schema,
-            &format!("/$defs/filters/properties/{field}/type"),
-            "null",
+            &["string", "null"],
         );
     }
     assert_nullable_string_enum_equals(
@@ -199,17 +193,11 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         "/$defs/work_item/properties/exception_kind/enum",
         &governed_kind_enum(),
     );
-    assert_schema_type_contains(
+    assert_schema_type_equals(
         "worklist item source_package",
         &schema,
         "/$defs/work_item/properties/source_package/type",
-        "string",
-    );
-    assert_schema_type_contains(
-        "worklist item source_package",
-        &schema,
-        "/$defs/work_item/properties/source_package/type",
-        "null",
+        &["string", "null"],
     );
     assert_eq!(
         schema

@@ -1,5 +1,5 @@
 use crate::artifact_schema_support::{
-    assert_required_fields, assert_schema_type_contains, parse_schema, required_schema_pointer,
+    assert_required_fields, assert_schema_type_equals, parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
 
@@ -38,17 +38,11 @@ fn propose_schema_locks_generated_baseline_summary_contract() {
         options,
         &["kind", "expires", "policy_output", "force"],
     );
-    assert_schema_type_contains(
+    assert_schema_type_equals(
         "propose options kind",
         &schema,
         "/properties/options/properties/kind/type",
-        "string",
-    );
-    assert_schema_type_contains(
-        "propose options kind",
-        &schema,
-        "/properties/options/properties/kind/type",
-        "null",
+        &["string", "null"],
     );
     assert_eq!(
         schema

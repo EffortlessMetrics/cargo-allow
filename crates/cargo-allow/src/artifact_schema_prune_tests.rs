@@ -1,5 +1,5 @@
 use crate::artifact_schema_support::{
-    assert_enum_equals, assert_required_fields, assert_schema_type_contains, governed_kind_enum,
+    assert_enum_equals, assert_required_fields, assert_schema_type_equals, governed_kind_enum,
     parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
@@ -50,17 +50,11 @@ fn prune_schema_locks_stale_cleanup_artifact_contract() {
         Some("boolean"),
         "prune mode explicit_dry_run should be boolean"
     );
-    assert_schema_type_contains(
+    assert_schema_type_equals(
         "prune mode written_path",
         &schema,
         "/properties/mode/properties/written_path/type",
-        "string",
-    );
-    assert_schema_type_contains(
-        "prune mode written_path",
-        &schema,
-        "/properties/mode/properties/written_path/type",
-        "null",
+        &["string", "null"],
     );
 
     let summary = required_schema_pointer("prune", &schema, "/properties/summary");
