@@ -130,10 +130,11 @@ impl PanicMethodKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PanicMethodCall {
     pub(crate) kind: PanicMethodKind,
     pub(crate) column: u32,
+    pub(crate) receiver_fingerprint: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
