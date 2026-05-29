@@ -46,6 +46,8 @@ mod artifact_schema_doctor_tests;
 #[cfg(test)]
 mod artifact_schema_explain_tests;
 #[cfg(test)]
+mod artifact_schema_list_tests;
+#[cfg(test)]
 mod artifact_schema_migrate_tests;
 #[cfg(test)]
 mod artifact_schema_propose_tests;

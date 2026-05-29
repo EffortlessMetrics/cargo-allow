@@ -1,9 +1,8 @@
 use crate::artifact_schema_support::{
-    assert_enum_contains_all, assert_required_fields, assert_schema_type_contains, parse_schema,
-    required_schema_pointer,
+    assert_enum_contains_all, assert_enum_equals, assert_required_fields,
+    assert_schema_type_contains, parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
-use std::collections::BTreeSet;
 
 #[test]
 fn worklist_schema_locks_filters_summary_and_work_items_contract() {
@@ -214,20 +213,4 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         Some("^cargo-allow "),
         "worklist proof commands should stay cargo-allow first"
     );
-}
-
-fn assert_enum_equals(name: &str, schema: &Value, pointer: &str, expected: &[&str]) {
-    let Some(items) = schema.pointer(pointer).and_then(Value::as_array) else {
-        std::panic::panic_any(format!("{name} {pointer} should be an enum array"));
-    };
-    let actual = items
-        .iter()
-        .map(|item| {
-            item.as_str().unwrap_or_else(|| {
-                std::panic::panic_any(format!("{name} {pointer} entries should be strings"))
-            })
-        })
-        .collect::<BTreeSet<_>>();
-    let expected = expected.iter().copied().collect::<BTreeSet<_>>();
-    assert_eq!(actual, expected, "{name} enum values");
 }

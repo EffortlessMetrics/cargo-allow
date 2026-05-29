@@ -1,4 +1,14 @@
 use serde_json::Value;
+use std::collections::BTreeSet;
+
+pub(crate) const GOVERNED_KIND_ENUM: &[&str] = &[
+    "panic",
+    "unsafe",
+    "lint_exception",
+    "non_rust_file",
+    "generated_code",
+    "policy_exception",
+];
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SchemaContract {
@@ -193,6 +203,22 @@ pub(crate) fn assert_enum_contains_all(
             "{name} schema {pointer} should contain {expected_item}"
         );
     }
+}
+
+pub(crate) fn assert_enum_equals(name: &str, schema: &Value, pointer: &str, expected: &[&str]) {
+    let Some(items) = schema.pointer(pointer).and_then(Value::as_array) else {
+        std::panic::panic_any(format!("{name} {pointer} should be an enum array"));
+    };
+    let actual = items
+        .iter()
+        .map(|item| {
+            item.as_str().unwrap_or_else(|| {
+                std::panic::panic_any(format!("{name} {pointer} entries should be strings"))
+            })
+        })
+        .collect::<BTreeSet<_>>();
+    let expected = expected.iter().copied().collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "{name} enum values");
 }
 
 pub(crate) fn assert_schema_type_contains(

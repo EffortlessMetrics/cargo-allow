@@ -1,5 +1,6 @@
 use crate::artifact_schema_support::{
-    assert_required_fields, assert_schema_type_contains, parse_schema, required_schema_pointer,
+    GOVERNED_KIND_ENUM, assert_enum_equals, assert_required_fields, assert_schema_type_contains,
+    parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
 
@@ -98,6 +99,12 @@ fn add_schema_locks_selected_finding_and_review_contract() {
             "last_seen",
         ],
     );
+    assert_enum_equals(
+        "add allow_entry kind",
+        &schema,
+        "/properties/allow_entry/properties/kind/enum",
+        GOVERNED_KIND_ENUM,
+    );
     assert_eq!(
         schema
             .pointer("/properties/allow_entry/properties/evidence_count/type")
@@ -135,6 +142,12 @@ fn add_schema_locks_selected_finding_and_review_contract() {
             "identity",
             "message",
         ],
+    );
+    assert_enum_equals(
+        "add selected finding kind",
+        &schema,
+        "/$defs/finding/properties/kind/enum",
+        GOVERNED_KIND_ENUM,
     );
     assert_eq!(
         schema

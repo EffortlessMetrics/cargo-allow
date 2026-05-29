@@ -87,8 +87,10 @@ Schema compatibility tests also lock:
 - the exact top-level property set for each schema;
 - the exact top-level required-field set for each schema;
 - `additionalProperties = false` at the artifact root and nested object schema
-  nodes; and
-- structural identity fields where artifacts expose finding identity.
+  nodes;
+- governed source-exception kind vocabularies where artifacts expose finding or
+  allow-entry kinds;
+- structural identity fields where artifacts expose finding identity; and
 - the `worklist` artifact's queue item kind vocabulary.
 
 This is not a promise that every field is permanently frozen. Breaking changes
