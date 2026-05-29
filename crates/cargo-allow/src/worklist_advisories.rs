@@ -2,8 +2,8 @@ use super::WorkItem;
 use super::worklist_actions::{proof_commands, suggested_actions};
 use super::worklist_scoring::{exception_family, work_item_difficulty, work_item_risk};
 use allow_core::{
-    AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path,
-    source_tree_scope_has_wildcard,
+    AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, allow_entry_broad_scope,
+    normalize_path,
 };
 
 pub(super) fn work_items_from_policy_advisories(
@@ -51,7 +51,7 @@ pub(super) fn work_items_from_policy_advisories(
             });
             continue;
         }
-        if let Some(scope) = entry_broad_scope(entry) {
+        if let Some(scope) = allow_entry_broad_scope(entry) {
             let item_index = start_index + items.len();
             let kind = "broad_scope".to_string();
             items.push(WorkItem {
@@ -94,25 +94,4 @@ fn matched_outcome_for_entry<'a>(
 
 fn source_package_name(finding: Option<&Finding>) -> Option<String> {
     finding.and_then(|finding| finding.source_package_name().map(ToOwned::to_owned))
-}
-
-fn entry_broad_scope(entry: &AllowEntry) -> Option<String> {
-    entry
-        .path
-        .as_ref()
-        .map(normalize_path)
-        .filter(|scope| source_tree_scope_has_wildcard(scope))
-        .or_else(|| {
-            entry
-                .glob
-                .clone()
-                .filter(|scope| source_tree_scope_has_wildcard(scope))
-        })
-        .or_else(|| {
-            entry
-                .selector
-                .glob
-                .clone()
-                .filter(|scope| source_tree_scope_has_wildcard(scope))
-        })
 }

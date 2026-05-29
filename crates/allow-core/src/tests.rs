@@ -80,6 +80,46 @@ fn source_tree_scope_wildcard_detection_covers_supported_glob_tokens() {
 }
 
 #[test]
+fn allow_entry_broad_scope_uses_path_glob_selector_priority() {
+    let mut entry = AllowEntry {
+        id: "allow-panic".to_string(),
+        kind: FindingKind::Panic,
+        family: None,
+        path: Some(PathBuf::from("src\\*.rs")),
+        glob: Some("crates/**/*.rs".to_string()),
+        owner: "team-runtime".to_string(),
+        classification: "accepted-risk".to_string(),
+        reason: "test fixture".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle::empty(),
+        selector: Selector {
+            glob: Some("tests/**/*.rs".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    };
+
+    assert_eq!(allow_entry_broad_scope(&entry).as_deref(), Some("src/*.rs"));
+
+    entry.path = Some(PathBuf::from("src/lib.rs"));
+    assert_eq!(
+        allow_entry_broad_scope(&entry).as_deref(),
+        Some("crates/**/*.rs")
+    );
+
+    entry.glob = Some("crates/lib.rs".to_string());
+    assert_eq!(
+        allow_entry_broad_scope(&entry).as_deref(),
+        Some("tests/**/*.rs")
+    );
+
+    entry.selector.glob = Some("tests/lib.rs".to_string());
+    assert_eq!(allow_entry_broad_scope(&entry), None);
+}
+
+#[test]
 fn finding_kind_accepts_hyphenated_cli_aliases() {
     assert_eq!(
         FindingKind::from_str("non-rust"),

@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use crate::AllowEntry;
+
 pub fn normalize_path(path: impl AsRef<Path>) -> String {
     let text = path.as_ref().to_string_lossy().replace('\\', "/");
     let absolute = text.starts_with('/');
@@ -69,6 +71,27 @@ pub fn source_tree_scope_has_wildcard(scope: &str) -> bool {
     scope
         .chars()
         .any(|ch| matches!(ch, '*' | '?' | '[' | ']' | '{' | '}'))
+}
+
+pub fn allow_entry_broad_scope(entry: &AllowEntry) -> Option<String> {
+    entry
+        .path
+        .as_ref()
+        .map(normalize_path)
+        .filter(|scope| source_tree_scope_has_wildcard(scope))
+        .or_else(|| {
+            entry
+                .glob
+                .clone()
+                .filter(|scope| source_tree_scope_has_wildcard(scope))
+        })
+        .or_else(|| {
+            entry
+                .selector
+                .glob
+                .clone()
+                .filter(|scope| source_tree_scope_has_wildcard(scope))
+        })
 }
 
 fn split_glob(s: &str) -> Vec<&str> {
