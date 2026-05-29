@@ -1,5 +1,8 @@
 use super::*;
 use allow_core::source_tree_path_is_ignored;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[test]
 fn ignores_target_paths() {
