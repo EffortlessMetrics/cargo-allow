@@ -30,9 +30,7 @@ fn migrate_report<'a>(
 ) -> allow_report::MigrateReport<'a> {
     let notes = allow_policy_legacy::migration_notes();
     allow_report::MigrateReport::from_config(
-        allow_report::InventoryContext::new(
-            "source_tree",
-            "policy_migration",
+        allow_report::InventoryContext::policy_migration(
             &context.inventory_source,
             context.source_tree_root.as_deref(),
             context.inventory_files,
