@@ -12,7 +12,7 @@ jobs:
   cargo-allow-diff:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
@@ -34,7 +34,7 @@ jobs:
           if [ -f target/cargo-allow/pr-summary.md ]; then
             cat target/cargo-allow/pr-summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
           name: cargo-allow-pr-summary

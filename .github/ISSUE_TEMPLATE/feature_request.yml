@@ -1,0 +1,62 @@
+name: Feature request
+description: Propose a new command, report field, scanner capability, or workflow improvement.
+title: "feature: "
+labels: [enhancement, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for product changes that help cargo-allow make source-tree exceptions more visible, durable, reviewable, or removable.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What workflow or governance problem are you trying to solve?
+      placeholder: I need to distinguish generated baseline debt from newly introduced lint suppressions in CI output.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the command, output, policy model, scanner behavior, or documentation change you want.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of cargo-allow would this affect most?
+      options:
+        - Inventory scanning
+        - Policy matching
+        - Policy lifecycle or evidence
+        - CLI UX
+        - JSON, Markdown, HTML, SARIF, or text reports
+        - Diff and CI workflows
+        - Documentation or examples
+        - Other or unknown
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workarounds or other designs have you considered?
+    validations:
+      required: false
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example usage or output
+      description: Show the command, policy snippet, report shape, or user flow you would like to see.
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Link related issues, docs, projects, or governance requirements.
+    validations:
+      required: false

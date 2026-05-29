@@ -1,7 +1,7 @@
 use super::*;
 use allow_core::{
-    AllowConfig, AllowEntry, Finding, FindingKind, Lifecycle, MatchStatus, Selector, Span,
-    StructuralIdentity,
+    AllowConfig, AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, MatchStatus, Selector,
+    Span, StructuralIdentity,
 };
 use std::path::PathBuf;
 
@@ -73,6 +73,125 @@ fn structural_field_mismatch_rejects_match() {
     entry.selector.container = Some("other_container".to_string());
 
     assert_eq!(score_match(&entry, &finding), None);
+}
+
+#[test]
+fn score_match_accepts_selector_glob_when_entry_path_is_absent() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.path = None;
+    entry.glob = None;
+    entry.selector.glob = Some("src/**/*.rs".to_string());
+
+    assert!(score_match(&entry, &finding).is_some());
+}
+
+#[test]
+fn top_level_glob_matches_when_entry_path_is_absent() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.path = None;
+    entry.glob = Some("src/**/*.rs".to_string());
+
+    assert!(score_match(&entry, &finding).is_some());
+}
+
+#[test]
+fn receiver_fingerprint_substring_match_scores_less_than_exact_match() {
+    let mut finding = finding_with_hash("fnv1a64:actual");
+    finding.identity.receiver_fingerprint = Some("workspace.config.requirements".to_string());
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.selector.receiver_fingerprint = Some("config".to_string());
+
+    let substring_score = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("expected receiver substring match"));
+
+    entry.selector.receiver_fingerprint = Some("workspace.config.requirements".to_string());
+    let exact_score = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("expected exact receiver match"));
+
+    assert_eq!(exact_score - substring_score, 15);
+}
+
+#[test]
+fn target_fingerprint_selector_accepts_structural_substrings() {
+    let mut finding = finding_with_hash("fnv1a64:actual");
+    finding.identity.target_fingerprint = Some("safety-comment:present".to_string());
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.selector.target_fingerprint = Some("comment:present".to_string());
+
+    assert!(score_match(&entry, &finding).is_some());
+
+    entry.selector.target_fingerprint = Some("comment:missing".to_string());
+    assert_eq!(score_match(&entry, &finding), None);
+}
+
+#[test]
+fn score_match_rejects_when_no_path_or_glob_matches() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.path = None;
+    entry.glob = Some("tests/**/*.rs".to_string());
+    entry.selector.glob = Some("examples/**/*.rs".to_string());
+
+    assert_eq!(score_match(&entry, &finding), None);
+}
+
+#[test]
+fn check_mode_parse_defaults_unknown_values_to_no_new() {
+    assert_eq!(CheckMode::parse("audit"), CheckMode::Audit);
+    assert_eq!(CheckMode::parse("strict"), CheckMode::Strict);
+    assert_eq!(CheckMode::parse("release"), CheckMode::Release);
+    assert_eq!(CheckMode::parse("no-new"), CheckMode::NoNew);
+    assert_eq!(CheckMode::parse("unexpected"), CheckMode::NoNew);
+}
+
+#[test]
+fn check_mode_failure_policy_matches_enforcement_levels() {
+    assert!(!CheckMode::Audit.fails(MatchStatus::New));
+    assert!(CheckMode::NoNew.fails(MatchStatus::New));
+    assert!(!CheckMode::NoNew.fails(MatchStatus::Stale));
+    assert!(CheckMode::NoNew.fails(MatchStatus::Expired));
+    assert!(CheckMode::Strict.fails(MatchStatus::Stale));
+    assert!(CheckMode::Release.fails(MatchStatus::BaselineDebt));
+    assert!(!CheckMode::Strict.fails(MatchStatus::Matched));
+    assert!(!CheckMode::Release.fails(MatchStatus::ReviewDue));
+}
+
+#[test]
+fn score_match_scores_exact_receiver_above_partial_receiver() {
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.selector.receiver_fingerprint = Some("value".to_string());
+
+    let mut exact = finding_with_hash("fnv1a64:actual");
+    exact.identity.receiver_fingerprint = Some("value".to_string());
+    let mut partial = finding_with_hash("fnv1a64:actual");
+    partial.identity.receiver_fingerprint = Some("context.value".to_string());
+
+    let exact_score = score_match(&entry, &exact)
+        .unwrap_or_else(|| std::panic::panic_any("exact receiver fingerprint should match"));
+    let partial_score = score_match(&entry, &partial)
+        .unwrap_or_else(|| std::panic::panic_any("partial receiver fingerprint should match"));
+
+    assert!(exact_score > partial_score);
+}
+
+#[test]
+fn score_match_uses_last_seen_line_when_selector_line_hint_is_absent() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.selector.line_hint = None;
+
+    let without_last_seen = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("entry should match without last_seen"));
+    entry.last_seen = Some(LastSeen {
+        line: 50,
+        column: 12,
+    });
+    let with_last_seen = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("entry should match with last_seen"));
+
+    assert_eq!(with_last_seen, without_last_seen + 15);
 }
 
 #[test]
@@ -235,6 +354,81 @@ fn lint_policy_id_is_optional_by_default() {
             .iter()
             .any(|outcome| outcome.status == MatchStatus::Matched)
     );
+}
+
+#[test]
+fn entry_glob_matches_finding_path_when_exact_path_is_absent() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.path = None;
+    entry.glob = Some("src/**/*.rs".to_string());
+
+    assert!(score_match(&entry, &finding).is_some());
+}
+
+#[test]
+fn selector_glob_matches_finding_path_when_entry_path_is_absent() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.path = None;
+    entry.selector.glob = Some("src/*.rs".to_string());
+
+    assert!(score_match(&entry, &finding).is_some());
+}
+
+#[test]
+fn receiver_fingerprint_scores_exact_and_partial_matches() {
+    let mut finding = finding_with_hash("fnv1a64:actual");
+    finding.identity.receiver_fingerprint = Some("config.loader.result".to_string());
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.selector.receiver_fingerprint = Some("config.loader.result".to_string());
+    let exact = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("exact receiver should match"));
+
+    entry.selector.receiver_fingerprint = Some("loader".to_string());
+    let partial = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("partial receiver should match"));
+
+    entry.selector.receiver_fingerprint = Some("other".to_string());
+    assert_eq!(score_match(&entry, &finding), None);
+    assert!(exact > partial);
+}
+
+#[test]
+fn target_and_symbol_selectors_require_substring_matches() {
+    let mut finding = finding_with_hash("fnv1a64:actual");
+    finding.identity.symbol =
+        Some(r#"#[expect(clippy::unwrap_used, reason = "policy:allow-1")]"#.to_string());
+    finding.identity.target_fingerprint = Some("policy:allow-1".to_string());
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.selector.symbol = Some("clippy::unwrap_used".to_string());
+    entry.selector.target_fingerprint = Some("allow-1".to_string());
+
+    assert!(score_match(&entry, &finding).is_some());
+
+    entry.selector.symbol = Some("clippy::panic".to_string());
+    assert_eq!(score_match(&entry, &finding), None);
+
+    entry.selector.symbol = Some("clippy::unwrap_used".to_string());
+    entry.selector.target_fingerprint = Some("allow-other".to_string());
+    assert_eq!(score_match(&entry, &finding), None);
+}
+
+#[test]
+fn last_seen_line_hint_contributes_when_selector_hint_is_absent() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    let base = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("baseline match should score"));
+
+    entry.last_seen = Some(allow_core::LastSeen {
+        line: 50,
+        column: 12,
+    });
+    let with_last_seen = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("last seen match should score"));
+
+    assert_eq!(with_last_seen, base + 15);
 }
 
 #[test]
