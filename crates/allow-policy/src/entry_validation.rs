@@ -1,6 +1,10 @@
 use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, Requirements};
+use std::collections::BTreeSet;
 
-pub(crate) fn validate_allow_entry_identity(entry: &AllowEntry) -> CargoAllowResult<()> {
+pub(crate) fn validate_allow_entry_identity(
+    entry: &AllowEntry,
+    ids: &mut BTreeSet<String>,
+) -> CargoAllowResult<()> {
     validate_allow_id(&entry.id)?;
     if entry
         .family
@@ -9,6 +13,12 @@ pub(crate) fn validate_allow_entry_identity(entry: &AllowEntry) -> CargoAllowRes
     {
         return Err(CargoAllowError::new(format!(
             "{} family must not be empty",
+            entry.id
+        )));
+    }
+    if !ids.insert(entry.id.clone()) {
+        return Err(CargoAllowError::new(format!(
+            "duplicate allow id `{}`",
             entry.id
         )));
     }

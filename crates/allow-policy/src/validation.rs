@@ -1,4 +1,4 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
+use allow_core::{AllowConfig, CargoAllowResult};
 use std::collections::BTreeSet;
 
 use crate::entry_validation::{
@@ -15,13 +15,7 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
     validate_workspace(&cfg.workspace)?;
     let mut ids = BTreeSet::new();
     for entry in &cfg.allow {
-        validate_allow_entry_identity(entry)?;
-        if !ids.insert(entry.id.clone()) {
-            return Err(CargoAllowError::new(format!(
-                "duplicate allow id `{}`",
-                entry.id
-            )));
-        }
+        validate_allow_entry_identity(entry, &mut ids)?;
         validate_allow_entry_scope(entry)?;
         validate_selector(entry)?;
         validate_source_hints(entry)?;
