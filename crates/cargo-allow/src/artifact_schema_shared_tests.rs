@@ -62,3 +62,17 @@ fn schema_files_require_common_v1_source_tree_contract() {
         );
     }
 }
+
+#[test]
+fn schema_files_reject_unknown_top_level_fields() {
+    for contract in schema_contracts() {
+        let schema = parse_schema(contract.name, contract.schema);
+
+        assert_eq!(
+            schema.get("additionalProperties").and_then(Value::as_bool),
+            Some(false),
+            "{} schema should reject unknown top-level fields",
+            contract.name
+        );
+    }
+}
