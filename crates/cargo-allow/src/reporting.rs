@@ -63,7 +63,7 @@ impl SourceTreeReportContext {
 }
 
 pub(crate) fn unknown_source_syntax_inventory() -> allow_report::InventoryContext<'static> {
-    allow_report::InventoryContext::source_syntax("unknown", None, None)
+    allow_report::InventoryContext::unknown_source_syntax()
 }
 
 pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
