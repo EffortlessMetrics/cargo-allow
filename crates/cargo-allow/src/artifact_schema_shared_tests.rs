@@ -3,6 +3,7 @@ use crate::artifact_schema_support::{
     assert_required_fields, parse_schema, schema_contracts,
 };
 use serde_json::Value;
+use std::collections::BTreeSet;
 
 #[test]
 fn schema_files_require_common_v1_source_tree_contract() {
@@ -75,4 +76,188 @@ fn schema_files_reject_unknown_top_level_fields() {
             contract.name
         );
     }
+}
+
+#[test]
+fn schema_files_keep_explicit_top_level_property_sets() {
+    for (name, expected) in expected_top_level_schema_properties() {
+        let contract = schema_contracts()
+            .into_iter()
+            .find(|contract| contract.name == name)
+            .unwrap_or_else(|| std::panic::panic_any(format!("missing schema contract {name}")));
+        let schema = parse_schema(contract.name, contract.schema);
+
+        let Some(properties) = schema.get("properties").and_then(Value::as_object) else {
+            std::panic::panic_any(format!("{name} schema properties should be an object"));
+        };
+        let actual = properties
+            .keys()
+            .map(String::as_str)
+            .collect::<BTreeSet<_>>();
+        let expected = expected.iter().copied().collect::<BTreeSet<_>>();
+        assert_eq!(actual, expected, "{name} top-level schema properties");
+    }
+}
+
+fn expected_top_level_schema_properties() -> [(&'static str, &'static [&'static str]); 10] {
+    [
+        (
+            "add",
+            &[
+                "allow_entry",
+                "claim_boundary",
+                "command",
+                "inventory",
+                "options",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "selected_finding",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "doctor",
+            &[
+                "claim_boundary",
+                "command",
+                "config",
+                "inventory",
+                "root",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "tool",
+            ],
+        ),
+        (
+            "explain",
+            &[
+                "allow_entry",
+                "claim_boundary",
+                "command",
+                "current_findings",
+                "evidence_references",
+                "inventory",
+                "match_outcomes",
+                "next",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "list",
+            &[
+                "allow_entries",
+                "claim_boundary",
+                "command",
+                "filters",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "migrate",
+            &[
+                "claim_boundary",
+                "command",
+                "input",
+                "inventory",
+                "notes",
+                "output",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "propose",
+            &[
+                "claim_boundary",
+                "command",
+                "generated_entry_defaults",
+                "inventory",
+                "options",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "prune",
+            &[
+                "claim_boundary",
+                "command",
+                "inventory",
+                "mode",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "stale_entries",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "receipt",
+            &[
+                "claim_boundary",
+                "command",
+                "counts",
+                "failed",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "status",
+                "tool",
+            ],
+        ),
+        (
+            "report",
+            &[
+                "claim_boundary",
+                "command",
+                "diff",
+                "failed",
+                "findings",
+                "inventory",
+                "outcomes",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "status",
+                "summary",
+                "tool",
+                "trend",
+            ],
+        ),
+        (
+            "worklist",
+            &[
+                "claim_boundary",
+                "command",
+                "filters",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+                "work_items",
+            ],
+        ),
+    ]
 }
