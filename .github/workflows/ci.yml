@@ -16,8 +16,8 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
-      - run: cargo run -p cargo-allow -- allow audit --format json --output target/cargo-allow/audit.json
-      - run: cargo run -p cargo-allow -- allow check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
+      - run: cargo run -p cargo-allow -- audit --format json --output target/cargo-allow/audit.json
+      - run: cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
       - uses: actions/upload-artifact@v4
         if: always()
         with:
