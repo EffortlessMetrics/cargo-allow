@@ -52,7 +52,7 @@ pub(super) struct WorklistFilters<'a> {
 impl<'a> Default for WorklistContext<'a> {
     fn default() -> Self {
         Self {
-            inventory: allow_report::InventoryContext::source_syntax("unknown", None, None),
+            inventory: crate::reporting::unknown_source_syntax_inventory(),
             filters: WorklistFilters::default(),
         }
     }
