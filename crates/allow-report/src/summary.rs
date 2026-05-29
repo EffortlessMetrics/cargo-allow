@@ -88,7 +88,7 @@ impl ReviewSignals {
     }
 }
 
-pub(crate) fn render_counts_fields_with_policy_baseline(
+pub(crate) fn render_count_fields_with_policy_context(
     summary: &Summary,
     policy_baseline_debt: Option<usize>,
     policy_missing_evidence: Option<usize>,
