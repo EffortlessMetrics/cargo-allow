@@ -79,8 +79,14 @@ fn worklist_items_report_broad_scope_advisories() {
             .iter()
             .any(|command| command == "cargo-allow worklist --broad-scope --format json")
     );
+    assert!(
+        item.proof_commands
+            .iter()
+            .any(|command| command == "cargo-allow worklist --allow-id allow-scripts --format json")
+    );
     assert!(json.contains("\"kind\": \"broad_scope\""));
     assert!(json.contains("\"status\": \"matched\""));
+    assert!(human.contains("proof: cargo-allow worklist --allow-id allow-scripts --format json"));
     assert!(human.contains("proof: cargo-allow worklist --broad-scope --format json"));
     assert!(human.contains("exception: non_rust_file.shell_script"));
 }
@@ -134,8 +140,14 @@ fn worklist_items_report_matched_baseline_debt_advisories() {
             .iter()
             .any(|command| command == "cargo-allow worklist --baseline-debt --format json")
     );
+    assert!(
+        item.proof_commands.iter().any(
+            |command| command == "cargo-allow worklist --allow-id allow-baseline --format json"
+        )
+    );
     assert!(json.contains("\"kind\": \"baseline_debt\""));
     assert!(json.contains("\"status\": \"baseline_debt\""));
+    assert!(human.contains("proof: cargo-allow worklist --allow-id allow-baseline --format json"));
     assert!(human.contains("proof: cargo-allow worklist --baseline-debt --format json"));
     assert!(human.contains("source package: parser"));
     assert!(human.contains("exception: panic.unwrap"));
@@ -204,6 +216,7 @@ fn worklist_items_report_broken_evidence_links() {
     assert!(json.contains("\"kind\": \"broken_evidence_link\""));
     assert!(json.contains("\"exception_kind\": \"unsafe\""));
     assert!(json.contains("\"cargo-allow explain allow-unsafe\""));
+    assert!(json.contains("\"cargo-allow worklist --allow-id allow-unsafe --format json\""));
     assert!(json.contains("\"cargo-allow check --kind unsafe --mode no-new\""));
     assert!(json.contains("\"cargo-allow worklist --kind unsafe --format json\""));
     fs::remove_dir_all(root)

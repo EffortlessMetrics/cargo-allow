@@ -21,7 +21,7 @@ pub(super) fn explain_next_steps(
                 .collect(),
             worklist::proof_commands(&kind, finding, Some(entry))
                 .into_iter()
-                .take(3)
+                .take(4)
                 .collect(),
         );
     }
@@ -35,7 +35,7 @@ pub(super) fn explain_next_steps(
                 .collect(),
             worklist::proof_commands(kind, finding, Some(entry))
                 .into_iter()
-                .take(3)
+                .take(4)
                 .collect(),
         );
     }

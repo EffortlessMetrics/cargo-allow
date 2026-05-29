@@ -88,6 +88,7 @@ fn proof_commands_use_finding_kind_when_present() {
         proof_commands("new_unreceipted_finding", Some(&finding), Some(&entry)),
         vec![
             "cargo-allow explain allow-unsafe",
+            "cargo-allow worklist --allow-id allow-unsafe --format json",
             "cargo-allow check --kind lint-exception --mode no-new",
             "cargo-allow worklist --item-kind new_unreceipted_finding --format json",
             "cargo-allow worklist --kind lint-exception --format json",
@@ -104,6 +105,7 @@ fn proof_commands_map_entry_only_kinds_and_worklist_shortcuts() {
         proof_commands("broad_scope", None, Some(&entry)),
         vec![
             "cargo-allow explain allow-workflow",
+            "cargo-allow worklist --allow-id allow-workflow --format json",
             "cargo-allow check --kind workflow --mode no-new",
             "cargo-allow worklist --broad-scope --format json",
             "cargo-allow worklist --item-kind broad_scope --format json",
@@ -117,6 +119,7 @@ fn proof_commands_map_entry_only_kinds_and_worklist_shortcuts() {
         proof_commands("baseline_debt", None, Some(&entry)),
         vec![
             "cargo-allow explain allow-dependency",
+            "cargo-allow worklist --allow-id allow-dependency --format json",
             "cargo-allow check --kind dependency-surface --mode no-new",
             "cargo-allow worklist --baseline-debt --format json",
             "cargo-allow worklist --item-kind baseline_debt --format json",
@@ -144,6 +147,7 @@ fn proof_commands_cover_policy_family_aliases_and_unknown_policy_fallback() {
             proof_commands("review_due", None, Some(&entry)),
             vec![
                 format!("cargo-allow explain allow-{family}"),
+                format!("cargo-allow worklist --allow-id allow-{family} --format json"),
                 format!("cargo-allow check --kind {kind_arg} --mode no-new"),
                 "cargo-allow worklist --item-kind review_due --format json".to_string(),
                 format!("cargo-allow worklist --kind {kind_arg} --format json"),
@@ -158,6 +162,7 @@ fn proof_commands_cover_policy_family_aliases_and_unknown_policy_fallback() {
         proof_commands("review_due", None, Some(&unknown)),
         vec![
             "cargo-allow explain allow-policy",
+            "cargo-allow worklist --allow-id allow-policy --format json",
             "cargo-allow check --mode no-new",
             "cargo-allow worklist --item-kind review_due --format json",
             "cargo-allow worklist --format json",
@@ -174,6 +179,7 @@ fn unsafe_missing_evidence_adds_unsafe_check_when_kind_is_unknown() {
         proof_commands("unsafe_missing_evidence", None, Some(&entry)),
         vec![
             "cargo-allow explain allow-policy",
+            "cargo-allow worklist --allow-id allow-policy --format json",
             "cargo-allow check --mode no-new",
             "cargo-allow worklist --item-kind unsafe_missing_evidence --format json",
             "cargo-allow worklist --format json",
