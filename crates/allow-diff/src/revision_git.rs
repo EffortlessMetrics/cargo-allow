@@ -2,6 +2,12 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct GitTreeFile {
+    pub(crate) mode: String,
+    pub(crate) path: PathBuf,
+}
+
 pub fn changed_files(
     root: impl AsRef<Path>,
     base: &str,
@@ -33,6 +39,16 @@ pub fn git_tracked_files_at_revision(
     root: impl AsRef<Path>,
     revision: &str,
 ) -> CargoAllowResult<Vec<PathBuf>> {
+    Ok(git_tree_files_at_revision(root, revision)?
+        .into_iter()
+        .map(|entry| entry.path)
+        .collect())
+}
+
+pub(crate) fn git_tree_files_at_revision(
+    root: impl AsRef<Path>,
+    revision: &str,
+) -> CargoAllowResult<Vec<GitTreeFile>> {
     let output = Command::new("git")
         .arg("-C")
         .arg(root.as_ref())
@@ -47,7 +63,7 @@ pub fn git_tracked_files_at_revision(
             "git ls-tree failed for {revision}"
         )));
     }
-    Ok(parse_git_ls_tree_z(&output.stdout))
+    Ok(parse_git_ls_tree_file_entries_z(&output.stdout))
 }
 
 pub fn read_file_at_revision(
@@ -83,7 +99,15 @@ pub fn read_file_at_revision(
     )))
 }
 
+#[cfg(test)]
 pub(crate) fn parse_git_ls_tree_z(stdout: &[u8]) -> Vec<PathBuf> {
+    parse_git_ls_tree_file_entries_z(stdout)
+        .into_iter()
+        .map(|entry| entry.path)
+        .collect()
+}
+
+pub(crate) fn parse_git_ls_tree_file_entries_z(stdout: &[u8]) -> Vec<GitTreeFile> {
     stdout
         .split(|byte| *byte == 0)
         .filter(|record| !record.is_empty())
@@ -91,12 +115,15 @@ pub(crate) fn parse_git_ls_tree_z(stdout: &[u8]) -> Vec<PathBuf> {
         .collect()
 }
 
-fn parse_git_ls_tree_record(record: &[u8]) -> Option<PathBuf> {
+fn parse_git_ls_tree_record(record: &[u8]) -> Option<GitTreeFile> {
     let record = String::from_utf8_lossy(record);
     let (metadata, path) = record.split_once('\t')?;
     let mode = metadata.split_whitespace().next()?;
     if !mode.starts_with("100") {
         return None;
     }
-    Some(PathBuf::from(path))
+    Some(GitTreeFile {
+        mode: mode.to_string(),
+        path: PathBuf::from(path),
+    })
 }

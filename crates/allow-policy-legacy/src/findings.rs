@@ -10,8 +10,8 @@ pub(crate) use crate::finding_generated_executable::{
     executable_finding, executable_findings_from_git_stage, generated_finding,
 };
 pub use crate::finding_generated_executable::{
-    executable_findings_from_git, generated_findings_from_gitattributes,
-    generated_findings_from_gitattributes_text,
+    executable_findings_from_git, executable_findings_from_paths,
+    generated_findings_from_gitattributes, generated_findings_from_gitattributes_text,
 };
 pub(crate) use crate::finding_workflow::workflow_action_symbol;
 #[cfg(test)]

@@ -4,7 +4,7 @@ use allow_core::{
 };
 use std::path::Path;
 
-use crate::revision_git::{git_tracked_files_at_revision, read_file_at_revision};
+use crate::revision_git::{git_tree_files_at_revision, read_file_at_revision};
 
 pub fn findings_at_revision(
     root: impl AsRef<Path>,
@@ -12,8 +12,12 @@ pub fn findings_at_revision(
     cfg: &AllowConfig,
 ) -> CargoAllowResult<Vec<Finding>> {
     let root = root.as_ref();
-    let mut files = git_tracked_files_at_revision(root, revision)?;
-    files.retain(|path| !source_tree_path_is_ignored(path, &cfg.workspace.ignored));
+    let mut tree_files = git_tree_files_at_revision(root, revision)?;
+    tree_files.retain(|entry| !source_tree_path_is_ignored(&entry.path, &cfg.workspace.ignored));
+    let files = tree_files
+        .iter()
+        .map(|entry| entry.path.clone())
+        .collect::<Vec<_>>();
     let mut manifests = Vec::new();
     for rel in files
         .iter()
@@ -62,6 +66,16 @@ pub fn findings_at_revision(
     }
     if has_policy_family(cfg, &["network_destination"]) {
         findings.extend(allow_policy_legacy::network_findings_from_config(cfg));
+    }
+    if has_policy_family(cfg, &["executable_file"]) {
+        let executable_paths = tree_files
+            .iter()
+            .filter(|entry| entry.mode == "100755")
+            .map(|entry| entry.path.clone())
+            .collect::<Vec<_>>();
+        findings.extend(allow_policy_legacy::executable_findings_from_paths(
+            &executable_paths,
+        ));
     }
     findings.extend(allow_policy_legacy::dependency_surface_findings_from_paths(
         &files, cfg,
