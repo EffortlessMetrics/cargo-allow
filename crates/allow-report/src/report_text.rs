@@ -3,6 +3,7 @@ use crate::text::markdown_inline_code;
 use crate::{
     AUDIT_REVIEW_QUEUE_STATUSES, CLAIM_BOUNDARY_TEXT, ReportContext, ReviewSignals,
     STATUS_COUNT_ORDER, Summary, baseline_debt_count, broken_evidence_link_count,
+    policy_missing_evidence_count,
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape};
 
@@ -50,6 +51,12 @@ pub fn render_human_with_context(
         out.push_str(&format!(
             "  {:24} {}\n",
             "policy_baseline_debt", baseline_debt
+        ));
+    }
+    if let Some(policy_missing_evidence) = policy_missing_evidence_note(&summary, context) {
+        out.push_str(&format!(
+            "  {:24} {}\n",
+            "policy_missing_evidence", policy_missing_evidence
         ));
     }
     let broken_evidence_links = broken_evidence_link_count(context);
@@ -135,6 +142,12 @@ pub fn render_markdown_with_context(
     if let Some(baseline_debt) = policy_baseline_debt_note(&summary, context) {
         out.push_str(&format!("| `policy_baseline_debt` | {} |\n", baseline_debt));
     }
+    if let Some(policy_missing_evidence) = policy_missing_evidence_note(&summary, context) {
+        out.push_str(&format!(
+            "| `policy_missing_evidence` | {} |\n",
+            policy_missing_evidence
+        ));
+    }
     let broken_evidence_links = broken_evidence_link_count(context);
     if broken_evidence_links > 0 {
         out.push_str(&format!(
@@ -196,6 +209,10 @@ fn render_audit_summary_markdown(
         summary.count(MatchStatus::EvidenceMissing)
     ));
     out.push_str(&format!(
+        "| Policy missing evidence | {} |\n",
+        signals.policy_missing_evidence
+    ));
+    out.push_str(&format!(
         "| Broken evidence links | {} |\n",
         signals.broken_evidence_links
     ));
@@ -204,6 +221,10 @@ fn render_audit_summary_markdown(
         out.push_str("\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n");
     } else if queue.is_empty() && signals.broken_evidence_links > 0 {
         out.push_str("\nRecommended next step: run `cargo-allow worklist --item-kind broken_evidence_link --format json` to repair broken local evidence references.\n");
+    } else if queue.is_empty()
+        && signals.policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing)
+    {
+        out.push_str("\nRecommended next step: run `cargo-allow worklist --missing-evidence --format json` to route retained entries with no evidence references.\n");
     } else if queue.is_empty() && signals.baseline_debt > 0 {
         out.push_str("\nRecommended next step: run `cargo-allow worklist --format json` to review generated baseline debt.\n");
     } else {
@@ -241,4 +262,10 @@ fn inventory_files_markdown_suffix(context: ReportContext<'_>) -> String {
 fn policy_baseline_debt_note(summary: &Summary, context: ReportContext<'_>) -> Option<usize> {
     let baseline_debt = baseline_debt_count(summary, context);
     (baseline_debt > summary.count(MatchStatus::BaselineDebt)).then_some(baseline_debt)
+}
+
+fn policy_missing_evidence_note(summary: &Summary, context: ReportContext<'_>) -> Option<usize> {
+    let policy_missing_evidence = policy_missing_evidence_count(summary, context);
+    (policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing))
+        .then_some(policy_missing_evidence)
 }

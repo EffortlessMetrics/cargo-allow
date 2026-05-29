@@ -8,7 +8,7 @@ pub(crate) use audit_args::ReportArgs;
 
 use crate::{
     ReportRenderArgs, load_compat_world, load_world_with_evidence_validation,
-    policy_baseline_debt_entries, print_report, report_config,
+    policy_baseline_debt_entries, policy_missing_evidence_entries, print_report, report_config,
 };
 
 pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
@@ -35,6 +35,7 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         command: "audit",
         format: args.format,
         baseline_debt_entries: policy_baseline_debt_entries(&report_cfg),
+        policy_missing_evidence_entries: policy_missing_evidence_entries(&report_cfg),
         broken_evidence_links: broken_evidence_link_count(&root, &report_cfg),
         findings: &findings,
         outcomes: &outcomes,

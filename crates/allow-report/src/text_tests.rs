@@ -155,6 +155,18 @@ fn markdown_audit_report_counts_broken_evidence_links_context() {
 }
 
 #[test]
+fn markdown_audit_report_counts_policy_missing_evidence_context() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
+    context.policy_missing_evidence_entries = Some(4);
+    let text = render_markdown_with_context("audit", &[], &[], false, context);
+
+    assert!(text.contains("| Review items | 4 |"));
+    assert!(text.contains("| Policy missing evidence | 4 |"));
+    assert!(text.contains("worklist --missing-evidence --format json"));
+    assert!(!text.contains("## Audit Review Queue"));
+}
+
+#[test]
 fn text_reports_include_review_due_and_invalid_selector_counts() {
     let outcomes = vec![
         MatchOutcome {
@@ -204,6 +216,18 @@ fn check_text_reports_broken_evidence_links_context() {
     assert!(human.contains("broken_evidence_links"));
     assert!(human.contains("2"));
     assert!(markdown.contains("| `broken_evidence_links` | 2 |"));
+}
+
+#[test]
+fn check_text_reports_policy_missing_evidence_context() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
+    context.policy_missing_evidence_entries = Some(4);
+    let human = render_human_with_context("check", &[], &[], false, context);
+    let markdown = render_markdown_with_context("check", &[], &[], false, context);
+
+    assert!(human.contains("policy_missing_evidence"));
+    assert!(human.contains("4"));
+    assert!(markdown.contains("| `policy_missing_evidence` | 4 |"));
 }
 
 fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {

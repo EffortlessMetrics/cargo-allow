@@ -224,6 +224,11 @@
           "minimum": 0,
           "description": "Policy-level baseline_debt entries retained in the scanned policy. This is distinct from outcome-level baseline_debt status and is present when retained generated debt would otherwise be hidden by matched outcomes."
         },
+        "policy_missing_evidence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Policy-level allow entries with no evidence references. This is distinct from outcome-level evidence_missing status and is present when retained evidence gaps would otherwise be hidden by matched outcomes."
+        },
         "broken_evidence_links": {
           "type": "integer",
           "minimum": 0,
