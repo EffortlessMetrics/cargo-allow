@@ -82,6 +82,11 @@ worklist, prune, propose, add, migrate, and doctor JSON renderers as JSON and
 checks the shared v1 source-tree contract fields. That protects the artifact
 root shape from accidental manual-rendering drift.
 
+Black-box integration tests also parse saved JSON artifacts written by the
+`cargo-allow` binary itself, including `--output` report-style artifacts and
+`--summary-output` add/propose/migrate summaries. That protects the CLI file
+output boundary from drifting away from the renderer-level schema contract.
+
 Schema compatibility tests also lock:
 
 - the exact top-level property set for each schema;

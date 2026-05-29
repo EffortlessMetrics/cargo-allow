@@ -40,6 +40,8 @@ Completed:
 - Harden saved summary-artifact output behavior so `--write`/`--out` plus
   `--summary-output` keeps add, propose, and migrate policy output and summary
   output fully file-backed.
+- Parse saved CLI JSON artifacts from disk in black-box integration tests and
+  assert the shared source-tree contract fields, not just schema ID substrings.
 - Centralize the shared command-artifact JSON preamble in `allow-report` so
   schema IDs, command names, source-tree inventory context, claim boundaries,
   and scanner limitations are rendered through one helper for command-style
