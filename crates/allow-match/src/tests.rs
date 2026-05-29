@@ -87,6 +87,46 @@ fn score_match_accepts_selector_glob_when_entry_path_is_absent() {
 }
 
 #[test]
+fn top_level_glob_matches_when_entry_path_is_absent() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.path = None;
+    entry.glob = Some("src/**/*.rs".to_string());
+
+    assert!(score_match(&entry, &finding).is_some());
+}
+
+#[test]
+fn receiver_fingerprint_substring_match_scores_less_than_exact_match() {
+    let mut finding = finding_with_hash("fnv1a64:actual");
+    finding.identity.receiver_fingerprint = Some("workspace.config.requirements".to_string());
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.selector.receiver_fingerprint = Some("config".to_string());
+
+    let substring_score = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("expected receiver substring match"));
+
+    entry.selector.receiver_fingerprint = Some("workspace.config.requirements".to_string());
+    let exact_score = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("expected exact receiver match"));
+
+    assert_eq!(exact_score - substring_score, 15);
+}
+
+#[test]
+fn target_fingerprint_selector_accepts_structural_substrings() {
+    let mut finding = finding_with_hash("fnv1a64:actual");
+    finding.identity.target_fingerprint = Some("safety-comment:present".to_string());
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.selector.target_fingerprint = Some("comment:present".to_string());
+
+    assert!(score_match(&entry, &finding).is_some());
+
+    entry.selector.target_fingerprint = Some("comment:missing".to_string());
+    assert_eq!(score_match(&entry, &finding), None);
+}
+
+#[test]
 fn score_match_rejects_when_no_path_or_glob_matches() {
     let finding = finding_with_hash("fnv1a64:actual");
     let mut entry = entry_with_hash("fnv1a64:actual");
@@ -95,6 +135,27 @@ fn score_match_rejects_when_no_path_or_glob_matches() {
     entry.selector.glob = Some("examples/**/*.rs".to_string());
 
     assert_eq!(score_match(&entry, &finding), None);
+}
+
+#[test]
+fn check_mode_parse_defaults_unknown_values_to_no_new() {
+    assert_eq!(CheckMode::parse("audit"), CheckMode::Audit);
+    assert_eq!(CheckMode::parse("strict"), CheckMode::Strict);
+    assert_eq!(CheckMode::parse("release"), CheckMode::Release);
+    assert_eq!(CheckMode::parse("no-new"), CheckMode::NoNew);
+    assert_eq!(CheckMode::parse("unexpected"), CheckMode::NoNew);
+}
+
+#[test]
+fn check_mode_failure_policy_matches_enforcement_levels() {
+    assert!(!CheckMode::Audit.fails(MatchStatus::New));
+    assert!(CheckMode::NoNew.fails(MatchStatus::New));
+    assert!(!CheckMode::NoNew.fails(MatchStatus::Stale));
+    assert!(CheckMode::NoNew.fails(MatchStatus::Expired));
+    assert!(CheckMode::Strict.fails(MatchStatus::Stale));
+    assert!(CheckMode::Release.fails(MatchStatus::BaselineDebt));
+    assert!(!CheckMode::Strict.fails(MatchStatus::Matched));
+    assert!(!CheckMode::Release.fails(MatchStatus::ReviewDue));
 }
 
 #[test]
