@@ -1,4 +1,5 @@
 use crate::artifact_contract_support::parse_json_artifact;
+use crate::artifact_schema_support::{parse_schema, schema_contracts};
 use crate::{add, diff, doctor, explain, list, migrate, propose, prune, worklist};
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -272,6 +273,7 @@ fn assert_artifact_contract(
         "{name} tool"
     );
     assert_top_level_keys(name, &value, expected_top_level_keys);
+    assert_schema_covers_sample_top_level_keys(name, expected_schema_id, &value);
     assert_string_array_eq(name, &value, "claim_boundary", allow_report::CLAIM_BOUNDARY);
     assert_string_array_eq(
         name,
@@ -288,6 +290,53 @@ fn assert_top_level_keys(name: &str, value: &Value, expected: &[&str]) {
     let actual = object.keys().map(String::as_str).collect::<BTreeSet<_>>();
     let expected = expected.iter().copied().collect::<BTreeSet<_>>();
     assert_eq!(actual, expected, "{name} top-level keys");
+}
+
+fn assert_schema_covers_sample_top_level_keys(name: &str, expected_schema_id: &str, value: &Value) {
+    let contract = schema_contracts()
+        .into_iter()
+        .find(|contract| contract.schema_id == expected_schema_id)
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "missing schema contract for {name} schema_id {expected_schema_id}"
+            ))
+        });
+    let schema = parse_schema(contract.name, contract.schema);
+    let Some(sample) = value.as_object() else {
+        std::panic::panic_any(format!("{name} sample should be a JSON object"));
+    };
+    let Some(properties) = schema.get("properties").and_then(Value::as_object) else {
+        std::panic::panic_any(format!("{name} schema properties should be an object"));
+    };
+    let allowed = properties
+        .keys()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    let actual = sample.keys().map(String::as_str).collect::<BTreeSet<_>>();
+    let unknown = actual.difference(&allowed).copied().collect::<Vec<_>>();
+    assert!(
+        unknown.is_empty(),
+        "{name} sample emitted top-level keys absent from schema properties: {}",
+        unknown.join(", ")
+    );
+
+    let Some(required) = schema.get("required").and_then(Value::as_array) else {
+        std::panic::panic_any(format!("{name} schema required should be an array"));
+    };
+    let missing = required
+        .iter()
+        .map(|field| {
+            field.as_str().unwrap_or_else(|| {
+                std::panic::panic_any(format!("{name} schema required entries should be strings"))
+            })
+        })
+        .filter(|field| !actual.contains(field))
+        .collect::<Vec<_>>();
+    assert!(
+        missing.is_empty(),
+        "{name} sample omitted schema-required top-level keys: {}",
+        missing.join(", ")
+    );
 }
 
 fn assert_string_array_eq(name: &str, value: &Value, field: &str, expected: &[&str]) {
