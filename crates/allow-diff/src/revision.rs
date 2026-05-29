@@ -57,6 +57,12 @@ pub fn findings_at_revision(
             workflow_sources,
         ));
     }
+    if has_policy_family(cfg, &["process_spawn"]) {
+        findings.extend(allow_policy_legacy::process_findings_from_config(cfg));
+    }
+    if has_policy_family(cfg, &["network_destination"]) {
+        findings.extend(allow_policy_legacy::network_findings_from_config(cfg));
+    }
     findings.extend(allow_policy_legacy::dependency_surface_findings_from_paths(
         &files, cfg,
     ));
