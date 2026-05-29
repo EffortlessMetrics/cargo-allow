@@ -31,6 +31,10 @@ Use `--path <path>` to focus one source-tree path or subtree before assigning
 file-local cleanup.
 Use `--source-package <name>` to focus a source-tree package context already
 reported by the scanner; do not treat that as Cargo metadata or build proof.
+Package context is derived from readable source-tree `Cargo.toml` text when a
+visible `[package].name` exists. Invalid, unreadable, non-UTF8, or
+workspace-only manifests may leave this field absent even when the project has a
+Cargo package.
 Use `--owner <owner>` and `--classification <classification>` to take a bounded
 policy-owner or debt-class slice, such as `--owner unowned --classification
 baseline_debt`.
@@ -49,7 +53,8 @@ Use lifecycle dates and evidence counts to prioritize expiring or weakly
 evidenced policy debt.
 If a work item includes `source_package`, use it only as source-tree context for
 where to focus review; do not infer Cargo metadata, build success, or package
-test coverage from that field.
+test coverage from that field. If it is absent, use the path, allow ID, owner,
+and classification instead of trying to recover build metadata.
 
 Do not add suppressions just to silence cargo-allow.
 Do not broaden selectors, globs, occurrence limits, or expiry dates.

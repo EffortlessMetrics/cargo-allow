@@ -214,9 +214,11 @@ show next actions because generated debt still needs human review. Local
 evidence references are shown as present, missing, or invalid; traceability
 strings are identified as not executed or resolved. Current findings include
 scanner-provided `source_package` context when available; that field is not
-Cargo metadata or build-membership proof. The
-command is still bounded by the normal cargo-allow claim boundary: source syntax
-only, with no macro expansion, macro token-tree expression parsing, type
+Cargo metadata or build-membership proof. It is derived only from readable
+source-tree `Cargo.toml` text with a visible `[package].name`; workspace-only,
+invalid, unreadable, or non-UTF8 manifests simply provide no package context.
+The command is still bounded by the normal cargo-allow claim boundary: source
+syntax only, with no macro expansion, macro token-tree expression parsing, type
 analysis, build output, control-flow analysis, or data-flow analysis.
 `--format json` emits the same single-entry explanation as
 `cargo-allow.explain.v1`, including source-tree inventory context, scanner
@@ -267,7 +269,9 @@ source-tree inventory source, root, `files_scanned` count, and explicit scanner
 limitations when available. The worklist schema enumerates the supported scanner
 limitation values so consumers can distinguish source-tree boundaries from
 arbitrary annotations. `source_package` fields are scanner-provided context
-only; they are not Cargo metadata or build-membership proof.
+only; they are not Cargo metadata or build-membership proof. Missing package
+context means the scanner did not find usable source-tree manifest text for that
+file, not that the file lacks Cargo package membership.
 Worklist output can be filtered by governed kind, scanner family, policy owner,
 policy classification, work item queue kind, match status, source-tree path,
 baseline debt, broad source-tree scopes, missing evidence, risk, and
