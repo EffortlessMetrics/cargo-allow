@@ -375,6 +375,10 @@ files. The policy section currently named `[workspace]` contains source-tree
 inventory settings; it is not a Cargo workspace requirement. `workspace.ignored`
 removes matching inventory paths before scanning, and `workspace.generated`
 marks matching non-Rust file findings as `generated_code`.
+The `workspace.inventory` policy value is canonically `git-tracked`; the parser
+also accepts the artifact-style alias `git_tracked`. This field does not disable
+the normal source-tree fallback behavior when git-tracked inventory is
+unavailable.
 
 The current non-Rust family vocabulary is intentionally explicit:
 `ci_declarative`, `documentation`, `release_script`, `test_fixture`,
