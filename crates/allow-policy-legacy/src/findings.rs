@@ -14,6 +14,6 @@ pub use crate::finding_generated_executable::{
     generated_findings_from_gitattributes_text,
 };
 pub(crate) use crate::finding_workflow::workflow_action_symbol;
-pub use crate::finding_workflow::workflow_findings_from_files;
 #[cfg(test)]
 pub(crate) use crate::finding_workflow::{workflow_action_finding, workflow_file_finding};
+pub use crate::finding_workflow::{workflow_findings_from_files, workflow_findings_from_sources};
