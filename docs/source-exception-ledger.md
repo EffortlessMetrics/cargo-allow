@@ -372,3 +372,7 @@ not a separate schema contract; the stable machine-readable report remains the
 versioned JSON output. Audit summaries also count policy-level
 `baseline_debt` entries so generated adoption debt remains visible even when the
 underlying findings currently match and `check --mode no-new` passes.
+Audit reports can also count broken local evidence links. `audit` treats these
+as evidence-health findings so first-run inventory can finish and route cleanup
+to `cargo-allow worklist --item-kind broken_evidence_link`; `check` still fails
+closed on broken local evidence references.

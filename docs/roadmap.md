@@ -343,6 +343,8 @@ Completed:
   present, missing, invalid, traceability, and unstructured references.
 - Add examples for ripr, unsafe-review, and coverage evidence references while
   keeping the no-execution claim boundary explicit.
+- Count broken local evidence links in audit/report artifacts so first-run
+  inventory can complete while routing evidence repair through the worklist.
 
 ## Phase 12: Agent-Native Worklists
 
