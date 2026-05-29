@@ -91,6 +91,10 @@ impl<'a> InventoryContext<'a> {
         Self::new("source_tree", "source_syntax", source, root, files_scanned)
     }
 
+    pub const fn unknown_source_syntax() -> InventoryContext<'static> {
+        InventoryContext::source_syntax("unknown", None, None)
+    }
+
     pub const fn policy_migration(
         source: &'a str,
         root: Option<&'a str>,
