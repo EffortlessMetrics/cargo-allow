@@ -143,6 +143,41 @@ fn add_schema_locks_selected_finding_and_review_contract() {
         Some("selected"),
         "add selected finding status should stay selected"
     );
+    assert_eq!(
+        schema
+            .pointer("/$defs/finding/properties/identity/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/structural_identity"),
+        "add selected finding identity should use structural identity rows"
+    );
+    let structural_identity = required_schema_pointer("add", &schema, "/$defs/structural_identity");
+    assert_eq!(
+        structural_identity
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "add structural identity should reject unknown fields"
+    );
+    assert_required_fields(
+        "add structural identity",
+        structural_identity,
+        &[
+            "language",
+            "crate_name",
+            "module",
+            "container",
+            "ast_kind",
+            "symbol",
+            "callee",
+            "macro_name",
+            "lint",
+            "receiver_fingerprint",
+            "target_fingerprint",
+            "normalized_snippet_hash",
+            "line_hint",
+            "column_hint",
+        ],
+    );
     assert_schema_type_contains(
         "add selected finding source_package",
         &schema,

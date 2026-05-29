@@ -126,6 +126,66 @@ fn schema_files_keep_explicit_top_level_required_sets() {
     }
 }
 
+#[test]
+fn schema_object_nodes_reject_unknown_fields() {
+    for contract in schema_contracts() {
+        let schema = parse_schema(contract.name, contract.schema);
+        let mut missing = Vec::new();
+
+        collect_object_nodes_missing_additional_properties(&schema, "", &mut missing);
+
+        assert!(
+            missing.is_empty(),
+            "{} object schemas should set additionalProperties=false at: {}",
+            contract.name,
+            missing.join(", ")
+        );
+    }
+}
+
+fn collect_object_nodes_missing_additional_properties(
+    value: &Value,
+    path: &str,
+    missing: &mut Vec<String>,
+) {
+    match value {
+        Value::Object(object) => {
+            let has_properties = object.contains_key("properties");
+            let is_object_type = object.get("type").and_then(Value::as_str) == Some("object");
+            if (has_properties || is_object_type)
+                && object.get("additionalProperties").and_then(Value::as_bool) != Some(false)
+            {
+                missing.push(if path.is_empty() {
+                    "/".to_string()
+                } else {
+                    path.to_string()
+                });
+            }
+            for (key, child) in object {
+                collect_object_nodes_missing_additional_properties(
+                    child,
+                    &format!("{path}/{}", json_pointer_escape(key)),
+                    missing,
+                );
+            }
+        }
+        Value::Array(items) => {
+            for (index, child) in items.iter().enumerate() {
+                collect_object_nodes_missing_additional_properties(
+                    child,
+                    &format!("{path}/{index}"),
+                    missing,
+                );
+            }
+        }
+        _ => {}
+    }
+}
+
+fn json_pointer_escape(value: &str) -> String {
+    value.replace('~', "~0").replace('/', "~1")
+}
+
 fn expected_top_level_schema_properties() -> [(&'static str, &'static [&'static str]); 10] {
     [
         (
