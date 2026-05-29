@@ -37,6 +37,13 @@ Completed:
 - Harden saved JSON artifact output behavior so `--output` writes the requested
   artifact without leaking human status or posture sidecars to stdout or stderr
   for audit, diff, doctor, list, worklist, prune, and explain.
+- Harden saved summary-artifact output behavior so `--write`/`--out` plus
+  `--summary-output` keeps add, propose, and migrate policy output and summary
+  output fully file-backed.
+- Centralize the shared command-artifact JSON preamble in `allow-report` so
+  schema IDs, command names, source-tree inventory context, claim boundaries,
+  and scanner limitations are rendered through one helper for command-style
+  artifacts.
 - Enumerate supported claim-boundary values in report, receipt, list, and
   worklist schemas.
 - Thread source-tree root and inventory file-count facts into reports and
