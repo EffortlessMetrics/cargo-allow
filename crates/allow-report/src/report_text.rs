@@ -3,7 +3,7 @@ use crate::text::markdown_inline_code;
 use crate::{
     AUDIT_REVIEW_QUEUE_STATUSES, CLAIM_BOUNDARY_TEXT, ReportContext, ReviewSignals,
     STATUS_COUNT_ORDER, Summary, baseline_debt_count, broken_evidence_link_count,
-    policy_missing_evidence_count,
+    policy_missing_evidence_count, weak_evidence_reference_count,
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape};
 
@@ -64,6 +64,13 @@ pub fn render_human_with_context(
         out.push_str(&format!(
             "  {:24} {}\n",
             "broken_evidence_links", broken_evidence_links
+        ));
+    }
+    let weak_evidence_references = weak_evidence_reference_count(context);
+    if weak_evidence_references > 0 {
+        out.push_str(&format!(
+            "  {:24} {}\n",
+            "weak_evidence_references", weak_evidence_references
         ));
     }
     if outcomes.is_empty() {
@@ -155,6 +162,13 @@ pub fn render_markdown_with_context(
             broken_evidence_links
         ));
     }
+    let weak_evidence_references = weak_evidence_reference_count(context);
+    if weak_evidence_references > 0 {
+        out.push_str(&format!(
+            "| `weak_evidence_references` | {} |\n",
+            weak_evidence_references
+        ));
+    }
     if command == "audit" {
         render_audit_summary_markdown(&summary, outcomes, context, &mut out);
     }
@@ -216,6 +230,10 @@ fn render_audit_summary_markdown(
         "| Broken evidence links | {} |\n",
         signals.broken_evidence_links
     ));
+    out.push_str(&format!(
+        "| Weak evidence references | {} |\n",
+        signals.weak_evidence_references
+    ));
     out.push_str(&format!("| Baseline debt | {} |\n", signals.baseline_debt));
     if signals.review_items == 0 {
         out.push_str("\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n");
@@ -225,6 +243,8 @@ fn render_audit_summary_markdown(
         && signals.policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing)
     {
         out.push_str("\nRecommended next step: run `cargo-allow worklist --missing-evidence --format json` to route retained entries with no evidence references.\n");
+    } else if queue.is_empty() && signals.weak_evidence_references > 0 {
+        out.push_str("\nRecommended next step: replace unstructured or unknown-prefix evidence with known evidence prefixes before tightening policy.\n");
     } else if queue.is_empty() && signals.baseline_debt > 0 {
         out.push_str("\nRecommended next step: run `cargo-allow worklist --format json` to review generated baseline debt.\n");
     } else {

@@ -41,7 +41,10 @@ fn audit_json_reports_broken_evidence_links_without_aborting() {
         owner: "core/docs".to_string(),
         classification: "reviewed_exception".to_string(),
         reason: "Fixture keeps a broken local evidence link for audit reporting.".to_string(),
-        evidence: vec!["doc:docs/missing-evidence.md".to_string()],
+        evidence: vec![
+            "doc:docs/missing-evidence.md".to_string(),
+            "custom-ticket:source-review".to_string(),
+        ],
         links: Vec::new(),
         occurrence_limit: None,
         lifecycle: Lifecycle {
@@ -76,6 +79,7 @@ fn audit_json_reports_broken_evidence_links_without_aborting() {
     let json = fs::read_to_string(&output_path)
         .unwrap_or_else(|err| std::panic::panic_any(format!("audit output read: {err}")));
     assert!(json.contains("\"broken_evidence_links\": 1"));
+    assert!(json.contains("\"weak_evidence_references\": 1"));
 
     fs::remove_dir_all(&root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));

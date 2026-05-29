@@ -569,6 +569,7 @@ fn counts_missing_and_invalid_local_evidence_links() {
     cfg.allow.push(entry);
 
     assert_eq!(broken_evidence_link_count(&root, &cfg), 2);
+    assert_eq!(weak_evidence_reference_count(&root, &cfg), 1);
     remove_test_dir(root);
 }
 

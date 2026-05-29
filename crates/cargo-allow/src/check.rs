@@ -1,6 +1,6 @@
 use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
-use allow_policy::broken_evidence_link_count;
+use allow_policy::{broken_evidence_link_count, weak_evidence_reference_count};
 use std::process;
 
 #[path = "check_args.rs"]
@@ -35,6 +35,7 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, mode);
     let broken_evidence_links = broken_evidence_link_count(&root, &report_cfg);
+    let weak_evidence_references = weak_evidence_reference_count(&root, &report_cfg);
     let failed = outcomes.iter().any(|o| mode.fails(o.status)) || broken_evidence_links > 0;
     let baseline_debt_entries = policy_baseline_debt_entries(&report_cfg);
     let policy_missing_evidence_entries =
@@ -45,6 +46,7 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
         baseline_debt_entries,
         policy_missing_evidence_entries,
         broken_evidence_links,
+        weak_evidence_references,
         findings: &findings,
         outcomes: &outcomes,
         failed,
@@ -60,6 +62,8 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
                 let mut context = source_context.report(Some(baseline_debt_entries));
                 context.broken_evidence_links =
                     (broken_evidence_links > 0).then_some(broken_evidence_links);
+                context.weak_evidence_references =
+                    (weak_evidence_references > 0).then_some(weak_evidence_references);
                 context.policy_missing_evidence_entries = (policy_missing_evidence_entries > 0)
                     .then_some(policy_missing_evidence_entries);
                 context

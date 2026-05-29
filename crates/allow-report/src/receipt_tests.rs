@@ -51,6 +51,16 @@ fn receipt_counts_broken_evidence_links_context() {
 }
 
 #[test]
+fn receipt_counts_weak_evidence_references_context() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
+    context.weak_evidence_references = Some(2);
+
+    let json = render_receipt_with_context("check", &[], false, context);
+
+    assert!(json.contains("\"weak_evidence_references\": 2"));
+}
+
+#[test]
 fn receipt_counts_policy_missing_evidence_context() {
     let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
     context.policy_missing_evidence_entries = Some(4);

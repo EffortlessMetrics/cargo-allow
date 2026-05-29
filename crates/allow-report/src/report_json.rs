@@ -52,6 +52,7 @@ pub fn render_json_with_context(
         context.baseline_debt_entries,
         context.policy_missing_evidence_entries,
         context.broken_evidence_links,
+        context.weak_evidence_references,
         "    ",
     ));
     out.push_str("  },\n");
@@ -136,6 +137,9 @@ fn render_trend_fields(summary: &Summary, context: ReportContext<'_>, indent: &s
     }
     if signals.broken_evidence_links > 0 {
         fields.push(("broken_evidence_links", signals.broken_evidence_links));
+    }
+    if signals.weak_evidence_references > 0 {
+        fields.push(("weak_evidence_references", signals.weak_evidence_references));
     }
     fields
         .iter()

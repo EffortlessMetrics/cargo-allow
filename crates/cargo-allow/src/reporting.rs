@@ -9,6 +9,7 @@ pub(crate) struct ReportRenderArgs<'a> {
     pub(crate) baseline_debt_entries: usize,
     pub(crate) policy_missing_evidence_entries: usize,
     pub(crate) broken_evidence_links: usize,
+    pub(crate) weak_evidence_references: usize,
     pub(crate) findings: &'a [Finding],
     pub(crate) outcomes: &'a [MatchOutcome],
     pub(crate) failed: bool,
@@ -69,6 +70,8 @@ pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
     let mut context = source_context.report(Some(args.baseline_debt_entries));
     context.broken_evidence_links =
         (args.broken_evidence_links > 0).then_some(args.broken_evidence_links);
+    context.weak_evidence_references =
+        (args.weak_evidence_references > 0).then_some(args.weak_evidence_references);
     context.policy_missing_evidence_entries =
         (args.policy_missing_evidence_entries > 0).then_some(args.policy_missing_evidence_entries);
     let text = match args.format {

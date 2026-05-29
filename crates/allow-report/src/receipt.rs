@@ -35,6 +35,7 @@ pub fn render_receipt_with_context(
         Some(baseline_debt_count(&summary, context)),
         context.policy_missing_evidence_entries,
         context.broken_evidence_links,
+        context.weak_evidence_references,
         "    ",
     ));
     out.push_str("  }\n}\n");

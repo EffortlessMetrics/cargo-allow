@@ -29,6 +29,15 @@ pub fn broken_evidence_link_count(root: impl AsRef<Path>, cfg: &AllowConfig) -> 
         .count()
 }
 
+pub fn weak_evidence_reference_count(root: impl AsRef<Path>, cfg: &AllowConfig) -> usize {
+    let root = root.as_ref();
+    cfg.allow
+        .iter()
+        .flat_map(|entry| evidence_reference_diagnostics(root, entry))
+        .filter(|diagnostic| diagnostic.status == EvidenceReferenceStatus::Unstructured)
+        .count()
+}
+
 fn evidence_reference_validation_error(
     entry: &AllowEntry,
     diagnostic: &EvidenceReferenceDiagnostic,

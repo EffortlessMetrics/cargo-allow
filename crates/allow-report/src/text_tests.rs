@@ -155,6 +155,18 @@ fn markdown_audit_report_counts_broken_evidence_links_context() {
 }
 
 #[test]
+fn markdown_audit_report_counts_weak_evidence_references_context() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
+    context.weak_evidence_references = Some(2);
+    let text = render_markdown_with_context("audit", &[], &[], false, context);
+
+    assert!(text.contains("| Review items | 2 |"));
+    assert!(text.contains("| Weak evidence references | 2 |"));
+    assert!(text.contains("replace unstructured or unknown-prefix evidence"));
+    assert!(!text.contains("## Audit Review Queue"));
+}
+
+#[test]
 fn markdown_audit_report_counts_policy_missing_evidence_context() {
     let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
     context.policy_missing_evidence_entries = Some(4);
@@ -216,6 +228,18 @@ fn check_text_reports_broken_evidence_links_context() {
     assert!(human.contains("broken_evidence_links"));
     assert!(human.contains("2"));
     assert!(markdown.contains("| `broken_evidence_links` | 2 |"));
+}
+
+#[test]
+fn check_text_reports_weak_evidence_references_context() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
+    context.weak_evidence_references = Some(2);
+    let human = render_human_with_context("check", &[], &[], false, context);
+    let markdown = render_markdown_with_context("check", &[], &[], false, context);
+
+    assert!(human.contains("weak_evidence_references"));
+    assert!(human.contains("2"));
+    assert!(markdown.contains("| `weak_evidence_references` | 2 |"));
 }
 
 #[test]
