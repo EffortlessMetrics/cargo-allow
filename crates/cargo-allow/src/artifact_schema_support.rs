@@ -210,25 +210,6 @@ pub(crate) fn assert_inventory_schema(name: &str, schema: &Value) {
     );
 }
 
-pub(crate) fn assert_enum_contains_all(
-    name: &str,
-    schema: &Value,
-    pointer: &str,
-    expected: &[&str],
-) {
-    let Some(items) = schema.pointer(pointer).and_then(Value::as_array) else {
-        std::panic::panic_any(format!("{name} schema {pointer} should be an array"));
-    };
-    for expected_item in expected {
-        assert!(
-            items
-                .iter()
-                .any(|schema_item| schema_item.as_str() == Some(*expected_item)),
-            "{name} schema {pointer} should contain {expected_item}"
-        );
-    }
-}
-
 pub(crate) fn assert_enum_equals(name: &str, schema: &Value, pointer: &str, expected: &[&str]) {
     let Some(items) = schema.pointer(pointer).and_then(Value::as_array) else {
         std::panic::panic_any(format!("{name} {pointer} should be an enum array"));
