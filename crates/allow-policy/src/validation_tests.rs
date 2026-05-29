@@ -253,6 +253,79 @@ fn rejects_line_only_selector() {
 }
 
 #[test]
+fn rejects_zero_selector_line_hint() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "zero-line-hint"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+                line_hint = 0
+            "#,
+    );
+
+    assert!(err.contains("line_hint must be greater than zero"));
+}
+
+#[test]
+fn rejects_zero_last_seen_coordinates() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "zero-last-seen"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+                [allow.last_seen]
+                line = 0
+                column = 1
+            "#,
+    );
+
+    assert!(err.contains("last_seen line must be greater than zero"));
+}
+
+#[test]
+fn rejects_zero_last_seen_column() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "zero-last-seen-column"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+                [allow.last_seen]
+                line = 1
+                column = 0
+            "#,
+    );
+
+    assert!(err.contains("last_seen column must be greater than zero"));
+}
+
+#[test]
 fn rejects_baseline_debt_without_short_expiry() {
     let err = parse_err(
         r#"

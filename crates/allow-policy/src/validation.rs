@@ -46,6 +46,7 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
             validate_glob(&format!("{} selector glob", entry.id), glob)?;
         }
         validate_selector(entry)?;
+        validate_source_hints(entry)?;
         validate_lifecycle(entry)?;
         if cfg.requirements.owner_required && entry.owner.trim().is_empty() {
             return Err(CargoAllowError::new(format!("{} missing owner", entry.id)));
@@ -157,6 +158,30 @@ fn validate_selector(entry: &AllowEntry) -> CargoAllowResult<()> {
             "{} selector must include structural identity beyond line hints",
             entry.id
         )));
+    }
+    Ok(())
+}
+
+fn validate_source_hints(entry: &AllowEntry) -> CargoAllowResult<()> {
+    if entry.selector.line_hint == Some(0) {
+        return Err(CargoAllowError::new(format!(
+            "{} line_hint must be greater than zero",
+            entry.id
+        )));
+    }
+    if let Some(last_seen) = &entry.last_seen {
+        if last_seen.line == 0 {
+            return Err(CargoAllowError::new(format!(
+                "{} last_seen line must be greater than zero",
+                entry.id
+            )));
+        }
+        if last_seen.column == 0 {
+            return Err(CargoAllowError::new(format!(
+                "{} last_seen column must be greater than zero",
+                entry.id
+            )));
+        }
     }
     Ok(())
 }
