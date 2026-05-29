@@ -5,6 +5,8 @@ use crate::{SourceTreeReportContext, load_world, write_file};
 
 #[path = "list_args.rs"]
 mod list_args;
+#[path = "list_filter.rs"]
+mod list_filter;
 #[path = "list_render.rs"]
 mod list_render;
 #[path = "list_rows.rs"]
