@@ -45,7 +45,7 @@ pub(super) struct ListContext<'a> {
 impl<'a> Default for ListContext<'a> {
     fn default() -> Self {
         Self {
-            inventory: allow_report::InventoryContext::source_syntax("unknown", None, None),
+            inventory: crate::reporting::unknown_source_syntax_inventory(),
             kind_arg: None,
         }
     }

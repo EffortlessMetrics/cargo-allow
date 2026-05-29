@@ -62,6 +62,10 @@ impl SourceTreeReportContext {
     }
 }
 
+pub(crate) fn unknown_source_syntax_inventory() -> allow_report::InventoryContext<'static> {
+    allow_report::InventoryContext::source_syntax("unknown", None, None)
+}
+
 pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
     let source_context = SourceTreeReportContext::new(args.root, args.inventory_facts);
     let context = source_context.report(Some(args.baseline_debt_entries));
