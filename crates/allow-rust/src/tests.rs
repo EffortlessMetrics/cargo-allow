@@ -1,7 +1,9 @@
 use allow_core::FindingKind;
 
 use crate::package::{source_package_for_path, source_package_name};
-use crate::text::{index_symbol, index_target_fingerprint};
+use crate::text::{
+    detect_attr, index_symbol, index_target_fingerprint, receiver_before_method_column,
+};
 
 use super::*;
 
@@ -616,6 +618,23 @@ fn load() {}
         Some("policy:allow-lint")
     );
     assert_eq!(expect.span.as_ref().map(|span| span.column), Some(3));
+}
+
+#[test]
+fn detect_attr_returns_text_after_outer_and_inner_prefixes() {
+    assert_eq!(
+        detect_attr("#[allow(dead_code)]", "allow"),
+        Some("dead_code)]")
+    );
+    assert_eq!(
+        detect_attr("#![expect(clippy::unwrap_used)]", "expect"),
+        Some("clippy::unwrap_used)]")
+    );
+}
+
+#[test]
+fn receiver_before_method_column_rejects_non_char_boundary() {
+    assert_eq!(receiver_before_method_column("é.value.expect()", 3), "");
 }
 
 #[test]
