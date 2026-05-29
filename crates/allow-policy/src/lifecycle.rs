@@ -1,8 +1,8 @@
-use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, SimpleDate};
+use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, Requirements, SimpleDate};
 
 const BASELINE_DEBT_MAX_DAYS: i64 = 120;
 
-pub(crate) fn has_real_lifecycle_review(entry: &AllowEntry) -> bool {
+fn has_real_lifecycle_review(entry: &AllowEntry) -> bool {
     let has_review_after = entry
         .lifecycle
         .review_after
@@ -14,6 +14,19 @@ pub(crate) fn has_real_lifecycle_review(entry: &AllowEntry) -> bool {
         .as_deref()
         .is_some_and(|value| !value.trim().is_empty() && value != "never");
     has_review_after || has_expiry
+}
+
+pub(crate) fn validate_lifecycle_requirements(
+    entry: &AllowEntry,
+    requirements: &Requirements,
+) -> CargoAllowResult<()> {
+    if requirements.expires_or_review_after_required && !has_real_lifecycle_review(entry) {
+        return Err(CargoAllowError::new(format!(
+            "{} missing expires or review_after",
+            entry.id
+        )));
+    }
+    Ok(())
 }
 
 pub(crate) fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
