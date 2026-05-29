@@ -156,6 +156,37 @@ fn scan_rust_files_adds_source_package_context_from_manifest() {
 }
 
 #[test]
+fn source_package_context_prefers_nested_manifest() {
+    let packages = source_package_contexts_from_sources([
+        (
+            PathBuf::from("Cargo.toml"),
+            "[package]\nname = \"root\"\n".to_string(),
+        ),
+        (
+            PathBuf::from("crates/parser/Cargo.toml"),
+            "[package]\nname = \"parser\"\n".to_string(),
+        ),
+    ]);
+
+    let package = source_package_for_path(Path::new("crates/parser/src/lib.rs"), &packages)
+        .unwrap_or_else(|| std::panic::panic_any("expected nested package context"));
+
+    assert_eq!(package.name, "parser");
+}
+
+#[test]
+fn source_package_context_does_not_match_sibling_prefixes() {
+    let packages = source_package_contexts_from_sources([(
+        PathBuf::from("crates/parser/Cargo.toml"),
+        "[package]\nname = \"parser\"\n".to_string(),
+    )]);
+
+    assert!(
+        source_package_for_path(Path::new("crates/parser-extra/src/lib.rs"), &packages).is_none()
+    );
+}
+
+#[test]
 fn scan_rust_files_ignores_workspace_manifest_without_package_name() {
     let root = temp_root("workspace-manifest");
     fs::create_dir_all(root.join("src"))
