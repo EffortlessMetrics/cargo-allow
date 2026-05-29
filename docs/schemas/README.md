@@ -149,8 +149,8 @@ Schema compatibility tests also lock:
 - rendered sample artifacts against their registered schema top-level fields;
 - `additionalProperties = false` at the artifact root and nested object schema
   nodes;
-- shared source-tree inventory source values, including git-tracked,
-  filesystem-fallback, include-untracked filesystem inventory, and unknown
+- shared source-tree inventory source values, including `git_tracked`,
+  `filesystem_fallback`, `filesystem_include_untracked`, and `unknown`
   renderer defaults;
 - shared claim-boundary and scanner-limitation vocabularies;
 - report and receipt top-level status values;
