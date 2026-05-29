@@ -1,7 +1,7 @@
 use super::*;
 use allow_core::{
-    AllowConfig, AllowEntry, Finding, FindingKind, Lifecycle, MatchStatus, Selector, Span,
-    StructuralIdentity,
+    AllowConfig, AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, MatchStatus, Selector,
+    Span, StructuralIdentity,
 };
 use std::path::PathBuf;
 
@@ -73,6 +73,64 @@ fn structural_field_mismatch_rejects_match() {
     entry.selector.container = Some("other_container".to_string());
 
     assert_eq!(score_match(&entry, &finding), None);
+}
+
+#[test]
+fn score_match_accepts_selector_glob_when_entry_path_is_absent() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.path = None;
+    entry.glob = None;
+    entry.selector.glob = Some("src/**/*.rs".to_string());
+
+    assert!(score_match(&entry, &finding).is_some());
+}
+
+#[test]
+fn score_match_rejects_when_no_path_or_glob_matches() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.path = None;
+    entry.glob = Some("tests/**/*.rs".to_string());
+    entry.selector.glob = Some("examples/**/*.rs".to_string());
+
+    assert_eq!(score_match(&entry, &finding), None);
+}
+
+#[test]
+fn score_match_scores_exact_receiver_above_partial_receiver() {
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.selector.receiver_fingerprint = Some("value".to_string());
+
+    let mut exact = finding_with_hash("fnv1a64:actual");
+    exact.identity.receiver_fingerprint = Some("value".to_string());
+    let mut partial = finding_with_hash("fnv1a64:actual");
+    partial.identity.receiver_fingerprint = Some("context.value".to_string());
+
+    let exact_score = score_match(&entry, &exact)
+        .unwrap_or_else(|| std::panic::panic_any("exact receiver fingerprint should match"));
+    let partial_score = score_match(&entry, &partial)
+        .unwrap_or_else(|| std::panic::panic_any("partial receiver fingerprint should match"));
+
+    assert!(exact_score > partial_score);
+}
+
+#[test]
+fn score_match_uses_last_seen_line_when_selector_line_hint_is_absent() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.selector.line_hint = None;
+
+    let without_last_seen = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("entry should match without last_seen"));
+    entry.last_seen = Some(LastSeen {
+        line: 50,
+        column: 12,
+    });
+    let with_last_seen = score_match(&entry, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("entry should match with last_seen"));
+
+    assert_eq!(with_last_seen, without_last_seen + 15);
 }
 
 #[test]

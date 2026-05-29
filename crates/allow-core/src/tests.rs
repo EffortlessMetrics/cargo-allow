@@ -118,6 +118,17 @@ fn hash_is_stable() {
 }
 
 #[test]
+fn line_distance_score_uses_documented_buckets() {
+    assert_eq!(maybe_line_distance_score(Some(10), Some(10)), 15);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(13)), 12);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(20)), 8);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(35)), 3);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(36)), 0);
+    assert_eq!(maybe_line_distance_score(None, Some(10)), 0);
+    assert_eq!(maybe_line_distance_score(Some(10), None), 0);
+}
+
+#[test]
 fn structural_identity_key_excludes_line_and_column_hints() {
     let mut first = StructuralIdentity::new("rust", "method_call");
     first.module = Some("parser::span".to_string());
