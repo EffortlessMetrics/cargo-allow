@@ -847,6 +847,41 @@ fn findings_at_revision_includes_config_companions() {
 }
 
 #[test]
+fn findings_at_revision_includes_executable_tree_mode_companions() {
+    let root = temp_root("revision-executable");
+    let script_dir = root.join("scripts");
+    fs::create_dir_all(&script_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("script dir: {err}")));
+    fs::write(script_dir.join("package-proof.sh"), "#!/usr/bin/env bash\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("script write: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(
+        &root,
+        &["update-index", "--chmod=+x", "scripts/package-proof.sh"],
+    );
+    git(&root, &["commit", "-m", "initial"]);
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(executable_entry("scripts/package-proof.sh"));
+
+    let findings = findings_at_revision(&root, "HEAD", &cfg)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("findings: {err}")));
+
+    assert!(findings.iter().any(|finding| {
+        finding.kind == FindingKind::PolicyException
+            && finding.family.as_deref() == Some("executable_file")
+            && finding.path.as_path() == Path::new("scripts/package-proof.sh")
+            && finding.identity.target_fingerprint.as_deref() == Some("git-mode:100755")
+    }));
+    fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
+}
+
+#[test]
 fn git_tree_revision_parser_skips_symlinks_and_preserves_newlines() {
     let output = b"100644 blob abc123\tsrc/lib.rs\0\
 120000 blob def456\tsrc/link.rs\0\
@@ -862,6 +897,21 @@ fn git_tree_revision_parser_skips_symlinks_and_preserves_newlines() {
             PathBuf::from("fixtures/line\nbreak.rs")
         ]
     );
+}
+
+#[test]
+fn git_tree_revision_parser_preserves_executable_modes() {
+    let output = b"100644 blob abc123\tREADME.md\0\
+100755 blob def456\tscripts/package-proof.sh\0\
+120000 blob fedcba\tscripts/link.sh\0";
+
+    let files = revision_git::parse_git_ls_tree_file_entries_z(output);
+
+    assert_eq!(files.len(), 2);
+    assert_eq!(files[0].mode, "100644");
+    assert_eq!(files[0].path, PathBuf::from("README.md"));
+    assert_eq!(files[1].mode, "100755");
+    assert_eq!(files[1].path, PathBuf::from("scripts/package-proof.sh"));
 }
 
 fn config_with(entry: AllowEntry) -> AllowConfig {
@@ -983,6 +1033,34 @@ fn workflow_entry(
             ast_kind: Some(ast_kind.to_string()),
             symbol: Some(path.to_string()),
             target_fingerprint: target_fingerprint.map(str::to_string),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
+fn executable_entry(path: &str) -> AllowEntry {
+    AllowEntry {
+        id: "exec-package-proof".to_string(),
+        kind: FindingKind::PolicyException,
+        family: Some("executable_file".to_string()),
+        path: Some(PathBuf::from(path)),
+        glob: None,
+        owner: "release".to_string(),
+        classification: "executable_file".to_string(),
+        reason: "Release helper intentionally retains an executable bit.".to_string(),
+        evidence: vec!["legacy-policy:executable".to_string()],
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: Some("2026-05-26".to_string()),
+            review_after: Some("2026-08-01".to_string()),
+            expires: None,
+        },
+        selector: Selector {
+            ast_kind: Some("git_executable_file".to_string()),
+            symbol: Some(path.to_string()),
+            target_fingerprint: Some("git-mode:100755".to_string()),
             ..Selector::default()
         },
         last_seen: None,

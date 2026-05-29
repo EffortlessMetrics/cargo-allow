@@ -86,6 +86,10 @@ pub(crate) fn executable_findings_from_git_stage(input: &str) -> Vec<Finding> {
         .collect()
 }
 
+pub fn executable_findings_from_paths(paths: &[PathBuf]) -> Vec<Finding> {
+    paths.iter().cloned().map(executable_finding).collect()
+}
+
 fn executable_path_from_git_stage_line(line: &str) -> Option<PathBuf> {
     let (meta, path) = line.split_once('\t')?;
     let mode = meta.split_whitespace().next()?;

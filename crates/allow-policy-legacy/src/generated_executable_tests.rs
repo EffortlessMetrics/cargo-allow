@@ -1,7 +1,7 @@
 use super::*;
 use crate::findings::{
-    executable_finding, executable_findings_from_git_stage, generated_finding,
-    generated_findings_from_gitattributes_text,
+    executable_finding, executable_findings_from_git_stage, executable_findings_from_paths,
+    generated_finding, generated_findings_from_gitattributes_text,
 };
 use crate::test_support::*;
 use allow_core::FindingKind;
@@ -143,6 +143,21 @@ fn executable_findings_read_git_stage_executable_paths() {
     assert_eq!(finding.identity.ast_kind, "git_executable_file");
     assert_eq!(
         finding.identity.target_fingerprint.as_deref(),
+        Some("git-mode:100755")
+    );
+}
+
+#[test]
+fn executable_findings_can_use_source_tree_paths() {
+    let findings = executable_findings_from_paths(&[PathBuf::from("scripts/package-proof.sh")]);
+
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].kind, FindingKind::PolicyException);
+    assert_eq!(findings[0].family.as_deref(), Some("executable_file"));
+    assert_eq!(findings[0].path, PathBuf::from("scripts/package-proof.sh"));
+    assert_eq!(findings[0].identity.ast_kind, "git_executable_file");
+    assert_eq!(
+        findings[0].identity.target_fingerprint.as_deref(),
         Some("git-mode:100755")
     );
 }
