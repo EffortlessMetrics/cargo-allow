@@ -16,6 +16,7 @@ pub struct ExplainReport<'a> {
     pub inventory: InventoryContext<'a>,
     pub entry: &'a AllowEntry,
     pub selector_precision: u32,
+    pub broad_scope: bool,
     pub current_findings: &'a [Finding],
     pub match_outcomes: &'a [MatchOutcome],
     pub evidence_references: &'a [EvidenceReference<'a>],
