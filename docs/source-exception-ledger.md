@@ -245,11 +245,14 @@ limitations, mode flags, written path when write mode changed the policy, and
 the stale entries selected for removal.
 
 `cargo-allow doctor` validates local setup without executing repository code.
-It reports source-tree root discovery, whether a policy config was found, and
-the source-tree inventory source and file count. `--format json` emits the same
-setup diagnostics as `cargo-allow.doctor.v1` so CI or agent runners can verify
-which source tree and inventory mode a command would use before running wider
-policy checks.
+It reports source-tree root discovery, whether a policy config was found,
+whether that policy parses and passes local validation, any validation
+diagnostic, and the source-tree inventory source and file count. Local policy
+validation includes locally referenced evidence file existence, but it still
+does not execute external evidence tools or repository code. `--format json`
+emits the same setup diagnostics as `cargo-allow.doctor.v1` so CI or agent
+runners can verify which source tree, policy state, and inventory mode a command
+would use before running wider policy checks.
 
 `cargo-allow worklist --format json` turns non-matched no-new outcomes and
 matched `baseline_debt` entries into agent-safe work items. Each item includes a

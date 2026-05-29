@@ -114,7 +114,9 @@ Use JSON artifacts for automation:
 - `diff` for PR posture review.
 - `worklist` for agent routing.
 - `list` and `explain` for policy lookup and interactive tooling.
-- `doctor` for setup diagnostics before wider scans.
+- `doctor` for setup diagnostics before wider scans, including root discovery,
+  inventory mode, config discovery, policy validation, and local evidence-file
+  diagnostics.
 - `propose` for generated-baseline review.
 - `add` for one finding-to-policy-entry proposal summary.
 - `migrate` for legacy-policy conversion receipts.
