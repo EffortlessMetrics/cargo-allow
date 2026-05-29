@@ -170,6 +170,7 @@ path = ".github/workflows/ci.yml"
 owner = "core/ci"
 classification = "ci_configuration"
 reason = "Runs the cargo-allow validation gates and publishes review artifacts for PR and mainline checks."
+evidence = ["doc:docs/ci.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
 
@@ -1112,6 +1113,7 @@ path = "docs/ci.md"
 owner = "core/ci"
 classification = "product_documentation"
 reason = "Documents GitHub Actions patterns for PR posture diffs and mainline checks."
+evidence = ["doc:docs/source-exception-ledger.md", "doc:docs/claim-boundaries.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
 
@@ -1134,6 +1136,7 @@ path = "examples/github-actions/cargo-allow-diff.yml"
 owner = "core/ci"
 classification = "ci_example"
 reason = "Copyable GitHub Actions example for cargo-allow PR posture diffs."
+evidence = ["doc:docs/ci.md", "doc:docs/claim-boundaries.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
 
@@ -1156,6 +1159,7 @@ path = "examples/github-actions/cargo-allow-check.yml"
 owner = "core/ci"
 classification = "ci_example"
 reason = "Copyable GitHub Actions example for cargo-allow mainline no-new checks."
+evidence = ["doc:docs/ci.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
 
