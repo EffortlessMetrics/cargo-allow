@@ -121,6 +121,47 @@ fn detects_scope_narrowing_between_globs() {
 }
 
 #[test]
+fn scope_broadening_respects_directory_segment_boundaries() {
+    let mut widened = entry("allow-1");
+    widened.path = None;
+    widened.glob = Some("src/parse/**".to_string());
+    let head = config_with(widened);
+
+    let changes = policy_changes(&config_with(entry("allow-1")), &head);
+
+    assert!(
+        !changes
+            .iter()
+            .any(|change| change.kind == PolicyChangeKind::ScopeBroadened),
+        "src/parse/** must not be treated as covering src/parser/lib.rs"
+    );
+}
+
+#[test]
+fn glob_scope_changes_respect_directory_segment_boundaries() {
+    let mut base_entry = entry("allow-1");
+    base_entry.path = None;
+    base_entry.glob = Some("src/parser/**".to_string());
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-1");
+    head_entry.path = None;
+    head_entry.glob = Some("src/parse/**".to_string());
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(
+        !changes.iter().any(|change| {
+            matches!(
+                change.kind,
+                PolicyChangeKind::ScopeBroadened | PolicyChangeKind::ScopeNarrowed
+            )
+        }),
+        "sibling directory globs should not be classified as broadened or narrowed"
+    );
+}
+
+#[test]
 fn detects_selector_precision_decrease() {
     let base = config_with(entry("allow-1"));
     let mut weaker = entry("allow-1");
