@@ -174,12 +174,42 @@ fn proof_commands_cover_policy_family_aliases_and_unknown_policy_fallback() {
     let mut unknown = test_entry("allow-policy", FindingKind::PolicyException);
     unknown.family = Some("unknown_policy_family".to_string());
     assert_eq!(
+        proof_commands("baseline_debt", None, Some(&unknown)),
+        vec![
+            "cargo-allow explain allow-policy",
+            "cargo-allow worklist --allow-id allow-policy --format json",
+            "cargo-allow check --mode no-new",
+            "cargo-allow worklist --baseline-debt --format json",
+            "cargo-allow worklist --item-kind baseline_debt --format json",
+            "cargo-allow worklist --format json",
+        ]
+    );
+
+    assert_eq!(
         proof_commands("review_due", None, Some(&unknown)),
         vec![
             "cargo-allow explain allow-policy",
             "cargo-allow worklist --allow-id allow-policy --format json",
             "cargo-allow check --mode no-new",
             "cargo-allow worklist --item-kind review_due --format json",
+            "cargo-allow worklist --format json",
+        ]
+    );
+}
+
+#[test]
+fn missing_evidence_keeps_shortcut_when_kind_is_unknown() {
+    let mut entry = test_entry("allow-policy", FindingKind::PolicyException);
+    entry.family = Some("unknown_policy_family".to_string());
+
+    assert_eq!(
+        proof_commands("missing_evidence", None, Some(&entry)),
+        vec![
+            "cargo-allow explain allow-policy",
+            "cargo-allow worklist --allow-id allow-policy --format json",
+            "cargo-allow check --mode no-new",
+            "cargo-allow worklist --missing-evidence --format json",
+            "cargo-allow worklist --item-kind missing_evidence --format json",
             "cargo-allow worklist --format json",
         ]
     );
