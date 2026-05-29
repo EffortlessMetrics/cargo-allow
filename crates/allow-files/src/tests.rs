@@ -1,4 +1,6 @@
 use super::*;
+use allow_core::{FindingKind, Span};
+use std::path::{Path, PathBuf};
 
 #[test]
 fn rust_is_not_non_rust() {
@@ -12,6 +14,54 @@ fn workflow_is_non_rust() {
         FindingKind::NonRustFile,
         "ci_declarative",
     );
+}
+
+#[test]
+fn scan_files_filters_allowed_paths_and_preserves_order() {
+    let files = vec![
+        PathBuf::from("Cargo.toml"),
+        PathBuf::from("src/lib.rs"),
+        PathBuf::from("docs/guide.md"),
+        PathBuf::from("tools/check.py"),
+    ];
+
+    let findings = scan_files(&files);
+
+    assert_eq!(findings.len(), 2);
+    assert_eq!(findings[0].path, PathBuf::from("docs/guide.md"));
+    assert_eq!(findings[0].family.as_deref(), Some("documentation"));
+    assert_eq!(findings[1].path, PathBuf::from("tools/check.py"));
+    assert_eq!(findings[1].family.as_deref(), Some("python_tool"));
+}
+
+#[test]
+fn classification_populates_identity_span_fingerprint_and_message() {
+    let finding = classify_path(Path::new("tools/Build.SH"))
+        .unwrap_or_else(|| std::panic::panic_any("expected shell script finding"));
+
+    assert_eq!(finding.kind, FindingKind::NonRustFile);
+    assert_eq!(finding.family.as_deref(), Some("shell_script"));
+    assert_eq!(finding.path, PathBuf::from("tools/Build.SH"));
+    assert_eq!(finding.span, Some(Span { line: 1, column: 1 }));
+    assert_eq!(finding.identity.language, "file");
+    assert_eq!(finding.identity.ast_kind, "tracked_file");
+    assert_eq!(finding.identity.symbol.as_deref(), Some("tools/Build.SH"));
+    assert_eq!(finding.identity.target_fingerprint.as_deref(), Some("sh"));
+    assert_eq!(
+        finding.message,
+        "tracked non-Rust file classified as shell_script"
+    );
+}
+
+#[test]
+fn generated_detection_covers_directory_abbreviation_and_suffixes() {
+    for path in [
+        "src/gen/client.rs.txt",
+        "schemas/gen/api.yaml",
+        "src/schema.generated",
+    ] {
+        assert_classification(path, FindingKind::GeneratedCode, "generated_code");
+    }
 }
 
 #[test]
@@ -38,6 +88,8 @@ fn classifies_non_rust_governance_families() {
         "release_script",
     );
     assert_classification("tools/check.sh", FindingKind::NonRustFile, "shell_script");
+    assert_classification("tools/check.bash", FindingKind::NonRustFile, "shell_script");
+    assert_classification("tools/check.ps1", FindingKind::NonRustFile, "shell_script");
     assert_classification("tools/audit.py", FindingKind::NonRustFile, "python_tool");
     assert_classification(
         "tools/report.ts",
@@ -46,11 +98,22 @@ fn classifies_non_rust_governance_families() {
     );
     assert_classification("package.json", FindingKind::NonRustFile, "package_metadata");
     assert_classification(
+        "requirements.txt",
+        FindingKind::NonRustFile,
+        "package_metadata",
+    );
+    assert_classification(
         ".vscode/extensions.json",
         FindingKind::NonRustFile,
         "editor_extension",
     );
+    assert_classification(
+        "project.code-workspace",
+        FindingKind::NonRustFile,
+        "editor_extension",
+    );
     assert_classification(".gitignore", FindingKind::NonRustFile, "configuration");
+    assert_classification(".editorconfig", FindingKind::NonRustFile, "configuration");
     assert_classification(
         "config/settings.yaml",
         FindingKind::NonRustFile,
@@ -82,12 +145,109 @@ fn generated_globs_override_file_family() {
 }
 
 #[test]
+fn scan_files_with_options_marks_globbed_files_as_generated() {
+    let options = FileScanOptions {
+        generated: vec!["schemas/**".to_string()],
+    };
+    let files = vec![
+        PathBuf::from("schemas/api.yaml"),
+        PathBuf::from("tools/audit.py"),
+    ];
+
+    let findings = scan_files_with_options(&files, &options);
+
+    assert_eq!(findings.len(), 2);
+    assert_eq!(findings[0].kind, FindingKind::GeneratedCode);
+    assert_eq!(findings[0].family.as_deref(), Some("generated_code"));
+    assert_eq!(findings[1].kind, FindingKind::NonRustFile);
+    assert_eq!(findings[1].family.as_deref(), Some("python_tool"));
+}
+
+#[test]
+fn configured_generated_globs_match_nested_files_and_windows_separators() {
+    let options = FileScanOptions {
+        generated: vec![r"vendor\**\*.json".to_string()],
+    };
+
+    let finding = classify_path_with_options(Path::new(r"vendor\api\schema.json"), &options)
+        .unwrap_or_else(|| std::panic::panic_any("expected generated file finding"));
+
+    assert_eq!(finding.kind, FindingKind::GeneratedCode);
+    assert_eq!(finding.family.as_deref(), Some("generated_code"));
+    assert_eq!(
+        finding.identity.symbol.as_deref(),
+        Some("vendor/api/schema.json")
+    );
+    assert_eq!(finding.identity.target_fingerprint.as_deref(), Some("json"));
+}
+
+#[test]
+fn built_in_generated_directory_markers_are_detected_at_root_and_nested() {
+    for path in ["gen/bindings.rs.snap", "src/generated/bindings.txt"] {
+        let finding = classify_path(Path::new(path))
+            .unwrap_or_else(|| std::panic::panic_any(format!("expected finding for {path}")));
+
+        assert_eq!(finding.kind, FindingKind::GeneratedCode);
+        assert_eq!(finding.family.as_deref(), Some("generated_code"));
+    }
+}
+
+#[test]
+fn hidden_configuration_and_file_name_fingerprints_are_recorded() {
+    let finding = classify_path(Path::new("config/.env"))
+        .unwrap_or_else(|| std::panic::panic_any("expected .env classification"));
+
+    assert_eq!(finding.kind, FindingKind::NonRustFile);
+    assert_eq!(finding.family.as_deref(), Some("configuration"));
+    assert_eq!(finding.identity.symbol.as_deref(), Some("config/.env"));
+    assert_eq!(finding.identity.target_fingerprint.as_deref(), Some(".env"));
+    assert_eq!(finding.span, Some(Span { line: 1, column: 1 }));
+}
+
+#[test]
+fn scan_files_filters_allowed_inputs_and_preserves_input_order() {
+    let files = vec![
+        PathBuf::from("src/lib.rs"),
+        PathBuf::from("README.md"),
+        PathBuf::from("tools/check.sh"),
+        PathBuf::from("docs/design.md"),
+    ];
+
+    let findings = scan_files(&files);
+
+    assert_eq!(findings.len(), 2);
+    assert_eq!(findings[0].path, PathBuf::from("tools/check.sh"));
+    assert_eq!(findings[0].family.as_deref(), Some("shell_script"));
+    assert_eq!(findings[1].path, PathBuf::from("docs/design.md"));
+    assert_eq!(findings[1].family.as_deref(), Some("documentation"));
+}
+
+#[test]
 fn builtin_cargo_and_license_files_are_not_findings() {
-    assert!(classify_path(Path::new("Cargo.toml")).is_none());
-    assert!(classify_path(Path::new("Cargo.lock")).is_none());
-    assert!(classify_path(Path::new("crates/allow-files/Cargo.toml")).is_none());
-    assert!(classify_path(Path::new("README.md")).is_none());
-    assert!(classify_path(Path::new("LICENSE-MIT")).is_none());
+    for path in [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "rustfmt.toml",
+        "clippy.toml",
+        "crates/allow-files/Cargo.toml",
+        "crates/allow-files/README.md",
+        "README.md",
+        "LICENSE",
+        "LICENSE-MIT",
+        "LICENSE-APACHE",
+    ] {
+        assert!(classify_path(Path::new(path)).is_none(), "{path}");
+    }
+}
+
+#[test]
+fn files_without_extensions_fingerprint_by_lowercase_file_name() {
+    let finding = classify_path(Path::new("bin/TOOL"))
+        .unwrap_or_else(|| std::panic::panic_any("expected extensionless file finding"));
+
+    assert_eq!(finding.family.as_deref(), Some("unknown_non_rust"));
+    assert_eq!(finding.identity.target_fingerprint.as_deref(), Some("tool"));
 }
 
 fn assert_classification(path: &str, kind: FindingKind, family: &str) {
@@ -96,4 +256,70 @@ fn assert_classification(path: &str, kind: FindingKind, family: &str) {
 
     assert_eq!(finding.kind, kind);
     assert_eq!(finding.family.as_deref(), Some(family));
+}
+
+#[test]
+fn scan_files_only_returns_classified_paths_in_input_order() {
+    let files = vec![
+        PathBuf::from("src/lib.rs"),
+        PathBuf::from("tools/check.py"),
+        PathBuf::from("README.md"),
+        PathBuf::from("assets/logo.bin"),
+    ];
+
+    let findings = scan_files(&files);
+
+    assert_eq!(findings.len(), 2);
+    assert_eq!(findings[0].path, PathBuf::from("tools/check.py"));
+    assert_eq!(findings[0].family.as_deref(), Some("python_tool"));
+    assert_eq!(findings[1].path, PathBuf::from("assets/logo.bin"));
+    assert_eq!(findings[1].family.as_deref(), Some("unknown_non_rust"));
+}
+
+#[test]
+fn classification_populates_span_identity_message_and_fingerprint() {
+    let finding = classify_path(Path::new("config/settings.JSON"))
+        .unwrap_or_else(|| std::panic::panic_any("expected configuration file finding"));
+
+    assert_eq!(finding.kind, FindingKind::NonRustFile);
+    assert_eq!(finding.family.as_deref(), Some("configuration"));
+    assert_eq!(finding.span, Some(allow_core::Span { line: 1, column: 1 }));
+    assert_eq!(finding.identity.language, "file");
+    assert_eq!(finding.identity.ast_kind, "tracked_file");
+    assert_eq!(
+        finding.identity.symbol.as_deref(),
+        Some("config/settings.JSON")
+    );
+    assert_eq!(finding.identity.target_fingerprint.as_deref(), Some("json"));
+    assert_eq!(
+        finding.message,
+        "tracked non-Rust file classified as configuration"
+    );
+}
+
+#[test]
+fn generated_detection_covers_gen_directories_and_name_suffixes() {
+    for path in [
+        "src/gen/schema.yaml",
+        "gen/schema.yaml",
+        "src/types.generated",
+        "src/types.generated.yaml",
+    ] {
+        assert_classification(path, FindingKind::GeneratedCode, "generated_code");
+    }
+}
+
+#[test]
+fn builtin_workspace_readmes_and_tool_configs_are_not_findings() {
+    assert!(classify_path(Path::new("crates/allow-files/README.md")).is_none());
+    assert!(classify_path(Path::new("rust-toolchain.toml")).is_none());
+    assert!(classify_path(Path::new("rustfmt.toml")).is_none());
+    assert!(classify_path(Path::new("clippy.toml")).is_none());
+}
+
+#[test]
+fn extension_and_file_name_matching_are_case_insensitive() {
+    assert_classification("DOCS/README.MD", FindingKind::NonRustFile, "documentation");
+    assert_classification("TOOLS/CHECK.PS1", FindingKind::NonRustFile, "shell_script");
+    assert_classification("Package.JSON", FindingKind::NonRustFile, "package_metadata");
 }
