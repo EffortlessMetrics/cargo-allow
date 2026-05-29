@@ -26,17 +26,11 @@ pub(crate) fn parse_json_artifact(
         Some(expected_command),
         "{name} command"
     );
-    assert_json_array_contains(&value, "claim_boundary", "source_tree_inventory", name);
-    assert_json_array_contains(
+    assert_json_array_eq(&value, "claim_boundary", allow_report::CLAIM_BOUNDARY, name);
+    assert_json_array_eq(
         &value,
         "scanner_limitations",
-        "cargo_metadata_not_invoked",
-        name,
-    );
-    assert_json_array_contains(
-        &value,
-        "scanner_limitations",
-        "repository_code_not_executed",
+        allow_report::SCANNER_LIMITATIONS,
         name,
     );
     assert_eq!(
@@ -96,12 +90,17 @@ pub(crate) fn assert_inventory_contract(
     );
 }
 
-fn assert_json_array_contains(value: &Value, field: &str, expected: &str, artifact: &str) {
+fn assert_json_array_eq(value: &Value, field: &str, expected: &[&str], artifact: &str) {
     let Some(items) = value.get(field).and_then(Value::as_array) else {
         std::panic::panic_any(format!("{artifact} {field} should be an array"));
     };
-    assert!(
-        items.iter().any(|item| item.as_str() == Some(expected)),
-        "{artifact} {field} should contain {expected}"
-    );
+    let actual = items
+        .iter()
+        .map(|item| {
+            item.as_str().unwrap_or_else(|| {
+                std::panic::panic_any(format!("{artifact} {field} entries should be strings"))
+            })
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected, "{artifact} {field}");
 }
