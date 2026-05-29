@@ -11,6 +11,13 @@ pub fn dependency_surface_findings_from_git(
     cfg: &AllowConfig,
 ) -> CargoAllowResult<Vec<Finding>> {
     let tracked = git_ls_files(root)?;
+    Ok(dependency_surface_findings_from_paths(&tracked, cfg))
+}
+
+pub fn dependency_surface_findings_from_paths(
+    inventory_paths: &[PathBuf],
+    cfg: &AllowConfig,
+) -> Vec<Finding> {
     let mut paths = BTreeSet::new();
     for entry in &cfg.allow {
         if entry.kind != FindingKind::PolicyException
@@ -18,13 +25,13 @@ pub fn dependency_surface_findings_from_git(
         {
             continue;
         }
-        for path in &tracked {
+        for path in inventory_paths {
             if dependency_entry_matches_path(entry, path) {
-                paths.insert(path.clone());
+                paths.insert(path.to_path_buf());
             }
         }
     }
-    Ok(paths.into_iter().map(dependency_surface_finding).collect())
+    paths.into_iter().map(dependency_surface_finding).collect()
 }
 
 fn git_ls_files(root: impl AsRef<Path>) -> CargoAllowResult<Vec<PathBuf>> {

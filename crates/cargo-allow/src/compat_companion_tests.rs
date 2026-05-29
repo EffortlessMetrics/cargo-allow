@@ -26,6 +26,8 @@ fn canonical_companion_findings_match_migrated_policy_entries() {
         "steps:\n  - uses: actions/checkout@v4\n",
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("workflow write: {err}")));
+    fs::write(dir.join("Cargo.toml"), "[workspace]\nmembers = []\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("workspace manifest write: {err}")));
 
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(companion_entry(
@@ -73,13 +75,24 @@ fn canonical_companion_findings_match_migrated_policy_entries() {
         "crates.io lane build",
         Some("network:crates.io:auth:false:lane:build"),
     ));
+    cfg.allow.push(companion_entry(
+        "dep-cargo-toml",
+        FindingKind::PolicyException,
+        "dependency_surface",
+        "Cargo.toml",
+        "dependency_surface",
+        "Cargo.toml",
+        Some("workspace_manifest"),
+    ));
 
-    let findings = canonical_companion_findings(&dir, &cfg).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("canonical companion findings: {err}"))
-    });
+    let inventory_files = vec![PathBuf::from("Cargo.toml")];
+    let findings =
+        canonical_companion_findings(&dir, &cfg, &inventory_files).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("canonical companion findings: {err}"))
+        });
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
 
-    assert_eq!(findings.len(), 5);
+    assert_eq!(findings.len(), 6);
     assert!(
         outcomes
             .iter()

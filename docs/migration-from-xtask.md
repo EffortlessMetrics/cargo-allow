@@ -104,10 +104,10 @@ cargo-allow check --compat --kind dependency-surface
 ```
 
 That mode preserves the legacy checker's boundary: it verifies that configured
-dependency-surface patterns still match tracked files, then reports those
-matched surfaces as `policy_exception.dependency_surface`. It does not yet
-perform full unlisted-manifest discovery across every dependency manifest or
-lockfile in the scanned source tree.
+dependency-surface patterns still match scanned source-tree inventory files,
+then reports those matched surfaces as `policy_exception.dependency_surface`.
+It does not yet perform full unlisted-manifest discovery across every
+dependency manifest or lockfile in the scanned source tree.
 
 Process-policy compat is available for shiplog-style
 `policy/process-allowlist.toml`:

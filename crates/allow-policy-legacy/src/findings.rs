@@ -1,7 +1,9 @@
 pub use crate::finding_config::{network_findings_from_config, process_findings_from_config};
 #[cfg(test)]
 pub(crate) use crate::finding_dependency::dependency_surface_finding;
-pub use crate::finding_dependency::dependency_surface_findings_from_git;
+pub use crate::finding_dependency::{
+    dependency_surface_findings_from_git, dependency_surface_findings_from_paths,
+};
 pub(crate) use crate::finding_generated_executable::file_fingerprint;
 #[cfg(test)]
 pub(crate) use crate::finding_generated_executable::{
