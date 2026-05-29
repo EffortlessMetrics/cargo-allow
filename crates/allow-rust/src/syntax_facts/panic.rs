@@ -1,3 +1,4 @@
+use allow_core::normalize_snippet;
 use tree_sitter::Node;
 
 use crate::syntax_kinds::{
@@ -52,12 +53,34 @@ fn panic_method_call(node: Node<'_>, source: &str) -> Option<(u32, PanicMethodCa
     let field = function.child_by_field_name("field")?;
     let method_name = node_text(source, field)?;
     let kind = PanicMethodKind::from_name(method_name)?;
+    let receiver_fingerprint = function
+        .child_by_field_name("value")
+        .and_then(|receiver| node_text(source, receiver))
+        .and_then(receiver_fingerprint);
     let start = field.start_position();
     Some((
         start.row as u32 + 1,
         PanicMethodCall {
             kind,
             column: start.column as u32 + 1,
+            receiver_fingerprint,
         },
     ))
+}
+
+fn receiver_fingerprint(text: &str) -> Option<String> {
+    let fingerprint = normalize_snippet(text);
+    if fingerprint.is_empty() {
+        return None;
+    }
+    Some(
+        fingerprint
+            .chars()
+            .rev()
+            .take(80)
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect(),
+    )
 }

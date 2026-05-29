@@ -1,9 +1,7 @@
 use allow_core::FindingKind;
 
 use crate::package::{source_package_for_path, source_package_name};
-use crate::text::{
-    detect_attr, index_symbol, index_target_fingerprint, receiver_before_method_column,
-};
+use crate::text::{detect_attr, index_symbol, index_target_fingerprint};
 
 use super::*;
 
@@ -74,7 +72,7 @@ fn syntax_panic_methods_record_non_empty_receiver_fingerprint() {
 }
 
 #[test]
-fn syntax_panic_methods_omit_empty_receiver_fingerprint() {
+fn syntax_panic_methods_record_multiline_receiver_fingerprint() {
     let src = r#"
         fn load() {
             parse_policy(
@@ -89,7 +87,32 @@ fn syntax_panic_methods_omit_empty_receiver_fingerprint() {
         .find(|f| f.kind == FindingKind::Panic && f.family.as_deref() == Some("expect"))
         .unwrap_or_else(|| std::panic::panic_any("expected expect finding"));
 
-    assert_eq!(expect.identity.receiver_fingerprint, None);
+    assert!(
+        expect
+            .identity
+            .receiver_fingerprint
+            .as_deref()
+            .is_some_and(|receiver| receiver.contains("parse_policy"))
+    );
+}
+
+#[test]
+fn syntax_panic_methods_record_unicode_receiver_fingerprint() {
+    let src = r#"
+        fn load(é_value: Result<(), ()>) {
+            é_value.expect("loaded");
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let expect = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Panic && f.family.as_deref() == Some("expect"))
+        .unwrap_or_else(|| std::panic::panic_any("expected expect finding"));
+
+    assert_eq!(
+        expect.identity.receiver_fingerprint.as_deref(),
+        Some("é_value")
+    );
 }
 
 #[test]
@@ -746,11 +769,6 @@ fn detect_attr_returns_text_after_outer_and_inner_prefixes() {
         detect_attr("#![expect(clippy::unwrap_used)]", "expect"),
         Some("clippy::unwrap_used)]")
     );
-}
-
-#[test]
-fn receiver_before_method_column_rejects_non_char_boundary() {
-    assert_eq!(receiver_before_method_column("é.value.expect()", 3), "");
 }
 
 #[test]
