@@ -249,7 +249,7 @@
         "baseline_debt": {
           "type": "integer",
           "minimum": 0,
-          "description": "Outcome-status count for baseline debt outcomes. Policy-level baseline debt inventory is reported under trend.baseline_debt when available."
+          "description": "Outcome-status count for baseline debt outcomes. Policy-level baseline debt inventory may also be reported under summary.policy_baseline_debt and trend.baseline_debt when available."
         },
         "policy_baseline_debt": {
           "type": "integer",
@@ -314,7 +314,7 @@
         "baseline_debt": {
           "type": "integer",
           "minimum": 0,
-          "description": "Policy-level count of generated baseline_debt entries when available; otherwise the baseline_debt outcome count."
+          "description": "Policy-level count of generated baseline_debt entries when available; otherwise the baseline_debt outcome count. Prefer summary.policy_baseline_debt for explicit policy-level debt when present."
         }
       }
     },
