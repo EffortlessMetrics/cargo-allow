@@ -1,5 +1,5 @@
 use crate::artifact_schema_support::{
-    assert_enum_contains_all, assert_required_fields, assert_schema_type_contains, parse_schema,
+    assert_enum_equals, assert_required_fields, assert_schema_type_contains, parse_schema,
     required_schema_pointer,
 };
 use serde_json::Value;
@@ -33,7 +33,7 @@ fn doctor_schema_locks_setup_artifact_contract() {
         "doctor root should reject unknown fields"
     );
     assert_required_fields("doctor root", root, &["path", "discovery"]);
-    assert_enum_contains_all(
+    assert_enum_equals(
         "doctor",
         &schema,
         "/properties/root/properties/discovery/enum",
