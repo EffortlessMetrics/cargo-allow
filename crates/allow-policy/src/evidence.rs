@@ -10,32 +10,9 @@ pub fn validate_local_evidence_references(
 ) -> CargoAllowResult<()> {
     let root = root.as_ref();
     for entry in &cfg.allow {
-        for evidence in &entry.evidence {
-            let Some(reference) = EvidenceReference::parse(evidence) else {
-                continue;
-            };
-            if reference.kind.is_local_file() {
-                validate_path_scope(
-                    &format!("{} evidence `{}`", entry.id, reference.raw),
-                    reference.value.as_ref(),
-                )?;
-                let path = root.join(&reference.value);
-                let metadata = path.metadata().map_err(|_| {
-                    CargoAllowError::new(format!(
-                        "{} evidence `{}` references missing local file {}",
-                        entry.id,
-                        reference.raw,
-                        reference.value.display()
-                    ))
-                })?;
-                if !metadata.is_file() {
-                    return Err(CargoAllowError::new(format!(
-                        "{} evidence `{}` must reference a local file, not a directory: {}",
-                        entry.id,
-                        reference.raw,
-                        reference.value.display()
-                    )));
-                }
+        for diagnostic in evidence_reference_diagnostics(root, entry) {
+            if let Some(error) = evidence_reference_validation_error(entry, &diagnostic) {
+                return Err(error);
             }
         }
     }
@@ -158,5 +135,43 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             status: EvidenceReferenceStatus::LocalFileMissing,
             message: "local evidence file is missing".to_string(),
         },
+    }
+}
+
+fn evidence_reference_validation_error(
+    entry: &AllowEntry,
+    diagnostic: &EvidenceReferenceDiagnostic,
+) -> Option<CargoAllowError> {
+    match diagnostic.status {
+        EvidenceReferenceStatus::LocalFilePresent
+        | EvidenceReferenceStatus::TraceabilityOnly
+        | EvidenceReferenceStatus::Unstructured => None,
+        EvidenceReferenceStatus::LocalFileMissing => {
+            let target = diagnostic.target.as_ref()?;
+            Some(CargoAllowError::new(format!(
+                "{} evidence `{}` references missing local file {}",
+                entry.id,
+                diagnostic.raw,
+                target.display()
+            )))
+        }
+        EvidenceReferenceStatus::InvalidLocalPath if diagnostic.message.contains("not a file") => {
+            let target = diagnostic.target.as_ref()?;
+            Some(CargoAllowError::new(format!(
+                "{} evidence `{}` must reference a local file, not a directory: {}",
+                entry.id,
+                diagnostic.raw,
+                target.display()
+            )))
+        }
+        EvidenceReferenceStatus::InvalidLocalPath => Some(CargoAllowError::new(format!(
+            "{} evidence `{}` {}",
+            entry.id,
+            diagnostic.raw,
+            diagnostic
+                .message
+                .strip_prefix("evidence ")
+                .unwrap_or(&diagnostic.message)
+        ))),
     }
 }
