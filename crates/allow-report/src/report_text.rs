@@ -46,6 +46,12 @@ pub fn render_human_with_context(
             out.push_str(&format!("  {:24} {}\n", status.as_str(), count));
         }
     }
+    if let Some(baseline_debt) = policy_baseline_debt_note(&summary, context) {
+        out.push_str(&format!(
+            "  {:24} {}\n",
+            "policy_baseline_debt", baseline_debt
+        ));
+    }
     if outcomes.is_empty() {
         out.push_str("  no outcomes\n");
     }
@@ -118,6 +124,9 @@ pub fn render_markdown_with_context(
     for status in STATUS_COUNT_ORDER {
         let count = summary.count(status);
         out.push_str(&format!("| `{}` | {} |\n", status.as_str(), count));
+    }
+    if let Some(baseline_debt) = policy_baseline_debt_note(&summary, context) {
+        out.push_str(&format!("| `policy_baseline_debt` | {} |\n", baseline_debt));
     }
     if command == "audit" {
         render_audit_summary_markdown(&summary, outcomes, context, &mut out);
@@ -208,4 +217,9 @@ fn inventory_files_markdown_suffix(context: ReportContext<'_>) -> String {
         .files_scanned
         .map(|files| format!("; files scanned: `{files}`"))
         .unwrap_or_default()
+}
+
+fn policy_baseline_debt_note(summary: &Summary, context: ReportContext<'_>) -> Option<usize> {
+    let baseline_debt = baseline_debt_count(summary, context);
+    (baseline_debt > summary.count(MatchStatus::BaselineDebt)).then_some(baseline_debt)
 }
