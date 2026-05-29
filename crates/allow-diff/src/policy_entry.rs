@@ -165,6 +165,14 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
             "evidence added",
         ));
     }
+    if baseline_debt_normalized(base, head) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::BaselineDebtNormalized,
+            PolicyChangeSeverity::Fail,
+            "baseline_debt classification changed to reviewed policy",
+        ));
+    }
     if removed_required_text(&base.owner, &head.owner) {
         changes.push(change(
             head,
@@ -230,6 +238,12 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
         ));
     }
     changes
+}
+
+fn baseline_debt_normalized(base: &AllowEntry, head: &AllowEntry) -> bool {
+    base.classification == "baseline_debt"
+        && !head.classification.trim().is_empty()
+        && head.classification != "baseline_debt"
 }
 
 fn change(
