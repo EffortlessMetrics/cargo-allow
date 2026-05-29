@@ -10,7 +10,8 @@ pub(super) fn record_index_expression(node: Node<'_>, source: &str, facts: &mut 
 
     let start = node.start_position();
     let text = node_text(source, node).unwrap_or_default();
-    let bracket_offset = text.find('[').unwrap_or(0);
+    let bracket_offset =
+        direct_index_bracket_offset(node).unwrap_or_else(|| text.find('[').unwrap_or(0));
     let (row_delta, column_delta) = offset_position(text, bracket_offset);
     let line = start.row as u32 + row_delta + 1;
     let column = if row_delta == 0 {
@@ -23,6 +24,13 @@ pub(super) fn record_index_expression(node: Node<'_>, source: &str, facts: &mut 
         .entry(line)
         .and_modify(|existing| *existing = (*existing).min(column))
         .or_insert(column);
+}
+
+fn direct_index_bracket_offset(node: Node<'_>) -> Option<usize> {
+    let mut cursor = node.walk();
+    node.children(&mut cursor)
+        .find(|child| child.kind() == "[")
+        .map(|child| child.start_byte().saturating_sub(node.start_byte()))
 }
 
 fn offset_position(text: &str, offset: usize) -> (u32, u32) {
