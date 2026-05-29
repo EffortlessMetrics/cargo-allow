@@ -23,6 +23,11 @@ pub const ARTIFACT_STATUS_PASSED: &str = "passed";
 pub const ARTIFACT_STATUS_FAILED: &str = "failed";
 pub const ARTIFACT_STATUSES: &[&str] = &[ARTIFACT_STATUS_PASSED, ARTIFACT_STATUS_FAILED];
 
+pub const INVENTORY_SCOPE_SOURCE_TREE: &str = "source_tree";
+pub const INVENTORY_SCANNER_SOURCE_SYNTAX: &str = "source_syntax";
+pub const INVENTORY_SCANNER_POLICY_MIGRATION: &str = "policy_migration";
+pub const INVENTORY_SOURCE_UNKNOWN: &str = "unknown";
+
 pub const CLAIM_BOUNDARY: &[&str] = &[
     "source_tree_inventory",
     "source_syntax_only",
@@ -92,11 +97,17 @@ impl<'a> InventoryContext<'a> {
         root: Option<&'a str>,
         files_scanned: Option<usize>,
     ) -> Self {
-        Self::new("source_tree", "source_syntax", source, root, files_scanned)
+        Self::new(
+            INVENTORY_SCOPE_SOURCE_TREE,
+            INVENTORY_SCANNER_SOURCE_SYNTAX,
+            source,
+            root,
+            files_scanned,
+        )
     }
 
     pub const fn unknown_source_syntax() -> InventoryContext<'static> {
-        InventoryContext::source_syntax("unknown", None, None)
+        InventoryContext::source_syntax(INVENTORY_SOURCE_UNKNOWN, None, None)
     }
 
     pub const fn policy_migration(
@@ -105,8 +116,8 @@ impl<'a> InventoryContext<'a> {
         files_scanned: Option<usize>,
     ) -> Self {
         Self::new(
-            "source_tree",
-            "policy_migration",
+            INVENTORY_SCOPE_SOURCE_TREE,
+            INVENTORY_SCANNER_POLICY_MIGRATION,
             source,
             root,
             files_scanned,

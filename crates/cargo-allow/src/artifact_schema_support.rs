@@ -176,7 +176,7 @@ pub(crate) fn assert_inventory_schema(name: &str, schema: &Value) {
         inventory_schema
             .pointer("/properties/scope/const")
             .and_then(Value::as_str),
-        Some("source_tree"),
+        Some(allow_report::INVENTORY_SCOPE_SOURCE_TREE),
         "{name} inventory scope"
     );
     let Some(scanner_schema) = inventory_schema.pointer("/properties/scanner") else {
@@ -190,9 +190,14 @@ pub(crate) fn assert_inventory_schema(name: &str, schema: &Value) {
             .is_some_and(|items| items.iter().any(|item| item.as_str() == Some(expected)))
     };
     let scanner_matches_contract =
-        matches!(scanner_const, Some("source_syntax" | "policy_migration"))
-            || scanner_enum_contains("source_syntax")
-            || scanner_enum_contains("policy_migration");
+        matches!(
+            scanner_const,
+            Some(
+                allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX
+                    | allow_report::INVENTORY_SCANNER_POLICY_MIGRATION
+            )
+        ) || scanner_enum_contains(allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX)
+            || scanner_enum_contains(allow_report::INVENTORY_SCANNER_POLICY_MIGRATION);
     assert!(
         scanner_matches_contract,
         "{name} inventory scanner should identify source_syntax or policy_migration"
