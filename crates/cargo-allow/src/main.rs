@@ -42,8 +42,6 @@ mod artifact_contract_tests;
 #[cfg(test)]
 mod artifact_schema_add_tests;
 #[cfg(test)]
-mod artifact_schema_common_tests;
-#[cfg(test)]
 mod artifact_schema_doctor_tests;
 #[cfg(test)]
 mod artifact_schema_explain_tests;
@@ -55,6 +53,8 @@ mod artifact_schema_propose_tests;
 mod artifact_schema_prune_tests;
 #[cfg(test)]
 mod artifact_schema_report_tests;
+#[cfg(test)]
+mod artifact_schema_shared_tests;
 #[cfg(test)]
 mod artifact_schema_support;
 #[cfg(test)]
