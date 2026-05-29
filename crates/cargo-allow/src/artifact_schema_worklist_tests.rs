@@ -1,6 +1,6 @@
 use crate::artifact_schema_support::{
     assert_enum_contains_all, assert_enum_equals, assert_required_fields,
-    assert_schema_type_contains, parse_schema, required_schema_pointer,
+    assert_schema_type_contains, match_status_enum, parse_schema, required_schema_pointer,
 };
 use crate::worklist::WORK_ITEM_KINDS;
 use serde_json::Value;
@@ -83,7 +83,7 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         "worklist",
         &schema,
         "/$defs/filters/properties/status/enum",
-        &["matched", "new", "baseline_debt"],
+        &match_status_enum(),
     );
     assert_enum_contains_all(
         "worklist",
@@ -167,6 +167,12 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
             "suggested_actions",
             "proof_commands",
         ],
+    );
+    assert_enum_equals(
+        "worklist item status",
+        &schema,
+        "/$defs/work_item/properties/status/enum",
+        &match_status_enum(),
     );
     assert_enum_equals(
         "worklist item kind",

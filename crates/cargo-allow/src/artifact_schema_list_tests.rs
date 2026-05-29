@@ -1,6 +1,6 @@
 use crate::artifact_schema_support::{
-    assert_enum_equals, assert_required_fields, governed_kind_enum, parse_schema,
-    required_schema_pointer,
+    assert_enum_equals, assert_required_fields, governed_kind_enum, match_status_enum,
+    parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
 
@@ -75,5 +75,11 @@ fn list_schema_locks_allow_entry_kind_contract() {
         &schema,
         "/$defs/allow_entry/properties/kind/enum",
         &governed_kind_enum(),
+    );
+    assert_enum_equals(
+        "list allow entry status",
+        &schema,
+        "/$defs/allow_entry/properties/status/enum",
+        &match_status_enum(),
     );
 }

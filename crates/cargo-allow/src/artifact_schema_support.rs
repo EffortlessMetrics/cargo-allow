@@ -8,6 +8,13 @@ pub(crate) fn governed_kind_enum() -> Vec<&'static str> {
         .collect()
 }
 
+pub(crate) fn match_status_enum() -> Vec<&'static str> {
+    allow_core::MatchStatus::ALL
+        .iter()
+        .map(|status| status.as_str())
+        .collect()
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SchemaContract {
     pub(crate) name: &'static str,
