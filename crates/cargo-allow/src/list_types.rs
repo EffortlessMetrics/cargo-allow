@@ -36,17 +36,8 @@ pub(super) struct ListFilters<'a> {
     pub(super) missing_evidence: bool,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub(super) struct ListContext<'a> {
     pub(super) inventory: allow_report::InventoryContext<'a>,
     pub(super) kind_arg: Option<&'a str>,
-}
-
-impl<'a> Default for ListContext<'a> {
-    fn default() -> Self {
-        Self {
-            inventory: allow_report::InventoryContext::unknown_source_syntax(),
-            kind_arg: None,
-        }
-    }
 }

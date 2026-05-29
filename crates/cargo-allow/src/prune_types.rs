@@ -1,16 +1,8 @@
 use allow_core::FindingKind;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub(super) struct PruneContext<'a> {
     pub(super) inventory: allow_report::InventoryContext<'a>,
-}
-
-impl<'a> Default for PruneContext<'a> {
-    fn default() -> Self {
-        Self {
-            inventory: allow_report::InventoryContext::unknown_source_syntax(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
