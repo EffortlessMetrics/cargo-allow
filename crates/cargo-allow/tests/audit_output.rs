@@ -3,7 +3,7 @@ mod support;
 use std::fs;
 
 use support::{
-    assert_file_contains, assert_status, assert_stderr_empty, assert_stdout_empty,
+    assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
     cargo_allow_command, remove_temp_root, temp_root,
 };
 
@@ -36,11 +36,7 @@ fn audit_with_output_file_does_not_emit_human_status_to_stderr() {
         &result,
         "--output should not emit human status to stderr",
     );
-    assert_file_contains(
-        &output,
-        "\"schema_id\": \"cargo-allow.report.v1\"",
-        "audit output should be a report artifact",
-    );
+    assert_saved_json_artifact(&output, "audit", "cargo-allow.report.v1", "audit");
 
     remove_temp_root(root);
 }
