@@ -277,8 +277,23 @@
           "pattern": "^work-[a-z0-9-]+-[0-9]{4}$"
         },
         "kind": {
-          "type": "string",
-          "minLength": 1
+          "enum": [
+            "new_unreceipted_finding",
+            "occurrence_limit_exceeded",
+            "expired_allow",
+            "stale_allow",
+            "ambiguous_selector",
+            "unsafe_missing_evidence",
+            "missing_evidence",
+            "missing_required_field",
+            "invalid_selector",
+            "baseline_debt",
+            "review_due",
+            "matched",
+            "broad_scope",
+            "broken_evidence_link"
+          ],
+          "description": "Stable queue item kind emitted by cargo-allow worklist."
         },
         "exception_kind": {
           "type": ["string", "null"],
