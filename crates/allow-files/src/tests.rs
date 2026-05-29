@@ -27,11 +27,13 @@ fn scan_files_filters_allowed_paths_and_preserves_order() {
 
     let findings = scan_files(&files);
 
-    assert_eq!(findings.len(), 2);
-    assert_eq!(findings[0].path, PathBuf::from("docs/guide.md"));
-    assert_eq!(findings[0].family.as_deref(), Some("documentation"));
-    assert_eq!(findings[1].path, PathBuf::from("tools/check.py"));
-    assert_eq!(findings[1].family.as_deref(), Some("python_tool"));
+    assert_eq!(findings.len(), 3);
+    assert_eq!(findings[0].path, PathBuf::from("Cargo.toml"));
+    assert_eq!(findings[0].family.as_deref(), Some("package_metadata"));
+    assert_eq!(findings[1].path, PathBuf::from("docs/guide.md"));
+    assert_eq!(findings[1].family.as_deref(), Some("documentation"));
+    assert_eq!(findings[2].path, PathBuf::from("tools/check.py"));
+    assert_eq!(findings[2].family.as_deref(), Some("python_tool"));
 }
 
 #[test]
@@ -66,6 +68,13 @@ fn generated_detection_covers_directory_abbreviation_and_suffixes() {
 
 #[test]
 fn classifies_non_rust_governance_families() {
+    assert_classification("Cargo.toml", FindingKind::NonRustFile, "package_metadata");
+    assert_classification("Cargo.lock", FindingKind::NonRustFile, "package_metadata");
+    assert_classification(
+        "crates/allow-files/Cargo.toml",
+        FindingKind::NonRustFile,
+        "package_metadata",
+    );
     assert_classification("docs/design.md", FindingKind::NonRustFile, "documentation");
     assert_classification(
         "generated/schema.json",
@@ -223,14 +232,11 @@ fn scan_files_filters_allowed_inputs_and_preserves_input_order() {
 }
 
 #[test]
-fn builtin_cargo_and_license_files_are_not_findings() {
+fn builtin_license_readme_and_tool_config_files_are_not_findings() {
     for path in [
-        "Cargo.toml",
-        "Cargo.lock",
         "rust-toolchain.toml",
         "rustfmt.toml",
         "clippy.toml",
-        "crates/allow-files/Cargo.toml",
         "crates/allow-files/README.md",
         "README.md",
         "LICENSE",

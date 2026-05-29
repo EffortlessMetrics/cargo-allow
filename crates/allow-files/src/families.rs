@@ -56,7 +56,9 @@ fn is_editor_extension(path: &str, file_name: &str) -> bool {
 fn is_package_metadata(file_name: &str) -> bool {
     matches!(
         file_name,
-        "package.json"
+        "cargo.toml"
+            | "cargo.lock"
+            | "package.json"
             | "package-lock.json"
             | "pnpm-lock.yaml"
             | "yarn.lock"
