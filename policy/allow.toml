@@ -412,6 +412,7 @@ path = "docs/README.md"
 owner = "core/policy"
 classification = "product_documentation"
 reason = "Documentation index for the cargo-allow product lane."
+evidence = ["doc:docs/design.md", "doc:docs/roadmap.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
 
@@ -721,6 +722,7 @@ path = "docs/design.md"
 owner = "core/policy"
 classification = "product_documentation"
 reason = "Defines cargo-allow as the source-exception governance layer."
+evidence = ["doc:docs/source-exception-ledger.md", "doc:docs/claim-boundaries.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
 
@@ -743,6 +745,7 @@ path = "docs/claim-boundaries.md"
 owner = "core/policy"
 classification = "product_documentation"
 reason = "Defines what cargo-allow reports may and may not claim."
+evidence = ["doc:docs/design.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
 
@@ -765,6 +768,7 @@ path = "docs/roadmap.md"
 owner = "core/policy"
 classification = "product_documentation"
 reason = "Records the PR-sized roadmap from MVP to source-exception ledger."
+evidence = ["doc:docs/design.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
 
@@ -787,6 +791,7 @@ path = "docs/source-exception-ledger.md"
 owner = "core/policy"
 classification = "product_documentation"
 reason = "Documents the canonical ledger entry model and selector expectations."
+evidence = ["doc:docs/design.md", "doc:docs/claim-boundaries.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
 
@@ -809,6 +814,7 @@ path = "docs/migration-from-xtask.md"
 owner = "core/policy"
 classification = "product_documentation"
 reason = "Defines the migration path from bespoke xtasks into cargo-allow."
+evidence = ["doc:docs/source-exception-ledger.md", "doc:docs/roadmap.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
 
@@ -1260,6 +1266,7 @@ path = "docs/crate-namespace.md"
 owner = "core/policy"
 classification = "product_documentation"
 reason = "Defines the first-party crate namespace policy for cargo-allow libraries."
+evidence = ["doc:docs/design.md", "doc:docs/roadmap.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
 
