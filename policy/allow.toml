@@ -831,6 +831,7 @@ path = "docs/schemas/report.schema.json"
 owner = "core/policy"
 classification = "report_contract_schema"
 reason = "Defines the stable v1 JSON report contract emitted by cargo-allow."
+evidence = ["doc:docs/schemas/README.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
 
@@ -853,6 +854,7 @@ path = "docs/schemas/receipt.schema.json"
 owner = "core/policy"
 classification = "report_contract_schema"
 reason = "Defines the stable v1 JSON receipt contract emitted by cargo-allow."
+evidence = ["doc:docs/schemas/README.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
 
@@ -875,6 +877,7 @@ path = "docs/schemas/worklist.schema.json"
 owner = "core/policy"
 classification = "worklist_contract_schema"
 reason = "Defines the stable v1 JSON worklist contract emitted by cargo-allow."
+evidence = ["doc:docs/schemas/README.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
 
@@ -897,6 +900,7 @@ path = "docs/schemas/list.schema.json"
 owner = "core/policy"
 classification = "list_contract_schema"
 reason = "Defines the stable v1 JSON list contract emitted by cargo-allow."
+evidence = ["doc:docs/schemas/README.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
 
@@ -919,6 +923,7 @@ path = "docs/schemas/explain.schema.json"
 owner = "core/policy"
 classification = "explain_contract_schema"
 reason = "Defines the stable v1 JSON explain contract emitted by cargo-allow."
+evidence = ["doc:docs/schemas/README.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
 
@@ -941,6 +946,7 @@ path = "docs/schemas/README.md"
 owner = "core/policy"
 classification = "schema_index_documentation"
 reason = "Documents the versioned machine-readable artifact schemas and their source-tree claim boundary."
+evidence = ["doc:docs/source-exception-ledger.md", "doc:docs/claim-boundaries.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
 
@@ -963,6 +969,7 @@ path = "docs/schemas/prune.schema.json"
 owner = "core/policy"
 classification = "prune_contract_schema"
 reason = "Defines the stable v1 JSON prune contract emitted by cargo-allow."
+evidence = ["doc:docs/schemas/README.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
 
@@ -985,6 +992,7 @@ path = "docs/schemas/doctor.schema.json"
 owner = "core/policy"
 classification = "doctor_contract_schema"
 reason = "Defines the stable v1 JSON doctor contract emitted by cargo-allow."
+evidence = ["doc:docs/schemas/README.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
 
@@ -1007,6 +1015,7 @@ path = "docs/schemas/propose.schema.json"
 owner = "core/policy"
 classification = "propose_contract_schema"
 reason = "Defines the stable v1 JSON propose summary contract emitted by cargo-allow."
+evidence = ["doc:docs/schemas/README.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
 
@@ -1029,6 +1038,7 @@ path = "docs/schemas/add.schema.json"
 owner = "core/policy"
 classification = "add_contract_schema"
 reason = "Defines the stable v1 JSON add summary contract emitted by cargo-allow."
+evidence = ["doc:docs/schemas/README.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
 
@@ -1051,6 +1061,7 @@ path = "docs/schemas/migrate.schema.json"
 owner = "core/policy"
 classification = "migrate_contract_schema"
 reason = "Defines the stable v1 JSON migration summary contract emitted by cargo-allow."
+evidence = ["doc:docs/schemas/README.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
 
