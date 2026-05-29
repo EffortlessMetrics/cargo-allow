@@ -123,10 +123,10 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             }
         }
     }
-    if args.format == OutputFormat::Json && !policy_changes.is_empty() {
+    if args.format == OutputFormat::Json && args.output.is_none() && !policy_changes.is_empty() {
         eprintln!("{}", render_policy_changes_human(&policy_changes));
     }
-    if args.format == OutputFormat::Json && !finding_changes.is_empty() {
+    if args.format == OutputFormat::Json && args.output.is_none() && !finding_changes.is_empty() {
         eprintln!("{}", render_finding_posture_changes_human(&finding_changes));
     }
     emit_text(args.output.as_deref(), &text)?;
