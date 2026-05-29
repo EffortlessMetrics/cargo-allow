@@ -87,7 +87,36 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
 
 #[cfg(test)]
 pub(crate) fn sample_worklist_json_for_contract_test() -> String {
-    let items = Vec::new();
+    let items = vec![WorkItem {
+        id: "work-baseline-debt-0001".to_string(),
+        kind: "baseline_debt".to_string(),
+        exception_kind: Some("panic".to_string()),
+        family: Some("unwrap".to_string()),
+        owner: Some("core/parser".to_string()),
+        classification: Some("baseline_debt".to_string()),
+        reason: Some("Generated baseline debt requires human review.".to_string()),
+        created: Some("2026-05-29".to_string()),
+        review_after: Some("2026-06-29".to_string()),
+        expires: Some("2026-08-29".to_string()),
+        evidence_count: Some(1),
+        risk: worklist_priority::RISK_MEDIUM,
+        difficulty: worklist_priority::DIFFICULTY_MEDIUM,
+        status: allow_core::MatchStatus::BaselineDebt,
+        allow_id: Some("allow-baseline".to_string()),
+        finding_index: Some(0),
+        path: Some("src/lib.rs".to_string()),
+        source_package: Some("parser".to_string()),
+        message: "allow-baseline is generated baseline debt and still needs human review"
+            .to_string(),
+        suggested_actions: vec![
+            "replace generated baseline debt with a reviewed allow entry".to_string(),
+            "or remove the underlying exception".to_string(),
+        ],
+        proof_commands: vec![
+            "cargo-allow explain allow-baseline".to_string(),
+            "cargo-allow worklist --allow-id allow-baseline --format json".to_string(),
+        ],
+    }];
     render_worklist_json_with_context(
         &items,
         WorklistContext {

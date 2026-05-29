@@ -45,8 +45,36 @@ fn command_json_artifact_renderers_emit_parseable_v1_contracts() {
         worklist
             .pointer("/summary/work_items")
             .and_then(Value::as_u64),
-        Some(0),
+        Some(1),
         "worklist work_items"
+    );
+    assert_eq!(
+        worklist
+            .pointer("/work_items/0/kind")
+            .and_then(Value::as_str),
+        Some("baseline_debt"),
+        "worklist item kind"
+    );
+    assert_eq!(
+        worklist
+            .pointer("/work_items/0/allow_id")
+            .and_then(Value::as_str),
+        Some("allow-baseline"),
+        "worklist allow id"
+    );
+    assert_eq!(
+        worklist
+            .pointer("/work_items/0/source_package")
+            .and_then(Value::as_str),
+        Some("parser"),
+        "worklist source package"
+    );
+    assert_eq!(
+        worklist
+            .pointer("/work_items/0/proof_commands/1")
+            .and_then(Value::as_str),
+        Some("cargo-allow worklist --allow-id allow-baseline --format json"),
+        "worklist allow-id proof command"
     );
 
     let prune_json = prune::sample_prune_json_for_contract_test();
