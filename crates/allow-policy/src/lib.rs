@@ -17,6 +17,7 @@ mod starter;
 mod toml_de;
 mod toml_entry;
 mod toml_model;
+mod toml_sections;
 mod validation;
 pub use evidence::{
     EvidenceReferenceDiagnostic, EvidenceReferenceStatus, evidence_reference_diagnostics,
