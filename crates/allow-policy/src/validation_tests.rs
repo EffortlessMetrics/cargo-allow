@@ -253,6 +253,49 @@ fn rejects_line_only_selector() {
 }
 
 #[test]
+fn rejects_empty_selector_identity_field() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "empty-selector-field"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = ""
+            "#,
+    );
+
+    assert!(err.contains("selector ast_kind must not be empty"));
+}
+
+#[test]
+fn rejects_blank_selector_identity_field_even_with_other_identity() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "blank-selector-field"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                normalized_snippet_hash = "   "
+            "#,
+    );
+
+    assert!(err.contains("selector normalized_snippet_hash must not be empty"));
+}
+
+#[test]
 fn rejects_zero_selector_line_hint() {
     let err = parse_err(
         r#"

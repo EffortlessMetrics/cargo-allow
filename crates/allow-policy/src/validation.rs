@@ -143,6 +143,30 @@ fn validate_glob(label: &str, glob: &str) -> CargoAllowResult<()> {
 
 fn validate_selector(entry: &AllowEntry) -> CargoAllowResult<()> {
     let selector = &entry.selector;
+    for (field, value) in [
+        ("ast_kind", selector.ast_kind.as_deref()),
+        ("container", selector.container.as_deref()),
+        ("callee", selector.callee.as_deref()),
+        ("macro_name", selector.macro_name.as_deref()),
+        ("lint", selector.lint.as_deref()),
+        ("symbol", selector.symbol.as_deref()),
+        (
+            "receiver_fingerprint",
+            selector.receiver_fingerprint.as_deref(),
+        ),
+        ("target_fingerprint", selector.target_fingerprint.as_deref()),
+        (
+            "normalized_snippet_hash",
+            selector.normalized_snippet_hash.as_deref(),
+        ),
+    ] {
+        if value.is_some_and(|text| text.trim().is_empty()) {
+            return Err(CargoAllowError::new(format!(
+                "{} selector {field} must not be empty",
+                entry.id
+            )));
+        }
+    }
     let has_identity = selector.ast_kind.is_some()
         || selector.container.is_some()
         || selector.callee.is_some()

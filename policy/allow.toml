@@ -245,7 +245,6 @@ expires = "2026-08-01"
 ast_kind = "method_call"
 container = "recursive_inventory_skips_symlinked_directories"
 callee = "expect"
-receiver_fingerprint = ""
 normalized_snippet_hash = "fnv1a64:a7d4f5ee76bfce87"
 line_hint = 201
 
@@ -429,7 +428,6 @@ expires = "2026-08-01"
 ast_kind = "method_call"
 container = "parses_policy_with_allow"
 callee = "expect"
-receiver_fingerprint = ""
 normalized_snippet_hash = "fnv1a64:d89cea4b9dc969d2"
 line_hint = 31
 
