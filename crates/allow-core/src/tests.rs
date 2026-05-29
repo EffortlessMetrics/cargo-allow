@@ -174,6 +174,7 @@ fn maybe_line_distance_score_covers_boundary_bands() {
     assert_eq!(maybe_line_distance_score(Some(10), Some(36)), 0);
     assert_eq!(maybe_line_distance_score(None, Some(10)), 0);
     assert_eq!(maybe_line_distance_score(Some(10), None), 0);
+    assert_eq!(maybe_line_distance_score(None, None), 0);
 }
 
 #[test]
@@ -225,25 +226,31 @@ fn allow_config_empty_sets_document_defaults() {
 
 #[test]
 fn match_status_strings_and_failure_modes_cover_all_statuses() {
-    let cases = [
-        (MatchStatus::Matched, "matched", false, false),
-        (MatchStatus::New, "new", true, true),
-        (MatchStatus::Stale, "stale", true, false),
-        (MatchStatus::Expired, "expired", true, true),
-        (MatchStatus::ReviewDue, "review_due", false, false),
-        (MatchStatus::Ambiguous, "ambiguous", true, true),
-        (MatchStatus::InvalidSelector, "invalid_selector", true, true),
-        (
-            MatchStatus::MissingRequiredField,
-            "missing_required_field",
-            true,
-            true,
-        ),
-        (MatchStatus::EvidenceMissing, "evidence_missing", true, true),
-        (MatchStatus::BaselineDebt, "baseline_debt", true, false),
-    ];
+    for status in [
+        MatchStatus::Matched,
+        MatchStatus::New,
+        MatchStatus::Stale,
+        MatchStatus::Expired,
+        MatchStatus::ReviewDue,
+        MatchStatus::Ambiguous,
+        MatchStatus::InvalidSelector,
+        MatchStatus::MissingRequiredField,
+        MatchStatus::EvidenceMissing,
+        MatchStatus::BaselineDebt,
+    ] {
+        let (expected_name, strict_failure, no_new_failure) = match status {
+            MatchStatus::Matched => ("matched", false, false),
+            MatchStatus::New => ("new", true, true),
+            MatchStatus::Stale => ("stale", true, false),
+            MatchStatus::Expired => ("expired", true, true),
+            MatchStatus::ReviewDue => ("review_due", false, false),
+            MatchStatus::Ambiguous => ("ambiguous", true, true),
+            MatchStatus::InvalidSelector => ("invalid_selector", true, true),
+            MatchStatus::MissingRequiredField => ("missing_required_field", true, true),
+            MatchStatus::EvidenceMissing => ("evidence_missing", true, true),
+            MatchStatus::BaselineDebt => ("baseline_debt", true, false),
+        };
 
-    for (status, expected_name, strict_failure, no_new_failure) in cases {
         assert_eq!(status.as_str(), expected_name);
         assert_eq!(status.is_failure_in_strict(), strict_failure, "{status:?}");
         assert_eq!(status.is_failure_in_no_new(), no_new_failure, "{status:?}");
