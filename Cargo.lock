@@ -25,6 +25,7 @@ dependencies = [
  "allow-core",
  "allow-files",
  "allow-policy",
+ "allow-policy-legacy",
  "allow-rust",
 ]
 

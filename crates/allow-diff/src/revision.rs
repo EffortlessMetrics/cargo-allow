@@ -38,5 +38,8 @@ pub fn findings_at_revision(
             generated: cfg.workspace.generated.clone(),
         },
     ));
+    findings.extend(allow_policy_legacy::dependency_surface_findings_from_paths(
+        &files, cfg,
+    ));
     Ok(findings)
 }

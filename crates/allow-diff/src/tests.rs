@@ -691,6 +691,33 @@ fn findings_at_revision_applies_workspace_ignored_globs() {
 }
 
 #[test]
+fn findings_at_revision_includes_dependency_surface_companions() {
+    let root = temp_root("revision-dependency-surface");
+    fs::write(root.join("Cargo.toml"), "[workspace]\nmembers = []\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("manifest write: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "initial"]);
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(dependency_surface_entry("Cargo.toml"));
+
+    let findings = findings_at_revision(&root, "HEAD", &cfg)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("findings: {err}")));
+
+    assert!(findings.iter().any(|finding| {
+        finding.kind == FindingKind::PolicyException
+            && finding.family.as_deref() == Some("dependency_surface")
+            && finding.path.as_path() == Path::new("Cargo.toml")
+    }));
+    fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
+}
+
+#[test]
 fn git_tree_revision_parser_skips_symlinks_and_preserves_newlines() {
     let output = b"100644 blob abc123\tsrc/lib.rs\0\
 120000 blob def456\tsrc/link.rs\0\
@@ -737,6 +764,34 @@ fn entry(id: &str) -> AllowEntry {
             container: Some("load".to_string()),
             callee: Some("unwrap".to_string()),
             normalized_snippet_hash: Some("fnv1a64:1234".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
+fn dependency_surface_entry(path: &str) -> AllowEntry {
+    AllowEntry {
+        id: "dep-cargo-toml".to_string(),
+        kind: FindingKind::PolicyException,
+        family: Some("dependency_surface".to_string()),
+        path: Some(PathBuf::from(path)),
+        glob: None,
+        owner: "release".to_string(),
+        classification: "dependency_surface".to_string(),
+        reason: "Dependency surface is governed by policy.".to_string(),
+        evidence: vec!["legacy-policy:dependency-surface".to_string()],
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: Some("2026-05-26".to_string()),
+            review_after: Some("2026-08-01".to_string()),
+            expires: None,
+        },
+        selector: Selector {
+            ast_kind: Some("dependency_surface".to_string()),
+            symbol: Some(path.to_string()),
+            target_fingerprint: Some("workspace_manifest".to_string()),
             ..Selector::default()
         },
         last_seen: None,
