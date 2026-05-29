@@ -123,11 +123,11 @@ missing file.
 Receipts may use the same optional count under `counts.broken_evidence_links`.
 
 Report JSON may also include `summary.policy_missing_evidence` and
-`trend.policy_missing_evidence` when retained policy entries have no evidence
-references even though they otherwise match current findings. Receipts may use
-the same optional count under `counts.policy_missing_evidence`. This is
-distinct from outcome-level `evidence_missing`, which reflects enforced
-evidence requirements.
+`trend.policy_missing_evidence` when retained non-baseline policy entries have
+no evidence references even though they otherwise match current findings.
+Receipts may use the same optional count under
+`counts.policy_missing_evidence`. This is distinct from outcome-level
+`evidence_missing`, which reflects enforced evidence requirements.
 
 `audit` treats these as evidence-health signals so first-run inventory can still
 complete and route cleanup work. `check` fails closed on broken local evidence

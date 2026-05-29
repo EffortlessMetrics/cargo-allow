@@ -19,4 +19,6 @@ pub(crate) use crate::reporting::{
 };
 pub(crate) use crate::selector::selector_from_finding;
 pub(crate) use crate::world::{load_world, load_world_with_evidence_validation};
-pub(crate) use allow_report::{policy_baseline_debt_entries, policy_missing_evidence_entries};
+pub(crate) use allow_report::{
+    matched_policy_missing_evidence_entries, policy_baseline_debt_entries,
+};
