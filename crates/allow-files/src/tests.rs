@@ -1,6 +1,6 @@
 use super::*;
-use allow_core::FindingKind;
-use std::path::Path;
+use allow_core::{FindingKind, Span};
+use std::path::{Path, PathBuf};
 
 #[test]
 fn rust_is_not_non_rust() {
