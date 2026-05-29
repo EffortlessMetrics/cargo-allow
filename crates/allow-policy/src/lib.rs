@@ -15,6 +15,7 @@ mod scope_validation;
 mod selector_validation;
 mod starter;
 mod toml_de;
+mod toml_entry;
 mod toml_model;
 mod validation;
 pub use evidence::{
