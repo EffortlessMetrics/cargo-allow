@@ -60,6 +60,27 @@ impl Summary {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ReviewSignals {
+    pub(crate) baseline_debt: usize,
+    pub(crate) broken_evidence_links: usize,
+    pub(crate) review_items: usize,
+}
+
+impl ReviewSignals {
+    pub(crate) fn from_summary(summary: &Summary, context: ReportContext<'_>) -> Self {
+        let baseline_debt = baseline_debt_count(summary, context);
+        let broken_evidence_links = broken_evidence_link_count(context);
+        let review_items =
+            review_item_count_with_baseline(summary, baseline_debt, broken_evidence_links);
+        Self {
+            baseline_debt,
+            broken_evidence_links,
+            review_items,
+        }
+    }
+}
+
 pub(crate) fn render_counts_fields_with_policy_baseline(
     summary: &Summary,
     policy_baseline_debt: Option<usize>,

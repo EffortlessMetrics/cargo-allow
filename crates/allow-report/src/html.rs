@@ -2,9 +2,8 @@ use allow_core::{Finding, MatchOutcome, MatchStatus};
 
 use crate::text::html_escape;
 use crate::{
-    CLAIM_BOUNDARY_TEXT, FilePosture, ReportContext, STATUS_COUNT_ORDER, Summary,
-    audit_review_queue, baseline_debt_count, broken_evidence_link_count, non_rust_file_rows,
-    review_item_count_with_baseline,
+    CLAIM_BOUNDARY_TEXT, FilePosture, ReportContext, ReviewSignals, STATUS_COUNT_ORDER, Summary,
+    audit_review_queue, non_rust_file_rows,
 };
 
 pub fn render_html(
@@ -94,21 +93,18 @@ fn render_audit_summary_html(
     context: ReportContext<'_>,
     out: &mut String,
 ) {
-    let baseline_debt = baseline_debt_count(summary, context);
-    let broken_evidence_links = broken_evidence_link_count(context);
-    let review_items =
-        review_item_count_with_baseline(summary, baseline_debt, broken_evidence_links);
+    let signals = ReviewSignals::from_summary(summary, context);
     let queue = audit_review_queue(outcomes);
     out.push_str("<h2>Audit Summary</h2>\n");
     out.push_str("<table><thead><tr><th>Signal</th><th>Count</th></tr></thead><tbody>\n");
     for (name, value) in [
         ("Match outcomes", summary.total),
-        ("Review items", review_items),
+        ("Review items", signals.review_items),
         ("New unreceipted", summary.count(MatchStatus::New)),
         ("Expired", summary.count(MatchStatus::Expired)),
         ("Evidence gaps", summary.count(MatchStatus::EvidenceMissing)),
-        ("Broken evidence links", broken_evidence_links),
-        ("Baseline debt", baseline_debt),
+        ("Broken evidence links", signals.broken_evidence_links),
+        ("Baseline debt", signals.baseline_debt),
     ] {
         out.push_str(&format!(
             "<tr><td>{}</td><td class=\"count\">{}</td></tr>\n",
@@ -117,11 +113,11 @@ fn render_audit_summary_html(
         ));
     }
     out.push_str("</tbody></table>\n");
-    if review_items == 0 {
+    if signals.review_items == 0 {
         out.push_str("<p>Recommended next step: keep <code>cargo-allow check --mode no-new</code> in CI.</p>\n");
-    } else if queue.is_empty() && broken_evidence_links > 0 {
+    } else if queue.is_empty() && signals.broken_evidence_links > 0 {
         out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --item-kind broken_evidence_link --format json</code> to repair broken local evidence references.</p>\n");
-    } else if queue.is_empty() && baseline_debt > 0 {
+    } else if queue.is_empty() && signals.baseline_debt > 0 {
         out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --format json</code> to review generated baseline debt.</p>\n");
     } else {
         out.push_str(
