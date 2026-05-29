@@ -2,6 +2,7 @@ use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+mod entry_validation;
 mod evidence;
 mod lifecycle;
 mod render;
