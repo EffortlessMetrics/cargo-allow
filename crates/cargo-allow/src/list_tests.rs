@@ -142,6 +142,34 @@ fn list_rows_report_lifecycle_stale_and_baseline_status() {
 }
 
 #[test]
+fn list_rows_report_broad_scope_from_selector_glob() {
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-broad", FindingKind::NonRustFile);
+    entry.selector.glob = Some("scripts/**".to_string());
+    cfg.allow.push(entry);
+    let findings = vec![test_finding(
+        FindingKind::NonRustFile,
+        None,
+        "scripts/release.sh",
+        "tracked_file",
+    )];
+    let outcomes = vec![test_outcome(
+        MatchStatus::Matched,
+        Some("allow-broad"),
+        Some(0),
+        "matched",
+    )];
+
+    let rows = list_rows(&cfg, &findings, &outcomes);
+
+    assert!(
+        rows.iter()
+            .find(|row| row.id == "allow-broad")
+            .is_some_and(|row| row.broad_scope)
+    );
+}
+
+#[test]
 fn render_list_rows_json_records_context_filters_and_rows() {
     let json = sample_list_json_for_contract_test();
     let value = parse_json("list artifact", &json);
@@ -165,6 +193,7 @@ fn render_list_rows_json_records_context_filters_and_rows() {
     assert!(json.contains("\"source_package\": \"allow-core\""));
     assert!(json.contains("\"evidence_count\": 2"));
     assert!(json.contains("\"selector_precision\": 7"));
+    assert!(json.contains("\"broad_scope\": false"));
     assert_eq!(
         value.pointer("/filters/kind").and_then(Value::as_str),
         Some("panic")

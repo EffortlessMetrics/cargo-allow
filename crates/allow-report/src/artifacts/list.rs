@@ -28,6 +28,7 @@ pub struct ListRow<'a> {
     pub source_package: Option<&'a str>,
     pub evidence_count: usize,
     pub selector_precision: u32,
+    pub broad_scope: bool,
     pub review_after: Option<&'a str>,
     pub expires: Option<&'a str>,
     pub reason: &'a str,

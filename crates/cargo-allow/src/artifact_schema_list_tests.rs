@@ -42,6 +42,7 @@ fn list_schema_locks_allow_entry_kind_contract() {
             "source_package",
             "evidence_count",
             "selector_precision",
+            "broad_scope",
             "review_after",
             "expires",
             "reason",
@@ -61,6 +62,13 @@ fn list_schema_locks_allow_entry_kind_contract() {
         selector_precision.get("minimum").and_then(Value::as_u64),
         Some(0),
         "list selector_precision minimum"
+    );
+    assert_eq!(
+        allow_entry
+            .pointer("/properties/broad_scope/type")
+            .and_then(Value::as_str),
+        Some("boolean"),
+        "list broad_scope type"
     );
     assert_enum_equals(
         "list allow entry kind",
