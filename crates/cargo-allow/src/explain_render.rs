@@ -1,6 +1,5 @@
-use super::ExplainContext;
-use crate::worklist;
-use allow_core::{AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path};
+use super::{ExplainContext, explain_steps::explain_next_steps};
+use allow_core::{AllowEntry, Finding, MatchOutcome, normalize_path};
 use allow_policy::evidence_reference_diagnostics;
 use std::path::Path;
 
@@ -72,44 +71,4 @@ fn render_explain_report<R>(
         suggested_actions: &suggested_actions,
         proof_commands: &proof_commands,
     })
-}
-
-fn explain_next_steps(
-    entry: &AllowEntry,
-    findings: &[Finding],
-    outcomes: &[MatchOutcome],
-) -> (Vec<String>, Vec<String>) {
-    let attention = outcomes
-        .iter()
-        .filter(|outcome| outcome.status != MatchStatus::Matched)
-        .collect::<Vec<_>>();
-    if let Some(outcome) = attention.first() {
-        let finding = outcome.finding_index.and_then(|index| findings.get(index));
-        let kind = worklist::work_item_kind(outcome, finding, Some(entry));
-        return (
-            worklist::suggested_actions(&kind)
-                .into_iter()
-                .take(2)
-                .collect(),
-            worklist::proof_commands(&kind, finding, Some(entry))
-                .into_iter()
-                .take(3)
-                .collect(),
-        );
-    }
-    if entry.classification == "baseline_debt" {
-        let finding = findings.first();
-        let kind = "baseline_debt";
-        return (
-            worklist::suggested_actions(kind)
-                .into_iter()
-                .take(2)
-                .collect(),
-            worklist::proof_commands(kind, finding, Some(entry))
-                .into_iter()
-                .take(3)
-                .collect(),
-        );
-    }
-    (Vec::new(), Vec::new())
 }
