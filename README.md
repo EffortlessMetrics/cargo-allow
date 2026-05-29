@@ -149,6 +149,14 @@ Matched non-baseline entries with empty `evidence` are not hidden: report and
 receipt artifacts may include `policy_missing_evidence`, and the matching work
 queue is available through `cargo-allow worklist --missing-evidence`.
 
+Broken local evidence links are also visible without making discovery commands
+unusable. `audit`, `diff`, `explain`, `list`, `worklist`, `propose`, and
+`prune --stale` dry-run output can still emit source-tree artifacts so a human
+or agent can find the repair target. Gating and reviewed-write paths still fail
+closed: `check` fails on broken local evidence, `doctor` reports invalid policy
+state, `add` validates evidence before writing a reviewed entry, and
+`prune --stale --write` validates the remaining policy before writing.
+
 ## Policy Model
 
 A retained exception is a receipt, not a suppression. A mature entry answers:

@@ -120,6 +120,22 @@ path existence only; it does not execute ripr, unsafe-review, coverage tools,
 Cargo commands, tests, or repository code, and it does not interpret those
 receipt formats as proof.
 
+Broken local evidence links are handled differently by discovery commands and
+gating commands:
+
+| Command path | Broken local evidence behavior |
+|---|---|
+| `audit`, `diff`, `explain`, `list`, `worklist`, and `propose` | Emit source-tree artifacts and surface the broken-link count or diagnostics so repair work can be routed. |
+| `prune --stale` dry-run | Emits a stale-cleanup preview even when the stale entry itself has broken evidence. |
+| `check` | Fails closed on broken local evidence links. |
+| `doctor` | Reports invalid policy state for broken local evidence links. |
+| `add` | Validates local evidence references before writing a reviewed policy entry. |
+| `prune --stale --write` | Revalidates the remaining policy before writing; stale broken-evidence entries can be removed, but broken references that remain still block the write. |
+
+This split is intentional. Read-only reporting and adoption commands should
+help users find evidence repair work, while CI gates and reviewed policy writes
+must not normalize broken evidence.
+
 ## Selector Precision
 
 Selectors should be as narrow as practical. Strong selectors include:
