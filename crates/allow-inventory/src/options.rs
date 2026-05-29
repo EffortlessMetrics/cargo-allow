@@ -25,6 +25,12 @@ pub enum InventorySource {
 }
 
 impl InventorySource {
+    pub const ALL: &[Self] = &[
+        Self::GitTracked,
+        Self::FilesystemFallback,
+        Self::FilesystemIncludeUntracked,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::GitTracked => "git_tracked",
