@@ -8,7 +8,7 @@ mod doctor_args;
 pub(crate) use doctor_args::DoctorArgs;
 use doctor_args::DoctorFormat;
 
-use crate::{InventoryFacts, SourceTreeReportContext, config_path, write_file};
+use crate::{InventoryFacts, SourceTreeReportContext, config_path, emit_text};
 
 pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let cwd =
@@ -37,11 +37,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         DoctorFormat::Human => allow_report::render_doctor_human(report),
         DoctorFormat::Json => allow_report::render_doctor_json(report),
     };
-    if let Some(path) = &args.output {
-        write_file(path, &text)?;
-    } else {
-        println!("{text}");
-    }
+    emit_text(args.output.as_deref(), &text)?;
     Ok(())
 }
 

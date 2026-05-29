@@ -15,8 +15,8 @@ use diff_render::{
 };
 
 use crate::{
-    OutputFormat, SourceTreeReportContext, git_relative_config_path, load_world, parse_kind_filter,
-    policy_baseline_debt_entries, report_config, write_file,
+    OutputFormat, SourceTreeReportContext, emit_text, git_relative_config_path, load_world,
+    parse_kind_filter, policy_baseline_debt_entries, report_config,
 };
 
 pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
@@ -129,11 +129,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     if args.format == OutputFormat::Json && !finding_changes.is_empty() {
         eprintln!("{}", render_finding_posture_changes_human(&finding_changes));
     }
-    if let Some(path) = &args.output {
-        write_file(path, &text)?;
-    } else {
-        println!("{text}");
-    }
+    emit_text(args.output.as_deref(), &text)?;
     if failed {
         process::exit(1);
     }

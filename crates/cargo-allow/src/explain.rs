@@ -4,7 +4,7 @@ use allow_core::{
 use allow_match::{CheckMode, evaluate, score_match};
 use std::path::Path;
 
-use crate::{SourceTreeReportContext, load_world_with_evidence_validation, write_file};
+use crate::{SourceTreeReportContext, emit_text, load_world_with_evidence_validation};
 
 #[path = "explain_args.rs"]
 mod explain_args;
@@ -41,11 +41,7 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         ExplainFormat::Human => explain_entry_text(&root, &cfg, entry, &findings),
         ExplainFormat::Json => explain_entry_json(&root, &cfg, entry, &findings, context),
     };
-    if let Some(path) = &args.output {
-        write_file(path, &text)?;
-    } else {
-        println!("{text}");
-    }
+    emit_text(args.output.as_deref(), &text)?;
     Ok(())
 }
 

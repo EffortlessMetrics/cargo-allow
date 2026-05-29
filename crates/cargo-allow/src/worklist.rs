@@ -2,7 +2,7 @@ use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
 
 use crate::{
-    SourceTreeReportContext, load_world_with_evidence_validation, report_config, write_file,
+    SourceTreeReportContext, emit_text, load_world_with_evidence_validation, report_config,
 };
 
 #[path = "worklist_actions.rs"]
@@ -73,11 +73,7 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         WorklistFormat::Json => render_worklist_json_with_context(&items, context),
         WorklistFormat::Human => render_worklist_human_with_context(&items, context),
     };
-    if let Some(path) = &args.output {
-        write_file(path, &text)?;
-    } else {
-        println!("{text}");
-    }
+    emit_text(args.output.as_deref(), &text)?;
     Ok(())
 }
 

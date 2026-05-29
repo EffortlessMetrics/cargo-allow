@@ -3,7 +3,7 @@ pub(crate) use crate::cli::{CargoAllowCli, CargoAllowCommand, normalized_args};
 pub(crate) use crate::cli_types::{InventoryFacts, OutputFormat, RootArgs};
 pub(crate) use crate::companion::{canonical_companion_findings, extend_unique_findings};
 pub(crate) use crate::compat::load_compat_world;
-pub(crate) use crate::io::{write_file, write_file_no_overwrite};
+pub(crate) use crate::io::{emit_text, write_file, write_file_no_overwrite};
 pub(crate) use crate::kind_filter::{
     FamilyFilter, KindFilter, is_clippy_compat_kind, is_dependency_surface_compat_kind,
     is_executable_compat_kind, is_network_compat_kind, is_no_panic_allowlist_compat_kind,
