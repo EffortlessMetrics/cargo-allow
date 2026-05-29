@@ -7,7 +7,7 @@ pub(crate) struct ProposeContext<'a> {
 impl<'a> Default for ProposeContext<'a> {
     fn default() -> Self {
         Self {
-            inventory: crate::reporting::unknown_source_syntax_inventory(),
+            inventory: allow_report::InventoryContext::unknown_source_syntax(),
             kind_filter: None,
         }
     }
