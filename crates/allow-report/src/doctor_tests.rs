@@ -6,6 +6,8 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
         source_tree_root: "H:/Code/Rust/cargo-allow",
         root_discovery: "nearest_git_root",
         config_path: Some("H:/Code/Rust/cargo-allow/policy/allow.toml"),
+        config_valid: Some(true),
+        config_diagnostic: None,
         inventory_source: "git_tracked",
         files_scanned: 50,
     });
@@ -18,6 +20,8 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
     assert!(json.contains("\"discovery\": \"nearest_git_root\""));
     assert!(json.contains("\"found\": true"));
     assert!(json.contains("\"path\": \"H:/Code/Rust/cargo-allow/policy/allow.toml\""));
+    assert!(json.contains("\"valid\": true"));
+    assert!(json.contains("\"diagnostic\": null"));
     assert!(json.contains("\"scanner\": \"source_syntax\""));
     assert!(json.contains("\"source\": \"git_tracked\""));
     assert!(json.contains("\"files_scanned\": 50"));
@@ -29,6 +33,8 @@ fn doctor_human_renderer_records_root_config_and_inventory() {
         source_tree_root: "H:/Code/Rust/cargo-allow",
         root_discovery: "nearest_git_root",
         config_path: None,
+        config_valid: None,
+        config_diagnostic: None,
         inventory_source: "filesystem_fallback",
         files_scanned: 7,
     });
@@ -40,4 +46,20 @@ fn doctor_human_renderer_records_root_config_and_inventory() {
         "inventory: source_tree/source_syntax via filesystem_fallback; files scanned: 7"
     ));
     assert!(text.contains("did not invoke Cargo metadata"));
+}
+
+#[test]
+fn doctor_human_renderer_reports_invalid_config_status() {
+    let text = render_doctor_human(DoctorReport {
+        source_tree_root: "H:/Code/Rust/cargo-allow",
+        root_discovery: "nearest_git_root",
+        config_path: Some("policy/allow.toml"),
+        config_valid: Some(false),
+        config_diagnostic: Some("policy schema_version must not be empty"),
+        inventory_source: "git_tracked",
+        files_scanned: 7,
+    });
+
+    assert!(text.contains("config: policy/allow.toml"));
+    assert!(text.contains("config status: invalid: policy schema_version must not be empty"));
 }

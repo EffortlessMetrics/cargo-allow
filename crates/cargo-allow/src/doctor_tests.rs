@@ -3,6 +3,7 @@ use crate::artifact_contract_support::parse_json_artifact;
 use crate::{CargoAllowCli, CargoAllowCommand, RootArgs};
 use clap::Parser;
 use serde_json::Value;
+use std::fs;
 use std::path::Path;
 
 fn argv(items: Vec<&str>) -> Vec<String> {
@@ -44,6 +45,8 @@ fn render_doctor_json_records_setup_context() {
         source_tree_root: "H:/Code/Rust/cargo-allow",
         root_discovery: "nearest_git_root",
         config_path: Some("H:/Code/Rust/cargo-allow/policy/allow.toml"),
+        config_valid: Some(true),
+        config_diagnostic: None,
         inventory_source: "git_tracked",
         files_scanned: 50,
     });
@@ -66,6 +69,11 @@ fn render_doctor_json_records_setup_context() {
         Some("H:/Code/Rust/cargo-allow/policy/allow.toml")
     );
     assert_eq!(
+        value.pointer("/config/valid").and_then(Value::as_bool),
+        Some(true)
+    );
+    assert_eq!(value.pointer("/config/diagnostic"), Some(&Value::Null));
+    assert_eq!(
         value.pointer("/inventory/scope").and_then(Value::as_str),
         Some("source_tree")
     );
@@ -83,4 +91,52 @@ fn render_doctor_json_records_setup_context() {
             .and_then(Value::as_u64),
         Some(50)
     );
+}
+
+#[test]
+fn doctor_config_status_reports_invalid_policy_without_failing() {
+    let root = doctor_fixture_dir();
+    let policy = root.join("allow.toml");
+    fs::write(
+        &policy,
+        r#"
+schema_version = ""
+policy = "cargo-allow"
+owner = "core/policy"
+status = "active"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write invalid policy: {err}")));
+
+    let (valid, diagnostic) = config_status(&root, Some(&policy));
+
+    assert_eq!(valid, Some(false));
+    assert!(
+        diagnostic
+            .is_some_and(|message| message.contains("policy schema_version must not be empty"))
+    );
+    remove_doctor_fixture_dir(root);
+}
+
+fn doctor_fixture_dir() -> std::path::PathBuf {
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let dir =
+        std::env::temp_dir().join(format!("cargo-allow-doctor-{}-{stamp}", std::process::id()));
+    remove_doctor_fixture_dir(dir.clone());
+    fs::create_dir_all(&dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create doctor fixture: {err}")));
+    dir
+}
+
+fn remove_doctor_fixture_dir(path: std::path::PathBuf) {
+    match fs::remove_dir_all(&path) {
+        Ok(()) => {}
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => {
+            std::panic::panic_any(format!("remove doctor fixture {}: {err}", path.display()))
+        }
+    }
 }

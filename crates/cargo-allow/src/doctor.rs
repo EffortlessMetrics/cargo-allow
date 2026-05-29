@@ -1,5 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
+use allow_policy::{load_policy, validate_local_evidence_references};
 use std::env;
 use std::path::Path;
 
@@ -26,10 +27,13 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let config_text = config
         .as_ref()
         .map(|path| allow_report::source_tree_path_text(path));
+    let (config_valid, config_diagnostic) = config_status(&root, config.as_deref());
     let report = allow_report::DoctorReport {
         source_tree_root: source_context.source_tree_root(),
         root_discovery,
         config_path: config_text.as_deref(),
+        config_valid,
+        config_diagnostic: config_diagnostic.as_deref(),
         inventory_source: source_context.inventory_source(),
         files_scanned,
     };
@@ -39,6 +43,16 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
+}
+
+fn config_status(root: &Path, config: Option<&Path>) -> (Option<bool>, Option<String>) {
+    let Some(config) = config else {
+        return (None, None);
+    };
+    match load_policy(config).and_then(|cfg| validate_local_evidence_references(root, &cfg)) {
+        Ok(()) => (Some(true), None),
+        Err(err) => (Some(false), Some(err.to_string())),
+    }
 }
 
 fn root_discovery_kind(explicit_root: Option<&Path>, root: &Path) -> &'static str {
@@ -57,6 +71,8 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
         source_tree_root: "H:/Code/Rust/cargo-allow",
         root_discovery: "nearest_git_root",
         config_path: Some("H:/Code/Rust/cargo-allow/policy/allow.toml"),
+        config_valid: Some(true),
+        config_diagnostic: None,
         inventory_source: "git_tracked",
         files_scanned: 50,
     })

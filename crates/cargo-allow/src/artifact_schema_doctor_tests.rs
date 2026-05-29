@@ -50,7 +50,11 @@ fn doctor_schema_locks_setup_artifact_contract() {
         Some(false),
         "doctor config should reject unknown fields"
     );
-    assert_required_fields("doctor config", config, &["found", "path"]);
+    assert_required_fields(
+        "doctor config",
+        config,
+        &["found", "path", "valid", "diagnostic"],
+    );
     assert_eq!(
         schema
             .pointer("/properties/config/properties/found/type")
@@ -68,6 +72,30 @@ fn doctor_schema_locks_setup_artifact_contract() {
         "doctor config path",
         &schema,
         "/properties/config/properties/path/type",
+        "null",
+    );
+    assert_schema_type_contains(
+        "doctor config valid",
+        &schema,
+        "/properties/config/properties/valid/type",
+        "boolean",
+    );
+    assert_schema_type_contains(
+        "doctor config valid",
+        &schema,
+        "/properties/config/properties/valid/type",
+        "null",
+    );
+    assert_schema_type_contains(
+        "doctor config diagnostic",
+        &schema,
+        "/properties/config/properties/diagnostic/type",
+        "string",
+    );
+    assert_schema_type_contains(
+        "doctor config diagnostic",
+        &schema,
+        "/properties/config/properties/diagnostic/type",
         "null",
     );
 

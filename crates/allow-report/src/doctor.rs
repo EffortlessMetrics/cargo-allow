@@ -9,7 +9,13 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
     out.push_str(&format!("source tree root: {}\n", facts.source_tree_root));
     out.push_str(&format!("root discovery: {}\n", facts.root_discovery));
     match facts.config_path {
-        Some(path) => out.push_str(&format!("config: {path}\n")),
+        Some(path) => {
+            out.push_str(&format!("config: {path}\n"));
+            out.push_str(&format!(
+                "config status: {}\n",
+                config_status_text(facts.config_valid, facts.config_diagnostic)
+            ));
+        }
         None => out.push_str("config: not found; run `cargo-allow init`\n"),
     }
     out.push_str(&format!(
@@ -46,10 +52,35 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
         bool_json(facts.config_path.is_some())
     ));
     out.push_str(&format!(
-        "    \"path\": {}\n",
+        "    \"path\": {},\n",
         option_json(facts.config_path)
+    ));
+    out.push_str(&format!(
+        "    \"valid\": {},\n",
+        option_bool_json(facts.config_valid)
+    ));
+    out.push_str(&format!(
+        "    \"diagnostic\": {}\n",
+        option_json(facts.config_diagnostic)
     ));
     out.push_str("  }\n");
     out.push_str("}\n");
     out
+}
+
+fn config_status_text(valid: Option<bool>, diagnostic: Option<&str>) -> String {
+    match (valid, diagnostic) {
+        (Some(true), _) => "valid".to_string(),
+        (Some(false), Some(diagnostic)) => format!("invalid: {diagnostic}"),
+        (Some(false), None) => "invalid".to_string(),
+        (None, _) => "not checked".to_string(),
+    }
+}
+
+fn option_bool_json(value: Option<bool>) -> &'static str {
+    match value {
+        Some(true) => "true",
+        Some(false) => "false",
+        None => "null",
+    }
 }
