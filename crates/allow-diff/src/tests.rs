@@ -3,7 +3,7 @@ use allow_core::{
     AllowConfig, AllowEntry, Finding, FindingKind, Lifecycle, Selector, Span, StructuralIdentity,
 };
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[test]
@@ -417,6 +417,43 @@ fn findings_at_revision_preserves_source_package_context() {
         .find(|finding| finding.family.as_deref() == Some("unwrap"))
         .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
     assert_eq!(unwrap.identity.crate_name.as_deref(), Some("demo"));
+    fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
+}
+
+#[test]
+fn findings_at_revision_applies_workspace_ignored_globs() {
+    let root = temp_root("revision-ignored");
+    fs::create_dir_all(root.join("ignored"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("ignored dir: {err}")));
+    fs::write(
+        root.join("ignored").join("panic.rs"),
+        "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("ignored rust write: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "initial"]);
+    let mut cfg = AllowConfig::empty();
+    cfg.workspace.ignored.push("ignored/**".to_string());
+
+    let findings = findings_at_revision(&root, "HEAD", &cfg)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("findings: {err}")));
+
+    assert!(
+        findings
+            .iter()
+            .all(|finding| finding.path.as_path() != Path::new("ignored/panic.rs"))
+    );
+    assert!(
+        !findings
+            .iter()
+            .any(|finding| finding.family.as_deref() == Some("unwrap"))
+    );
     fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
 }
 

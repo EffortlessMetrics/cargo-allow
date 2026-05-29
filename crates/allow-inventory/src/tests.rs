@@ -1,23 +1,30 @@
 use super::*;
+use allow_core::source_tree_path_is_ignored;
 
 #[test]
 fn ignores_target_paths() {
     let opts = InventoryOptions::default();
-    assert!(super::is_ignored(
+    assert!(source_tree_path_is_ignored(
         Path::new("target/debug/x"),
         &opts.ignored
     ));
-    assert!(super::is_ignored(Path::new(".git/config"), &opts.ignored));
+    assert!(source_tree_path_is_ignored(
+        Path::new(".git/config"),
+        &opts.ignored
+    ));
 }
 
 #[test]
 fn dot_git_ignore_does_not_swallow_dot_github() {
     let opts = InventoryOptions::default();
-    assert!(!super::is_ignored(
+    assert!(!source_tree_path_is_ignored(
         Path::new(".github/workflows/ci.yml"),
         &opts.ignored
     ));
-    assert!(!super::is_ignored(Path::new(".gitignore"), &opts.ignored));
+    assert!(!source_tree_path_is_ignored(
+        Path::new(".gitignore"),
+        &opts.ignored
+    ));
 }
 
 #[test]
@@ -105,11 +112,11 @@ fn inventory_applies_custom_ignored_globs() {
         ..InventoryOptions::default()
     };
 
-    assert!(super::is_ignored(
+    assert!(source_tree_path_is_ignored(
         Path::new("scripts/release.sh"),
         &opts.ignored
     ));
-    assert!(!super::is_ignored(
+    assert!(!source_tree_path_is_ignored(
         Path::new("tools/release.sh"),
         &opts.ignored
     ));

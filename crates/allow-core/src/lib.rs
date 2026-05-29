@@ -18,8 +18,8 @@ pub use policy::{
     Selector, WorkspaceConfig,
 };
 pub use source_tree_path::{
-    glob_matches, glob_matches_str, normalize_path, source_tree_path_matches_filter,
-    source_tree_scope_has_wildcard,
+    glob_matches, glob_matches_str, normalize_path, source_tree_path_is_ignored,
+    source_tree_path_matches_filter, source_tree_scope_has_wildcard,
 };
 
 #[cfg(test)]
