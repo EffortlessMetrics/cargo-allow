@@ -3,7 +3,7 @@ use crate::artifact_schema_support::{
     assert_required_fields, parse_schema, schema_contracts,
 };
 use serde_json::Value;
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, fs, path::Path};
 
 #[test]
 fn schema_files_require_common_v1_source_tree_contract() {
@@ -62,6 +62,42 @@ fn schema_files_require_common_v1_source_tree_contract() {
             allow_report::SCANNER_LIMITATIONS,
         );
     }
+}
+
+#[test]
+fn schema_contract_registry_covers_every_documented_artifact_schema() {
+    let schema_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/schemas");
+    let documented = fs::read_dir(&schema_dir)
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!(
+                "read schema directory {}: {err}",
+                schema_dir.display()
+            ))
+        })
+        .map(|entry| {
+            entry.unwrap_or_else(|err| {
+                std::panic::panic_any(format!(
+                    "read schema directory entry {}: {err}",
+                    schema_dir.display()
+                ))
+            })
+        })
+        .filter_map(|entry| {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            name.strip_suffix(".schema.json")
+                .map(std::string::ToString::to_string)
+        })
+        .collect::<BTreeSet<_>>();
+    let registered = schema_contracts()
+        .into_iter()
+        .map(|contract| contract.name.to_string())
+        .collect::<BTreeSet<_>>();
+
+    assert_eq!(
+        registered, documented,
+        "every docs/schemas/*.schema.json file should be registered for shared contract tests"
+    );
 }
 
 #[test]
