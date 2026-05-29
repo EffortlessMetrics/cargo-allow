@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 mod entries_validation;
 mod entry_validation;
 mod evidence;
+mod evidence_diagnostics;
 mod evidence_reference;
 mod lifecycle;
 mod policy_header;
@@ -20,9 +21,9 @@ mod toml_entry;
 mod toml_model;
 mod toml_sections;
 mod validation;
-pub use evidence::{
-    EvidenceReferenceDiagnostic, EvidenceReferenceStatus, broken_evidence_link_count,
-    evidence_reference_diagnostics, validate_local_evidence_references,
+pub use evidence::{broken_evidence_link_count, validate_local_evidence_references};
+pub use evidence_diagnostics::{
+    EvidenceReferenceDiagnostic, EvidenceReferenceStatus, evidence_reference_diagnostics,
 };
 pub use render::render_policy;
 pub use starter::starter_policy;
