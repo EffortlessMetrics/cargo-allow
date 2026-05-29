@@ -30,6 +30,21 @@ fn report_schema_allows_optional_policy_baseline_debt_summary_count() {
 }
 
 #[test]
+fn report_schema_locks_top_level_status_vocabulary() {
+    let schema = parse_schema(
+        "report",
+        include_str!("../../../docs/schemas/report.schema.json"),
+    );
+
+    assert_enum_equals(
+        "report status",
+        &schema,
+        "/properties/status/enum",
+        allow_report::ARTIFACT_STATUSES,
+    );
+}
+
+#[test]
 fn report_schema_allows_optional_broken_evidence_link_counts() {
     let schema = parse_schema(
         "report",
