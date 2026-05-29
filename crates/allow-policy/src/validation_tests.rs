@@ -50,6 +50,54 @@ fn keeps_unsafe_evidence_requirement_specific() {
 }
 
 #[test]
+fn rejects_blank_evidence_entry() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+
+                [[allow]]
+                id = "blank-evidence"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["   "]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains("blank-evidence evidence entry 1 must not be empty"));
+}
+
+#[test]
+fn rejects_blank_link_entry() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+
+                [[allow]]
+                id = "blank-link"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                links = [""]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains("blank-link link entry 1 must not be empty"));
+}
+
+#[test]
 fn rejects_duplicate_ids() {
     let err = parse_policy(
         r#"

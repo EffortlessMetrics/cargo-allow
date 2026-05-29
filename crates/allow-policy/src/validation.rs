@@ -60,6 +60,8 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
                 entry.id
             )));
         }
+        validate_non_empty_values(&entry.id, "evidence", &entry.evidence)?;
+        validate_non_empty_values(&entry.id, "link", &entry.links)?;
         if cfg.requirements.expires_or_review_after_required && !has_real_lifecycle_review(entry) {
             return Err(CargoAllowError::new(format!(
                 "{} missing expires or review_after",
@@ -85,6 +87,18 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
             return Err(CargoAllowError::new(format!(
                 "{} occurrence_limit must be greater than zero",
                 entry.id
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn validate_non_empty_values(id: &str, label: &str, values: &[String]) -> CargoAllowResult<()> {
+    for (index, value) in values.iter().enumerate() {
+        if value.trim().is_empty() {
+            return Err(CargoAllowError::new(format!(
+                "{id} {label} entry {} must not be empty",
+                index + 1
             )));
         }
     }
