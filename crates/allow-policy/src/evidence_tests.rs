@@ -242,6 +242,15 @@ fn diagnostics_classify_traceability_evidence_without_local_validation() {
 }
 
 #[test]
+fn evidence_status_identifies_broken_local_links() {
+    assert!(!EvidenceReferenceStatus::LocalFilePresent.is_broken_local_link());
+    assert!(EvidenceReferenceStatus::LocalFileMissing.is_broken_local_link());
+    assert!(EvidenceReferenceStatus::InvalidLocalPath.is_broken_local_link());
+    assert!(!EvidenceReferenceStatus::TraceabilityOnly.is_broken_local_link());
+    assert!(!EvidenceReferenceStatus::Unstructured.is_broken_local_link());
+}
+
+#[test]
 fn rejects_missing_unsafe_review_evidence_references() {
     let root = unique_test_dir("unsafe-review-evidence-missing");
     fs::create_dir_all(&root)
