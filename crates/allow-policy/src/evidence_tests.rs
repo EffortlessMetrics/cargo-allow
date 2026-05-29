@@ -184,6 +184,43 @@ fn rejects_directory_local_evidence_references() {
     remove_test_dir(root);
 }
 
+#[cfg(unix)]
+#[test]
+fn rejects_symlinked_local_evidence_references() {
+    use std::os::unix::fs::symlink;
+
+    let root = unique_test_dir("evidence-symlink");
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+    fs::write(root.join("docs/real.md"), "review notes")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence: {err}")));
+    symlink(root.join("docs/real.md"), root.join("docs/link.md"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create symlink evidence: {err}")));
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-doc-link"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["doc:docs/link.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy parses: {err}")));
+
+    let err = validate_local_evidence_references(&root, &cfg).unwrap_err();
+    assert!(err.to_string().contains("allow-doc-link evidence"));
+    assert!(err.to_string().contains("symlink"));
+    remove_test_dir(root);
+}
+
 #[test]
 fn diagnostics_classify_traceability_evidence_without_local_validation() {
     let root = unique_test_dir("evidence-traceability-prefixes");
@@ -377,6 +414,25 @@ fn reports_evidence_reference_diagnostics() {
             .first()
             .is_some_and(|diagnostic| diagnostic.message.contains("not a file"))
     );
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::symlink;
+
+        symlink(root.join("docs/safety.md"), root.join("docs/link.md"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create symlink: {err}")));
+        entry.evidence = vec!["doc:docs/link.md".to_string()];
+        let diagnostics = evidence_reference_diagnostics(&root, &entry);
+        assert_eq!(
+            diagnostics.first().map(|diagnostic| diagnostic.status),
+            Some(EvidenceReferenceStatus::InvalidLocalPath)
+        );
+        assert!(
+            diagnostics
+                .first()
+                .is_some_and(|diagnostic| diagnostic.message.contains("symlink"))
+        );
+    }
     remove_test_dir(root);
 }
 

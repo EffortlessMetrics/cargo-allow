@@ -1,4 +1,5 @@
 use allow_core::{AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult};
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::evidence_reference::{EvidenceKind, EvidenceReference};
@@ -121,8 +122,16 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
         };
     }
     let path = root.join(&reference.value);
-    match path.metadata() {
-        Ok(metadata) if metadata.is_file() => EvidenceReferenceDiagnostic {
+    match fs::symlink_metadata(&path) {
+        Ok(metadata) if metadata.file_type().is_symlink() => EvidenceReferenceDiagnostic {
+            raw: raw.to_string(),
+            prefix,
+            target: Some(reference.value.clone()),
+            status: EvidenceReferenceStatus::InvalidLocalPath,
+            message: "local evidence path is a symlink; reference a regular source-tree file"
+                .to_string(),
+        },
+        Ok(metadata) if metadata.file_type().is_file() => EvidenceReferenceDiagnostic {
             raw: raw.to_string(),
             prefix,
             target: Some(reference.value.clone()),

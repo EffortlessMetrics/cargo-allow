@@ -112,8 +112,8 @@ field for current check-status accounting.
 Report JSON may include `summary.broken_evidence_links` and
 `trend.broken_evidence_links` when local evidence references such as `doc:`,
 `spec:`, `adr:`, `ripr:`, `unsafe-review:`, or `coverage:` point outside the
-source tree, point to a directory, or point to a missing file. Receipts may use
-the same optional count under `counts.broken_evidence_links`.
+source tree, point to a directory or symlink, or point to a missing file.
+Receipts may use the same optional count under `counts.broken_evidence_links`.
 
 `audit` treats these as evidence-health signals so first-run inventory can still
 complete and route cleanup work. `check` fails closed on broken local evidence
