@@ -231,6 +231,7 @@ crate.
 
 ## Documentation
 
+- [Contributing](CONTRIBUTING.md)
 - [Design](docs/design.md)
 - [Claim boundaries](docs/claim-boundaries.md)
 - [Crate namespace policy](docs/crate-namespace.md)
