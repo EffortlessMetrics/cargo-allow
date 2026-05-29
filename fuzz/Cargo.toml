@@ -1,0 +1,39 @@
+[package]
+name = "cargo-allow-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+rust-version = "1.85"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+allow-files = { path = "../crates/allow-files" }
+allow-policy = { path = "../crates/allow-policy" }
+allow-rust = { path = "../crates/allow-rust" }
+libfuzzer-sys = "0.4"
+
+[[bin]]
+name = "policy_toml"
+path = "fuzz_targets/policy_toml.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rust_source"
+path = "fuzz_targets/rust_source.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "file_paths"
+path = "fuzz_targets/file_paths.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]
