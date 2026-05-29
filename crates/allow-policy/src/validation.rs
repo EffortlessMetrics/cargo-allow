@@ -6,52 +6,14 @@ use crate::entry_validation::{
     validate_allow_entry_requirements,
 };
 use crate::lifecycle::{has_real_lifecycle_review, validate_lifecycle};
+use crate::policy_header::validate_policy_header;
 use crate::scope_validation::{
     validate_glob, validate_path_scope, validate_scope_consistency, validate_workspace,
 };
 use crate::selector_validation::{validate_selector, validate_source_hints};
 
-const SUPPORTED_SCHEMA_VERSION: &str = "0.1";
-
 pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
-    if cfg.schema_version.trim().is_empty() {
-        return Err(CargoAllowError::new(
-            "policy schema_version must not be empty",
-        ));
-    }
-    if cfg.schema_version != SUPPORTED_SCHEMA_VERSION {
-        return Err(CargoAllowError::new(format!(
-            "unsupported policy schema_version `{}`",
-            cfg.schema_version
-        )));
-    }
-    if cfg.policy != "cargo-allow" {
-        return Err(CargoAllowError::new(format!(
-            "unsupported policy `{}`",
-            cfg.policy
-        )));
-    }
-    if cfg
-        .owner
-        .as_deref()
-        .is_some_and(|owner| owner.trim().is_empty())
-    {
-        return Err(CargoAllowError::new("policy owner must not be empty"));
-    }
-    if cfg
-        .status
-        .as_deref()
-        .is_some_and(|status| status.trim().is_empty())
-    {
-        return Err(CargoAllowError::new("policy status must not be empty"));
-    }
-    if let Some(status) = &cfg.status {
-        if !matches!(status.as_str(), "active" | "advisory") {
-            return Err(CargoAllowError::new(format!(
-                "unsupported policy status `{status}`"
-            )));
-        }
-    }
+    validate_policy_header(cfg)?;
     validate_workspace(&cfg.workspace)?;
     for pattern in &cfg.workspace.ignored {
         validate_glob("source-tree ignored glob", pattern)?;
