@@ -1,6 +1,6 @@
 use super::WorkItem;
 use super::worklist_actions::{proof_commands, suggested_actions};
-use super::worklist_item_kind::{BASELINE_DEBT, BROAD_SCOPE};
+use super::worklist_item_kind::{BASELINE_DEBT, BROAD_SCOPE, MISSING_EVIDENCE};
 use super::worklist_priority::{DIFFICULTY_SMALL, RISK_MEDIUM};
 use super::worklist_scoring::{exception_family, work_item_difficulty, work_item_risk};
 use allow_core::{
@@ -13,6 +13,7 @@ pub(super) fn work_items_from_policy_advisories(
     findings: &[Finding],
     outcomes: &[MatchOutcome],
     start_index: usize,
+    include_missing_evidence: bool,
 ) -> Vec<WorkItem> {
     let mut items = Vec::new();
     for entry in &cfg.allow {
@@ -52,6 +53,35 @@ pub(super) fn work_items_from_policy_advisories(
                 kind,
             });
             continue;
+        }
+        if include_missing_evidence && entry.evidence.is_empty() {
+            let item_index = start_index + items.len();
+            let kind = MISSING_EVIDENCE.to_string();
+            items.push(WorkItem {
+                id: format!("work-missing-evidence-{item_index:04}"),
+                exception_kind: Some(entry.kind.as_str().to_string()),
+                family: exception_family(finding, Some(entry)).map(ToOwned::to_owned),
+                owner: Some(entry.owner.clone()),
+                classification: Some(entry.classification.clone()),
+                reason: Some(entry.reason.clone()),
+                created: entry.lifecycle.created.clone(),
+                review_after: entry.lifecycle.review_after.clone(),
+                expires: entry.lifecycle.expires.clone(),
+                evidence_count: Some(0),
+                risk: work_item_risk(&kind, MatchStatus::EvidenceMissing, finding, Some(entry)),
+                difficulty: work_item_difficulty(&kind, finding, Some(entry)),
+                status: MatchStatus::EvidenceMissing,
+                allow_id: Some(entry.id.clone()),
+                finding_index: outcome.finding_index,
+                path: finding
+                    .map(|finding| normalize_path(&finding.path))
+                    .or_else(|| Some(entry.path_or_glob())),
+                source_package: source_package_name(finding),
+                message: format!("{} has no evidence references", entry.id),
+                suggested_actions: suggested_actions(&kind),
+                proof_commands: proof_commands(&kind, finding, Some(entry)),
+                kind,
+            });
         }
         if let Some(scope) = allow_entry_broad_scope(entry) {
             let item_index = start_index + items.len();
