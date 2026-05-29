@@ -56,19 +56,20 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     )?;
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
+    let filters = worklist_filters(args);
     let mut items = work_items_from_outcomes(&report_cfg, &findings, &outcomes);
     items.extend(work_items_from_policy_advisories(
         &report_cfg,
         &findings,
         &outcomes,
         items.len() + 1,
+        filters.missing_evidence,
     ));
     items.extend(work_items_from_evidence_diagnostics(
         &root,
         &report_cfg,
         items.len() + 1,
     ));
-    let filters = worklist_filters(args);
     let mut items = filter_work_items(items, filters);
     sort_work_items(&mut items);
     renumber_work_items(&mut items);

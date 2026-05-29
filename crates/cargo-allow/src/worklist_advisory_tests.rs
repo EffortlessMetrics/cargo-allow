@@ -54,7 +54,7 @@ fn worklist_items_report_broad_scope_advisories() {
         score: 100,
     }];
 
-    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1);
+    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1, false);
     let json = render_worklist_json_with_context(&items, WorklistContext::default());
     let human = render_worklist_human_with_context(&items, WorklistContext::default());
 
@@ -113,7 +113,7 @@ fn worklist_items_report_matched_baseline_debt_advisories() {
         score: 100,
     }];
 
-    let items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 1);
+    let items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 1, false);
     let json = render_worklist_json_with_context(&items, WorklistContext::default());
     let human = render_worklist_human_with_context(&items, WorklistContext::default());
 
@@ -167,9 +167,60 @@ fn worklist_policy_advisories_ignore_exact_selector_globs() {
         score: 100,
     }];
 
-    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1);
+    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1, false);
 
     assert!(items.is_empty());
+}
+
+#[test]
+fn worklist_policy_advisories_report_missing_evidence_when_requested() {
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-doc", FindingKind::NonRustFile);
+    entry.path = Some(PathBuf::from("docs/policy.md"));
+    entry.selector.glob = Some("docs/policy.md".to_string());
+    entry.family = Some("documentation".to_string());
+    cfg.allow.push(entry);
+    let finding = test_finding(
+        FindingKind::NonRustFile,
+        Some("documentation"),
+        "docs/policy.md",
+        "tracked_file",
+    );
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Matched,
+        allow_id: Some("allow-doc".to_string()),
+        finding_index: Some(0),
+        message: "matched".to_string(),
+        score: 100,
+    }];
+
+    let default_items = work_items_from_policy_advisories(
+        &cfg,
+        std::slice::from_ref(&finding),
+        &outcomes,
+        1,
+        false,
+    );
+    let requested_items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 1, true);
+
+    assert!(default_items.is_empty());
+    let item = requested_items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected missing evidence advisory"));
+    assert_eq!(requested_items.len(), 1);
+    assert_eq!(item.kind, "missing_evidence");
+    assert_eq!(item.status, MatchStatus::EvidenceMissing);
+    assert_eq!(item.evidence_count, Some(0));
+    assert_eq!(item.allow_id.as_deref(), Some("allow-doc"));
+    assert_eq!(item.path.as_deref(), Some("docs/policy.md"));
+    assert_eq!(item.exception_kind.as_deref(), Some("non_rust_file"));
+    assert_eq!(item.family.as_deref(), Some("documentation"));
+    assert!(item.message.contains("has no evidence references"));
+    assert!(
+        item.proof_commands
+            .iter()
+            .any(|command| command == "cargo-allow worklist --allow-id allow-doc --format json")
+    );
 }
 
 #[test]
@@ -186,7 +237,7 @@ fn worklist_policy_advisories_ignore_unmatched_broad_scopes() {
         score: 0,
     }];
 
-    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1);
+    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1, false);
 
     assert!(items.is_empty());
 }
