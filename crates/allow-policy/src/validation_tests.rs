@@ -223,6 +223,32 @@ fn rejects_unsupported_workspace_default_mode() {
 }
 
 #[test]
+fn rejects_invalid_workspace_ignored_glob() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                ignored = ["../target/**"]
+            "#,
+    );
+
+    assert!(err.contains("source-tree ignored glob must not contain parent directory segments"));
+}
+
+#[test]
+fn rejects_invalid_workspace_generated_glob() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                generated = ["/generated/**"]
+            "#,
+    );
+
+    assert!(err.contains("source-tree generated glob must be source-tree-relative"));
+}
+
+#[test]
 fn rejects_duplicate_ids() {
     let err = parse_policy(
         r#"
