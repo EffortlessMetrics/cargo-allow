@@ -50,6 +50,21 @@ pub fn source_tree_path_matches_filter(item_path: &str, filter_path: &str) -> bo
         || (source_tree_scope_has_wildcard(&item_path) && glob_matches_str(&item_path, filter_path))
 }
 
+pub fn source_tree_path_is_ignored(path: impl AsRef<Path>, patterns: &[String]) -> bool {
+    let path = path.as_ref();
+    let normalized = normalize_path(path);
+    patterns.iter().any(|pattern| {
+        glob_matches(pattern, path)
+            || pattern
+                .strip_suffix("/**")
+                .map(|prefix| {
+                    let prefix = normalize_path(prefix);
+                    normalized == prefix || normalized.starts_with(&format!("{prefix}/"))
+                })
+                .unwrap_or(false)
+    })
+}
+
 pub fn source_tree_scope_has_wildcard(scope: &str) -> bool {
     scope
         .chars()

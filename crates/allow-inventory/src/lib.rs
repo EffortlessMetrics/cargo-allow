@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult, glob_matches, normalize_path};
+use allow_core::{CargoAllowError, CargoAllowResult, source_tree_path_is_ignored};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -123,7 +123,7 @@ pub fn inventory(
     };
     files.sort();
     files.dedup();
-    files.retain(|path| !is_ignored(path, &options.ignored));
+    files.retain(|path| !source_tree_path_is_ignored(path, &options.ignored));
     Ok(Inventory { files, source })
 }
 
@@ -192,17 +192,6 @@ fn visit(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> CargoAllowResult<()
         }
     }
     Ok(())
-}
-
-fn is_ignored(path: &Path, patterns: &[String]) -> bool {
-    let normalized = normalize_path(path);
-    patterns.iter().any(|pattern| {
-        glob_matches(pattern, path)
-            || pattern
-                .strip_suffix("/**")
-                .map(|prefix| normalized == prefix || normalized.starts_with(&format!("{prefix}/")))
-                .unwrap_or(false)
-    })
 }
 
 #[cfg(test)]

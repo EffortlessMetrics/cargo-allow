@@ -1,4 +1,4 @@
-use allow_core::{AllowConfig, CargoAllowResult, Finding, glob_matches, normalize_path};
+use allow_core::{AllowConfig, CargoAllowResult, Finding, source_tree_path_is_ignored};
 use std::path::Path;
 
 use crate::revision_git::{git_tracked_files_at_revision, read_file_at_revision};
@@ -10,7 +10,7 @@ pub fn findings_at_revision(
 ) -> CargoAllowResult<Vec<Finding>> {
     let root = root.as_ref();
     let mut files = git_tracked_files_at_revision(root, revision)?;
-    files.retain(|path| !is_ignored(path, &cfg.workspace.ignored));
+    files.retain(|path| !source_tree_path_is_ignored(path, &cfg.workspace.ignored));
     let mut manifests = Vec::new();
     for rel in files
         .iter()
@@ -39,15 +39,4 @@ pub fn findings_at_revision(
         },
     ));
     Ok(findings)
-}
-
-fn is_ignored(path: &Path, patterns: &[String]) -> bool {
-    let normalized = normalize_path(path);
-    patterns.iter().any(|pattern| {
-        glob_matches(pattern, path)
-            || pattern
-                .strip_suffix("/**")
-                .map(|prefix| normalized == prefix || normalized.starts_with(&format!("{prefix}/")))
-                .unwrap_or(false)
-    })
 }

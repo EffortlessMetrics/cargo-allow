@@ -34,6 +34,39 @@ fn source_tree_path_filter_matches_exact_subtree_and_glob_scope() {
 }
 
 #[test]
+fn source_tree_ignore_matches_git_target_and_custom_subtrees() {
+    let patterns = vec![
+        ".git/**".to_string(),
+        "target/**".to_string(),
+        "scripts/**".to_string(),
+    ];
+
+    assert!(source_tree_path_is_ignored(".git/config", &patterns));
+    assert!(source_tree_path_is_ignored(
+        ".git/hooks/pre-commit",
+        &patterns
+    ));
+    assert!(source_tree_path_is_ignored(
+        "target/debug/cargo-allow",
+        &patterns
+    ));
+    assert!(source_tree_path_is_ignored(
+        "scripts/release/build.sh",
+        &patterns
+    ));
+}
+
+#[test]
+fn source_tree_ignore_does_not_swallow_github() {
+    let patterns = vec![".git/**".to_string()];
+
+    assert!(!source_tree_path_is_ignored(
+        ".github/workflows/ci.yml",
+        &patterns
+    ));
+}
+
+#[test]
 fn source_tree_scope_wildcard_detection_covers_supported_glob_tokens() {
     for scope in [
         "scripts/*.sh",
