@@ -241,6 +241,79 @@ fn saved_worklist_output_includes_broken_evidence_items() {
 }
 
 #[test]
+fn saved_worklist_output_includes_policy_missing_evidence_items() {
+    let fixture = SourceTreeFixture::new("saved-worklist-missing-evidence");
+    fixture.write_policy_with_missing_evidence_entry();
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let worklist = artifact_dir.join("worklist-missing-evidence.json");
+
+    run_cargo_allow(&[
+        "worklist",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--missing-evidence",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&worklist),
+    ]);
+    let value =
+        assert_source_syntax_artifact(&worklist, allow_report::WORKLIST_SCHEMA_ID, "worklist");
+    assert_eq!(
+        value
+            .pointer("/summary/work_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "worklist should contain one policy missing-evidence item"
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/missing_evidence")
+            .and_then(serde_json::Value::as_bool),
+        Some(true),
+        "worklist artifact should preserve the missing-evidence filter"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/kind")
+            .and_then(serde_json::Value::as_str),
+        Some("missing_evidence"),
+        "worklist item kind"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/status")
+            .and_then(serde_json::Value::as_str),
+        Some("evidence_missing"),
+        "worklist item status"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/allow_id")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-missing-evidence"),
+        "worklist allow id"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_count")
+            .and_then(serde_json::Value::as_u64),
+        Some(0),
+        "worklist evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/proof_commands/1")
+            .and_then(serde_json::Value::as_str),
+        Some("cargo-allow worklist --allow-id allow-missing-evidence --format json"),
+        "worklist allow-id proof command"
+    );
+}
+
+#[test]
 fn saved_list_output_allows_broken_evidence_entries() {
     let fixture = SourceTreeFixture::new("saved-list-broken-evidence");
     fixture.write_policy_with_broken_evidence();
@@ -773,6 +846,42 @@ glob = "docs/missing.md"
             "Fixture exercises invalid evidence scope worklist output.",
             "doc:../outside.md",
         );
+    }
+
+    fn write_policy_with_missing_evidence_entry(&self) {
+        self.write_minimal_policy();
+        fs::create_dir_all(self.root.join("docs"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+        fs::write(
+            self.root.join("docs/policy.md"),
+            "# Policy\n\nFixture documentation surface.\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write docs fixture: {err}")));
+        let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        policy.push_str(
+            r#"
+
+[[allow]]
+id = "allow-missing-evidence"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/policy.md"
+owner = "core/tests"
+classification = "reviewed_fixture"
+reason = "Fixture keeps missing-evidence worklist saved artifact output covered."
+created = "2026-05-29"
+review_after = "2026-08-29"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/policy.md"
+target_fingerprint = "md"
+glob = "docs/policy.md"
+"#,
+        );
+        fs::write(self.root.join("policy/allow.toml"), policy)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
 
     fn write_policy_with_evidence(&self, id: &str, reason: &str, evidence: &str) {
