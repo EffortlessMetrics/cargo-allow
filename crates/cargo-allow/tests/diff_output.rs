@@ -4,7 +4,10 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use support::{remove_temp_root, temp_root};
+use support::{
+    assert_file_contains, assert_status, assert_stderr_empty, assert_stdout_empty,
+    cargo_allow_command, remove_temp_root, temp_root,
+};
 
 #[test]
 fn diff_json_with_output_file_does_not_emit_human_posture_to_stderr() {
@@ -38,7 +41,7 @@ fn diff_json_with_output_file_does_not_emit_human_posture_to_stderr() {
     .unwrap_or_else(|err| std::panic::panic_any(format!("write head policy: {err}")));
     let output = root.join("diff.json");
 
-    let result = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+    let result = cargo_allow_command()
         .arg("diff")
         .arg("--root")
         .arg(&root)
@@ -51,19 +54,27 @@ fn diff_json_with_output_file_does_not_emit_human_posture_to_stderr() {
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
 
-    assert!(
-        !result.status.success(),
-        "scope broadening should keep diff failing in no-new posture checks"
+    assert_status("diff", &result, false);
+    assert_stdout_empty(
+        "diff",
+        &result,
+        "--output should not emit report JSON to stdout",
     );
-    assert!(
-        result.stderr.is_empty(),
-        "diff --output should not emit human posture rows to stderr: `{}`",
-        String::from_utf8_lossy(&result.stderr)
+    assert_stderr_empty(
+        "diff",
+        &result,
+        "--output should not emit human posture rows to stderr",
     );
-    let json = fs::read_to_string(&output)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read diff output: {err}")));
-    assert!(json.contains("\"schema_id\": \"cargo-allow.report.v1\""));
-    assert!(json.contains("\"scope_broadened\""));
+    assert_file_contains(
+        &output,
+        "\"schema_id\": \"cargo-allow.report.v1\"",
+        "diff output should be a report artifact",
+    );
+    assert_file_contains(
+        &output,
+        "\"scope_broadened\"",
+        "diff output should include scope broadening posture",
+    );
 
     remove_temp_root(root);
 }

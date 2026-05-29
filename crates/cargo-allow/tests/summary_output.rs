@@ -1,9 +1,11 @@
 mod support;
 
 use std::fs;
-use std::process::Command;
 
-use support::{remove_temp_root, temp_root};
+use support::{
+    assert_file_contains, assert_status, assert_stderr_empty, assert_stdout_empty,
+    cargo_allow_command, remove_temp_root, temp_root,
+};
 
 #[test]
 fn summary_artifact_commands_are_quiet_when_outputs_are_files() {
@@ -19,7 +21,7 @@ fn assert_quiet_add_summary_output() {
 
     let policy_output = root.join("policy/allow.added.toml");
     let summary_output = root.join("target/cargo-allow/add-summary.json");
-    let result = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+    let result = cargo_allow_command()
         .arg("add")
         .arg("--root")
         .arg(&root)
@@ -45,12 +47,12 @@ fn assert_quiet_add_summary_output() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow add: {err}")));
 
     assert_success_and_quiet("add", &result);
-    assert_contains(
+    assert_file_contains(
         &policy_output,
         "[[allow]]",
         "add should write the updated policy artifact",
     );
-    assert_contains(
+    assert_file_contains(
         &summary_output,
         "\"schema_id\": \"cargo-allow.add.v1\"",
         "add should write a JSON summary artifact",
@@ -66,7 +68,7 @@ fn assert_quiet_propose_summary_output() {
 
     let policy_output = root.join("policy/allow.proposed.toml");
     let summary_output = root.join("target/cargo-allow/propose-summary.json");
-    let result = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+    let result = cargo_allow_command()
         .arg("propose")
         .arg("--root")
         .arg(&root)
@@ -80,12 +82,12 @@ fn assert_quiet_propose_summary_output() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow propose: {err}")));
 
     assert_success_and_quiet("propose", &result);
-    assert_contains(
+    assert_file_contains(
         &policy_output,
         "[[allow]]",
         "propose should write the proposed policy artifact",
     );
-    assert_contains(
+    assert_file_contains(
         &summary_output,
         "\"schema_id\": \"cargo-allow.propose.v1\"",
         "propose should write a JSON summary artifact",
@@ -112,7 +114,7 @@ fn assert_quiet_migrate_summary_output() {
 
     let policy_output = root.join("policy/allow.migrated.toml");
     let summary_output = root.join("target/cargo-allow/migrate-summary.json");
-    let result = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+    let result = cargo_allow_command()
         .arg("migrate")
         .arg("--root")
         .arg(&root)
@@ -128,12 +130,12 @@ fn assert_quiet_migrate_summary_output() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow migrate: {err}")));
 
     assert_success_and_quiet("migrate", &result);
-    assert_contains(
+    assert_file_contains(
         &policy_output,
         "[[allow]]",
         "migrate should write the canonical policy artifact",
     );
-    assert_contains(
+    assert_file_contains(
         &summary_output,
         "\"schema_id\": \"cargo-allow.migrate.v1\"",
         "migrate should write a JSON summary artifact",
@@ -143,28 +145,17 @@ fn assert_quiet_migrate_summary_output() {
 }
 
 fn assert_success_and_quiet(command: &str, result: &std::process::Output) {
-    assert!(
-        result.status.success(),
-        "{command} should pass: stdout=`{}` stderr=`{}`",
-        String::from_utf8_lossy(&result.stdout),
-        String::from_utf8_lossy(&result.stderr)
+    assert_status(command, result, true);
+    assert_stdout_empty(
+        command,
+        result,
+        "should not emit policy text to stdout when policy output is a file",
     );
-    assert!(
-        result.stdout.is_empty(),
-        "{command} should not emit policy text to stdout when policy output is a file: `{}`",
-        String::from_utf8_lossy(&result.stdout)
+    assert_stderr_empty(
+        command,
+        result,
+        "should not emit summary text to stderr when summary output is a file",
     );
-    assert!(
-        result.stderr.is_empty(),
-        "{command} should not emit summary text to stderr when summary output is a file: `{}`",
-        String::from_utf8_lossy(&result.stderr)
-    );
-}
-
-fn assert_contains(path: &std::path::Path, needle: &str, message: &str) {
-    let contents = fs::read_to_string(path)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
-    assert!(contents.contains(needle), "{message}");
 }
 
 fn write_source_fixture(root: &std::path::Path) {
