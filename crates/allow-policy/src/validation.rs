@@ -8,11 +8,30 @@ use std::path::Path;
 const BASELINE_DEBT_MAX_DAYS: i64 = 120;
 
 pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
+    if cfg.schema_version.trim().is_empty() {
+        return Err(CargoAllowError::new(
+            "policy schema_version must not be empty",
+        ));
+    }
     if cfg.policy != "cargo-allow" {
         return Err(CargoAllowError::new(format!(
             "unsupported policy `{}`",
             cfg.policy
         )));
+    }
+    if cfg
+        .owner
+        .as_deref()
+        .is_some_and(|owner| owner.trim().is_empty())
+    {
+        return Err(CargoAllowError::new("policy owner must not be empty"));
+    }
+    if cfg
+        .status
+        .as_deref()
+        .is_some_and(|status| status.trim().is_empty())
+    {
+        return Err(CargoAllowError::new("policy status must not be empty"));
     }
     validate_workspace(&cfg.workspace)?;
     for pattern in &cfg.workspace.ignored {
