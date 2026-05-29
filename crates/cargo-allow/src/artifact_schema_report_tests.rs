@@ -1,6 +1,7 @@
 use crate::artifact_schema_support::{
     assert_enum_equals, assert_required_fields, parse_schema, required_schema_pointer,
 };
+use allow_diff::{FindingPostureKind, PolicyChangeKind, PolicyChangeSeverity};
 use serde_json::Value;
 
 #[test]
@@ -133,7 +134,7 @@ fn report_schema_locks_diff_posture_extension_contract() {
         "report",
         &schema,
         "/$defs/finding_posture_change/properties/change/enum",
-        &["new", "removed"],
+        &enum_strings(FindingPostureKind::ALL, FindingPostureKind::as_str),
     );
     assert_required_fields(
         "report policy change",
@@ -144,36 +145,16 @@ fn report_schema_locks_diff_posture_extension_contract() {
         "report",
         &schema,
         "/$defs/policy_change/properties/severity/enum",
-        &["improvement", "review", "fail"],
+        &enum_strings(PolicyChangeSeverity::ALL, PolicyChangeSeverity::as_str),
     );
     assert_enum_equals(
         "report",
         &schema,
         "/$defs/policy_change/properties/kind/enum",
-        &[
-            "added_allow",
-            "removed_allow",
-            "baseline_debt_added",
-            "kind_changed",
-            "family_changed",
-            "scope_broadened",
-            "scope_narrowed",
-            "selector_precision_decreased",
-            "selector_precision_increased",
-            "expiry_extended",
-            "expiry_shortened",
-            "review_after_extended",
-            "review_after_shortened",
-            "evidence_added",
-            "evidence_removed",
-            "owner_added",
-            "owner_removed",
-            "reason_added",
-            "reason_removed",
-            "classification_added",
-            "classification_removed",
-            "occurrence_limit_tightened",
-            "occurrence_limit_loosened",
-        ],
+        &enum_strings(PolicyChangeKind::ALL, PolicyChangeKind::as_str),
     );
+}
+
+fn enum_strings<T: Copy>(values: &[T], as_str: impl Fn(T) -> &'static str) -> Vec<&'static str> {
+    values.iter().copied().map(as_str).collect()
 }

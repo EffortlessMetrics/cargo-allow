@@ -34,6 +34,32 @@ pub enum PolicyChangeKind {
 }
 
 impl PolicyChangeKind {
+    pub const ALL: &[Self] = &[
+        Self::AddedAllow,
+        Self::RemovedAllow,
+        Self::BaselineDebtAdded,
+        Self::KindChanged,
+        Self::FamilyChanged,
+        Self::ScopeBroadened,
+        Self::ScopeNarrowed,
+        Self::SelectorPrecisionDecreased,
+        Self::SelectorPrecisionIncreased,
+        Self::ExpiryExtended,
+        Self::ExpiryShortened,
+        Self::ReviewAfterExtended,
+        Self::ReviewAfterShortened,
+        Self::EvidenceAdded,
+        Self::EvidenceRemoved,
+        Self::OwnerAdded,
+        Self::OwnerRemoved,
+        Self::ReasonAdded,
+        Self::ReasonRemoved,
+        Self::ClassificationAdded,
+        Self::ClassificationRemoved,
+        Self::OccurrenceLimitTightened,
+        Self::OccurrenceLimitLoosened,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::AddedAllow => "added_allow",
@@ -71,6 +97,8 @@ pub enum PolicyChangeSeverity {
 }
 
 impl PolicyChangeSeverity {
+    pub const ALL: &[Self] = &[Self::Improvement, Self::Review, Self::Fail];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Improvement => "improvement",
