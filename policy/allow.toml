@@ -402,6 +402,7 @@ classification = "repo_hygiene_configuration"
 reason = "Keeps build output, backup files, and generated proposed policy files out of source-tree inventory."
 created = "2026-05-26"
 review_after = "2026-11-01"
+evidence = ["doc:CONTRIBUTING.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1114,6 +1115,7 @@ classification = "dogfood_evidence"
 reason = "Records side-by-side file-policy compatibility evidence against shiplog's existing xtasks."
 created = "2026-05-26"
 review_after = "2026-11-01"
+evidence = ["doc:docs/migration-from-xtask.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1205,6 +1207,7 @@ classification = "agent_guidance"
 reason = "Documents bounded agent use of cargo-allow worklist outputs."
 created = "2026-05-27"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1227,6 +1230,7 @@ classification = "product_examples"
 reason = "Documents copyable source-tree policy examples for public users."
 created = "2026-05-27"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1249,6 +1253,7 @@ classification = "release_runbook"
 reason = "Documents the reviewed 0.1.0 crates.io release sequence and rollback limits."
 created = "2026-05-27"
 review_after = "2026-11-01"
+evidence = ["doc:docs/claim-boundaries.md", "doc:docs/crate-namespace.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1271,6 +1276,7 @@ classification = "identity_contract"
 reason = "Documents the StructuralIdentity v1 contract used by matching and diff posture."
 created = "2026-05-27"
 review_after = "2026-11-01"
+evidence = ["doc:docs/design.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"

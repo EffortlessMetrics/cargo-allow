@@ -38,6 +38,10 @@ cargo run -p cargo-allow -- audit --format human
 cargo run -p cargo-allow -- check --mode no-new
 ```
 
+Keep generated build output, cargo-allow review artifacts, backup files, and
+proposed policy drafts out of commits unless a PR explicitly promotes them to
+reviewed source-tree artifacts.
+
 When developing the repository before installing the binary, invoke the CLI
 through the local package:
 
