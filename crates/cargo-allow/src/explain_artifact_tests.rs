@@ -108,3 +108,50 @@ fn explain_entry_json_records_context_and_live_status() {
         "explain proof commands"
     );
 }
+
+#[test]
+fn explain_entry_json_records_allow_id_proof_command_for_attention_items() {
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-baseline", FindingKind::Panic);
+    entry.family = Some("unwrap".to_string());
+    entry.classification = "baseline_debt".to_string();
+    cfg.allow.push(entry.clone());
+    let finding = test_finding(
+        FindingKind::Panic,
+        Some("unwrap"),
+        "src/lib.rs",
+        "method_call",
+    );
+
+    let json = explain_entry_json(
+        Path::new("."),
+        &cfg,
+        &entry,
+        &[finding],
+        ExplainContext {
+            inventory: allow_report::InventoryContext::source_syntax(
+                "filesystem_fallback",
+                Some("fixtures/source-snapshot"),
+                Some(1),
+            ),
+        },
+    );
+    let value = parse_json_artifact("explain", &json, allow_report::EXPLAIN_SCHEMA_ID, "explain");
+
+    let proof_commands = value
+        .pointer("/next/proof_commands")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("explain proof commands should be an array"));
+    assert!(
+        proof_commands.iter().any(|command| {
+            command.as_str() == Some("cargo-allow worklist --allow-id allow-baseline --format json")
+        }),
+        "explain proof commands should reopen the durable allow-id queue"
+    );
+    assert!(
+        proof_commands
+            .iter()
+            .any(|command| command.as_str() == Some("cargo-allow explain allow-baseline")),
+        "explain proof commands should keep the direct explain command"
+    );
+}
