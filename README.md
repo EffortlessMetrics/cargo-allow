@@ -231,17 +231,22 @@ crate.
 
 ## Documentation
 
-- [Design](docs/design.md)
-- [Claim boundaries](docs/claim-boundaries.md)
-- [Crate namespace policy](docs/crate-namespace.md)
-- [Roadmap](docs/roadmap.md)
-- [Source exception ledger](docs/source-exception-ledger.md)
+Start with the [Diataxis documentation map](docs/diataxis.md) when you are not
+sure which page you need. The map separates guided learning, task recipes,
+interface reference, and conceptual explanation.
+
+- Tutorial: [Getting started](docs/tutorials/getting-started.md)
+- How-to: [Adopt no-new in CI](docs/how-to/adopt-no-new.md)
+- How-to: [Triage worklist items](docs/how-to/triage-worklist.md)
+- Reference: [CLI reference](docs/reference/cli.md)
+- Reference: [Source exception ledger](docs/source-exception-ledger.md)
+- Reference: [Crate namespace policy](docs/crate-namespace.md)
+- Reference: [JSON schema index](docs/schemas/README.md)
+- Explanation: [Design](docs/design.md)
+- Explanation: [Claim boundaries](docs/claim-boundaries.md)
+- Explanation: [Structural identity v1](docs/identity.md)
+- Explanation: [Roadmap](docs/roadmap.md)
 - [Migration from xtask](docs/migration-from-xtask.md)
 - [CI examples](docs/ci.md)
 - [Examples](examples/README.md)
 - [Agent worklist prompt](docs/agents/cargo-allow-worklist.md)
-- [JSON schema index](docs/schemas/README.md)
-- [Add JSON schema](docs/schemas/add.schema.json)
-- [Migrate JSON schema](docs/schemas/migrate.schema.json)
-- [Explain JSON schema](docs/schemas/explain.schema.json)
-- [List JSON schema](docs/schemas/list.schema.json)
