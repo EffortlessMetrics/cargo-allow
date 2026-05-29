@@ -133,9 +133,18 @@ fn parses_current_repository_policy() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("repo policy parses: {err}")));
 
     assert_eq!(cfg.policy, "cargo-allow");
-    assert!(cfg.allow.iter().any(|entry| entry.id == "allow-0001"));
+    assert!(cfg.allow.iter().any(|entry| entry.id == "allow-0076"));
     assert!(cfg.allow.iter().any(|entry| entry.id == "allow-0088"));
     for removed in [
+        "allow-0001",
+        "allow-0002",
+        "allow-0003",
+        "allow-0004",
+        "allow-0005",
+        "allow-0006",
+        "allow-0007",
+        "allow-0008",
+        "allow-0009",
         "allow-0019",
         "allow-0020",
         "allow-0031",

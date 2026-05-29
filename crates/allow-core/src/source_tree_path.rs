@@ -76,19 +76,20 @@ fn split_glob(s: &str) -> Vec<&str> {
 }
 
 fn glob_match_tokens(pattern: &[&str], path: &[&str]) -> bool {
-    if pattern.is_empty() {
+    let Some((pattern_head, pattern_tail)) = pattern.split_first() else {
         return path.is_empty();
-    }
-    if pattern[0] == "**" {
-        if glob_match_tokens(&pattern[1..], path) {
+    };
+    if *pattern_head == "**" {
+        if glob_match_tokens(pattern_tail, path) {
             return true;
         }
-        return !path.is_empty() && glob_match_tokens(pattern, &path[1..]);
+        return path
+            .split_first()
+            .is_some_and(|(_, path_tail)| glob_match_tokens(pattern, path_tail));
     }
-    if path.is_empty() {
-        return false;
-    }
-    segment_matches(pattern[0], path[0]) && glob_match_tokens(&pattern[1..], &path[1..])
+    path.split_first().is_some_and(|(path_head, path_tail)| {
+        segment_matches(pattern_head, path_head) && glob_match_tokens(pattern_tail, path_tail)
+    })
 }
 
 fn segment_matches(pattern: &str, text: &str) -> bool {
@@ -96,17 +97,21 @@ fn segment_matches(pattern: &str, text: &str) -> bool {
 }
 
 fn segment_match_bytes(pattern: &[u8], text: &[u8]) -> bool {
-    if pattern.is_empty() {
+    let Some((&pattern_head, pattern_tail)) = pattern.split_first() else {
         return text.is_empty();
-    }
-    match pattern[0] {
+    };
+    match pattern_head {
         b'*' => {
-            segment_match_bytes(&pattern[1..], text)
-                || (!text.is_empty() && segment_match_bytes(pattern, &text[1..]))
+            segment_match_bytes(pattern_tail, text)
+                || text
+                    .split_first()
+                    .is_some_and(|(_, text_tail)| segment_match_bytes(pattern, text_tail))
         }
-        b'?' => !text.is_empty() && segment_match_bytes(&pattern[1..], &text[1..]),
-        byte => {
-            !text.is_empty() && byte == text[0] && segment_match_bytes(&pattern[1..], &text[1..])
-        }
+        b'?' => text
+            .split_first()
+            .is_some_and(|(_, text_tail)| segment_match_bytes(pattern_tail, text_tail)),
+        byte => text.split_first().is_some_and(|(&text_head, text_tail)| {
+            byte == text_head && segment_match_bytes(pattern_tail, text_tail)
+        }),
     }
 }
