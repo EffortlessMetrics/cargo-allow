@@ -3,7 +3,7 @@ mod support;
 use std::fs;
 
 use support::{
-    assert_file_contains, assert_status, assert_stderr_empty, assert_stdout_empty,
+    assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
     cargo_allow_command, remove_temp_root, temp_root,
 };
 
@@ -66,11 +66,7 @@ fn saved_json_artifact_commands_are_quiet() {
             &result,
             "--output should not emit side-channel status to stderr",
         );
-        assert_file_contains(
-            &output,
-            &format!("\"schema_id\": \"{}\"", command.schema_id),
-            &format!("{} output should be a saved JSON artifact", command.name),
-        );
+        assert_saved_json_artifact(&output, command.name, command.schema_id, command.name);
     }
 
     remove_temp_root(root);

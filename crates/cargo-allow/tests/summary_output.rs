@@ -3,7 +3,7 @@ mod support;
 use std::fs;
 
 use support::{
-    assert_file_contains, assert_status, assert_stderr_empty, assert_stdout_empty,
+    assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
     cargo_allow_command, remove_temp_root, temp_root,
 };
 
@@ -52,11 +52,7 @@ fn assert_quiet_add_summary_output() {
         "[[allow]]",
         "add should write the updated policy artifact",
     );
-    assert_file_contains(
-        &summary_output,
-        "\"schema_id\": \"cargo-allow.add.v1\"",
-        "add should write a JSON summary artifact",
-    );
+    assert_saved_json_artifact(&summary_output, "add", "cargo-allow.add.v1", "add");
 
     remove_temp_root(root);
 }
@@ -87,10 +83,11 @@ fn assert_quiet_propose_summary_output() {
         "[[allow]]",
         "propose should write the proposed policy artifact",
     );
-    assert_file_contains(
+    assert_saved_json_artifact(
         &summary_output,
-        "\"schema_id\": \"cargo-allow.propose.v1\"",
-        "propose should write a JSON summary artifact",
+        "propose",
+        "cargo-allow.propose.v1",
+        "propose",
     );
 
     remove_temp_root(root);
@@ -135,10 +132,11 @@ fn assert_quiet_migrate_summary_output() {
         "[[allow]]",
         "migrate should write the canonical policy artifact",
     );
-    assert_file_contains(
+    assert_saved_json_artifact(
         &summary_output,
-        "\"schema_id\": \"cargo-allow.migrate.v1\"",
-        "migrate should write a JSON summary artifact",
+        "migrate",
+        "cargo-allow.migrate.v1",
+        "migrate",
     );
 
     remove_temp_root(root);
@@ -166,6 +164,12 @@ fn write_source_fixture(root: &std::path::Path) {
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
+}
+
+fn assert_file_contains(path: &std::path::Path, needle: &str, message: &str) {
+    let contents = fs::read_to_string(path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
+    assert!(contents.contains(needle), "{message}");
 }
 
 fn write_policy(root: &std::path::Path, policy: &str) {

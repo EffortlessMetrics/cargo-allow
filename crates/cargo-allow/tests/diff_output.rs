@@ -5,7 +5,7 @@ use std::path::Path;
 use std::process::Command;
 
 use support::{
-    assert_file_contains, assert_status, assert_stderr_empty, assert_stdout_empty,
+    assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
     cargo_allow_command, remove_temp_root, temp_root,
 };
 
@@ -65,11 +65,7 @@ fn diff_json_with_output_file_does_not_emit_human_posture_to_stderr() {
         &result,
         "--output should not emit human posture rows to stderr",
     );
-    assert_file_contains(
-        &output,
-        "\"schema_id\": \"cargo-allow.report.v1\"",
-        "diff output should be a report artifact",
-    );
+    assert_saved_json_artifact(&output, "diff", "cargo-allow.report.v1", "diff");
     assert_file_contains(
         &output,
         "\"scope_broadened\"",
@@ -116,4 +112,10 @@ fn git(root: &Path, args: &[&str]) {
             String::from_utf8_lossy(&output.stderr)
         ));
     }
+}
+
+fn assert_file_contains(path: &std::path::Path, needle: &str, message: &str) {
+    let contents = fs::read_to_string(path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
+    assert!(contents.contains(needle), "{message}");
 }

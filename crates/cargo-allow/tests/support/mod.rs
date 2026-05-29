@@ -2,6 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
+use serde_json::Value;
+
 pub fn cargo_allow_command() -> Command {
     Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
 }
@@ -32,10 +34,72 @@ pub fn assert_stderr_empty(command: &str, result: &Output, message: &str) {
     );
 }
 
-pub fn assert_file_contains(path: &std::path::Path, needle: &str, message: &str) {
+pub fn assert_saved_json_artifact(
+    path: &std::path::Path,
+    name: &str,
+    expected_schema_id: &str,
+    expected_command: &str,
+) -> Value {
     let contents = fs::read_to_string(path)
         .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
-    assert!(contents.contains(needle), "{message}");
+    let value: Value = serde_json::from_str(&contents).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "{name} saved artifact should parse as JSON: {err}\n{contents}"
+        ))
+    });
+    assert_eq!(
+        value.get("schema_version").and_then(Value::as_u64),
+        Some(1),
+        "{name} schema_version"
+    );
+    assert_eq!(
+        value.get("schema_id").and_then(Value::as_str),
+        Some(expected_schema_id),
+        "{name} schema_id"
+    );
+    assert_eq!(
+        value.get("tool").and_then(Value::as_str),
+        Some("cargo-allow"),
+        "{name} tool"
+    );
+    assert_eq!(
+        value.get("command").and_then(Value::as_str),
+        Some(expected_command),
+        "{name} command"
+    );
+    assert_json_array_contains(&value, "claim_boundary", "source_tree_inventory", name);
+    assert_json_array_contains(
+        &value,
+        "scanner_limitations",
+        "cargo_metadata_not_invoked",
+        name,
+    );
+    assert_json_array_contains(
+        &value,
+        "scanner_limitations",
+        "repository_code_not_executed",
+        name,
+    );
+    assert_eq!(
+        value.pointer("/inventory/scope").and_then(Value::as_str),
+        Some("source_tree"),
+        "{name} inventory scope"
+    );
+    assert!(
+        matches!(
+            value.pointer("/inventory/scanner").and_then(Value::as_str),
+            Some("source_syntax" | "policy_migration")
+        ),
+        "{name} inventory scanner should be source_syntax or policy_migration"
+    );
+    assert!(
+        value
+            .pointer("/inventory/source")
+            .and_then(Value::as_str)
+            .is_some_and(|source| !source.is_empty()),
+        "{name} inventory source"
+    );
+    value
 }
 
 pub fn temp_root(label: &str) -> PathBuf {
@@ -50,6 +114,16 @@ pub fn temp_root(label: &str) -> PathBuf {
     fs::create_dir_all(&root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
     root
+}
+
+fn assert_json_array_contains(value: &Value, field: &str, expected: &str, artifact: &str) {
+    let Some(items) = value.get(field).and_then(Value::as_array) else {
+        std::panic::panic_any(format!("{artifact} {field} should be an array"));
+    };
+    assert!(
+        items.iter().any(|item| item.as_str() == Some(expected)),
+        "{artifact} {field} should contain {expected}"
+    );
 }
 
 pub fn remove_temp_root(root: PathBuf) {
