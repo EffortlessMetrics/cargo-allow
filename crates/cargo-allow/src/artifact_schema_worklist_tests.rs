@@ -1,6 +1,6 @@
 use crate::artifact_schema_support::{
-    assert_enum_contains_all, assert_enum_equals, assert_required_fields,
-    assert_schema_type_contains, match_status_enum, parse_schema, required_schema_pointer,
+    assert_enum_equals, assert_required_fields, assert_schema_type_contains, governed_kind_enum,
+    match_status_enum, parse_schema, required_schema_pointer,
 };
 use crate::worklist::{DIFFICULTY_LEVELS, RISK_LEVELS, WORK_ITEM_KINDS};
 use serde_json::Value;
@@ -193,11 +193,11 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         "/$defs/work_item/properties/kind/enum",
         WORK_ITEM_KINDS,
     );
-    assert_enum_contains_all(
+    assert_nullable_string_enum_equals(
         "worklist",
         &schema,
         "/$defs/work_item/properties/exception_kind/enum",
-        &["panic", "unsafe", "lint_exception", "non_rust_file"],
+        &governed_kind_enum(),
     );
     assert_schema_type_contains(
         "worklist item source_package",
