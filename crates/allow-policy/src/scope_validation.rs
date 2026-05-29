@@ -28,6 +28,12 @@ pub(crate) fn validate_workspace(workspace: &WorkspaceConfig) -> CargoAllowResul
             workspace.default_mode
         )));
     }
+    for pattern in &workspace.ignored {
+        validate_glob("source-tree ignored glob", pattern)?;
+    }
+    for pattern in &workspace.generated {
+        validate_glob("source-tree generated glob", pattern)?;
+    }
     Ok(())
 }
 

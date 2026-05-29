@@ -15,12 +15,6 @@ use crate::selector_validation::{validate_selector, validate_source_hints};
 pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
     validate_policy_header(cfg)?;
     validate_workspace(&cfg.workspace)?;
-    for pattern in &cfg.workspace.ignored {
-        validate_glob("source-tree ignored glob", pattern)?;
-    }
-    for pattern in &cfg.workspace.generated {
-        validate_glob("source-tree generated glob", pattern)?;
-    }
     let mut ids = BTreeSet::new();
     for entry in &cfg.allow {
         validate_allow_entry_identity(entry)?;
