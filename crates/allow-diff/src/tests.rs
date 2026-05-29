@@ -434,6 +434,22 @@ fn detects_added_baseline_debt_as_failure() {
 }
 
 #[test]
+fn detects_baseline_debt_normalized_as_failure() {
+    let mut base_entry = entry("allow-1");
+    base_entry.classification = "baseline_debt".to_string();
+    let base = config_with(base_entry);
+    let head = config_with(entry("allow-1"));
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::BaselineDebtNormalized
+            && change.severity == PolicyChangeSeverity::Fail
+            && change.message.contains("baseline_debt")
+    }));
+}
+
+#[test]
 fn detects_removed_allow_as_improvement() {
     let mut base = config_with(entry("allow-1"));
     base.allow.push(entry("allow-2"));
@@ -542,6 +558,10 @@ fn policy_change_string_helpers_cover_all_public_variants() {
         (PolicyChangeKind::AddedAllow, "added_allow"),
         (PolicyChangeKind::RemovedAllow, "removed_allow"),
         (PolicyChangeKind::BaselineDebtAdded, "baseline_debt_added"),
+        (
+            PolicyChangeKind::BaselineDebtNormalized,
+            "baseline_debt_normalized",
+        ),
         (PolicyChangeKind::KindChanged, "kind_changed"),
         (PolicyChangeKind::FamilyChanged, "family_changed"),
         (PolicyChangeKind::ScopeBroadened, "scope_broadened"),

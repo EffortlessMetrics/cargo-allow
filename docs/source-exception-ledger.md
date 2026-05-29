@@ -202,7 +202,10 @@ structural selector more times than the baseline allowed becomes new debt
 instead of silently broadening the exception.
 
 Diff mode reports occurrence-limit increases or removals as policy weakening
-and occurrence-limit additions or reductions as policy improvements.
+and occurrence-limit additions or reductions as policy improvements. It also
+reports an existing `baseline_debt` entry being reclassified as reviewed policy
+as policy weakening, because generated adoption debt must not be normalized
+without an explicit retained-exception review.
 
 `cargo-allow explain <id>` reports this live posture for a single entry. It
 shows the policy metadata, selector, current match status, matched finding
@@ -316,8 +319,9 @@ review of the broad scope.
 base revision's `policy/allow.toml` and reports policy weakening in human and
 Markdown output. Current detection covers scope broadening, selector precision
 loss, expiry/review extension, evidence removal, owner/reason/classification
-removal, occurrence-limit loosening, and added `baseline_debt`. This is policy
-ledger comparison only.
+removal, occurrence-limit loosening, added `baseline_debt`, and existing
+`baseline_debt` entries reclassified as reviewed policy. This is policy ledger
+comparison only.
 
 The same command also compares source finding posture between the base git tree
 and the current checkout, or the optional `--head` git tree when provided. It
