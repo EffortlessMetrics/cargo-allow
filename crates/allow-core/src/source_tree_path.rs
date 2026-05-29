@@ -116,25 +116,27 @@ fn glob_match_tokens(pattern: &[&str], path: &[&str]) -> bool {
 }
 
 fn segment_matches(pattern: &str, text: &str) -> bool {
-    segment_match_bytes(pattern.as_bytes(), text.as_bytes())
+    let pattern = pattern.chars().collect::<Vec<_>>();
+    let text = text.chars().collect::<Vec<_>>();
+    segment_match_chars(&pattern, &text)
 }
 
-fn segment_match_bytes(pattern: &[u8], text: &[u8]) -> bool {
+fn segment_match_chars(pattern: &[char], text: &[char]) -> bool {
     let Some((&pattern_head, pattern_tail)) = pattern.split_first() else {
         return text.is_empty();
     };
     match pattern_head {
-        b'*' => {
-            segment_match_bytes(pattern_tail, text)
+        '*' => {
+            segment_match_chars(pattern_tail, text)
                 || text
                     .split_first()
-                    .is_some_and(|(_, text_tail)| segment_match_bytes(pattern, text_tail))
+                    .is_some_and(|(_, text_tail)| segment_match_chars(pattern, text_tail))
         }
-        b'?' => text
+        '?' => text
             .split_first()
-            .is_some_and(|(_, text_tail)| segment_match_bytes(pattern_tail, text_tail)),
-        byte => text.split_first().is_some_and(|(&text_head, text_tail)| {
-            byte == text_head && segment_match_bytes(pattern_tail, text_tail)
+            .is_some_and(|(_, text_tail)| segment_match_chars(pattern_tail, text_tail)),
+        ch => text.split_first().is_some_and(|(&text_head, text_tail)| {
+            ch == text_head && segment_match_chars(pattern_tail, text_tail)
         }),
     }
 }

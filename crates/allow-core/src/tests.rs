@@ -17,6 +17,13 @@ fn glob_supports_double_star() {
 }
 
 #[test]
+fn glob_question_mark_matches_one_unicode_character() {
+    assert!(glob_matches_str("docs/?.md", "docs/é.md"));
+    assert!(glob_matches_str("docs/??.md", "docs/éx.md"));
+    assert!(!glob_matches_str("docs/?.md", "docs/ee.md"));
+}
+
+#[test]
 fn source_tree_path_filter_matches_exact_subtree_and_glob_scope() {
     assert!(source_tree_path_matches_filter(
         "crates/allow-core/src/lib.rs",
