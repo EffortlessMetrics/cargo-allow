@@ -254,6 +254,75 @@ fn rejects_duplicate_ids() {
 }
 
 #[test]
+fn accepts_allow_id_token_characters() {
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow_test-1"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy should parse: {err}")));
+
+    assert_eq!(cfg.allow[0].id, "allow_test-1");
+}
+
+#[test]
+fn rejects_allow_id_with_surrounding_whitespace() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = " allow-1 "
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains("allow id ` allow-1 ` must not have leading or trailing whitespace"));
+}
+
+#[test]
+fn rejects_allow_id_with_unsupported_characters() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow:1"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains(
+        "allow id `allow:1` may contain only ASCII letters, digits, hyphen, or underscore"
+    ));
+}
+
+#[test]
 fn rejects_invalid_lifecycle_dates() {
     let err = parse_err(
         r#"

@@ -56,9 +56,7 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
     }
     let mut ids = BTreeSet::new();
     for entry in &cfg.allow {
-        if entry.id.trim().is_empty() {
-            return Err(CargoAllowError::new("allow entry has empty id"));
-        }
+        validate_allow_id(&entry.id)?;
         if !ids.insert(entry.id.clone()) {
             return Err(CargoAllowError::new(format!(
                 "duplicate allow id `{}`",
@@ -124,6 +122,26 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
                 entry.id
             )));
         }
+    }
+    Ok(())
+}
+
+fn validate_allow_id(id: &str) -> CargoAllowResult<()> {
+    if id.trim().is_empty() {
+        return Err(CargoAllowError::new("allow entry has empty id"));
+    }
+    if id.trim() != id {
+        return Err(CargoAllowError::new(format!(
+            "allow id `{id}` must not have leading or trailing whitespace"
+        )));
+    }
+    if !id
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_'))
+    {
+        return Err(CargoAllowError::new(format!(
+            "allow id `{id}` may contain only ASCII letters, digits, hyphen, or underscore"
+        )));
     }
     Ok(())
 }
