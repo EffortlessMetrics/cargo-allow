@@ -26,15 +26,15 @@ Useful local commands:
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-cargo run -p cargo-allow -- allow audit --format human
-cargo run -p cargo-allow -- allow check --mode no-new
+cargo run -p cargo-allow -- audit --format human
+cargo run -p cargo-allow -- check --mode no-new
 ```
 
 When developing the repository before installing the binary, invoke the CLI
 through the local package:
 
 ```bash
-cargo run -p cargo-allow -- allow <subcommand>
+cargo run -p cargo-allow -- <subcommand>
 ```
 
 ## Code Organization
@@ -97,7 +97,7 @@ cargo test --workspace
 ```
 
 If the change affects CLI output or source-tree posture, also run the relevant
-local `cargo run -p cargo-allow -- allow ...` command and include any generated
+local `cargo run -p cargo-allow -- ...` command and include any generated
 review artifacts in the PR discussion when useful.
 
 ## Documentation

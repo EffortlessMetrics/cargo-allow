@@ -229,8 +229,18 @@ crate.
 | `allow-policy-legacy` | Legacy policy adapters |
 | `cargo-allow` | clap-based CLI wiring |
 
+## License
+
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT License ([LICENSE-MIT](LICENSE-MIT))
+
+at your option.
+
 ## Documentation
 
+- [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Contributing](CONTRIBUTING.md)
 - [Design](docs/design.md)
 - [Claim boundaries](docs/claim-boundaries.md)
