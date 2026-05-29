@@ -1,6 +1,6 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, SimpleDate,
-    WorkspaceConfig,
+    WorkspaceConfig, normalize_path,
 };
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -78,6 +78,7 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
         if let Some(glob) = &entry.selector.glob {
             validate_glob(&format!("{} selector glob", entry.id), glob)?;
         }
+        validate_scope_consistency(entry)?;
         validate_selector(entry)?;
         validate_source_hints(entry)?;
         validate_lifecycle(entry)?;
@@ -234,6 +235,33 @@ fn validate_glob(label: &str, glob: &str) -> CargoAllowResult<()> {
         return Err(CargoAllowError::new(format!(
             "{label} must not contain parent directory segments"
         )));
+    }
+    Ok(())
+}
+
+fn validate_scope_consistency(entry: &AllowEntry) -> CargoAllowResult<()> {
+    if entry.path.is_some() && entry.glob.is_some() {
+        return Err(CargoAllowError::new(format!(
+            "{} must not define both path and glob",
+            entry.id
+        )));
+    }
+    if let (Some(path), Some(selector_glob)) = (&entry.path, &entry.selector.glob) {
+        let path = normalize_path(path);
+        if selector_glob != &path {
+            return Err(CargoAllowError::new(format!(
+                "{} selector glob `{selector_glob}` must match path `{path}` or omit one scope",
+                entry.id
+            )));
+        }
+    }
+    if let (Some(glob), Some(selector_glob)) = (&entry.glob, &entry.selector.glob) {
+        if selector_glob != glob {
+            return Err(CargoAllowError::new(format!(
+                "{} selector glob `{selector_glob}` must match glob `{glob}` or omit one scope",
+                entry.id
+            )));
+        }
     }
     Ok(())
 }
