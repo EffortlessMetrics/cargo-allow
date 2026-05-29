@@ -67,11 +67,11 @@ scaffolding until reviewed. Unsafe entries keep their separate
 Known local evidence prefixes are parsed when a policy is loaded from a source
 tree. `doc:`, `spec:`, `adr:`, `ripr:`, `unsafe-review:`, and `coverage:`
 references must point to source-tree-relative regular files that exist.
-Symlinked evidence paths are rejected so the local evidence check does not
-silently follow a reference outside the scanned source tree. `test:`, `cargo:`,
-`issue:`, `pr:`, and `legacy-policy:` references are treated as traceability
-strings in the current implementation and are not executed or resolved over the
-network.
+Symlinked evidence paths, including symlinked parent directories, are rejected
+so the local evidence check does not silently follow a reference outside the
+scanned source tree. `test:`, `cargo:`, `issue:`, `pr:`, and `legacy-policy:`
+references are treated as traceability strings in the current implementation
+and are not executed or resolved over the network.
 
 Illustrative local evidence references:
 
