@@ -2,6 +2,15 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use std::fs;
 use std::path::Path;
 
+pub(crate) fn emit_text(output: Option<&Path>, contents: &str) -> CargoAllowResult<()> {
+    if let Some(path) = output {
+        write_file(path, contents)?;
+    } else {
+        println!("{contents}");
+    }
+    Ok(())
+}
+
 pub(crate) fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowResult<()> {
     let path = path.as_ref();
     if let Some(parent) = path.parent() {

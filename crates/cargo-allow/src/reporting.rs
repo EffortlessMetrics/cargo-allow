@@ -1,7 +1,7 @@
 use allow_core::{AllowConfig, CargoAllowResult, Finding, MatchOutcome};
 use std::path::Path;
 
-use crate::{InventoryFacts, OutputFormat, parse_kind_filter, write_file};
+use crate::{InventoryFacts, OutputFormat, emit_text, parse_kind_filter};
 
 pub(crate) struct ReportRenderArgs<'a> {
     pub(crate) command: &'a str,
@@ -102,12 +102,7 @@ pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
             context,
         ),
     };
-    if let Some(path) = args.output {
-        write_file(path, &text)?;
-    } else {
-        println!("{text}");
-    }
-    Ok(())
+    emit_text(args.output, &text)
 }
 
 pub(crate) fn report_config(

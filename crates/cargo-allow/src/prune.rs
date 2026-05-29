@@ -2,7 +2,7 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 
-use crate::{SourceTreeReportContext, config_path, load_world, write_file};
+use crate::{SourceTreeReportContext, config_path, emit_text, load_world, write_file};
 
 #[path = "prune_args.rs"]
 mod prune_args;
@@ -75,11 +75,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             context,
         ),
     };
-    if let Some(path) = &args.output {
-        write_file(path, &text)?;
-    } else {
-        println!("{text}");
-    }
+    emit_text(args.output.as_deref(), &text)?;
     Ok(())
 }
 

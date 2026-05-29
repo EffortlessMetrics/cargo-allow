@@ -1,7 +1,7 @@
 use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
 
-use crate::{SourceTreeReportContext, load_world, write_file};
+use crate::{SourceTreeReportContext, emit_text, load_world};
 
 #[path = "list_args.rs"]
 mod list_args;
@@ -46,11 +46,7 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         ListFormat::Human => render_list_rows(&rows, &filters),
         ListFormat::Json => render_list_rows_json(&rows, &filters, context),
     };
-    if let Some(path) = &args.output {
-        write_file(path, &text)?;
-    } else {
-        println!("{text}");
-    }
+    emit_text(args.output.as_deref(), &text)?;
     Ok(())
 }
 
