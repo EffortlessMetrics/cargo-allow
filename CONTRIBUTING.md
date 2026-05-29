@@ -14,6 +14,14 @@ core promise: exceptions are visible, durable, reviewable, and removable.
 - Keep changes focused. One pull request should have a clear purpose,
   non-goals, validation plan, claim boundary, and rollback path.
 
+## Community and Triage Surfaces
+
+Project participation is covered by the [Code of Conduct](CODE_OF_CONDUCT.md).
+Use the GitHub issue templates for bug reports, feature requests, and policy or
+scanner gaps so triage starts from a reproducible source-tree surface. Use the
+pull request templates to record source-exception ledger impact, validation,
+claim boundaries, and follow-up risks before review.
+
 ## Development Setup
 
 This workspace uses Rust 2024 and the workspace `rust-version` declared in

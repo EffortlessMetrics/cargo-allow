@@ -195,6 +195,7 @@ classification = "github_issue_template"
 reason = "Collects reproducible bug reports for cargo-allow scanner, matcher, report, and CLI behavior."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -217,6 +218,7 @@ classification = "github_issue_template"
 reason = "Configures GitHub issue form routing and disables blank issues so reports enter structured triage paths."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -239,6 +241,7 @@ classification = "github_issue_template"
 reason = "Collects structured feature requests for source-tree exception governance workflows."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -261,6 +264,7 @@ classification = "github_issue_template"
 reason = "Collects policy model and scanner gap reports for source-tree exception governance."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -283,6 +287,7 @@ classification = "github_pull_request_template"
 reason = "Provides the default pull request template with source-exception ledger impact and validation prompts."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -305,6 +310,7 @@ classification = "github_pull_request_template"
 reason = "Provides bug-fix pull request prompts for regression coverage, ledger impact, and validation."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -327,6 +333,7 @@ classification = "github_pull_request_template"
 reason = "Provides documentation pull request prompts for accuracy checks, ledger impact, and validation."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -349,6 +356,7 @@ classification = "github_pull_request_template"
 reason = "Provides feature pull request prompts for design compatibility, ledger impact, and validation."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -371,6 +379,7 @@ classification = "contributor_documentation"
 reason = "Documents contribution workflow, product boundaries, validation expectations, and pull request requirements."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/design.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1295,6 +1304,7 @@ classification = "community_guidelines"
 reason = "Defines project community standards, reporting, and enforcement expectations for contributors."
 created = "2026-05-29"
 review_after = "2026-11-01"
+evidence = ["doc:CONTRIBUTING.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
