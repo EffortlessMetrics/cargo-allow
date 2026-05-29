@@ -45,6 +45,7 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
             "current_matches",
             "match_outcomes",
             "selector_precision",
+            "broad_scope",
         ],
     );
     assert_eq!(
@@ -81,6 +82,13 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
             .and_then(Value::as_u64),
         Some(0),
         "explain selector_precision minimum"
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/summary/properties/broad_scope/type")
+            .and_then(Value::as_str),
+        Some("boolean"),
+        "explain broad_scope should be boolean"
     );
 
     assert_eq!(

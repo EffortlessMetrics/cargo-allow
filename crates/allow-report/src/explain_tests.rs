@@ -75,6 +75,7 @@ fn explain_json_renderer_records_context_and_current_status() {
         ),
         entry: &entry,
         selector_precision: 42,
+        broad_scope: true,
         current_findings: &[finding],
         match_outcomes: &outcomes,
         evidence_references: &evidence_references,
@@ -93,6 +94,7 @@ fn explain_json_renderer_records_context_and_current_status() {
     assert!(json.contains("\"current_matches\": 1"));
     assert!(json.contains("\"match_outcomes\": 1"));
     assert!(json.contains("\"selector_precision\": 42"));
+    assert!(json.contains("\"broad_scope\": true"));
     assert!(json.contains("\"raw\": \"doc:docs/safety/ffi.md\""));
     assert!(json.contains("\"target\": \"docs/safety/ffi.md\""));
     assert!(json.contains("\"status\": \"missing\""));
@@ -110,6 +112,7 @@ fn explain_json_renderer_records_context_and_current_status() {
     assert!(text.contains("owner: runtime"));
     assert!(text.contains("classification: ffi_boundary"));
     assert!(text.contains("selector_precision: 42"));
+    assert!(text.contains("broad_scope: true"));
     assert!(text.contains("evidence references:"));
     assert!(text.contains(
             "- doc:docs/safety/ffi.md prefix=doc target=docs/safety/ffi.md status=missing message=local evidence file is missing"

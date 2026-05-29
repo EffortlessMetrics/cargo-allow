@@ -204,8 +204,9 @@ and occurrence-limit additions or reductions as policy improvements.
 
 `cargo-allow explain <id>` reports this live posture for a single entry. It
 shows the policy metadata, selector, current match status, matched finding
-count, outcome counts, stale state, occurrence-limit overruns, and evidence
-reference diagnostics. When the entry needs attention, it also includes
+count, outcome counts, selector precision, broad-scope status, stale state,
+occurrence-limit overruns, and evidence reference diagnostics. When the entry
+needs attention, it also includes
 suggested next actions and proof commands. Matched `baseline_debt` entries also
 show next actions because generated debt still needs human review. Local
 evidence references are shown as present, missing, or invalid; traceability

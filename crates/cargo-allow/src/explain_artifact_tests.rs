@@ -65,6 +65,13 @@ fn explain_entry_json_records_context_and_live_status() {
     );
     assert_eq!(
         value
+            .pointer("/summary/broad_scope")
+            .and_then(Value::as_bool),
+        Some(false),
+        "explain broad scope"
+    );
+    assert_eq!(
+        value
             .pointer("/current_findings/0/path")
             .and_then(Value::as_str),
         Some("tracked.file"),

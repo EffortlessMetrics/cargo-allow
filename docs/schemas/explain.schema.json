@@ -57,7 +57,8 @@
         "current_status",
         "current_matches",
         "match_outcomes",
-        "selector_precision"
+        "selector_precision",
+        "broad_scope"
       ],
       "properties": {
         "current_status": {
@@ -75,6 +76,10 @@
           "type": "integer",
           "minimum": 0,
           "description": "Relative selector precision score for the explained allow entry. Higher values indicate a more specific source-tree selector; line and column hints do not increase this score."
+        },
+        "broad_scope": {
+          "type": "boolean",
+          "description": "Whether the explained allow entry uses wildcard source-tree scope in path, glob, or selector glob."
         }
       }
     },
