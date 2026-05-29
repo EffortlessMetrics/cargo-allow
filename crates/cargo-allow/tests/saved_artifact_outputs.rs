@@ -170,24 +170,7 @@ fn saved_worklist_output_includes_broken_evidence_items() {
     let fixture = SourceTreeFixture::new("saved-worklist-broken-evidence");
     fixture.write_policy_with_broken_evidence();
 
-    let artifact_dir = fixture.root.join("target/cargo-allow");
-    let worklist = artifact_dir.join("worklist.json");
-
-    run_cargo_allow(&[
-        "worklist",
-        "--root",
-        fixture.root_str(),
-        "--config",
-        "policy/allow.toml",
-        "--item-kind",
-        "broken_evidence_link",
-        "--format",
-        "json",
-        "--output",
-        path_arg(&worklist),
-    ]);
-    let value =
-        assert_source_syntax_artifact(&worklist, allow_report::WORKLIST_SCHEMA_ID, "worklist");
+    let value = run_broken_evidence_worklist(&fixture);
     assert_eq!(
         value
             .pointer("/summary/work_items")
@@ -216,6 +199,63 @@ fn saved_worklist_output_includes_broken_evidence_items() {
         Some("cargo-allow worklist --allow-id allow-broken-evidence --format json"),
         "worklist allow-id proof command"
     );
+}
+
+#[test]
+fn saved_worklist_output_includes_invalid_evidence_scope_items() {
+    let fixture = SourceTreeFixture::new("saved-worklist-invalid-evidence-scope");
+    fixture.write_policy_with_invalid_evidence_scope();
+
+    let value = run_broken_evidence_worklist(&fixture);
+    assert_eq!(
+        value
+            .pointer("/summary/work_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "worklist should contain one invalid evidence scope item"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/kind")
+            .and_then(serde_json::Value::as_str),
+        Some("broken_evidence_link"),
+        "worklist item kind"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/path")
+            .and_then(serde_json::Value::as_str),
+        Some("../outside.md"),
+        "worklist should expose the invalid source-tree-relative evidence target"
+    );
+    let message = value
+        .pointer("/work_items/0/message")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_else(|| std::panic::panic_any("worklist item should include message"));
+    assert!(
+        message.contains("parent directory segments"),
+        "worklist should explain why the local evidence scope is invalid: {message}"
+    );
+}
+
+fn run_broken_evidence_worklist(fixture: &SourceTreeFixture) -> serde_json::Value {
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let worklist = artifact_dir.join("worklist.json");
+
+    run_cargo_allow(&[
+        "worklist",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--item-kind",
+        "broken_evidence_link",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&worklist),
+    ]);
+    assert_source_syntax_artifact(&worklist, allow_report::WORKLIST_SCHEMA_ID, "worklist")
 }
 
 #[test]
@@ -411,28 +451,44 @@ safety_comment_required = false
     }
 
     fn write_policy_with_broken_evidence(&self) {
+        self.write_policy_with_evidence(
+            "allow-broken-evidence",
+            "Fixture exercises broken evidence worklist output.",
+            "doc:docs/missing-evidence.md",
+        );
+    }
+
+    fn write_policy_with_invalid_evidence_scope(&self) {
+        self.write_policy_with_evidence(
+            "allow-invalid-evidence-scope",
+            "Fixture exercises invalid evidence scope worklist output.",
+            "doc:../outside.md",
+        );
+    }
+
+    fn write_policy_with_evidence(&self, id: &str, reason: &str, evidence: &str) {
         self.write_minimal_policy();
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
             .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
-        policy.push_str(
+        policy.push_str(&format!(
             r#"
 
 [[allow]]
-id = "allow-broken-evidence"
+id = "{id}"
 kind = "unsafe"
 family = "unsafe_block"
 path = "src/lib.rs"
 owner = "core/tests"
 classification = "reviewed_fixture"
-reason = "Fixture exercises broken evidence worklist output."
-evidence = ["doc:docs/missing-evidence.md"]
+reason = "{reason}"
+evidence = ["{evidence}"]
 created = "2026-05-29"
 expires = "2026-08-29"
 
 [allow.selector]
 ast_kind = "unsafe_block"
 "#,
-        );
+        ));
         fs::write(self.root.join("policy/allow.toml"), policy)
             .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
