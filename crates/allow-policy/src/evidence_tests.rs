@@ -383,6 +383,47 @@ fn rejects_escaping_local_evidence_references() {
 }
 
 #[test]
+fn rejects_non_source_tree_relative_local_evidence_references() {
+    let cases = [
+        ("doc:", "has empty path"),
+        ("doc:/absolute/safety.md", "source-tree-relative"),
+        ("doc:C:/absolute/safety.md", "source-tree-relative"),
+        (
+            "doc:docs\\..\\outside.md",
+            "must not contain parent directory segments",
+        ),
+    ];
+
+    for (evidence, expected_message) in cases {
+        let cfg = parse_policy(&format!(
+            r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-doc"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["{}"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+            escape_toml_string(evidence)
+        ))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy parses: {err}")));
+
+        let err = validate_local_evidence_references(".", &cfg).unwrap_err();
+        assert!(
+            err.to_string().contains(expected_message),
+            "expected `{evidence}` error `{err}` to contain `{expected_message}`"
+        );
+    }
+}
+
+#[test]
 fn reports_evidence_reference_diagnostics() {
     let root = unique_test_dir("evidence-diagnostics");
     fs::create_dir_all(root.join("docs"))
@@ -547,4 +588,8 @@ fn remove_test_dir(path: PathBuf) {
             path.display()
         )),
     }
+}
+
+fn escape_toml_string(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
 }
