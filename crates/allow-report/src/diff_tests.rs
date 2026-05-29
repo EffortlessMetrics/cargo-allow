@@ -90,6 +90,7 @@ fn diff_pr_summary_markdown_reports_net_posture() {
     let summary = render_diff_pr_summary_markdown(0, &finding_changes, &policy_changes);
 
     assert!(summary.contains("**Net posture:** `improved`"));
+    assert!(summary.contains("| Current check failures | 0 |"));
     assert!(summary.contains("| Removed source findings | 1 |"));
     assert!(summary.contains("| Policy improvements | 1 |"));
     assert!(summary.contains("keep the narrower posture"));

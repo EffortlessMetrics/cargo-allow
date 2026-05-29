@@ -4,6 +4,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
+use serde_json::Value;
 use support::{
     assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
     cargo_allow_command, remove_temp_root, temp_root,
@@ -54,7 +55,43 @@ fn diff_json_reports_evidence_removed_policy_weakening() {
     remove_temp_root(root);
 }
 
-fn assert_saved_json_diff_failure(root: &Path, output: &Path) {
+#[test]
+fn diff_json_reports_broken_evidence_as_current_failure() {
+    let root = temp_root("diff-broken-evidence");
+    let policy = policy_with_evidence(Some("doc:docs/missing-evidence.md"));
+    write_diff_fixture(&root, policy.clone(), policy);
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_failure(&root, &output);
+    assert_json_u64(
+        &value,
+        "/summary/broken_evidence_links",
+        1,
+        "diff summary broken_evidence_links",
+    );
+    assert_json_u64(
+        &value,
+        "/trend/broken_evidence_links",
+        1,
+        "diff trend broken_evidence_links",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/current_failures",
+        1,
+        "diff posture current_failures",
+    );
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "worse",
+        "diff broken evidence net posture",
+    );
+
+    remove_temp_root(root);
+}
+
+fn assert_saved_json_diff_failure(root: &Path, output: &Path) -> Value {
     let result = cargo_allow_command()
         .arg("diff")
         .arg("--root")
@@ -79,7 +116,7 @@ fn assert_saved_json_diff_failure(root: &Path, output: &Path) {
         &result,
         "--output should not emit human posture rows to stderr",
     );
-    assert_saved_json_artifact(output, "diff", "cargo-allow.report.v1", "diff");
+    assert_saved_json_artifact(output, "diff", "cargo-allow.report.v1", "diff")
 }
 
 fn write_diff_fixture(root: &Path, base_policy: String, head_policy: String) {
@@ -110,6 +147,9 @@ fn policy_with_scope(scope: &str) -> String {
     format!(
         r#"policy = "cargo-allow"
 
+[workspace]
+ignored = ["policy/**"]
+
 [[allow]]
 id = "allow-unwrap"
 kind = "panic"
@@ -135,6 +175,9 @@ fn policy_with_evidence(evidence: Option<&str>) -> String {
         .unwrap_or_default();
     format!(
         r#"policy = "cargo-allow"
+
+[workspace]
+ignored = ["policy/**"]
 
 [[allow]]
 id = "allow-unwrap"
@@ -175,4 +218,20 @@ fn assert_file_contains(path: &std::path::Path, needle: &str, message: &str) {
     let contents = fs::read_to_string(path)
         .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
     assert!(contents.contains(needle), "{message}");
+}
+
+fn assert_json_u64(value: &Value, pointer: &str, expected: u64, message: &str) {
+    assert_eq!(
+        value.pointer(pointer).and_then(Value::as_u64),
+        Some(expected),
+        "{message}"
+    );
+}
+
+fn assert_json_str(value: &Value, pointer: &str, expected: &str, message: &str) {
+    assert_eq!(
+        value.pointer(pointer).and_then(Value::as_str),
+        Some(expected),
+        "{message}"
+    );
 }

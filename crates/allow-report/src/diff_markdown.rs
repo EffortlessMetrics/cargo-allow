@@ -14,7 +14,7 @@ pub fn render_diff_pr_summary_markdown(
     out.push_str(&format!("**Net posture:** `{}`\n\n", posture.as_str()));
     out.push_str("| Signal | Count |\n|---|---:|\n");
     out.push_str(&format!(
-        "| Current no-new failures | {} |\n",
+        "| Current check failures | {} |\n",
         summary.current_failures
     ));
     out.push_str(&format!(

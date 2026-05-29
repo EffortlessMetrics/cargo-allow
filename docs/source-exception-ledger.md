@@ -352,12 +352,13 @@ information, build awareness, proof adequacy, control-flow analysis, or
 data-flow analysis.
 
 Markdown diff output starts with a PR summary. The summary reports net posture,
-reviewer action, current no-new failures, new and removed source findings,
+reviewer action, current check failures, new and removed source findings,
 policy failures, policy review items, and policy improvements. `worse` means
-the diff has a failing no-new or policy-weakening signal. `review-required`
-means posture changed without a failing signal, such as a receipted new source
-finding or a new allow entry. `improved` means source findings or allow entries
-were removed without new failures or review-required policy changes.
+the diff has a failing no-new, broken local evidence, or policy-weakening
+signal. `review-required` means posture changed without a failing signal, such
+as a receipted new source finding or a new allow entry. `improved` means source
+findings or allow entries were removed without new failures or review-required
+policy changes.
 
 JSON diff output includes the same posture signals under the optional `diff`
 object. That object contains `net_posture`, a summary of current failures and
