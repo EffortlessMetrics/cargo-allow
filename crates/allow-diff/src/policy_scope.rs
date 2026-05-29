@@ -1,4 +1,4 @@
-use allow_core::AllowEntry;
+use allow_core::{AllowEntry, glob_matches_str};
 
 pub fn selector_precision_score(entry: &AllowEntry) -> u32 {
     let selector = &entry.selector;
@@ -46,12 +46,6 @@ pub fn selector_precision_score(entry: &AllowEntry) -> u32 {
 }
 
 pub(crate) fn scope_broadened(base: &AllowEntry, head: &AllowEntry) -> bool {
-    let base_exact_path =
-        base.path.is_some() && base.glob.is_none() && base.selector.glob.is_none();
-    let head_uses_glob = head.glob.is_some() || head.selector.glob.is_some();
-    if base_exact_path && head_uses_glob {
-        return true;
-    }
     if glob_scope_broadened(base.glob.as_deref(), head.glob.as_deref())
         || glob_scope_broadened(base.selector.glob.as_deref(), head.selector.glob.as_deref())
     {
@@ -74,7 +68,6 @@ pub(crate) fn scope_narrowed(base: &AllowEntry, head: &AllowEntry) -> bool {
 fn glob_scope_broadened(base: Option<&str>, head: Option<&str>) -> bool {
     match (base, head) {
         (Some(base), Some(head)) => head != base && wildcard_covers_path(head, base),
-        (None, Some(head)) => head.contains('*'),
         _ => false,
     }
 }
@@ -92,11 +85,5 @@ fn wildcard_covers_path(pattern: &str, path: &str) -> bool {
     if pattern == "*" || pattern == "**" {
         return true;
     }
-    if let Some(prefix) = pattern.strip_suffix("/**") {
-        return path.starts_with(prefix);
-    }
-    if let Some(prefix) = pattern.split('*').next() {
-        return !prefix.is_empty() && path.starts_with(prefix);
-    }
-    false
+    glob_matches_str(pattern, path)
 }
