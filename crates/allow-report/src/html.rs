@@ -103,6 +103,7 @@ fn render_audit_summary_html(
         ("New unreceipted", summary.count(MatchStatus::New)),
         ("Expired", summary.count(MatchStatus::Expired)),
         ("Evidence gaps", summary.count(MatchStatus::EvidenceMissing)),
+        ("Policy missing evidence", signals.policy_missing_evidence),
         ("Broken evidence links", signals.broken_evidence_links),
         ("Baseline debt", signals.baseline_debt),
     ] {
@@ -117,6 +118,10 @@ fn render_audit_summary_html(
         out.push_str("<p>Recommended next step: keep <code>cargo-allow check --mode no-new</code> in CI.</p>\n");
     } else if queue.is_empty() && signals.broken_evidence_links > 0 {
         out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --item-kind broken_evidence_link --format json</code> to repair broken local evidence references.</p>\n");
+    } else if queue.is_empty()
+        && signals.policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing)
+    {
+        out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --missing-evidence --format json</code> to route retained entries with no evidence references.</p>\n");
     } else if queue.is_empty() && signals.baseline_debt > 0 {
         out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --format json</code> to review generated baseline debt.</p>\n");
     } else {
