@@ -102,7 +102,8 @@ pub use worklist::{render_worklist_human, render_worklist_json};
 pub(crate) use non_rust::{FilePosture, non_rust_file_rows};
 pub(crate) use summary::{
     AUDIT_REVIEW_QUEUE_STATUSES, STATUS_COUNT_ORDER, audit_review_queue, baseline_debt_count,
-    render_counts_fields, review_item_count_with_baseline,
+    render_counts_fields, render_counts_fields_with_policy_baseline,
+    review_item_count_with_baseline,
 };
 
 #[cfg(test)]

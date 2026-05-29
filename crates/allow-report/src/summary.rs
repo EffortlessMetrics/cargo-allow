@@ -61,22 +61,39 @@ impl Summary {
 }
 
 pub(crate) fn render_counts_fields(summary: &Summary, indent: &str) -> String {
-    STATUS_COUNT_ORDER
+    render_counts_fields_with_policy_baseline(summary, None, indent)
+}
+
+pub(crate) fn render_counts_fields_with_policy_baseline(
+    summary: &Summary,
+    policy_baseline_debt: Option<usize>,
+    indent: &str,
+) -> String {
+    let include_policy_baseline_debt =
+        policy_baseline_debt.filter(|count| *count > summary.count(MatchStatus::BaselineDebt));
+    let mut out = STATUS_COUNT_ORDER
         .iter()
         .enumerate()
         .map(|(idx, status)| {
-            let comma = if idx + 1 == STATUS_COUNT_ORDER.len() {
-                ""
-            } else {
-                ","
-            };
+            let comma =
+                if idx + 1 == STATUS_COUNT_ORDER.len() && include_policy_baseline_debt.is_none() {
+                    ""
+                } else {
+                    ","
+                };
             format!(
                 "{indent}\"{}\": {}{comma}\n",
                 status.as_str(),
                 summary.count(*status)
             )
         })
-        .collect::<String>()
+        .collect::<String>();
+    if let Some(policy_baseline_debt) = include_policy_baseline_debt {
+        out.push_str(&format!(
+            "{indent}\"policy_baseline_debt\": {policy_baseline_debt}\n"
+        ));
+    }
+    out
 }
 
 pub(crate) fn review_item_count_with_baseline(summary: &Summary, baseline_debt: usize) -> usize {

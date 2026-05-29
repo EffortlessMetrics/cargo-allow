@@ -218,6 +218,11 @@
         "baseline_debt": {
           "type": "integer",
           "minimum": 0
+        },
+        "policy_baseline_debt": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Policy-level baseline_debt entries retained in the scanned policy. This is distinct from outcome-level baseline_debt status and is present when retained generated debt would otherwise be hidden by matched outcomes."
         }
       }
     }
