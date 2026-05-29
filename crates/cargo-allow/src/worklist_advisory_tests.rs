@@ -223,6 +223,35 @@ fn worklist_items_report_broken_evidence_links() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
 
+#[test]
+fn worklist_items_report_invalid_local_evidence_paths() {
+    let root = migrate_fixture_dir();
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-doc", FindingKind::NonRustFile);
+    entry.evidence = vec!["doc:../outside.md".to_string()];
+    cfg.allow.push(entry);
+
+    let items = work_items_from_evidence_diagnostics(&root, &cfg, 1);
+
+    let item = items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+    assert_eq!(item.kind, "broken_evidence_link");
+    assert_eq!(item.exception_kind.as_deref(), Some("non_rust_file"));
+    assert_eq!(item.risk, "medium");
+    assert_eq!(item.status, MatchStatus::EvidenceMissing);
+    assert_eq!(item.allow_id.as_deref(), Some("allow-doc"));
+    assert_eq!(item.path.as_deref(), Some("../outside.md"));
+    assert!(item.message.contains("parent directory"));
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("source-tree-relative path"))
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
 static NEXT_WORKLIST_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
 fn migrate_fixture_dir() -> PathBuf {
