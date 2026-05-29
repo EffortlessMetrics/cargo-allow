@@ -17,7 +17,8 @@
 
 ## Validation
 
-- [ ] `cargo fmt --all -- --check`
+- [ ] `cargo fmt --all --check`
+- [ ] `cargo clippy --workspace --all-targets -- -D warnings`
 - [ ] `cargo test --workspace`
 - [ ] `cargo run -p cargo-allow -- allow diff --base origin/main --format markdown`
 

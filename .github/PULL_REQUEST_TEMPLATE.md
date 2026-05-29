@@ -20,7 +20,8 @@ cargo-allow diff/audit output or explain why it does not apply.
 
 <!-- List commands run locally or in CI, and note any intentionally skipped checks. -->
 
-- [ ] `cargo fmt --all -- --check`
+- [ ] `cargo fmt --all --check`
+- [ ] `cargo clippy --workspace --all-targets -- -D warnings`
 - [ ] `cargo test --workspace`
 - [ ] `cargo run -p cargo-allow -- allow diff --base origin/main --format markdown`
 

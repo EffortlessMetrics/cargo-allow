@@ -273,6 +273,94 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0108"
+kind = "non_rust_file"
+family = "documentation"
+path = ".github/PULL_REQUEST_TEMPLATE.md"
+owner = "core/community"
+classification = "github_pull_request_template"
+reason = "Provides the default pull request template with source-exception ledger impact and validation prompts."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/PULL_REQUEST_TEMPLATE.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = ".github/PULL_REQUEST_TEMPLATE.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0109"
+kind = "non_rust_file"
+family = "documentation"
+path = ".github/PULL_REQUEST_TEMPLATE/bug_fix.md"
+owner = "core/community"
+classification = "github_pull_request_template"
+reason = "Provides bug-fix pull request prompts for regression coverage, ledger impact, and validation."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/PULL_REQUEST_TEMPLATE/bug_fix.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = ".github/PULL_REQUEST_TEMPLATE/bug_fix.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0110"
+kind = "non_rust_file"
+family = "documentation"
+path = ".github/PULL_REQUEST_TEMPLATE/docs.md"
+owner = "core/community"
+classification = "github_pull_request_template"
+reason = "Provides documentation pull request prompts for accuracy checks, ledger impact, and validation."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/PULL_REQUEST_TEMPLATE/docs.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = ".github/PULL_REQUEST_TEMPLATE/docs.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0111"
+kind = "non_rust_file"
+family = "documentation"
+path = ".github/PULL_REQUEST_TEMPLATE/feature.md"
+owner = "core/community"
+classification = "github_pull_request_template"
+reason = "Provides feature pull request prompts for design compatibility, ledger impact, and validation."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/PULL_REQUEST_TEMPLATE/feature.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = ".github/PULL_REQUEST_TEMPLATE/feature.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0075"
 kind = "non_rust_file"
 family = "configuration"
