@@ -92,6 +92,7 @@ Schema compatibility tests also lock:
 
 - the exact top-level property set for each schema;
 - the exact top-level required-field set for each schema;
+- rendered sample artifacts against their registered schema top-level fields;
 - `additionalProperties = false` at the artifact root and nested object schema
   nodes;
 - governed source-exception kind vocabularies where artifacts expose finding or
