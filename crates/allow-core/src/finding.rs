@@ -22,7 +22,7 @@ pub enum FindingKind {
 }
 
 impl FindingKind {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: &[Self] = &[
         Self::Panic,
         Self::Unsafe,
         Self::LintException,

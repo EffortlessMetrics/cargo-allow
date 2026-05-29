@@ -38,7 +38,7 @@ pub enum EvidenceReferenceStatus {
 }
 
 impl EvidenceReferenceStatus {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: &[Self] = &[
         Self::LocalFilePresent,
         Self::LocalFileMissing,
         Self::InvalidLocalPath,
