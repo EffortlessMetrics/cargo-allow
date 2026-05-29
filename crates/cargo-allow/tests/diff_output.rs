@@ -58,6 +58,43 @@ fn diff_json_reports_evidence_removed_policy_weakening() {
 }
 
 #[test]
+fn diff_json_reports_lifecycle_extension_as_review_required() {
+    let root = temp_root("diff-lifecycle-extended");
+    write_diff_fixture(
+        &root,
+        policy_with_lifecycle("2026-08-01", "2026-07-01"),
+        policy_with_lifecycle("2026-12-01", "2026-10-01"),
+    );
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_success(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "review-required",
+        "diff lifecycle extension net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/policy_review_items",
+        2,
+        "diff lifecycle extension review item count",
+    );
+    assert_file_contains(
+        &output,
+        "\"kind\": \"expiry_extended\"",
+        "diff output should include expiry extension posture",
+    );
+    assert_file_contains(
+        &output,
+        "\"kind\": \"review_after_extended\"",
+        "diff output should include review_after extension posture",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_reports_broken_evidence_as_current_failure() {
     let root = temp_root("diff-broken-evidence");
     let policy = policy_with_evidence(Some("doc:docs/missing-evidence.md"));
@@ -265,6 +302,34 @@ classification = "reviewed_exception"
 reason = "fixture"
 {evidence}created = "2026-05-29"
 review_after = "2026-08-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    )
+}
+
+fn policy_with_lifecycle(expires: &str, review_after: &str) -> String {
+    format!(
+        r#"policy = "cargo-allow"
+
+[workspace]
+ignored = ["policy/**"]
+
+[[allow]]
+id = "allow-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "fixture"
+evidence = ["test:diff_json_reports_lifecycle_extension_as_review_required"]
+created = "2026-05-29"
+expires = "{expires}"
+review_after = "{review_after}"
 
 [allow.selector]
 ast_kind = "method_call"
