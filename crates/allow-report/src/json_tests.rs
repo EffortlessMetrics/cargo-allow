@@ -90,6 +90,7 @@ fn json_report_trend_counts_policy_baseline_debt_context() {
 
     assert!(json.contains("\"review_items\": 3"));
     assert!(json.contains("\"baseline_debt\": 3"));
+    assert!(json.contains("\"policy_baseline_debt\": 3"));
 }
 
 #[test]

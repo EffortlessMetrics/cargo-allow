@@ -60,10 +60,6 @@ impl Summary {
     }
 }
 
-pub(crate) fn render_counts_fields(summary: &Summary, indent: &str) -> String {
-    render_counts_fields_with_policy_baseline(summary, None, indent)
-}
-
 pub(crate) fn render_counts_fields_with_policy_baseline(
     summary: &Summary,
     policy_baseline_debt: Option<usize>,
