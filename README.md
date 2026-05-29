@@ -231,17 +231,10 @@ crate.
 
 ## Documentation
 
-- [Design](docs/design.md)
-- [Claim boundaries](docs/claim-boundaries.md)
-- [Crate namespace policy](docs/crate-namespace.md)
-- [Roadmap](docs/roadmap.md)
-- [Source exception ledger](docs/source-exception-ledger.md)
-- [Migration from xtask](docs/migration-from-xtask.md)
-- [CI examples](docs/ci.md)
-- [Examples](examples/README.md)
-- [Agent worklist prompt](docs/agents/cargo-allow-worklist.md)
-- [JSON schema index](docs/schemas/README.md)
-- [Add JSON schema](docs/schemas/add.schema.json)
-- [Migrate JSON schema](docs/schemas/migrate.schema.json)
-- [Explain JSON schema](docs/schemas/explain.schema.json)
-- [List JSON schema](docs/schemas/list.schema.json)
+The docs are organized with the Diátaxis model:
+
+- Tutorial: [Your first source-exception ledger](docs/tutorials/first-ledger.md)
+- How-to: [CI examples](docs/ci.md), [Migration from xtask](docs/migration-from-xtask.md), [Agent worklist prompt](docs/agents/cargo-allow-worklist.md)
+- Reference: [Command reference](docs/reference/commands.md), [JSON schema index](docs/schemas/README.md), [Crate namespace policy](docs/crate-namespace.md), [Structural identity v1](docs/identity.md)
+- Explanation: [Design](docs/design.md), [Claim boundaries](docs/claim-boundaries.md), [Source exception ledger](docs/source-exception-ledger.md), [Roadmap](docs/roadmap.md)
+- Examples: [Copyable policy examples](examples/README.md)
