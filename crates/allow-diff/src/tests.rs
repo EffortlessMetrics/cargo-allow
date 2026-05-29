@@ -804,6 +804,49 @@ fn findings_at_revision_includes_workflow_companions() {
 }
 
 #[test]
+fn findings_at_revision_includes_config_companions() {
+    let root = temp_root("revision-config-companions");
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["commit", "--allow-empty", "-m", "initial"]);
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(config_policy_entry(
+        "proc-cargo-test",
+        "process_spawn",
+        ".github/workflows/ci.yml",
+        "cargo test",
+        "process:cargo test",
+    ));
+    cfg.allow.push(config_policy_entry(
+        "net-crates-io",
+        "network_destination",
+        "policy/network-allowlist.toml",
+        "crates.io lane build",
+        "network:crates.io:auth:false:lane:build",
+    ));
+
+    let findings = findings_at_revision(&root, "HEAD", &cfg)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("findings: {err}")));
+
+    assert!(findings.iter().any(|finding| {
+        finding.kind == FindingKind::PolicyException
+            && finding.family.as_deref() == Some("process_spawn")
+            && finding.identity.target_fingerprint.as_deref() == Some("process:cargo test")
+    }));
+    assert!(findings.iter().any(|finding| {
+        finding.kind == FindingKind::PolicyException
+            && finding.family.as_deref() == Some("network_destination")
+            && finding.identity.target_fingerprint.as_deref()
+                == Some("network:crates.io:auth:false:lane:build")
+    }));
+    fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
+}
+
+#[test]
 fn git_tree_revision_parser_skips_symlinks_and_preserves_newlines() {
     let output = b"100644 blob abc123\tsrc/lib.rs\0\
 120000 blob def456\tsrc/link.rs\0\
@@ -940,6 +983,40 @@ fn workflow_entry(
             ast_kind: Some(ast_kind.to_string()),
             symbol: Some(path.to_string()),
             target_fingerprint: target_fingerprint.map(str::to_string),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
+fn config_policy_entry(
+    id: &str,
+    family: &str,
+    path: &str,
+    symbol: &str,
+    target_fingerprint: &str,
+) -> AllowEntry {
+    AllowEntry {
+        id: id.to_string(),
+        kind: FindingKind::PolicyException,
+        family: Some(family.to_string()),
+        path: Some(PathBuf::from(path)),
+        glob: None,
+        owner: "infra".to_string(),
+        classification: family.to_string(),
+        reason: "Policy surface is retained for review.".to_string(),
+        evidence: vec!["legacy-policy:policy".to_string()],
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: Some("2026-05-26".to_string()),
+            review_after: Some("2026-08-01".to_string()),
+            expires: None,
+        },
+        selector: Selector {
+            ast_kind: Some(family.to_string()),
+            symbol: Some(symbol.to_string()),
+            target_fingerprint: Some(target_fingerprint.to_string()),
             ..Selector::default()
         },
         last_seen: None,
