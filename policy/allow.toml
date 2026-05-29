@@ -185,6 +185,204 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0104"
+kind = "non_rust_file"
+family = "configuration"
+path = ".github/ISSUE_TEMPLATE/bug_report.yml"
+owner = "core/community"
+classification = "github_issue_template"
+reason = "Collects reproducible bug reports for cargo-allow scanner, matcher, report, and CLI behavior."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/ISSUE_TEMPLATE/bug_report.yml"
+target_fingerprint = "yml"
+line_hint = 1
+glob = ".github/ISSUE_TEMPLATE/bug_report.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0105"
+kind = "non_rust_file"
+family = "configuration"
+path = ".github/ISSUE_TEMPLATE/config.yml"
+owner = "core/community"
+classification = "github_issue_template"
+reason = "Configures GitHub issue form routing and disables blank issues so reports enter structured triage paths."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/ISSUE_TEMPLATE/config.yml"
+target_fingerprint = "yml"
+line_hint = 1
+glob = ".github/ISSUE_TEMPLATE/config.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0106"
+kind = "non_rust_file"
+family = "configuration"
+path = ".github/ISSUE_TEMPLATE/feature_request.yml"
+owner = "core/community"
+classification = "github_issue_template"
+reason = "Collects structured feature requests for source-tree exception governance workflows."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/ISSUE_TEMPLATE/feature_request.yml"
+target_fingerprint = "yml"
+line_hint = 1
+glob = ".github/ISSUE_TEMPLATE/feature_request.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0107"
+kind = "non_rust_file"
+family = "configuration"
+path = ".github/ISSUE_TEMPLATE/policy_model.yml"
+owner = "core/community"
+classification = "github_issue_template"
+reason = "Collects policy model and scanner gap reports for source-tree exception governance."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/ISSUE_TEMPLATE/policy_model.yml"
+target_fingerprint = "yml"
+line_hint = 1
+glob = ".github/ISSUE_TEMPLATE/policy_model.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0108"
+kind = "non_rust_file"
+family = "documentation"
+path = ".github/PULL_REQUEST_TEMPLATE.md"
+owner = "core/community"
+classification = "github_pull_request_template"
+reason = "Provides the default pull request template with source-exception ledger impact and validation prompts."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/PULL_REQUEST_TEMPLATE.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = ".github/PULL_REQUEST_TEMPLATE.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0109"
+kind = "non_rust_file"
+family = "documentation"
+path = ".github/PULL_REQUEST_TEMPLATE/bug_fix.md"
+owner = "core/community"
+classification = "github_pull_request_template"
+reason = "Provides bug-fix pull request prompts for regression coverage, ledger impact, and validation."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/PULL_REQUEST_TEMPLATE/bug_fix.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = ".github/PULL_REQUEST_TEMPLATE/bug_fix.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0110"
+kind = "non_rust_file"
+family = "documentation"
+path = ".github/PULL_REQUEST_TEMPLATE/docs.md"
+owner = "core/community"
+classification = "github_pull_request_template"
+reason = "Provides documentation pull request prompts for accuracy checks, ledger impact, and validation."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/PULL_REQUEST_TEMPLATE/docs.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = ".github/PULL_REQUEST_TEMPLATE/docs.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0111"
+kind = "non_rust_file"
+family = "documentation"
+path = ".github/PULL_REQUEST_TEMPLATE/feature.md"
+owner = "core/community"
+classification = "github_pull_request_template"
+reason = "Provides feature pull request prompts for design compatibility, ledger impact, and validation."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/PULL_REQUEST_TEMPLATE/feature.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = ".github/PULL_REQUEST_TEMPLATE/feature.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0112"
+kind = "non_rust_file"
+family = "documentation"
+path = "CONTRIBUTING.md"
+owner = "core/community"
+classification = "contributor_documentation"
+reason = "Documents contribution workflow, product boundaries, validation expectations, and pull request requirements."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "CONTRIBUTING.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "CONTRIBUTING.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0075"
 kind = "non_rust_file"
 family = "configuration"
@@ -795,6 +993,28 @@ symbol = "docs/crate-namespace.md"
 target_fingerprint = "md"
 line_hint = 1
 glob = "docs/crate-namespace.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0103"
+kind = "non_rust_file"
+family = "documentation"
+path = "CODE_OF_CONDUCT.md"
+owner = "core/community"
+classification = "community_guidelines"
+reason = "Defines project community standards, reporting, and enforcement expectations for contributors."
+created = "2026-05-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "CODE_OF_CONDUCT.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "CODE_OF_CONDUCT.md"
 
 [allow.last_seen]
 line = 1
