@@ -47,9 +47,7 @@ community events, and any other venue where someone represents the project.
 ## Reporting
 
 If you experience or witness unacceptable behavior, report it to the project
-maintainers using a private project contact channel when one is available. If no
-private channel is listed, contact a maintainer directly through the repository
-hosting platform.
+maintainers at conduct@effortlessmetrics.dev.
 
 Reports should include, when possible:
 
