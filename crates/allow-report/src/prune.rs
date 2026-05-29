@@ -1,6 +1,4 @@
-use crate::json::{
-    bool_json, option_json, push_json_artifact_header, push_json_artifact_source_context,
-};
+use crate::json::{bool_json, option_json, push_json_artifact_preamble};
 use crate::text::markdown_cell;
 use crate::{
     InventoryContext, PRUNE_SCHEMA_ID, PRUNE_SCHEMA_VERSION, PruneCandidate, PruneModeContext,
@@ -57,8 +55,13 @@ pub fn render_prune_json(
 ) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    push_json_artifact_header(&mut out, PRUNE_SCHEMA_VERSION, PRUNE_SCHEMA_ID, "prune");
-    push_json_artifact_source_context(&mut out, inventory);
+    push_json_artifact_preamble(
+        &mut out,
+        PRUNE_SCHEMA_VERSION,
+        PRUNE_SCHEMA_ID,
+        "prune",
+        inventory,
+    );
     out.push_str("  \"mode\": {\n");
     out.push_str(&format!(
         "    \"dry_run\": {},\n",

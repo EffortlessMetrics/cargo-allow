@@ -1,4 +1,4 @@
-use crate::json::{bool_json, push_json_artifact_header, push_json_artifact_source_context};
+use crate::json::{bool_json, push_json_artifact_preamble};
 use crate::{MIGRATE_SCHEMA_ID, MIGRATE_SCHEMA_VERSION, MigrateReport};
 use allow_core::json_escape;
 
@@ -26,13 +26,13 @@ pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
 pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    push_json_artifact_header(
+    push_json_artifact_preamble(
         &mut out,
         MIGRATE_SCHEMA_VERSION,
         MIGRATE_SCHEMA_ID,
         "migrate",
+        report.inventory,
     );
-    push_json_artifact_source_context(&mut out, report.inventory);
     out.push_str("  \"input\": {\n");
     out.push_str(&format!(
         "    \"kind\": \"{}\",\n",

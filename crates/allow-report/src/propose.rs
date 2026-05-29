@@ -1,6 +1,4 @@
-use crate::json::{
-    bool_json, option_json, push_json_artifact_header, push_json_artifact_source_context,
-};
+use crate::json::{bool_json, option_json, push_json_artifact_preamble};
 use crate::{PROPOSE_SCHEMA_ID, PROPOSE_SCHEMA_VERSION, ProposeReport};
 use allow_core::json_escape;
 
@@ -30,13 +28,13 @@ pub fn render_propose_human(report: ProposeReport<'_>) -> String {
 pub fn render_propose_json(report: ProposeReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    push_json_artifact_header(
+    push_json_artifact_preamble(
         &mut out,
         PROPOSE_SCHEMA_VERSION,
         PROPOSE_SCHEMA_ID,
         "propose",
+        report.inventory,
     );
-    push_json_artifact_source_context(&mut out, report.inventory);
     out.push_str("  \"options\": {\n");
     out.push_str(&format!("    \"kind\": {},\n", option_json(report.kind)));
     out.push_str(&format!(
