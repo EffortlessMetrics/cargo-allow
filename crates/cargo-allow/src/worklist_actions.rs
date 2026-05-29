@@ -1,9 +1,9 @@
 use allow_core::{AllowEntry, Finding, FindingKind};
 
 use super::worklist_item_kind::{
-    AMBIGUOUS_SELECTOR, BASELINE_DEBT, BROAD_SCOPE, EXPIRED_ALLOW, INVALID_SELECTOR,
-    MISSING_EVIDENCE, MISSING_REQUIRED_FIELD, NEW_UNRECEIPTED_FINDING, OCCURRENCE_LIMIT_EXCEEDED,
-    REVIEW_DUE, STALE_ALLOW, UNSAFE_MISSING_EVIDENCE,
+    AMBIGUOUS_SELECTOR, BASELINE_DEBT, BROAD_SCOPE, BROKEN_EVIDENCE_LINK, EXPIRED_ALLOW,
+    INVALID_SELECTOR, MISSING_EVIDENCE, MISSING_REQUIRED_FIELD, NEW_UNRECEIPTED_FINDING,
+    OCCURRENCE_LIMIT_EXCEEDED, REVIEW_DUE, STALE_ALLOW, UNSAFE_MISSING_EVIDENCE,
 };
 
 pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
@@ -56,6 +56,10 @@ pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
             "replace the broad glob with exact paths or a narrower glob where practical"
                 .to_string(),
             "keep broad source-tree scope intentional, reviewed, and evidenced".to_string(),
+        ],
+        BROKEN_EVIDENCE_LINK => vec![
+            "restore or commit the referenced local evidence artifact".to_string(),
+            "or update the evidence reference to a valid source-tree-relative path".to_string(),
         ],
         _ => vec!["inspect the outcome and update policy or source accordingly".to_string()],
     }

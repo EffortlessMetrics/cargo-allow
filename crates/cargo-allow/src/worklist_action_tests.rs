@@ -55,6 +55,10 @@ fn suggested_actions_cover_known_worklist_kinds_and_default() {
             "replace the broad glob with exact paths or a narrower glob where practical",
         ),
         (
+            "broken_evidence_link",
+            "restore or commit the referenced local evidence artifact",
+        ),
+        (
             "future_kind",
             "inspect the outcome and update policy or source accordingly",
         ),
