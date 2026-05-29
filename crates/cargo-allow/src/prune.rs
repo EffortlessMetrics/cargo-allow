@@ -16,7 +16,7 @@ pub(crate) use prune_args::PruneArgs;
 use prune_args::PruneFormat;
 use prune_render::{render_prune_stale_json, render_prune_stale_result};
 use prune_stale::{config_without_prune_candidates, prune_stale_candidates};
-use prune_types::{PruneCandidate, PruneContext};
+use prune_types::{PruneCandidate, PruneContext, PruneRenderMode};
 
 #[cfg(test)]
 use crate::RootArgs;

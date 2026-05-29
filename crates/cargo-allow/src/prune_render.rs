@@ -1,4 +1,4 @@
-use super::{PruneCandidate, PruneContext};
+use super::{PruneCandidate, PruneContext, PruneRenderMode};
 use std::path::Path;
 
 pub(super) fn render_prune_stale_result(
@@ -37,28 +37,4 @@ fn report_prune_candidates(candidates: &[PruneCandidate]) -> Vec<allow_report::P
             reason: &candidate.reason,
         })
         .collect()
-}
-
-struct PruneRenderMode {
-    explicit_dry_run: bool,
-    write_requested: bool,
-    written_path: Option<String>,
-}
-
-impl PruneRenderMode {
-    fn new(explicit_dry_run: bool, write_requested: bool, written_path: Option<&Path>) -> Self {
-        Self {
-            explicit_dry_run,
-            write_requested,
-            written_path: written_path.map(|path| path.display().to_string()),
-        }
-    }
-
-    fn context(&self) -> allow_report::PruneModeContext<'_> {
-        allow_report::PruneModeContext {
-            explicit_dry_run: self.explicit_dry_run,
-            write_requested: self.write_requested,
-            written_path: self.written_path.as_deref(),
-        }
-    }
 }
