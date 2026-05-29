@@ -1,0 +1,42 @@
+#[derive(Debug, Clone, Copy, Default)]
+pub struct WorklistFilters<'a> {
+    pub kind: Option<&'a str>,
+    pub family: Option<&'a str>,
+    pub item_kind: Option<&'a str>,
+    pub status: Option<&'a str>,
+    pub allow_id: Option<&'a str>,
+    pub path: Option<&'a str>,
+    pub source_package: Option<&'a str>,
+    pub owner: Option<&'a str>,
+    pub classification: Option<&'a str>,
+    pub baseline_debt: bool,
+    pub broad_scope: bool,
+    pub risk: Option<&'a str>,
+    pub difficulty: Option<&'a str>,
+    pub missing_evidence: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct WorklistItem<'a> {
+    pub id: &'a str,
+    pub kind: &'a str,
+    pub exception_kind: Option<&'a str>,
+    pub family: Option<&'a str>,
+    pub owner: Option<&'a str>,
+    pub classification: Option<&'a str>,
+    pub reason: Option<&'a str>,
+    pub created: Option<&'a str>,
+    pub review_after: Option<&'a str>,
+    pub expires: Option<&'a str>,
+    pub evidence_count: Option<usize>,
+    pub risk: &'a str,
+    pub difficulty: &'a str,
+    pub status: &'a str,
+    pub allow_id: Option<&'a str>,
+    pub finding_index: Option<usize>,
+    pub path: Option<&'a str>,
+    pub source_package: Option<&'a str>,
+    pub message: &'a str,
+    pub suggested_actions: &'a [String],
+    pub proof_commands: &'a [String],
+}
