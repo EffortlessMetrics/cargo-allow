@@ -1,8 +1,9 @@
 use crate::json::{
-    bool_json, option_json, push_json_artifact_header, render_claim_boundary_json,
-    render_scanner_limitations_json,
+    bool_json, option_json, push_json_artifact_header, push_json_artifact_source_context,
 };
-use crate::{CLAIM_BOUNDARY_TEXT, DOCTOR_SCHEMA_ID, DOCTOR_SCHEMA_VERSION, DoctorReport};
+use crate::{
+    CLAIM_BOUNDARY_TEXT, DOCTOR_SCHEMA_ID, DOCTOR_SCHEMA_VERSION, DoctorReport, InventoryContext,
+};
 use allow_core::json_escape;
 
 pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
@@ -25,14 +26,10 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
     push_json_artifact_header(&mut out, DOCTOR_SCHEMA_VERSION, DOCTOR_SCHEMA_ID, "doctor");
-    out.push_str(&format!(
-        "  \"claim_boundary\": {},\n",
-        render_claim_boundary_json()
-    ));
-    out.push_str(&format!(
-        "  \"scanner_limitations\": {},\n",
-        render_scanner_limitations_json()
-    ));
+    push_json_artifact_source_context(
+        &mut out,
+        InventoryContext::source_syntax(facts.inventory_source, None, Some(facts.files_scanned)),
+    );
     out.push_str("  \"root\": {\n");
     out.push_str(&format!(
         "    \"path\": \"{}\",\n",
@@ -52,15 +49,6 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
         "    \"path\": {}\n",
         option_json(facts.config_path)
     ));
-    out.push_str("  },\n");
-    out.push_str("  \"inventory\": {\n");
-    out.push_str("    \"scope\": \"source_tree\",\n");
-    out.push_str("    \"scanner\": \"source_syntax\",\n");
-    out.push_str(&format!(
-        "    \"source\": \"{}\",\n",
-        json_escape(facts.inventory_source)
-    ));
-    out.push_str(&format!("    \"files_scanned\": {}\n", facts.files_scanned));
     out.push_str("  }\n");
     out.push_str("}\n");
     out
