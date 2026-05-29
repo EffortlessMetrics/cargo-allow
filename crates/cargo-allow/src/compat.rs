@@ -1,5 +1,5 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding, FindingKind};
-use allow_inventory::{InventorySource, resolve_source_tree_root};
+use allow_inventory::{InventoryOptions, InventorySource, inventory, resolve_source_tree_root};
 use std::env;
 use std::path::{Path, PathBuf};
 
@@ -88,12 +88,20 @@ pub(crate) fn load_compat_world(
         let policy_path =
             compat_policy_path(config, &root, "policy/dependency-surface-allowlist.toml");
         let cfg = allow_policy_legacy::load_dependency_surface_compat_config(policy_path)?;
-        let findings = allow_policy_legacy::dependency_surface_findings_from_git(&root, &cfg)?;
+        let inventory = inventory(
+            &root,
+            &InventoryOptions {
+                include_untracked,
+                ..InventoryOptions::default()
+            },
+        )?;
+        let findings =
+            allow_policy_legacy::dependency_surface_findings_from_paths(&inventory.files, &cfg);
         return Ok((
             root,
             cfg,
             findings,
-            InventoryFacts::source_only(InventorySource::GitTracked),
+            InventoryFacts::scanned(inventory.source, inventory.files.len()),
         ));
     }
     if is_process_compat_kind(compat_kind) {

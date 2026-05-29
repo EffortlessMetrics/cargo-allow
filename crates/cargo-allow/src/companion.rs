@@ -4,6 +4,7 @@ use std::path::Path;
 pub(crate) fn canonical_companion_findings(
     root: &Path,
     cfg: &AllowConfig,
+    inventory_files: &[std::path::PathBuf],
 ) -> CargoAllowResult<Vec<Finding>> {
     let mut findings = Vec::new();
     if has_allow_family(cfg, FindingKind::GeneratedCode, "generated_code") {
@@ -18,9 +19,10 @@ pub(crate) fn canonical_companion_findings(
         findings.extend(allow_policy_legacy::workflow_findings_from_files(root)?);
     }
     if has_allow_family(cfg, FindingKind::PolicyException, "dependency_surface") {
-        findings.extend(allow_policy_legacy::dependency_surface_findings_from_git(
-            root, cfg,
-        )?);
+        findings.extend(allow_policy_legacy::dependency_surface_findings_from_paths(
+            inventory_files,
+            cfg,
+        ));
     }
     if has_allow_family(cfg, FindingKind::PolicyException, "process_spawn") {
         findings.extend(allow_policy_legacy::process_findings_from_config(cfg));

@@ -1,5 +1,8 @@
 use super::*;
-use crate::findings::{dependency_surface_finding, workflow_action_finding, workflow_file_finding};
+use crate::findings::{
+    dependency_surface_finding, dependency_surface_findings_from_paths, workflow_action_finding,
+    workflow_file_finding,
+};
 use crate::test_support::*;
 use allow_core::FindingKind;
 use std::path::{Path, PathBuf};
@@ -189,5 +192,32 @@ fn dependency_surface_compat_preserves_matched_new_and_stale_drift() {
         stale_allow
             .iter()
             .any(|outcome| outcome.status == allow_core::MatchStatus::Stale)
+    );
+}
+
+#[test]
+fn dependency_surface_findings_can_use_source_tree_inventory_paths() {
+    let policy = dependency_policy_fixture_path();
+    let cfg = load_dependency_surface_compat_config(&policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("dependency compat config loads: {err}"))
+    });
+    let paths = vec![
+        PathBuf::from("Cargo.toml"),
+        PathBuf::from("crates/core/Cargo.toml"),
+        PathBuf::from("policy/dependency-surface-allowlist.toml"),
+    ];
+
+    let findings = dependency_surface_findings_from_paths(&paths, &cfg);
+
+    assert_eq!(findings.len(), 2);
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding.path == Path::new("Cargo.toml"))
+    );
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding.path == Path::new("crates/core/Cargo.toml"))
     );
 }

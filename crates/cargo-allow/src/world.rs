@@ -58,7 +58,7 @@ pub(crate) fn load_world_with_evidence_validation(
             generated: opts.generated.clone(),
         },
     ));
-    let companion_findings = canonical_companion_findings(&root, &cfg)?;
+    let companion_findings = canonical_companion_findings(&root, &cfg, &files)?;
     extend_unique_findings(&mut findings, companion_findings);
     if let Some(kind) = kind_filter {
         let parsed = parse_kind_filter(kind)?;
