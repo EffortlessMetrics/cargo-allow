@@ -1,7 +1,7 @@
 use allow_core::{AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult};
 use std::path::{Path, PathBuf};
 
-use crate::validation::validate_path_scope;
+use crate::scope_validation::validate_path_scope;
 
 pub fn validate_local_evidence_references(
     root: impl AsRef<Path>,
