@@ -59,6 +59,22 @@ Artifact-specific fields such as `diff`, `summary`, `allow_entries`,
 covered by their individual schema files. Consumers should branch on
 `schema_id`, not on command-line spelling or filenames.
 
+## Baseline Debt Counts
+
+Baseline debt can appear in two related but distinct places:
+
+- `baseline_debt` is an outcome-status count. It reflects current check results
+  that were classified as baseline debt outcomes.
+- `policy_baseline_debt` is a policy-ledger count. It reflects retained
+  `classification = "baseline_debt"` entries that remain in `policy/allow.toml`
+  even when the current findings match and `check --mode no-new` passes.
+
+Report JSON may include `summary.policy_baseline_debt` when the policy-level
+count is higher than the outcome-level `summary.baseline_debt`. Check receipts
+use the same distinction under `counts.policy_baseline_debt`. Consumers should
+use the policy-level field for debt-burn-down metrics and the outcome-level
+field for current check-status accounting.
+
 ## Compatibility Coverage
 
 The test suite parses the current report, receipt, diff, list, explain,
