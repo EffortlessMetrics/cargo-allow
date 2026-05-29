@@ -326,6 +326,54 @@ fn rejects_zero_last_seen_column() {
 }
 
 #[test]
+fn rejects_last_seen_with_line_only() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "line-only-last-seen"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+                [allow.last_seen]
+                line = 12
+            "#,
+    );
+
+    assert!(err.contains("last_seen must include both line and column"));
+}
+
+#[test]
+fn rejects_last_seen_with_column_only() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "column-only-last-seen"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+                [allow.last_seen]
+                column = 4
+            "#,
+    );
+
+    assert!(err.contains("last_seen must include both line and column"));
+}
+
+#[test]
 fn rejects_baseline_debt_without_short_expiry() {
     let err = parse_err(
         r#"

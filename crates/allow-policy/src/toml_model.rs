@@ -199,7 +199,12 @@ impl AllowEntryToml {
         let kind = FindingKind::from_str(&kind_text)?;
         let last_seen = match (self.last_seen.line, self.last_seen.column) {
             (Some(line), Some(column)) => Some(LastSeen { line, column }),
-            _ => None,
+            (None, None) => None,
+            _ => {
+                return Err(CargoAllowError::new(format!(
+                    "{id} last_seen must include both line and column"
+                )));
+            }
         };
         Ok(AllowEntry {
             id,
