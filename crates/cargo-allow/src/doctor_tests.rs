@@ -122,6 +122,58 @@ status = "active"
     remove_doctor_fixture_dir(root);
 }
 
+#[test]
+fn doctor_inventory_respects_policy_ignored_globs() {
+    let root = doctor_fixture_dir();
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("ignored"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create ignored dir: {err}")));
+    fs::write(root.join("kept.rs"), "fn kept() {}\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write kept source: {err}")));
+    fs::write(root.join("ignored/skipped.rs"), "fn skipped() {}\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write ignored source: {err}")));
+    let policy = root.join("policy/allow.toml");
+    fs::write(
+        &policy,
+        r#"
+policy = "cargo-allow"
+
+[workspace]
+ignored = ["policy/**", "ignored/**"]
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    let output = root.join("doctor.json");
+
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy),
+        format: DoctorFormat::Json,
+        output: Some(output.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
+
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    let value = parse_json_artifact("doctor", &json, allow_report::DOCTOR_SCHEMA_ID, "doctor");
+    assert_eq!(
+        value
+            .pointer("/inventory/files_scanned")
+            .and_then(Value::as_u64),
+        Some(1),
+        "doctor should use policy ignored globs for source-tree inventory"
+    );
+    assert_eq!(
+        value.pointer("/config/valid").and_then(Value::as_bool),
+        Some(true),
+        "policy should remain valid"
+    );
+    remove_doctor_fixture_dir(root);
+}
+
 fn doctor_fixture_dir() -> std::path::PathBuf {
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

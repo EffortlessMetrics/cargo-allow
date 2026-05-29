@@ -17,7 +17,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
     let root_discovery = root_discovery_kind(args.root.root.as_deref(), &root);
     let config = config_path(&root, args.config.as_deref());
-    let opts = InventoryOptions::default();
+    let opts = doctor_inventory_options(config.as_deref());
     let inventory = inventory(&root, &opts)?;
     let files_scanned = inventory.files.len();
     let source_context = SourceTreeReportContext::new(
@@ -52,6 +52,20 @@ fn config_status(root: &Path, config: Option<&Path>) -> (Option<bool>, Option<St
     match load_policy(config).and_then(|cfg| validate_local_evidence_references(root, &cfg)) {
         Ok(()) => (Some(true), None),
         Err(err) => (Some(false), Some(err.to_string())),
+    }
+}
+
+fn doctor_inventory_options(config: Option<&Path>) -> InventoryOptions {
+    let Some(config) = config else {
+        return InventoryOptions::default();
+    };
+    match load_policy(config) {
+        Ok(cfg) => InventoryOptions {
+            ignored: cfg.workspace.ignored,
+            generated: cfg.workspace.generated,
+            include_untracked: false,
+        },
+        Err(_) => InventoryOptions::default(),
     }
 }
 
