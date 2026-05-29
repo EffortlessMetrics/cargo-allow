@@ -90,6 +90,20 @@ impl<'a> InventoryContext<'a> {
     ) -> Self {
         Self::new("source_tree", "source_syntax", source, root, files_scanned)
     }
+
+    pub const fn policy_migration(
+        source: &'a str,
+        root: Option<&'a str>,
+        files_scanned: Option<usize>,
+    ) -> Self {
+        Self::new(
+            "source_tree",
+            "policy_migration",
+            source,
+            root,
+            files_scanned,
+        )
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
