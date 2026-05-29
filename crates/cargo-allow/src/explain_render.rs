@@ -1,5 +1,6 @@
 use super::{ExplainContext, explain_steps::explain_next_steps};
 use allow_core::{AllowEntry, Finding, MatchOutcome, normalize_path};
+use allow_diff::selector_precision_score;
 use allow_policy::evidence_reference_diagnostics;
 use std::path::Path;
 
@@ -65,6 +66,7 @@ fn render_explain_report<R>(
     render(allow_report::ExplainReport {
         inventory: context.inventory,
         entry,
+        selector_precision: selector_precision_score(entry),
         current_findings: findings,
         match_outcomes: outcomes,
         evidence_references: &evidence_references,

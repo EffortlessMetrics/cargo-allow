@@ -15,6 +15,7 @@ pub struct EvidenceReference<'a> {
 pub struct ExplainReport<'a> {
     pub inventory: InventoryContext<'a>,
     pub entry: &'a AllowEntry,
+    pub selector_precision: u32,
     pub current_findings: &'a [Finding],
     pub match_outcomes: &'a [MatchOutcome],
     pub evidence_references: &'a [EvidenceReference<'a>],

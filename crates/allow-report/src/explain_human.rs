@@ -49,7 +49,11 @@ pub fn render_explain_human(report: ExplainReport<'_>) -> String {
             last_seen.line, last_seen.column
         ));
     }
-    out.push_str(&format!("selector: {}\n\n", selector_summary(entry)));
+    out.push_str(&format!("selector: {}\n", selector_summary(entry)));
+    out.push_str(&format!(
+        "selector_precision: {}\n\n",
+        report.selector_precision
+    ));
     out.push_str(&format!(
         "current_status: {}\n",
         explain_report_status(report.match_outcomes).as_str()

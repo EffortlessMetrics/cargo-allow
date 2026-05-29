@@ -40,7 +40,12 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
     assert_required_fields(
         "explain summary",
         summary,
-        &["current_status", "current_matches", "match_outcomes"],
+        &[
+            "current_status",
+            "current_matches",
+            "match_outcomes",
+            "selector_precision",
+        ],
     );
     assert_eq!(
         schema
@@ -62,6 +67,20 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
             .and_then(Value::as_str),
         Some("integer"),
         "explain match_outcomes should be an integer"
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/summary/properties/selector_precision/type")
+            .and_then(Value::as_str),
+        Some("integer"),
+        "explain selector_precision should be an integer"
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/summary/properties/selector_precision/minimum")
+            .and_then(Value::as_u64),
+        Some(0),
+        "explain selector_precision minimum"
     );
 
     assert_eq!(

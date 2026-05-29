@@ -56,7 +56,8 @@
       "required": [
         "current_status",
         "current_matches",
-        "match_outcomes"
+        "match_outcomes",
+        "selector_precision"
       ],
       "properties": {
         "current_status": {
@@ -69,6 +70,11 @@
         "match_outcomes": {
           "type": "integer",
           "minimum": 0
+        },
+        "selector_precision": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Relative selector precision score for the explained allow entry. Higher values indicate a more specific source-tree selector; line and column hints do not increase this score."
         }
       }
     },

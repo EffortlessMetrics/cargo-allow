@@ -58,10 +58,11 @@ pub fn render_explain_json(report: ExplainReport<'_>) -> String {
     out.push_str(&render_allow_entry_json(report.entry, "  "));
     out.push_str(",\n");
     out.push_str(&format!(
-        "  \"summary\": {{\n    \"current_status\": \"{}\",\n    \"current_matches\": {},\n    \"match_outcomes\": {}\n  }},\n",
+        "  \"summary\": {{\n    \"current_status\": \"{}\",\n    \"current_matches\": {},\n    \"match_outcomes\": {},\n    \"selector_precision\": {}\n  }},\n",
         explain_report_status(report.match_outcomes).as_str(),
         report.current_findings.len(),
-        report.match_outcomes.len()
+        report.match_outcomes.len(),
+        report.selector_precision
     ));
     out.push_str("  \"evidence_references\": [\n");
     for (index, diagnostic) in report.evidence_references.iter().enumerate() {
