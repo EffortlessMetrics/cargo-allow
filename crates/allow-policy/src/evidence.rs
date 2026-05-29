@@ -42,6 +42,21 @@ pub fn validate_local_evidence_references(
     Ok(())
 }
 
+pub fn broken_evidence_link_count(root: impl AsRef<Path>, cfg: &AllowConfig) -> usize {
+    let root = root.as_ref();
+    cfg.allow
+        .iter()
+        .flat_map(|entry| evidence_reference_diagnostics(root, entry))
+        .filter(|diagnostic| {
+            matches!(
+                diagnostic.status,
+                EvidenceReferenceStatus::LocalFileMissing
+                    | EvidenceReferenceStatus::InvalidLocalPath
+            )
+        })
+        .count()
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EvidenceReferenceStatus {
     LocalFilePresent,

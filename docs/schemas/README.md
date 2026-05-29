@@ -75,6 +75,20 @@ use the same distinction under `counts.policy_baseline_debt`. Consumers should
 use the policy-level field for debt-burn-down metrics and the outcome-level
 field for current check-status accounting.
 
+## Broken Evidence Links
+
+Report JSON may include `summary.broken_evidence_links` and
+`trend.broken_evidence_links` when local evidence references such as `doc:`,
+`spec:`, `adr:`, `ripr:`, `unsafe-review:`, or `coverage:` point outside the
+source tree, point to a directory, or point to a missing file. Receipts may use
+the same optional count under `counts.broken_evidence_links`.
+
+`audit` treats these as evidence-health signals so first-run inventory can still
+complete and route cleanup work. `check` keeps its stricter validation behavior
+and may fail before writing a receipt when local evidence references are broken.
+Use `cargo-allow worklist --item-kind broken_evidence_link --format json` for
+the actionable queue.
+
 ## Compatibility Coverage
 
 The test suite parses the current report, receipt, diff, list, explain,

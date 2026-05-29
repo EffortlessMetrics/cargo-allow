@@ -39,3 +39,13 @@ fn receipt_counts_policy_baseline_debt_context() {
     assert!(json.contains("\"baseline_debt\": 0"));
     assert!(json.contains("\"policy_baseline_debt\": 3"));
 }
+
+#[test]
+fn receipt_counts_broken_evidence_links_context() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
+    context.broken_evidence_links = Some(2);
+
+    let json = render_receipt_with_context("check", &[], false, context);
+
+    assert!(json.contains("\"broken_evidence_links\": 2"));
+}

@@ -21,8 +21,8 @@ mod toml_model;
 mod toml_sections;
 mod validation;
 pub use evidence::{
-    EvidenceReferenceDiagnostic, EvidenceReferenceStatus, evidence_reference_diagnostics,
-    validate_local_evidence_references,
+    EvidenceReferenceDiagnostic, EvidenceReferenceStatus, broken_evidence_link_count,
+    evidence_reference_diagnostics, validate_local_evidence_references,
 };
 pub use render::render_policy;
 pub use starter::starter_policy;

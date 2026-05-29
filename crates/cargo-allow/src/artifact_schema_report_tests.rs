@@ -28,6 +28,31 @@ fn report_schema_allows_optional_policy_baseline_debt_summary_count() {
 }
 
 #[test]
+fn report_schema_allows_optional_broken_evidence_link_counts() {
+    let schema = parse_schema(
+        "report",
+        include_str!("../../../docs/schemas/report.schema.json"),
+    );
+
+    for pointer in [
+        "/$defs/summary/properties/broken_evidence_links",
+        "/$defs/trend/properties/broken_evidence_links",
+    ] {
+        let count = required_schema_pointer("report", &schema, pointer);
+        assert_eq!(
+            count.get("type").and_then(Value::as_str),
+            Some("integer"),
+            "report {pointer} count type"
+        );
+        assert_eq!(
+            count.get("minimum").and_then(Value::as_u64),
+            Some(0),
+            "report {pointer} count minimum"
+        );
+    }
+}
+
+#[test]
 fn report_schema_locks_diff_posture_extension_contract() {
     let schema = parse_schema(
         "report",

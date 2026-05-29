@@ -143,6 +143,18 @@ fn markdown_audit_report_counts_policy_baseline_debt_context() {
 }
 
 #[test]
+fn markdown_audit_report_counts_broken_evidence_links_context() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
+    context.broken_evidence_links = Some(2);
+    let text = render_markdown_with_context("audit", &[], &[], false, context);
+
+    assert!(text.contains("| Review items | 2 |"));
+    assert!(text.contains("| Broken evidence links | 2 |"));
+    assert!(text.contains("worklist --item-kind broken_evidence_link --format json"));
+    assert!(!text.contains("## Audit Review Queue"));
+}
+
+#[test]
 fn text_reports_include_review_due_and_invalid_selector_counts() {
     let outcomes = vec![
         MatchOutcome {
@@ -180,6 +192,18 @@ fn check_text_reports_policy_baseline_debt_context() {
     assert!(human.contains("3"));
     assert!(markdown.contains("| `baseline_debt` | 0 |"));
     assert!(markdown.contains("| `policy_baseline_debt` | 3 |"));
+}
+
+#[test]
+fn check_text_reports_broken_evidence_links_context() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
+    context.broken_evidence_links = Some(2);
+    let human = render_human_with_context("check", &[], &[], false, context);
+    let markdown = render_markdown_with_context("check", &[], &[], false, context);
+
+    assert!(human.contains("broken_evidence_links"));
+    assert!(human.contains("2"));
+    assert!(markdown.contains("| `broken_evidence_links` | 2 |"));
 }
 
 fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {

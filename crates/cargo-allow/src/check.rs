@@ -37,6 +37,7 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
         command: "check",
         format: args.format,
         baseline_debt_entries,
+        broken_evidence_links: 0,
         findings: &findings,
         outcomes: &outcomes,
         failed,
