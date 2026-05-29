@@ -8,6 +8,8 @@ mod evidence;
 mod lifecycle;
 mod policy_header;
 mod render;
+mod render_entry;
+mod render_toml;
 mod scope_validation;
 mod selector_validation;
 mod starter;
