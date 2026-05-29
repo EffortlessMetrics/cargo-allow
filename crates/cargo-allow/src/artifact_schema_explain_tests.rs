@@ -1,6 +1,6 @@
 use crate::artifact_schema_support::{
-    GOVERNED_KIND_ENUM, assert_enum_contains_all, assert_enum_equals, assert_required_fields,
-    assert_schema_type_contains, parse_schema, required_schema_pointer,
+    GOVERNED_KIND_ENUM, assert_enum_equals, assert_required_fields, assert_schema_type_contains,
+    parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
 
@@ -112,17 +112,15 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
         evidence_reference,
         &["raw", "prefix", "target", "status", "message"],
     );
-    assert_enum_contains_all(
-        "explain",
+    let evidence_statuses = allow_policy::EvidenceReferenceStatus::ALL
+        .iter()
+        .map(|status| status.as_str())
+        .collect::<Vec<_>>();
+    assert_enum_equals(
+        "explain evidence reference status",
         &schema,
         "/$defs/evidence_reference/properties/status/enum",
-        &[
-            "local_file_present",
-            "local_file_missing",
-            "invalid_local_path",
-            "traceability_only",
-            "unstructured",
-        ],
+        &evidence_statuses,
     );
 
     assert_enum_equals(

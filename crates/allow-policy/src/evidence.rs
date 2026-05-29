@@ -38,6 +38,14 @@ pub enum EvidenceReferenceStatus {
 }
 
 impl EvidenceReferenceStatus {
+    pub const ALL: [Self; 5] = [
+        Self::LocalFilePresent,
+        Self::LocalFileMissing,
+        Self::InvalidLocalPath,
+        Self::TraceabilityOnly,
+        Self::Unstructured,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::LocalFilePresent => "local_file_present",
