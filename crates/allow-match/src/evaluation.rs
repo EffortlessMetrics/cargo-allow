@@ -35,7 +35,9 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
                 score: 0,
             }),
             [(entry_index, score)] => {
-                let entry = &cfg.allow[*entry_index];
+                let Some(entry) = cfg.allow.get(*entry_index) else {
+                    continue;
+                };
                 let current_count = entry_occurrences.get(entry_index).copied().unwrap_or(0);
                 if entry
                     .occurrence_limit
@@ -69,7 +71,7 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
             many => {
                 let ids = many
                     .iter()
-                    .map(|(idx, _)| cfg.allow[*idx].id.clone())
+                    .filter_map(|(idx, _)| cfg.allow.get(*idx).map(|entry| entry.id.clone()))
                     .collect::<Vec<_>>()
                     .join(", ");
                 outcomes.push(MatchOutcome {

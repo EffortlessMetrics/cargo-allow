@@ -151,6 +151,8 @@ fn parses_current_repository_policy() {
         "allow-0014",
         "allow-0015",
         "allow-0016",
+        "allow-0017",
+        "allow-0018",
         "allow-0019",
         "allow-0020",
         "allow-0031",
