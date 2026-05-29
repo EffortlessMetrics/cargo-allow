@@ -834,6 +834,27 @@ fn syntax_indexing_records_multiline_bracket_span() {
 }
 
 #[test]
+fn syntax_indexing_uses_direct_bracket_not_receiver_bracket() {
+    let src = [
+        "fn load(idx: usize) -> u8 {",
+        "    make([1, 2])[idx]",
+        "}",
+        "fn make(values: [u8; 2]) -> [u8; 2] { values }",
+    ]
+    .join("\n");
+    let findings = scan_rust_source("src/lib.rs", &src);
+    let indexing = findings
+        .iter()
+        .find(|f| f.family.as_deref() == Some("indexing"))
+        .unwrap_or_else(|| std::panic::panic_any("expected indexing finding"));
+
+    assert_eq!(
+        indexing.span.as_ref().map(|span| (span.line, span.column)),
+        Some((2, 17))
+    );
+}
+
+#[test]
 fn index_symbol_truncates_on_character_boundaries() {
     let line = format!("let actual = values[{}];", "\u{00e9}".repeat(120));
 
