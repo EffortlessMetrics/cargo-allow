@@ -75,14 +75,11 @@ fn source_tree_ignore_does_not_swallow_github() {
 
 #[test]
 fn source_tree_scope_wildcard_detection_covers_supported_glob_tokens() {
-    for scope in [
-        "scripts/*.sh",
-        "scripts/?.sh",
-        "scripts/[ab].sh",
-        "scripts/{a,b}.sh",
-    ] {
+    for scope in ["scripts/*.sh", "scripts/?.sh", "scripts/**/*.sh"] {
         assert!(source_tree_scope_has_wildcard(scope));
     }
+    assert!(!source_tree_scope_has_wildcard("scripts/[ab].sh"));
+    assert!(!source_tree_scope_has_wildcard("scripts/{a,b}.sh"));
     assert!(!source_tree_scope_has_wildcard("scripts/release.sh"));
 }
 

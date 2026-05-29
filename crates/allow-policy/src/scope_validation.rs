@@ -89,6 +89,18 @@ fn validate_source_tree_scope(
             diagnostic.parent_segment_message(label),
         ));
     }
+    if matches!(diagnostic, SourceTreeScopeDiagnostic::Glob) {
+        validate_supported_glob_syntax(label, &text)?;
+    }
+    Ok(())
+}
+
+fn validate_supported_glob_syntax(label: &str, glob: &str) -> CargoAllowResult<()> {
+    if let Some(ch) = glob.chars().find(|ch| matches!(ch, '[' | ']' | '{' | '}')) {
+        return Err(CargoAllowError::new(format!(
+            "{label} uses unsupported glob token `{ch}`; supported source-tree glob tokens are `*`, `?`, and whole-segment `**`"
+        )));
+    }
     Ok(())
 }
 
