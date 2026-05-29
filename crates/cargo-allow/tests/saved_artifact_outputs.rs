@@ -357,6 +357,64 @@ fn saved_list_output_allows_broken_evidence_entries() {
 }
 
 #[test]
+fn saved_list_output_filters_policy_missing_evidence_entries() {
+    let fixture = SourceTreeFixture::new("saved-list-missing-evidence");
+    fixture.write_policy_with_missing_evidence_entry();
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let list = artifact_dir.join("list-missing-evidence.json");
+
+    run_cargo_allow(&[
+        "list",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--missing-evidence",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&list),
+    ]);
+    let value = assert_source_syntax_artifact(&list, allow_report::LIST_SCHEMA_ID, "list");
+    assert_eq!(
+        value
+            .pointer("/summary/allow_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "list should contain one missing-evidence policy entry"
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/missing_evidence")
+            .and_then(serde_json::Value::as_bool),
+        Some(true),
+        "list artifact should preserve the missing-evidence filter"
+    );
+    assert_eq!(
+        value
+            .pointer("/allow_entries/0/id")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-missing-evidence"),
+        "list allow id"
+    );
+    assert_eq!(
+        value
+            .pointer("/allow_entries/0/status")
+            .and_then(serde_json::Value::as_str),
+        Some("matched"),
+        "list row status should remain matched"
+    );
+    assert_eq!(
+        value
+            .pointer("/allow_entries/0/evidence_count")
+            .and_then(serde_json::Value::as_u64),
+        Some(0),
+        "list evidence count"
+    );
+}
+
+#[test]
 fn saved_explain_output_allows_broken_evidence_diagnostics() {
     let fixture = SourceTreeFixture::new("saved-explain-broken-evidence");
     fixture.write_policy_with_broken_evidence();
