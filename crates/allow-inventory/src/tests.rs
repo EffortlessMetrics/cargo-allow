@@ -197,28 +197,26 @@ fn explicit_source_tree_root_wins_over_git_ancestor() {
 
 #[cfg(unix)]
 #[test]
-fn recursive_inventory_skips_symlinked_directories() {
+fn recursive_inventory_skips_symlinked_directories() -> Result<(), Box<dyn std::error::Error>> {
     use std::fs;
     use std::os::unix::fs::symlink;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    let unique = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system clock should be after unix epoch")
-        .as_nanos();
+    let unique = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
     let root = std::env::temp_dir().join(format!(
         "cargo-allow-symlink-test-{}-{unique}",
         std::process::id()
     ));
-    fs::create_dir_all(root.join("real")).expect("create test fixture directory");
-    fs::write(root.join("real/file.txt"), "tracked").expect("write test fixture file");
-    symlink(&root, root.join("real/loop")).expect("create symlink loop");
+    fs::create_dir_all(root.join("real"))?;
+    fs::write(root.join("real/file.txt"), "tracked")?;
+    symlink(&root, root.join("real/loop"))?;
 
-    let files = super::recursive_files(&root).expect("recursive inventory should finish");
+    let files = super::recursive_files(&root)?;
 
     assert_eq!(files, vec![PathBuf::from("real/file.txt")]);
-    fs::remove_dir_all(root).expect("clean up test fixture");
+    fs::remove_dir_all(root)?;
+    Ok(())
 }
 
 fn temp_root(label: &str) -> PathBuf {
