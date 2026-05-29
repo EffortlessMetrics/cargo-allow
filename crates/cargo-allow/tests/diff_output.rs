@@ -95,6 +95,38 @@ fn diff_json_reports_lifecycle_extension_as_review_required() {
 }
 
 #[test]
+fn diff_json_reports_occurrence_limit_loosened_as_worse() {
+    let root = temp_root("diff-occurrence-limit-loosened");
+    write_diff_fixture(
+        &root,
+        policy_with_occurrence_limit(1),
+        policy_with_occurrence_limit(3),
+    );
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_failure(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "worse",
+        "diff occurrence-limit loosening net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/policy_failures",
+        1,
+        "diff occurrence-limit loosening failure count",
+    );
+    assert_file_contains(
+        &output,
+        "\"kind\": \"occurrence_limit_loosened\"",
+        "diff output should include occurrence-limit loosening posture",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_reports_broken_evidence_as_current_failure() {
     let root = temp_root("diff-broken-evidence");
     let policy = policy_with_evidence(Some("doc:docs/missing-evidence.md"));
@@ -330,6 +362,34 @@ evidence = ["test:diff_json_reports_lifecycle_extension_as_review_required"]
 created = "2026-05-29"
 expires = "{expires}"
 review_after = "{review_after}"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    )
+}
+
+fn policy_with_occurrence_limit(occurrence_limit: u32) -> String {
+    format!(
+        r#"policy = "cargo-allow"
+
+[workspace]
+ignored = ["policy/**"]
+
+[[allow]]
+id = "allow-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "fixture"
+evidence = ["test:diff_json_reports_occurrence_limit_loosened_as_worse"]
+occurrence_limit = {occurrence_limit}
+created = "2026-05-29"
+review_after = "2026-08-01"
 
 [allow.selector]
 ast_kind = "method_call"
