@@ -17,6 +17,8 @@ pub enum FindingPostureKind {
 }
 
 impl FindingPostureKind {
+    pub const ALL: &[Self] = &[Self::New, Self::Removed];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::New => "new",
