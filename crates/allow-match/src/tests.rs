@@ -281,7 +281,9 @@ fn unmatched_finding_is_reported_as_new_with_location() {
     let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
 
     assert_eq!(outcomes.len(), 1);
-    let outcome = &outcomes[0];
+    let outcome = outcomes
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one new outcome"));
     assert_eq!(outcome.status, MatchStatus::New);
     assert_eq!(outcome.allow_id, None);
     assert_eq!(outcome.finding_index, Some(0));
@@ -297,7 +299,9 @@ fn unmatched_allow_entry_is_reported_as_stale_with_scope() {
     let outcomes = evaluate(&cfg, &[], CheckMode::NoNew);
 
     assert_eq!(outcomes.len(), 1);
-    let outcome = &outcomes[0];
+    let outcome = outcomes
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one stale outcome"));
     assert_eq!(outcome.status, MatchStatus::Stale);
     assert_eq!(outcome.allow_id.as_deref(), Some("allow-1"));
     assert_eq!(outcome.finding_index, None);
