@@ -1,7 +1,7 @@
 use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
 
-use crate::{SourceTreeReportContext, emit_text, load_world};
+use crate::{SourceTreeReportContext, emit_text, load_world_with_evidence_validation};
 
 #[path = "list_args.rs"]
 mod list_args;
@@ -27,12 +27,13 @@ use allow_core::{AllowConfig, AllowEntry, Finding, FindingKind, MatchOutcome, Ma
 use std::path::PathBuf;
 
 pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, inventory_facts) = load_world(
+    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_validation(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         None,
         args.include_untracked,
+        false,
     )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let rows = list_rows(&cfg, &findings, &outcomes);
