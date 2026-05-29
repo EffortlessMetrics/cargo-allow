@@ -57,6 +57,16 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
     let mut ids = BTreeSet::new();
     for entry in &cfg.allow {
         validate_allow_id(&entry.id)?;
+        if entry
+            .family
+            .as_deref()
+            .is_some_and(|family| family.trim().is_empty())
+        {
+            return Err(CargoAllowError::new(format!(
+                "{} family must not be empty",
+                entry.id
+            )));
+        }
         if !ids.insert(entry.id.clone()) {
             return Err(CargoAllowError::new(format!(
                 "duplicate allow id `{}`",

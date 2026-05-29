@@ -323,6 +323,29 @@ fn rejects_allow_id_with_unsupported_characters() {
 }
 
 #[test]
+fn rejects_blank_allow_family() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "blank-family"
+                kind = "panic"
+                family = "   "
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains("blank-family family must not be empty"));
+}
+
+#[test]
 fn rejects_invalid_lifecycle_dates() {
     let err = parse_err(
         r#"
