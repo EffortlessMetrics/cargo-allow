@@ -42,6 +42,8 @@ Completed:
   output fully file-backed.
 - Parse saved CLI JSON artifacts from disk in black-box integration tests and
   assert the shared source-tree contract fields, not just schema ID substrings.
+- Parse saved check receipt JSON artifacts from disk in black-box integration
+  tests and assert the shared source-tree contract fields.
 - Centralize the shared command-artifact JSON preamble in `allow-report` so
   schema IDs, command names, source-tree inventory context, claim boundaries,
   and scanner limitations are rendered through one helper for command-style
