@@ -3,10 +3,7 @@ use allow_core::{Finding, FindingKind, MatchOutcome, MatchStatus, Span, Structur
 use std::path::PathBuf;
 
 fn context(source: &'static str) -> ReportContext<'static> {
-    ReportContext {
-        inventory_source: source,
-        ..ReportContext::default()
-    }
+    ReportContext::source_syntax(source, None, None, None)
 }
 
 #[test]

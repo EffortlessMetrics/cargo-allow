@@ -50,10 +50,10 @@ pub fn render_html_with_context(
     ));
     out.push_str(&format!(
         "<p>Inventory: <code>source_tree</code> / <code>source_syntax</code> via <code>{}</code>{}</p>\n",
-        html_escape(context.inventory_source),
+        html_escape(context.inventory.source),
         inventory_files_html_suffix(context)
     ));
-    if let Some(root) = context.source_tree_root {
+    if let Some(root) = context.inventory.root {
         out.push_str(&format!(
             "<p>Source tree root: <code>{}</code></p>\n",
             html_escape(root)
@@ -205,7 +205,8 @@ fn render_non_matched_html(outcomes: &[MatchOutcome], out: &mut String) {
 
 fn inventory_files_html_suffix(context: ReportContext<'_>) -> String {
     context
-        .inventory_files
+        .inventory
+        .files_scanned
         .map(|files| format!("; files scanned: <code>{files}</code>"))
         .unwrap_or_default()
 }

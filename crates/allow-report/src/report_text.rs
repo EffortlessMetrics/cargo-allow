@@ -34,10 +34,10 @@ pub fn render_human_with_context(
     out.push_str(&format!("Findings scanned: {}\n", findings.len()));
     out.push_str(&format!(
         "Inventory: source_tree/source_syntax via {}{}\n",
-        context.inventory_source,
+        context.inventory.source,
         inventory_files_suffix(context)
     ));
-    if let Some(root) = context.source_tree_root {
+    if let Some(root) = context.inventory.root {
         out.push_str(&format!("Source tree root: {root}\n"));
     }
     for status in STATUS_COUNT_ORDER {
@@ -105,10 +105,10 @@ pub fn render_markdown_with_context(
     out.push_str(&format!("Findings scanned: `{}`\n\n", findings.len()));
     out.push_str(&format!(
         "Inventory: `source_tree` / `source_syntax` via `{}`{}\n\n",
-        json_escape(context.inventory_source),
+        json_escape(context.inventory.source),
         inventory_files_markdown_suffix(context)
     ));
-    if let Some(root) = context.source_tree_root {
+    if let Some(root) = context.inventory.root {
         out.push_str(&format!(
             "Source tree root: `{}`\n\n",
             markdown_inline_code(root)
@@ -196,14 +196,16 @@ fn render_audit_summary_markdown(
 
 fn inventory_files_suffix(context: ReportContext<'_>) -> String {
     context
-        .inventory_files
+        .inventory
+        .files_scanned
         .map(|files| format!("; files scanned: {files}"))
         .unwrap_or_default()
 }
 
 fn inventory_files_markdown_suffix(context: ReportContext<'_>) -> String {
     context
-        .inventory_files
+        .inventory
+        .files_scanned
         .map(|files| format!("; files scanned: `{files}`"))
         .unwrap_or_default()
 }
