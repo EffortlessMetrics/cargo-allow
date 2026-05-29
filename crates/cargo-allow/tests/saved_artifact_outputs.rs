@@ -241,6 +241,49 @@ fn saved_worklist_output_includes_broken_evidence_items() {
 }
 
 #[test]
+fn saved_list_output_allows_broken_evidence_entries() {
+    let fixture = SourceTreeFixture::new("saved-list-broken-evidence");
+    fixture.write_policy_with_broken_evidence();
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let list = artifact_dir.join("list.json");
+
+    run_cargo_allow(&[
+        "list",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&list),
+    ]);
+    let value = assert_source_syntax_artifact(&list, allow_report::LIST_SCHEMA_ID, "list");
+    assert_eq!(
+        value
+            .pointer("/summary/allow_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "list should still browse the broken-evidence ledger entry"
+    );
+    assert_eq!(
+        value
+            .pointer("/allow_entries/0/id")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-broken-evidence"),
+        "list should include the retained allow entry"
+    );
+    assert_eq!(
+        value
+            .pointer("/allow_entries/0/evidence_count")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "list should preserve the evidence reference count"
+    );
+}
+
+#[test]
 fn saved_worklist_output_includes_invalid_evidence_scope_items() {
     let fixture = SourceTreeFixture::new("saved-worklist-invalid-evidence-scope");
     fixture.write_policy_with_invalid_evidence_scope();
