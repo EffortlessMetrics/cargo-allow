@@ -1,5 +1,9 @@
+mod support;
+
 use std::fs;
 use std::process::Command;
+
+use support::{remove_temp_root, temp_root};
 
 #[test]
 fn audit_with_output_file_does_not_emit_human_status_to_stderr() {
@@ -38,26 +42,4 @@ fn audit_with_output_file_does_not_emit_human_status_to_stderr() {
     );
 
     remove_temp_root(root);
-}
-
-fn temp_root(label: &str) -> std::path::PathBuf {
-    let unique = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("system clock: {err}")))
-        .as_nanos();
-    let root = std::env::temp_dir().join(format!(
-        "cargo-allow-{label}-{}-{unique}",
-        std::process::id()
-    ));
-    fs::create_dir_all(&root)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
-    root
-}
-
-fn remove_temp_root(root: std::path::PathBuf) {
-    match fs::remove_dir_all(&root) {
-        Ok(()) => {}
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
-    }
 }

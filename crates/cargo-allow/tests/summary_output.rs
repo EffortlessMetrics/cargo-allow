@@ -1,6 +1,9 @@
+mod support;
+
 use std::fs;
-use std::path::PathBuf;
 use std::process::Command;
+
+use support::{remove_temp_root, temp_root};
 
 #[test]
 fn summary_artifact_commands_are_quiet_when_outputs_are_files() {
@@ -221,26 +224,4 @@ reason = "cargo fetch resolves and downloads crate dependencies."
 created = "2026-05-09"
 expires = "permanent"
 "#
-}
-
-fn temp_root(label: &str) -> PathBuf {
-    let unique = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("system clock: {err}")))
-        .as_nanos();
-    let root = std::env::temp_dir().join(format!(
-        "cargo-allow-{label}-{}-{unique}",
-        std::process::id()
-    ));
-    fs::create_dir_all(&root)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
-    root
-}
-
-fn remove_temp_root(root: PathBuf) {
-    match fs::remove_dir_all(&root) {
-        Ok(()) => {}
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
-    }
 }

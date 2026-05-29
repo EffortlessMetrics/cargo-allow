@@ -1,6 +1,10 @@
+mod support;
+
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
+
+use support::{remove_temp_root, temp_root};
 
 #[test]
 fn diff_json_with_output_file_does_not_emit_human_posture_to_stderr() {
@@ -85,28 +89,6 @@ container = "load"
 callee = "unwrap"
 "#
     )
-}
-
-fn temp_root(label: &str) -> PathBuf {
-    let unique = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("system clock: {err}")))
-        .as_nanos();
-    let root = std::env::temp_dir().join(format!(
-        "cargo-allow-{label}-{}-{unique}",
-        std::process::id()
-    ));
-    fs::create_dir_all(&root)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
-    root
-}
-
-fn remove_temp_root(root: PathBuf) {
-    match fs::remove_dir_all(&root) {
-        Ok(()) => {}
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
-    }
 }
 
 fn git(root: &Path, args: &[&str]) {
