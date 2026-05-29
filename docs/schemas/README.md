@@ -82,6 +82,14 @@ worklist, prune, propose, add, migrate, and doctor JSON renderers as JSON and
 checks the shared v1 source-tree contract fields. That protects the artifact
 root shape from accidental manual-rendering drift.
 
+Schema compatibility tests also lock:
+
+- the exact top-level property set for each schema;
+- the exact top-level required-field set for each schema;
+- `additionalProperties = false` at the artifact root and nested object schema
+  nodes; and
+- structural identity fields where artifacts expose finding identity.
+
 This is not a promise that every field is permanently frozen. Breaking changes
 should either preserve the existing `*.v1` contract or introduce a new schema ID
 and update the schema file, tests, and this index together.
