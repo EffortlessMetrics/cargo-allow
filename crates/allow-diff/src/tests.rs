@@ -690,6 +690,24 @@ fn findings_at_revision_applies_workspace_ignored_globs() {
     fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
 }
 
+#[test]
+fn git_tree_revision_parser_skips_symlinks_and_preserves_newlines() {
+    let output = b"100644 blob abc123\tsrc/lib.rs\0\
+120000 blob def456\tsrc/link.rs\0\
+160000 commit 123456\tvendor/submodule\0\
+100644 blob fedcba\tfixtures/line\nbreak.rs\0";
+
+    let files = revision_git::parse_git_ls_tree_z(output);
+
+    assert_eq!(
+        files,
+        vec![
+            PathBuf::from("src/lib.rs"),
+            PathBuf::from("fixtures/line\nbreak.rs")
+        ]
+    );
+}
+
 fn config_with(entry: AllowEntry) -> AllowConfig {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry);

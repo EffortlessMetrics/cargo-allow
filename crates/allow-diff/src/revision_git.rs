@@ -38,7 +38,7 @@ pub fn git_tracked_files_at_revision(
         .arg(root.as_ref())
         .arg("ls-tree")
         .arg("-r")
-        .arg("--name-only")
+        .arg("-z")
         .arg(revision)
         .output()
         .map_err(|e| CargoAllowError::new(format!("failed to run git ls-tree: {e}")))?;
@@ -47,11 +47,7 @@ pub fn git_tracked_files_at_revision(
             "git ls-tree failed for {revision}"
         )));
     }
-    Ok(String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .map(PathBuf::from)
-        .collect())
+    Ok(parse_git_ls_tree_z(&output.stdout))
 }
 
 pub fn read_file_at_revision(
@@ -85,4 +81,22 @@ pub fn read_file_at_revision(
         "failed to read {} from {revision}",
         path.as_ref().display()
     )))
+}
+
+pub(crate) fn parse_git_ls_tree_z(stdout: &[u8]) -> Vec<PathBuf> {
+    stdout
+        .split(|byte| *byte == 0)
+        .filter(|record| !record.is_empty())
+        .filter_map(parse_git_ls_tree_record)
+        .collect()
+}
+
+fn parse_git_ls_tree_record(record: &[u8]) -> Option<PathBuf> {
+    let record = String::from_utf8_lossy(record);
+    let (metadata, path) = record.split_once('\t')?;
+    let mode = metadata.split_whitespace().next()?;
+    if !mode.starts_with("100") {
+        return None;
+    }
+    Some(PathBuf::from(path))
 }
