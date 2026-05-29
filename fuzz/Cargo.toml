@@ -1,0 +1,45 @@
+[package]
+name = "cargo-allow-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+allow-core = { path = "../crates/allow-core" }
+allow-files = { path = "../crates/allow-files" }
+allow-policy = { path = "../crates/allow-policy" }
+allow-rust = { path = "../crates/allow-rust" }
+libfuzzer-sys = "0.4"
+
+[[bin]]
+name = "core_primitives"
+path = "fuzz_targets/core_primitives.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "file_classification"
+path = "fuzz_targets/file_classification.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "policy_parse_render"
+path = "fuzz_targets/policy_parse_render.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rust_source_scan"
+path = "fuzz_targets/rust_source_scan.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]

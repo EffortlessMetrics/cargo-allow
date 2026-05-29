@@ -1,3 +1,6 @@
 /target
 **/*.rs.bk
 policy/allow.proposed.toml
+fuzz/target
+fuzz/artifacts
+fuzz/corpus
