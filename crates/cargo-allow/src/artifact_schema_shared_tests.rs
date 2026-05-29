@@ -1,6 +1,6 @@
 use crate::artifact_schema_support::{
-    assert_command_contract, assert_enum_contains_all, assert_inventory_schema,
-    assert_required_fields, parse_schema, schema_contracts,
+    assert_command_contract, assert_enum_equals, assert_inventory_schema, assert_required_fields,
+    parse_schema, schema_contracts,
 };
 use serde_json::Value;
 use std::{collections::BTreeSet, fs, path::Path};
@@ -49,13 +49,13 @@ fn schema_files_require_common_v1_source_tree_contract() {
         );
         assert_command_contract(contract, &schema);
         assert_inventory_schema(contract.name, &schema);
-        assert_enum_contains_all(
+        assert_enum_equals(
             contract.name,
             &schema,
             "/$defs/claim_boundary_flag/enum",
             allow_report::CLAIM_BOUNDARY,
         );
-        assert_enum_contains_all(
+        assert_enum_equals(
             contract.name,
             &schema,
             "/$defs/scanner_limitation/enum",
