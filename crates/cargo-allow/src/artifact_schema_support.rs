@@ -15,6 +15,14 @@ pub(crate) fn match_status_enum() -> Vec<&'static str> {
         .collect()
 }
 
+pub(crate) fn inventory_source_enum() -> Vec<&'static str> {
+    allow_inventory::InventorySource::ALL
+        .iter()
+        .map(|source| source.as_str())
+        .chain(std::iter::once("unknown"))
+        .collect()
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SchemaContract {
     pub(crate) name: &'static str,
@@ -188,6 +196,12 @@ pub(crate) fn assert_inventory_schema(name: &str, schema: &Value) {
     assert!(
         scanner_matches_contract,
         "{name} inventory scanner should identify source_syntax or policy_migration"
+    );
+    assert_enum_equals(
+        name,
+        inventory_schema,
+        "/properties/source/enum",
+        &inventory_source_enum(),
     );
 }
 

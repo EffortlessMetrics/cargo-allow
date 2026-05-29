@@ -184,6 +184,7 @@
           "enum": [
             "git_tracked",
             "filesystem_fallback",
+            "filesystem_include_untracked",
             "unknown"
           ]
         },
