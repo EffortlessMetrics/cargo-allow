@@ -22,6 +22,15 @@ pub enum FindingKind {
 }
 
 impl FindingKind {
+    pub const ALL: [Self; 6] = [
+        Self::Panic,
+        Self::Unsafe,
+        Self::LintException,
+        Self::NonRustFile,
+        Self::GeneratedCode,
+        Self::PolicyException,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Panic => "panic",

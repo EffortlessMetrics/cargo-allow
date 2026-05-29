@@ -1,14 +1,12 @@
 use serde_json::Value;
 use std::collections::BTreeSet;
 
-pub(crate) const GOVERNED_KIND_ENUM: &[&str] = &[
-    "panic",
-    "unsafe",
-    "lint_exception",
-    "non_rust_file",
-    "generated_code",
-    "policy_exception",
-];
+pub(crate) fn governed_kind_enum() -> Vec<&'static str> {
+    allow_core::FindingKind::ALL
+        .iter()
+        .map(|kind| kind.as_str())
+        .collect()
+}
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SchemaContract {
