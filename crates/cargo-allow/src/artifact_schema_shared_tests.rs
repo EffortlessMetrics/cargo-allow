@@ -101,6 +101,24 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
 }
 
 #[test]
+fn schema_contract_registry_covers_schema_index_links() {
+    let index = include_str!("../../../docs/schemas/README.md");
+
+    for contract in schema_contracts() {
+        let schema_file = format!("{}.schema.json", contract.name);
+        assert!(
+            index.contains(&schema_file),
+            "schema index should link {schema_file}"
+        );
+        assert!(
+            index.contains(contract.schema_id),
+            "schema index should document {}",
+            contract.schema_id
+        );
+    }
+}
+
+#[test]
 fn schema_files_reject_unknown_top_level_fields() {
     for contract in schema_contracts() {
         let schema = parse_schema(contract.name, contract.schema);
