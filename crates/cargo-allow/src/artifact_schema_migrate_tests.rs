@@ -1,5 +1,5 @@
 use crate::artifact_schema_support::{
-    assert_enum_contains_all, assert_required_fields, parse_schema, required_schema_pointer,
+    assert_enum_equals, assert_required_fields, parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
 
@@ -42,7 +42,7 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
         "migrate input should reject unknown fields"
     );
     assert_required_fields("migrate input", input, &["kind", "path"]);
-    assert_enum_contains_all(
+    assert_enum_equals(
         "migrate",
         &schema,
         "/properties/input/properties/kind/enum",
