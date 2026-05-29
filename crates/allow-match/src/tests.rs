@@ -467,6 +467,179 @@ fn unlimited_entry_matches_repeated_findings() {
     );
 }
 
+#[test]
+fn unmatched_finding_is_reported_as_new_with_location() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let cfg = AllowConfig::empty();
+
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+    assert_eq!(outcomes.len(), 1);
+    let outcome = outcomes
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one new outcome"));
+    assert_eq!(outcome.status, MatchStatus::New);
+    assert_eq!(outcome.allow_id, None);
+    assert_eq!(outcome.finding_index, Some(0));
+    assert!(outcome.message.contains("unreceipted unsafe.unsafe_fn"));
+    assert!(outcome.message.contains("src/lib.rs:50:12"));
+}
+
+#[test]
+fn unmatched_allow_entry_is_reported_as_stale_with_scope() {
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry_with_hash("fnv1a64:actual"));
+
+    let outcomes = evaluate(&cfg, &[], CheckMode::NoNew);
+
+    assert_eq!(outcomes.len(), 1);
+    let outcome = outcomes
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one stale outcome"));
+    assert_eq!(outcome.status, MatchStatus::Stale);
+    assert_eq!(outcome.allow_id.as_deref(), Some("allow-1"));
+    assert_eq!(outcome.finding_index, None);
+    assert!(outcome.message.contains("allow-1 is stale"));
+    assert!(outcome.message.contains("src/lib.rs"));
+}
+
+#[test]
+fn expired_entry_reports_expired_even_when_structure_matches() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.lifecycle.expires = Some("2020-01-01".to_string());
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry);
+
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+    assert!(outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::Expired && outcome.message.contains("expired on 2020-01-01")
+    }));
+}
+
+#[test]
+fn never_expiring_entry_can_match() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.lifecycle.expires = Some("never".to_string());
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry);
+
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+    assert!(
+        outcomes
+            .iter()
+            .any(|outcome| outcome.status == MatchStatus::Matched)
+    );
+}
+
+#[test]
+fn unsafe_evidence_requirement_fails_without_entry_evidence() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.evidence.clear();
+    let mut cfg = AllowConfig::empty();
+    cfg.requirements.unsafe_evidence_required = true;
+    cfg.allow.push(entry);
+
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+    assert!(outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::EvidenceMissing
+            && outcome.message.contains("has no evidence")
+    }));
+}
+
+#[test]
+fn baseline_debt_fails_only_in_release_mode() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.classification = "baseline_debt".to_string();
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry);
+
+    let no_new = evaluate(&cfg, std::slice::from_ref(&finding), CheckMode::NoNew);
+    let release = evaluate(&cfg, &[finding], CheckMode::Release);
+
+    assert!(
+        no_new
+            .iter()
+            .any(|outcome| outcome.status == MatchStatus::Matched)
+    );
+    assert!(release.iter().any(|outcome| {
+        outcome.status == MatchStatus::BaselineDebt
+            && outcome.message.contains("cannot pass release mode")
+    }));
+}
+
+#[test]
+fn scoring_accepts_entry_glob_and_selector_glob() {
+    let mut finding = finding_with_hash("fnv1a64:actual");
+    finding.path = PathBuf::from("crates/parser/src/lib.rs");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.path = None;
+    entry.glob = Some("crates/*/src/*.rs".to_string());
+    assert!(score_match(&entry, &finding).is_some());
+
+    entry.glob = None;
+    entry.selector.glob = Some("crates/**/lib.rs".to_string());
+    assert!(score_match(&entry, &finding).is_some());
+}
+
+#[test]
+fn scoring_rejects_kind_family_and_path_mismatches() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.kind = FindingKind::Panic;
+    assert_eq!(score_match(&entry, &finding), None);
+
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.family = Some("unsafe_block".to_string());
+    assert_eq!(score_match(&entry, &finding), None);
+
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.path = Some(PathBuf::from("src/other.rs"));
+    assert_eq!(score_match(&entry, &finding), None);
+}
+
+#[test]
+fn scoring_weights_exact_and_partial_fingerprints() {
+    let mut finding = finding_with_hash("fnv1a64:actual");
+    finding.identity.receiver_fingerprint = Some("parser.load_result".to_string());
+    finding.identity.target_fingerprint = Some("safety-comment:present".to_string());
+    let mut exact = entry_with_hash("fnv1a64:actual");
+    exact.selector.receiver_fingerprint = Some("parser.load_result".to_string());
+    exact.selector.target_fingerprint = Some("safety-comment".to_string());
+    let exact_score = score_match(&exact, &finding).unwrap_or_default();
+
+    let mut partial = exact.clone();
+    partial.selector.receiver_fingerprint = Some("load_result".to_string());
+    let partial_score = score_match(&partial, &finding).unwrap_or_default();
+
+    let mut mismatch = exact;
+    mismatch.selector.receiver_fingerprint = Some("other_result".to_string());
+
+    assert!(exact_score > partial_score);
+    assert!(partial_score >= STRUCTURAL_MATCH_THRESHOLD);
+    assert_eq!(score_match(&mismatch, &finding), None);
+}
+
+#[test]
+fn check_mode_parsing_and_failure_policy_are_covered() {
+    assert_eq!(CheckMode::parse("audit"), CheckMode::Audit);
+    assert_eq!(CheckMode::parse("strict"), CheckMode::Strict);
+    assert_eq!(CheckMode::parse("release"), CheckMode::Release);
+    assert_eq!(CheckMode::parse("unknown"), CheckMode::NoNew);
+
+    assert!(!CheckMode::Audit.fails(MatchStatus::New));
+    assert!(CheckMode::NoNew.fails(MatchStatus::New));
+    assert!(CheckMode::Strict.fails(MatchStatus::Stale));
+    assert!(CheckMode::Release.fails(MatchStatus::BaselineDebt));
+    assert!(!CheckMode::Release.fails(MatchStatus::Matched));
+}
+
 fn entry_with_hash(hash: &str) -> AllowEntry {
     AllowEntry {
         id: "allow-1".to_string(),
