@@ -6,7 +6,7 @@ pub(crate) struct ExplainContext<'a> {
 impl<'a> Default for ExplainContext<'a> {
     fn default() -> Self {
         Self {
-            inventory: crate::reporting::unknown_source_syntax_inventory(),
+            inventory: allow_report::InventoryContext::unknown_source_syntax(),
         }
     }
 }
