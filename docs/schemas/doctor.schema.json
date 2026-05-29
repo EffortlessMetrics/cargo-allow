@@ -66,7 +66,9 @@
       "additionalProperties": false,
       "required": [
         "found",
-        "path"
+        "path",
+        "valid",
+        "diagnostic"
       ],
       "properties": {
         "found": {
@@ -77,6 +79,20 @@
             "string",
             "null"
           ]
+        },
+        "valid": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether the discovered policy parsed, passed policy validation, and had locally referenced evidence files present. Null when no config file was found."
+        },
+        "diagnostic": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Validation diagnostic when config.valid is false; null when config is valid or no config was found."
         }
       }
     },
