@@ -3,6 +3,7 @@ use crate::artifact_schema_support::{
     required_schema_pointer,
 };
 use serde_json::Value;
+use std::collections::BTreeSet;
 
 #[test]
 fn worklist_schema_locks_filters_summary_and_work_items_contract() {
@@ -167,6 +168,27 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
             "proof_commands",
         ],
     );
+    assert_enum_equals(
+        "worklist item kind",
+        &schema,
+        "/$defs/work_item/properties/kind/enum",
+        &[
+            "new_unreceipted_finding",
+            "occurrence_limit_exceeded",
+            "expired_allow",
+            "stale_allow",
+            "ambiguous_selector",
+            "unsafe_missing_evidence",
+            "missing_evidence",
+            "missing_required_field",
+            "invalid_selector",
+            "baseline_debt",
+            "review_due",
+            "matched",
+            "broad_scope",
+            "broken_evidence_link",
+        ],
+    );
     assert_enum_contains_all(
         "worklist",
         &schema,
@@ -192,4 +214,20 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         Some("^cargo-allow "),
         "worklist proof commands should stay cargo-allow first"
     );
+}
+
+fn assert_enum_equals(name: &str, schema: &Value, pointer: &str, expected: &[&str]) {
+    let Some(items) = schema.pointer(pointer).and_then(Value::as_array) else {
+        std::panic::panic_any(format!("{name} {pointer} should be an enum array"));
+    };
+    let actual = items
+        .iter()
+        .map(|item| {
+            item.as_str().unwrap_or_else(|| {
+                std::panic::panic_any(format!("{name} {pointer} entries should be strings"))
+            })
+        })
+        .collect::<BTreeSet<_>>();
+    let expected = expected.iter().copied().collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "{name} enum values");
 }

@@ -89,6 +89,7 @@ Schema compatibility tests also lock:
 - `additionalProperties = false` at the artifact root and nested object schema
   nodes; and
 - structural identity fields where artifacts expose finding identity.
+- the `worklist` artifact's queue item kind vocabulary.
 
 This is not a promise that every field is permanently frozen. Breaking changes
 should either preserve the existing `*.v1` contract or introduce a new schema ID
