@@ -1,4 +1,4 @@
-use super::WorkItem;
+use super::{WorkItem, proof_commands};
 use allow_core::{AllowConfig, FindingKind, MatchStatus, normalize_path};
 use allow_policy::evidence_reference_diagnostics;
 use std::path::Path;
@@ -22,6 +22,7 @@ pub(super) fn work_items_from_evidence_diagnostics(
         {
             let item_index = start_index + items.len();
             let kind = "broken_evidence_link".to_string();
+            let proof_commands = proof_commands(&kind, None, Some(entry));
             items.push(WorkItem {
                 id: format!("work-broken-evidence-link-{item_index:04}"),
                 kind,
@@ -54,10 +55,7 @@ pub(super) fn work_items_from_evidence_diagnostics(
                     "or update the evidence reference to a valid source-tree-relative path"
                         .to_string(),
                 ],
-                proof_commands: vec![
-                    format!("cargo-allow explain {}", entry.id),
-                    "cargo-allow check --mode no-new".to_string(),
-                ],
+                proof_commands,
             });
         }
     }

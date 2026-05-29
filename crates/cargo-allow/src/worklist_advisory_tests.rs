@@ -204,6 +204,8 @@ fn worklist_items_report_broken_evidence_links() {
     assert!(json.contains("\"kind\": \"broken_evidence_link\""));
     assert!(json.contains("\"exception_kind\": \"unsafe\""));
     assert!(json.contains("\"cargo-allow explain allow-unsafe\""));
+    assert!(json.contains("\"cargo-allow check --kind unsafe --mode no-new\""));
+    assert!(json.contains("\"cargo-allow worklist --kind unsafe --format json\""));
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
