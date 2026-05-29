@@ -72,13 +72,23 @@ pub(crate) fn proof_commands(
             ));
         }
         commands.push(format!(
+            "cargo-allow worklist --item-kind {kind} --format json"
+        ));
+        commands.push(format!(
             "cargo-allow worklist --kind {kind_arg} --format json"
         ));
     } else {
         commands.push("cargo-allow check --mode no-new".to_string());
+        commands.push(format!(
+            "cargo-allow worklist --item-kind {kind} --format json"
+        ));
         commands.push("cargo-allow worklist --format json".to_string());
     }
-    if kind == "unsafe_missing_evidence" && !commands.iter().any(|cmd| cmd.contains("unsafe")) {
+    if kind == "unsafe_missing_evidence"
+        && !commands
+            .iter()
+            .any(|cmd| cmd.contains("check --kind unsafe"))
+    {
         commands.push("cargo-allow check --kind unsafe --mode no-new".to_string());
     }
     commands
