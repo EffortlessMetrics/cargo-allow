@@ -12,13 +12,7 @@ pub(super) fn work_items_from_evidence_diagnostics(
     for entry in &cfg.allow {
         for diagnostic in evidence_reference_diagnostics(root, entry)
             .into_iter()
-            .filter(|diagnostic| {
-                matches!(
-                    diagnostic.status,
-                    allow_policy::EvidenceReferenceStatus::LocalFileMissing
-                        | allow_policy::EvidenceReferenceStatus::InvalidLocalPath
-                )
-            })
+            .filter(|diagnostic| diagnostic.status.is_broken_local_link())
         {
             let item_index = start_index + items.len();
             let kind = "broken_evidence_link".to_string();

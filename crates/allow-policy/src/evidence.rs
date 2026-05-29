@@ -47,13 +47,7 @@ pub fn broken_evidence_link_count(root: impl AsRef<Path>, cfg: &AllowConfig) -> 
     cfg.allow
         .iter()
         .flat_map(|entry| evidence_reference_diagnostics(root, entry))
-        .filter(|diagnostic| {
-            matches!(
-                diagnostic.status,
-                EvidenceReferenceStatus::LocalFileMissing
-                    | EvidenceReferenceStatus::InvalidLocalPath
-            )
-        })
+        .filter(|diagnostic| diagnostic.status.is_broken_local_link())
         .count()
 }
 
@@ -75,6 +69,10 @@ impl EvidenceReferenceStatus {
             Self::TraceabilityOnly => "traceability_only",
             Self::Unstructured => "unstructured",
         }
+    }
+
+    pub fn is_broken_local_link(self) -> bool {
+        matches!(self, Self::LocalFileMissing | Self::InvalidLocalPath)
     }
 }
 
