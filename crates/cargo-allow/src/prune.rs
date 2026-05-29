@@ -1,8 +1,11 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
-use allow_policy::{render_policy, validate_policy};
+use allow_policy::{render_policy, validate_local_evidence_references, validate_policy};
 
-use crate::{SourceTreeReportContext, config_path, emit_text, load_world, write_file};
+use crate::{
+    SourceTreeReportContext, config_path, emit_text, load_world_with_evidence_validation,
+    write_file,
+};
 
 #[path = "prune_args.rs"]
 mod prune_args;
@@ -36,12 +39,13 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             "pass either --dry-run or --write, not both",
         ));
     }
-    let (root, cfg, findings, inventory_facts) = load_world(
+    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_validation(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         None,
         args.include_untracked,
+        false,
     )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let candidates = prune_stale_candidates(&cfg, &outcomes);
@@ -51,6 +55,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         })?;
         let pruned = config_without_prune_candidates(&cfg, &candidates);
         validate_policy(&pruned)?;
+        validate_local_evidence_references(&root, &pruned)?;
         write_file(&path, &render_policy(&pruned))?;
         Some(path)
     } else {
