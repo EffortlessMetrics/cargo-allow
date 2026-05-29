@@ -1,4 +1,6 @@
-use allow_core::{AllowConfig, CargoAllowResult, Finding, source_tree_path_is_ignored};
+use allow_core::{
+    AllowConfig, CargoAllowResult, Finding, FindingKind, source_tree_path_is_ignored,
+};
 use std::path::Path;
 
 use crate::revision_git::{git_tracked_files_at_revision, read_file_at_revision};
@@ -38,8 +40,20 @@ pub fn findings_at_revision(
             generated: cfg.workspace.generated.clone(),
         },
     ));
+    if has_generated_code_receipt(cfg) {
+        if let Some(text) = read_file_at_revision(root, revision, ".gitattributes")? {
+            findings.extend(allow_policy_legacy::generated_findings_from_gitattributes_text(&text));
+        }
+    }
     findings.extend(allow_policy_legacy::dependency_surface_findings_from_paths(
         &files, cfg,
     ));
     Ok(findings)
+}
+
+fn has_generated_code_receipt(cfg: &AllowConfig) -> bool {
+    cfg.allow.iter().any(|entry| {
+        entry.kind == FindingKind::GeneratedCode
+            && entry.family.as_deref() == Some("generated_code")
+    })
 }

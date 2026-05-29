@@ -1,5 +1,8 @@
 use super::*;
-use crate::findings::{executable_finding, executable_findings_from_git_stage, generated_finding};
+use crate::findings::{
+    executable_finding, executable_findings_from_git_stage, generated_finding,
+    generated_findings_from_gitattributes_text,
+};
 use crate::test_support::*;
 use allow_core::FindingKind;
 use std::path::{Path, PathBuf};
@@ -40,6 +43,17 @@ fn generated_findings_read_linguist_generated_paths() {
         .unwrap_or_else(|| std::panic::panic_any("expected generated finding"));
     assert_eq!(finding.kind, FindingKind::GeneratedCode);
     assert_eq!(finding.path, PathBuf::from("policy/no-panic-baseline.toml"));
+}
+
+#[test]
+fn generated_findings_can_read_gitattributes_text() {
+    let findings = generated_findings_from_gitattributes_text(
+        "generated/schema.json linguist-generated=true\nREADME.md linguist-documentation=true\n",
+    );
+
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].kind, FindingKind::GeneratedCode);
+    assert_eq!(findings[0].path, PathBuf::from("generated/schema.json"));
 }
 
 #[test]

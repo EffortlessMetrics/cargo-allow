@@ -75,7 +75,8 @@ mod types_workflow_entries;
 pub use findings::{
     dependency_surface_findings_from_git, dependency_surface_findings_from_paths,
     executable_findings_from_git, generated_findings_from_gitattributes,
-    network_findings_from_config, process_findings_from_config, workflow_findings_from_files,
+    generated_findings_from_gitattributes_text, network_findings_from_config,
+    process_findings_from_config, workflow_findings_from_files,
 };
 pub use loaders::{
     load_clippy_exceptions_compat_config, load_dependency_surface_compat_config,

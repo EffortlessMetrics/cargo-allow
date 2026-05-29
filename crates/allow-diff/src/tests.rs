@@ -718,6 +718,41 @@ fn findings_at_revision_includes_dependency_surface_companions() {
 }
 
 #[test]
+fn findings_at_revision_includes_generated_gitattributes_companions() {
+    let root = temp_root("revision-generated-gitattributes");
+    fs::create_dir_all(root.join("generated"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("generated dir: {err}")));
+    fs::write(
+        root.join(".gitattributes"),
+        "generated/schema.json linguist-generated=true\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("gitattributes write: {err}")));
+    fs::write(root.join("generated").join("schema.json"), "{}\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("generated file write: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "initial"]);
+    let mut cfg = AllowConfig::empty();
+    cfg.allow
+        .push(generated_code_entry("generated/schema.json"));
+
+    let findings = findings_at_revision(&root, "HEAD", &cfg)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("findings: {err}")));
+
+    assert!(findings.iter().any(|finding| {
+        finding.kind == FindingKind::GeneratedCode
+            && finding.family.as_deref() == Some("generated_code")
+            && finding.path.as_path() == Path::new("generated/schema.json")
+    }));
+    fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
+}
+
+#[test]
 fn git_tree_revision_parser_skips_symlinks_and_preserves_newlines() {
     let output = b"100644 blob abc123\tsrc/lib.rs\0\
 120000 blob def456\tsrc/link.rs\0\
@@ -792,6 +827,34 @@ fn dependency_surface_entry(path: &str) -> AllowEntry {
             ast_kind: Some("dependency_surface".to_string()),
             symbol: Some(path.to_string()),
             target_fingerprint: Some("workspace_manifest".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
+fn generated_code_entry(path: &str) -> AllowEntry {
+    AllowEntry {
+        id: "generated-schema".to_string(),
+        kind: FindingKind::GeneratedCode,
+        family: Some("generated_code".to_string()),
+        path: Some(PathBuf::from(path)),
+        glob: None,
+        owner: "codegen".to_string(),
+        classification: "generated_code".to_string(),
+        reason: "Generated schema is tracked for review.".to_string(),
+        evidence: vec!["legacy-policy:generated".to_string()],
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: Some("2026-05-26".to_string()),
+            review_after: Some("2026-08-01".to_string()),
+            expires: None,
+        },
+        selector: Selector {
+            ast_kind: Some("tracked_file".to_string()),
+            symbol: Some(path.to_string()),
+            target_fingerprint: Some("json".to_string()),
             ..Selector::default()
         },
         last_seen: None,
