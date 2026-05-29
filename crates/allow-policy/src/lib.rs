@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 mod entries_validation;
 mod entry_validation;
 mod evidence;
+mod evidence_reference;
 mod lifecycle;
 mod policy_header;
 mod render;

@@ -1,6 +1,7 @@
 use allow_core::{AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult};
 use std::path::{Path, PathBuf};
 
+use crate::evidence_reference::{EvidenceKind, EvidenceReference};
 use crate::scope_validation::validate_path_scope;
 
 pub fn validate_local_evidence_references(
@@ -144,74 +145,5 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             status: EvidenceReferenceStatus::LocalFileMissing,
             message: "local evidence file is missing".to_string(),
         },
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum EvidenceKind {
-    Test,
-    Cargo,
-    Ripr,
-    UnsafeReview,
-    Coverage,
-    Doc,
-    Spec,
-    Adr,
-    Issue,
-    Pr,
-    Unknown,
-}
-
-impl EvidenceKind {
-    fn parse(prefix: &str) -> Self {
-        match prefix {
-            "test" => Self::Test,
-            "cargo" => Self::Cargo,
-            "ripr" => Self::Ripr,
-            "unsafe-review" | "unsafe_review" => Self::UnsafeReview,
-            "coverage" => Self::Coverage,
-            "doc" => Self::Doc,
-            "spec" => Self::Spec,
-            "adr" => Self::Adr,
-            "issue" => Self::Issue,
-            "pr" => Self::Pr,
-            _ => Self::Unknown,
-        }
-    }
-
-    fn is_local_file(self) -> bool {
-        matches!(
-            self,
-            Self::Ripr | Self::UnsafeReview | Self::Coverage | Self::Doc | Self::Spec | Self::Adr
-        )
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct EvidenceReference<'a> {
-    raw: &'a str,
-    prefix: &'a str,
-    kind: EvidenceKind,
-    value: PathBuf,
-}
-
-impl<'a> EvidenceReference<'a> {
-    fn parse(raw: &'a str) -> Option<Self> {
-        let (prefix, value) = raw.split_once(':')?;
-        let value = value.trim();
-        if value.is_empty() {
-            return Some(Self {
-                raw,
-                prefix: prefix.trim(),
-                kind: EvidenceKind::parse(prefix.trim()),
-                value: PathBuf::new(),
-            });
-        }
-        Some(Self {
-            raw,
-            prefix: prefix.trim(),
-            kind: EvidenceKind::parse(prefix.trim()),
-            value: PathBuf::from(value),
-        })
     }
 }
