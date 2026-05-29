@@ -97,3 +97,69 @@ fn assert_classification(path: &str, kind: FindingKind, family: &str) {
     assert_eq!(finding.kind, kind);
     assert_eq!(finding.family.as_deref(), Some(family));
 }
+
+#[test]
+fn scan_files_only_returns_classified_paths_in_input_order() {
+    let files = vec![
+        PathBuf::from("src/lib.rs"),
+        PathBuf::from("tools/check.py"),
+        PathBuf::from("README.md"),
+        PathBuf::from("assets/logo.bin"),
+    ];
+
+    let findings = scan_files(&files);
+
+    assert_eq!(findings.len(), 2);
+    assert_eq!(findings[0].path, PathBuf::from("tools/check.py"));
+    assert_eq!(findings[0].family.as_deref(), Some("python_tool"));
+    assert_eq!(findings[1].path, PathBuf::from("assets/logo.bin"));
+    assert_eq!(findings[1].family.as_deref(), Some("unknown_non_rust"));
+}
+
+#[test]
+fn classification_populates_span_identity_message_and_fingerprint() {
+    let finding = classify_path(Path::new("config/settings.JSON"))
+        .unwrap_or_else(|| std::panic::panic_any("expected configuration file finding"));
+
+    assert_eq!(finding.kind, FindingKind::NonRustFile);
+    assert_eq!(finding.family.as_deref(), Some("configuration"));
+    assert_eq!(finding.span, Some(allow_core::Span { line: 1, column: 1 }));
+    assert_eq!(finding.identity.language, "file");
+    assert_eq!(finding.identity.ast_kind, "tracked_file");
+    assert_eq!(
+        finding.identity.symbol.as_deref(),
+        Some("config/settings.JSON")
+    );
+    assert_eq!(finding.identity.target_fingerprint.as_deref(), Some("json"));
+    assert_eq!(
+        finding.message,
+        "tracked non-Rust file classified as configuration"
+    );
+}
+
+#[test]
+fn generated_detection_covers_gen_directories_and_name_suffixes() {
+    for path in [
+        "src/gen/schema.yaml",
+        "gen/schema.yaml",
+        "src/types.generated",
+        "src/types.generated.yaml",
+    ] {
+        assert_classification(path, FindingKind::GeneratedCode, "generated_code");
+    }
+}
+
+#[test]
+fn builtin_workspace_readmes_and_tool_configs_are_not_findings() {
+    assert!(classify_path(Path::new("crates/allow-files/README.md")).is_none());
+    assert!(classify_path(Path::new("rust-toolchain.toml")).is_none());
+    assert!(classify_path(Path::new("rustfmt.toml")).is_none());
+    assert!(classify_path(Path::new("clippy.toml")).is_none());
+}
+
+#[test]
+fn extension_and_file_name_matching_are_case_insensitive() {
+    assert_classification("DOCS/README.MD", FindingKind::NonRustFile, "documentation");
+    assert_classification("TOOLS/CHECK.PS1", FindingKind::NonRustFile, "shell_script");
+    assert_classification("Package.JSON", FindingKind::NonRustFile, "package_metadata");
+}
