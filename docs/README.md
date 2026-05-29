@@ -6,6 +6,8 @@ beyond the MVP scaffold.
 - [Design](design.md): cargo-allow's source-exception governance model.
 - [Claim boundaries](claim-boundaries.md): what current and future reports may
   claim.
+- [Contributing](../CONTRIBUTING.md): local development, product boundaries,
+  and pull request expectations.
 - [Roadmap](roadmap.md): the PR-sized path from MVP to useful product.
 - [Source exception ledger](source-exception-ledger.md): the policy concepts and
   entry model.
