@@ -91,7 +91,45 @@ fn diff_json_reports_broken_evidence_as_current_failure() {
     remove_temp_root(root);
 }
 
+#[test]
+fn diff_json_reports_policy_missing_evidence_counts() {
+    let root = temp_root("diff-policy-missing-evidence");
+    let policy = policy_with_evidence(None);
+    write_diff_fixture(&root, policy.clone(), policy);
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_success(&root, &output);
+    assert_json_u64(
+        &value,
+        "/summary/policy_missing_evidence",
+        1,
+        "diff summary policy_missing_evidence",
+    );
+    assert_json_u64(
+        &value,
+        "/trend/policy_missing_evidence",
+        1,
+        "diff trend policy_missing_evidence",
+    );
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "unchanged",
+        "diff policy missing evidence net posture",
+    );
+
+    remove_temp_root(root);
+}
+
 fn assert_saved_json_diff_failure(root: &Path, output: &Path) -> Value {
+    assert_saved_json_diff(root, output, false)
+}
+
+fn assert_saved_json_diff_success(root: &Path, output: &Path) -> Value {
+    assert_saved_json_diff(root, output, true)
+}
+
+fn assert_saved_json_diff(root: &Path, output: &Path, should_succeed: bool) -> Value {
     let result = cargo_allow_command()
         .arg("diff")
         .arg("--root")
@@ -105,7 +143,7 @@ fn assert_saved_json_diff_failure(root: &Path, output: &Path) -> Value {
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
 
-    assert_status("diff", &result, false);
+    assert_status("diff", &result, should_succeed);
     assert_stdout_empty(
         "diff",
         &result,
