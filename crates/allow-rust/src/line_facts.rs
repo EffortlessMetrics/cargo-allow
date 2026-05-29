@@ -1,9 +1,9 @@
 use crate::syntax_kinds::{
-    LintAttributeKind, PanicMacroInvocation, PanicMethodCall, UnsafeSyntaxConstruct,
+    LintAttribute, PanicMacroInvocation, PanicMethodCall, UnsafeSyntaxConstruct,
 };
 
 pub(crate) struct SyntaxLineFacts<'a> {
-    pub(crate) lint_attributes: &'a [LintAttributeKind],
+    pub(crate) lint_attributes: &'a [LintAttribute],
     pub(crate) panic_macros: &'a [PanicMacroInvocation],
     pub(crate) panic_methods: &'a [PanicMethodCall],
     pub(crate) index_column: Option<u32>,

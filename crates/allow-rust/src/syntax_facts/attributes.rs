@@ -1,6 +1,6 @@
 use tree_sitter::Node;
 
-use crate::syntax_kinds::{LintAttributeKind, RustSyntaxFacts};
+use crate::syntax_kinds::{LintAttribute, LintAttributeKind, RustSyntaxFacts};
 use crate::syntax_tree::node_text;
 use crate::text::detect_attr;
 
@@ -15,7 +15,15 @@ pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut R
 
     let line = node.start_position().row as u32 + 1;
     if let Some(kind) = lint_attribute_kind(text) {
-        facts.lint_attributes.entry(line).or_default().push(kind);
+        facts
+            .lint_attributes
+            .entry(line)
+            .or_default()
+            .push(LintAttribute {
+                kind,
+                text: text.to_string(),
+                column: node.start_position().column as u32 + 1,
+            });
     }
     if unsafe_attribute_text(text) {
         facts.unsafe_attribute_lines.insert(line);

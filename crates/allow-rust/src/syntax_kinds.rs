@@ -15,6 +15,13 @@ impl LintAttributeKind {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct LintAttribute {
+    pub(crate) kind: LintAttributeKind,
+    pub(crate) text: String,
+    pub(crate) column: u32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum UnsafeSyntaxKind {
     Fn,
@@ -139,7 +146,7 @@ pub(crate) struct RustLineScope {
 #[derive(Default)]
 pub(crate) struct RustSyntaxFacts {
     pub(crate) index_columns: BTreeMap<u32, u32>,
-    pub(crate) lint_attributes: BTreeMap<u32, Vec<LintAttributeKind>>,
+    pub(crate) lint_attributes: BTreeMap<u32, Vec<LintAttribute>>,
     pub(crate) panic_macros: BTreeMap<u32, Vec<PanicMacroInvocation>>,
     pub(crate) panic_methods: BTreeMap<u32, Vec<PanicMethodCall>>,
     pub(crate) scopes: BTreeMap<u32, RustLineScope>,

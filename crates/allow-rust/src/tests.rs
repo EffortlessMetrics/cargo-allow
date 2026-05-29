@@ -705,6 +705,38 @@ fn load() {}
 }
 
 #[test]
+fn detects_multiline_lint_attribute_policy_reference_from_syntax() {
+    let src = r#"
+#[expect(
+    clippy::unwrap_used,
+    reason = "policy:allow-lint"
+)]
+fn load() {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    let expect = findings
+        .iter()
+        .find(|f| {
+            f.kind == FindingKind::LintException && f.family.as_deref() == Some("expect_attribute")
+        })
+        .unwrap_or_else(|| std::panic::panic_any("multiline expect attribute should be found"));
+
+    assert_eq!(expect.identity.lint.as_deref(), Some("clippy::unwrap_used"));
+    assert!(
+        expect
+            .identity
+            .symbol
+            .as_deref()
+            .is_some_and(|symbol| symbol.contains("policy:allow-lint"))
+    );
+    assert_eq!(
+        expect.identity.target_fingerprint.as_deref(),
+        Some("policy:allow-lint")
+    );
+}
+
+#[test]
 fn detect_attr_returns_text_after_outer_and_inner_prefixes() {
     assert_eq!(
         detect_attr("#[allow(dead_code)]", "allow"),
