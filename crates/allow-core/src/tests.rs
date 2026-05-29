@@ -259,6 +259,50 @@ fn finding_source_package_name_trims_source_derived_crate_name() {
 }
 
 #[test]
+fn json_escape_covers_quotes_backslashes_whitespace_and_control_chars() {
+    assert_eq!(
+        json_escape("quote \" slash \\ newline\n tab\t return\r ctrl\u{0007}"),
+        "quote \\\" slash \\\\ newline\\n tab\\t return\\r ctrl\\u0007"
+    );
+}
+
+#[test]
+fn normalize_snippet_collapses_all_whitespace_runs() {
+    assert_eq!(
+        normalize_snippet("  fn   load() {\n\tvalue . unwrap()  }  "),
+        "fn load() { value . unwrap() }"
+    );
+}
+
+#[test]
+fn line_distance_score_uses_all_thresholds() {
+    assert_eq!(maybe_line_distance_score(Some(10), Some(10)), 15);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(13)), 12);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(20)), 8);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(35)), 3);
+    assert_eq!(maybe_line_distance_score(Some(10), Some(36)), 0);
+    assert_eq!(maybe_line_distance_score(Some(10), None), 0);
+    assert_eq!(maybe_line_distance_score(None, Some(10)), 0);
+}
+
+#[test]
+fn finding_kind_display_and_parser_cover_policy_aliases_and_errors() {
+    assert_eq!(FindingKind::PolicyException.to_string(), "policy_exception");
+    assert_eq!(
+        FindingKind::from_str(" policy-exception "),
+        Ok(FindingKind::PolicyException)
+    );
+    assert_eq!(
+        FindingKind::from_str("generated"),
+        Ok(FindingKind::GeneratedCode)
+    );
+    let error = FindingKind::from_str("unknown-kind")
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("unsupported finding kind `unknown-kind`"));
+}
+
+#[test]
 fn simple_date_rejects_invalid_calendar_dates() {
     assert!(SimpleDate::parse("2026-02-29").is_none());
     assert!(SimpleDate::parse("2024-02-29").is_some());
