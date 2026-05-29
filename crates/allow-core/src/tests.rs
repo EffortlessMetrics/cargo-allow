@@ -463,3 +463,189 @@ fn today_utc_approx_uses_system_clock_day() {
         "today_utc_approx should use the current UTC day"
     );
 }
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    fn path_segment() -> impl Strategy<Value = String> {
+        prop_oneof![
+            Just(".".to_string()),
+            Just("..".to_string()),
+            "[A-Za-z0-9_-]{1,8}".prop_map(|s| s),
+        ]
+    }
+
+    fn relative_path_text() -> impl Strategy<Value = String> {
+        prop::collection::vec(path_segment(), 0..12).prop_map(|segments| segments.join("/"))
+    }
+
+    fn stable_text() -> impl Strategy<Value = String> {
+        "[A-Za-z0-9_:/|.-]{0,24}".prop_map(|s| s)
+    }
+
+    fn maybe_stable_text() -> impl Strategy<Value = Option<String>> {
+        prop::option::of(stable_text())
+    }
+
+    prop_compose! {
+        fn structural_identity_strategy()(
+            language in stable_text(),
+            ast_kind in stable_text(),
+            crate_name in maybe_stable_text(),
+            module in maybe_stable_text(),
+            container in maybe_stable_text(),
+            symbol in maybe_stable_text(),
+            callee in maybe_stable_text(),
+            macro_name in maybe_stable_text(),
+            lint in maybe_stable_text(),
+            receiver_fingerprint in maybe_stable_text(),
+            target_fingerprint in maybe_stable_text(),
+            normalized_snippet_hash in maybe_stable_text(),
+            line_hint in prop::option::of(any::<u32>()),
+            column_hint in prop::option::of(any::<u32>()),
+        ) -> StructuralIdentity {
+            StructuralIdentity {
+                language,
+                crate_name,
+                module,
+                container,
+                ast_kind,
+                symbol,
+                callee,
+                macro_name,
+                lint,
+                receiver_fingerprint,
+                target_fingerprint,
+                normalized_snippet_hash,
+                line_hint,
+                column_hint,
+            }
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn normalize_path_is_idempotent(path in relative_path_text()) {
+            let normalized = normalize_path(&path);
+            prop_assert_eq!(normalize_path(&normalized), normalized);
+        }
+
+        #[test]
+        fn normalize_path_removes_current_and_empty_segments(path in relative_path_text()) {
+            let normalized = normalize_path(&path);
+            prop_assert!(
+                normalized.is_empty()
+                    || !normalized
+                        .split('/')
+                        .any(|part| part.is_empty() || part == ".")
+            );
+        }
+
+        #[test]
+        fn double_star_glob_matches_any_number_of_whole_segments(
+            prefix in "[A-Za-z0-9_-]{1,8}",
+            middle in prop::collection::vec("[A-Za-z0-9_-]{1,8}", 0..6),
+            file in r"[A-Za-z0-9_-]{1,8}\.rs",
+        ) {
+            let pattern = format!("{prefix}/**/*.rs");
+            let path = std::iter::once(prefix)
+                .chain(middle)
+                .chain(std::iter::once(file))
+                .collect::<Vec<_>>()
+                .join("/");
+
+            prop_assert!(glob_matches_str(&pattern, &path));
+        }
+
+        #[test]
+        fn subtree_ignore_pattern_does_not_match_shared_prefix_sibling(
+            prefix in "[A-Za-z][A-Za-z0-9_-]{0,8}",
+            suffix in "[A-Za-z0-9_-]{1,8}",
+            leaf in "[A-Za-z0-9_-]{1,8}",
+        ) {
+            let pattern = format!("{prefix}/**");
+            let ignored = format!("{prefix}/{leaf}");
+            let sibling = format!("{prefix}{suffix}/{leaf}");
+            let patterns = vec![pattern];
+
+            prop_assert!(source_tree_path_is_ignored(&ignored, &patterns));
+            prop_assert!(!source_tree_path_is_ignored(&sibling, &patterns));
+        }
+
+        #[test]
+        fn date_epoch_day_roundtrips(days in 0_i64..2_000_000_i64) {
+            let date = SimpleDate::from_days_since_unix_epoch(days);
+
+            prop_assert_eq!(date.days_since_unix_epoch(), days);
+            prop_assert_eq!(SimpleDate::parse(&date.to_string()), Some(date));
+        }
+
+        #[test]
+        fn date_add_days_matches_days_until(
+            start_days in -2_000_000_i64..2_000_000_i64,
+            delta in -20_000_i64..20_000_i64,
+        ) {
+            let start = SimpleDate::from_days_since_unix_epoch(start_days);
+            let end = start.add_days(delta);
+
+            prop_assert_eq!(start.days_until(end), delta);
+            prop_assert_eq!(end.days_since_unix_epoch(), start_days + delta);
+        }
+
+        #[test]
+        fn stable_hash_hex_has_expected_shape_and_is_deterministic(input in ".{0,256}") {
+            let first = stable_hash_hex(&input);
+            let second = stable_hash_hex(&input);
+
+            prop_assert_eq!(&first, &second);
+            prop_assert!(first.starts_with("fnv1a64:"));
+            prop_assert_eq!(first.len(), "fnv1a64:".len() + 16);
+            prop_assert!(first["fnv1a64:".len()..].chars().all(|ch| ch.is_ascii_hexdigit()));
+        }
+
+        #[test]
+        fn stable_identity_keys_ignore_location_hints(
+            mut identity in structural_identity_strategy(),
+            line_hint in any::<u32>(),
+            column_hint in any::<u32>(),
+        ) {
+            let base = identity.stable_key();
+            identity.line_hint = Some(line_hint);
+            identity.column_hint = Some(column_hint);
+
+            prop_assert_eq!(identity.stable_key(), base);
+        }
+
+        #[test]
+        fn finding_identity_keys_ignore_span(
+            mut finding_path in relative_path_text(),
+            mut identity in structural_identity_strategy(),
+            family in maybe_stable_text(),
+            line in any::<u32>(),
+            column in any::<u32>(),
+        ) {
+            if finding_path.is_empty() {
+                finding_path = "src/lib.rs".to_string();
+            }
+            identity.line_hint = Some(line);
+            identity.column_hint = Some(column);
+            let finding = Finding {
+                kind: FindingKind::Unsafe,
+                family,
+                path: PathBuf::from(finding_path),
+                span: Some(Span { line, column }),
+                identity,
+                message: "generated finding".to_string(),
+            };
+            let mut moved = finding.clone();
+            moved.span = Some(Span {
+                line: line.wrapping_add(1),
+                column: column.wrapping_add(1),
+            });
+
+            prop_assert_eq!(finding_identity_key(&finding), finding_identity_key(&moved));
+        }
+    }
+}
