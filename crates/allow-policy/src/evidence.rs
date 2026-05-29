@@ -122,6 +122,18 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
         };
     }
     let path = root.join(&reference.value);
+    if let Some(component) = first_symlink_component(root, &reference.value) {
+        return EvidenceReferenceDiagnostic {
+            raw: raw.to_string(),
+            prefix,
+            target: Some(reference.value.clone()),
+            status: EvidenceReferenceStatus::InvalidLocalPath,
+            message: format!(
+                "local evidence path contains symlink component {}; reference regular source-tree files",
+                component.display()
+            ),
+        };
+    }
     match fs::symlink_metadata(&path) {
         Ok(metadata) if metadata.file_type().is_symlink() => EvidenceReferenceDiagnostic {
             raw: raw.to_string(),
@@ -153,6 +165,23 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             message: "local evidence file is missing".to_string(),
         },
     }
+}
+
+fn first_symlink_component(root: &Path, relative: &Path) -> Option<PathBuf> {
+    let mut current = root.to_path_buf();
+    let mut source_tree_component = PathBuf::new();
+    for component in relative.components() {
+        current.push(component.as_os_str());
+        source_tree_component.push(component.as_os_str());
+        match fs::symlink_metadata(&current) {
+            Ok(metadata) if metadata.file_type().is_symlink() => {
+                return Some(source_tree_component);
+            }
+            Ok(_) => {}
+            Err(_) => return None,
+        }
+    }
+    None
 }
 
 fn evidence_reference_validation_error(
