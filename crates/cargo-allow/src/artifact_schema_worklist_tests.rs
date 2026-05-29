@@ -4,6 +4,7 @@ use crate::artifact_schema_support::{
 };
 use crate::worklist::{DIFFICULTY_LEVELS, RISK_LEVELS, WORK_ITEM_KINDS};
 use serde_json::Value;
+use std::collections::BTreeSet;
 
 #[test]
 fn worklist_schema_locks_filters_summary_and_work_items_contract() {
@@ -79,19 +80,19 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
             "null",
         );
     }
-    assert_enum_contains_all(
+    assert_nullable_string_enum_equals(
         "worklist",
         &schema,
         "/$defs/filters/properties/status/enum",
         &match_status_enum(),
     );
-    assert_enum_contains_all(
+    assert_nullable_string_enum_equals(
         "worklist",
         &schema,
         "/$defs/filters/properties/risk/enum",
         RISK_LEVELS,
     );
-    assert_enum_contains_all(
+    assert_nullable_string_enum_equals(
         "worklist",
         &schema,
         "/$defs/filters/properties/difficulty/enum",
@@ -217,4 +218,31 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         Some("^cargo-allow "),
         "worklist proof commands should stay cargo-allow first"
     );
+}
+
+fn assert_nullable_string_enum_equals(
+    name: &str,
+    schema: &Value,
+    pointer: &str,
+    expected_strings: &[&str],
+) {
+    let Some(items) = schema.pointer(pointer).and_then(Value::as_array) else {
+        std::panic::panic_any(format!("{name} {pointer} should be an enum array"));
+    };
+    let actual = items
+        .iter()
+        .map(|item| match item {
+            Value::String(value) => value.clone(),
+            Value::Null => "<null>".to_string(),
+            _ => std::panic::panic_any(format!(
+                "{name} {pointer} entries should be strings or null"
+            )),
+        })
+        .collect::<BTreeSet<_>>();
+    let expected = expected_strings
+        .iter()
+        .map(|item| (*item).to_string())
+        .chain(std::iter::once("<null>".to_string()))
+        .collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "{name} {pointer} enum values");
 }
