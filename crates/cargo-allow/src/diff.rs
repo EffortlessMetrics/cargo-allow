@@ -1,5 +1,6 @@
 use allow_core::{CargoAllowResult, normalize_path};
 use allow_match::{CheckMode, evaluate};
+use allow_policy::broken_evidence_link_count;
 use std::process;
 
 #[path = "diff_args.rs"]
@@ -15,18 +16,19 @@ use diff_render::{
 };
 
 use crate::{
-    OutputFormat, SourceTreeReportContext, emit_text, git_relative_config_path, load_world,
-    matched_policy_missing_evidence_entries, parse_kind_filter, policy_baseline_debt_entries,
-    report_config,
+    OutputFormat, SourceTreeReportContext, emit_text, git_relative_config_path,
+    load_world_with_evidence_validation, matched_policy_missing_evidence_entries,
+    parse_kind_filter, policy_baseline_debt_entries, report_config,
 };
 
 pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, inventory_facts) = load_world(
+    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_validation(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         args.kind.as_deref(),
         args.include_untracked,
+        false,
     )?;
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
@@ -58,9 +60,17 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let policy_changes =
         allow_diff::policy_changes_from_git(&root, &args.base, &policy_path, &head_cfg_for_diff)?;
     let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
-    let failed = outcomes.iter().any(|o| CheckMode::NoNew.fails(o.status)) || policy_failed;
+    let broken_evidence_links = broken_evidence_link_count(&root, &report_cfg);
+    let current_failures = outcomes
+        .iter()
+        .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
+        .count()
+        + broken_evidence_links;
+    let failed = current_failures > 0 || policy_failed;
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let mut report_context = source_context.report(Some(policy_baseline_debt_entries(&report_cfg)));
+    report_context.broken_evidence_links =
+        (broken_evidence_links > 0).then_some(broken_evidence_links);
     let policy_missing_evidence_entries =
         matched_policy_missing_evidence_entries(&report_cfg, &outcomes);
     report_context.policy_missing_evidence_entries =
@@ -74,6 +84,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
                 failed,
                 report_context,
             ),
+            current_failures,
             &outcomes,
             &finding_changes,
             &policy_changes,
@@ -108,7 +119,12 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         ),
     };
     if args.format == OutputFormat::Markdown {
-        let summary = render_diff_pr_summary_markdown(&outcomes, &finding_changes, &policy_changes);
+        let summary = render_diff_pr_summary_markdown(
+            current_failures,
+            &outcomes,
+            &finding_changes,
+            &policy_changes,
+        );
         insert_markdown_pr_summary(&mut text, &summary);
     }
     append_finding_posture_changes(&mut text, args.format, &finding_changes);

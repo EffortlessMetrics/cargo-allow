@@ -67,7 +67,7 @@ fn core_json_artifact_renderers_emit_parseable_v1_contracts() {
             None,
         ),
     );
-    let diff_json = diff::render_diff_json_with_posture(diff_base_json, &[], &[], &[]);
+    let diff_json = diff::render_diff_json_with_posture(diff_base_json, 0, &[], &[], &[]);
     let diff = parse_json_artifact("diff", &diff_json, allow_report::REPORT_SCHEMA_ID, "diff");
     assert_eq!(
         diff.pointer("/diff/net_posture").and_then(Value::as_str),

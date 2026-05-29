@@ -8,6 +8,7 @@ pub(super) fn insert_markdown_pr_summary(text: &mut String, summary: &str) {
 }
 
 pub(super) fn render_diff_pr_summary_markdown(
+    current_failures: usize,
     outcomes: &[MatchOutcome],
     finding_changes: &[allow_diff::FindingPostureChange],
     policy_changes: &[allow_diff::PolicyChange],
@@ -15,7 +16,7 @@ pub(super) fn render_diff_pr_summary_markdown(
     let finding_rows = finding_change_rows(finding_changes);
     let policy_rows = policy_change_rows(policy_changes);
     allow_report::render_diff_pr_summary_markdown(
-        current_no_new_failures(outcomes),
+        current_failures.max(current_no_new_failures(outcomes)),
         &finding_rows,
         &policy_rows,
     )
@@ -40,6 +41,7 @@ pub(super) fn append_finding_posture_changes(
 
 pub(crate) fn render_diff_json_with_posture(
     report_json: String,
+    current_failures: usize,
     outcomes: &[MatchOutcome],
     finding_changes: &[allow_diff::FindingPostureChange],
     policy_changes: &[allow_diff::PolicyChange],
@@ -47,7 +49,7 @@ pub(crate) fn render_diff_json_with_posture(
     let finding_rows = finding_change_rows(finding_changes);
     let policy_rows = policy_change_rows(policy_changes);
     let summary = allow_report::diff_posture_summary(
-        current_no_new_failures(outcomes),
+        current_failures.max(current_no_new_failures(outcomes)),
         &finding_rows,
         &policy_rows,
     );

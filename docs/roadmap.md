@@ -233,8 +233,8 @@ Completed:
 - Compare base and head source findings in `cargo-allow diff` using durable
   finding keys, so reviewers can see new and removed syntax-visible exception
   posture independent of line movement.
-- Emit Markdown PR summaries with net posture, reviewer action, current
-  no-new failures, source finding changes, and policy weakening counts.
+- Emit Markdown PR summaries with net posture, reviewer action, current check
+  failures, source finding changes, and policy weakening counts.
 - Emit structured JSON diff posture data with net posture, finding changes, and
   policy changes for automated PR consumers.
 - Report removed allow entries as policy improvements so stale-ledger cleanup

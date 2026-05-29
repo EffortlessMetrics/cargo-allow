@@ -31,7 +31,7 @@ cargo-allow diff \
 The Markdown output starts with a PR Summary section. That section reports:
 
 - net posture: `unchanged`, `improved`, `review-required`, or `worse`;
-- current no-new failures;
+- current check failures, including no-new and broken local evidence signals;
 - new and removed source findings;
 - policy failures, policy review items, and policy improvements;
 - the reviewer action implied by those signals.

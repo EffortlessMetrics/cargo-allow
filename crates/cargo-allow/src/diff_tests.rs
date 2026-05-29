@@ -4,10 +4,10 @@ use serde_json::Value;
 
 #[test]
 fn markdown_pr_summary_reports_unchanged_posture() {
-    let text = render_diff_pr_summary_markdown(&[], &[], &[]);
+    let text = render_diff_pr_summary_markdown(0, &[], &[], &[]);
 
     assert!(text.contains("**Net posture:** `unchanged`"));
-    assert!(text.contains("| Current no-new failures | 0 |"));
+    assert!(text.contains("| Current check failures | 0 |"));
     assert!(text.contains("no source exception posture change detected"));
 }
 
@@ -20,7 +20,7 @@ fn markdown_pr_summary_reports_review_required_for_new_source_finding() {
         "src/lib.rs",
     )];
 
-    let text = render_diff_pr_summary_markdown(&[], &changes, &[]);
+    let text = render_diff_pr_summary_markdown(0, &[], &changes, &[]);
 
     assert!(text.contains("**Net posture:** `review-required`"));
     assert!(text.contains("| New source findings | 1 |"));
@@ -34,7 +34,7 @@ fn markdown_pr_summary_reports_worse_for_policy_failure() {
         allow_diff::PolicyChangeKind::ScopeBroadened,
     )];
 
-    let text = render_diff_pr_summary_markdown(&[], &[], &changes);
+    let text = render_diff_pr_summary_markdown(0, &[], &[], &changes);
 
     assert!(text.contains("**Net posture:** `worse`"));
     assert!(text.contains("| Policy failures | 1 |"));
@@ -50,7 +50,7 @@ fn markdown_pr_summary_reports_improved_for_removed_source_finding() {
         "src/lib.rs",
     )];
 
-    let text = render_diff_pr_summary_markdown(&[], &changes, &[]);
+    let text = render_diff_pr_summary_markdown(0, &[], &changes, &[]);
 
     assert!(text.contains("**Net posture:** `improved`"));
     assert!(text.contains("| Removed source findings | 1 |"));
@@ -64,7 +64,7 @@ fn markdown_pr_summary_reports_improved_for_removed_policy_entry() {
         allow_diff::PolicyChangeKind::RemovedAllow,
     )];
 
-    let text = render_diff_pr_summary_markdown(&[], &[], &changes);
+    let text = render_diff_pr_summary_markdown(0, &[], &[], &changes);
 
     assert!(text.contains("**Net posture:** `improved`"));
     assert!(text.contains("| Policy improvements | 1 |"));
@@ -92,6 +92,7 @@ fn json_report_includes_structured_posture_changes() {
 
     let json = render_diff_json_with_posture(
         "{\n  \"schema_id\": \"cargo-allow.report.v1\"\n}".to_string(),
+        1,
         &outcomes,
         &finding_changes,
         &policy_changes,
@@ -169,7 +170,7 @@ fn json_report_includes_structured_posture_changes() {
 fn json_report_keeps_base_report_when_append_fails() {
     let base = "not json".to_string();
 
-    let json = render_diff_json_with_posture(base.clone(), &[], &[], &[]);
+    let json = render_diff_json_with_posture(base.clone(), 0, &[], &[], &[]);
 
     assert_eq!(json, base);
 }
