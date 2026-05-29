@@ -40,6 +40,13 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
     {
         return Err(CargoAllowError::new("policy status must not be empty"));
     }
+    if let Some(status) = &cfg.status {
+        if !matches!(status.as_str(), "active" | "advisory") {
+            return Err(CargoAllowError::new(format!(
+                "unsupported policy status `{status}`"
+            )));
+        }
+    }
     validate_workspace(&cfg.workspace)?;
     for pattern in &cfg.workspace.ignored {
         validate_glob("source-tree ignored glob", pattern)?;

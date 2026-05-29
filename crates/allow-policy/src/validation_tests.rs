@@ -75,6 +75,31 @@ fn rejects_blank_policy_status() {
 }
 
 #[test]
+fn accepts_advisory_policy_status() {
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+                status = "advisory"
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy should parse: {err}")));
+
+    assert_eq!(cfg.status.as_deref(), Some("advisory"));
+}
+
+#[test]
+fn rejects_unsupported_policy_status() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                status = "paused"
+            "#,
+    );
+
+    assert!(err.contains("unsupported policy status `paused`"));
+}
+
+#[test]
 fn keeps_unsafe_evidence_requirement_specific() {
     let err = parse_err(
         r#"
