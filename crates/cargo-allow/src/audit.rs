@@ -40,7 +40,6 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         root: &root,
         inventory_facts,
     })?;
-    eprintln!("source tree: {}", root.display());
     Ok(())
 }
 
