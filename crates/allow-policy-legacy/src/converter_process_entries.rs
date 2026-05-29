@@ -1,6 +1,7 @@
-use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, normalize_path};
+use allow_core::{AllowEntry, FindingKind, Selector, normalize_path};
 use std::path::{Path, PathBuf};
 
+use crate::converter_lifecycle_support::lifecycle_from_legacy_fields;
 use crate::converter_process_network_support::{
     process_fingerprint, process_scope, process_symbol,
 };
@@ -25,11 +26,11 @@ pub(crate) fn entry_from_process_rule(rule: &LegacyProcessRule) -> AllowEntry {
         evidence: process_evidence(rule),
         links: vec![format!("legacy-policy:{}", rule.id)],
         occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: rule.created.clone(),
-            review_after: rule.review_after.clone(),
-            expires: rule.expires.clone(),
-        },
+        lifecycle: lifecycle_from_legacy_fields(
+            rule.created.clone(),
+            rule.review_after.clone(),
+            rule.expires.clone(),
+        ),
         selector: Selector {
             ast_kind: Some("process_spawn".to_string()),
             symbol: Some(symbol.clone()),

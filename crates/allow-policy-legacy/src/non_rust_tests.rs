@@ -17,6 +17,7 @@ fn migrates_non_rust_allowlist_to_canonical_policy() {
     assert_eq!(docs.id, "non-rust-docs");
     assert_eq!(docs.glob.as_deref(), Some("docs/**"));
     assert_eq!(docs.lifecycle.expires.as_deref(), Some("never"));
+    assert_eq!(docs.lifecycle.review_after.as_deref(), Some("2026-05-09"));
     assert!(docs.reason.contains("Scope note:"));
     let ripr = cfg
         .allow

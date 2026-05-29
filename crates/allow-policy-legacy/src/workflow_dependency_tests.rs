@@ -31,6 +31,7 @@ fn migrates_workflow_allowlist_to_policy_exception_entries() {
         .unwrap_or_else(|| std::panic::panic_any("expected checkout action entry"));
     assert_eq!(action.classification, "workflow_external_action");
     assert_eq!(action.lifecycle.expires.as_deref(), Some("never"));
+    assert_eq!(action.lifecycle.review_after.as_deref(), Some("2026-05-09"));
 }
 
 #[test]
@@ -127,6 +128,10 @@ fn migrates_dependency_surface_allowlist_to_policy_exception_entries() {
     assert_eq!(workspace.classification, "workspace_manifest");
     assert_eq!(workspace.path.as_deref(), Some(Path::new("Cargo.toml")));
     assert_eq!(workspace.lifecycle.expires.as_deref(), Some("never"));
+    assert_eq!(
+        workspace.lifecycle.review_after.as_deref(),
+        Some("2026-05-09")
+    );
     assert!(
         workspace
             .evidence

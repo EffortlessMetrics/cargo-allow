@@ -153,6 +153,64 @@ fn rejects_lifecycle_dates_before_created() {
 }
 
 #[test]
+fn rejects_never_expiry_without_review_after_when_lifecycle_required() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+
+                [requirements]
+                expires_or_review_after_required = true
+
+                [[allow]]
+                id = "never-without-review"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "never"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains("missing expires or review_after"));
+}
+
+#[test]
+fn accepts_never_expiry_with_review_after_when_lifecycle_required() {
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+
+                [requirements]
+                expires_or_review_after_required = true
+
+                [[allow]]
+                id = "never-with-review"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                review_after = "2026-08-01"
+                expires = "never"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy should parse: {err}")));
+
+    assert_eq!(
+        cfg.allow[0].lifecycle.review_after.as_deref(),
+        Some("2026-08-01")
+    );
+    assert_eq!(cfg.allow[0].lifecycle.expires.as_deref(), Some("never"));
+}
+
+#[test]
 fn rejects_invalid_glob_scope() {
     let err = parse_err(
         r#"

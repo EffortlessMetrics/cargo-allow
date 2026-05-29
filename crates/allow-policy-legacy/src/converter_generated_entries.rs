@@ -1,6 +1,7 @@
-use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, normalize_path};
+use allow_core::{AllowEntry, FindingKind, Selector, normalize_path};
 use std::path::{Path, PathBuf};
 
+use crate::converter_lifecycle_support::lifecycle_from_legacy_fields;
 use crate::findings::file_fingerprint;
 use crate::types::LegacyGeneratedRule;
 
@@ -18,11 +19,7 @@ pub(crate) fn entry_from_generated_rule(rule: &LegacyGeneratedRule) -> AllowEntr
         evidence: generated_evidence(rule),
         links: vec![format!("legacy-policy:{}", rule.id)],
         occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: rule.created.clone(),
-            review_after: None,
-            expires: rule.expires.clone(),
-        },
+        lifecycle: lifecycle_from_legacy_fields(rule.created.clone(), None, rule.expires.clone()),
         selector: Selector {
             ast_kind: Some("tracked_file".to_string()),
             symbol: Some(path.clone()),
