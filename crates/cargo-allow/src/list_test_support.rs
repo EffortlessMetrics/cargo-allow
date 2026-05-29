@@ -25,6 +25,7 @@ pub(super) fn list_row(id: &str, kind: FindingKind, owner: &str, classification:
         source_package: None,
         evidence_count: 0,
         selector_precision: 0,
+        broad_scope: false,
         review_after: "-".to_string(),
         expires: "-".to_string(),
         reason: "reason".to_string(),

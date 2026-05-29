@@ -1,4 +1,4 @@
-use allow_core::{MatchStatus, source_tree_path_matches_filter, source_tree_scope_has_wildcard};
+use allow_core::{MatchStatus, source_tree_path_matches_filter};
 
 use super::{ListFilters, ListRow};
 
@@ -50,7 +50,7 @@ pub(super) fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool
     if filters.baseline_debt && row.classification != "baseline_debt" {
         return false;
     }
-    if filters.broad_scope && !source_tree_scope_has_wildcard(&row.scope) {
+    if filters.broad_scope && !row.broad_scope {
         return false;
     }
     if filters.missing_evidence && row.evidence_count != 0 {

@@ -12,6 +12,7 @@ fn render_list_rows_filters_broad_scope() {
         "baseline_debt",
     );
     broad.scope = "crates/allow-core/**".to_string();
+    broad.broad_scope = true;
     let rows = vec![exact, broad];
     let filters = ListFilters {
         kind: None,

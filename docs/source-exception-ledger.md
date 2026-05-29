@@ -222,7 +222,8 @@ same suggested actions/proof commands shown in the human view.
 
 `cargo-allow list` shows allow entries with current status, match count, kind,
 family, owner, classification, scope, scanner-provided source package context,
-evidence-reference count, lifecycle dates, and reason. It supports maintenance
+evidence-reference count, selector precision, broad-scope status, lifecycle
+dates, and reason. It supports maintenance
 filters such as `--kind`, `--family`, `--owner`, `--classification`, `--path`,
 `--source-package`, `--status`, `--expired`, `--review-due`, `--stale`,
 `--baseline-debt`, and `--missing-evidence`. Path filtering uses normalized
