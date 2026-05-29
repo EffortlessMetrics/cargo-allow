@@ -515,6 +515,8 @@
             "added_allow",
             "removed_allow",
             "baseline_debt_added",
+            "kind_changed",
+            "family_changed",
             "scope_broadened",
             "scope_narrowed",
             "selector_precision_decreased",

@@ -129,6 +129,8 @@ fn report_schema_locks_diff_posture_extension_contract() {
             "added_allow",
             "removed_allow",
             "baseline_debt_added",
+            "kind_changed",
+            "family_changed",
             "scope_broadened",
             "scope_narrowed",
             "selector_precision_decreased",
