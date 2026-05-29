@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult, normalize_path};
 use allow_policy::{render_policy, validate_policy};
 
-use crate::{write_file, write_file_no_overwrite};
+use crate::{emit_stderr_text, write_file_no_overwrite};
 
 #[path = "migrate_args.rs"]
 mod migrate_args;
@@ -61,11 +61,7 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
             render_migrate_summary_json(&cfg, &migration.context, &args.out, args.force)
         }
     };
-    if let Some(path) = &args.summary_output {
-        write_file(path, &summary)?;
-    } else {
-        eprintln!("{summary}");
-    }
+    emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())
 }
 

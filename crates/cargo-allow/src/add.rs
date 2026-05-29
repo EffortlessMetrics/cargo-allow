@@ -20,7 +20,8 @@ use add_render::{render_add_summary, render_add_summary_json};
 pub(super) use add_types::AddContext;
 
 use crate::{
-    SourceTreeReportContext, load_world, parse_kind_filter, write_file, write_file_no_overwrite,
+    SourceTreeReportContext, emit_stderr_text, load_world, parse_kind_filter,
+    write_file_no_overwrite,
 };
 
 #[cfg(test)]
@@ -85,11 +86,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     } else {
         println!("{rendered}");
     }
-    if let Some(path) = &args.summary_output {
-        write_file(path, &summary)?;
-    } else {
-        eprintln!("{summary}");
-    }
+    emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())
 }
 

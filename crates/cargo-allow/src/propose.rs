@@ -2,7 +2,7 @@ use allow_core::{CargoAllowResult, MatchStatus};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::render_policy;
 
-use crate::{SourceTreeReportContext, load_world, write_file, write_file_no_overwrite};
+use crate::{SourceTreeReportContext, emit_stderr_text, load_world, write_file_no_overwrite};
 
 #[path = "propose_args.rs"]
 mod propose_args;
@@ -75,11 +75,7 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
             context,
         ),
     };
-    if let Some(path) = &args.summary_output {
-        write_file(path, &summary)?;
-    } else {
-        eprintln!("{summary}");
-    }
+    emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())
 }
 
