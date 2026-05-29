@@ -72,10 +72,11 @@ Compatible `*.v1` changes include:
 - tightening renderer tests so existing fields stay stable;
 - adding non-breaking examples or schema compatibility coverage.
 
-Use extra care for nested object additions because schemas use
-`additionalProperties = false`. Prefer optional fields that are omitted when
-they have no signal, such as zero-count summary fields, so older strict
-consumers are less likely to see unexpected properties in ordinary outputs.
+Use extra care for any field additions because schemas enforce
+`additionalProperties = false` at both the root and nested levels. Prefer
+optional fields that are omitted when they have no signal, such as zero-count
+summary fields, so older strict consumers are less likely to see unexpected
+properties in ordinary outputs.
 
 Breaking changes require a new schema ID or explicit migration note. Examples
 include:
