@@ -37,6 +37,25 @@ pub(crate) fn validate_workspace(workspace: &WorkspaceConfig) -> CargoAllowResul
     Ok(())
 }
 
+pub(crate) fn validate_allow_entry_scope(entry: &AllowEntry) -> CargoAllowResult<()> {
+    if entry.path.is_none() && entry.glob.is_none() && entry.selector.glob.is_none() {
+        return Err(CargoAllowError::new(format!(
+            "{} has no path or glob",
+            entry.id
+        )));
+    }
+    if let Some(path) = &entry.path {
+        validate_path_scope(&entry.id, path)?;
+    }
+    if let Some(glob) = &entry.glob {
+        validate_glob(&format!("{} glob", entry.id), glob)?;
+    }
+    if let Some(glob) = &entry.selector.glob {
+        validate_glob(&format!("{} selector glob", entry.id), glob)?;
+    }
+    validate_scope_consistency(entry)
+}
+
 pub(crate) fn validate_path_scope(id: &str, path: &Path) -> CargoAllowResult<()> {
     let text = path.to_string_lossy().replace('\\', "/");
     if text.trim().is_empty() {
