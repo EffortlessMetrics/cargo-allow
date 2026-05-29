@@ -29,6 +29,7 @@ pub(crate) struct SchemaContract {
     pub(crate) schema: &'static str,
     pub(crate) schema_id: &'static str,
     pub(crate) schema_version: u32,
+    pub(crate) inventory_scanner: &'static str,
     pub(crate) fixed_command: Option<&'static str>,
 }
 
@@ -39,6 +40,7 @@ pub(crate) fn schema_contracts() -> [SchemaContract; 10] {
             schema: include_str!("../../../docs/schemas/add.schema.json"),
             schema_id: allow_report::ADD_SCHEMA_ID,
             schema_version: allow_report::ADD_SCHEMA_VERSION,
+            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
             fixed_command: Some("add"),
         },
         SchemaContract {
@@ -46,6 +48,7 @@ pub(crate) fn schema_contracts() -> [SchemaContract; 10] {
             schema: include_str!("../../../docs/schemas/doctor.schema.json"),
             schema_id: allow_report::DOCTOR_SCHEMA_ID,
             schema_version: allow_report::DOCTOR_SCHEMA_VERSION,
+            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
             fixed_command: Some("doctor"),
         },
         SchemaContract {
@@ -53,6 +56,7 @@ pub(crate) fn schema_contracts() -> [SchemaContract; 10] {
             schema: include_str!("../../../docs/schemas/explain.schema.json"),
             schema_id: allow_report::EXPLAIN_SCHEMA_ID,
             schema_version: allow_report::EXPLAIN_SCHEMA_VERSION,
+            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
             fixed_command: Some("explain"),
         },
         SchemaContract {
@@ -60,6 +64,7 @@ pub(crate) fn schema_contracts() -> [SchemaContract; 10] {
             schema: include_str!("../../../docs/schemas/list.schema.json"),
             schema_id: allow_report::LIST_SCHEMA_ID,
             schema_version: allow_report::LIST_SCHEMA_VERSION,
+            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
             fixed_command: Some("list"),
         },
         SchemaContract {
@@ -67,6 +72,7 @@ pub(crate) fn schema_contracts() -> [SchemaContract; 10] {
             schema: include_str!("../../../docs/schemas/migrate.schema.json"),
             schema_id: allow_report::MIGRATE_SCHEMA_ID,
             schema_version: allow_report::MIGRATE_SCHEMA_VERSION,
+            inventory_scanner: allow_report::INVENTORY_SCANNER_POLICY_MIGRATION,
             fixed_command: Some("migrate"),
         },
         SchemaContract {
@@ -74,6 +80,7 @@ pub(crate) fn schema_contracts() -> [SchemaContract; 10] {
             schema: include_str!("../../../docs/schemas/propose.schema.json"),
             schema_id: allow_report::PROPOSE_SCHEMA_ID,
             schema_version: allow_report::PROPOSE_SCHEMA_VERSION,
+            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
             fixed_command: Some("propose"),
         },
         SchemaContract {
@@ -81,6 +88,7 @@ pub(crate) fn schema_contracts() -> [SchemaContract; 10] {
             schema: include_str!("../../../docs/schemas/prune.schema.json"),
             schema_id: allow_report::PRUNE_SCHEMA_ID,
             schema_version: allow_report::PRUNE_SCHEMA_VERSION,
+            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
             fixed_command: Some("prune"),
         },
         SchemaContract {
@@ -88,6 +96,7 @@ pub(crate) fn schema_contracts() -> [SchemaContract; 10] {
             schema: include_str!("../../../docs/schemas/receipt.schema.json"),
             schema_id: allow_report::RECEIPT_SCHEMA_ID,
             schema_version: allow_report::RECEIPT_SCHEMA_VERSION,
+            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
             fixed_command: None,
         },
         SchemaContract {
@@ -95,6 +104,7 @@ pub(crate) fn schema_contracts() -> [SchemaContract; 10] {
             schema: include_str!("../../../docs/schemas/report.schema.json"),
             schema_id: allow_report::REPORT_SCHEMA_ID,
             schema_version: allow_report::REPORT_SCHEMA_VERSION,
+            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
             fixed_command: None,
         },
         SchemaContract {
@@ -102,6 +112,7 @@ pub(crate) fn schema_contracts() -> [SchemaContract; 10] {
             schema: include_str!("../../../docs/schemas/worklist.schema.json"),
             schema_id: allow_report::WORKLIST_SCHEMA_ID,
             schema_version: allow_report::WORKLIST_SCHEMA_VERSION,
+            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
             fixed_command: Some("worklist"),
         },
     ]
@@ -165,7 +176,7 @@ pub(crate) fn assert_command_contract(contract: SchemaContract, schema: &Value) 
     }
 }
 
-pub(crate) fn assert_inventory_schema(name: &str, schema: &Value) {
+pub(crate) fn assert_inventory_schema(name: &str, schema: &Value, expected_scanner: &str) {
     let inventory_schema = schema
         .pointer("/$defs/inventory")
         .or_else(|| schema.pointer("/properties/inventory"))
@@ -182,25 +193,10 @@ pub(crate) fn assert_inventory_schema(name: &str, schema: &Value) {
     let Some(scanner_schema) = inventory_schema.pointer("/properties/scanner") else {
         std::panic::panic_any(format!("{name} inventory scanner schema missing"));
     };
-    let scanner_const = scanner_schema.get("const").and_then(Value::as_str);
-    let scanner_enum_contains = |expected| {
-        scanner_schema
-            .get("enum")
-            .and_then(Value::as_array)
-            .is_some_and(|items| items.iter().any(|item| item.as_str() == Some(expected)))
-    };
-    let scanner_matches_contract =
-        matches!(
-            scanner_const,
-            Some(
-                allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX
-                    | allow_report::INVENTORY_SCANNER_POLICY_MIGRATION
-            )
-        ) || scanner_enum_contains(allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX)
-            || scanner_enum_contains(allow_report::INVENTORY_SCANNER_POLICY_MIGRATION);
-    assert!(
-        scanner_matches_contract,
-        "{name} inventory scanner should identify source_syntax or policy_migration"
+    assert_eq!(
+        scanner_schema.get("const").and_then(Value::as_str),
+        Some(expected_scanner),
+        "{name} inventory scanner const"
     );
     assert_enum_equals(
         name,

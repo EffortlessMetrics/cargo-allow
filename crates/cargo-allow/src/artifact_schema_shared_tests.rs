@@ -48,7 +48,7 @@ fn schema_files_require_common_v1_source_tree_contract() {
             contract.name
         );
         assert_command_contract(contract, &schema);
-        assert_inventory_schema(contract.name, &schema);
+        assert_inventory_schema(contract.name, &schema, contract.inventory_scanner);
         assert_enum_equals(
             contract.name,
             &schema,
