@@ -1,5 +1,6 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, SimpleDate,
+    WorkspaceConfig,
 };
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -13,6 +14,7 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
             cfg.policy
         )));
     }
+    validate_workspace(&cfg.workspace)?;
     for pattern in &cfg.workspace.ignored {
         validate_glob("source-tree ignored glob", pattern)?;
     }
@@ -89,6 +91,36 @@ pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {
                 entry.id
             )));
         }
+    }
+    Ok(())
+}
+
+fn validate_workspace(workspace: &WorkspaceConfig) -> CargoAllowResult<()> {
+    validate_path_scope("workspace root", Path::new(&workspace.root))?;
+    if workspace.inventory.trim().is_empty() {
+        return Err(CargoAllowError::new(
+            "workspace inventory must not be empty",
+        ));
+    }
+    if workspace.inventory != "git-tracked" {
+        return Err(CargoAllowError::new(format!(
+            "unsupported workspace inventory `{}`",
+            workspace.inventory
+        )));
+    }
+    if workspace.default_mode.trim().is_empty() {
+        return Err(CargoAllowError::new(
+            "workspace default_mode must not be empty",
+        ));
+    }
+    if !matches!(
+        workspace.default_mode.as_str(),
+        "audit" | "no-new" | "strict" | "release"
+    ) {
+        return Err(CargoAllowError::new(format!(
+            "unsupported workspace default_mode `{}`",
+            workspace.default_mode
+        )));
     }
     Ok(())
 }

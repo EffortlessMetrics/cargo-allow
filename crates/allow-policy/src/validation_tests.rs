@@ -98,6 +98,58 @@ fn rejects_blank_link_entry() {
 }
 
 #[test]
+fn rejects_empty_workspace_root() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                root = "   "
+            "#,
+    );
+
+    assert!(err.contains("workspace root has empty path"));
+}
+
+#[test]
+fn rejects_parent_workspace_root() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                root = "../outside"
+            "#,
+    );
+
+    assert!(err.contains("workspace root path must not contain parent directory segments"));
+}
+
+#[test]
+fn rejects_unsupported_workspace_inventory() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                inventory = "filesystem"
+            "#,
+    );
+
+    assert!(err.contains("unsupported workspace inventory `filesystem`"));
+}
+
+#[test]
+fn rejects_unsupported_workspace_default_mode() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                default_mode = "permissive"
+            "#,
+    );
+
+    assert!(err.contains("unsupported workspace default_mode `permissive`"));
+}
+
+#[test]
 fn rejects_duplicate_ids() {
     let err = parse_policy(
         r#"
