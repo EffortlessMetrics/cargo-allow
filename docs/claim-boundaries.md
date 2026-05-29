@@ -93,6 +93,9 @@ Examples:
   adequacy engine.
 - `unsafe-review:*` means unsafe-review evidence is linked. It does not make
   cargo-allow an unsafe soundness checker.
+- `legacy-policy:*` means a migrated or compatible legacy policy source is
+  cited. It does not prove the legacy policy entry was precise, current, or
+  independently reviewed.
 - `SAFETY:` comment detection is a source-text proximity heuristic. It does not
   prove the comment is correct, complete, or sound.
 - `coverage:*` means execution-surface evidence is linked. It does not prove
