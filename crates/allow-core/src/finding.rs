@@ -41,6 +41,10 @@ impl FindingKind {
             Self::PolicyException => "policy_exception",
         }
     }
+
+    pub fn requires_source_selector_identity(self) -> bool {
+        matches!(self, Self::Panic | Self::Unsafe | Self::LintException)
+    }
 }
 
 impl fmt::Display for FindingKind {

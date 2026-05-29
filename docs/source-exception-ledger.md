@@ -162,6 +162,14 @@ Weak selectors include:
 - missing callee, macro name, or lint where applicable.
 - line-only matching.
 
+For source-code exception kinds (`panic`, `unsafe`, and `lint_exception`),
+`path`, `glob`, `line_hint`, and `[allow.last_seen]` are scope and review hints,
+not structural identity. Those entries must include at least one structural
+selector field such as `ast_kind`, `container`, `callee`, `macro_name`, `lint`,
+`symbol`, a fingerprint, or `normalized_snippet_hash`. File-policy entries such
+as `non_rust_file` and `generated_code` may remain scope-centric when the
+source-tree file itself is the governed surface.
+
 Diff mode reports precision loss as policy weakening and precision increases as
 policy improvements. The current precision score rewards exact paths and
 structural selector fields such as AST kind, container, callee, macro name,
@@ -187,8 +195,9 @@ Do not auto-extend expiry. Extending expiry is a policy decision and should be
 visible in review.
 
 The validator rejects invalid calendar dates, lifecycle dates that move backward
-from `created`, empty or parent-directory scopes, and selectors that contain no
-structural identity beyond line hints.
+from `created`, empty or parent-directory scopes, source-code selectors that
+contain no structural identity beyond path/glob scope and line hints, and
+non-source selectors that contain no structural identity or selector glob.
 
 Diff mode reports expiry or review-date extensions/removals as policy weakening
 and added or earlier lifecycle dates as policy improvements.

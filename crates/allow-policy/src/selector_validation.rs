@@ -26,17 +26,14 @@ pub(crate) fn validate_selector(entry: &AllowEntry) -> CargoAllowResult<()> {
             )));
         }
     }
-    let has_identity = selector.ast_kind.is_some()
-        || selector.container.is_some()
-        || selector.callee.is_some()
-        || selector.macro_name.is_some()
-        || selector.lint.is_some()
-        || selector.symbol.is_some()
-        || selector.receiver_fingerprint.is_some()
-        || selector.target_fingerprint.is_some()
-        || selector.normalized_snippet_hash.is_some()
-        || selector.glob.is_some();
-    if !has_identity {
+    let has_structural_identity = selector.has_structural_identity();
+    if entry.kind.requires_source_selector_identity() && !has_structural_identity {
+        return Err(CargoAllowError::new(format!(
+            "{} source-code selector must include structural identity beyond path/glob scope and line hints",
+            entry.id
+        )));
+    }
+    if !has_structural_identity && selector.glob.is_none() {
         return Err(CargoAllowError::new(format!(
             "{} selector must include structural identity beyond line hints",
             entry.id

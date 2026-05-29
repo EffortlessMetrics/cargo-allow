@@ -14,11 +14,14 @@ pub fn score_match(entry: &AllowEntry, finding: &Finding) -> Option<u32> {
     if !path_matches(entry, finding) {
         return None;
     }
+    let sel = &entry.selector;
+    if entry.kind.requires_source_selector_identity() && !sel.has_structural_identity() {
+        return None;
+    }
     let mut score = 100;
     if entry.family.is_some() {
         score += 30;
     }
-    let sel = &entry.selector;
     if let Some(ast_kind) = &sel.ast_kind {
         if &finding.identity.ast_kind != ast_kind {
             return None;

@@ -377,6 +377,18 @@ fn selector_glob_matches_finding_path_when_entry_path_is_absent() {
 }
 
 #[test]
+fn source_code_scope_only_selector_does_not_match() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.selector = Selector {
+        glob: Some("src/lib.rs".to_string()),
+        ..Selector::default()
+    };
+
+    assert_eq!(score_match(&entry, &finding), None);
+}
+
+#[test]
 fn receiver_fingerprint_scores_exact_and_partial_matches() {
     let mut finding = finding_with_hash("fnv1a64:actual");
     finding.identity.receiver_fingerprint = Some("config.loader.result".to_string());

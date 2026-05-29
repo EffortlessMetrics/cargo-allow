@@ -140,6 +140,32 @@ fn finding_kind_accepts_hyphenated_cli_aliases() {
 }
 
 #[test]
+fn source_code_kinds_require_selector_identity() {
+    assert!(FindingKind::Panic.requires_source_selector_identity());
+    assert!(FindingKind::Unsafe.requires_source_selector_identity());
+    assert!(FindingKind::LintException.requires_source_selector_identity());
+    assert!(!FindingKind::NonRustFile.requires_source_selector_identity());
+    assert!(!FindingKind::GeneratedCode.requires_source_selector_identity());
+    assert!(!FindingKind::PolicyException.requires_source_selector_identity());
+}
+
+#[test]
+fn selector_structural_identity_excludes_scope_and_location_hints() {
+    let scoped = Selector {
+        line_hint: Some(12),
+        glob: Some("src/lib.rs".to_string()),
+        ..Selector::default()
+    };
+    assert!(!scoped.has_structural_identity());
+
+    let structural = Selector {
+        ast_kind: Some("method_call".to_string()),
+        ..Selector::default()
+    };
+    assert!(structural.has_structural_identity());
+}
+
+#[test]
 fn normalize_path_preserves_leading_parent_segments() {
     assert_eq!(normalize_path("../src/lib.rs"), "../src/lib.rs");
     assert_eq!(normalize_path("../../src/../README.md"), "../../README.md");

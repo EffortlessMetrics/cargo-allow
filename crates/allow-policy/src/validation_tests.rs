@@ -704,6 +704,29 @@ fn rejects_line_only_selector() {
 }
 
 #[test]
+fn rejects_source_code_scope_only_selector() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "scope-only-source"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = "src/lib.rs"
+            "#,
+    );
+
+    assert!(
+        err.contains("scope-only-source source-code selector must include structural identity")
+    );
+}
+
+#[test]
 fn rejects_empty_selector_identity_field() {
     let err = parse_err(
         r#"
