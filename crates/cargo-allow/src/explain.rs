@@ -10,6 +10,8 @@ use crate::{SourceTreeReportContext, load_world_with_evidence_validation, write_
 mod explain_args;
 #[path = "explain_render.rs"]
 mod explain_render;
+#[path = "explain_steps.rs"]
+mod explain_steps;
 #[path = "explain_types.rs"]
 mod explain_types;
 pub(crate) use explain_args::ExplainArgs;
