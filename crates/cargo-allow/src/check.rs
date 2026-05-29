@@ -32,10 +32,11 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, mode);
     let failed = outcomes.iter().any(|o| mode.fails(o.status));
+    let baseline_debt_entries = policy_baseline_debt_entries(&report_cfg);
     print_report(ReportRenderArgs {
         command: "check",
         format: args.format,
-        baseline_debt_entries: policy_baseline_debt_entries(&report_cfg),
+        baseline_debt_entries,
         findings: &findings,
         outcomes: &outcomes,
         failed,
@@ -51,7 +52,7 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
                 "check",
                 &outcomes,
                 failed,
-                source_context.report(None),
+                source_context.report(Some(baseline_debt_entries)),
             ),
         )?;
     }

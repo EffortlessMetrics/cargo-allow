@@ -26,3 +26,16 @@ fn receipt_exposes_v1_schema_contract() {
     assert!(json.contains("\"missing_required_field\": 0"));
     assert!(json.contains("\"evidence_missing\": 0"));
 }
+
+#[test]
+fn receipt_counts_policy_baseline_debt_context() {
+    let json = render_receipt_with_context(
+        "check",
+        &[],
+        false,
+        ReportContext::source_syntax("git_tracked", None, None, Some(3)),
+    );
+
+    assert!(json.contains("\"baseline_debt\": 0"));
+    assert!(json.contains("\"policy_baseline_debt\": 3"));
+}
