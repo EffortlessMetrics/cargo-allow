@@ -1,5 +1,5 @@
 use crate::artifact_schema_support::{
-    GOVERNED_KIND_ENUM, assert_enum_equals, assert_required_fields, assert_schema_type_contains,
+    assert_enum_equals, assert_required_fields, assert_schema_type_contains, governed_kind_enum,
     parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
@@ -110,6 +110,6 @@ fn prune_schema_locks_stale_cleanup_artifact_contract() {
         "prune stale entry kind",
         &schema,
         "/$defs/stale_entry/properties/kind/enum",
-        GOVERNED_KIND_ENUM,
+        &governed_kind_enum(),
     );
 }

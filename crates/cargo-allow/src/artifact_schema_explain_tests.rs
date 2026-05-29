@@ -1,5 +1,5 @@
 use crate::artifact_schema_support::{
-    GOVERNED_KIND_ENUM, assert_enum_equals, assert_required_fields, assert_schema_type_contains,
+    assert_enum_equals, assert_required_fields, assert_schema_type_contains, governed_kind_enum,
     parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
@@ -127,7 +127,7 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
         "explain allow_entry kind",
         &schema,
         "/$defs/allow_entry/properties/kind/enum",
-        GOVERNED_KIND_ENUM,
+        &governed_kind_enum(),
     );
     assert_eq!(
         schema
@@ -163,7 +163,7 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
         "explain current finding kind",
         &schema,
         "/$defs/current_finding/properties/kind/enum",
-        GOVERNED_KIND_ENUM,
+        &governed_kind_enum(),
     );
     assert_schema_type_contains(
         "explain current finding source_package",
