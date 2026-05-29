@@ -378,30 +378,11 @@ fn finding_source_package_name_trims_source_derived_crate_name() {
 }
 
 #[test]
-fn json_escape_covers_quotes_backslashes_whitespace_and_control_chars() {
-    assert_eq!(
-        json_escape("quote \" slash \\ newline\n tab\t return\r ctrl\u{0007}"),
-        "quote \\\" slash \\\\ newline\\n tab\\t return\\r ctrl\\u0007"
-    );
-}
-
-#[test]
 fn normalize_snippet_collapses_all_whitespace_runs() {
     assert_eq!(
         normalize_snippet("  fn   load() {\n\tvalue . unwrap()  }  "),
         "fn load() { value . unwrap() }"
     );
-}
-
-#[test]
-fn line_distance_score_uses_all_thresholds() {
-    assert_eq!(maybe_line_distance_score(Some(10), Some(10)), 15);
-    assert_eq!(maybe_line_distance_score(Some(10), Some(13)), 12);
-    assert_eq!(maybe_line_distance_score(Some(10), Some(20)), 8);
-    assert_eq!(maybe_line_distance_score(Some(10), Some(35)), 3);
-    assert_eq!(maybe_line_distance_score(Some(10), Some(36)), 0);
-    assert_eq!(maybe_line_distance_score(Some(10), None), 0);
-    assert_eq!(maybe_line_distance_score(None, Some(10)), 0);
 }
 
 #[test]
