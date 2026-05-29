@@ -59,6 +59,38 @@ Artifact-specific fields such as `diff`, `summary`, `allow_entries`,
 covered by their individual schema files. Consumers should branch on
 `schema_id`, not on command-line spelling or filenames.
 
+## Contract Change Rules
+
+Treat the JSON artifacts as producer-consumer contracts. A PR that changes an
+artifact shape should name the affected producers, likely consumers, validation
+commands, and compatibility story in its PR body.
+
+Compatible `*.v1` changes include:
+
+- adding optional fields that are safe for consumers to ignore;
+- documenting a field more precisely without changing its wire shape;
+- tightening renderer tests so existing fields stay stable;
+- adding non-breaking examples or schema compatibility coverage.
+
+Use extra care for any field additions because schemas enforce
+`additionalProperties = false` at both the root and nested levels. Prefer
+optional fields that are omitted when they have no signal, such as zero-count
+summary fields, so older strict consumers are less likely to see unexpected
+properties in ordinary outputs.
+
+Breaking changes require a new schema ID or explicit migration note. Examples
+include:
+
+- removing, renaming, or changing the type of an existing field;
+- making an optional field required;
+- changing the meaning of an existing status, count, or posture field;
+- removing enum values or reusing an enum value for a different meaning;
+- changing source-tree claim-boundary or scanner-limitation semantics.
+
+Enum additions are reviewed contract changes even when they are additive. Update
+the schema file, renderer or parser, focused schema tests, and this index
+together so agent and CI consumers can adapt deliberately.
+
 ## Baseline Debt Counts
 
 Baseline debt can appear in two related but distinct places:

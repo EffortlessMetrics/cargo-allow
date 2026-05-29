@@ -29,6 +29,8 @@ Completed:
   across report, receipt, list, and worklist schemas.
 - Add a schema index for the current machine-readable artifacts and their
   source-tree claim boundary.
+- Document JSON artifact contract change rules so future schema and renderer
+  changes name their producer, consumer, compatibility, and versioning impact.
 - Register every documented `docs/schemas/*.schema.json` artifact in the
   shared schema-contract tests so new artifacts cannot bypass common
   source-tree inventory and claim-boundary checks.
