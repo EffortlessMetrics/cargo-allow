@@ -39,6 +39,18 @@ fn rejects_blank_policy_schema_version() {
 }
 
 #[test]
+fn rejects_unsupported_policy_schema_version() {
+    let err = parse_err(
+        r#"
+                schema_version = "99.0"
+                policy = "cargo-allow"
+            "#,
+    );
+
+    assert!(err.contains("unsupported policy schema_version `99.0`"));
+}
+
+#[test]
 fn rejects_blank_policy_owner() {
     let err = parse_err(
         r#"
