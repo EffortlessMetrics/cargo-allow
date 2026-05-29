@@ -12,6 +12,7 @@ members = [
   "crates/allow-diff",
   "crates/allow-policy-legacy",
 ]
+exclude = ["fuzz"]
 
 [workspace.package]
 edition = "2024"
