@@ -56,14 +56,26 @@ fn check_receipt_file_exposes_saved_json_contract() {
 
 #[test]
 fn check_failure_with_broken_evidence_still_writes_report_and_receipt() {
-    let root = temp_root("receipt-broken-evidence");
+    assert_check_failure_reports_broken_evidence(
+        "receipt-broken-evidence",
+        policy_with_broken_evidence(),
+    );
+}
+
+#[test]
+fn check_failure_with_invalid_evidence_scope_still_writes_report_and_receipt() {
+    assert_check_failure_reports_broken_evidence(
+        "receipt-invalid-evidence-scope",
+        policy_with_escaping_evidence(),
+    );
+}
+
+fn assert_check_failure_reports_broken_evidence(fixture: &str, policy: &str) {
+    let root = temp_root(fixture);
     fs::create_dir_all(root.join("policy"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
-    fs::write(
-        root.join("policy/allow.toml"),
-        policy_with_broken_evidence(),
-    )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    fs::write(root.join("policy/allow.toml"), policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
 
     let report_output = root.join("target/cargo-allow/check.json");
     let receipt_output = root.join("target/cargo-allow/check.receipt.json");
@@ -159,6 +171,28 @@ owner = "core"
 classification = "fixture"
 reason = "fixture policy file"
 evidence = ["doc:docs/missing-evidence.md"]
+review_after = "2026-08-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/allow.toml"
+target_fingerprint = "toml"
+glob = "policy/allow.toml"
+"#
+}
+
+fn policy_with_escaping_evidence() -> &'static str {
+    r#"policy = "cargo-allow"
+
+[[allow]]
+id = "allow-policy"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/allow.toml"
+owner = "core"
+classification = "fixture"
+reason = "fixture policy file"
+evidence = ["doc:../outside.md"]
 review_after = "2026-08-01"
 
 [allow.selector]
