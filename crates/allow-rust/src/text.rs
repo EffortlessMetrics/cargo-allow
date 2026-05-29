@@ -3,10 +3,10 @@ use allow_core::normalize_snippet;
 pub(crate) fn detect_attr<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     let outer = format!("#[{name}(");
     let inner = format!("#![{name}(");
-    if line.starts_with(&outer) {
-        Some(&line[outer.len()..])
-    } else if line.starts_with(&inner) {
-        Some(&line[inner.len()..])
+    if let Some(rest) = line.strip_prefix(&outer) {
+        Some(rest)
+    } else if let Some(rest) = line.strip_prefix(&inner) {
+        Some(rest)
     } else {
         None
     }
@@ -52,7 +52,9 @@ pub(crate) fn receiver_before_method_column(line: &str, method_column: u32) -> S
 }
 
 fn receiver_before(line: &str, pos: usize) -> String {
-    let prefix = &line[..pos];
+    let Some(prefix) = line.get(..pos) else {
+        return String::new();
+    };
     let trimmed = normalize_snippet(prefix);
     trimmed
         .chars()
