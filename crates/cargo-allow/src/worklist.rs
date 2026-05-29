@@ -17,6 +17,8 @@ mod worklist_evidence;
 mod worklist_item_kind;
 #[path = "worklist_items.rs"]
 mod worklist_items;
+#[path = "worklist_priority.rs"]
+mod worklist_priority;
 #[path = "worklist_queue.rs"]
 mod worklist_queue;
 #[path = "worklist_render.rs"]
@@ -33,6 +35,8 @@ use worklist_evidence::work_items_from_evidence_diagnostics;
 #[cfg(test)]
 pub(crate) use worklist_item_kind::WORK_ITEM_KINDS;
 use worklist_items::work_items_from_outcomes;
+#[cfg(test)]
+pub(crate) use worklist_priority::{DIFFICULTY_LEVELS, RISK_LEVELS};
 use worklist_queue::{filter_work_items, renumber_work_items, sort_work_items};
 use worklist_render::{render_worklist_human_with_context, render_worklist_json_with_context};
 pub(crate) use worklist_scoring::work_item_kind;

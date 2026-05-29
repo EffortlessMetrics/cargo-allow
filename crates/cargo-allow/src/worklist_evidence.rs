@@ -1,4 +1,5 @@
 use super::worklist_item_kind::BROKEN_EVIDENCE_LINK;
+use super::worklist_priority::{DIFFICULTY_SMALL, RISK_HIGH, RISK_MEDIUM};
 use super::{WorkItem, proof_commands};
 use allow_core::{AllowConfig, FindingKind, MatchStatus, normalize_path};
 use allow_policy::evidence_reference_diagnostics;
@@ -31,11 +32,11 @@ pub(super) fn work_items_from_evidence_diagnostics(
                 expires: entry.lifecycle.expires.clone(),
                 evidence_count: Some(entry.evidence.len()),
                 risk: if entry.kind == FindingKind::Unsafe {
-                    "high"
+                    RISK_HIGH
                 } else {
-                    "medium"
+                    RISK_MEDIUM
                 },
-                difficulty: "small",
+                difficulty: DIFFICULTY_SMALL,
                 status: MatchStatus::EvidenceMissing,
                 allow_id: Some(entry.id.clone()),
                 finding_index: None,

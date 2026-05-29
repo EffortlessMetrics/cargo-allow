@@ -2,7 +2,7 @@ use crate::artifact_schema_support::{
     assert_enum_contains_all, assert_enum_equals, assert_required_fields,
     assert_schema_type_contains, match_status_enum, parse_schema, required_schema_pointer,
 };
-use crate::worklist::WORK_ITEM_KINDS;
+use crate::worklist::{DIFFICULTY_LEVELS, RISK_LEVELS, WORK_ITEM_KINDS};
 use serde_json::Value;
 
 #[test]
@@ -89,13 +89,13 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         "worklist",
         &schema,
         "/$defs/filters/properties/risk/enum",
-        &["low", "medium", "high"],
+        RISK_LEVELS,
     );
     assert_enum_contains_all(
         "worklist",
         &schema,
         "/$defs/filters/properties/difficulty/enum",
-        &["small", "medium"],
+        DIFFICULTY_LEVELS,
     );
     for field in ["baseline_debt", "broad_scope", "missing_evidence"] {
         assert_eq!(
@@ -167,6 +167,18 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
             "suggested_actions",
             "proof_commands",
         ],
+    );
+    assert_enum_equals(
+        "worklist item risk",
+        &schema,
+        "/$defs/work_item/properties/risk/enum",
+        RISK_LEVELS,
+    );
+    assert_enum_equals(
+        "worklist item difficulty",
+        &schema,
+        "/$defs/work_item/properties/difficulty/enum",
+        DIFFICULTY_LEVELS,
     );
     assert_enum_equals(
         "worklist item status",
