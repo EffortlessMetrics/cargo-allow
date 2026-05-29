@@ -222,19 +222,23 @@ pub(crate) fn assert_enum_equals(name: &str, schema: &Value, pointer: &str, expe
     assert_eq!(actual, expected, "{name} enum values");
 }
 
-pub(crate) fn assert_schema_type_contains(
+pub(crate) fn assert_schema_type_equals(
     name: &str,
     schema: &Value,
     pointer: &str,
-    expected: &str,
+    expected: &[&str],
 ) {
     let Some(items) = schema.pointer(pointer).and_then(Value::as_array) else {
         std::panic::panic_any(format!("{name} {pointer} should be a type array"));
     };
-    assert!(
-        items
-            .iter()
-            .any(|schema_item| schema_item.as_str() == Some(expected)),
-        "{name} {pointer} should contain {expected}"
-    );
+    let actual = items
+        .iter()
+        .map(|item| {
+            item.as_str().unwrap_or_else(|| {
+                std::panic::panic_any(format!("{name} {pointer} entries should be strings"))
+            })
+        })
+        .collect::<BTreeSet<_>>();
+    let expected = expected.iter().copied().collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "{name} {pointer} type values");
 }
