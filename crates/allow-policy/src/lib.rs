@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 mod evidence;
 mod lifecycle;
 mod render;
+mod scope_validation;
 mod selector_validation;
 mod starter;
 mod toml_de;
