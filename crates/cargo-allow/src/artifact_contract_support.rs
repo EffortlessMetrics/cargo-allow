@@ -45,17 +45,29 @@ pub(crate) fn parse_json_artifact(
         "{name} inventory scope"
     );
     assert_eq!(
-        value
-            .pointer("/inventory/scanner")
-            .and_then(Value::as_str)
-            .map(|scanner| {
-                scanner == allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX
-                    || scanner == allow_report::INVENTORY_SCANNER_POLICY_MIGRATION
-            }),
-        Some(true),
-        "{name} inventory scanner should be source_syntax or policy_migration"
+        value.pointer("/inventory/scanner").and_then(Value::as_str),
+        Some(expected_inventory_scanner(name, expected_schema_id)),
+        "{name} inventory scanner"
     );
     value
+}
+
+fn expected_inventory_scanner(name: &str, expected_schema_id: &str) -> &'static str {
+    match expected_schema_id {
+        allow_report::MIGRATE_SCHEMA_ID => allow_report::INVENTORY_SCANNER_POLICY_MIGRATION,
+        allow_report::ADD_SCHEMA_ID
+        | allow_report::DOCTOR_SCHEMA_ID
+        | allow_report::EXPLAIN_SCHEMA_ID
+        | allow_report::LIST_SCHEMA_ID
+        | allow_report::PROPOSE_SCHEMA_ID
+        | allow_report::PRUNE_SCHEMA_ID
+        | allow_report::RECEIPT_SCHEMA_ID
+        | allow_report::REPORT_SCHEMA_ID
+        | allow_report::WORKLIST_SCHEMA_ID => allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
+        _ => std::panic::panic_any(format!(
+            "{name} expected schema_id {expected_schema_id} has no registered inventory scanner"
+        )),
+    }
 }
 
 pub(crate) fn assert_inventory_contract(
