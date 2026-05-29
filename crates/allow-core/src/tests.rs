@@ -1,7 +1,146 @@
 use super::*;
+use proptest::prelude::*;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+fn path_segment_strategy() -> impl Strategy<Value = String> {
+    prop_oneof![
+        Just(".".to_string()),
+        Just("..".to_string()),
+        "[A-Za-z0-9._-]{1,12}".prop_map(|segment| segment),
+    ]
+}
+
+fn relative_path_strategy() -> impl Strategy<Value = String> {
+    prop::collection::vec(path_segment_strategy(), 0..8).prop_map(|segments| segments.join("/"))
+}
+
+fn literal_segment_strategy() -> impl Strategy<Value = String> {
+    "[A-Za-z0-9._-]{1,12}".prop_map(|segment| segment)
+}
+
+fn literal_path_strategy() -> impl Strategy<Value = String> {
+    prop::collection::vec(literal_segment_strategy(), 1..6).prop_map(|segments| segments.join("/"))
+}
+
+fn identity_text_strategy() -> impl Strategy<Value = String> {
+    "[A-Za-z0-9_:/.-]{0,24}".prop_map(|text| text)
+}
+
+proptest! {
+    #[test]
+    fn normalize_path_is_idempotent(relative in relative_path_strategy(), absolute in any::<bool>()) {
+        let input = if absolute { format!("/{relative}") } else { relative };
+        let normalized = normalize_path(&input);
+
+        prop_assert_eq!(normalize_path(&normalized), normalized.clone());
+        prop_assert!(!normalized.contains("//"));
+        prop_assert!(!normalized.contains("/./"));
+        prop_assert!(!normalized.ends_with("/."));
+    }
+
+    #[test]
+    fn normalize_path_handles_backslashes_like_forward_slashes(path in relative_path_strategy()) {
+        let backslash_path = path.replace('/', "\\");
+
+        prop_assert_eq!(normalize_path(backslash_path), normalize_path(path));
+    }
+
+    #[test]
+    fn literal_globs_match_their_normalized_paths(path in literal_path_strategy()) {
+        let normalized = normalize_path(&path);
+
+        prop_assert!(glob_matches_str(&normalized, &normalized));
+        let child = format!("{}/child.rs", normalized);
+        prop_assert!(source_tree_path_matches_filter(&child, &normalized));
+    }
+
+    #[test]
+    fn double_star_globs_match_scope_and_descendants(scope in literal_path_strategy(), descendant in literal_path_strategy()) {
+        let scope = normalize_path(scope);
+        let descendant = normalize_path(descendant);
+        let pattern = format!("{scope}/**");
+
+        prop_assert!(glob_matches_str(&pattern, &scope));
+        let scoped_descendant = format!("{}/{}", scope, descendant);
+        prop_assert!(glob_matches_str(&pattern, &scoped_descendant));
+        prop_assert!(source_tree_path_is_ignored(&scope, std::slice::from_ref(&pattern)));
+        prop_assert!(source_tree_path_is_ignored(scoped_descendant, &[pattern]));
+    }
+
+    #[test]
+    fn normalized_snippet_collapses_whitespace_between_tokens(tokens in prop::collection::vec("\\S{1,12}", 0..12)) {
+        let compact = tokens.join(" ");
+        let padded = tokens.iter().enumerate().map(|(idx, token)| {
+            if idx % 2 == 0 {
+                format!("\n\t{token}  ")
+            } else {
+                format!("  {token}\n")
+            }
+        }).collect::<String>();
+
+        prop_assert_eq!(normalize_snippet(&compact), normalize_snippet(&padded));
+        prop_assert_eq!(stable_hash_hex(&normalize_snippet(&compact)), stable_hash_hex(&normalize_snippet(&padded)));
+    }
+
+    #[test]
+    fn simple_date_round_trips_days_since_unix_epoch(days in -200_000i64..200_000i64) {
+        let date = SimpleDate::from_days_since_unix_epoch(days);
+
+        prop_assert_eq!(date.days_since_unix_epoch(), days);
+        prop_assert_eq!(SimpleDate::parse(&date.to_string()), Some(date));
+    }
+
+    #[test]
+    fn simple_date_add_days_matches_days_until(start_days in -200_000i64..200_000i64, delta in -10_000i64..10_000i64) {
+        let start = SimpleDate::from_days_since_unix_epoch(start_days);
+        let end = start.add_days(delta);
+
+        prop_assert_eq!(start.days_until(end), delta);
+        prop_assert_eq!(end.days_since_unix_epoch(), start_days + delta);
+    }
+
+    #[test]
+    fn structural_identity_stable_key_ignores_hints(
+        language in identity_text_strategy(),
+        ast_kind in identity_text_strategy(),
+        crate_name in prop::option::of(identity_text_strategy()),
+        module in prop::option::of(identity_text_strategy()),
+        container in prop::option::of(identity_text_strategy()),
+        symbol in prop::option::of(identity_text_strategy()),
+        callee in prop::option::of(identity_text_strategy()),
+        macro_name in prop::option::of(identity_text_strategy()),
+        lint in prop::option::of(identity_text_strategy()),
+        receiver_fingerprint in prop::option::of(identity_text_strategy()),
+        target_fingerprint in prop::option::of(identity_text_strategy()),
+        normalized_snippet_hash in prop::option::of(identity_text_strategy()),
+        first_line in prop::option::of(any::<u32>()),
+        first_column in prop::option::of(any::<u32>()),
+        second_line in prop::option::of(any::<u32>()),
+        second_column in prop::option::of(any::<u32>()),
+    ) {
+        let mut first = StructuralIdentity::new(language, ast_kind);
+        first.crate_name = crate_name;
+        first.module = module;
+        first.container = container;
+        first.symbol = symbol;
+        first.callee = callee;
+        first.macro_name = macro_name;
+        first.lint = lint;
+        first.receiver_fingerprint = receiver_fingerprint;
+        first.target_fingerprint = target_fingerprint;
+        first.normalized_snippet_hash = normalized_snippet_hash;
+        first.line_hint = first_line;
+        first.column_hint = first_column;
+
+        let mut moved = first.clone();
+        moved.line_hint = second_line;
+        moved.column_hint = second_column;
+
+        prop_assert_eq!(first.stable_key(), moved.stable_key());
+    }
+}
 
 #[test]
 fn glob_supports_double_star() {
