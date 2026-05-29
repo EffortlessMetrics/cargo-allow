@@ -82,6 +82,92 @@ fn generated_globs_override_file_family() {
 }
 
 #[test]
+fn scan_files_filters_builtin_and_rust_sources() {
+    let files = vec![
+        PathBuf::from("src/lib.rs"),
+        PathBuf::from("Cargo.toml"),
+        PathBuf::from("docs/guide.md"),
+        PathBuf::from("tools/build.py"),
+    ];
+
+    let findings = scan_files(&files);
+
+    assert_eq!(findings.len(), 2);
+    assert_eq!(findings[0].path, PathBuf::from("docs/guide.md"));
+    assert_eq!(findings[0].family.as_deref(), Some("documentation"));
+    assert_eq!(findings[1].path, PathBuf::from("tools/build.py"));
+    assert_eq!(findings[1].family.as_deref(), Some("python_tool"));
+}
+
+#[test]
+fn classification_records_stable_identity_metadata() {
+    let finding = classify_path(Path::new("Config/SETTINGS.YAML"))
+        .unwrap_or_else(|| std::panic::panic_any("expected configuration finding"));
+
+    assert_eq!(finding.span, Some(Span { line: 1, column: 1 }));
+    assert_eq!(finding.identity.language, "file");
+    assert_eq!(finding.identity.ast_kind, "tracked_file");
+    assert_eq!(
+        finding.identity.symbol.as_deref(),
+        Some("Config/SETTINGS.YAML")
+    );
+    assert_eq!(finding.identity.target_fingerprint.as_deref(), Some("yaml"));
+    assert!(
+        finding
+            .message
+            .contains("tracked non-Rust file classified as configuration")
+    );
+}
+
+#[test]
+fn generated_path_heuristics_cover_gen_directories_and_suffixes() {
+    assert_classification(
+        "src/gen/bindings.rs.txt",
+        FindingKind::GeneratedCode,
+        "generated_code",
+    );
+    assert_classification(
+        "gen/client.ts",
+        FindingKind::GeneratedCode,
+        "generated_code",
+    );
+    assert_classification(
+        "src/api.generated",
+        FindingKind::GeneratedCode,
+        "generated_code",
+    );
+}
+
+#[test]
+fn builtin_tooling_files_are_not_findings() {
+    for path in [
+        "rust-toolchain.toml",
+        "rustfmt.toml",
+        "clippy.toml",
+        "crates/allow-files/README.md",
+        "LICENSE",
+        "LICENSE-APACHE",
+    ] {
+        assert!(
+            classify_path(Path::new(path)).is_none(),
+            "{path} should be allowed"
+        );
+    }
+}
+
+#[test]
+fn extensionless_files_use_lowercase_file_name_fingerprint() {
+    let finding = classify_path(Path::new("tools/Makefile"))
+        .unwrap_or_else(|| std::panic::panic_any("expected extensionless file finding"));
+
+    assert_eq!(finding.family.as_deref(), Some("unknown_non_rust"));
+    assert_eq!(
+        finding.identity.target_fingerprint.as_deref(),
+        Some("makefile")
+    );
+}
+
+#[test]
 fn builtin_cargo_and_license_files_are_not_findings() {
     assert!(classify_path(Path::new("Cargo.toml")).is_none());
     assert!(classify_path(Path::new("Cargo.lock")).is_none());
