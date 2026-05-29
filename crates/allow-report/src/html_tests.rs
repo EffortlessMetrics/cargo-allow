@@ -34,6 +34,17 @@ fn html_report_summarizes_audit_posture() {
     assert!(html.contains("did not invoke Cargo metadata"));
 }
 
+#[test]
+fn html_audit_report_counts_policy_missing_evidence_context() {
+    let mut context = context("git_tracked");
+    context.policy_missing_evidence_entries = Some(4);
+
+    let html = render_html_with_context("audit", &[], &[], false, context);
+
+    assert!(html.contains("<td>Policy missing evidence</td><td class=\"count\">4</td>"));
+    assert!(html.contains("cargo-allow worklist --missing-evidence --format json"));
+}
+
 fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
     Finding {
         kind,
