@@ -113,7 +113,7 @@ When developing this repository before installing the binary, run the same
 subcommands through the local package:
 
 ```bash
-cargo run -p cargo-allow -- allow check --mode no-new
+cargo run -p cargo-allow -- check --mode no-new
 ```
 
 ## Governed Surfaces
@@ -229,8 +229,19 @@ crate.
 | `allow-policy-legacy` | Legacy policy adapters |
 | `cargo-allow` | clap-based CLI wiring |
 
+## License
+
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT License ([LICENSE-MIT](LICENSE-MIT))
+
+at your option.
+
 ## Documentation
 
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Contributing](CONTRIBUTING.md)
 - [Design](docs/design.md)
 - [Claim boundaries](docs/claim-boundaries.md)
 - [Crate namespace policy](docs/crate-namespace.md)

@@ -1,0 +1,79 @@
+name: Bug report
+description: Report an incorrect scan, match, report, or CLI behavior.
+title: "bug: "
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve cargo-allow. Please include enough detail for maintainers to reproduce the behavior from a source tree.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong?
+      placeholder: cargo-allow reported a retained exception as new even though policy/allow.toml has a matching entry.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Governed surface
+      description: Which source-tree surface is involved?
+      options:
+        - unsafe syntax
+        - panic-family calls or macros
+        - indexing and slicing syntax
+        - lint suppressions
+        - non-Rust tracked files
+        - generated-code policy
+        - legacy policy exceptions
+        - CLI/reporting behavior
+        - Other or unknown
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Provide a minimal repository layout, files, policy entry, and command sequence when possible.
+      placeholder: |
+        1. Create policy/allow.toml with ...
+        2. Add src/lib.rs with ...
+        3. Run cargo-allow check --mode no-new
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should cargo-allow have reported or done?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the relevant command output, report snippet, or receipt excerpt.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Share versions and platform details.
+      value: |
+        - cargo-allow version:
+        - rustc version:
+        - cargo version:
+        - OS:
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Add links, screenshots, policy entries, or related issues.
+    validations:
+      required: false

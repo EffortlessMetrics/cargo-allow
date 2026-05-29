@@ -1,0 +1,64 @@
+name: Policy model or scanner gap
+description: Request support for a source-tree exception pattern, selector, evidence type, or lifecycle state.
+title: "policy: "
+labels: [policy, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when cargo-allow cannot accurately represent, match, or review a source-tree exception you need to govern.
+  - type: textarea
+    id: exception
+    attributes:
+      label: Exception pattern
+      description: What source construct, file pattern, policy entry, or lifecycle state needs better support?
+      placeholder: A macro-generated panic path is reported without enough selector detail to retain it safely.
+    validations:
+      required: true
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Exception family
+      description: Which family best matches the gap?
+      options:
+        - unsafe syntax
+        - panic-family calls or macros
+        - indexing and slicing syntax
+        - lint suppressions
+        - non-Rust tracked files
+        - generated-code policy
+        - legacy policy exceptions
+        - Evidence, owner, classification, or lifecycle metadata
+        - Other or unknown
+    validations:
+      required: true
+  - type: textarea
+    id: current_behavior
+    attributes:
+      label: Current behavior
+      description: What does cargo-allow currently inventory, match, or report?
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: desired_behavior
+    attributes:
+      label: Desired behavior
+      description: What would a precise and reviewable policy entry or report look like?
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Minimal sample
+      description: Include a small source snippet and, if relevant, the policy/allow.toml entry you expected to work.
+      render: rust
+    validations:
+      required: false
+  - type: textarea
+    id: governance
+    attributes:
+      label: Governance context
+      description: Why does this exception need to be retained, reviewed, expired, or evidenced differently?
+    validations:
+      required: false
