@@ -1,0 +1,41 @@
+[package]
+name = "cargo-allow-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+allow-core = { path = "../crates/allow-core" }
+allow-match = { path = "../crates/allow-match" }
+allow-policy = { path = "../crates/allow-policy" }
+allow-report = { path = "../crates/allow-report" }
+allow-rust = { path = "../crates/allow-rust" }
+libfuzzer-sys = "0.4"
+serde_json = "1.0"
+
+[[bin]]
+name = "policy_roundtrip"
+path = "fuzz_targets/policy_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rust_scan"
+path = "fuzz_targets/rust_scan.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "match_report_pipeline"
+path = "fuzz_targets/match_report_pipeline.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]
