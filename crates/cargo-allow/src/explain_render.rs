@@ -45,8 +45,12 @@ fn render_explain_report<R>(
     context: ExplainContext<'_>,
     render: impl FnOnce(allow_report::ExplainReport<'_>) -> R,
 ) -> R {
-    let (suggested_actions, proof_commands) = explain_next_steps(entry, findings, outcomes);
     let evidence_diagnostics = evidence_reference_diagnostics(root, entry);
+    let has_broken_evidence = evidence_diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.status.is_broken_local_link());
+    let (suggested_actions, proof_commands) =
+        explain_next_steps(entry, findings, outcomes, has_broken_evidence);
     let normalized_targets = evidence_diagnostics
         .iter()
         .map(|diagnostic| diagnostic.target.as_ref().map(normalize_path))

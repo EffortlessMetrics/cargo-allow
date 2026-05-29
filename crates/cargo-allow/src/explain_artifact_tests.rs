@@ -155,3 +155,58 @@ fn explain_entry_json_records_allow_id_proof_command_for_attention_items() {
         "explain proof commands should keep the direct explain command"
     );
 }
+
+#[test]
+fn explain_entry_json_routes_broken_evidence_to_repair_queue() {
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-broken-evidence", FindingKind::NonRustFile);
+    entry.evidence = vec!["doc:docs/missing-evidence.md".to_string()];
+    cfg.allow.push(entry.clone());
+    let finding = test_finding(
+        FindingKind::NonRustFile,
+        None,
+        "tracked.file",
+        "tracked_file",
+    );
+
+    let json = explain_entry_json(
+        Path::new("target/cargo-allow-test-missing-root"),
+        &cfg,
+        &entry,
+        &[finding],
+        ExplainContext {
+            inventory: allow_report::InventoryContext::source_syntax(
+                "filesystem_fallback",
+                Some("fixtures/source-snapshot"),
+                Some(1),
+            ),
+        },
+    );
+    let value = parse_json_artifact("explain", &json, allow_report::EXPLAIN_SCHEMA_ID, "explain");
+
+    assert_eq!(
+        value
+            .pointer("/evidence_references/0/status")
+            .and_then(Value::as_str),
+        Some("local_file_missing"),
+        "explain should surface the broken local evidence diagnostic"
+    );
+    let suggested_actions = value
+        .pointer("/next/suggested_actions")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("explain suggested actions should be an array"));
+    assert!(
+        suggested_actions.iter().any(|action| action.as_str()
+            == Some("restore or commit the referenced local evidence artifact")),
+        "explain should suggest local evidence repair"
+    );
+    let proof_commands = value
+        .pointer("/next/proof_commands")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("explain proof commands should be an array"));
+    assert!(
+        proof_commands.iter().any(|command| command.as_str()
+            == Some("cargo-allow worklist --item-kind broken_evidence_link --format json")),
+        "explain should route broken evidence to the worklist repair queue"
+    );
+}
