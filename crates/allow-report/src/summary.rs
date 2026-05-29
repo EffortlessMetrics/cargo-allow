@@ -65,6 +65,7 @@ pub(crate) struct ReviewSignals {
     pub(crate) baseline_debt: usize,
     pub(crate) policy_missing_evidence: usize,
     pub(crate) broken_evidence_links: usize,
+    pub(crate) weak_evidence_references: usize,
     pub(crate) review_items: usize,
 }
 
@@ -73,16 +74,19 @@ impl ReviewSignals {
         let baseline_debt = baseline_debt_count(summary, context);
         let policy_missing_evidence = policy_missing_evidence_count(summary, context);
         let broken_evidence_links = broken_evidence_link_count(context);
+        let weak_evidence_references = weak_evidence_reference_count(context);
         let review_items = review_item_count_with_baseline(
             summary,
             baseline_debt,
             policy_missing_evidence,
             broken_evidence_links,
+            weak_evidence_references,
         );
         Self {
             baseline_debt,
             policy_missing_evidence,
             broken_evidence_links,
+            weak_evidence_references,
             review_items,
         }
     }
@@ -93,6 +97,7 @@ pub(crate) fn render_count_fields_with_policy_context(
     policy_baseline_debt: Option<usize>,
     policy_missing_evidence: Option<usize>,
     broken_evidence_links: Option<usize>,
+    weak_evidence_references: Option<usize>,
     indent: &str,
 ) -> String {
     let include_policy_baseline_debt =
@@ -100,10 +105,12 @@ pub(crate) fn render_count_fields_with_policy_context(
     let include_policy_missing_evidence = policy_missing_evidence
         .filter(|count| *count > summary.count(MatchStatus::EvidenceMissing));
     let include_broken_evidence_links = broken_evidence_links.filter(|count| *count > 0);
+    let include_weak_evidence_references = weak_evidence_references.filter(|count| *count > 0);
     let optional_fields = [
         ("policy_baseline_debt", include_policy_baseline_debt),
         ("policy_missing_evidence", include_policy_missing_evidence),
         ("broken_evidence_links", include_broken_evidence_links),
+        ("weak_evidence_references", include_weak_evidence_references),
     ]
     .into_iter()
     .filter_map(|(name, value)| value.map(|value| (name, value)))
@@ -140,6 +147,7 @@ pub(crate) fn review_item_count_with_baseline(
     baseline_debt: usize,
     policy_missing_evidence: usize,
     broken_evidence_links: usize,
+    weak_evidence_references: usize,
 ) -> usize {
     let policy_missing_evidence_extra =
         policy_missing_evidence.saturating_sub(summary.count(MatchStatus::EvidenceMissing));
@@ -150,6 +158,7 @@ pub(crate) fn review_item_count_with_baseline(
         + baseline_debt
         + policy_missing_evidence_extra
         + broken_evidence_links
+        + weak_evidence_references
 }
 
 pub(crate) fn baseline_debt_count(summary: &Summary, context: ReportContext<'_>) -> usize {
@@ -160,6 +169,10 @@ pub(crate) fn baseline_debt_count(summary: &Summary, context: ReportContext<'_>)
 
 pub(crate) fn broken_evidence_link_count(context: ReportContext<'_>) -> usize {
     context.broken_evidence_links.unwrap_or(0)
+}
+
+pub(crate) fn weak_evidence_reference_count(context: ReportContext<'_>) -> usize {
+    context.weak_evidence_references.unwrap_or(0)
 }
 
 pub(crate) fn policy_missing_evidence_count(

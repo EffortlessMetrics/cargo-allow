@@ -65,6 +65,30 @@ fn receipt_schema_allows_optional_broken_evidence_link_count() {
 }
 
 #[test]
+fn receipt_schema_allows_optional_weak_evidence_reference_count() {
+    let schema = parse_schema(
+        "receipt",
+        include_str!("../../../docs/schemas/receipt.schema.json"),
+    );
+
+    let count = required_schema_pointer(
+        "receipt",
+        &schema,
+        "/$defs/counts/properties/weak_evidence_references",
+    );
+    assert_eq!(
+        count.get("type").and_then(Value::as_str),
+        Some("integer"),
+        "receipt weak_evidence_references count type"
+    );
+    assert_eq!(
+        count.get("minimum").and_then(Value::as_u64),
+        Some(0),
+        "receipt weak_evidence_references count minimum"
+    );
+}
+
+#[test]
 fn receipt_schema_allows_optional_policy_missing_evidence_count() {
     let schema = parse_schema(
         "receipt",

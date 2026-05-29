@@ -45,6 +45,17 @@ fn html_audit_report_counts_policy_missing_evidence_context() {
     assert!(html.contains("cargo-allow worklist --missing-evidence --format json"));
 }
 
+#[test]
+fn html_audit_report_counts_weak_evidence_references_context() {
+    let mut context = context("git_tracked");
+    context.weak_evidence_references = Some(2);
+
+    let html = render_html_with_context("audit", &[], &[], false, context);
+
+    assert!(html.contains("<td>Weak evidence references</td><td class=\"count\">2</td>"));
+    assert!(html.contains("replace unstructured or unknown-prefix evidence"));
+}
+
 fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
     Finding {
         kind,

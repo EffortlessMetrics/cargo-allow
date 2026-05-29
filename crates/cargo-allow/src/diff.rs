@@ -1,6 +1,6 @@
 use allow_core::{CargoAllowResult, normalize_path};
 use allow_match::{CheckMode, evaluate};
-use allow_policy::broken_evidence_link_count;
+use allow_policy::{broken_evidence_link_count, weak_evidence_reference_count};
 use std::process;
 
 #[path = "diff_args.rs"]
@@ -61,6 +61,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         allow_diff::policy_changes_from_git(&root, &args.base, &policy_path, &head_cfg_for_diff)?;
     let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
     let broken_evidence_links = broken_evidence_link_count(&root, &report_cfg);
+    let weak_evidence_references = weak_evidence_reference_count(&root, &report_cfg);
     let current_failures = outcomes
         .iter()
         .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
@@ -71,6 +72,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let mut report_context = source_context.report(Some(policy_baseline_debt_entries(&report_cfg)));
     report_context.broken_evidence_links =
         (broken_evidence_links > 0).then_some(broken_evidence_links);
+    report_context.weak_evidence_references =
+        (weak_evidence_references > 0).then_some(weak_evidence_references);
     let policy_missing_evidence_entries =
         matched_policy_missing_evidence_entries(&report_cfg, &outcomes);
     report_context.policy_missing_evidence_entries =

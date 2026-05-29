@@ -70,6 +70,31 @@ fn report_schema_allows_optional_broken_evidence_link_counts() {
 }
 
 #[test]
+fn report_schema_allows_optional_weak_evidence_reference_counts() {
+    let schema = parse_schema(
+        "report",
+        include_str!("../../../docs/schemas/report.schema.json"),
+    );
+
+    for pointer in [
+        "/$defs/summary/properties/weak_evidence_references",
+        "/$defs/trend/properties/weak_evidence_references",
+    ] {
+        let count = required_schema_pointer("report", &schema, pointer);
+        assert_eq!(
+            count.get("type").and_then(Value::as_str),
+            Some("integer"),
+            "report {pointer} count type"
+        );
+        assert_eq!(
+            count.get("minimum").and_then(Value::as_u64),
+            Some(0),
+            "report {pointer} count minimum"
+        );
+    }
+}
+
+#[test]
 fn report_schema_allows_optional_policy_missing_evidence_counts() {
     let schema = parse_schema(
         "report",

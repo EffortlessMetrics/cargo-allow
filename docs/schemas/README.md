@@ -122,6 +122,13 @@ source tree, point to a directory or symlinked path component, or point to a
 missing file.
 Receipts may use the same optional count under `counts.broken_evidence_links`.
 
+Report JSON may include `summary.weak_evidence_references` and
+`trend.weak_evidence_references` when retained evidence strings are
+unstructured or use unknown prefixes. Receipts may use the same optional count
+under `counts.weak_evidence_references`. These references are not broken local
+links and do not, by themselves, fail `check`; they remain visible so teams can
+replace weak traceability with typed evidence prefixes.
+
 Report JSON may also include `summary.policy_missing_evidence` and
 `trend.policy_missing_evidence` when retained non-baseline policy entries have
 no evidence references even though they otherwise match current findings.
