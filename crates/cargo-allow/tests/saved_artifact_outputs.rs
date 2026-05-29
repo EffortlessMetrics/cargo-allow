@@ -284,6 +284,50 @@ fn saved_list_output_allows_broken_evidence_entries() {
 }
 
 #[test]
+fn saved_prune_output_allows_broken_evidence_preview() {
+    let fixture = SourceTreeFixture::new("saved-prune-broken-evidence");
+    fixture.write_policy_with_broken_evidence();
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let prune = artifact_dir.join("prune.json");
+
+    run_cargo_allow(&[
+        "prune",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--stale",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&prune),
+    ]);
+    let value = assert_source_syntax_artifact(&prune, allow_report::PRUNE_SCHEMA_ID, "prune");
+    assert_eq!(
+        value
+            .pointer("/summary/stale_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "prune dry-run should still preview stale broken-evidence entries"
+    );
+    assert_eq!(
+        value
+            .pointer("/stale_entries/0/id")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-broken-evidence"),
+        "prune should include the stale broken-evidence allow entry"
+    );
+    assert_eq!(
+        value
+            .pointer("/mode/dry_run")
+            .and_then(serde_json::Value::as_bool),
+        Some(true),
+        "prune should remain dry-run first"
+    );
+}
+
+#[test]
 fn saved_worklist_output_includes_invalid_evidence_scope_items() {
     let fixture = SourceTreeFixture::new("saved-worklist-invalid-evidence-scope");
     fixture.write_policy_with_invalid_evidence_scope();
