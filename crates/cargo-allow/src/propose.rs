@@ -2,7 +2,10 @@ use allow_core::{CargoAllowResult, MatchStatus};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::render_policy;
 
-use crate::{SourceTreeReportContext, emit_stderr_text, load_world, write_file_no_overwrite};
+use crate::{
+    SourceTreeReportContext, emit_stderr_text, load_world_with_evidence_validation,
+    write_file_no_overwrite,
+};
 
 #[path = "propose_args.rs"]
 mod propose_args;
@@ -24,12 +27,13 @@ use allow_core::{Finding, FindingKind, SimpleDate};
 use propose_baseline::BASELINE_DEBT_DEFAULT_DAYS;
 
 pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, inventory_facts) = load_world(
+    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_validation(
         args.root.root.as_deref(),
         args.config.as_deref(),
         false,
         args.kind.as_deref(),
         args.include_untracked,
+        false,
     )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
     let mut proposed = cfg.clone();
