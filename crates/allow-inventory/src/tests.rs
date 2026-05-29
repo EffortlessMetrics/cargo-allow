@@ -255,3 +255,92 @@ fn remove_dir(path: &Path) {
     fs::remove_dir_all(path)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove temp root: {err}")));
 }
+
+#[test]
+fn git_ls_files_z_parser_ignores_trailing_empty_record() {
+    let parsed = parse_git_ls_files_z(b"src/lib.rs\0README.md\0\0");
+
+    assert_eq!(
+        parsed,
+        vec![PathBuf::from("src/lib.rs"), PathBuf::from("README.md")]
+    );
+}
+
+#[test]
+fn inventory_include_untracked_uses_filesystem_and_applies_default_ignores() {
+    let root = temp_root("include-untracked");
+    write_file(root.join("tracked.txt"), "tracked");
+    fs::create_dir_all(root.join("target"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("target dir: {err}")));
+    fs::create_dir_all(root.join(".git"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git dir: {err}")));
+    write_file(root.join("target").join("ignored.txt"), "ignored");
+    write_file(root.join(".git").join("ignored.txt"), "ignored");
+
+    let options = InventoryOptions {
+        include_untracked: true,
+        ..InventoryOptions::default()
+    };
+    let snapshot = inventory(&root, &options)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("include untracked inventory: {err}")));
+
+    assert_eq!(snapshot.source, InventorySource::FilesystemIncludeUntracked);
+    assert_eq!(snapshot.files, vec![PathBuf::from("tracked.txt")]);
+    remove_dir(&root);
+}
+
+#[test]
+fn inventory_sorts_and_deduplicates_git_tracked_files() {
+    let root = temp_root("sorted-git");
+    write_file(root.join("b.txt"), "b");
+    write_file(root.join("a.txt"), "a");
+    run_git(&root, &["init"]);
+    run_git(&root, &["add", "b.txt", "a.txt"]);
+
+    let snapshot = inventory(&root, &InventoryOptions::default())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git inventory: {err}")));
+
+    assert_eq!(snapshot.source, InventorySource::GitTracked);
+    assert_eq!(
+        snapshot.files,
+        vec![PathBuf::from("a.txt"), PathBuf::from("b.txt")]
+    );
+    remove_dir(&root);
+}
+
+#[test]
+fn source_tree_root_accepts_start_file_by_using_parent_directory() {
+    let root = temp_root("start-file");
+    let nested = root.join("src");
+    fs::create_dir_all(&nested)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("nested dir: {err}")));
+    let file = nested.join("lib.rs");
+    write_file(file.clone(), "fn main() {}\n");
+    run_git(&root, &["init"]);
+
+    let discovered = discover_source_tree_root(&file)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("discover source tree root: {err}")));
+
+    let canonical = root
+        .canonicalize()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("canonical root: {err}")));
+    assert_eq!(discovered, canonical);
+    remove_dir(&root);
+}
+
+#[test]
+fn explicit_source_tree_root_must_be_directory() {
+    let root = temp_root("explicit-file");
+    let file = root.join("Cargo.toml");
+    write_file(file.clone(), "[workspace]\n");
+
+    let err = resolve_source_tree_root(Some(&file), &root)
+        .expect_err("file should not resolve as source tree root");
+
+    assert!(
+        err.to_string()
+            .contains("source tree root is not a directory"),
+        "unexpected error: {err}"
+    );
+    remove_dir(&root);
+}
