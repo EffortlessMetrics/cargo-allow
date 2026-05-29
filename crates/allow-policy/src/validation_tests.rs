@@ -523,6 +523,40 @@ fn rejects_invalid_glob_scope() {
 }
 
 #[test]
+fn rejects_unsupported_bracket_glob_syntax() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "bracket-glob"
+                kind = "non_rust_file"
+                glob = "scripts/[ab].sh"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = "scripts/[ab].sh"
+            "#,
+    );
+
+    assert!(err.contains("unsupported glob token `[`"));
+}
+
+#[test]
+fn rejects_unsupported_brace_glob_syntax() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                ignored = ["scripts/{a,b}.sh"]
+            "#,
+    );
+
+    assert!(err.contains("unsupported glob token `{`"));
+}
+
+#[test]
 fn accepts_path_with_matching_selector_glob() {
     let cfg = parse_policy(
         r#"

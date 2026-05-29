@@ -68,9 +68,7 @@ pub fn source_tree_path_is_ignored(path: impl AsRef<Path>, patterns: &[String]) 
 }
 
 pub fn source_tree_scope_has_wildcard(scope: &str) -> bool {
-    scope
-        .chars()
-        .any(|ch| matches!(ch, '*' | '?' | '[' | ']' | '{' | '}'))
+    scope.chars().any(|ch| matches!(ch, '*' | '?'))
 }
 
 pub fn allow_entry_broad_scope(entry: &AllowEntry) -> Option<String> {
