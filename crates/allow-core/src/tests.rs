@@ -90,7 +90,7 @@ fn allow_entry_broad_scope_uses_path_glob_selector_priority() {
         kind: FindingKind::Panic,
         family: None,
         path: Some(PathBuf::from("src\\*.rs")),
-        glob: Some("crates/**/*.rs".to_string()),
+        glob: Some(r"crates\**\*.rs".to_string()),
         owner: "team-runtime".to_string(),
         classification: "accepted-risk".to_string(),
         reason: "test fixture".to_string(),
@@ -114,6 +114,7 @@ fn allow_entry_broad_scope_uses_path_glob_selector_priority() {
     );
 
     entry.glob = Some("crates/lib.rs".to_string());
+    entry.selector.glob = Some(r"tests\**\*.rs".to_string());
     assert_eq!(
         allow_entry_broad_scope(&entry).as_deref(),
         Some("tests/**/*.rs")
