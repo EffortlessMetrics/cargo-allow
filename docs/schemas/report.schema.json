@@ -4,6 +4,21 @@
   "title": "cargo-allow report v1",
   "type": "object",
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "required": ["diff"]
+      },
+      "then": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "const": "diff"
+          }
+        }
+      }
+    }
+  ],
   "required": [
     "schema_version",
     "schema_id",
