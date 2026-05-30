@@ -216,6 +216,57 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         Some("#/$defs/evidence_reference_status"),
         "common evidence_reference status should use the shared status vocabulary"
     );
+    assert_enum_equals(
+        "common selector precision fields",
+        &schema,
+        "/$defs/selector_precision_field/enum",
+        &selector_precision_fields(),
+    );
+    let selector_precision =
+        required_schema_pointer("common", &schema, "/$defs/selector_precision_change");
+    assert_eq!(
+        selector_precision
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common selector_precision_change should reject unknown fields"
+    );
+    assert_required_fields(
+        "common selector_precision_change",
+        selector_precision,
+        &["before", "after", "removed_fields", "added_fields"],
+    );
+    for field in ["before", "after"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/selector_precision_change/properties/{field}/type"
+                ))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "common selector precision {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/selector_precision_change/properties/{field}/minimum"
+                ))
+                .and_then(Value::as_u64),
+            Some(0),
+            "common selector precision {field} minimum"
+        );
+    }
+    for field in ["removed_fields", "added_fields"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/selector_precision_change/properties/{field}/items/$ref"
+                ))
+                .and_then(Value::as_str),
+            Some("#/$defs/selector_precision_field"),
+            "common selector precision {field} should use the field vocabulary"
+        );
+    }
 
     let source_syntax =
         required_schema_pointer("common", &schema, "/$defs/source_syntax_inventory");
@@ -287,6 +338,8 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "policy_migration_inventory",
         "recognized_evidence_prefix",
         "scanner_limitation",
+        "selector_precision_change",
+        "selector_precision_field",
         "source_syntax_inventory",
         "traceability_evidence_prefix",
     ]
@@ -593,6 +646,24 @@ fn collect_object_nodes_missing_additional_properties(
 
 fn json_pointer_escape(value: &str) -> String {
     value.replace('~', "~0").replace('/', "~1")
+}
+
+fn selector_precision_fields() -> Vec<&'static str> {
+    vec![
+        "path",
+        "glob",
+        "family",
+        "ast_kind",
+        "container",
+        "callee",
+        "macro_name",
+        "lint",
+        "symbol",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+        "occurrence_limit",
+    ]
 }
 
 fn expected_top_level_schema_properties() -> [(&'static str, &'static [&'static str]); 10] {

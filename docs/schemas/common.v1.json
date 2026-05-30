@@ -163,6 +163,59 @@
         }
       }
     },
+    "selector_precision_field": {
+      "enum": [
+        "path",
+        "glob",
+        "family",
+        "ast_kind",
+        "container",
+        "callee",
+        "macro_name",
+        "lint",
+        "symbol",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+        "occurrence_limit"
+      ]
+    },
+    "selector_precision_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "before",
+        "after",
+        "removed_fields",
+        "added_fields"
+      ],
+      "properties": {
+        "before": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Selector precision score before the policy change."
+        },
+        "after": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Selector precision score after the policy change."
+        },
+        "removed_fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/selector_precision_field"
+          },
+          "description": "Selector fields that were present before the change and absent after it."
+        },
+        "added_fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/selector_precision_field"
+          },
+          "description": "Selector fields that were absent before the change and present after it."
+        }
+      }
+    },
     "source_syntax_inventory": {
       "type": "object",
       "additionalProperties": false,
