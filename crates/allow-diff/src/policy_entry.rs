@@ -7,11 +7,8 @@ use crate::policy_compare::{
 };
 use crate::policy_entry_evidence::evidence_policy_changes;
 use crate::policy_entry_lifecycle::lifecycle_policy_changes;
-use crate::policy_scope::{
-    scope_broadened, scope_changed, scope_narrowed, selector_precision_fields,
-    selector_precision_score,
-};
-use crate::policy_selector::selector_identity_changed;
+use crate::policy_entry_selector::selector_policy_changes;
+use crate::policy_scope::{scope_broadened, scope_changed, scope_narrowed};
 
 pub(crate) fn added_allow_change(entry: &AllowEntry) -> PolicyChange {
     let baseline = entry.classification == "baseline_debt";
@@ -96,7 +93,7 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
             "scope changed",
         ));
     }
-    append_selector_changes(&mut changes, base, head);
+    changes.extend(selector_policy_changes(base, head));
     changes.extend(lifecycle_policy_changes(base, head));
     changes.extend(evidence_policy_changes(base, head));
     if baseline_debt_normalized(base, head) {
@@ -215,73 +212,6 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
         ));
     }
     changes
-}
-
-fn append_selector_changes(changes: &mut Vec<PolicyChange>, base: &AllowEntry, head: &AllowEntry) {
-    let base_precision = selector_precision_score(base);
-    let head_precision = selector_precision_score(head);
-    if head_precision < base_precision {
-        changes.push(PolicyChange {
-            allow_id: head.id.clone(),
-            kind: PolicyChangeKind::SelectorPrecisionDecreased,
-            severity: PolicyChangeSeverity::Fail,
-            message: format!(
-                "{} selector precision decreased: {} -> {}{}",
-                head.id,
-                base_precision,
-                head_precision,
-                selector_precision_detail(base, head)
-            ),
-        });
-    } else if head_precision > base_precision {
-        changes.push(PolicyChange {
-            allow_id: head.id.clone(),
-            kind: PolicyChangeKind::SelectorPrecisionIncreased,
-            severity: PolicyChangeSeverity::Improvement,
-            message: format!(
-                "{} selector precision increased: {} -> {}{}",
-                head.id,
-                base_precision,
-                head_precision,
-                selector_precision_detail(base, head)
-            ),
-        });
-    } else if selector_identity_changed(&base.selector, &head.selector) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::SelectorChanged,
-            PolicyChangeSeverity::Review,
-            "selector identity changed",
-        ));
-    }
-}
-
-fn selector_precision_detail(base: &AllowEntry, head: &AllowEntry) -> String {
-    let base_fields = selector_precision_fields(base);
-    let head_fields = selector_precision_fields(head);
-    let mut removed = Vec::new();
-    let mut added = Vec::new();
-
-    for (base_field, head_field) in base_fields.into_iter().zip(head_fields) {
-        match (base_field.present, head_field.present) {
-            (true, false) => removed.push(base_field.label),
-            (false, true) => added.push(head_field.label),
-            _ => {}
-        }
-    }
-
-    let mut details = Vec::new();
-    if !removed.is_empty() {
-        details.push(format!("removed: {}", removed.join(", ")));
-    }
-    if !added.is_empty() {
-        details.push(format!("added: {}", added.join(", ")));
-    }
-    if details.is_empty() {
-        String::new()
-    } else {
-        format!(" ({})", details.join("; "))
-    }
 }
 
 fn baseline_debt_normalized(base: &AllowEntry, head: &AllowEntry) -> bool {
