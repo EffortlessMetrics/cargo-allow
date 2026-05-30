@@ -1357,3 +1357,26 @@ glob = "CODE_OF_CONDUCT.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0126"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/0.1.1.md"
+owner = "core/release"
+classification = "release_runbook"
+reason = "Prepares the reviewed 0.1.1 patch-release sequence and rollback limits before publication."
+created = "2026-05-30"
+review_after = "2026-11-01"
+evidence = ["doc:docs/release/0.1.0.md", "doc:docs/claim-boundaries.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/0.1.1.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/release/0.1.1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
