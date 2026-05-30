@@ -7,6 +7,7 @@ pub(super) fn explain_next_steps(
     findings: &[Finding],
     outcomes: &[MatchOutcome],
     has_broken_evidence: bool,
+    has_weak_evidence: bool,
 ) -> (Vec<String>, Vec<String>) {
     let attention = outcomes
         .iter()
@@ -29,6 +30,20 @@ pub(super) fn explain_next_steps(
     if has_broken_evidence {
         let finding = findings.first();
         let kind = "broken_evidence_link";
+        return (
+            worklist::suggested_actions(kind)
+                .into_iter()
+                .take(2)
+                .collect(),
+            worklist::proof_commands(kind, finding, Some(entry))
+                .into_iter()
+                .take(4)
+                .collect(),
+        );
+    }
+    if has_weak_evidence {
+        let finding = findings.first();
+        let kind = "weak_evidence_reference";
         return (
             worklist::suggested_actions(kind)
                 .into_iter()

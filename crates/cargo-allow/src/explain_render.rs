@@ -49,8 +49,16 @@ fn render_explain_report<R>(
     let has_broken_evidence = evidence_diagnostics
         .iter()
         .any(|diagnostic| diagnostic.status.is_broken_local_link());
-    let (suggested_actions, proof_commands) =
-        explain_next_steps(entry, findings, outcomes, has_broken_evidence);
+    let has_weak_evidence = evidence_diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.status.is_weak_reference());
+    let (suggested_actions, proof_commands) = explain_next_steps(
+        entry,
+        findings,
+        outcomes,
+        has_broken_evidence,
+        has_weak_evidence,
+    );
     let normalized_targets = evidence_diagnostics
         .iter()
         .map(|diagnostic| diagnostic.target.as_ref().map(normalize_path))
