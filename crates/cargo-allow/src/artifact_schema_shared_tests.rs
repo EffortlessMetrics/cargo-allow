@@ -267,6 +267,44 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
             "common selector precision {field} should use the field vocabulary"
         );
     }
+    assert_enum_equals(
+        "common lifecycle fields",
+        &schema,
+        "/$defs/lifecycle_change_field/enum",
+        &lifecycle_change_fields(),
+    );
+    let lifecycle_change = required_schema_pointer("common", &schema, "/$defs/lifecycle_change");
+    assert_eq!(
+        lifecycle_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common lifecycle_change should reject unknown fields"
+    );
+    assert_required_fields(
+        "common lifecycle_change",
+        lifecycle_change,
+        &["field", "before", "after"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/lifecycle_change/properties/field/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/lifecycle_change_field"),
+        "common lifecycle_change field should use the shared lifecycle field vocabulary"
+    );
+    assert_schema_type_equals(
+        "common lifecycle_change before",
+        &schema,
+        "/$defs/lifecycle_change/properties/before/type",
+        &["string", "null"],
+    );
+    assert_schema_type_equals(
+        "common lifecycle_change after",
+        &schema,
+        "/$defs/lifecycle_change/properties/after/type",
+        &["string", "null"],
+    );
     let occurrence_limit =
         required_schema_pointer("common", &schema, "/$defs/occurrence_limit_change");
     assert_eq!(
@@ -404,6 +442,8 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "evidence_reference_status",
         "inventory_source",
         "local_file_evidence_prefix",
+        "lifecycle_change",
+        "lifecycle_change_field",
         "occurrence_limit_change",
         "policy_migration_inventory",
         "recognized_evidence_prefix",
@@ -743,6 +783,14 @@ fn scope_change_fields() -> Vec<&'static str> {
         .iter()
         .copied()
         .map(allow_diff::ScopeChangeField::as_str)
+        .collect()
+}
+
+fn lifecycle_change_fields() -> Vec<&'static str> {
+    allow_diff::LifecycleChangeField::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::LifecycleChangeField::as_str)
         .collect()
 }
 

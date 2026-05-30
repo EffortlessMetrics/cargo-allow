@@ -224,6 +224,42 @@
         "effective"
       ]
     },
+    "lifecycle_change_field": {
+      "enum": [
+        "created",
+        "expires",
+        "review_after"
+      ]
+    },
+    "lifecycle_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "before",
+        "after"
+      ],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/lifecycle_change_field",
+          "description": "Lifecycle field that changed."
+        },
+        "before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Lifecycle value before the policy change when available."
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Lifecycle value after the policy change when available."
+        }
+      }
+    },
     "occurrence_limit_change": {
       "type": "object",
       "additionalProperties": false,
