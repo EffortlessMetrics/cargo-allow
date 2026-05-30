@@ -79,6 +79,108 @@
         "baseline_debt"
       ]
     },
+    "structural_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "language",
+        "crate_name",
+        "module",
+        "container",
+        "ast_kind",
+        "symbol",
+        "callee",
+        "macro_name",
+        "lint",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+        "line_hint",
+        "column_hint"
+      ],
+      "properties": {
+        "language": {
+          "type": "string"
+        },
+        "crate_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "module": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "container": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ast_kind": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "callee": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "macro_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "receiver_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "normalized_snippet_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line_hint": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "column_hint": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
     "canonical_evidence_prefix": {
       "type": "string",
       "enum": [
