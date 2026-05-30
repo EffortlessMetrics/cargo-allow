@@ -283,6 +283,52 @@ fn schema_contract_registry_covers_schema_index_links() {
 }
 
 #[test]
+fn schema_index_artifact_table_matches_registered_producers() {
+    let index = include_str!("../../../docs/schemas/README.md");
+
+    for contract in schema_contracts() {
+        let schema_id_text = format!("`{}`", contract.schema_id);
+        let Some(row) = index
+            .lines()
+            .find(|line| line.starts_with('|') && line.contains(&schema_id_text))
+        else {
+            std::panic::panic_any(format!(
+                "schema index artifact table should document {schema_id_text}"
+            ));
+        };
+
+        assert!(
+            row.contains("`cargo-allow "),
+            "{} schema index row should document standalone cargo-allow producer commands",
+            contract.name
+        );
+        assert!(
+            !row.contains("`cargo allow "),
+            "{} schema index row should not use Cargo compatibility syntax as the primary producer",
+            contract.name
+        );
+
+        if let Some(command) = contract.fixed_command {
+            let producer = format!("`cargo-allow {command}");
+            assert!(
+                row.contains(&producer),
+                "{} schema index row should document producer command {producer}`",
+                contract.name
+            );
+        } else {
+            for command in allow_report::REPORT_COMMANDS {
+                let producer = format!("`cargo-allow {command}");
+                assert!(
+                    row.contains(&producer),
+                    "{} schema index row should document report producer command {producer}`",
+                    contract.name
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn schema_index_documents_evidence_prefix_vocabulary() {
     let index = include_str!("../../../docs/schemas/README.md");
     assert!(
