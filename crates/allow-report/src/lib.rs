@@ -95,7 +95,7 @@ pub use path_text::source_tree_path_text;
 pub use propose::{render_propose_human, render_propose_json};
 pub use prune::{render_prune_human, render_prune_json};
 pub use receipt::{render_receipt, render_receipt_with_context};
-pub use report_json::{render_json, render_json_with_context};
+pub use report_json::{render_json, render_json_with_context, render_json_with_context_and_diff};
 pub use report_text::{
     render_human, render_human_with_context, render_markdown, render_markdown_with_context,
 };

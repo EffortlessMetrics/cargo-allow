@@ -11,7 +11,7 @@ pub fn render_diff_json_with_posture(report_json: &str, report: DiffReport<'_>) 
         .map(|prefix| format!("{prefix},\n  \"diff\": {diff_json}\n}}\n"))
 }
 
-fn render_diff_posture_json(report: DiffReport<'_>) -> String {
+pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
     out.push_str(&format!(

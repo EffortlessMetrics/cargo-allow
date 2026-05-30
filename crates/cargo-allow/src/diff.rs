@@ -8,10 +8,11 @@ mod diff_args;
 #[path = "diff_render.rs"]
 mod diff_render;
 pub(crate) use diff_args::DiffArgs;
+#[cfg(test)]
 pub(crate) use diff_render::render_diff_json_with_posture;
 use diff_render::{
     append_finding_posture_changes, append_policy_changes, insert_markdown_pr_summary,
-    render_diff_pr_summary_markdown, render_finding_posture_changes_human,
+    render_diff_json_report, render_diff_pr_summary_markdown, render_finding_posture_changes_human,
     render_policy_changes_human,
 };
 
@@ -79,16 +80,12 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     report_context.policy_missing_evidence_entries =
         (policy_missing_evidence_entries > 0).then_some(policy_missing_evidence_entries);
     let mut text = match args.format {
-        OutputFormat::Json => render_diff_json_with_posture(
-            allow_report::render_json_with_context(
-                "diff",
-                &findings,
-                &outcomes,
-                failed,
-                report_context,
-            ),
-            current_failures,
+        OutputFormat::Json => render_diff_json_report(
+            &findings,
             &outcomes,
+            failed,
+            report_context,
+            current_failures,
             &finding_changes,
             &policy_changes,
         ),
