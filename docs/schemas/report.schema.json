@@ -29,8 +29,8 @@
       "const": "cargo-allow"
     },
     "command": {
-      "type": "string",
-      "minLength": 1
+      "enum": ["audit", "check", "diff"],
+      "description": "Command that produced this report artifact. The shared report schema is emitted by audit, check, and diff."
     },
     "status": {
       "enum": ["passed", "failed"]

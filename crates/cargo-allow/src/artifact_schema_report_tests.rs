@@ -45,6 +45,21 @@ fn report_schema_locks_top_level_status_vocabulary() {
 }
 
 #[test]
+fn report_schema_locks_report_command_producers() {
+    let schema = parse_schema(
+        "report",
+        include_str!("../../../docs/schemas/report.schema.json"),
+    );
+
+    assert_enum_equals(
+        "report command",
+        &schema,
+        "/properties/command/enum",
+        &["audit", "check", "diff"],
+    );
+}
+
+#[test]
 fn report_schema_allows_optional_broken_evidence_link_counts() {
     let schema = parse_schema(
         "report",

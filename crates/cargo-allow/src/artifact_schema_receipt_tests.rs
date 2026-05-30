@@ -17,6 +17,22 @@ fn receipt_schema_locks_top_level_status_vocabulary() {
 }
 
 #[test]
+fn receipt_schema_locks_check_command_producer() {
+    let schema = parse_schema(
+        "receipt",
+        include_str!("../../../docs/schemas/receipt.schema.json"),
+    );
+
+    assert_eq!(
+        schema
+            .pointer("/properties/command/const")
+            .and_then(Value::as_str),
+        Some("check"),
+        "receipt command producer"
+    );
+}
+
+#[test]
 fn receipt_schema_allows_optional_policy_baseline_debt_count() {
     let schema = parse_schema(
         "receipt",

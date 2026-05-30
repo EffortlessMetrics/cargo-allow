@@ -129,6 +129,32 @@ pub(crate) fn assert_command_contract(contract: SchemaContract, schema: &Value) 
             "{} command const",
             contract.name
         );
+    } else if schema
+        .pointer("/properties/command/const")
+        .and_then(Value::as_str)
+        .is_some()
+        || schema
+            .pointer("/properties/command/enum")
+            .and_then(Value::as_array)
+            .is_some()
+    {
+        assert!(
+            schema
+                .pointer("/properties/command/const")
+                .and_then(Value::as_str)
+                .is_some_and(|command| !command.is_empty())
+                || schema
+                    .pointer("/properties/command/enum")
+                    .and_then(Value::as_array)
+                    .is_some_and(|commands| {
+                        !commands.is_empty()
+                            && commands
+                                .iter()
+                                .all(|command| command.as_str().is_some_and(|s| !s.is_empty()))
+                    }),
+            "{} command contract should name non-empty producer commands",
+            contract.name
+        );
     } else {
         assert_eq!(
             schema
