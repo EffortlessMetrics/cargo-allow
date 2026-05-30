@@ -137,6 +137,15 @@ fn evidence_status_identifies_broken_local_links() {
 }
 
 #[test]
+fn evidence_status_identifies_weak_references() {
+    assert!(!EvidenceReferenceStatus::LocalFilePresent.is_weak_reference());
+    assert!(!EvidenceReferenceStatus::LocalFileMissing.is_weak_reference());
+    assert!(!EvidenceReferenceStatus::InvalidLocalPath.is_weak_reference());
+    assert!(!EvidenceReferenceStatus::TraceabilityOnly.is_weak_reference());
+    assert!(EvidenceReferenceStatus::Unstructured.is_weak_reference());
+}
+
+#[test]
 fn reports_evidence_reference_diagnostics() {
     let root = unique_test_dir("evidence-diagnostics");
     fs::create_dir_all(root.join("docs"))
