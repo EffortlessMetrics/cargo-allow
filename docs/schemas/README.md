@@ -62,6 +62,10 @@ Artifact-specific fields such as `diff`, `summary`, `allow_entries`,
 covered by their individual schema files. Consumers should branch on
 `schema_id`, not on command-line spelling or filenames.
 
+List artifacts currently emit a `filters` object with every known filter key,
+but nested filter fields are optional in the schema so older `cargo-allow.list.v1`
+artifacts and future additive filter fields can remain compatible.
+
 The shared report schema is emitted by `audit`, `check`, and `diff`, but the
 top-level `diff` posture extension is valid only on reports whose
 `command = "diff"`. Audit and check reports use the same base schema without

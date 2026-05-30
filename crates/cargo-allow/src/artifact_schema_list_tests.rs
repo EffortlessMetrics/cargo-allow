@@ -3,6 +3,7 @@ use crate::artifact_schema_support::{
     parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
+use std::collections::BTreeSet;
 
 #[test]
 fn list_schema_locks_allow_entry_kind_contract() {
@@ -92,35 +93,11 @@ fn list_schema_locks_allow_id_filter_contract() {
     );
 
     let filters = required_schema_pointer("list", &schema, "/properties/filters");
-    assert_required_fields(
-        "list filters",
-        filters,
-        &[
-            "kind",
-            "family",
-            "owner",
-            "classification",
-            "path",
-            "source_package",
-            "status",
-            "expired",
-            "review_due",
-            "stale",
-            "baseline_debt",
-            "broad_scope",
-            "missing_evidence",
-        ],
-    );
-    let required = filters
-        .get("required")
-        .and_then(Value::as_array)
-        .unwrap_or_else(|| std::panic::panic_any("list filters required should be an array"));
     assert!(
-        !required
-            .iter()
-            .any(|field| field.as_str() == Some("allow_id")),
-        "allow_id filter should stay optional for list.v1 compatibility"
+        filters.get("required").is_none(),
+        "list filter fields should stay optional for list.v1 compatibility"
     );
+    assert_list_filter_properties(filters);
     let allow_id = required_schema_pointer("list filters", filters, "/properties/allow_id");
     let types = allow_id
         .get("type")
@@ -129,4 +106,34 @@ fn list_schema_locks_allow_id_filter_contract() {
     let types = types.iter().filter_map(Value::as_str).collect::<Vec<_>>();
 
     assert_eq!(types, vec!["string", "null"]);
+}
+
+fn assert_list_filter_properties(filters: &Value) {
+    let Some(properties) = filters.get("properties").and_then(Value::as_object) else {
+        std::panic::panic_any("list filters properties should be an object");
+    };
+    let actual = properties
+        .keys()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    let expected = [
+        "kind",
+        "family",
+        "owner",
+        "classification",
+        "path",
+        "source_package",
+        "allow_id",
+        "status",
+        "expired",
+        "review_due",
+        "stale",
+        "baseline_debt",
+        "broad_scope",
+        "missing_evidence",
+    ]
+    .into_iter()
+    .collect::<BTreeSet<_>>();
+
+    assert_eq!(actual, expected, "list filter schema properties");
 }
