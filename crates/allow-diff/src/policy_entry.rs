@@ -165,6 +165,22 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
             "evidence added",
         ));
     }
+    if removed_values(&base.links, &head.links) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::LinkRemoved,
+            PolicyChangeSeverity::Review,
+            "traceability link removed",
+        ));
+    }
+    if added_values(&base.links, &head.links) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::LinkAdded,
+            PolicyChangeSeverity::Improvement,
+            "traceability link added",
+        ));
+    }
     if baseline_debt_normalized(base, head) {
         changes.push(change(
             head,

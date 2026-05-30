@@ -41,7 +41,9 @@ explicit separate globs instead.
 
 Diff mode reports owner, reason, or classification removals as policy
 weakening, additions of those required metadata fields as policy improvements,
-and non-empty replacements as review-required policy changes.
+and non-empty replacements as review-required policy changes. Removed
+traceability links are also review-required, while added links are reported as
+policy improvements.
 
 ## Reason And Evidence
 
