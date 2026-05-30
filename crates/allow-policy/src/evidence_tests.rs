@@ -33,6 +33,52 @@ fn validates_existing_local_evidence_references() {
 }
 
 #[test]
+fn validates_backslash_local_evidence_references_portably() {
+    let root = unique_test_dir("evidence-backslash");
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+    fs::write(root.join("docs/safety.md"), "review notes")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence: {err}")));
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-doc-backslash"
+                kind = "unsafe"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["doc:docs\\safety.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "unsafe_block"
+                container = "load"
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy parses: {err}")));
+
+    validate_local_evidence_references(&root, &cfg).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("backslash evidence validates portably: {err}"))
+    });
+    let Some(entry) = cfg.allow.first() else {
+        std::panic::panic_any("policy should contain fixture allow entry");
+    };
+    let diagnostics = evidence_reference_diagnostics(&root, entry);
+    assert_eq!(
+        diagnostics.first().map(|diagnostic| diagnostic.status),
+        Some(EvidenceReferenceStatus::LocalFilePresent)
+    );
+    assert_eq!(
+        diagnostics
+            .first()
+            .and_then(|diagnostic| diagnostic.target.as_ref()),
+        Some(&PathBuf::from("docs/safety.md"))
+    );
+    remove_test_dir(root);
+}
+
+#[test]
 fn validates_existing_unsafe_review_evidence_references() {
     let root = unique_test_dir("unsafe-review-evidence-existing");
     fs::create_dir_all(root.join("docs/evidence/unsafe-review")).unwrap_or_else(|err| {
