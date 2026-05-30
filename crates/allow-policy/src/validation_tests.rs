@@ -63,6 +63,18 @@ fn rejects_blank_policy_owner() {
 }
 
 #[test]
+fn rejects_policy_owner_with_surrounding_whitespace() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                owner = " core/policy "
+            "#,
+    );
+
+    assert!(err.contains("policy owner must not have leading or trailing whitespace"));
+}
+
+#[test]
 fn rejects_unowned_owner_for_reviewed_entries() {
     let err = parse_err(
         r#"

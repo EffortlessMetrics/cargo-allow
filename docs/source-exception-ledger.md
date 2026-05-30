@@ -64,6 +64,8 @@ Diff mode reports top-level policy `owner` changes with the synthetic
 `policy.owner` ID. Removing a concrete ledger owner or changing it to `unowned`
 is policy weakening, adding a concrete owner is a policy improvement, and
 changing one concrete owner to another requires review.
+The top-level policy `owner` value must not include leading or trailing
+whitespace; it is a ledger-routing identifier.
 
 Diff mode reports top-level policy `status` changes with the synthetic
 `policy.status` ID. Changing `active` to `advisory` or removing an active status
