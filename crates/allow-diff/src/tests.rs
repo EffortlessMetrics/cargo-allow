@@ -123,6 +123,23 @@ fn detects_selector_glob_broadening_even_when_path_remains() {
 }
 
 #[test]
+fn detects_selector_glob_narrowing_even_when_path_remains() {
+    let mut base_entry = entry("allow-1");
+    base_entry.selector.glob = Some("src/**".to_string());
+    let base = config_with(base_entry);
+    let mut narrowed = entry("allow-1");
+    narrowed.selector.glob = Some("src/parser/**".to_string());
+    let head = config_with(narrowed);
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::ScopeNarrowed
+            && change.severity == PolicyChangeSeverity::Improvement
+    }));
+}
+
+#[test]
 fn detects_scope_narrowing_from_glob_to_path() {
     let mut base_entry = entry("allow-1");
     base_entry.path = None;
