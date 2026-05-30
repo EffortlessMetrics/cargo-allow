@@ -297,6 +297,42 @@
         "links"
       ]
     },
+    "metadata_change_field": {
+      "enum": [
+        "owner",
+        "reason",
+        "classification"
+      ]
+    },
+    "metadata_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "before",
+        "after"
+      ],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/metadata_change_field",
+          "description": "Policy metadata field that changed."
+        },
+        "before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy metadata value before the policy change when available."
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy metadata value after the policy change when available."
+        }
+      }
+    },
     "evidence_change": {
       "type": "object",
       "additionalProperties": false,
