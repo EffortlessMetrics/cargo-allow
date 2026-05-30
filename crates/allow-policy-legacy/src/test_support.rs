@@ -196,6 +196,13 @@ pub(super) fn fixture_dir() -> PathBuf {
         "cargo-allow-policy-legacy-{}-{id}",
         std::process::id()
     ));
+    match fs::remove_dir_all(&dir) {
+        Ok(()) => {}
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => {
+            std::panic::panic_any(format!("remove stale fixture dir {}: {err}", dir.display()))
+        }
+    }
     fs::create_dir_all(&dir)
         .unwrap_or_else(|err| std::panic::panic_any(format!("fixture dir: {err}")));
     dir
