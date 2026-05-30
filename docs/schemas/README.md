@@ -29,6 +29,9 @@ macro-expansion, or proof-level coverage.
 - [add.schema.json](add.schema.json)
 - [migrate.schema.json](migrate.schema.json)
 - [worklist.schema.json](worklist.schema.json)
+- [common.v1.json](common.v1.json) shared source-tree fragments used as the
+  tested vocabulary source for future schema consolidation. Artifact schemas
+  remain self-contained for consumer portability.
 
 ## Contract Status
 
