@@ -318,6 +318,42 @@ fn schema_object_nodes_reject_unknown_fields() {
     }
 }
 
+#[test]
+fn schema_auxiliary_filter_and_option_objects_keep_optional_members() {
+    for (schema_name, pointer) in [
+        ("add", "/properties/options"),
+        ("list", "/properties/filters"),
+        ("propose", "/properties/options"),
+        ("worklist", "/$defs/filters"),
+    ] {
+        let contract = schema_contracts()
+            .into_iter()
+            .find(|contract| contract.name == schema_name)
+            .unwrap_or_else(|| {
+                std::panic::panic_any(format!("missing schema contract {schema_name}"))
+            });
+        let schema = parse_schema(contract.name, contract.schema);
+        let object = required_schema_pointer(schema_name, &schema, pointer);
+
+        assert_eq!(
+            object.get("additionalProperties").and_then(Value::as_bool),
+            Some(false),
+            "{schema_name} {pointer} should still reject unknown fields"
+        );
+        assert!(
+            object.get("required").is_none(),
+            "{schema_name} {pointer} nested members should stay optional for v1 compatibility"
+        );
+        assert!(
+            object
+                .get("properties")
+                .and_then(Value::as_object)
+                .is_some_and(|properties| !properties.is_empty()),
+            "{schema_name} {pointer} should still lock a known property vocabulary"
+        );
+    }
+}
+
 fn collect_object_nodes_missing_additional_properties(
     value: &Value,
     path: &str,
