@@ -31,7 +31,9 @@ macro-expansion, or proof-level coverage.
 - [worklist.schema.json](worklist.schema.json)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
   tested vocabulary source for future schema consolidation. Artifact schemas
-  remain self-contained for consumer portability.
+  remain self-contained for consumer portability. The shared catalog includes
+  source-tree inventory, evidence-prefix vocabularies, and evidence diagnostic
+  row shapes used by `explain` and `worklist`.
 
 ## Contract Status
 

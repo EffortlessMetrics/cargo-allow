@@ -1,6 +1,7 @@
 use crate::artifact_schema_support::{
     assert_command_contract, assert_enum_equals, assert_inventory_schema, assert_required_fields,
-    inventory_source_enum, parse_schema, required_schema_pointer, schema_contracts,
+    assert_schema_type_equals, inventory_source_enum, parse_schema, required_schema_pointer,
+    schema_contracts,
 };
 use serde_json::Value;
 use std::{collections::BTreeSet, fs, path::Path};
@@ -182,6 +183,39 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         "/$defs/evidence_reference_status/enum",
         &evidence_reference_statuses,
     );
+    let evidence_reference =
+        required_schema_pointer("common", &schema, "/$defs/evidence_reference");
+    assert_eq!(
+        evidence_reference
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common evidence_reference should reject unknown fields"
+    );
+    assert_required_fields(
+        "common evidence_reference",
+        evidence_reference,
+        &["raw", "prefix", "target", "status", "message"],
+    );
+    assert_schema_type_equals(
+        "common evidence_reference prefix",
+        &schema,
+        "/$defs/evidence_reference/properties/prefix/type",
+        &["string", "null"],
+    );
+    assert_schema_type_equals(
+        "common evidence_reference target",
+        &schema,
+        "/$defs/evidence_reference/properties/target/type",
+        &["string", "null"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/evidence_reference/properties/status/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/evidence_reference_status"),
+        "common evidence_reference status should use the shared status vocabulary"
+    );
 
     let source_syntax =
         required_schema_pointer("common", &schema, "/$defs/source_syntax_inventory");
@@ -246,6 +280,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
     let expected = [
         "canonical_evidence_prefix",
         "claim_boundary_flag",
+        "evidence_reference",
         "evidence_reference_status",
         "inventory_source",
         "local_file_evidence_prefix",
