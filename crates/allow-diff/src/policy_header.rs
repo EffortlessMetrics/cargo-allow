@@ -1,6 +1,8 @@
 use allow_core::AllowConfig;
 
-use crate::policy_change::{PolicyChange, PolicyChangeKind, PolicyChangeSeverity};
+use crate::policy_change::{
+    MetadataChange, MetadataChangeField, PolicyChange, PolicyChangeKind, PolicyChangeSeverity,
+};
 
 pub(crate) fn policy_header_changes(base: &AllowConfig, head: &AllowConfig) -> Vec<PolicyChange> {
     let mut changes = Vec::new();
@@ -41,16 +43,23 @@ fn owner_change(base: Option<&str>, head: Option<&str>) -> Option<PolicyChange> 
             "changed",
         ),
     };
-    Some(PolicyChange::new(
-        "policy.owner",
-        kind,
-        severity,
-        format!(
-            "policy.owner {direction}: {} -> {}",
-            display_text(base),
-            display_text(head)
-        ),
-    ))
+    Some(
+        PolicyChange::new(
+            "policy.owner",
+            kind,
+            severity,
+            format!(
+                "policy.owner {direction}: {} -> {}",
+                display_text(base),
+                display_text(head)
+            ),
+        )
+        .with_metadata(MetadataChange {
+            field: MetadataChangeField::Owner,
+            before: base.map(str::to_string),
+            after: head.map(str::to_string),
+        }),
+    )
 }
 
 fn status_change(base: Option<&str>, head: Option<&str>) -> Option<PolicyChange> {
