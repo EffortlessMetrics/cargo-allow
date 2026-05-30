@@ -861,6 +861,41 @@ fn rejects_unsupported_brace_glob_syntax() {
 }
 
 #[test]
+fn rejects_non_whole_segment_double_star_glob_syntax() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "embedded-globstar"
+                kind = "non_rust_file"
+                glob = "scripts/**.sh"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = "scripts/**.sh"
+            "#,
+    );
+
+    assert!(err.contains("unsupported glob token `**`"));
+    assert!(err.contains("whole source-tree path segment"));
+}
+
+#[test]
+fn rejects_non_whole_segment_workspace_globstar_syntax() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                ignored = ["scripts/foo**/release.sh"]
+            "#,
+    );
+
+    assert!(err.contains("source-tree ignored glob uses unsupported glob token `**`"));
+}
+
+#[test]
 fn rejects_wildcard_tokens_in_exact_path_scope() {
     let err = parse_err(
         r#"
