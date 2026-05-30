@@ -82,7 +82,7 @@ fn manifests_do_not_add_cargo_metadata_dependencies() {
     let root = workspace_root();
     let mut violations = Vec::new();
 
-    for path in manifest_files(&root) {
+    for path in cargo_dependency_files(&root) {
         let text = fs::read_to_string(&path)
             .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
         for token in [
@@ -102,6 +102,19 @@ fn manifests_do_not_add_cargo_metadata_dependencies() {
         violations.is_empty(),
         "cargo-allow must not require Cargo metadata to scan source trees:\n{}",
         violations.join("\n")
+    );
+}
+
+#[test]
+fn cargo_dependency_file_scan_includes_lockfile() {
+    let root = workspace_root();
+    let files = cargo_dependency_files(&root);
+
+    assert!(
+        files
+            .iter()
+            .any(|path| path.file_name().is_some_and(|name| name == "Cargo.lock")),
+        "Cargo.lock should be checked for resolved Cargo metadata dependencies"
     );
 }
 
@@ -125,10 +138,11 @@ fn rust_files(root: &Path) -> Vec<PathBuf> {
     files
 }
 
-fn manifest_files(root: &Path) -> Vec<PathBuf> {
+fn cargo_dependency_files(root: &Path) -> Vec<PathBuf> {
     let mut files = Vec::new();
     collect_files(root, &mut files, |path| {
-        path.file_name().is_some_and(|name| name == "Cargo.toml")
+        path.file_name()
+            .is_some_and(|name| name == "Cargo.toml" || name == "Cargo.lock")
     });
     files
 }
