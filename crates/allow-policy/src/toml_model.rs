@@ -2,7 +2,8 @@ use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use serde::Deserialize;
 
 use crate::toml_entry::AllowEntryToml;
-use crate::toml_sections::{RequirementsToml, WorkspaceToml};
+use crate::toml_requirements::RequirementsToml;
+use crate::toml_workspace::WorkspaceToml;
 
 #[derive(Debug, Default, Deserialize)]
 struct PolicyToml {
