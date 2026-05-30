@@ -115,6 +115,34 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
 }
 
 #[test]
+#[should_panic(expected = "diff report artifacts support only diff command")]
+fn diff_json_report_renderer_rejects_non_diff_command() {
+    let report = DiffReport {
+        net_posture: "unchanged",
+        reviewer_action: "none",
+        summary: DiffPostureSummary {
+            current_failures: 0,
+            new_findings: 0,
+            removed_findings: 0,
+            policy_failures: 0,
+            policy_review_items: 0,
+            policy_improvements: 0,
+        },
+        finding_changes: &[],
+        policy_changes: &[],
+    };
+
+    let _ = render_json_with_context_and_diff(
+        "audit",
+        &[],
+        &[],
+        false,
+        ReportContext::default(),
+        report,
+    );
+}
+
+#[test]
 fn diff_pr_summary_markdown_reports_net_posture() {
     let finding_changes = vec![DiffFindingChange {
         change: "removed",
