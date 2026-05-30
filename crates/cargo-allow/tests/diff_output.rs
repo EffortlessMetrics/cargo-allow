@@ -127,6 +127,100 @@ fn diff_json_reports_occurrence_limit_loosened_as_worse() {
 }
 
 #[test]
+fn diff_json_reports_requirement_loosened_policy_failure() {
+    let root = temp_root("diff-requirement-loosened");
+    write_diff_fixture(
+        &root,
+        policy_with_owner_required(true),
+        policy_with_owner_required(false),
+    );
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_failure(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "worse",
+        "diff requirement loosened net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/policy_failures",
+        1,
+        "diff requirement loosened failure count",
+    );
+    assert_policy_change(
+        &value,
+        "requirement_loosened",
+        "requirements.owner_required",
+        "fail",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn diff_json_reports_workspace_ignored_added_policy_failure() {
+    let root = temp_root("diff-workspace-ignored-added");
+    write_diff_fixture(
+        &root,
+        policy_with_workspace_ignored(&["policy/**"]),
+        policy_with_workspace_ignored(&["policy/**", "src/**"]),
+    );
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_failure(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "worse",
+        "diff workspace ignored addition net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/policy_failures",
+        1,
+        "diff workspace ignored addition failure count",
+    );
+    assert_policy_change(
+        &value,
+        "workspace_ignored_added",
+        "workspace.ignored",
+        "fail",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn diff_json_reports_policy_owner_removed_policy_failure() {
+    let root = temp_root("diff-policy-owner-removed");
+    write_diff_fixture(
+        &root,
+        policy_with_policy_owner(Some("core/policy")),
+        policy_with_policy_owner(None),
+    );
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_failure(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "worse",
+        "diff policy owner removal net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/policy_failures",
+        1,
+        "diff policy owner removal failure count",
+    );
+    assert_policy_change(&value, "policy_owner_removed", "policy.owner", "fail");
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_reports_broken_evidence_as_current_failure() {
     let root = temp_root("diff-broken-evidence");
     let policy = policy_with_evidence(Some("doc:docs/missing-evidence.md"));
@@ -399,6 +493,98 @@ callee = "unwrap"
     )
 }
 
+fn policy_with_owner_required(owner_required: bool) -> String {
+    format!(
+        r#"policy = "cargo-allow"
+
+[workspace]
+ignored = ["policy/**"]
+
+[requirements]
+owner_required = {owner_required}
+
+[[allow]]
+id = "allow-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "fixture"
+evidence = ["test:diff_json_reports_requirement_loosened_policy_failure"]
+created = "2026-05-29"
+review_after = "2026-08-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    )
+}
+
+fn policy_with_workspace_ignored(ignored: &[&str]) -> String {
+    let ignored = ignored
+        .iter()
+        .map(|value| format!("\"{value}\""))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        r#"policy = "cargo-allow"
+
+[workspace]
+ignored = [{ignored}]
+
+[[allow]]
+id = "allow-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "fixture"
+evidence = ["test:diff_json_reports_workspace_ignored_added_policy_failure"]
+created = "2026-05-29"
+review_after = "2026-08-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    )
+}
+
+fn policy_with_policy_owner(owner: Option<&str>) -> String {
+    let owner = owner
+        .map(|owner| format!("owner = \"{owner}\"\n"))
+        .unwrap_or_default();
+    format!(
+        r#"policy = "cargo-allow"
+{owner}
+[workspace]
+ignored = ["policy/**"]
+
+[[allow]]
+id = "allow-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "fixture"
+evidence = ["test:diff_json_reports_policy_owner_removed_policy_failure"]
+created = "2026-05-29"
+review_after = "2026-08-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    )
+}
+
 fn policy_with_baseline_debt() -> String {
     r#"policy = "cargo-allow"
 
@@ -444,4 +630,20 @@ fn assert_file_contains(path: &std::path::Path, needle: &str, message: &str) {
     let contents = fs::read_to_string(path)
         .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
     assert!(contents.contains(needle), "{message}");
+}
+
+fn assert_policy_change(value: &Value, kind: &str, allow_id: &str, severity: &str) {
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let matched = changes.iter().any(|change| {
+        change.get("kind").and_then(Value::as_str) == Some(kind)
+            && change.get("allow_id").and_then(Value::as_str) == Some(allow_id)
+            && change.get("severity").and_then(Value::as_str) == Some(severity)
+    });
+    assert!(
+        matched,
+        "expected policy change kind={kind} allow_id={allow_id} severity={severity}; got {changes:?}"
+    );
 }
