@@ -6,6 +6,7 @@ mod policy_entry;
 mod policy_entry_evidence;
 mod policy_entry_identity;
 mod policy_entry_lifecycle;
+mod policy_entry_limits;
 mod policy_entry_scope;
 mod policy_entry_selector;
 mod policy_header;
