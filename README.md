@@ -52,10 +52,18 @@ exists outside the syntax-visible surface that was scanned.
 
 ## Quickstart
 
-Install from crates.io:
+Install the published release from crates.io:
 
 ```bash
-cargo install cargo-allow --locked
+cargo install cargo-allow --version 0.1.0 --locked
+```
+
+This README tracks the current repository. Some newer flags and filters shown
+below may be ahead of the latest published release. To try the current `main`
+branch before the next release, install from Git instead:
+
+```bash
+cargo install --git https://github.com/EffortlessMetrics/cargo-allow cargo-allow --locked
 ```
 
 Create a policy file:
