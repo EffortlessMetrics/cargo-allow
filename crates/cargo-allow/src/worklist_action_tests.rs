@@ -98,6 +98,25 @@ fn suggested_actions_cover_known_worklist_kinds_and_default() {
 }
 
 #[test]
+fn proof_commands_cover_known_worklist_kinds() {
+    for kind in WORK_ITEM_KINDS {
+        let commands = proof_commands(kind, None, None);
+        let item_kind_command = format!("cargo-allow worklist --item-kind {kind} --format json");
+
+        assert!(
+            commands.iter().any(|command| command == &item_kind_command),
+            "{kind} proof commands should include the item-kind worklist shortcut"
+        );
+        assert!(
+            commands
+                .iter()
+                .all(|command| command.starts_with("cargo-allow ")),
+            "{kind} proof commands should stay cargo-allow first"
+        );
+    }
+}
+
+#[test]
 fn proof_commands_use_finding_kind_when_present() {
     let finding = test_finding(
         FindingKind::LintException,
