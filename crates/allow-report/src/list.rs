@@ -146,6 +146,10 @@ fn render_list_filters_json(filters: ListFilters<'_>, indent: &str) -> String {
         option_json(filters.source_package)
     ));
     out.push_str(&format!(
+        "{indent}  \"allow_id\": {},\n",
+        option_json(filters.allow_id)
+    ));
+    out.push_str(&format!(
         "{indent}  \"status\": {},\n",
         option_json(filters.status)
     ));

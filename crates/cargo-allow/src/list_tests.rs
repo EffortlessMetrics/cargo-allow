@@ -26,6 +26,8 @@ fn clap_parses_list_json_filters() {
         "crates/allow-core",
         "--source-package",
         "allow-core",
+        "--allow-id",
+        "allow-runtime",
         "--status",
         "baseline_debt",
         "--expired",
@@ -50,6 +52,7 @@ fn clap_parses_list_json_filters() {
             classification: Some(classification),
             path: Some(path_filter),
             source_package: Some(source_package),
+            allow_id: Some(allow_id),
             status: Some(status),
             expired: true,
             review_due: true,
@@ -66,6 +69,7 @@ fn clap_parses_list_json_filters() {
             && classification == "baseline_debt"
             && path_filter == "crates/allow-core"
             && source_package == "allow-core"
+            && allow_id == "allow-runtime"
             && status == "baseline_debt"
             && path == Path::new("target/list.json")
     ));
@@ -221,6 +225,10 @@ fn render_list_rows_json_records_context_filters_and_rows() {
             .pointer("/filters/source_package")
             .and_then(Value::as_str),
         Some("allow-core")
+    );
+    assert_eq!(
+        value.pointer("/filters/allow_id").and_then(Value::as_str),
+        Some("allow-json")
     );
     assert_eq!(
         value.pointer("/filters/status").and_then(Value::as_str),

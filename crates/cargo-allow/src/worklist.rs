@@ -116,6 +116,7 @@ pub(crate) fn sample_worklist_json_for_contract_test() -> String {
         ],
         proof_commands: vec![
             "cargo-allow explain allow-baseline".to_string(),
+            "cargo-allow list --allow-id allow-baseline --format json".to_string(),
             "cargo-allow worklist --allow-id allow-baseline --format json".to_string(),
         ],
     }];

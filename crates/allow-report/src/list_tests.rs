@@ -26,6 +26,7 @@ fn list_json_renderer_records_filters_context_and_rows() {
             kind: Some("panic"),
             family: Some("unwrap"),
             owner: Some("parser"),
+            allow_id: Some("allow-json"),
             baseline_debt: true,
             ..ListFilters::default()
         },
@@ -40,6 +41,7 @@ fn list_json_renderer_records_filters_context_and_rows() {
     assert!(json.contains("\"kind\": \"panic\""));
     assert!(json.contains("\"family\": \"unwrap\""));
     assert!(json.contains("\"owner\": \"parser\""));
+    assert!(json.contains("\"allow_id\": \"allow-json\""));
     assert!(json.contains("\"baseline_debt\": true"));
     assert!(json.contains("\"allow_entries\": 1"));
     assert!(json.contains("\"id\": \"allow-json\""));
@@ -70,6 +72,7 @@ fn list_json_renderer_records_filters_context_and_rows() {
     "classification": null,
     "path": null,
     "source_package": null,
+    "allow_id": "allow-json",
     "status": null,
     "expired": false,
     "review_due": false,

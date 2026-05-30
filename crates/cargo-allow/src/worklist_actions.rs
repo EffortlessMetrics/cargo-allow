@@ -83,6 +83,9 @@ pub(crate) fn proof_commands(
     if let Some(allow_id) = entry.map(|entry| entry.id.as_str()) {
         commands.push(format!("cargo-allow explain {allow_id}"));
         commands.push(format!(
+            "cargo-allow list --allow-id {allow_id} --format json"
+        ));
+        commands.push(format!(
             "cargo-allow worklist --allow-id {allow_id} --format json"
         ));
     }
@@ -90,12 +93,12 @@ pub(crate) fn proof_commands(
     let has_unsafe_kind_check = kind_arg == Some("unsafe");
     let shortcut_arg = worklist_shortcut_arg(kind);
     if let Some(kind_arg) = kind_arg {
-        commands.push(format!("cargo-allow check --kind {kind_arg} --mode no-new"));
         if let Some(shortcut_arg) = shortcut_arg {
             commands.push(format!(
                 "cargo-allow worklist --{shortcut_arg} --format json"
             ));
         }
+        commands.push(format!("cargo-allow check --kind {kind_arg} --mode no-new"));
         commands.push(format!(
             "cargo-allow worklist --item-kind {kind} --format json"
         ));
@@ -103,12 +106,12 @@ pub(crate) fn proof_commands(
             "cargo-allow worklist --kind {kind_arg} --format json"
         ));
     } else {
-        commands.push("cargo-allow check --mode no-new".to_string());
         if let Some(shortcut_arg) = shortcut_arg {
             commands.push(format!(
                 "cargo-allow worklist --{shortcut_arg} --format json"
             ));
         }
+        commands.push("cargo-allow check --mode no-new".to_string());
         commands.push(format!(
             "cargo-allow worklist --item-kind {kind} --format json"
         ));

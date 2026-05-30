@@ -83,3 +83,41 @@ fn list_schema_locks_allow_entry_kind_contract() {
         &match_status_enum(),
     );
 }
+
+#[test]
+fn list_schema_locks_allow_id_filter_contract() {
+    let schema = parse_schema(
+        "list",
+        include_str!("../../../docs/schemas/list.schema.json"),
+    );
+
+    let filters = required_schema_pointer("list", &schema, "/properties/filters");
+    assert_required_fields(
+        "list filters",
+        filters,
+        &[
+            "kind",
+            "family",
+            "owner",
+            "classification",
+            "path",
+            "source_package",
+            "allow_id",
+            "status",
+            "expired",
+            "review_due",
+            "stale",
+            "baseline_debt",
+            "broad_scope",
+            "missing_evidence",
+        ],
+    );
+    let allow_id = required_schema_pointer("list filters", filters, "/properties/allow_id");
+    let types = allow_id
+        .get("type")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("allow_id filter should be nullable string"));
+    let types = types.iter().filter_map(Value::as_str).collect::<Vec<_>>();
+
+    assert_eq!(types, vec!["string", "null"]);
+}
