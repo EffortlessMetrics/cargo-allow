@@ -19,6 +19,7 @@ mod scope_validation;
 mod selector_validation;
 mod source_tree_scope;
 mod starter;
+mod text_validation;
 mod toml_de;
 mod toml_entry;
 mod toml_last_seen;

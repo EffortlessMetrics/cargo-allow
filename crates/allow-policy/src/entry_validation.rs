@@ -1,23 +1,15 @@
 use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, Requirements};
 use std::collections::BTreeSet;
 
+use crate::text_validation::{validate_no_surrounding_whitespace, validate_required_text};
+
 pub(crate) fn validate_allow_entry_identity(
     entry: &AllowEntry,
     ids: &mut BTreeSet<String>,
 ) -> CargoAllowResult<()> {
     validate_allow_id(&entry.id)?;
-    if entry
-        .family
-        .as_deref()
-        .is_some_and(|family| family.trim().is_empty())
-    {
-        return Err(CargoAllowError::new(format!(
-            "{} family must not be empty",
-            entry.id
-        )));
-    }
     if let Some(family) = entry.family.as_deref() {
-        validate_no_surrounding_whitespace(&entry.id, "family", family)?;
+        validate_required_text(&format!("{} family", entry.id), family)?;
     }
     if !ids.insert(entry.id.clone()) {
         return Err(CargoAllowError::new(format!(
@@ -33,10 +25,13 @@ pub(crate) fn validate_allow_entry_requirements(
     requirements: &Requirements,
 ) -> CargoAllowResult<()> {
     if !entry.owner.is_empty() {
-        validate_no_surrounding_whitespace(&entry.id, "owner", &entry.owner)?;
+        validate_no_surrounding_whitespace(&format!("{} owner", entry.id), &entry.owner)?;
     }
     if !entry.classification.is_empty() {
-        validate_no_surrounding_whitespace(&entry.id, "classification", &entry.classification)?;
+        validate_no_surrounding_whitespace(
+            &format!("{} classification", entry.id),
+            &entry.classification,
+        )?;
     }
     if requirements.owner_required && entry.owner.trim().is_empty() {
         return Err(CargoAllowError::new(format!("{} missing owner", entry.id)));
@@ -61,15 +56,6 @@ pub(crate) fn validate_allow_entry_requirements(
     }
     validate_non_empty_values(&entry.id, "evidence", &entry.evidence)?;
     validate_non_empty_values(&entry.id, "link", &entry.links)?;
-    Ok(())
-}
-
-fn validate_no_surrounding_whitespace(id: &str, label: &str, value: &str) -> CargoAllowResult<()> {
-    if value.trim() != value {
-        return Err(CargoAllowError::new(format!(
-            "{id} {label} must not have leading or trailing whitespace"
-        )));
-    }
     Ok(())
 }
 
@@ -123,18 +109,7 @@ fn validate_allow_id(id: &str) -> CargoAllowResult<()> {
 
 fn validate_non_empty_values(id: &str, label: &str, values: &[String]) -> CargoAllowResult<()> {
     for (index, value) in values.iter().enumerate() {
-        if value.trim().is_empty() {
-            return Err(CargoAllowError::new(format!(
-                "{id} {label} entry {} must not be empty",
-                index + 1
-            )));
-        }
-        if value.trim() != value {
-            return Err(CargoAllowError::new(format!(
-                "{id} {label} entry {} must not have leading or trailing whitespace",
-                index + 1
-            )));
-        }
+        validate_required_text(&format!("{id} {label} entry {}", index + 1), value)?;
     }
     Ok(())
 }
