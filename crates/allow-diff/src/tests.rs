@@ -86,6 +86,25 @@ fn detects_scope_broadening_from_windows_path_to_glob() {
 }
 
 #[test]
+fn detects_scope_broadening_between_entry_globs() {
+    let mut base_entry = entry("allow-1");
+    base_entry.path = None;
+    base_entry.glob = Some("src/parser/**".to_string());
+    let base = config_with(base_entry);
+    let mut widened = entry("allow-1");
+    widened.path = None;
+    widened.glob = Some("src/**".to_string());
+    let head = config_with(widened);
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::ScopeBroadened
+            && change.severity == PolicyChangeSeverity::Fail
+    }));
+}
+
+#[test]
 fn detects_selector_glob_broadening_even_when_path_remains() {
     let mut base_entry = entry("allow-1");
     base_entry.selector.glob = Some("src/lib.rs".to_string());
