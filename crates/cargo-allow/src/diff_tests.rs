@@ -101,6 +101,7 @@ fn json_report_includes_structured_posture_changes() {
             occurrence_limit: None,
             lifecycle: None,
             evidence: None,
+            metadata: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0002".to_string(),
@@ -116,6 +117,7 @@ fn json_report_includes_structured_posture_changes() {
             occurrence_limit: None,
             lifecycle: None,
             evidence: None,
+            metadata: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0003".to_string(),
@@ -130,6 +132,7 @@ fn json_report_includes_structured_posture_changes() {
             }),
             lifecycle: None,
             evidence: None,
+            metadata: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0004".to_string(),
@@ -145,6 +148,7 @@ fn json_report_includes_structured_posture_changes() {
                 after: Some("2026-12-01".to_string()),
             }),
             evidence: None,
+            metadata: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0005".to_string(),
@@ -159,6 +163,23 @@ fn json_report_includes_structured_posture_changes() {
                 field: allow_diff::EvidenceChangeField::Evidence,
                 removed: vec!["test:old-proof".to_string()],
                 added: vec![],
+            }),
+            metadata: None,
+        },
+        allow_diff::PolicyChange {
+            allow_id: "allow-0006".to_string(),
+            kind: allow_diff::PolicyChangeKind::OwnerRemoved,
+            severity: allow_diff::PolicyChangeSeverity::Fail,
+            message: "allow-0006 owner removed".to_string(),
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: Some(allow_diff::MetadataChange {
+                field: allow_diff::MetadataChangeField::Owner,
+                before: Some("core".to_string()),
+                after: None,
             }),
         },
     ];
@@ -204,7 +225,7 @@ fn json_report_includes_structured_posture_changes() {
         value
             .pointer("/diff/summary/policy_failures")
             .and_then(Value::as_u64),
-        Some(4)
+        Some(5)
     );
     assert_eq!(
         value
@@ -358,6 +379,30 @@ fn json_report_includes_structured_posture_changes() {
         .and_then(Value::as_array)
         .unwrap_or_else(|| std::panic::panic_any("evidence added should be an array"));
     assert!(added.is_empty());
+    let metadata_change = policy_changes.get(5).unwrap_or_else(|| {
+        std::panic::panic_any("diff policy_changes should include metadata row")
+    });
+    assert_eq!(
+        metadata_change.get("kind").and_then(Value::as_str),
+        Some("owner_removed")
+    );
+    assert_eq!(
+        metadata_change
+            .pointer("/metadata/field")
+            .and_then(Value::as_str),
+        Some("owner")
+    );
+    assert_eq!(
+        metadata_change
+            .pointer("/metadata/before")
+            .and_then(Value::as_str),
+        Some("core")
+    );
+    assert!(
+        metadata_change
+            .pointer("/metadata/after")
+            .is_some_and(Value::is_null)
+    );
     assert!(json.ends_with("}\n"));
 }
 
@@ -414,6 +459,7 @@ fn policy_change(
         occurrence_limit: None,
         lifecycle: None,
         evidence: None,
+        metadata: None,
     }
 }
 

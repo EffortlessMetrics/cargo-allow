@@ -24,6 +24,7 @@ fn diff_json_renderer_appends_posture_extension() {
         occurrence_limit: None,
         lifecycle: None,
         evidence: None,
+        metadata: None,
     }];
 
     let rendered = render_diff_json_with_posture(
@@ -123,6 +124,7 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
         occurrence_limit: None,
         lifecycle: None,
         evidence: None,
+        metadata: None,
     }];
     let report = DiffReport {
         net_posture: "improved",
@@ -167,6 +169,7 @@ fn diff_json_renderer_includes_occurrence_limit_change() {
         }),
         lifecycle: None,
         evidence: None,
+        metadata: None,
     }];
 
     let json = render_diff_posture_json(DiffReport {
@@ -204,6 +207,7 @@ fn diff_json_renderer_includes_lifecycle_change() {
             after: Some("2026-12-01"),
         }),
         evidence: None,
+        metadata: None,
     }];
 
     let json = render_diff_posture_json(DiffReport {
@@ -245,6 +249,7 @@ fn diff_json_renderer_includes_evidence_change() {
             removed: &removed,
             added: &added,
         }),
+        metadata: None,
     }];
 
     let json = render_diff_posture_json(DiffReport {
@@ -266,6 +271,48 @@ fn diff_json_renderer_includes_evidence_change() {
     assert!(json.contains(
         "\"evidence\": {\"field\": \"evidence\", \"removed\": [\"test:old-proof\"], \"added\": [\"doc:docs/new-proof.md\"]}"
     ));
+}
+
+#[test]
+fn diff_json_renderer_includes_metadata_change() {
+    let policy_changes = vec![DiffPolicyChange {
+        severity: "fail",
+        allow_id: "allow-0001",
+        kind: "owner_removed",
+        message: "allow-0001 owner removed",
+        selector_precision: None,
+        scope: None,
+        occurrence_limit: None,
+        lifecycle: None,
+        evidence: None,
+        metadata: Some(DiffMetadataChange {
+            field: "owner",
+            before: Some("core"),
+            after: None,
+        }),
+    }];
+
+    let json = render_diff_posture_json(DiffReport {
+        net_posture: "worse",
+        reviewer_action: "block until fixed",
+        summary: DiffPostureSummary {
+            current_failures: 0,
+            new_findings: 0,
+            removed_findings: 0,
+            policy_failures: 1,
+            policy_review_items: 0,
+            policy_improvements: 0,
+        },
+        finding_changes: &[],
+        policy_changes: &policy_changes,
+    });
+
+    assert!(json.contains("\"kind\": \"owner_removed\""));
+    assert!(
+        json.contains(
+            "\"metadata\": {\"field\": \"owner\", \"before\": \"core\", \"after\": null}"
+        )
+    );
 }
 
 #[test]
@@ -292,6 +339,7 @@ fn diff_json_report_matches_posture_golden_contract() {
         occurrence_limit: None,
         lifecycle: None,
         evidence: None,
+        metadata: None,
     }];
     let report = DiffReport {
         net_posture: "improved",
@@ -432,6 +480,7 @@ fn diff_pr_summary_markdown_reports_net_posture() {
         occurrence_limit: None,
         lifecycle: None,
         evidence: None,
+        metadata: None,
     }];
 
     let summary = render_diff_pr_summary_markdown(0, &finding_changes, &policy_changes);
@@ -462,6 +511,7 @@ fn diff_posture_tables_escape_markdown_cells() {
         occurrence_limit: None,
         lifecycle: None,
         evidence: None,
+        metadata: None,
     }];
 
     let findings = render_diff_finding_changes_markdown(&finding_changes);

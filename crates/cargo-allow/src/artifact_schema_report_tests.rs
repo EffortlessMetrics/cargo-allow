@@ -3,8 +3,8 @@ use crate::artifact_schema_support::{
     required_schema_pointer,
 };
 use allow_diff::{
-    EvidenceChangeField, FindingPostureKind, LifecycleChangeField, PolicyChangeKind,
-    PolicyChangeSeverity, ScopeChangeField,
+    EvidenceChangeField, FindingPostureKind, LifecycleChangeField, MetadataChangeField,
+    PolicyChangeKind, PolicyChangeSeverity, ScopeChangeField,
 };
 use serde_json::Value;
 
@@ -291,6 +291,55 @@ fn report_schema_locks_diff_posture_extension_contract() {
             .and_then(Value::as_str),
         Some("#/$defs/evidence_change"),
         "report policy changes should use evidence change rows"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/policy_change/properties/metadata/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/metadata_change"),
+        "report policy changes should use metadata change rows"
+    );
+    let metadata_change = required_schema_pointer("report", &schema, "/$defs/metadata_change");
+    assert_eq!(
+        metadata_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "report metadata changes should reject unknown fields"
+    );
+    assert_required_fields(
+        "report metadata change",
+        metadata_change,
+        &["field", "before", "after"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/metadata_change/properties/field/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/metadata_change_field"),
+        "report metadata changes should use the metadata field vocabulary"
+    );
+    for field in ["before", "after"] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/metadata_change/properties/{field}/type/0"))
+                .and_then(Value::as_str),
+            Some("string"),
+            "report metadata {field} first type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/metadata_change/properties/{field}/type/1"))
+                .and_then(Value::as_str),
+            Some("null"),
+            "report metadata {field} second type"
+        );
+    }
+    assert_enum_equals(
+        "report metadata fields",
+        &schema,
+        "/$defs/metadata_change_field/enum",
+        &enum_strings(MetadataChangeField::ALL, MetadataChangeField::as_str),
     );
     let evidence_change = required_schema_pointer("report", &schema, "/$defs/evidence_change");
     assert_eq!(

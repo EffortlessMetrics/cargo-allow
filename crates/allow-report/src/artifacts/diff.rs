@@ -28,6 +28,7 @@ pub struct DiffPolicyChange<'a> {
     pub occurrence_limit: Option<DiffOccurrenceLimitChange>,
     pub lifecycle: Option<DiffLifecycleChange<'a>>,
     pub evidence: Option<DiffEvidenceChange<'a>>,
+    pub metadata: Option<DiffMetadataChange<'a>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -63,6 +64,13 @@ pub struct DiffEvidenceChange<'a> {
     pub field: &'a str,
     pub removed: &'a [String],
     pub added: &'a [String],
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct DiffMetadataChange<'a> {
+    pub field: &'a str,
+    pub before: Option<&'a str>,
+    pub after: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, Copy)]

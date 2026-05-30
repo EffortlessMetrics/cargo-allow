@@ -9,6 +9,7 @@ pub struct PolicyChange {
     pub occurrence_limit: Option<OccurrenceLimitChange>,
     pub lifecycle: Option<LifecycleChange>,
     pub evidence: Option<EvidenceChange>,
+    pub metadata: Option<MetadataChange>,
 }
 
 impl PolicyChange {
@@ -28,6 +29,7 @@ impl PolicyChange {
             occurrence_limit: None,
             lifecycle: None,
             evidence: None,
+            metadata: None,
         }
     }
 
@@ -53,6 +55,11 @@ impl PolicyChange {
 
     pub fn with_evidence(mut self, evidence: EvidenceChange) -> Self {
         self.evidence = Some(evidence);
+        self
+    }
+
+    pub fn with_metadata(mut self, metadata: MetadataChange) -> Self {
+        self.metadata = Some(metadata);
         self
     }
 }
@@ -90,6 +97,32 @@ pub struct EvidenceChange {
     pub field: EvidenceChangeField,
     pub removed: Vec<String>,
     pub added: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MetadataChange {
+    pub field: MetadataChangeField,
+    pub before: Option<String>,
+    pub after: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MetadataChangeField {
+    Owner,
+    Reason,
+    Classification,
+}
+
+impl MetadataChangeField {
+    pub const ALL: &[Self] = &[Self::Owner, Self::Reason, Self::Classification];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Owner => "owner",
+            Self::Reason => "reason",
+            Self::Classification => "classification",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

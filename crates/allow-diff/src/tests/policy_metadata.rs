@@ -49,14 +49,58 @@ fn detects_required_metadata_changed_for_review() {
         change.kind == PolicyChangeKind::OwnerChanged
             && change.severity == PolicyChangeSeverity::Review
     }));
+    let owner = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::OwnerChanged)
+        .unwrap_or_else(|| std::panic::panic_any("owner change should be reported"));
+    assert_eq!(
+        owner.metadata.as_ref().map(|change| (
+            change.field,
+            change.before.as_deref(),
+            change.after.as_deref()
+        )),
+        Some((MetadataChangeField::Owner, Some("core"), Some("security")))
+    );
     assert!(changes.iter().any(|change| {
         change.kind == PolicyChangeKind::ReasonChanged
             && change.severity == PolicyChangeSeverity::Review
     }));
+    let reason = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::ReasonChanged)
+        .unwrap_or_else(|| std::panic::panic_any("reason change should be reported"));
+    assert_eq!(
+        reason.metadata.as_ref().map(|change| (
+            change.field,
+            change.before.as_deref(),
+            change.after.as_deref()
+        )),
+        Some((
+            MetadataChangeField::Reason,
+            Some("Range is validated before use."),
+            Some("Different retained exception rationale.")
+        ))
+    );
     assert!(changes.iter().any(|change| {
         change.kind == PolicyChangeKind::ClassificationChanged
             && change.severity == PolicyChangeSeverity::Review
     }));
+    let classification = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::ClassificationChanged)
+        .unwrap_or_else(|| std::panic::panic_any("classification change should be reported"));
+    assert_eq!(
+        classification.metadata.as_ref().map(|change| (
+            change.field,
+            change.before.as_deref(),
+            change.after.as_deref()
+        )),
+        Some((
+            MetadataChangeField::Classification,
+            Some("reviewed_exception"),
+            Some("different_review_bucket")
+        ))
+    );
 }
 
 #[test]

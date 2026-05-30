@@ -202,6 +202,14 @@ fn policy_change_rows(
                     removed: &evidence.removed,
                     added: &evidence.added,
                 }),
+            metadata: change
+                .metadata
+                .as_ref()
+                .map(|metadata| allow_report::DiffMetadataChange {
+                    field: metadata.field.as_str(),
+                    before: metadata.before.as_deref(),
+                    after: metadata.after.as_deref(),
+                }),
         })
         .collect()
 }
