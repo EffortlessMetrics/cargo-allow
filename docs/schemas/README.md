@@ -245,6 +245,9 @@ Schema compatibility tests also lock:
 - shared source-tree inventory source values, including `git_tracked`,
   `filesystem_fallback`, `filesystem_include_untracked`, and `unknown`
   renderer defaults;
+- shared evidence prefix and evidence-reference status vocabularies, including
+  canonical prefixes, parser-recognized aliases, local-file evidence prefixes,
+  traceability-only evidence prefixes, and evidence diagnostic statuses;
 - report and receipt command producer values;
 - shared claim-boundary and scanner-limitation vocabularies;
 - report and receipt top-level status values;
