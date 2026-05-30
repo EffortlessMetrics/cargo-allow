@@ -573,6 +573,8 @@
             "reason_added",
             "reason_changed",
             "reason_removed",
+            "requirement_loosened",
+            "requirement_tightened",
             "classification_added",
             "classification_changed",
             "classification_removed",

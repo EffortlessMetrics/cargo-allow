@@ -52,6 +52,12 @@ review-required, while added links are reported as policy improvements.
 `created` date is reported as an improvement so exception provenance cannot
 drift silently.
 
+Diff mode also compares policy-level `[requirements]` booleans. Loosening a
+requirement is policy weakening, tightening one is a policy improvement, and the
+reported policy-change `allow_id` uses a synthetic stable path such as
+`requirements.owner_required` because the change belongs to the ledger contract
+rather than one allow entry.
+
 ## Reason And Evidence
 
 `reason` is the human rationale.
@@ -388,8 +394,8 @@ Markdown output. Current detection covers scope broadening, selector precision
 loss, expiry/review extension, evidence removal, owner/reason/classification
 removal, owner unassignment, occurrence-limit loosening, added
 `baseline_debt`, reviewed entries reclassified as `baseline_debt`, and existing
-`baseline_debt` entries
-reclassified as reviewed policy. This is policy ledger comparison only.
+`baseline_debt` entries reclassified as reviewed policy, and policy requirement
+loosening. This is policy ledger comparison only.
 
 The same command also compares source finding posture between the base git tree
 and the current checkout, or the optional `--head` git tree when provided. It
