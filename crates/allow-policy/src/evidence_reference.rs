@@ -128,7 +128,24 @@ impl<'a> EvidenceReference<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::EvidenceKind;
+    use super::{EvidenceKind, EvidenceReference};
+    use std::path::PathBuf;
+
+    #[test]
+    fn parses_typed_references_with_trimmed_prefix_and_value() {
+        let reference = EvidenceReference::parse(" doc: docs/safety.md ")
+            .unwrap_or_else(|| std::panic::panic_any("evidence reference should parse"));
+
+        assert_eq!(reference.raw, " doc: docs/safety.md ");
+        assert_eq!(reference.prefix, "doc");
+        assert_eq!(reference.kind, EvidenceKind::Doc);
+        assert_eq!(reference.value, PathBuf::from("docs/safety.md"));
+    }
+
+    #[test]
+    fn leaves_untyped_evidence_unparsed() {
+        assert_eq!(EvidenceReference::parse("TODO add reviewed evidence"), None);
+    }
 
     #[test]
     fn parses_evidence_kind_aliases_from_specs() {
