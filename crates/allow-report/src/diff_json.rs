@@ -112,9 +112,21 @@ pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
                 option_json(scope.after)
             ));
         }
+        if let Some(limit) = change.occurrence_limit {
+            out.push_str(", ");
+            out.push_str(&format!(
+                "\"occurrence_limit\": {{\"before\": {}, \"after\": {}}}",
+                option_u32_json(limit.before),
+                option_u32_json(limit.after)
+            ));
+        }
         out.push('}');
     }
     out.push_str("\n    ]\n");
     out.push_str("  }");
     out
+}
+
+fn option_u32_json(value: Option<u32>) -> String {
+    value.map_or_else(|| "null".to_string(), |value| value.to_string())
 }

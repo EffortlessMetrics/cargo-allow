@@ -193,6 +193,10 @@ Rows with `scope_broadened`, `scope_narrowed`, or `scope_changed` may also
 include an optional `scope` object with the changed scope carrier and normalized
 before/after source-tree scopes. This lets consumers review scope movement
 without parsing the human `message` string.
+Rows with `occurrence_limit_loosened` or `occurrence_limit_tightened` may also
+include an optional `occurrence_limit` object with before/after count values.
+This lets consumers distinguish capped baseline changes from unlimited approval
+without parsing the human `message` string.
 
 ## Evidence Prefix Vocabulary
 

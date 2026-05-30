@@ -6,6 +6,7 @@ pub struct PolicyChange {
     pub message: String,
     pub selector_precision: Option<SelectorPrecisionChange>,
     pub scope: Option<ScopeChange>,
+    pub occurrence_limit: Option<OccurrenceLimitChange>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,6 +22,12 @@ pub struct ScopeChange {
     pub field: ScopeChangeField,
     pub before: Option<String>,
     pub after: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OccurrenceLimitChange {
+    pub before: Option<u32>,
+    pub after: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

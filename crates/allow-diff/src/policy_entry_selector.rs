@@ -25,6 +25,7 @@ pub(crate) fn selector_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
             ),
             selector_precision: Some(selector_precision),
             scope: None,
+            occurrence_limit: None,
         }]
     } else if head_precision > base_precision {
         let selector_precision =
@@ -42,6 +43,7 @@ pub(crate) fn selector_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
             ),
             selector_precision: Some(selector_precision),
             scope: None,
+            occurrence_limit: None,
         }]
     } else if selector_identity_changed(&base.selector, &head.selector) {
         vec![change(
@@ -110,5 +112,6 @@ fn change(
         message: format!("{} {message}", entry.id),
         selector_precision: None,
         scope: None,
+        occurrence_limit: None,
     }
 }

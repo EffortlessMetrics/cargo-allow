@@ -53,5 +53,6 @@ fn change(
         message: format!("{} {message}", entry.id),
         selector_precision: None,
         scope: None,
+        occurrence_limit: None,
     }
 }

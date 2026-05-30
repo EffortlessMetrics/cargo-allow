@@ -25,6 +25,7 @@ pub struct DiffPolicyChange<'a> {
     pub message: &'a str,
     pub selector_precision: Option<DiffSelectorPrecisionChange<'a>>,
     pub scope: Option<DiffScopeChange<'a>>,
+    pub occurrence_limit: Option<DiffOccurrenceLimitChange>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -40,6 +41,12 @@ pub struct DiffScopeChange<'a> {
     pub field: &'a str,
     pub before: Option<&'a str>,
     pub after: Option<&'a str>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct DiffOccurrenceLimitChange {
+    pub before: Option<u32>,
+    pub after: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy)]

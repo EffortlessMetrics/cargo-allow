@@ -181,6 +181,12 @@ fn policy_change_rows(
                     before: scope.before.as_deref(),
                     after: scope.after.as_deref(),
                 }),
+            occurrence_limit: change.occurrence_limit.as_ref().map(|limit| {
+                allow_report::DiffOccurrenceLimitChange {
+                    before: limit.before,
+                    after: limit.after,
+                }
+            }),
         })
         .collect()
 }

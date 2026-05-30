@@ -619,6 +619,27 @@
         "scope": {
           "$ref": "#/$defs/scope_change",
           "description": "Optional structured source-tree scope delta for scope_broadened, scope_narrowed, and scope_changed policy changes."
+        },
+        "occurrence_limit": {
+          "$ref": "#/$defs/occurrence_limit_change",
+          "description": "Optional structured occurrence-limit delta for occurrence_limit_tightened and occurrence_limit_loosened policy changes."
+        }
+      }
+    },
+    "occurrence_limit_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before", "after"],
+      "properties": {
+        "before": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Allowed occurrence count before the policy change, or null when unset."
+        },
+        "after": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Allowed occurrence count after the policy change, or null when unset."
         }
       }
     },
