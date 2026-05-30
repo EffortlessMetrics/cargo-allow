@@ -291,7 +291,8 @@
             "review_due",
             "matched",
             "broad_scope",
-            "broken_evidence_link"
+            "broken_evidence_link",
+            "weak_evidence_reference"
           ],
           "description": "Stable queue item kind emitted by cargo-allow worklist."
         },

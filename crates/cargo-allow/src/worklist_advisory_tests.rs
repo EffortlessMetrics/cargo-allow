@@ -303,6 +303,42 @@ fn worklist_items_report_invalid_local_evidence_paths() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
 
+#[test]
+fn worklist_items_report_weak_evidence_references() {
+    let root = migrate_fixture_dir();
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-weak-evidence", FindingKind::Unsafe);
+    entry.evidence = vec!["spreadsheet:manual-review".to_string()];
+    cfg.allow.push(entry);
+
+    let items = work_items_from_evidence_diagnostics(&root, &cfg, 1);
+    let json = render_worklist_json_with_context(&items, WorklistContext::default());
+
+    let item = items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+    assert_eq!(item.kind, "weak_evidence_reference");
+    assert_eq!(item.exception_kind.as_deref(), Some("unsafe"));
+    assert_eq!(item.risk, "high");
+    assert_eq!(item.difficulty, "small");
+    assert_eq!(item.status, MatchStatus::EvidenceMissing);
+    assert_eq!(item.allow_id.as_deref(), Some("allow-weak-evidence"));
+    assert_eq!(item.path.as_deref(), Some("manual-review"));
+    assert!(item.message.contains("unrecognized evidence prefix"));
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("typed evidence reference"))
+    );
+    assert!(json.contains("\"kind\": \"weak_evidence_reference\""));
+    assert!(json.contains("\"cargo-allow explain allow-weak-evidence\""));
+    assert!(
+        json.contains("\"cargo-allow worklist --item-kind weak_evidence_reference --format json\"")
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
 static NEXT_WORKLIST_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
 fn migrate_fixture_dir() -> PathBuf {

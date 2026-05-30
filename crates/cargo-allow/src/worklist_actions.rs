@@ -4,6 +4,7 @@ use super::worklist_item_kind::{
     AMBIGUOUS_SELECTOR, BASELINE_DEBT, BROAD_SCOPE, BROKEN_EVIDENCE_LINK, EXPIRED_ALLOW,
     INVALID_SELECTOR, MISSING_EVIDENCE, MISSING_REQUIRED_FIELD, NEW_UNRECEIPTED_FINDING,
     OCCURRENCE_LIMIT_EXCEEDED, REVIEW_DUE, STALE_ALLOW, UNSAFE_MISSING_EVIDENCE,
+    WEAK_EVIDENCE_REFERENCE,
 };
 
 pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
@@ -60,6 +61,11 @@ pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
         BROKEN_EVIDENCE_LINK => vec![
             "restore or commit the referenced local evidence artifact".to_string(),
             "or update the evidence reference to a valid source-tree-relative path".to_string(),
+        ],
+        WEAK_EVIDENCE_REFERENCE => vec![
+            "replace the weak evidence string with a typed evidence reference".to_string(),
+            "use a recognized prefix such as doc:, spec:, adr:, test:, issue:, pr:, or legacy-policy:"
+                .to_string(),
         ],
         _ => vec!["inspect the outcome and update policy or source accordingly".to_string()],
     }
