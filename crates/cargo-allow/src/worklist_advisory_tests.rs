@@ -263,8 +263,19 @@ fn worklist_items_report_broken_evidence_links() {
     assert_eq!(item.status, MatchStatus::EvidenceMissing);
     assert_eq!(item.allow_id.as_deref(), Some("allow-unsafe"));
     assert_eq!(item.path.as_deref(), Some("docs/missing.md"));
+    let reference = item
+        .evidence_reference
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("broken evidence item should carry reference"));
+    assert_eq!(reference.raw, "doc:docs/missing.md");
+    assert_eq!(reference.prefix.as_deref(), Some("doc"));
+    assert_eq!(reference.target.as_deref(), Some("docs/missing.md"));
+    assert_eq!(reference.status, "local_file_missing");
+    assert!(reference.message.contains("local evidence file is missing"));
     assert!(item.message.contains("local evidence file is missing"));
     assert!(json.contains("\"kind\": \"broken_evidence_link\""));
+    assert!(json.contains("\"evidence_reference\""));
+    assert!(json.contains("\"raw\": \"doc:docs/missing.md\""));
     assert!(json.contains("\"exception_kind\": \"unsafe\""));
     assert!(json.contains("\"cargo-allow explain allow-unsafe\""));
     assert!(json.contains("\"cargo-allow worklist --allow-id allow-unsafe --format json\""));
@@ -327,6 +338,15 @@ fn worklist_items_report_weak_evidence_references() {
         item.path, None,
         "weak evidence targets are not source-tree paths"
     );
+    let reference = item
+        .evidence_reference
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("weak evidence item should carry reference"));
+    assert_eq!(reference.raw, "spreadsheet:manual-review");
+    assert_eq!(reference.prefix.as_deref(), Some("spreadsheet"));
+    assert_eq!(reference.target.as_deref(), Some("manual-review"));
+    assert_eq!(reference.status, "unstructured");
+    assert!(reference.message.contains("unrecognized evidence prefix"));
     assert!(item.message.contains("unrecognized evidence prefix"));
     assert!(
         item.suggested_actions
@@ -334,6 +354,8 @@ fn worklist_items_report_weak_evidence_references() {
             .any(|action| action.contains("typed evidence reference"))
     );
     assert!(json.contains("\"kind\": \"weak_evidence_reference\""));
+    assert!(json.contains("\"evidence_reference\""));
+    assert!(json.contains("\"target\": \"manual-review\""));
     assert!(json.contains("\"cargo-allow explain allow-weak-evidence\""));
     assert!(
         json.contains("\"cargo-allow worklist --item-kind weak_evidence_reference --format json\"")

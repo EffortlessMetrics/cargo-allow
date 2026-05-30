@@ -372,6 +372,10 @@
           "type": ["string", "null"],
           "description": "Source-tree path for source-backed work items, or a local evidence path for broken_evidence_link items. Null means the item is not tied to a source-tree path, including weak_evidence_reference items whose evidence target is not locally validated."
         },
+        "evidence_reference": {
+          "$ref": "#/$defs/evidence_reference",
+          "description": "Structured evidence diagnostic for broken_evidence_link and weak_evidence_reference work items. Absent for work items that are not tied to a specific evidence reference."
+        },
         "source_package": {
           "type": ["string", "null"],
           "description": "Explicit source-tree package context when provided by a scanner; not Cargo metadata or build proof."
@@ -393,6 +397,39 @@
             "type": "string",
             "pattern": "^cargo-allow "
           }
+        }
+      }
+    },
+    "evidence_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw", "prefix", "target", "status", "message"],
+      "properties": {
+        "raw": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Original evidence reference string from the allow entry."
+        },
+        "prefix": {
+          "type": ["string", "null"],
+          "description": "Evidence reference prefix before ':', or null for unstructured evidence strings."
+        },
+        "target": {
+          "type": ["string", "null"],
+          "description": "Normalized evidence reference target when present. This is evidence metadata, not the work item source-tree path."
+        },
+        "status": {
+          "enum": [
+            "local_file_present",
+            "local_file_missing",
+            "invalid_local_path",
+            "traceability_only",
+            "unstructured"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
         }
       }
     }

@@ -116,6 +116,11 @@ fn render_work_item_json(item: &WorklistItem<'_>) -> String {
             .unwrap_or_else(|| "null".to_string())
     ));
     out.push_str(&format!("      \"path\": {},\n", option_json(item.path)));
+    if let Some(reference) = item.evidence_reference.as_ref() {
+        out.push_str("      \"evidence_reference\": ");
+        out.push_str(&render_worklist_evidence_reference_json(reference));
+        out.push_str(",\n");
+    }
     out.push_str(&format!(
         "      \"source_package\": {},\n",
         option_json(item.source_package)
@@ -134,6 +139,17 @@ fn render_work_item_json(item: &WorklistItem<'_>) -> String {
     ));
     out.push_str("    }");
     out
+}
+
+fn render_worklist_evidence_reference_json(reference: &crate::EvidenceReference<'_>) -> String {
+    format!(
+        "{{\n        \"raw\": \"{}\",\n        \"prefix\": {},\n        \"target\": {},\n        \"status\": \"{}\",\n        \"message\": \"{}\"\n      }}",
+        json_escape(reference.raw),
+        option_json(reference.prefix),
+        option_json(reference.target),
+        json_escape(reference.status),
+        json_escape(reference.message)
+    )
 }
 
 fn render_worklist_filters_json(filters: WorklistFilters<'_>, indent: &str) -> String {

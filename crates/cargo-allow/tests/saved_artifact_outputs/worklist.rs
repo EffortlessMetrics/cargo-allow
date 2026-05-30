@@ -29,6 +29,20 @@ fn saved_worklist_output_includes_broken_evidence_items() {
     );
     assert_eq!(
         value
+            .pointer("/work_items/0/evidence_reference/raw")
+            .and_then(serde_json::Value::as_str),
+        Some("doc:docs/missing-evidence.md"),
+        "worklist evidence reference raw value"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/status")
+            .and_then(serde_json::Value::as_str),
+        Some("local_file_missing"),
+        "worklist evidence reference status"
+    );
+    assert_eq!(
+        value
             .pointer("/work_items/0/proof_commands/1")
             .and_then(serde_json::Value::as_str),
         Some("cargo-allow list --allow-id allow-broken-evidence --format json"),
@@ -180,6 +194,34 @@ fn saved_worklist_output_includes_weak_evidence_items() {
             .is_some_and(serde_json::Value::is_null),
         "weak evidence work items should not expose non-source-tree evidence targets as paths"
     );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/raw")
+            .and_then(serde_json::Value::as_str),
+        Some("spreadsheet:manual-review"),
+        "worklist evidence reference raw value"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/prefix")
+            .and_then(serde_json::Value::as_str),
+        Some("spreadsheet"),
+        "worklist evidence reference prefix"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/target")
+            .and_then(serde_json::Value::as_str),
+        Some("manual-review"),
+        "worklist evidence reference target"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/status")
+            .and_then(serde_json::Value::as_str),
+        Some("unstructured"),
+        "worklist evidence reference status"
+    );
 }
 
 #[test]
@@ -295,6 +337,13 @@ fn saved_worklist_output_includes_invalid_evidence_scope_items() {
             .and_then(serde_json::Value::as_str),
         Some("../outside.md"),
         "worklist should expose the invalid source-tree-relative evidence target"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/status")
+            .and_then(serde_json::Value::as_str),
+        Some("invalid_local_path"),
+        "worklist should carry the structured invalid evidence diagnostic"
     );
     let message = value
         .pointer("/work_items/0/message")

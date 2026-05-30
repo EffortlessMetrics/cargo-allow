@@ -60,6 +60,7 @@ fn work_item_from_outcome(
         allow_id: outcome.allow_id.clone(),
         finding_index: outcome.finding_index,
         path,
+        evidence_reference: None,
         source_package,
         message: outcome.message.clone(),
         suggested_actions,

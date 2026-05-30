@@ -1,3 +1,5 @@
+use super::explain::EvidenceReference;
+
 #[derive(Debug, Clone, Copy, Default)]
 pub struct WorklistFilters<'a> {
     pub kind: Option<&'a str>,
@@ -35,6 +37,7 @@ pub struct WorklistItem<'a> {
     pub allow_id: Option<&'a str>,
     pub finding_index: Option<usize>,
     pub path: Option<&'a str>,
+    pub evidence_reference: Option<EvidenceReference<'a>>,
     pub source_package: Option<&'a str>,
     pub message: &'a str,
     pub suggested_actions: &'a [String],

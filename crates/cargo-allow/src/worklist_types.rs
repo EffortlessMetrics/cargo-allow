@@ -1,6 +1,15 @@
 use allow_core::MatchStatus;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct WorkItemEvidenceReference {
+    pub(super) raw: String,
+    pub(super) prefix: Option<String>,
+    pub(super) target: Option<String>,
+    pub(super) status: String,
+    pub(super) message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct WorkItem {
     pub(super) id: String,
     pub(super) kind: String,
@@ -19,6 +28,7 @@ pub(super) struct WorkItem {
     pub(super) allow_id: Option<String>,
     pub(super) finding_index: Option<usize>,
     pub(super) path: Option<String>,
+    pub(super) evidence_reference: Option<WorkItemEvidenceReference>,
     pub(super) source_package: Option<String>,
     pub(super) message: String,
     pub(super) suggested_actions: Vec<String>,

@@ -45,6 +45,15 @@ fn report_worklist_items(items: &[WorkItem]) -> Vec<allow_report::WorklistItem<'
             allow_id: item.allow_id.as_deref(),
             finding_index: item.finding_index,
             path: item.path.as_deref(),
+            evidence_reference: item.evidence_reference.as_ref().map(|reference| {
+                allow_report::EvidenceReference {
+                    raw: &reference.raw,
+                    prefix: reference.prefix.as_deref(),
+                    target: reference.target.as_deref(),
+                    status: &reference.status,
+                    message: &reference.message,
+                }
+            }),
             source_package: item.source_package.as_deref(),
             message: &item.message,
             suggested_actions: &item.suggested_actions,
