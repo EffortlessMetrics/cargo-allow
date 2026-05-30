@@ -26,6 +26,37 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
     assert!(json.contains("\"source\": \"git_tracked\""));
     assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
     assert!(json.contains("\"files_scanned\": 50"));
+    let expected = format!(
+        r#"{{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.doctor.v1",
+  "tool": "cargo-allow",
+  "command": "doctor",
+  "claim_boundary": {},
+  "scanner_limitations": {},
+  "inventory": {{
+    "scope": "source_tree",
+    "scanner": "source_syntax",
+    "source": "git_tracked",
+    "root": "H:/Code/Rust/cargo-allow",
+    "files_scanned": 50
+  }},
+  "root": {{
+    "path": "H:/Code/Rust/cargo-allow",
+    "discovery": "nearest_git_root"
+  }},
+  "config": {{
+    "found": true,
+    "path": "H:/Code/Rust/cargo-allow/policy/allow.toml",
+    "valid": true,
+    "diagnostic": null
+  }}
+}}
+"#,
+        render_claim_boundary_json(),
+        render_scanner_limitations_json()
+    );
+    assert_eq!(json, expected);
 }
 
 #[test]
