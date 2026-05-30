@@ -2,7 +2,7 @@ use crate::artifact_schema_support::{
     assert_enum_equals, assert_required_fields, match_status_enum, parse_schema,
     required_schema_pointer,
 };
-use allow_diff::{FindingPostureKind, PolicyChangeKind, PolicyChangeSeverity};
+use allow_diff::{FindingPostureKind, PolicyChangeKind, PolicyChangeSeverity, ScopeChangeField};
 use serde_json::Value;
 
 #[test]
@@ -260,6 +260,55 @@ fn report_schema_locks_diff_posture_extension_contract() {
             .and_then(Value::as_str),
         Some("#/$defs/selector_precision_change"),
         "report policy changes should use selector precision rows"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/policy_change/properties/scope/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/scope_change"),
+        "report policy changes should use scope change rows"
+    );
+    let scope_change = required_schema_pointer("report", &schema, "/$defs/scope_change");
+    assert_eq!(
+        scope_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "report scope changes should reject unknown fields"
+    );
+    assert_required_fields(
+        "report scope change",
+        scope_change,
+        &["field", "before", "after"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/scope_change/properties/field/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/scope_change_field"),
+        "report scope changes should use the scope field vocabulary"
+    );
+    for field in ["before", "after"] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/scope_change/properties/{field}/type/0"))
+                .and_then(Value::as_str),
+            Some("string"),
+            "report scope {field} first type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/scope_change/properties/{field}/type/1"))
+                .and_then(Value::as_str),
+            Some("null"),
+            "report scope {field} second type"
+        );
+    }
+    assert_enum_equals(
+        "report scope fields",
+        &schema,
+        "/$defs/scope_change_field/enum",
+        &enum_strings(ScopeChangeField::ALL, ScopeChangeField::as_str),
     );
     let selector_precision =
         required_schema_pointer("report", &schema, "/$defs/selector_precision_change");

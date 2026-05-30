@@ -93,5 +93,6 @@ fn change(
         severity,
         message: format!("{policy_id} {message}: {value}"),
         selector_precision: None,
+        scope: None,
     }
 }

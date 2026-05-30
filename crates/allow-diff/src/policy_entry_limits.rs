@@ -39,5 +39,6 @@ fn change(
         severity,
         message: format!("{} {message}", entry.id),
         selector_precision: None,
+        scope: None,
     }
 }

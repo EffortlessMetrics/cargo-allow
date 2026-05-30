@@ -43,6 +43,7 @@ fn requirement_change(field: RequirementField) -> Option<PolicyChange> {
             field.name, field.base, field.head
         ),
         selector_precision: None,
+        scope: None,
     })
 }
 

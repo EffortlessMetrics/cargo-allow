@@ -5,6 +5,7 @@ pub struct PolicyChange {
     pub severity: PolicyChangeSeverity,
     pub message: String,
     pub selector_precision: Option<SelectorPrecisionChange>,
+    pub scope: Option<ScopeChange>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,6 +14,34 @@ pub struct SelectorPrecisionChange {
     pub after: u32,
     pub removed_fields: Vec<&'static str>,
     pub added_fields: Vec<&'static str>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScopeChange {
+    pub field: ScopeChangeField,
+    pub before: Option<String>,
+    pub after: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScopeChangeField {
+    Path,
+    Glob,
+    SelectorGlob,
+    Effective,
+}
+
+impl ScopeChangeField {
+    pub const ALL: &[Self] = &[Self::Path, Self::Glob, Self::SelectorGlob, Self::Effective];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Path => "path",
+            Self::Glob => "glob",
+            Self::SelectorGlob => "selector.glob",
+            Self::Effective => "effective",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

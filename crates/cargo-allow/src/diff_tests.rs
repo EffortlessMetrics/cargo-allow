@@ -85,18 +85,33 @@ fn json_report_includes_structured_posture_changes() {
         Some("unwrap"),
         "src/lib.rs",
     )];
-    let policy_changes = vec![allow_diff::PolicyChange {
-        allow_id: "allow-0001".to_string(),
-        kind: allow_diff::PolicyChangeKind::SelectorPrecisionDecreased,
-        severity: allow_diff::PolicyChangeSeverity::Fail,
-        message: "allow-0001 selector precision decreased: 80 -> 45".to_string(),
-        selector_precision: Some(allow_diff::SelectorPrecisionChange {
-            before: 80,
-            after: 45,
-            removed_fields: vec!["container", "normalized_snippet_hash"],
-            added_fields: vec![],
-        }),
-    }];
+    let policy_changes = vec![
+        allow_diff::PolicyChange {
+            allow_id: "allow-0001".to_string(),
+            kind: allow_diff::PolicyChangeKind::SelectorPrecisionDecreased,
+            severity: allow_diff::PolicyChangeSeverity::Fail,
+            message: "allow-0001 selector precision decreased: 80 -> 45".to_string(),
+            selector_precision: Some(allow_diff::SelectorPrecisionChange {
+                before: 80,
+                after: 45,
+                removed_fields: vec!["container", "normalized_snippet_hash"],
+                added_fields: vec![],
+            }),
+            scope: None,
+        },
+        allow_diff::PolicyChange {
+            allow_id: "allow-0002".to_string(),
+            kind: allow_diff::PolicyChangeKind::ScopeBroadened,
+            severity: allow_diff::PolicyChangeSeverity::Fail,
+            message: "allow-0002 scope broadened".to_string(),
+            selector_precision: None,
+            scope: Some(allow_diff::ScopeChange {
+                field: allow_diff::ScopeChangeField::Effective,
+                before: Some("src/lib.rs".to_string()),
+                after: Some("src/**".to_string()),
+            }),
+        },
+    ];
 
     let json = render_diff_json_with_posture(
         allow_report::render_json_with_context(
@@ -139,7 +154,7 @@ fn json_report_includes_structured_posture_changes() {
         value
             .pointer("/diff/summary/policy_failures")
             .and_then(Value::as_u64),
-        Some(1)
+        Some(2)
     );
     assert_eq!(
         value
@@ -195,6 +210,31 @@ fn json_report_includes_structured_posture_changes() {
             .and_then(Value::as_str),
         Some("container")
     );
+    let policy_changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let scope_change = policy_changes
+        .get(1)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should include scope row"));
+    assert_eq!(
+        scope_change.get("kind").and_then(Value::as_str),
+        Some("scope_broadened")
+    );
+    assert_eq!(
+        scope_change.pointer("/scope/field").and_then(Value::as_str),
+        Some("effective")
+    );
+    assert_eq!(
+        scope_change
+            .pointer("/scope/before")
+            .and_then(Value::as_str),
+        Some("src/lib.rs")
+    );
+    assert_eq!(
+        scope_change.pointer("/scope/after").and_then(Value::as_str),
+        Some("src/**")
+    );
     assert!(json.ends_with("}\n"));
 }
 
@@ -247,6 +287,7 @@ fn policy_change(
         severity,
         message: "allow-0001 changed".to_string(),
         selector_precision: None,
+        scope: None,
     }
 }
 

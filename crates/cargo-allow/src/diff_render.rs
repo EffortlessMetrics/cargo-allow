@@ -173,6 +173,14 @@ fn policy_change_rows(
                     added_fields: &selector.added_fields,
                 }
             }),
+            scope: change
+                .scope
+                .as_ref()
+                .map(|scope| allow_report::DiffScopeChange {
+                    field: scope.field.as_str(),
+                    before: scope.before.as_deref(),
+                    after: scope.after.as_deref(),
+                }),
         })
         .collect()
 }

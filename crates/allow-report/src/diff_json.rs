@@ -103,6 +103,15 @@ pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
                 json_string_array(selector_precision.added_fields)
             ));
         }
+        if let Some(scope) = change.scope {
+            out.push_str(", ");
+            out.push_str(&format!(
+                "\"scope\": {{\"field\": \"{}\", \"before\": {}, \"after\": {}}}",
+                json_escape(scope.field),
+                option_json(scope.before),
+                option_json(scope.after)
+            ));
+        }
         out.push('}');
     }
     out.push_str("\n    ]\n");

@@ -15,6 +15,11 @@ fn diff_json_renderer_appends_posture_extension() {
         kind: "scope_broadened",
         message: "allow-0001 selector scope broadened",
         selector_precision: None,
+        scope: Some(DiffScopeChange {
+            field: "effective",
+            before: Some("src/lib.rs"),
+            after: Some("src/**"),
+        }),
     }];
 
     let rendered = render_diff_json_with_posture(
@@ -49,6 +54,9 @@ fn diff_json_renderer_appends_posture_extension() {
     assert!(json.contains("\"family\": \"unwrap\""));
     assert!(json.contains("\"severity\": \"fail\""));
     assert!(json.contains("\"kind\": \"scope_broadened\""));
+    assert!(json.contains(
+        "\"scope\": {\"field\": \"effective\", \"before\": \"src/lib.rs\", \"after\": \"src/**\"}"
+    ));
     assert!(json.ends_with("}\n"));
     assert!(
         render_diff_json_with_posture(
@@ -107,6 +115,7 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
         kind: "selector_precision_increased",
         message: "allow-0001 selector precision increased",
         selector_precision: None,
+        scope: None,
     }];
     let report = DiffReport {
         net_posture: "improved",
@@ -156,6 +165,7 @@ fn diff_json_report_matches_posture_golden_contract() {
             removed_fields: &[],
             added_fields: &["container", "normalized_snippet_hash"],
         }),
+        scope: None,
     }];
     let report = DiffReport {
         net_posture: "improved",
@@ -292,6 +302,7 @@ fn diff_pr_summary_markdown_reports_net_posture() {
         kind: "selector_precision_increased",
         message: "allow-0001 selector precision increased",
         selector_precision: None,
+        scope: None,
     }];
 
     let summary = render_diff_pr_summary_markdown(0, &finding_changes, &policy_changes);
@@ -318,6 +329,7 @@ fn diff_posture_tables_escape_markdown_cells() {
         kind: "scope_broadened",
         message: "message with | pipe",
         selector_precision: None,
+        scope: None,
     }];
 
     let findings = render_diff_finding_changes_markdown(&finding_changes);

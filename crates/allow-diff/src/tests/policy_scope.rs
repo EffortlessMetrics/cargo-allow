@@ -10,10 +10,17 @@ fn detects_scope_broadening_from_path_to_glob() {
 
     let changes = policy_changes(&base, &head);
 
-    assert!(changes.iter().any(|change| {
-        change.kind == PolicyChangeKind::ScopeBroadened
-            && change.severity == PolicyChangeSeverity::Fail
-    }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::ScopeBroadened)
+        .unwrap_or_else(|| std::panic::panic_any("scope broadening should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Fail);
+    let scope = change.scope.as_ref().unwrap_or_else(|| {
+        std::panic::panic_any("scope broadening should include structured scope delta")
+    });
+    assert_eq!(scope.field, ScopeChangeField::Effective);
+    assert_eq!(scope.before.as_deref(), Some("src/lib.rs"));
+    assert_eq!(scope.after.as_deref(), Some("src/**"));
 }
 
 #[test]
@@ -69,6 +76,16 @@ fn detects_selector_glob_broadening_even_when_path_remains() {
             .iter()
             .any(|change| change.kind == PolicyChangeKind::ScopeBroadened)
     );
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::ScopeBroadened)
+        .unwrap_or_else(|| std::panic::panic_any("selector glob broadening should be reported"));
+    let scope = change.scope.as_ref().unwrap_or_else(|| {
+        std::panic::panic_any("selector glob broadening should include structured scope delta")
+    });
+    assert_eq!(scope.field, ScopeChangeField::SelectorGlob);
+    assert_eq!(scope.before.as_deref(), Some("src/lib.rs"));
+    assert_eq!(scope.after.as_deref(), Some("src/**"));
 }
 
 #[test]

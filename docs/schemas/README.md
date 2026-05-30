@@ -189,6 +189,10 @@ Rows with `selector_precision_decreased` or `selector_precision_increased` may
 also include an optional `selector_precision` object with before/after scores
 and the selector fields added or removed. This lets consumers classify selector
 weakening without parsing the human `message` string.
+Rows with `scope_broadened`, `scope_narrowed`, or `scope_changed` may also
+include an optional `scope` object with the changed scope carrier and normalized
+before/after source-tree scopes. This lets consumers review scope movement
+without parsing the human `message` string.
 
 ## Evidence Prefix Vocabulary
 
