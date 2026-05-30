@@ -301,6 +301,8 @@ Schema compatibility tests also lock:
 - shared evidence prefix and evidence-reference status vocabularies, including
   canonical prefixes, parser-recognized aliases, local-file evidence prefixes,
   traceability-only evidence prefixes, and evidence diagnostic statuses;
+- artifact-local fragments mirrored in `common.v1.json` keep the same wire
+  shape, including structural identity and diff posture detail fragments;
 - report and receipt command producer values;
 - shared claim-boundary and scanner-limitation vocabularies;
 - report and receipt top-level status values;
