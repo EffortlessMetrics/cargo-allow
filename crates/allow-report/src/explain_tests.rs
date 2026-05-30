@@ -103,6 +103,120 @@ fn explain_json_renderer_records_context_and_current_status() {
     assert!(json.contains("\"score\": 9"));
     assert!(json.contains("\"add missing evidence\""));
     assert!(json.contains("\"cargo-allow check --kind unsafe\""));
+    let expected = format!(
+        r#"{{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.explain.v1",
+  "tool": "cargo-allow",
+  "command": "explain",
+  "claim_boundary": {},
+  "scanner_limitations": {},
+  "inventory": {{
+    "scope": "source_tree",
+    "scanner": "source_syntax",
+    "source": "git_tracked",
+    "root": "H:/Code/Rust/cargo-allow",
+    "files_scanned": 76
+  }},
+  "allow_entry": {{
+    "id": "allow-explain-json",
+    "kind": "unsafe",
+    "family": "unsafe_block",
+    "scope": "src/ffi.rs",
+    "path": "src/ffi.rs",
+    "glob": null,
+    "owner": "runtime",
+    "classification": "ffi_boundary",
+    "reason": "FFI pointer boundary requires unsafe.",
+    "evidence": ["doc:docs/safety/ffi.md"],
+    "links": [],
+    "occurrence_limit": null,
+    "lifecycle": {{
+      "created": "2026-05-27",
+      "review_after": "2026-11-01",
+      "expires": null
+    }},
+    "selector": {{
+      "ast_kind": "unsafe_block",
+      "container": "read_byte",
+      "callee": null,
+      "macro_name": null,
+      "lint": null,
+      "symbol": null,
+      "receiver_fingerprint": null,
+      "target_fingerprint": null,
+      "normalized_snippet_hash": "fnv1a64:unsafe",
+      "line_hint": 9,
+      "glob": null
+    }},
+    "last_seen": {{
+      "line": 9,
+      "column": 5
+    }}
+  }},
+  "summary": {{
+    "current_status": "evidence_missing",
+    "current_matches": 1,
+    "match_outcomes": 1,
+    "selector_precision": 42,
+    "broad_scope": true
+  }},
+  "evidence_references": [
+    {{
+      "raw": "doc:docs/safety/ffi.md",
+      "prefix": "doc",
+      "target": "docs/safety/ffi.md",
+      "status": "missing",
+      "message": "local evidence file is missing"
+    }}
+  ],
+  "current_findings": [
+    {{
+      "status": "evidence_missing",
+      "kind": "unsafe",
+      "family": "unsafe_block",
+      "path": "src/ffi.rs",
+      "line": 9,
+      "column": 5,
+      "source_package": "runtime",
+      "identity": {{
+        "language": "rust",
+        "crate_name": "runtime",
+        "module": null,
+        "container": "read_byte",
+        "ast_kind": "unsafe_block",
+        "symbol": null,
+        "callee": null,
+        "macro_name": null,
+        "lint": null,
+        "receiver_fingerprint": null,
+        "target_fingerprint": null,
+        "normalized_snippet_hash": null,
+        "line_hint": null,
+        "column_hint": null
+      }},
+      "message": "unsafe block"
+    }}
+  ],
+  "match_outcomes": [
+    {{
+      "status": "evidence_missing",
+      "allow_id": "allow-explain-json",
+      "finding_index": 0,
+      "score": 9,
+      "message": "unsafe entry has missing evidence"
+    }}
+  ],
+  "next": {{
+    "suggested_actions": ["add missing evidence"],
+    "proof_commands": ["cargo-allow check --kind unsafe"]
+  }}
+}}
+"#,
+        render_claim_boundary_json(),
+        render_scanner_limitations_json()
+    );
+    assert_eq!(json, expected);
 
     let text = render_explain_human(report);
 
