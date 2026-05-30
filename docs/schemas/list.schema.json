@@ -124,21 +124,6 @@
     "filters": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "kind",
-        "family",
-        "owner",
-        "classification",
-        "path",
-        "source_package",
-        "status",
-        "expired",
-        "review_due",
-        "stale",
-        "baseline_debt",
-        "broad_scope",
-        "missing_evidence"
-      ],
       "properties": {
         "kind": {
           "type": ["string", "null"],
