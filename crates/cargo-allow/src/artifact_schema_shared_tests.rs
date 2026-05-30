@@ -141,6 +141,72 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         "/$defs/inventory_source/enum",
         &inventory_source_enum(),
     );
+    let inventory = required_schema_pointer("common", &schema, "/$defs/inventory");
+    assert_eq!(
+        inventory
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common inventory should reject unknown fields"
+    );
+    assert_required_fields(
+        "common inventory",
+        inventory,
+        &["scope", "scanner", "source"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/inventory/properties/scope/const")
+            .and_then(Value::as_str),
+        Some(allow_report::INVENTORY_SCOPE_SOURCE_TREE),
+        "common inventory scope"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/inventory/properties/scanner/const")
+            .and_then(Value::as_str),
+        Some(allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX),
+        "common inventory scanner"
+    );
+    assert_enum_equals(
+        "common inventory source",
+        &schema,
+        "/$defs/inventory/properties/source/enum",
+        &[
+            "unknown",
+            "git_tracked",
+            "filesystem_fallback",
+            "filesystem_include_untracked",
+        ],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/inventory/properties/root/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "common inventory root type"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/inventory/properties/root/minLength")
+            .and_then(Value::as_u64),
+        Some(1),
+        "common inventory root minLength"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/inventory/properties/files_scanned/type")
+            .and_then(Value::as_str),
+        Some("integer"),
+        "common inventory files_scanned type"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/inventory/properties/files_scanned/minimum")
+            .and_then(Value::as_u64),
+        Some(0),
+        "common inventory files_scanned minimum"
+    );
     assert_enum_equals(
         "common",
         &schema,
@@ -1089,6 +1155,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "finding_posture_change",
         "finding_posture_kind",
         "governed_source_exception_kind",
+        "inventory",
         "inventory_source",
         "local_file_evidence_prefix",
         "lifecycle_change",
@@ -1146,6 +1213,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         "diff",
         "diff_summary",
         "finding",
+        "inventory",
         "outcome",
         "finding_posture_change",
         "policy_change",
