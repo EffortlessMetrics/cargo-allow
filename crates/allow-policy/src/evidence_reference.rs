@@ -16,29 +16,84 @@ pub(crate) enum EvidenceKind {
     Unknown,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct EvidenceKindSpec {
+    kind: EvidenceKind,
+    prefixes: &'static [&'static str],
+    local_file: bool,
+}
+
+const EVIDENCE_KIND_SPECS: &[EvidenceKindSpec] = &[
+    EvidenceKindSpec {
+        kind: EvidenceKind::Test,
+        prefixes: &["test"],
+        local_file: false,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::Cargo,
+        prefixes: &["cargo"],
+        local_file: false,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::Ripr,
+        prefixes: &["ripr"],
+        local_file: true,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::UnsafeReview,
+        prefixes: &["unsafe-review", "unsafe_review"],
+        local_file: true,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::Coverage,
+        prefixes: &["coverage"],
+        local_file: true,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::Doc,
+        prefixes: &["doc"],
+        local_file: true,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::Spec,
+        prefixes: &["spec"],
+        local_file: true,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::Adr,
+        prefixes: &["adr"],
+        local_file: true,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::Issue,
+        prefixes: &["issue"],
+        local_file: false,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::Pr,
+        prefixes: &["pr"],
+        local_file: false,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::LegacyPolicy,
+        prefixes: &["legacy-policy", "legacy_policy"],
+        local_file: false,
+    },
+];
+
 impl EvidenceKind {
     pub(crate) fn parse(prefix: &str) -> Self {
-        match prefix {
-            "test" => Self::Test,
-            "cargo" => Self::Cargo,
-            "ripr" => Self::Ripr,
-            "unsafe-review" | "unsafe_review" => Self::UnsafeReview,
-            "coverage" => Self::Coverage,
-            "doc" => Self::Doc,
-            "spec" => Self::Spec,
-            "adr" => Self::Adr,
-            "issue" => Self::Issue,
-            "pr" => Self::Pr,
-            "legacy-policy" | "legacy_policy" => Self::LegacyPolicy,
-            _ => Self::Unknown,
-        }
+        EVIDENCE_KIND_SPECS
+            .iter()
+            .find(|spec| spec.prefixes.contains(&prefix))
+            .map_or(Self::Unknown, |spec| spec.kind)
     }
 
     pub(crate) fn is_local_file(self) -> bool {
-        matches!(
-            self,
-            Self::Ripr | Self::UnsafeReview | Self::Coverage | Self::Doc | Self::Spec | Self::Adr
-        )
+        EVIDENCE_KIND_SPECS
+            .iter()
+            .find(|spec| spec.kind == self)
+            .is_some_and(|spec| spec.local_file)
     }
 }
 
@@ -68,5 +123,47 @@ impl<'a> EvidenceReference<'a> {
             kind: EvidenceKind::parse(prefix.trim()),
             value: PathBuf::from(value),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::EvidenceKind;
+
+    #[test]
+    fn parses_evidence_kind_aliases_from_specs() {
+        assert_eq!(
+            EvidenceKind::parse("unsafe-review"),
+            EvidenceKind::UnsafeReview
+        );
+        assert_eq!(
+            EvidenceKind::parse("unsafe_review"),
+            EvidenceKind::UnsafeReview
+        );
+        assert_eq!(
+            EvidenceKind::parse("legacy-policy"),
+            EvidenceKind::LegacyPolicy
+        );
+        assert_eq!(
+            EvidenceKind::parse("legacy_policy"),
+            EvidenceKind::LegacyPolicy
+        );
+        assert_eq!(EvidenceKind::parse("unknown"), EvidenceKind::Unknown);
+    }
+
+    #[test]
+    fn classifies_local_file_evidence_from_specs() {
+        assert!(EvidenceKind::Doc.is_local_file());
+        assert!(EvidenceKind::Spec.is_local_file());
+        assert!(EvidenceKind::Adr.is_local_file());
+        assert!(EvidenceKind::Ripr.is_local_file());
+        assert!(EvidenceKind::UnsafeReview.is_local_file());
+        assert!(EvidenceKind::Coverage.is_local_file());
+        assert!(!EvidenceKind::Test.is_local_file());
+        assert!(!EvidenceKind::Cargo.is_local_file());
+        assert!(!EvidenceKind::Issue.is_local_file());
+        assert!(!EvidenceKind::Pr.is_local_file());
+        assert!(!EvidenceKind::LegacyPolicy.is_local_file());
+        assert!(!EvidenceKind::Unknown.is_local_file());
     }
 }
