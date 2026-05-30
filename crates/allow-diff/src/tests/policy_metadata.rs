@@ -156,6 +156,18 @@ fn detects_policy_owner_removed_as_failure() {
             && change.allow_id == "policy.owner"
             && change.message.contains("core/policy -> <unset>")
     }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::PolicyOwnerRemoved)
+        .unwrap_or_else(|| std::panic::panic_any("policy owner removal should be reported"));
+    assert_eq!(
+        change.metadata.as_ref().map(|metadata| (
+            metadata.field,
+            metadata.before.as_deref(),
+            metadata.after.as_deref()
+        )),
+        Some((MetadataChangeField::Owner, Some("core/policy"), None))
+    );
 }
 
 #[test]
@@ -173,6 +185,22 @@ fn detects_policy_owner_unassigned_as_failure() {
             && change.allow_id == "policy.owner"
             && change.message.contains("core/policy -> unowned")
     }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::PolicyOwnerUnassigned)
+        .unwrap_or_else(|| std::panic::panic_any("policy owner unassignment should be reported"));
+    assert_eq!(
+        change.metadata.as_ref().map(|metadata| (
+            metadata.field,
+            metadata.before.as_deref(),
+            metadata.after.as_deref()
+        )),
+        Some((
+            MetadataChangeField::Owner,
+            Some("core/policy"),
+            Some("unowned")
+        ))
+    );
 }
 
 #[test]
@@ -189,6 +217,18 @@ fn detects_policy_owner_added_as_improvement() {
             && change.allow_id == "policy.owner"
             && change.message.contains("<unset> -> core/policy")
     }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::PolicyOwnerAdded)
+        .unwrap_or_else(|| std::panic::panic_any("policy owner addition should be reported"));
+    assert_eq!(
+        change.metadata.as_ref().map(|metadata| (
+            metadata.field,
+            metadata.before.as_deref(),
+            metadata.after.as_deref()
+        )),
+        Some((MetadataChangeField::Owner, None, Some("core/policy")))
+    );
 }
 
 #[test]
@@ -206,6 +246,22 @@ fn detects_policy_owner_changed_for_review() {
             && change.allow_id == "policy.owner"
             && change.message.contains("core/policy -> security")
     }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::PolicyOwnerChanged)
+        .unwrap_or_else(|| std::panic::panic_any("policy owner change should be reported"));
+    assert_eq!(
+        change.metadata.as_ref().map(|metadata| (
+            metadata.field,
+            metadata.before.as_deref(),
+            metadata.after.as_deref()
+        )),
+        Some((
+            MetadataChangeField::Owner,
+            Some("core/policy"),
+            Some("security")
+        ))
+    );
 }
 
 #[test]
