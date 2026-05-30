@@ -28,6 +28,25 @@ fn fixed_command_artifacts_have_top_level_sample_coverage() {
 }
 
 #[test]
+fn report_artifacts_have_top_level_sample_coverage_for_each_report_command() {
+    let samples = core_artifact_samples();
+    let expected = allow_report::REPORT_COMMANDS
+        .iter()
+        .copied()
+        .collect::<BTreeSet<_>>();
+    let actual = samples
+        .iter()
+        .filter(|sample| sample.schema_name == "report")
+        .map(|sample| sample.expected_command)
+        .collect::<BTreeSet<_>>();
+
+    assert_eq!(
+        actual, expected,
+        "the shared report schema should have top-level sample coverage for every producer command"
+    );
+}
+
+#[test]
 fn core_artifacts_keep_explicit_top_level_contracts() {
     for sample in core_artifact_samples() {
         assert_artifact_contract(&sample);
@@ -188,7 +207,7 @@ fn command_artifact_samples() -> Vec<ArtifactSample> {
 }
 
 fn core_artifact_samples() -> Vec<ArtifactSample> {
-    let report_json = allow_report::render_json_with_context(
+    let audit_report_json = allow_report::render_json_with_context(
         "audit",
         &[],
         &[],
@@ -197,6 +216,18 @@ fn core_artifact_samples() -> Vec<ArtifactSample> {
             "filesystem_fallback",
             Some("fixtures/source-snapshot"),
             Some(7),
+            None,
+        ),
+    );
+    let check_report_json = allow_report::render_json_with_context(
+        "check",
+        &[],
+        &[],
+        false,
+        allow_report::ReportContext::source_syntax(
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(42),
             None,
         ),
     );
@@ -226,10 +257,31 @@ fn core_artifact_samples() -> Vec<ArtifactSample> {
     let diff_json = diff::render_diff_json_with_posture(diff_base_json, 0, &[], &[], &[]);
     vec![
         ArtifactSample {
-            name: "report",
+            name: "audit_report",
             schema_name: "report",
-            json: report_json,
+            json: audit_report_json,
             expected_command: "audit",
+            expected_top_level_keys: &[
+                "claim_boundary",
+                "command",
+                "failed",
+                "findings",
+                "inventory",
+                "outcomes",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "status",
+                "summary",
+                "tool",
+                "trend",
+            ],
+        },
+        ArtifactSample {
+            name: "check_report",
+            schema_name: "report",
+            json: check_report_json,
+            expected_command: "check",
             expected_top_level_keys: &[
                 "claim_boundary",
                 "command",
