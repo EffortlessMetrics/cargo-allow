@@ -153,6 +153,64 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         "/$defs/match_status/enum",
         &match_status_enum(),
     );
+    let outcome = required_schema_pointer("common", &schema, "/$defs/outcome");
+    assert_eq!(
+        outcome.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "common outcome should reject unknown fields"
+    );
+    assert_required_fields(
+        "common outcome",
+        outcome,
+        &["status", "allow_id", "finding_index", "score", "message"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/outcome/properties/status/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/match_status"),
+        "common outcome status should use the shared match-status vocabulary"
+    );
+    assert_schema_type_equals(
+        "common outcome allow_id",
+        &schema,
+        "/$defs/outcome/properties/allow_id/type",
+        &["string", "null"],
+    );
+    assert_schema_type_equals(
+        "common outcome finding_index",
+        &schema,
+        "/$defs/outcome/properties/finding_index/type",
+        &["integer", "null"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/outcome/properties/finding_index/minimum")
+            .and_then(Value::as_u64),
+        Some(0),
+        "common outcome finding_index minimum"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/outcome/properties/score/type")
+            .and_then(Value::as_str),
+        Some("integer"),
+        "common outcome score type"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/outcome/properties/score/minimum")
+            .and_then(Value::as_u64),
+        Some(0),
+        "common outcome score minimum"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/outcome/properties/message/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "common outcome message type"
+    );
     let structural_identity =
         required_schema_pointer("common", &schema, "/$defs/structural_identity");
     assert_eq!(
@@ -981,10 +1039,11 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "lifecycle_change",
         "lifecycle_change_field",
         "match_status",
-        "policy_change",
         "metadata_change",
         "metadata_change_field",
         "occurrence_limit_change",
+        "outcome",
+        "policy_change",
         "policy_change_kind",
         "policy_change_severity",
         "policy_status_change",
@@ -1031,6 +1090,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
     for fragment in [
         "diff",
         "diff_summary",
+        "outcome",
         "finding_posture_change",
         "policy_change",
         "selector_precision_field",
