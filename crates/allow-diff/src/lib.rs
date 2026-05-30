@@ -4,6 +4,7 @@ mod policy_change;
 mod policy_compare;
 mod policy_entry;
 mod policy_scope;
+mod policy_selector;
 mod revision;
 mod revision_git;
 

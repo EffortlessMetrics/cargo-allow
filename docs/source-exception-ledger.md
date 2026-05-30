@@ -186,7 +186,11 @@ policy improvements. The current precision score rewards exact paths and
 structural selector fields such as AST kind, container, callee, macro name,
 lint, symbol/fingerprints, snippet hash, and occurrence limits. It deliberately
 does not reward line hints, because line and column are review hints rather than
-identity.
+identity. Equal-precision structural selector retargets, such as changing
+`container`, `callee`, `macro_name`, `lint`, `symbol`, fingerprints, or snippet
+hash values without changing the precision score, are reported as
+review-required `selector_changed` policy changes. Line and column hint changes
+do not trigger this signal.
 
 Diff mode also reports scope broadening as policy weakening and scope narrowing
 as a policy improvement when an allow entry moves from a broader glob to a

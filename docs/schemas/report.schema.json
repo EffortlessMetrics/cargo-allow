@@ -551,6 +551,7 @@
             "scope_broadened",
             "scope_changed",
             "scope_narrowed",
+            "selector_changed",
             "selector_precision_decreased",
             "selector_precision_increased",
             "created_added",

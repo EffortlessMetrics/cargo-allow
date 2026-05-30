@@ -220,6 +220,49 @@ fn detects_selector_precision_decrease() {
 }
 
 #[test]
+fn detects_equal_precision_selector_retarget_as_review_required() {
+    let base = config_with(entry("allow-1"));
+    let mut retargeted = entry("allow-1");
+    retargeted.selector.container = Some("store".to_string());
+    retargeted.selector.normalized_snippet_hash = Some("fnv1a64:store".to_string());
+    retargeted.selector.line_hint = Some(900);
+    let head = config_with(retargeted);
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::SelectorChanged
+            && change.severity == PolicyChangeSeverity::Review
+            && change.message.contains("selector identity changed")
+    }));
+    assert!(
+        !changes.iter().any(|change| matches!(
+            change.kind,
+            PolicyChangeKind::SelectorPrecisionDecreased
+                | PolicyChangeKind::SelectorPrecisionIncreased
+        )),
+        "equal-precision retargets should not be hidden by unchanged precision score"
+    );
+}
+
+#[test]
+fn selector_retarget_ignores_line_hint_only_changes() {
+    let base = config_with(entry("allow-1"));
+    let mut moved = entry("allow-1");
+    moved.selector.line_hint = Some(900);
+    let head = config_with(moved);
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(
+        !changes
+            .iter()
+            .any(|change| change.kind == PolicyChangeKind::SelectorChanged),
+        "line hints are review hints only, not selector identity"
+    );
+}
+
+#[test]
 fn detects_allow_entry_retargeted_to_different_kind_or_family() {
     let base = config_with(entry("allow-1"));
     let mut retargeted = entry("allow-1");
@@ -718,6 +761,7 @@ fn policy_change_string_helpers_cover_all_public_variants() {
         (PolicyChangeKind::ScopeBroadened, "scope_broadened"),
         (PolicyChangeKind::ScopeChanged, "scope_changed"),
         (PolicyChangeKind::ScopeNarrowed, "scope_narrowed"),
+        (PolicyChangeKind::SelectorChanged, "selector_changed"),
         (
             PolicyChangeKind::SelectorPrecisionDecreased,
             "selector_precision_decreased",

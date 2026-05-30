@@ -9,6 +9,7 @@ use crate::policy_compare::{
 use crate::policy_scope::{
     scope_broadened, scope_changed, scope_narrowed, selector_precision_score,
 };
+use crate::policy_selector::selector_identity_changed;
 
 pub(crate) fn added_allow_change(entry: &AllowEntry) -> PolicyChange {
     let baseline = entry.classification == "baseline_debt";
@@ -115,6 +116,13 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
                 head.id, base_precision, head_precision
             ),
         });
+    } else if selector_identity_changed(&base.selector, &head.selector) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::SelectorChanged,
+            PolicyChangeSeverity::Review,
+            "selector identity changed",
+        ));
     }
     if optional_text_removed(
         base.lifecycle.created.as_deref(),
