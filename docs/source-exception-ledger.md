@@ -58,6 +58,13 @@ reported policy-change `allow_id` uses a synthetic stable path such as
 `requirements.owner_required` because the change belongs to the ledger contract
 rather than one allow entry.
 
+Diff mode reports source-tree inventory carveout changes. Adding a
+`workspace.ignored` scope is policy weakening because it can hide findings from
+the scan; removing one is an improvement. Adding a `workspace.generated` scope
+requires review because it can reclassify non-Rust inventory as generated code;
+removing one is an improvement. These rows use synthetic stable `allow_id`
+values such as `workspace.ignored` and `workspace.generated`.
+
 ## Reason And Evidence
 
 `reason` is the human rationale.
@@ -395,7 +402,9 @@ loss, expiry/review extension, evidence removal, owner/reason/classification
 removal, owner unassignment, occurrence-limit loosening, added
 `baseline_debt`, reviewed entries reclassified as `baseline_debt`, and existing
 `baseline_debt` entries reclassified as reviewed policy, and policy requirement
-loosening. This is policy ledger comparison only.
+loosening. It also reports source-tree inventory carveout changes for
+`workspace.ignored` and `workspace.generated`. This is policy ledger comparison
+only.
 
 The same command also compares source finding posture between the base git tree
 and the current checkout, or the optional `--head` git tree when provided. It

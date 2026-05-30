@@ -134,6 +134,15 @@ Diff report `policy_changes` use `requirement_loosened` and
 than individual allow entries. Loosening is a failing policy-posture signal;
 tightening is a policy improvement.
 
+Diff report `policy_changes` use `workspace_ignored_added` and
+`workspace_ignored_removed` for source-tree inventory exclusions. Added ignored
+scopes fail because they can hide findings from the scan; removed ignored
+scopes are improvements. `workspace_generated_added` and
+`workspace_generated_removed` report generated-code scope changes. Added
+generated scopes require review because they can reclassify non-Rust inventory,
+while removed generated scopes are improvements. These rows use synthetic
+`allow_id` values such as `workspace.ignored` or `workspace.generated`.
+
 Diff report `policy_changes` use `scope_changed` for source-tree scope retargets
 that are neither broadening nor narrowing, such as exact path changes or sibling
 glob replacements. Consumers should treat these as review-required changes
