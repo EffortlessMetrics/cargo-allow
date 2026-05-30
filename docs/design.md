@@ -153,6 +153,7 @@ and command/test labels:
 - `cargo:`
 - `ripr:`
 - `unsafe-review:`
+- `unsafe_review:` as an `unsafe-review:` compatibility alias
 - `coverage:`
 - `doc:`
 - `spec:`
@@ -160,6 +161,7 @@ and command/test labels:
 - `issue:`
 - `pr:`
 - `legacy-policy:`
+- `legacy_policy:` as a `legacy-policy:` compatibility alias
 
 The current policy layer validates local-file evidence references where
 practical and reports unstructured or unknown-prefix references as weak
