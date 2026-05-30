@@ -19,7 +19,8 @@ mod starter;
 mod toml_de;
 mod toml_entry;
 mod toml_model;
-mod toml_sections;
+mod toml_requirements;
+mod toml_workspace;
 mod validation;
 pub use evidence::{
     broken_evidence_link_count, validate_local_evidence_references, weak_evidence_reference_count,
