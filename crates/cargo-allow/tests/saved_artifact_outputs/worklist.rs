@@ -174,6 +174,12 @@ fn saved_worklist_output_includes_weak_evidence_items() {
         Some("allow-weak-evidence"),
         "worklist allow id"
     );
+    assert!(
+        value
+            .pointer("/work_items/0/path")
+            .is_some_and(serde_json::Value::is_null),
+        "weak evidence work items should not expose non-source-tree evidence targets as paths"
+    );
 }
 
 #[test]
