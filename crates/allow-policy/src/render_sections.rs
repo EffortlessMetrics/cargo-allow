@@ -36,10 +36,47 @@ pub(crate) fn render_workspace(out: &mut String, workspace: &WorkspaceConfig) {
 
 pub(crate) fn render_requirements(out: &mut String, requirements: &Requirements) {
     out.push_str("[requirements]\n");
-    out.push_str(&format!("owner_required = {}\nreason_required = {}\nclassification_required = {}\nevidence_required = {}\nexpires_or_review_after_required = {}\nallow_bare_allow_attributes = {}\nlint_policy_id_required = {}\nstale_entries_fail = {}\n\n", requirements.owner_required, requirements.reason_required, requirements.classification_required, requirements.evidence_required, requirements.expires_or_review_after_required, requirements.allow_bare_allow_attributes, requirements.lint_policy_id_required, requirements.stale_entries_fail));
+    render_bool_field(out, "owner_required", requirements.owner_required);
+    render_bool_field(out, "reason_required", requirements.reason_required);
+    render_bool_field(
+        out,
+        "classification_required",
+        requirements.classification_required,
+    );
+    render_bool_field(out, "evidence_required", requirements.evidence_required);
+    render_bool_field(
+        out,
+        "expires_or_review_after_required",
+        requirements.expires_or_review_after_required,
+    );
+    render_bool_field(
+        out,
+        "allow_bare_allow_attributes",
+        requirements.allow_bare_allow_attributes,
+    );
+    render_bool_field(
+        out,
+        "lint_policy_id_required",
+        requirements.lint_policy_id_required,
+    );
+    render_bool_field(out, "stale_entries_fail", requirements.stale_entries_fail);
+    out.push('\n');
     out.push_str("[requirements.unsafe]\n");
-    out.push_str(&format!(
-        "evidence_required = {}\nsafety_comment_required = {}\n",
-        requirements.unsafe_evidence_required, requirements.unsafe_safety_comment_required
-    ));
+    render_bool_field(
+        out,
+        "evidence_required",
+        requirements.unsafe_evidence_required,
+    );
+    render_bool_field(
+        out,
+        "safety_comment_required",
+        requirements.unsafe_safety_comment_required,
+    );
+}
+
+fn render_bool_field(out: &mut String, name: &str, value: bool) {
+    out.push_str(name);
+    out.push_str(" = ");
+    out.push_str(if value { "true" } else { "false" });
+    out.push('\n');
 }
