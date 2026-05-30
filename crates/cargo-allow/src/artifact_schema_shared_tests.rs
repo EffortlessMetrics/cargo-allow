@@ -333,6 +333,44 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         "/$defs/metadata_change/properties/after/type",
         &["string", "null"],
     );
+    assert_enum_equals(
+        "common requirement fields",
+        &schema,
+        "/$defs/requirement_change_field/enum",
+        &requirement_change_fields(),
+    );
+    let requirement_change =
+        required_schema_pointer("common", &schema, "/$defs/requirement_change");
+    assert_eq!(
+        requirement_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common requirement_change should reject unknown fields"
+    );
+    assert_required_fields(
+        "common requirement_change",
+        requirement_change,
+        &["field", "before", "after"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/requirement_change/properties/field/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/requirement_change_field"),
+        "common requirement_change field should use the shared requirement field vocabulary"
+    );
+    for field in ["before", "after"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/requirement_change/properties/{field}/type"
+                ))
+                .and_then(Value::as_str),
+            Some("boolean"),
+            "common requirement_change {field} type"
+        );
+    }
     let evidence_change = required_schema_pointer("common", &schema, "/$defs/evidence_change");
     assert_eq!(
         evidence_change
@@ -638,6 +676,8 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "policy_change_severity",
         "policy_migration_inventory",
         "recognized_evidence_prefix",
+        "requirement_change",
+        "requirement_change_field",
         "scanner_limitation",
         "selector_precision_change",
         "selector_precision_field",
@@ -684,6 +724,8 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         "evidence_change",
         "metadata_change_field",
         "metadata_change",
+        "requirement_change_field",
+        "requirement_change",
     ] {
         assert_common_fragment_matches("report", &report, &common, fragment);
     }
@@ -1071,6 +1113,14 @@ fn metadata_change_fields() -> Vec<&'static str> {
         .iter()
         .copied()
         .map(allow_diff::MetadataChangeField::as_str)
+        .collect()
+}
+
+fn requirement_change_fields() -> Vec<&'static str> {
+    allow_diff::RequirementChangeField::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::RequirementChangeField::as_str)
         .collect()
 }
 
