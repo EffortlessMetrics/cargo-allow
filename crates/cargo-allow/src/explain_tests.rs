@@ -121,6 +121,33 @@ fn explain_entry_text_reports_evidence_reference_status() {
 }
 
 #[test]
+fn explain_entry_text_reports_weak_evidence_next_actions() {
+    let root = migrate_fixture_dir();
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-weak-evidence", FindingKind::NonRustFile);
+    entry.evidence = vec!["test:".to_string()];
+    cfg.allow.push(entry.clone());
+    let finding = test_finding(
+        FindingKind::NonRustFile,
+        None,
+        "tracked.file",
+        "tracked_file",
+    );
+
+    let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
+
+    assert!(text.contains("current_status: matched"));
+    assert!(text.contains("status=unstructured"));
+    assert!(text.contains("empty evidence reference target"));
+    assert!(text.contains("action: replace the weak evidence string"));
+    assert!(
+        text.contains("proof: cargo-allow worklist --allow-id allow-weak-evidence --format json")
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn explain_entry_text_reports_stale_entry() {
     let mut cfg = AllowConfig::empty();
     let entry = test_entry("allow-file", FindingKind::NonRustFile);
