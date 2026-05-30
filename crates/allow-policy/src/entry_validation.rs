@@ -16,6 +16,9 @@ pub(crate) fn validate_allow_entry_identity(
             entry.id
         )));
     }
+    if let Some(family) = entry.family.as_deref() {
+        validate_no_surrounding_whitespace(&entry.id, "family", family)?;
+    }
     if !ids.insert(entry.id.clone()) {
         return Err(CargoAllowError::new(format!(
             "duplicate allow id `{}`",
@@ -29,6 +32,12 @@ pub(crate) fn validate_allow_entry_requirements(
     entry: &AllowEntry,
     requirements: &Requirements,
 ) -> CargoAllowResult<()> {
+    if !entry.owner.is_empty() {
+        validate_no_surrounding_whitespace(&entry.id, "owner", &entry.owner)?;
+    }
+    if !entry.classification.is_empty() {
+        validate_no_surrounding_whitespace(&entry.id, "classification", &entry.classification)?;
+    }
     if requirements.owner_required && entry.owner.trim().is_empty() {
         return Err(CargoAllowError::new(format!("{} missing owner", entry.id)));
     }
@@ -52,6 +61,15 @@ pub(crate) fn validate_allow_entry_requirements(
     }
     validate_non_empty_values(&entry.id, "evidence", &entry.evidence)?;
     validate_non_empty_values(&entry.id, "link", &entry.links)?;
+    Ok(())
+}
+
+fn validate_no_surrounding_whitespace(id: &str, label: &str, value: &str) -> CargoAllowResult<()> {
+    if value.trim() != value {
+        return Err(CargoAllowError::new(format!(
+            "{id} {label} must not have leading or trailing whitespace"
+        )));
+    }
     Ok(())
 }
 

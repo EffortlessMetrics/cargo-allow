@@ -36,6 +36,10 @@ Each retained exception should have:
 `owner = "unowned"` is reserved for generated `classification = "baseline_debt"`
 entries. Reviewed retained exceptions must use a concrete owner so accountability
 does not disappear after adoption.
+Token-like entry metadata such as `owner`, `classification`, and `family` must
+not include leading or trailing whitespace. Those values are policy identifiers,
+not display strings, and exact matching keeps baseline-debt, routing, and diff
+signals deterministic.
 
 `path` scopes are exact source-tree paths. Source-tree glob syntax is
 intentionally small and build-independent; canonical policy globs support `*`,
