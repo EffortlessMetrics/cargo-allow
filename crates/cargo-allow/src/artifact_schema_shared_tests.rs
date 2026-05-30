@@ -331,6 +331,56 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         Some("string"),
         "common outcome message type"
     );
+    let counts = required_schema_pointer("common", &schema, "/$defs/counts");
+    assert_eq!(
+        counts.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "common counts should reject unknown fields"
+    );
+    let counts_required_fields = [
+        "matched",
+        "new",
+        "expired",
+        "review_due",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt",
+    ];
+    assert_required_fields("common counts", counts, &counts_required_fields);
+    for field in [
+        "matched",
+        "new",
+        "expired",
+        "review_due",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt",
+        "policy_baseline_debt",
+        "policy_missing_evidence",
+        "broken_evidence_links",
+        "weak_evidence_references",
+    ] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/counts/properties/{field}/type"))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "common counts {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/counts/properties/{field}/minimum"))
+                .and_then(Value::as_u64),
+            Some(0),
+            "common counts {field} minimum"
+        );
+    }
     let summary = required_schema_pointer("common", &schema, "/$defs/summary");
     assert_eq!(
         summary.get("additionalProperties").and_then(Value::as_bool),
@@ -1303,6 +1353,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
     let expected = [
         "canonical_evidence_prefix",
         "claim_boundary_flag",
+        "counts",
         "diff",
         "diff_summary",
         "evidence_change",
@@ -1396,6 +1447,10 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         "report",
         include_str!("../../../docs/schemas/report.schema.json"),
     );
+    let receipt = parse_schema(
+        "receipt",
+        include_str!("../../../docs/schemas/receipt.schema.json"),
+    );
     let add = parse_schema("add", include_str!("../../../docs/schemas/add.schema.json"));
     let explain = parse_schema(
         "explain",
@@ -1439,6 +1494,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         assert_common_fragment_matches(schema_name, schema, &common, "selector");
     }
 
+    assert_common_fragment_matches("receipt", &receipt, &common, "counts");
     assert_common_fragment_matches_named("explain", &explain, "match_outcome", &common, "outcome");
 }
 
