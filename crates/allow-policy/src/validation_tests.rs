@@ -405,6 +405,19 @@ fn rejects_unsupported_workspace_inventory() {
 }
 
 #[test]
+fn rejects_workspace_inventory_with_surrounding_whitespace() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                inventory = " git-tracked "
+            "#,
+    );
+
+    assert!(err.contains("workspace inventory must not have leading or trailing whitespace"));
+}
+
+#[test]
 fn accepts_artifact_style_git_tracked_workspace_inventory_alias() {
     let cfg = parse_policy(
         r#"
@@ -429,6 +442,19 @@ fn rejects_unsupported_workspace_default_mode() {
     );
 
     assert!(err.contains("unsupported workspace default_mode `permissive`"));
+}
+
+#[test]
+fn rejects_workspace_default_mode_with_surrounding_whitespace() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                default_mode = " no-new "
+            "#,
+    );
+
+    assert!(err.contains("workspace default_mode must not have leading or trailing whitespace"));
 }
 
 #[test]
