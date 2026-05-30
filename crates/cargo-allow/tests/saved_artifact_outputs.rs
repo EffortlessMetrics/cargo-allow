@@ -1,5 +1,11 @@
+#[path = "saved_artifact_outputs/add.rs"]
+mod add;
+#[path = "saved_artifact_outputs/check.rs"]
+mod check;
 #[path = "saved_artifact_outputs/core.rs"]
 mod core;
+#[path = "saved_artifact_outputs/diff.rs"]
+mod diff;
 #[path = "saved_artifact_outputs/doctor.rs"]
 mod doctor;
 #[path = "saved_artifact_outputs/explain.rs"]
