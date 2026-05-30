@@ -1,6 +1,8 @@
 use allow_core::{AllowEntry, LastSeen, Selector};
 
-use crate::render_toml::{escape_toml, render_array};
+use crate::render_toml::{
+    escape_toml, render_array, render_optional_string_field, render_string_field,
+};
 
 pub(crate) fn render_allow_entry(out: &mut String, entry: &AllowEntry) {
     out.push_str("\n[[allow]]\n");
@@ -76,17 +78,4 @@ fn render_last_seen(out: &mut String, last_seen: &LastSeen) {
         "line = {}\ncolumn = {}\n",
         last_seen.line, last_seen.column
     ));
-}
-
-fn render_optional_string_field(out: &mut String, name: &str, value: Option<&str>) {
-    if let Some(value) = value {
-        render_string_field(out, name, value);
-    }
-}
-
-fn render_string_field(out: &mut String, name: &str, value: &str) {
-    out.push_str(name);
-    out.push_str(" = \"");
-    out.push_str(&escape_toml(value));
-    out.push_str("\"\n");
 }
