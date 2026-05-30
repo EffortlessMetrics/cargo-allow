@@ -224,6 +224,32 @@
         "effective"
       ]
     },
+    "occurrence_limit_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "before",
+        "after"
+      ],
+      "properties": {
+        "before": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Allowed occurrence count before the policy change, or null when unset."
+        },
+        "after": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Allowed occurrence count after the policy change, or null when unset."
+        }
+      }
+    },
     "scope_change": {
       "type": "object",
       "additionalProperties": false,
