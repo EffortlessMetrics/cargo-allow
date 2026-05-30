@@ -331,6 +331,60 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         Some("string"),
         "common outcome message type"
     );
+    let summary = required_schema_pointer("common", &schema, "/$defs/summary");
+    assert_eq!(
+        summary.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "common summary should reject unknown fields"
+    );
+    let summary_required_fields = [
+        "findings",
+        "outcomes",
+        "matched",
+        "new",
+        "expired",
+        "review_due",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt",
+    ];
+    assert_required_fields("common summary", summary, &summary_required_fields);
+    for field in [
+        "findings",
+        "outcomes",
+        "matched",
+        "new",
+        "expired",
+        "review_due",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt",
+        "policy_baseline_debt",
+        "policy_missing_evidence",
+        "broken_evidence_links",
+        "weak_evidence_references",
+    ] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/summary/properties/{field}/type"))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "common summary {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/summary/properties/{field}/minimum"))
+                .and_then(Value::as_u64),
+            Some(0),
+            "common summary {field} minimum"
+        );
+    }
     let structural_identity =
         required_schema_pointer("common", &schema, "/$defs/structural_identity");
     assert_eq!(
@@ -1180,6 +1234,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "selector_precision_field",
         "scope_change",
         "scope_change_field",
+        "summary",
         "structural_identity",
         "source_syntax_inventory",
         "traceability_evidence_prefix",
@@ -1215,6 +1270,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         "finding",
         "inventory",
         "outcome",
+        "summary",
         "finding_posture_change",
         "policy_change",
         "selector_precision_field",
