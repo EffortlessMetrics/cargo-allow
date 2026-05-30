@@ -297,6 +297,81 @@
         }
       }
     },
+    "trend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "review_items",
+        "new",
+        "expired",
+        "review_due",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt"
+      ],
+      "properties": {
+        "review_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total review-oriented items, including policy-level baseline debt inventory when available."
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expired": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_due": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ambiguous": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid_selector": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_required_field": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_missing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "baseline_debt": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Policy-level count of generated baseline_debt entries when available; otherwise the baseline_debt outcome count. Prefer summary.policy_baseline_debt for explicit policy-level debt when present."
+        },
+        "policy_missing_evidence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional policy-level count of allow entries with no evidence references included in review item totals when available."
+        },
+        "broken_evidence_links": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of missing or invalid local evidence references included in review item totals when available."
+        },
+        "weak_evidence_references": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of unstructured or unknown-prefix evidence references included in review item totals when available."
+        }
+      }
+    },
     "structural_identity": {
       "type": "object",
       "additionalProperties": false,
