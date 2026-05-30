@@ -52,6 +52,7 @@ fn change(
         selector_precision: None,
         scope: Some(scope_change(base, entry)),
         occurrence_limit: None,
+        lifecycle: None,
     }
 }
 

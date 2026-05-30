@@ -2,7 +2,10 @@ use crate::artifact_schema_support::{
     assert_enum_equals, assert_required_fields, match_status_enum, parse_schema,
     required_schema_pointer,
 };
-use allow_diff::{FindingPostureKind, PolicyChangeKind, PolicyChangeSeverity, ScopeChangeField};
+use allow_diff::{
+    FindingPostureKind, LifecycleChangeField, PolicyChangeKind, PolicyChangeSeverity,
+    ScopeChangeField,
+};
 use serde_json::Value;
 
 #[test]
@@ -274,6 +277,59 @@ fn report_schema_locks_diff_posture_extension_contract() {
             .and_then(Value::as_str),
         Some("#/$defs/occurrence_limit_change"),
         "report policy changes should use occurrence limit rows"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/policy_change/properties/lifecycle/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/lifecycle_change"),
+        "report policy changes should use lifecycle change rows"
+    );
+    let lifecycle_change = required_schema_pointer("report", &schema, "/$defs/lifecycle_change");
+    assert_eq!(
+        lifecycle_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "report lifecycle changes should reject unknown fields"
+    );
+    assert_required_fields(
+        "report lifecycle change",
+        lifecycle_change,
+        &["field", "before", "after"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/lifecycle_change/properties/field/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/lifecycle_change_field"),
+        "report lifecycle changes should use the lifecycle field vocabulary"
+    );
+    for field in ["before", "after"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/lifecycle_change/properties/{field}/type/0"
+                ))
+                .and_then(Value::as_str),
+            Some("string"),
+            "report lifecycle {field} first type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/lifecycle_change/properties/{field}/type/1"
+                ))
+                .and_then(Value::as_str),
+            Some("null"),
+            "report lifecycle {field} second type"
+        );
+    }
+    assert_enum_equals(
+        "report lifecycle fields",
+        &schema,
+        "/$defs/lifecycle_change_field/enum",
+        &enum_strings(LifecycleChangeField::ALL, LifecycleChangeField::as_str),
     );
     let occurrence_limit =
         required_schema_pointer("report", &schema, "/$defs/occurrence_limit_change");

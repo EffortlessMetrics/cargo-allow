@@ -16,11 +16,22 @@ fn detects_evidence_removed_and_lifecycle_extended() {
             .iter()
             .any(|change| change.kind == PolicyChangeKind::EvidenceRemoved)
     );
-    assert!(
-        changes
-            .iter()
-            .any(|change| change.kind == PolicyChangeKind::ExpiryExtended
-                && change.severity == PolicyChangeSeverity::Review)
+    let expiry = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::ExpiryExtended)
+        .unwrap_or_else(|| std::panic::panic_any("expiry extension should be reported"));
+    assert_eq!(expiry.severity, PolicyChangeSeverity::Review);
+    assert_eq!(
+        expiry.lifecycle.as_ref().map(|change| (
+            change.field,
+            change.before.as_deref(),
+            change.after.as_deref()
+        )),
+        Some((
+            LifecycleChangeField::Expires,
+            Some("2026-09-01"),
+            Some("2026-12-01")
+        ))
     );
     assert!(changes.iter().any(
         |change| change.kind == PolicyChangeKind::ReviewAfterExtended
@@ -59,6 +70,18 @@ fn detects_created_lifecycle_provenance_changes() {
         change.kind == PolicyChangeKind::CreatedRemoved
             && change.severity == PolicyChangeSeverity::Fail
     }));
+    let created_removed = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::CreatedRemoved)
+        .unwrap_or_else(|| std::panic::panic_any("created removal should be reported"));
+    assert_eq!(
+        created_removed.lifecycle.as_ref().map(|change| (
+            change.field,
+            change.before.as_deref(),
+            change.after.as_deref()
+        )),
+        Some((LifecycleChangeField::Created, Some("2026-05-26"), None))
+    );
 
     let mut changed = entry("allow-1");
     changed.lifecycle.created = Some("2026-06-01".to_string());

@@ -49,5 +49,6 @@ fn change(
             before: base.occurrence_limit,
             after: entry.occurrence_limit,
         }),
+        lifecycle: None,
     }
 }

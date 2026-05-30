@@ -136,5 +136,6 @@ fn change(
         selector_precision: None,
         scope: None,
         occurrence_limit: None,
+        lifecycle: None,
     }
 }
