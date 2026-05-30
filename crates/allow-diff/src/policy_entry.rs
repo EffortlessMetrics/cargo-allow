@@ -1,13 +1,11 @@
 use allow_core::AllowEntry;
 
 use crate::policy_change::{PolicyChange, PolicyChangeKind, PolicyChangeSeverity};
-use crate::policy_compare::{
-    added_required_text, changed_required_text, occurrence_limit_loosened,
-    occurrence_limit_tightened, removed_required_text,
-};
+use crate::policy_compare::{added_required_text, changed_required_text, removed_required_text};
 use crate::policy_entry_evidence::evidence_policy_changes;
 use crate::policy_entry_identity::identity_policy_changes;
 use crate::policy_entry_lifecycle::lifecycle_policy_changes;
+use crate::policy_entry_limits::occurrence_limit_policy_changes;
 use crate::policy_entry_scope::scope_policy_changes;
 use crate::policy_entry_selector::selector_policy_changes;
 
@@ -148,22 +146,7 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
             "classification added",
         ));
     }
-    if occurrence_limit_loosened(base.occurrence_limit, head.occurrence_limit) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::OccurrenceLimitLoosened,
-            PolicyChangeSeverity::Fail,
-            "occurrence_limit increased or removed",
-        ));
-    }
-    if occurrence_limit_tightened(base.occurrence_limit, head.occurrence_limit) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::OccurrenceLimitTightened,
-            PolicyChangeSeverity::Improvement,
-            "occurrence_limit tightened",
-        ));
-    }
+    changes.extend(occurrence_limit_policy_changes(base, head));
     changes
 }
 
