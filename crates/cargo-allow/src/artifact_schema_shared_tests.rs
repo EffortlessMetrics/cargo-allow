@@ -483,6 +483,39 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
             "common evidence_change {field} item minLength"
         );
     }
+    let diff_summary = required_schema_pointer("common", &schema, "/$defs/diff_summary");
+    assert_eq!(
+        diff_summary
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common diff_summary should reject unknown fields"
+    );
+    let diff_summary_fields = [
+        "current_failures",
+        "new_findings",
+        "removed_findings",
+        "policy_failures",
+        "policy_review_items",
+        "policy_improvements",
+    ];
+    assert_required_fields("common diff_summary", diff_summary, &diff_summary_fields);
+    for field in diff_summary_fields {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/diff_summary/properties/{field}/type"))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "common diff_summary {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/diff_summary/properties/{field}/minimum"))
+                .and_then(Value::as_u64),
+            Some(0),
+            "common diff_summary {field} minimum"
+        );
+    }
     assert_enum_equals(
         "common finding posture kinds",
         &schema,
@@ -872,6 +905,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
     let expected = [
         "canonical_evidence_prefix",
         "claim_boundary_flag",
+        "diff_summary",
         "evidence_change",
         "evidence_change_field",
         "evidence_reference",
@@ -934,6 +968,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
     );
 
     for fragment in [
+        "diff_summary",
         "finding_posture_change",
         "policy_change",
         "selector_precision_field",
