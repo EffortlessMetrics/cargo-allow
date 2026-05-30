@@ -617,6 +617,73 @@ fn detects_policy_status_weakened_as_failure() {
 }
 
 #[test]
+fn detects_policy_owner_removed_as_failure() {
+    let mut base = config_with(entry("allow-1"));
+    base.owner = Some("core/policy".to_string());
+    let mut head = base.clone();
+    head.owner = None;
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::PolicyOwnerRemoved
+            && change.severity == PolicyChangeSeverity::Fail
+            && change.allow_id == "policy.owner"
+            && change.message.contains("core/policy -> <unset>")
+    }));
+}
+
+#[test]
+fn detects_policy_owner_unassigned_as_failure() {
+    let mut base = config_with(entry("allow-1"));
+    base.owner = Some("core/policy".to_string());
+    let mut head = base.clone();
+    head.owner = Some("unowned".to_string());
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::PolicyOwnerUnassigned
+            && change.severity == PolicyChangeSeverity::Fail
+            && change.allow_id == "policy.owner"
+            && change.message.contains("core/policy -> unowned")
+    }));
+}
+
+#[test]
+fn detects_policy_owner_added_as_improvement() {
+    let base = config_with(entry("allow-1"));
+    let mut head = base.clone();
+    head.owner = Some("core/policy".to_string());
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::PolicyOwnerAdded
+            && change.severity == PolicyChangeSeverity::Improvement
+            && change.allow_id == "policy.owner"
+            && change.message.contains("<unset> -> core/policy")
+    }));
+}
+
+#[test]
+fn detects_policy_owner_changed_for_review() {
+    let mut base = config_with(entry("allow-1"));
+    base.owner = Some("core/policy".to_string());
+    let mut head = base.clone();
+    head.owner = Some("security".to_string());
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::PolicyOwnerChanged
+            && change.severity == PolicyChangeSeverity::Review
+            && change.allow_id == "policy.owner"
+            && change.message.contains("core/policy -> security")
+    }));
+}
+
+#[test]
 fn detects_policy_status_tightened_as_improvement() {
     let mut base = config_with(entry("allow-1"));
     base.status = Some("advisory".to_string());
@@ -1039,6 +1106,13 @@ fn policy_change_string_helpers_cover_all_public_variants() {
         (PolicyChangeKind::OwnerChanged, "owner_changed"),
         (PolicyChangeKind::OwnerRemoved, "owner_removed"),
         (PolicyChangeKind::OwnerUnassigned, "owner_unassigned"),
+        (PolicyChangeKind::PolicyOwnerAdded, "policy_owner_added"),
+        (PolicyChangeKind::PolicyOwnerChanged, "policy_owner_changed"),
+        (PolicyChangeKind::PolicyOwnerRemoved, "policy_owner_removed"),
+        (
+            PolicyChangeKind::PolicyOwnerUnassigned,
+            "policy_owner_unassigned",
+        ),
         (
             PolicyChangeKind::PolicyStatusChanged,
             "policy_status_changed",

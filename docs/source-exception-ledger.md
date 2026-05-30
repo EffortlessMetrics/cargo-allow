@@ -52,6 +52,11 @@ review-required, while added links are reported as policy improvements.
 `created` date is reported as an improvement so exception provenance cannot
 drift silently.
 
+Diff mode reports top-level policy `owner` changes with the synthetic
+`policy.owner` ID. Removing a concrete ledger owner or changing it to `unowned`
+is policy weakening, adding a concrete owner is a policy improvement, and
+changing one concrete owner to another requires review.
+
 Diff mode reports top-level policy `status` changes with the synthetic
 `policy.status` ID. Changing `active` to `advisory` or removing an active status
 is policy weakening, changing `advisory` or an unset status to `active` is a
@@ -404,8 +409,9 @@ review of the broad scope.
 base revision's `policy/allow.toml` and reports policy weakening in human and
 Markdown output. Current detection covers scope broadening, selector precision
 loss, expiry/review extension, evidence removal, top-level policy status
-weakening, owner/reason/classification removal, owner unassignment,
-occurrence-limit loosening, added
+weakening, top-level policy owner removal/unassignment,
+owner/reason/classification removal, owner unassignment, occurrence-limit
+loosening, added
 `baseline_debt`, reviewed entries reclassified as `baseline_debt`, and existing
 `baseline_debt` entries reclassified as reviewed policy, and policy requirement
 loosening. It also reports source-tree inventory carveout changes for
