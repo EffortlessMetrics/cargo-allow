@@ -165,6 +165,14 @@ fn policy_change_rows(
             allow_id: &change.allow_id,
             kind: change.kind.as_str(),
             message: &change.message,
+            selector_precision: change.selector_precision.as_ref().map(|selector| {
+                allow_report::DiffSelectorPrecisionChange {
+                    before: selector.before,
+                    after: selector.after,
+                    removed_fields: &selector.removed_fields,
+                    added_fields: &selector.added_fields,
+                }
+            }),
         })
         .collect()
 }

@@ -9,7 +9,10 @@ mod prune;
 mod worklist;
 
 pub use add::AddReport;
-pub use diff::{DiffFindingChange, DiffPolicyChange, DiffPostureSummary, DiffReport};
+pub use diff::{
+    DiffFindingChange, DiffPolicyChange, DiffPostureSummary, DiffReport,
+    DiffSelectorPrecisionChange,
+};
 pub use doctor::DoctorReport;
 pub use explain::{EvidenceReference, ExplainReport};
 pub use list::{ListFilters, ListRow};

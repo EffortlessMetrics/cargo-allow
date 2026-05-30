@@ -51,5 +51,6 @@ fn change(
         kind,
         severity,
         message: format!("{} {message}", entry.id),
+        selector_precision: None,
     }
 }

@@ -184,6 +184,10 @@ They also use `selector_changed` for equal-precision structural selector
 retargets, such as changing `container`, `callee`, `symbol`, or snippet hash
 values without changing the selector precision score. Line hints are excluded
 from this identity signal.
+Rows with `selector_precision_decreased` or `selector_precision_increased` may
+also include an optional `selector_precision` object with before/after scores
+and the selector fields added or removed. This lets consumers classify selector
+weakening without parsing the human `message` string.
 
 ## Evidence Prefix Vocabulary
 

@@ -1,6 +1,8 @@
 use allow_core::AllowEntry;
 
-use crate::policy_change::{PolicyChange, PolicyChangeKind, PolicyChangeSeverity};
+use crate::policy_change::{
+    PolicyChange, PolicyChangeKind, PolicyChangeSeverity, SelectorPrecisionChange,
+};
 use crate::policy_scope::{selector_precision_fields, selector_precision_score};
 use crate::policy_selector::selector_identity_changed;
 
@@ -8,6 +10,8 @@ pub(crate) fn selector_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
     let base_precision = selector_precision_score(base);
     let head_precision = selector_precision_score(head);
     if head_precision < base_precision {
+        let selector_precision =
+            selector_precision_change(base, head, base_precision, head_precision);
         vec![PolicyChange {
             allow_id: head.id.clone(),
             kind: PolicyChangeKind::SelectorPrecisionDecreased,
@@ -17,10 +21,13 @@ pub(crate) fn selector_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
                 head.id,
                 base_precision,
                 head_precision,
-                selector_precision_detail(base, head)
+                selector_precision_detail(&selector_precision)
             ),
+            selector_precision: Some(selector_precision),
         }]
     } else if head_precision > base_precision {
+        let selector_precision =
+            selector_precision_change(base, head, base_precision, head_precision);
         vec![PolicyChange {
             allow_id: head.id.clone(),
             kind: PolicyChangeKind::SelectorPrecisionIncreased,
@@ -30,8 +37,9 @@ pub(crate) fn selector_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
                 head.id,
                 base_precision,
                 head_precision,
-                selector_precision_detail(base, head)
+                selector_precision_detail(&selector_precision)
             ),
+            selector_precision: Some(selector_precision),
         }]
     } else if selector_identity_changed(&base.selector, &head.selector) {
         vec![change(
@@ -45,7 +53,12 @@ pub(crate) fn selector_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
     }
 }
 
-fn selector_precision_detail(base: &AllowEntry, head: &AllowEntry) -> String {
+fn selector_precision_change(
+    base: &AllowEntry,
+    head: &AllowEntry,
+    before: u32,
+    after: u32,
+) -> SelectorPrecisionChange {
     let base_fields = selector_precision_fields(base);
     let head_fields = selector_precision_fields(head);
     let mut removed = Vec::new();
@@ -59,12 +72,21 @@ fn selector_precision_detail(base: &AllowEntry, head: &AllowEntry) -> String {
         }
     }
 
-    let mut details = Vec::new();
-    if !removed.is_empty() {
-        details.push(format!("removed: {}", removed.join(", ")));
+    SelectorPrecisionChange {
+        before,
+        after,
+        removed_fields: removed,
+        added_fields: added,
     }
-    if !added.is_empty() {
-        details.push(format!("added: {}", added.join(", ")));
+}
+
+fn selector_precision_detail(change: &SelectorPrecisionChange) -> String {
+    let mut details = Vec::new();
+    if !change.removed_fields.is_empty() {
+        details.push(format!("removed: {}", change.removed_fields.join(", ")));
+    }
+    if !change.added_fields.is_empty() {
+        details.push(format!("added: {}", change.added_fields.join(", ")));
     }
     if details.is_empty() {
         String::new()
@@ -84,5 +106,6 @@ fn change(
         kind,
         severity,
         message: format!("{} {message}", entry.id),
+        selector_precision: None,
     }
 }

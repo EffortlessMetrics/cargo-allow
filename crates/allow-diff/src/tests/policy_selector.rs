@@ -10,13 +10,26 @@ fn detects_selector_precision_decrease() {
 
     let changes = policy_changes(&base, &head);
 
-    assert!(changes.iter().any(|change| {
-        change.kind == PolicyChangeKind::SelectorPrecisionDecreased
-            && change.message.contains("decreased")
-            && change
-                .message
-                .contains("removed: container, normalized_snippet_hash")
-    }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::SelectorPrecisionDecreased)
+        .unwrap_or_else(|| std::panic::panic_any("expected selector precision decrease"));
+    let selector_precision = change
+        .selector_precision
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("expected selector precision detail"));
+    assert!(change.message.contains("decreased"));
+    assert!(
+        change
+            .message
+            .contains("removed: container, normalized_snippet_hash")
+    );
+    assert!(selector_precision.before > selector_precision.after);
+    assert_eq!(
+        selector_precision.removed_fields,
+        vec!["container", "normalized_snippet_hash"]
+    );
+    assert!(selector_precision.added_fields.is_empty());
 }
 
 #[test]
@@ -118,14 +131,27 @@ fn detects_selector_precision_increase_as_improvement() {
 
     let changes = policy_changes(&base, &head);
 
-    assert!(changes.iter().any(|change| {
-        change.kind == PolicyChangeKind::SelectorPrecisionIncreased
-            && change.severity == PolicyChangeSeverity::Improvement
-            && change.message.contains("increased")
-            && change
-                .message
-                .contains("added: container, normalized_snippet_hash")
-    }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::SelectorPrecisionIncreased)
+        .unwrap_or_else(|| std::panic::panic_any("expected selector precision increase"));
+    let selector_precision = change
+        .selector_precision
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("expected selector precision detail"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Improvement);
+    assert!(change.message.contains("increased"));
+    assert!(
+        change
+            .message
+            .contains("added: container, normalized_snippet_hash")
+    );
+    assert!(selector_precision.after > selector_precision.before);
+    assert!(selector_precision.removed_fields.is_empty());
+    assert_eq!(
+        selector_precision.added_fields,
+        vec!["container", "normalized_snippet_hash"]
+    );
 }
 
 #[test]

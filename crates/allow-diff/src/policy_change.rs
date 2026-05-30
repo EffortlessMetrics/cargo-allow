@@ -4,6 +4,15 @@ pub struct PolicyChange {
     pub kind: PolicyChangeKind,
     pub severity: PolicyChangeSeverity,
     pub message: String,
+    pub selector_precision: Option<SelectorPrecisionChange>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SelectorPrecisionChange {
+    pub before: u32,
+    pub after: u32,
+    pub removed_fields: Vec<&'static str>,
+    pub added_fields: Vec<&'static str>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -254,6 +254,78 @@ fn report_schema_locks_diff_posture_extension_contract() {
         "/$defs/policy_change/properties/kind/enum",
         &enum_strings(PolicyChangeKind::ALL, PolicyChangeKind::as_str),
     );
+    assert_eq!(
+        schema
+            .pointer("/$defs/policy_change/properties/selector_precision/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/selector_precision_change"),
+        "report policy changes should use selector precision rows"
+    );
+    let selector_precision =
+        required_schema_pointer("report", &schema, "/$defs/selector_precision_change");
+    assert_eq!(
+        selector_precision
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "report selector precision changes should reject unknown fields"
+    );
+    assert_required_fields(
+        "report selector precision change",
+        selector_precision,
+        &["before", "after", "removed_fields", "added_fields"],
+    );
+    for field in ["before", "after"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/selector_precision_change/properties/{field}/type"
+                ))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "report selector precision {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/selector_precision_change/properties/{field}/minimum"
+                ))
+                .and_then(Value::as_u64),
+            Some(0),
+            "report selector precision {field} minimum"
+        );
+    }
+    for field in ["removed_fields", "added_fields"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/selector_precision_change/properties/{field}/items/$ref"
+                ))
+                .and_then(Value::as_str),
+            Some("#/$defs/selector_precision_field"),
+            "report selector precision {field} should use the field vocabulary"
+        );
+    }
+    assert_enum_equals(
+        "report selector precision fields",
+        &schema,
+        "/$defs/selector_precision_field/enum",
+        &[
+            "path",
+            "glob",
+            "family",
+            "ast_kind",
+            "container",
+            "callee",
+            "macro_name",
+            "lint",
+            "symbol",
+            "receiver_fingerprint",
+            "target_fingerprint",
+            "normalized_snippet_hash",
+            "occurrence_limit",
+        ],
+    );
 }
 
 fn enum_strings<T: Copy>(values: &[T], as_str: impl Fn(T) -> &'static str) -> Vec<&'static str> {
