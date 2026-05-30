@@ -267,6 +267,37 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
             "common selector precision {field} should use the field vocabulary"
         );
     }
+    let occurrence_limit =
+        required_schema_pointer("common", &schema, "/$defs/occurrence_limit_change");
+    assert_eq!(
+        occurrence_limit
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common occurrence_limit_change should reject unknown fields"
+    );
+    assert_required_fields(
+        "common occurrence_limit_change",
+        occurrence_limit,
+        &["before", "after"],
+    );
+    for field in ["before", "after"] {
+        assert_schema_type_equals(
+            &format!("common occurrence_limit_change {field}"),
+            &schema,
+            &format!("/$defs/occurrence_limit_change/properties/{field}/type"),
+            &["integer", "null"],
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/occurrence_limit_change/properties/{field}/minimum"
+                ))
+                .and_then(Value::as_u64),
+            Some(0),
+            "common occurrence_limit_change {field} minimum"
+        );
+    }
     assert_enum_equals(
         "common scope fields",
         &schema,
@@ -373,6 +404,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "evidence_reference_status",
         "inventory_source",
         "local_file_evidence_prefix",
+        "occurrence_limit_change",
         "policy_migration_inventory",
         "recognized_evidence_prefix",
         "scanner_limitation",
