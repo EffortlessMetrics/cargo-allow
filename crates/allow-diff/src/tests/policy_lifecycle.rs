@@ -11,11 +11,20 @@ fn detects_evidence_removed_and_lifecycle_extended() {
 
     let changes = policy_changes(&base, &head);
 
-    assert!(
-        changes
-            .iter()
-            .any(|change| change.kind == PolicyChangeKind::EvidenceRemoved)
+    let evidence_removed = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::EvidenceRemoved)
+        .unwrap_or_else(|| std::panic::panic_any("evidence removal should be reported"));
+    let evidence = evidence_removed
+        .evidence
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("evidence removal should include values"));
+    assert_eq!(evidence.field, EvidenceChangeField::Evidence);
+    assert_eq!(
+        evidence.removed,
+        vec!["test:range_is_validated".to_string()]
     );
+    assert!(evidence.added.is_empty());
     let expiry = changes
         .iter()
         .find(|change| change.kind == PolicyChangeKind::ExpiryExtended)
@@ -131,10 +140,18 @@ fn detects_evidence_added_as_improvement() {
 
     let changes = policy_changes(&base, &head);
 
-    assert!(changes.iter().any(|change| {
-        change.kind == PolicyChangeKind::EvidenceAdded
-            && change.severity == PolicyChangeSeverity::Improvement
-    }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::EvidenceAdded)
+        .unwrap_or_else(|| std::panic::panic_any("evidence addition should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Improvement);
+    let evidence = change
+        .evidence
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("evidence addition should include values"));
+    assert_eq!(evidence.field, EvidenceChangeField::Evidence);
+    assert!(evidence.removed.is_empty());
+    assert_eq!(evidence.added, vec!["test:range_is_validated".to_string()]);
 }
 
 #[test]
@@ -148,11 +165,19 @@ fn detects_traceability_link_changes() {
 
     let changes = policy_changes(&base, &head);
 
-    assert!(changes.iter().any(|change| {
-        change.kind == PolicyChangeKind::LinkRemoved
-            && change.severity == PolicyChangeSeverity::Review
-            && change.message.contains("traceability link removed")
-    }));
+    let link_removed = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::LinkRemoved)
+        .unwrap_or_else(|| std::panic::panic_any("link removal should be reported"));
+    assert_eq!(link_removed.severity, PolicyChangeSeverity::Review);
+    assert!(link_removed.message.contains("traceability link removed"));
+    let evidence = link_removed
+        .evidence
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("link removal should include values"));
+    assert_eq!(evidence.field, EvidenceChangeField::Links);
+    assert_eq!(evidence.removed, vec!["adr:docs/adr/0001.md".to_string()]);
+    assert!(evidence.added.is_empty());
     assert!(changes.iter().any(|change| {
         change.kind == PolicyChangeKind::LinkAdded
             && change.severity == PolicyChangeSeverity::Improvement

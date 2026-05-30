@@ -194,6 +194,14 @@ fn policy_change_rows(
                     after: lifecycle.after.as_deref(),
                 }
             }),
+            evidence: change
+                .evidence
+                .as_ref()
+                .map(|evidence| allow_report::DiffEvidenceChange {
+                    field: evidence.field.as_str(),
+                    removed: &evidence.removed,
+                    added: &evidence.added,
+                }),
         })
         .collect()
 }

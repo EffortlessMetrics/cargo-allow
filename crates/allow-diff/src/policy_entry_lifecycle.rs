@@ -131,6 +131,7 @@ fn change(
             before: normalized_optional_text(before),
             after: normalized_optional_text(after),
         }),
+        evidence: None,
     }
 }
 

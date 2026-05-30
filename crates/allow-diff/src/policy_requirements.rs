@@ -46,6 +46,7 @@ fn requirement_change(field: RequirementField) -> Option<PolicyChange> {
         scope: None,
         occurrence_limit: None,
         lifecycle: None,
+        evidence: None,
     })
 }
 

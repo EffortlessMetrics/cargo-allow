@@ -129,6 +129,15 @@ pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
                 option_json(lifecycle.after)
             ));
         }
+        if let Some(evidence) = change.evidence {
+            out.push_str(", ");
+            out.push_str(&format!(
+                "\"evidence\": {{\"field\": \"{}\", \"removed\": {}, \"added\": {}}}",
+                json_escape(evidence.field),
+                json_string_array(evidence.removed),
+                json_string_array(evidence.added)
+            ));
+        }
         out.push('}');
     }
     out.push_str("\n    ]\n");

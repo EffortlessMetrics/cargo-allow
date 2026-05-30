@@ -627,8 +627,42 @@
         "lifecycle": {
           "$ref": "#/$defs/lifecycle_change",
           "description": "Optional structured lifecycle delta for created, expiry, and review_after policy changes."
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence_change",
+          "description": "Optional structured evidence/link delta for evidence_added, evidence_removed, link_added, and link_removed policy changes."
         }
       }
+    },
+    "evidence_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "removed", "added"],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/evidence_change_field",
+          "description": "Policy traceability collection that changed."
+        },
+        "removed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Evidence or link values removed by the policy change."
+        },
+        "added": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Evidence or link values added by the policy change."
+        }
+      }
+    },
+    "evidence_change_field": {
+      "enum": ["evidence", "links"]
     },
     "lifecycle_change": {
       "type": "object",
