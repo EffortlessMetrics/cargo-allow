@@ -140,6 +140,9 @@ so the local evidence check does not silently follow a reference outside the
 scanned source tree. `test:`, `cargo:`, `issue:`, `pr:`, and `legacy-policy:`
 references are treated as traceability strings in the current implementation
 and are not executed or resolved over the network.
+For compatibility with migrated policies, `unsafe_review:` is accepted as an
+alias for `unsafe-review:`, and `legacy_policy:` is accepted as an alias for
+`legacy-policy:`.
 
 Evidence strings with no `prefix:value` shape or with an unknown prefix are
 retained as weak traceability, but they are not recognized as typed evidence.
