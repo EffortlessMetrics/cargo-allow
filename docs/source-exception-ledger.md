@@ -198,6 +198,10 @@ Selectors should be as narrow as practical. Strong selectors include:
 - symbol or target fingerprint.
 - normalized snippet hash.
 
+Selector identity values are exact source-syntax identifiers or fingerprints.
+They must not include leading or trailing whitespace, because cargo-allow does
+not trim them during structural matching.
+
 Weak selectors include:
 
 - broad globs.

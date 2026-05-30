@@ -19,11 +19,8 @@ pub(crate) fn validate_selector(entry: &AllowEntry) -> CargoAllowResult<()> {
             selector.normalized_snippet_hash.as_deref(),
         ),
     ] {
-        if value.is_some_and(|text| text.trim().is_empty()) {
-            return Err(CargoAllowError::new(format!(
-                "{} selector {field} must not be empty",
-                entry.id
-            )));
+        if let Some(text) = value {
+            validate_selector_text(&entry.id, field, text)?;
         }
     }
     let has_structural_identity = selector.has_structural_identity();
@@ -37,6 +34,20 @@ pub(crate) fn validate_selector(entry: &AllowEntry) -> CargoAllowResult<()> {
         return Err(CargoAllowError::new(format!(
             "{} selector must include structural identity beyond line hints",
             entry.id
+        )));
+    }
+    Ok(())
+}
+
+fn validate_selector_text(id: &str, field: &str, text: &str) -> CargoAllowResult<()> {
+    if text.trim().is_empty() {
+        return Err(CargoAllowError::new(format!(
+            "{id} selector {field} must not be empty"
+        )));
+    }
+    if text.trim() != text {
+        return Err(CargoAllowError::new(format!(
+            "{id} selector {field} must not have leading or trailing whitespace"
         )));
     }
     Ok(())

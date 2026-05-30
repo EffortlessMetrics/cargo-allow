@@ -979,6 +979,56 @@ fn rejects_blank_selector_identity_field_even_with_other_identity() {
 }
 
 #[test]
+fn rejects_selector_identity_field_with_surrounding_whitespace() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "padded-selector"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = " unwrap "
+            "#,
+    );
+
+    assert!(
+        err.contains(
+            "padded-selector selector callee must not have leading or trailing whitespace"
+        )
+    );
+}
+
+#[test]
+fn rejects_padded_snippet_hash_selector() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "padded-snippet-hash"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                normalized_snippet_hash = " fnv1a64:abc "
+            "#,
+    );
+
+    assert!(err.contains(
+        "padded-snippet-hash selector normalized_snippet_hash must not have leading or trailing whitespace"
+    ));
+}
+
+#[test]
 fn rejects_zero_selector_line_hint() {
     let err = parse_err(
         r#"
