@@ -7,8 +7,8 @@ use crate::policy_compare::{
 };
 use crate::policy_entry_evidence::evidence_policy_changes;
 use crate::policy_entry_lifecycle::lifecycle_policy_changes;
+use crate::policy_entry_scope::scope_policy_changes;
 use crate::policy_entry_selector::selector_policy_changes;
-use crate::policy_scope::{scope_broadened, scope_changed, scope_narrowed};
 
 pub(crate) fn added_allow_change(entry: &AllowEntry) -> PolicyChange {
     let baseline = entry.classification == "baseline_debt";
@@ -69,30 +69,7 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
             ),
         });
     }
-    if scope_broadened(base, head) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::ScopeBroadened,
-            PolicyChangeSeverity::Fail,
-            "scope broadened",
-        ));
-    }
-    if scope_narrowed(base, head) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::ScopeNarrowed,
-            PolicyChangeSeverity::Improvement,
-            "scope narrowed",
-        ));
-    }
-    if scope_changed(base, head) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::ScopeChanged,
-            PolicyChangeSeverity::Review,
-            "scope changed",
-        ));
-    }
+    changes.extend(scope_policy_changes(base, head));
     changes.extend(selector_policy_changes(base, head));
     changes.extend(lifecycle_policy_changes(base, head));
     changes.extend(evidence_policy_changes(base, head));
