@@ -4,6 +4,7 @@ pub struct PolicyChange {
     pub kind: PolicyChangeKind,
     pub severity: PolicyChangeSeverity,
     pub message: String,
+    pub exception_identity: Option<ExceptionIdentityChange>,
     pub selector_precision: Option<SelectorPrecisionChange>,
     pub scope: Option<ScopeChange>,
     pub occurrence_limit: Option<OccurrenceLimitChange>,
@@ -26,6 +27,7 @@ impl PolicyChange {
             kind,
             severity,
             message: message.into(),
+            exception_identity: None,
             selector_precision: None,
             scope: None,
             occurrence_limit: None,
@@ -39,6 +41,11 @@ impl PolicyChange {
 
     pub fn with_selector_precision(mut self, selector_precision: SelectorPrecisionChange) -> Self {
         self.selector_precision = Some(selector_precision);
+        self
+    }
+
+    pub fn with_exception_identity(mut self, exception_identity: ExceptionIdentityChange) -> Self {
+        self.exception_identity = Some(exception_identity);
         self
     }
 
@@ -84,6 +91,30 @@ pub struct SelectorPrecisionChange {
     pub after: u32,
     pub removed_fields: Vec<&'static str>,
     pub added_fields: Vec<&'static str>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExceptionIdentityChange {
+    pub field: ExceptionIdentityChangeField,
+    pub before: Option<String>,
+    pub after: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExceptionIdentityChangeField {
+    Kind,
+    Family,
+}
+
+impl ExceptionIdentityChangeField {
+    pub const ALL: &[Self] = &[Self::Kind, Self::Family];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Kind => "kind",
+            Self::Family => "family",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
