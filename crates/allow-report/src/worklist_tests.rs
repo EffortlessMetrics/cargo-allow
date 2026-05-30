@@ -59,6 +59,76 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
     assert!(json.contains("\"source_package\": \"parser\""));
     assert!(json.contains("\"suggested_actions\": [\"review stale allow\"]"));
     assert!(json.contains("\"proof_commands\": [\"cargo-allow check --mode no-new\"]"));
+    let expected = format!(
+        r#"{{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.worklist.v1",
+  "tool": "cargo-allow",
+  "command": "worklist",
+  "claim_boundary": {},
+  "scanner_limitations": {},
+  "inventory": {{
+    "scope": "source_tree",
+    "scanner": "source_syntax",
+    "source": "git_tracked",
+    "root": "H:/Code/Rust/cargo-allow",
+    "files_scanned": 47
+  }},
+  "filters": {{
+    "kind": "panic",
+    "family": null,
+    "item_kind": "stale_allow",
+    "status": null,
+    "allow_id": null,
+    "path": null,
+    "source_package": null,
+    "owner": null,
+    "classification": null,
+    "baseline_debt": true,
+    "broad_scope": false,
+    "risk": "high",
+    "difficulty": null,
+    "missing_evidence": true
+  }},
+  "summary": {{
+    "work_items": 1,
+    "high": 1,
+    "medium": 0,
+    "low": 0,
+    "small_difficulty": 1,
+    "medium_difficulty": 0
+  }},
+  "work_items": [
+    {{
+      "id": "work-0001",
+      "kind": "stale_allow",
+      "exception_kind": "panic",
+      "family": "unwrap",
+      "owner": "parser",
+      "classification": "baseline_debt",
+      "reason": "generated baseline",
+      "created": "2026-05-27",
+      "review_after": "2026-07-01",
+      "expires": "2026-08-02",
+      "evidence_count": 1,
+      "risk": "high",
+      "difficulty": "small",
+      "status": "stale",
+      "allow_id": "allow-0001",
+      "finding_index": null,
+      "path": "crates/parser/src/lib.rs",
+      "source_package": "parser",
+      "message": "stale allow",
+      "suggested_actions": ["review stale allow"],
+      "proof_commands": ["cargo-allow check --mode no-new"]
+    }}
+  ]
+}}
+"#,
+        render_claim_boundary_json(),
+        render_scanner_limitations_json()
+    );
+    assert_eq!(json, expected);
 
     let text = render_worklist_human(
         &items,
