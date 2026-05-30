@@ -65,6 +65,20 @@ fn artifact_contract_registry_covers_current_v1_artifacts() {
 }
 
 #[test]
+fn scanner_limitations_are_subset_of_claim_boundary() {
+    for limitation in SCANNER_LIMITATIONS {
+        assert!(
+            CLAIM_BOUNDARY.contains(limitation),
+            "scanner limitation `{limitation}` must also be present in the broader claim boundary"
+        );
+    }
+    assert!(CLAIM_BOUNDARY.contains(&"source_tree_inventory"));
+    assert!(CLAIM_BOUNDARY.contains(&"source_syntax_only"));
+    assert!(!SCANNER_LIMITATIONS.contains(&"source_tree_inventory"));
+    assert!(!SCANNER_LIMITATIONS.contains(&"source_syntax_only"));
+}
+
+#[test]
 fn schemas_reference_current_contract_ids() {
     let report_schema = include_str!("../../../docs/schemas/report.schema.json");
     let receipt_schema = include_str!("../../../docs/schemas/receipt.schema.json");
