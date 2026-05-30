@@ -163,7 +163,8 @@ Diff report `policy_changes` use `policy_status_weakened`,
 status changes. These rows use the synthetic `allow_id` value `policy.status`.
 Changing `active` to `advisory` or removing an active status is failing policy
 weakening; changing `advisory` or an unset status to `active` is a policy
-improvement; other status transitions require review.
+improvement; other status transitions require review. These rows may include an
+optional `policy_status` object with before/after status values.
 
 Diff report `policy_changes` use `requirement_loosened` and
 `requirement_tightened` for policy-level `[requirements]` changes. The

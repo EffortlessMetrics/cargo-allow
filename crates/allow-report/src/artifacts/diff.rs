@@ -30,6 +30,7 @@ pub struct DiffPolicyChange<'a> {
     pub evidence: Option<DiffEvidenceChange<'a>>,
     pub metadata: Option<DiffMetadataChange<'a>>,
     pub requirement: Option<DiffRequirementChange<'a>>,
+    pub policy_status: Option<DiffPolicyStatusChange<'a>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -79,6 +80,12 @@ pub struct DiffRequirementChange<'a> {
     pub field: &'a str,
     pub before: bool,
     pub after: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct DiffPolicyStatusChange<'a> {
+    pub before: Option<&'a str>,
+    pub after: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, Copy)]

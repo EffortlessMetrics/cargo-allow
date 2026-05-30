@@ -306,6 +306,47 @@ fn report_schema_locks_diff_posture_extension_contract() {
         Some("#/$defs/requirement_change"),
         "report policy changes should use requirement change rows"
     );
+    assert_eq!(
+        schema
+            .pointer("/$defs/policy_change/properties/policy_status/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/policy_status_change"),
+        "report policy changes should use policy status change rows"
+    );
+    let policy_status_change =
+        required_schema_pointer("report", &schema, "/$defs/policy_status_change");
+    assert_eq!(
+        policy_status_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "report policy status changes should reject unknown fields"
+    );
+    assert_required_fields(
+        "report policy status change",
+        policy_status_change,
+        &["before", "after"],
+    );
+    for field in ["before", "after"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/policy_status_change/properties/{field}/type/0"
+                ))
+                .and_then(Value::as_str),
+            Some("string"),
+            "report policy status {field} first type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/policy_status_change/properties/{field}/type/1"
+                ))
+                .and_then(Value::as_str),
+            Some("null"),
+            "report policy status {field} second type"
+        );
+    }
     let requirement_change =
         required_schema_pointer("report", &schema, "/$defs/requirement_change");
     assert_eq!(

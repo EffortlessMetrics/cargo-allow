@@ -217,6 +217,12 @@ fn policy_change_rows(
                     after: requirement.after,
                 }
             }),
+            policy_status: change.policy_status.as_ref().map(|policy_status| {
+                allow_report::DiffPolicyStatusChange {
+                    before: policy_status.before.as_deref(),
+                    after: policy_status.after.as_deref(),
+                }
+            }),
         })
         .collect()
 }

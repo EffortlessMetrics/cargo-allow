@@ -639,6 +639,10 @@
         "requirement": {
           "$ref": "#/$defs/requirement_change",
           "description": "Optional structured requirement delta for requirement_loosened and requirement_tightened policy changes."
+        },
+        "policy_status": {
+          "$ref": "#/$defs/policy_status_change",
+          "description": "Optional structured top-level policy status delta for policy_status_weakened, policy_status_tightened, and policy_status_changed policy changes."
         }
       }
     },
@@ -726,6 +730,21 @@
         "unsafe.evidence_required",
         "unsafe.safety_comment_required"
       ]
+    },
+    "policy_status_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before", "after"],
+      "properties": {
+        "before": {
+          "type": ["string", "null"],
+          "description": "Policy status value before the policy change when available."
+        },
+        "after": {
+          "type": ["string", "null"],
+          "description": "Policy status value after the policy change when available."
+        }
+      }
     },
     "lifecycle_change": {
       "type": "object",

@@ -2,6 +2,7 @@ use allow_core::AllowConfig;
 
 use crate::policy_change::{
     MetadataChange, MetadataChangeField, PolicyChange, PolicyChangeKind, PolicyChangeSeverity,
+    PolicyStatusChange,
 };
 
 pub(crate) fn policy_header_changes(base: &AllowConfig, head: &AllowConfig) -> Vec<PolicyChange> {
@@ -85,16 +86,22 @@ fn status_change(base: Option<&str>, head: Option<&str>) -> Option<PolicyChange>
             "changed",
         ),
     };
-    Some(PolicyChange::new(
-        "policy.status",
-        kind,
-        severity,
-        format!(
-            "policy.status {direction}: {} -> {}",
-            display_text(base),
-            display_text(head)
-        ),
-    ))
+    Some(
+        PolicyChange::new(
+            "policy.status",
+            kind,
+            severity,
+            format!(
+                "policy.status {direction}: {} -> {}",
+                display_text(base),
+                display_text(head)
+            ),
+        )
+        .with_policy_status(PolicyStatusChange {
+            before: base.map(str::to_string),
+            after: head.map(str::to_string),
+        }),
+    )
 }
 
 fn normalized_text(value: Option<&str>) -> Option<&str> {
