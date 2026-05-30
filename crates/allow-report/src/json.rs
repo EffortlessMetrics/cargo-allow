@@ -1,6 +1,9 @@
 use allow_core::{MatchOutcome, json_escape};
 
-use crate::{ArtifactContract, CLAIM_BOUNDARY, InventoryContext, SCANNER_LIMITATIONS};
+use crate::{
+    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, ArtifactContract, CLAIM_BOUNDARY,
+    InventoryContext, SCANNER_LIMITATIONS,
+};
 
 pub(crate) fn push_json_artifact_header(
     out: &mut String,
@@ -53,6 +56,18 @@ pub(crate) fn push_json_artifact_source_context(out: &mut String, inventory: Inv
     out.push_str("  \"inventory\": ");
     out.push_str(&render_inventory_json(inventory, "  "));
     out.push_str(",\n");
+}
+
+pub(crate) fn push_json_status_fields(out: &mut String, failed: bool) {
+    out.push_str(&format!(
+        "  \"status\": \"{}\",\n",
+        if failed {
+            ARTIFACT_STATUS_FAILED
+        } else {
+            ARTIFACT_STATUS_PASSED
+        }
+    ));
+    out.push_str(&format!("  \"failed\": {},\n", bool_json(failed)));
 }
 
 pub(crate) fn push_json_source_context_properties(
