@@ -79,6 +79,42 @@
         "baseline_debt"
       ]
     },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "allow_id",
+        "finding_index",
+        "score",
+        "message"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/match_status"
+        },
+        "allow_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "finding_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
     "structural_identity": {
       "type": "object",
       "additionalProperties": false,
