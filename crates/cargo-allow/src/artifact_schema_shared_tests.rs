@@ -3,7 +3,7 @@ use crate::artifact_schema_support::{
     assert_schema_type_equals, governed_kind_enum, inventory_source_enum, match_status_enum,
     parse_schema, required_schema_pointer, schema_contracts,
 };
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::{collections::BTreeSet, fs, path::Path};
 
 #[test]
@@ -617,6 +617,41 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
 }
 
 #[test]
+fn artifact_local_fragments_match_common_wire_shapes() {
+    let common = parse_schema(
+        "common",
+        include_str!("../../../docs/schemas/common.v1.json"),
+    );
+    let report = parse_schema(
+        "report",
+        include_str!("../../../docs/schemas/report.schema.json"),
+    );
+    let add = parse_schema("add", include_str!("../../../docs/schemas/add.schema.json"));
+    let explain = parse_schema(
+        "explain",
+        include_str!("../../../docs/schemas/explain.schema.json"),
+    );
+
+    for fragment in [
+        "selector_precision_field",
+        "selector_precision_change",
+        "scope_change_field",
+        "scope_change",
+        "occurrence_limit_change",
+        "lifecycle_change_field",
+        "lifecycle_change",
+        "evidence_change_field",
+        "evidence_change",
+    ] {
+        assert_common_fragment_matches("report", &report, &common, fragment);
+    }
+
+    for (schema_name, schema) in [("add", &add), ("explain", &explain)] {
+        assert_common_fragment_matches(schema_name, schema, &common, "structural_identity");
+    }
+}
+
+#[test]
 fn schema_contract_registry_covers_schema_index_links() {
     let index = include_str!("../../../docs/schemas/README.md");
 
@@ -910,6 +945,38 @@ fn collect_object_nodes_missing_additional_properties(
 
 fn json_pointer_escape(value: &str) -> String {
     value.replace('~', "~0").replace('/', "~1")
+}
+
+fn assert_common_fragment_matches(
+    schema_name: &str,
+    schema: &Value,
+    common: &Value,
+    fragment: &str,
+) {
+    let pointer = format!("/$defs/{fragment}");
+    let schema_fragment = required_schema_pointer(schema_name, schema, &pointer);
+    let common_fragment = required_schema_pointer("common", common, &pointer);
+    assert_eq!(
+        schema_wire_shape(schema_fragment),
+        schema_wire_shape(common_fragment),
+        "{schema_name} {fragment} should match common.v1 wire shape"
+    );
+}
+
+fn schema_wire_shape(value: &Value) -> Value {
+    match value {
+        Value::Object(object) => {
+            let mut clean = Map::new();
+            for (key, child) in object {
+                if key != "description" {
+                    clean.insert(key.clone(), schema_wire_shape(child));
+                }
+            }
+            Value::Object(clean)
+        }
+        Value::Array(items) => Value::Array(items.iter().map(schema_wire_shape).collect()),
+        _ => value.clone(),
+    }
 }
 
 fn selector_precision_fields() -> Vec<&'static str> {
