@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::evidence_reference::{EvidenceKind, EvidenceReference};
-use crate::scope_validation::validate_path_scope;
+use crate::source_tree_scope::validate_path_scope;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EvidenceReferenceStatus {
