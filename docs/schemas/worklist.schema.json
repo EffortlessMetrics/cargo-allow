@@ -369,7 +369,8 @@
           "minimum": 0
         },
         "path": {
-          "type": ["string", "null"]
+          "type": ["string", "null"],
+          "description": "Source-tree path for source-backed work items, or a local evidence path for broken_evidence_link items. Null means the item is not tied to a source-tree path, including weak_evidence_reference items whose evidence target is not locally validated."
         },
         "source_package": {
           "type": ["string", "null"],

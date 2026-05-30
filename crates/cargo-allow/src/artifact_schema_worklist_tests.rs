@@ -203,6 +203,26 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         "/$defs/work_item/properties/source_package/type",
         &["string", "null"],
     );
+    assert_schema_type_equals(
+        "worklist item path",
+        &schema,
+        "/$defs/work_item/properties/path/type",
+        &["string", "null"],
+    );
+    let path_description = schema
+        .pointer("/$defs/work_item/properties/path/description")
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("worklist item path should document source-tree semantics")
+        });
+    assert!(
+        path_description.contains("Source-tree path"),
+        "worklist item path should be documented as source-tree scoped"
+    );
+    assert!(
+        path_description.contains("weak_evidence_reference"),
+        "worklist item path should document why weak evidence references use null"
+    );
     assert_eq!(
         schema
             .pointer("/$defs/work_item/properties/proof_commands/items/pattern")
