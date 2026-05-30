@@ -53,6 +53,41 @@
         "unknown"
       ]
     },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "scanner",
+        "source"
+      ],
+      "properties": {
+        "scope": {
+          "const": "source_tree"
+        },
+        "scanner": {
+          "const": "source_syntax"
+        },
+        "source": {
+          "enum": [
+            "unknown",
+            "git_tracked",
+            "filesystem_fallback",
+            "filesystem_include_untracked"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Local source-tree root used for this scan. This may be an absolute path in local artifacts."
+        },
+        "files_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of source-tree inventory files considered before scanner filtering, when a full inventory was collected."
+        }
+      }
+    },
     "governed_source_exception_kind": {
       "type": "string",
       "enum": [
