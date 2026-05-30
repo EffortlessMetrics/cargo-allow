@@ -34,7 +34,7 @@ pub fn weak_evidence_reference_count(root: impl AsRef<Path>, cfg: &AllowConfig) 
     cfg.allow
         .iter()
         .flat_map(|entry| evidence_reference_diagnostics(root, entry))
-        .filter(|diagnostic| diagnostic.status == EvidenceReferenceStatus::Unstructured)
+        .filter(|diagnostic| diagnostic.status.is_weak_reference())
         .count()
 }
 

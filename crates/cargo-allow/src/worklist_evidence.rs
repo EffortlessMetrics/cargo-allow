@@ -2,9 +2,7 @@ use super::worklist_item_kind::{BROKEN_EVIDENCE_LINK, WEAK_EVIDENCE_REFERENCE};
 use super::worklist_priority::{DIFFICULTY_SMALL, RISK_HIGH, RISK_MEDIUM};
 use super::{WorkItem, proof_commands};
 use allow_core::{AllowConfig, AllowEntry, FindingKind, MatchStatus, normalize_path};
-use allow_policy::{
-    EvidenceReferenceDiagnostic, EvidenceReferenceStatus, evidence_reference_diagnostics,
-};
+use allow_policy::{EvidenceReferenceDiagnostic, evidence_reference_diagnostics};
 use std::path::Path;
 
 pub(super) fn work_items_from_evidence_diagnostics(
@@ -34,9 +32,11 @@ fn work_item_from_evidence_diagnostic(
     diagnostic: EvidenceReferenceDiagnostic,
     item_index: usize,
 ) -> WorkItem {
-    let kind = match diagnostic.status {
-        EvidenceReferenceStatus::Unstructured => WEAK_EVIDENCE_REFERENCE,
-        _ => BROKEN_EVIDENCE_LINK,
+    let kind = if diagnostic.status.is_weak_reference() {
+        WEAK_EVIDENCE_REFERENCE
+    } else {
+        debug_assert!(diagnostic.status.is_broken_local_link());
+        BROKEN_EVIDENCE_LINK
     };
     let proof_commands = proof_commands(kind, None, Some(entry));
     WorkItem {
