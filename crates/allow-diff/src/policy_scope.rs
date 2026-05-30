@@ -1,46 +1,60 @@
 use allow_core::{AllowEntry, glob_matches_str, normalize_path};
 
+const EXACT_PATH_SCOPE_WEIGHT: u32 = 20;
+const GLOB_SCOPE_WEIGHT: u32 = 5;
+const FAMILY_WEIGHT: u32 = 10;
+const AST_KIND_WEIGHT: u32 = 15;
+const CONTAINER_WEIGHT: u32 = 15;
+const CALLEE_WEIGHT: u32 = 10;
+const MACRO_NAME_WEIGHT: u32 = 10;
+const LINT_WEIGHT: u32 = 10;
+const SYMBOL_WEIGHT: u32 = 8;
+const RECEIVER_FINGERPRINT_WEIGHT: u32 = 6;
+const TARGET_FINGERPRINT_WEIGHT: u32 = 6;
+const SNIPPET_HASH_WEIGHT: u32 = 20;
+const OCCURRENCE_LIMIT_WEIGHT: u32 = 5;
+
 pub fn selector_precision_score(entry: &AllowEntry) -> u32 {
     let selector = &entry.selector;
     let mut score = 0;
     if entry.path.is_some() {
-        score += 20;
+        score += EXACT_PATH_SCOPE_WEIGHT;
     }
     if entry.glob.is_some() || selector.glob.is_some() {
-        score += 5;
+        score += GLOB_SCOPE_WEIGHT;
     }
     if entry.family.is_some() {
-        score += 10;
+        score += FAMILY_WEIGHT;
     }
     if present(selector.ast_kind.as_deref()) {
-        score += 15;
+        score += AST_KIND_WEIGHT;
     }
     if present(selector.container.as_deref()) {
-        score += 15;
+        score += CONTAINER_WEIGHT;
     }
     if present(selector.callee.as_deref()) {
-        score += 10;
+        score += CALLEE_WEIGHT;
     }
     if present(selector.macro_name.as_deref()) {
-        score += 10;
+        score += MACRO_NAME_WEIGHT;
     }
     if present(selector.lint.as_deref()) {
-        score += 10;
+        score += LINT_WEIGHT;
     }
     if present(selector.symbol.as_deref()) {
-        score += 8;
+        score += SYMBOL_WEIGHT;
     }
     if present(selector.receiver_fingerprint.as_deref()) {
-        score += 6;
+        score += RECEIVER_FINGERPRINT_WEIGHT;
     }
     if present(selector.target_fingerprint.as_deref()) {
-        score += 6;
+        score += TARGET_FINGERPRINT_WEIGHT;
     }
     if present(selector.normalized_snippet_hash.as_deref()) {
-        score += 20;
+        score += SNIPPET_HASH_WEIGHT;
     }
     if entry.occurrence_limit.is_some() {
-        score += 5;
+        score += OCCURRENCE_LIMIT_WEIGHT;
     }
     score
 }
