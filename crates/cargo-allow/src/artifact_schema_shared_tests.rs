@@ -1,6 +1,6 @@
 use crate::artifact_schema_support::{
     assert_command_contract, assert_enum_equals, assert_inventory_schema, assert_required_fields,
-    parse_schema, schema_contracts,
+    inventory_source_enum, parse_schema, required_schema_pointer, schema_contracts,
 };
 use serde_json::Value;
 use std::{collections::BTreeSet, fs, path::Path};
@@ -97,6 +97,96 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
     assert_eq!(
         registered, documented,
         "every docs/schemas/*.schema.json file should be registered for shared contract tests"
+    );
+}
+
+#[test]
+fn common_schema_fragments_mirror_source_tree_contracts() {
+    let schema = parse_schema(
+        "common",
+        include_str!("../../../docs/schemas/common.v1.json"),
+    );
+
+    assert_eq!(
+        schema.get("$schema").and_then(Value::as_str),
+        Some("https://json-schema.org/draft/2020-12/schema"),
+        "common schema draft"
+    );
+    assert_eq!(
+        schema.get("$id").and_then(Value::as_str),
+        Some("https://effortlessmetrics.dev/schemas/cargo-allow/common.v1.json"),
+        "common schema id"
+    );
+    assert_eq!(
+        schema.get("title").and_then(Value::as_str),
+        Some("cargo-allow shared v1 schema fragments"),
+        "common schema title"
+    );
+    assert_enum_equals(
+        "common",
+        &schema,
+        "/$defs/claim_boundary_flag/enum",
+        allow_report::CLAIM_BOUNDARY,
+    );
+    assert_enum_equals(
+        "common",
+        &schema,
+        "/$defs/scanner_limitation/enum",
+        allow_report::SCANNER_LIMITATIONS,
+    );
+    assert_enum_equals(
+        "common",
+        &schema,
+        "/$defs/inventory_source/enum",
+        &inventory_source_enum(),
+    );
+
+    let source_syntax =
+        required_schema_pointer("common", &schema, "/$defs/source_syntax_inventory");
+    assert_eq!(
+        source_syntax
+            .pointer("/properties/scope/const")
+            .and_then(Value::as_str),
+        Some(allow_report::INVENTORY_SCOPE_SOURCE_TREE),
+        "common source_syntax inventory scope"
+    );
+    assert_eq!(
+        source_syntax
+            .pointer("/properties/scanner/const")
+            .and_then(Value::as_str),
+        Some(allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX),
+        "common source_syntax inventory scanner"
+    );
+    assert_eq!(
+        source_syntax
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common source_syntax inventory should reject unknown fields"
+    );
+
+    let policy_migration =
+        required_schema_pointer("common", &schema, "/$defs/policy_migration_inventory");
+    assert_eq!(
+        policy_migration
+            .pointer("/properties/scope/const")
+            .and_then(Value::as_str),
+        Some(allow_report::INVENTORY_SCOPE_SOURCE_TREE),
+        "common policy_migration inventory scope"
+    );
+    assert_eq!(
+        policy_migration
+            .pointer("/properties/scanner/const")
+            .and_then(Value::as_str),
+        Some(allow_report::INVENTORY_SCANNER_POLICY_MIGRATION),
+        "common policy_migration inventory scanner"
+    );
+    assert_eq!(
+        policy_migration
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common policy_migration inventory should reject unknown fields"
     );
 }
 
