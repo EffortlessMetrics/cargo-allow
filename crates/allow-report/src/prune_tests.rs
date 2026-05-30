@@ -35,6 +35,47 @@ fn prune_json_renderer_records_mode_context_and_candidates() {
     assert!(json.contains("\"id\": \"allow-stale\""));
     assert!(json.contains("\"kind\": \"panic\""));
     assert!(json.contains("\"family\": \"unwrap\""));
+    let expected = format!(
+        r#"{{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.prune.v1",
+  "tool": "cargo-allow",
+  "command": "prune",
+  "claim_boundary": {},
+  "scanner_limitations": {},
+  "inventory": {{
+    "scope": "source_tree",
+    "scanner": "source_syntax",
+    "source": "git_tracked",
+    "root": "H:/Code/Rust/cargo-allow",
+    "files_scanned": 49
+  }},
+  "mode": {{
+    "dry_run": true,
+    "write_requested": false,
+    "explicit_dry_run": true,
+    "written_path": null
+  }},
+  "summary": {{
+    "stale_entries": 1
+  }},
+  "stale_entries": [
+    {{
+      "id": "allow-stale",
+      "kind": "panic",
+      "family": "unwrap",
+      "owner": "parser",
+      "classification": "baseline_debt",
+      "scope": "crates/parser/src/lib.rs",
+      "reason": "stale baseline entry"
+    }}
+  ]
+}}
+"#,
+        render_claim_boundary_json(),
+        render_scanner_limitations_json()
+    );
+    assert_eq!(json, expected);
 }
 
 #[test]
