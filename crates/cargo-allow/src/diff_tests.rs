@@ -99,6 +99,7 @@ fn json_report_includes_structured_posture_changes() {
             }),
             scope: None,
             occurrence_limit: None,
+            lifecycle: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0002".to_string(),
@@ -112,6 +113,7 @@ fn json_report_includes_structured_posture_changes() {
                 after: Some("src/**".to_string()),
             }),
             occurrence_limit: None,
+            lifecycle: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0003".to_string(),
@@ -123,6 +125,21 @@ fn json_report_includes_structured_posture_changes() {
             occurrence_limit: Some(allow_diff::OccurrenceLimitChange {
                 before: Some(1),
                 after: None,
+            }),
+            lifecycle: None,
+        },
+        allow_diff::PolicyChange {
+            allow_id: "allow-0004".to_string(),
+            kind: allow_diff::PolicyChangeKind::ExpiryExtended,
+            severity: allow_diff::PolicyChangeSeverity::Review,
+            message: "allow-0004 expiry extended or removed".to_string(),
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: Some(allow_diff::LifecycleChange {
+                field: allow_diff::LifecycleChangeField::Expires,
+                before: Some("2026-09-01".to_string()),
+                after: Some("2026-12-01".to_string()),
             }),
         },
     ];
@@ -169,6 +186,12 @@ fn json_report_includes_structured_posture_changes() {
             .pointer("/diff/summary/policy_failures")
             .and_then(Value::as_u64),
         Some(3)
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_review_items")
+            .and_then(Value::as_u64),
+        Some(1)
     );
     assert_eq!(
         value
@@ -267,6 +290,31 @@ fn json_report_includes_structured_posture_changes() {
             .pointer("/occurrence_limit/after")
             .is_some_and(Value::is_null)
     );
+    let lifecycle_change = policy_changes.get(3).unwrap_or_else(|| {
+        std::panic::panic_any("diff policy_changes should include lifecycle row")
+    });
+    assert_eq!(
+        lifecycle_change.get("kind").and_then(Value::as_str),
+        Some("expiry_extended")
+    );
+    assert_eq!(
+        lifecycle_change
+            .pointer("/lifecycle/field")
+            .and_then(Value::as_str),
+        Some("expires")
+    );
+    assert_eq!(
+        lifecycle_change
+            .pointer("/lifecycle/before")
+            .and_then(Value::as_str),
+        Some("2026-09-01")
+    );
+    assert_eq!(
+        lifecycle_change
+            .pointer("/lifecycle/after")
+            .and_then(Value::as_str),
+        Some("2026-12-01")
+    );
     assert!(json.ends_with("}\n"));
 }
 
@@ -321,6 +369,7 @@ fn policy_change(
         selector_precision: None,
         scope: None,
         occurrence_limit: None,
+        lifecycle: None,
     }
 }
 

@@ -23,8 +23,8 @@ pub use finding::{
 };
 pub use policy::{policy_changes, policy_changes_from_git, policy_config_at_revision};
 pub use policy_change::{
-    OccurrenceLimitChange, PolicyChange, PolicyChangeKind, PolicyChangeSeverity, ScopeChange,
-    ScopeChangeField, SelectorPrecisionChange,
+    LifecycleChange, LifecycleChangeField, OccurrenceLimitChange, PolicyChange, PolicyChangeKind,
+    PolicyChangeSeverity, ScopeChange, ScopeChangeField, SelectorPrecisionChange,
 };
 pub use policy_scope::selector_precision_score;
 pub use revision::findings_at_revision;

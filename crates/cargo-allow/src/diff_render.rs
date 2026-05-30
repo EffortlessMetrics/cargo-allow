@@ -187,6 +187,13 @@ fn policy_change_rows(
                     after: limit.after,
                 }
             }),
+            lifecycle: change.lifecycle.as_ref().map(|lifecycle| {
+                allow_report::DiffLifecycleChange {
+                    field: lifecycle.field.as_str(),
+                    before: lifecycle.before.as_deref(),
+                    after: lifecycle.after.as_deref(),
+                }
+            }),
         })
         .collect()
 }

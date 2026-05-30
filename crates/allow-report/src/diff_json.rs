@@ -120,6 +120,15 @@ pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
                 option_u32_json(limit.after)
             ));
         }
+        if let Some(lifecycle) = change.lifecycle {
+            out.push_str(", ");
+            out.push_str(&format!(
+                "\"lifecycle\": {{\"field\": \"{}\", \"before\": {}, \"after\": {}}}",
+                json_escape(lifecycle.field),
+                option_json(lifecycle.before),
+                option_json(lifecycle.after)
+            ));
+        }
         out.push('}');
     }
     out.push_str("\n    ]\n");

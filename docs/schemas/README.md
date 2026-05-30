@@ -197,6 +197,10 @@ Rows with `occurrence_limit_loosened` or `occurrence_limit_tightened` may also
 include an optional `occurrence_limit` object with before/after count values.
 This lets consumers distinguish capped baseline changes from unlimited approval
 without parsing the human `message` string.
+Rows with `created_added`, `created_changed`, `created_removed`,
+`expiry_extended`, `expiry_shortened`, `review_after_extended`, or
+`review_after_shortened` may also include an optional `lifecycle` object with
+the changed lifecycle field and before/after values.
 
 ## Evidence Prefix Vocabulary
 

@@ -22,6 +22,7 @@ fn diff_json_renderer_appends_posture_extension() {
             after: Some("src/**"),
         }),
         occurrence_limit: None,
+        lifecycle: None,
     }];
 
     let rendered = render_diff_json_with_posture(
@@ -119,6 +120,7 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
         selector_precision: None,
         scope: None,
         occurrence_limit: None,
+        lifecycle: None,
     }];
     let report = DiffReport {
         net_posture: "improved",
@@ -161,6 +163,7 @@ fn diff_json_renderer_includes_occurrence_limit_change() {
             before: Some(1),
             after: None,
         }),
+        lifecycle: None,
     }];
 
     let json = render_diff_posture_json(DiffReport {
@@ -180,6 +183,44 @@ fn diff_json_renderer_includes_occurrence_limit_change() {
 
     assert!(json.contains("\"kind\": \"occurrence_limit_loosened\""));
     assert!(json.contains("\"occurrence_limit\": {\"before\": 1, \"after\": null}"));
+}
+
+#[test]
+fn diff_json_renderer_includes_lifecycle_change() {
+    let policy_changes = vec![DiffPolicyChange {
+        severity: "review",
+        allow_id: "allow-0001",
+        kind: "expiry_extended",
+        message: "allow-0001 expiry extended or removed",
+        selector_precision: None,
+        scope: None,
+        occurrence_limit: None,
+        lifecycle: Some(DiffLifecycleChange {
+            field: "expires",
+            before: Some("2026-09-01"),
+            after: Some("2026-12-01"),
+        }),
+    }];
+
+    let json = render_diff_posture_json(DiffReport {
+        net_posture: "review-required",
+        reviewer_action: "review policy lifecycle",
+        summary: DiffPostureSummary {
+            current_failures: 0,
+            new_findings: 0,
+            removed_findings: 0,
+            policy_failures: 0,
+            policy_review_items: 1,
+            policy_improvements: 0,
+        },
+        finding_changes: &[],
+        policy_changes: &policy_changes,
+    });
+
+    assert!(json.contains("\"kind\": \"expiry_extended\""));
+    assert!(json.contains(
+        "\"lifecycle\": {\"field\": \"expires\", \"before\": \"2026-09-01\", \"after\": \"2026-12-01\"}"
+    ));
 }
 
 #[test]
@@ -204,6 +245,7 @@ fn diff_json_report_matches_posture_golden_contract() {
         }),
         scope: None,
         occurrence_limit: None,
+        lifecycle: None,
     }];
     let report = DiffReport {
         net_posture: "improved",
@@ -342,6 +384,7 @@ fn diff_pr_summary_markdown_reports_net_posture() {
         selector_precision: None,
         scope: None,
         occurrence_limit: None,
+        lifecycle: None,
     }];
 
     let summary = render_diff_pr_summary_markdown(0, &finding_changes, &policy_changes);
@@ -370,6 +413,7 @@ fn diff_posture_tables_escape_markdown_cells() {
         selector_precision: None,
         scope: None,
         occurrence_limit: None,
+        lifecycle: None,
     }];
 
     let findings = render_diff_finding_changes_markdown(&finding_changes);

@@ -7,6 +7,7 @@ pub struct PolicyChange {
     pub selector_precision: Option<SelectorPrecisionChange>,
     pub scope: Option<ScopeChange>,
     pub occurrence_limit: Option<OccurrenceLimitChange>,
+    pub lifecycle: Option<LifecycleChange>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,6 +29,32 @@ pub struct ScopeChange {
 pub struct OccurrenceLimitChange {
     pub before: Option<u32>,
     pub after: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LifecycleChange {
+    pub field: LifecycleChangeField,
+    pub before: Option<String>,
+    pub after: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LifecycleChangeField {
+    Created,
+    Expires,
+    ReviewAfter,
+}
+
+impl LifecycleChangeField {
+    pub const ALL: &[Self] = &[Self::Created, Self::Expires, Self::ReviewAfter];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Created => "created",
+            Self::Expires => "expires",
+            Self::ReviewAfter => "review_after",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
