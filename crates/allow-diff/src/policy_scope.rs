@@ -69,6 +69,16 @@ pub(crate) fn scope_narrowed(base: &AllowEntry, head: &AllowEntry) -> bool {
     !scope_broadened(base, head) && scope_broadened(head, base)
 }
 
+pub(crate) fn scope_changed(base: &AllowEntry, head: &AllowEntry) -> bool {
+    if scope_broadened(base, head) || scope_narrowed(base, head) {
+        return false;
+    }
+    match (entry_scope_text(base), entry_scope_text(head)) {
+        (Some(base_scope), Some(head_scope)) => base_scope != head_scope,
+        _ => false,
+    }
+}
+
 fn glob_scope_broadened(base: Option<&str>, head: Option<&str>) -> bool {
     match (base, head) {
         (Some(base), Some(head)) => {

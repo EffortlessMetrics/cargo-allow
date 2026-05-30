@@ -37,7 +37,10 @@ Each retained exception should have:
 intentionally small and build-independent; canonical policy globs support `*`,
 `?`, and whole-segment `**`. Bracket classes such as `[ab]` and brace
 alternation such as `{a,b}` are not supported; use exact `path` entries or
-explicit separate globs instead.
+explicit separate globs instead. Diff mode reports non-directional source-tree
+scope retargets as review-required `scope_changed` policy changes. That covers
+exact path changes or sibling glob replacements that are neither broadening nor
+narrowing.
 
 Diff mode reports owner, reason, or classification removals as policy
 weakening, additions of those required metadata fields as policy improvements,
