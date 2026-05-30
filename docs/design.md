@@ -146,7 +146,8 @@ An allow entry separates the claim from the proof:
 - `reason` explains why the exception is acceptable.
 - `evidence` points to what supports that reason.
 
-Evidence references may later include:
+Evidence references include typed prefixes for local proof files, traceability,
+and command/test labels:
 
 - `test:`
 - `cargo:`
@@ -160,9 +161,10 @@ Evidence references may later include:
 - `pr:`
 - `legacy-policy:`
 
-V1 may validate only local shape and file existence where practical. It must not
-claim semantic proof from the presence of a reference, and it must not execute
-external evidence tools as part of its own scan.
+The current policy layer validates local-file evidence references where
+practical and reports unstructured or unknown-prefix references as weak
+evidence. It must not claim semantic proof from the presence of a reference,
+and it must not execute external evidence tools as part of its own scan.
 
 ## Reports
 
