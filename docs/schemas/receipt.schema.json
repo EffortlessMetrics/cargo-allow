@@ -27,8 +27,8 @@
       "const": "cargo-allow"
     },
     "command": {
-      "type": "string",
-      "minLength": 1
+      "const": "check",
+      "description": "Receipts are emitted by cargo-allow check."
     },
     "status": {
       "enum": ["passed", "failed"]

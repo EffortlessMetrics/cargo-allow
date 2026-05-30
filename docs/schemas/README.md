@@ -228,6 +228,7 @@ Schema compatibility tests also lock:
 - shared source-tree inventory source values, including `git_tracked`,
   `filesystem_fallback`, `filesystem_include_untracked`, and `unknown`
   renderer defaults;
+- report and receipt command producer values;
 - shared claim-boundary and scanner-limitation vocabularies;
 - report and receipt top-level status values;
 - match-status vocabularies where artifacts expose current ledger status;
