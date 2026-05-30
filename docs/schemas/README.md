@@ -127,6 +127,13 @@ entry changes from a concrete owner to `owner = "unowned"`. This is a failing
 policy-posture signal because retained exceptions must not silently lose
 ownership.
 
+Diff report `policy_changes` use `policy_owner_added`,
+`policy_owner_changed`, `policy_owner_removed`, and `policy_owner_unassigned`
+for top-level ledger-owner changes. These rows use the synthetic `allow_id`
+value `policy.owner`. Removing a concrete policy owner or changing it to
+`unowned` is failing policy weakening, adding a concrete owner is an
+improvement, and changing one concrete owner to another requires review.
+
 Diff report `policy_changes` use `policy_status_weakened`,
 `policy_status_tightened`, and `policy_status_changed` for top-level policy
 status changes. These rows use the synthetic `allow_id` value `policy.status`.
