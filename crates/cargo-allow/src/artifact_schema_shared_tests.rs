@@ -119,6 +119,37 @@ fn schema_contract_registry_covers_schema_index_links() {
 }
 
 #[test]
+fn schema_files_keep_document_metadata_aligned_with_contracts() {
+    for contract in schema_contracts() {
+        let schema = parse_schema(contract.name, contract.schema);
+        let expected_id = format!(
+            "https://effortlessmetrics.dev/schemas/cargo-allow/{}.v{}.schema.json",
+            contract.name, contract.schema_version
+        );
+        let expected_title = format!("cargo-allow {} v{}", contract.name, contract.schema_version);
+
+        assert_eq!(
+            schema.get("$schema").and_then(Value::as_str),
+            Some("https://json-schema.org/draft/2020-12/schema"),
+            "{} schema draft",
+            contract.name
+        );
+        assert_eq!(
+            schema.get("$id").and_then(Value::as_str),
+            Some(expected_id.as_str()),
+            "{} schema id",
+            contract.name
+        );
+        assert_eq!(
+            schema.get("title").and_then(Value::as_str),
+            Some(expected_title.as_str()),
+            "{} schema title",
+            contract.name
+        );
+    }
+}
+
+#[test]
 fn schema_files_reject_unknown_top_level_fields() {
     for contract in schema_contracts() {
         let schema = parse_schema(contract.name, contract.schema);
