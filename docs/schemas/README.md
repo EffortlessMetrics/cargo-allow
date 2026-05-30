@@ -70,6 +70,11 @@ Artifact-specific fields such as `diff`, `summary`, `allow_entries`,
 covered by their individual schema files. Consumers should branch on
 `schema_id`, not on command-line spelling or filenames.
 
+Every `report.schema.json` `$defs` fragment is mirrored in
+`common.v1.json` and covered by shared compatibility tests. Future report
+fragments should be added to both files together so audit, check, and diff
+consumers do not lose the shared contract catalog.
+
 List artifacts currently emit a `filters` object with every known filter key,
 but nested filter fields are optional in the schema so older `cargo-allow.list.v1`
 artifacts and future additive filter fields can remain compatible.
