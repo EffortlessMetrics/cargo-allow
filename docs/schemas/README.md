@@ -33,9 +33,9 @@ macro-expansion, or proof-level coverage.
   tested vocabulary source for future schema consolidation. Artifact schemas
   remain self-contained for consumer portability. The shared catalog includes
   source-tree inventory, evidence-prefix vocabularies, and evidence diagnostic
-  row shapes used by `explain` and `worklist`, plus selector-precision
-  scope-change, occurrence-limit, lifecycle, and evidence-change posture
-  fragments used by `diff`.
+  row shapes used by `explain` and `worklist`, plus diff posture vocabularies,
+  selector-precision, scope-change, occurrence-limit, lifecycle, and
+  evidence-change posture fragments used by `diff`.
 
 ## Contract Status
 
