@@ -295,6 +295,44 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         "/$defs/evidence_change_field/enum",
         &evidence_change_fields(),
     );
+    assert_enum_equals(
+        "common metadata fields",
+        &schema,
+        "/$defs/metadata_change_field/enum",
+        &metadata_change_fields(),
+    );
+    let metadata_change = required_schema_pointer("common", &schema, "/$defs/metadata_change");
+    assert_eq!(
+        metadata_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common metadata_change should reject unknown fields"
+    );
+    assert_required_fields(
+        "common metadata_change",
+        metadata_change,
+        &["field", "before", "after"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/metadata_change/properties/field/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/metadata_change_field"),
+        "common metadata_change field should use the shared metadata field vocabulary"
+    );
+    assert_schema_type_equals(
+        "common metadata_change before",
+        &schema,
+        "/$defs/metadata_change/properties/before/type",
+        &["string", "null"],
+    );
+    assert_schema_type_equals(
+        "common metadata_change after",
+        &schema,
+        "/$defs/metadata_change/properties/after/type",
+        &["string", "null"],
+    );
     let evidence_change = required_schema_pointer("common", &schema, "/$defs/evidence_change");
     assert_eq!(
         evidence_change
@@ -593,6 +631,8 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "lifecycle_change",
         "lifecycle_change_field",
         "match_status",
+        "metadata_change",
+        "metadata_change_field",
         "occurrence_limit_change",
         "policy_change_kind",
         "policy_change_severity",
@@ -642,6 +682,8 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         "lifecycle_change",
         "evidence_change_field",
         "evidence_change",
+        "metadata_change_field",
+        "metadata_change",
     ] {
         assert_common_fragment_matches("report", &report, &common, fragment);
     }
@@ -1021,6 +1063,14 @@ fn evidence_change_fields() -> Vec<&'static str> {
         .iter()
         .copied()
         .map(allow_diff::EvidenceChangeField::as_str)
+        .collect()
+}
+
+fn metadata_change_fields() -> Vec<&'static str> {
+    allow_diff::MetadataChangeField::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::MetadataChangeField::as_str)
         .collect()
 }
 
