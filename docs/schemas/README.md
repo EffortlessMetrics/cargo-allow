@@ -34,11 +34,11 @@ macro-expansion, or proof-level coverage.
   remain self-contained for consumer portability. The shared catalog includes
   source-tree inventory, governed source-exception kind and match-status
   vocabularies, structural identity, evidence-prefix vocabularies, and evidence
-  diagnostic row shapes used by `explain` and `worklist`, plus diff-summary,
-  diff posture vocabularies, finding-change, policy-change, selector-identity,
-  selector-precision, exception-identity, scope-change, occurrence-limit,
-  lifecycle, evidence-change, metadata-change, requirement-change, and
-  policy-status posture fragments used by `diff`.
+  diagnostic row shapes used by `explain` and `worklist`, plus the diff
+  posture object, diff-summary, finding-change, policy-change,
+  selector-identity, selector-precision, exception-identity, scope-change,
+  occurrence-limit, lifecycle, evidence-change, metadata-change,
+  requirement-change, and policy-status fragments used by `diff`.
 
 ## Contract Status
 

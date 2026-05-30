@@ -460,6 +460,46 @@
         }
       }
     },
+    "diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "net_posture",
+        "reviewer_action",
+        "summary",
+        "finding_changes",
+        "policy_changes"
+      ],
+      "properties": {
+        "net_posture": {
+          "enum": [
+            "worse",
+            "review-required",
+            "improved",
+            "unchanged"
+          ]
+        },
+        "reviewer_action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "$ref": "#/$defs/diff_summary"
+        },
+        "finding_changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding_posture_change"
+          }
+        },
+        "policy_changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/policy_change"
+          }
+        }
+      }
+    },
     "diff_summary": {
       "type": "object",
       "additionalProperties": false,
