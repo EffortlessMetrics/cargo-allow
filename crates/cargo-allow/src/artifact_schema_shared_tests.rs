@@ -371,6 +371,32 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
             "common requirement_change {field} type"
         );
     }
+    let policy_status_change =
+        required_schema_pointer("common", &schema, "/$defs/policy_status_change");
+    assert_eq!(
+        policy_status_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common policy_status_change should reject unknown fields"
+    );
+    assert_required_fields(
+        "common policy_status_change",
+        policy_status_change,
+        &["before", "after"],
+    );
+    assert_schema_type_equals(
+        "common policy_status_change before",
+        &schema,
+        "/$defs/policy_status_change/properties/before/type",
+        &["string", "null"],
+    );
+    assert_schema_type_equals(
+        "common policy_status_change after",
+        &schema,
+        "/$defs/policy_status_change/properties/after/type",
+        &["string", "null"],
+    );
     let evidence_change = required_schema_pointer("common", &schema, "/$defs/evidence_change");
     assert_eq!(
         evidence_change
@@ -674,6 +700,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "occurrence_limit_change",
         "policy_change_kind",
         "policy_change_severity",
+        "policy_status_change",
         "policy_migration_inventory",
         "recognized_evidence_prefix",
         "requirement_change",
@@ -726,6 +753,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         "metadata_change",
         "requirement_change_field",
         "requirement_change",
+        "policy_status_change",
     ] {
         assert_common_fragment_matches("report", &report, &common, fragment);
     }

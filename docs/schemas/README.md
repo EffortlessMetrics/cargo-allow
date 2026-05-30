@@ -36,8 +36,8 @@ macro-expansion, or proof-level coverage.
   vocabularies, structural identity, evidence-prefix vocabularies, and evidence
   diagnostic row shapes used by `explain` and `worklist`, plus diff posture
   vocabularies, selector-precision, scope-change, occurrence-limit, lifecycle,
-  evidence-change, metadata-change, and requirement-change posture fragments
-  used by `diff`.
+  evidence-change, metadata-change, requirement-change, and policy-status
+  posture fragments used by `diff`.
 
 ## Contract Status
 
