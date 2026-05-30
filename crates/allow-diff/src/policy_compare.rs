@@ -45,6 +45,12 @@ pub(crate) fn added_required_text(base: &str, head: &str) -> bool {
     base.trim().is_empty() && !head.trim().is_empty()
 }
 
+pub(crate) fn changed_required_text(base: &str, head: &str) -> bool {
+    let base = base.trim();
+    let head = head.trim();
+    !base.is_empty() && !head.is_empty() && base != head
+}
+
 pub(crate) fn occurrence_limit_loosened(base: Option<u32>, head: Option<u32>) -> bool {
     match (base, head) {
         (Some(_), None) => true,

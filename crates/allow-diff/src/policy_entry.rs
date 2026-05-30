@@ -2,8 +2,8 @@ use allow_core::AllowEntry;
 
 use crate::policy_change::{PolicyChange, PolicyChangeKind, PolicyChangeSeverity};
 use crate::policy_compare::{
-    added_required_text, added_values, date_extended, date_shortened, occurrence_limit_loosened,
-    occurrence_limit_tightened, removed_required_text, removed_values,
+    added_required_text, added_values, changed_required_text, date_extended, date_shortened,
+    occurrence_limit_loosened, occurrence_limit_tightened, removed_required_text, removed_values,
 };
 use crate::policy_scope::{scope_broadened, scope_narrowed, selector_precision_score};
 
@@ -181,6 +181,14 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
             "owner removed",
         ));
     }
+    if changed_required_text(&base.owner, &head.owner) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::OwnerChanged,
+            PolicyChangeSeverity::Review,
+            "owner changed",
+        ));
+    }
     if added_required_text(&base.owner, &head.owner) {
         changes.push(change(
             head,
@@ -197,6 +205,14 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
             "reason removed",
         ));
     }
+    if changed_required_text(&base.reason, &head.reason) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::ReasonChanged,
+            PolicyChangeSeverity::Review,
+            "reason changed",
+        ));
+    }
     if added_required_text(&base.reason, &head.reason) {
         changes.push(change(
             head,
@@ -211,6 +227,16 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
             PolicyChangeKind::ClassificationRemoved,
             PolicyChangeSeverity::Fail,
             "classification removed",
+        ));
+    }
+    if changed_required_text(&base.classification, &head.classification)
+        && !baseline_debt_normalized(base, head)
+    {
+        changes.push(change(
+            head,
+            PolicyChangeKind::ClassificationChanged,
+            PolicyChangeSeverity::Review,
+            "classification changed",
         ));
     }
     if added_required_text(&base.classification, &head.classification) {

@@ -39,8 +39,9 @@ intentionally small and build-independent; canonical policy globs support `*`,
 alternation such as `{a,b}` are not supported; use exact `path` entries or
 explicit separate globs instead.
 
-Diff mode reports owner, reason, or classification removals as policy weakening
-and additions of those required metadata fields as policy improvements.
+Diff mode reports owner, reason, or classification removals as policy
+weakening, additions of those required metadata fields as policy improvements,
+and non-empty replacements as review-required policy changes.
 
 ## Reason And Evidence
 
