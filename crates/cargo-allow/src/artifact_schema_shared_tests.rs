@@ -483,6 +483,66 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
             "common evidence_change {field} item minLength"
         );
     }
+    let diff = required_schema_pointer("common", &schema, "/$defs/diff");
+    assert_eq!(
+        diff.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "common diff should reject unknown fields"
+    );
+    assert_required_fields(
+        "common diff",
+        diff,
+        &[
+            "net_posture",
+            "reviewer_action",
+            "summary",
+            "finding_changes",
+            "policy_changes",
+        ],
+    );
+    assert_enum_equals(
+        "common diff net_posture",
+        &schema,
+        "/$defs/diff/properties/net_posture/enum",
+        &["worse", "review-required", "improved", "unchanged"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/diff/properties/reviewer_action/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "common diff reviewer_action type"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/diff/properties/reviewer_action/minLength")
+            .and_then(Value::as_u64),
+        Some(1),
+        "common diff reviewer_action minLength"
+    );
+    for (field, reference) in [
+        ("summary", "#/$defs/diff_summary"),
+        ("finding_changes/items", "#/$defs/finding_posture_change"),
+        ("policy_changes/items", "#/$defs/policy_change"),
+    ] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/diff/properties/{field}/$ref"))
+                .and_then(Value::as_str),
+            Some(reference),
+            "common diff {field} ref"
+        );
+    }
+    for field in ["finding_changes", "policy_changes"] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/diff/properties/{field}/type"))
+                .and_then(Value::as_str),
+            Some("array"),
+            "common diff {field} type"
+        );
+    }
+
     let diff_summary = required_schema_pointer("common", &schema, "/$defs/diff_summary");
     assert_eq!(
         diff_summary
@@ -905,6 +965,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
     let expected = [
         "canonical_evidence_prefix",
         "claim_boundary_flag",
+        "diff",
         "diff_summary",
         "evidence_change",
         "evidence_change_field",
@@ -968,6 +1029,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
     );
 
     for fragment in [
+        "diff",
         "diff_summary",
         "finding_posture_change",
         "policy_change",
