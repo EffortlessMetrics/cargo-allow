@@ -210,6 +210,13 @@ fn policy_change_rows(
                     before: metadata.before.as_deref(),
                     after: metadata.after.as_deref(),
                 }),
+            requirement: change.requirement.as_ref().map(|requirement| {
+                allow_report::DiffRequirementChange {
+                    field: requirement.field.as_str(),
+                    before: requirement.before,
+                    after: requirement.after,
+                }
+            }),
         })
         .collect()
 }
