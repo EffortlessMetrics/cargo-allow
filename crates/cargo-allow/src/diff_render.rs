@@ -1,4 +1,4 @@
-use allow_core::MatchOutcome;
+use allow_core::{Finding, MatchOutcome};
 use allow_match::CheckMode;
 
 use crate::OutputFormat;
@@ -39,6 +39,7 @@ pub(super) fn append_finding_posture_changes(
     }
 }
 
+#[cfg(test)]
 pub(crate) fn render_diff_json_with_posture(
     report_json: String,
     current_failures: usize,
@@ -67,6 +68,40 @@ pub(crate) fn render_diff_json_with_posture(
         eprintln!("warning: failed to append diff posture to JSON report");
         report_json
     }
+}
+
+pub(crate) fn render_diff_json_report(
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    failed: bool,
+    report_context: allow_report::ReportContext<'_>,
+    current_failures: usize,
+    finding_changes: &[allow_diff::FindingPostureChange],
+    policy_changes: &[allow_diff::PolicyChange],
+) -> String {
+    let finding_rows = finding_change_rows(finding_changes);
+    let policy_rows = policy_change_rows(policy_changes);
+    let summary = allow_report::diff_posture_summary(
+        current_failures.max(current_no_new_failures(outcomes)),
+        &finding_rows,
+        &policy_rows,
+    );
+    let posture = allow_report::diff_net_posture(summary);
+    let report = allow_report::DiffReport {
+        net_posture: posture.as_str(),
+        reviewer_action: posture.reviewer_action(),
+        summary,
+        finding_changes: &finding_rows,
+        policy_changes: &policy_rows,
+    };
+    allow_report::render_json_with_context_and_diff(
+        "diff",
+        findings,
+        outcomes,
+        failed,
+        report_context,
+        report,
+    )
 }
 
 pub(super) fn append_policy_changes(

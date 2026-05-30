@@ -3,8 +3,9 @@ use crate::json::{
     render_match_outcome_json_compact,
 };
 use crate::{
-    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, REPORT_SCHEMA_ID, REPORT_SCHEMA_VERSION,
-    ReportContext, ReviewSignals, Summary, render_count_fields_with_policy_context,
+    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, DiffReport, REPORT_SCHEMA_ID,
+    REPORT_SCHEMA_VERSION, ReportContext, ReviewSignals, Summary,
+    render_count_fields_with_policy_context,
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
 
@@ -29,6 +30,28 @@ pub fn render_json_with_context(
     outcomes: &[MatchOutcome],
     failed: bool,
     context: ReportContext<'_>,
+) -> String {
+    render_json_report(command, findings, outcomes, failed, context, None)
+}
+
+pub fn render_json_with_context_and_diff(
+    command: &str,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    failed: bool,
+    context: ReportContext<'_>,
+    diff: DiffReport<'_>,
+) -> String {
+    render_json_report(command, findings, outcomes, failed, context, Some(diff))
+}
+
+fn render_json_report(
+    command: &str,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    failed: bool,
+    context: ReportContext<'_>,
+    diff: Option<DiffReport<'_>>,
 ) -> String {
     let summary = Summary::from_outcomes(outcomes);
     let mut out = String::new();
@@ -105,7 +128,15 @@ pub fn render_json_with_context(
         ));
         out.push('}');
     }
-    out.push_str("\n  ]\n}");
+    match diff {
+        Some(diff) => {
+            out.push_str("\n  ],\n");
+            out.push_str("  \"diff\": ");
+            out.push_str(&crate::diff_json::render_diff_posture_json(diff));
+            out.push_str("\n}\n");
+        }
+        None => out.push_str("\n  ]\n}"),
+    }
     out
 }
 
