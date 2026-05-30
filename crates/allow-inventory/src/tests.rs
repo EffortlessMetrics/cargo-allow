@@ -144,6 +144,24 @@ fn source_tree_root_uses_nearest_git_root_without_cargo_manifest() {
 }
 
 #[test]
+fn source_tree_root_accepts_gitfile_worktree_marker_without_cargo_manifest() {
+    let root = temp_root("gitfile-root-no-cargo");
+    let nested = root.join("src").join("nested");
+    fs::create_dir_all(&nested)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("nested dir: {err}")));
+    write_file(root.join(".git"), "gitdir: ../.git/worktrees/cargo-allow\n");
+
+    let discovered = discover_source_tree_root(&nested)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("discover source tree root: {err}")));
+
+    let canonical = root
+        .canonicalize()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("canonical root: {err}")));
+    assert_eq!(discovered, canonical);
+    remove_dir(&root);
+}
+
+#[test]
 fn source_tree_root_ignores_broken_cargo_manifest() {
     let root = temp_root("broken-cargo");
     let nested = root.join("crates").join("demo");
