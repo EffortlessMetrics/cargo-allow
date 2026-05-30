@@ -125,6 +125,10 @@ Diff report `policy_changes` use `scope_changed` for source-tree scope retargets
 that are neither broadening nor narrowing, such as exact path changes or sibling
 glob replacements. Consumers should treat these as review-required changes
 because the retained exception now covers a different source-tree surface.
+They also use `selector_changed` for equal-precision structural selector
+retargets, such as changing `container`, `callee`, `symbol`, or snippet hash
+values without changing the selector precision score. Line hints are excluded
+from this identity signal.
 
 ## Broken Evidence Links
 
