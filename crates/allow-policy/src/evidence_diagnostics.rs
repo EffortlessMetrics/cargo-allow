@@ -101,21 +101,22 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             message: "traceability reference; not executed or resolved by cargo-allow".to_string(),
         };
     }
-    if let Err(err) = validate_path_scope("evidence", reference.value.as_ref()) {
+    let target = normalize_local_evidence_path(&reference.value);
+    if let Err(err) = validate_path_scope("evidence", target.as_ref()) {
         return EvidenceReferenceDiagnostic {
             raw: raw.to_string(),
             prefix,
-            target: Some(reference.value.clone()),
+            target: Some(target),
             status: EvidenceReferenceStatus::InvalidLocalPath,
             message: err.to_string(),
         };
     }
-    let path = root.join(&reference.value);
-    if let Some(component) = first_symlink_component(root, &reference.value) {
+    let path = root.join(&target);
+    if let Some(component) = first_symlink_component(root, &target) {
         return EvidenceReferenceDiagnostic {
             raw: raw.to_string(),
             prefix,
-            target: Some(reference.value.clone()),
+            target: Some(target),
             status: EvidenceReferenceStatus::InvalidLocalPath,
             message: format!(
                 "local evidence path contains symlink component {}; reference regular source-tree files",
@@ -127,7 +128,7 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
         Ok(metadata) if metadata.file_type().is_symlink() => EvidenceReferenceDiagnostic {
             raw: raw.to_string(),
             prefix,
-            target: Some(reference.value.clone()),
+            target: Some(target),
             status: EvidenceReferenceStatus::InvalidLocalPath,
             message: "local evidence path is a symlink; reference a regular source-tree file"
                 .to_string(),
@@ -135,25 +136,29 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
         Ok(metadata) if metadata.file_type().is_file() => EvidenceReferenceDiagnostic {
             raw: raw.to_string(),
             prefix,
-            target: Some(reference.value.clone()),
+            target: Some(target),
             status: EvidenceReferenceStatus::LocalFilePresent,
             message: "local evidence file exists".to_string(),
         },
         Ok(_) => EvidenceReferenceDiagnostic {
             raw: raw.to_string(),
             prefix,
-            target: Some(reference.value.clone()),
+            target: Some(target),
             status: EvidenceReferenceStatus::InvalidLocalPath,
             message: "local evidence path exists but is not a file".to_string(),
         },
         Err(_) => EvidenceReferenceDiagnostic {
             raw: raw.to_string(),
             prefix,
-            target: Some(reference.value.clone()),
+            target: Some(target),
             status: EvidenceReferenceStatus::LocalFileMissing,
             message: "local evidence file is missing".to_string(),
         },
     }
+}
+
+fn normalize_local_evidence_path(path: &Path) -> PathBuf {
+    PathBuf::from(path.to_string_lossy().replace('\\', "/"))
 }
 
 fn first_symlink_component(root: &Path, relative: &Path) -> Option<PathBuf> {
