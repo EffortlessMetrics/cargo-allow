@@ -6,7 +6,7 @@ fn rust_sources_do_not_spawn_cargo_or_compiler_tools() {
     let root = workspace_root();
     let mut violations = Vec::new();
 
-    for path in rust_files(&root.join("crates")) {
+    for path in rust_files(&root) {
         let text = fs::read_to_string(&path)
             .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
         let compact_text = compact_for_token_scan(&text);
