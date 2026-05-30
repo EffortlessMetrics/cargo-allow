@@ -43,11 +43,19 @@ fn detects_equal_precision_selector_retarget_as_review_required() {
 
     let changes = policy_changes(&base, &head);
 
-    assert!(changes.iter().any(|change| {
-        change.kind == PolicyChangeKind::SelectorChanged
-            && change.severity == PolicyChangeSeverity::Review
-            && change.message.contains("selector identity changed")
-    }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::SelectorChanged)
+        .unwrap_or_else(|| std::panic::panic_any("selector retarget should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Review);
+    assert!(change.message.contains("selector identity changed"));
+    assert_eq!(
+        change
+            .selector_identity
+            .as_ref()
+            .map(|identity| identity.changed_fields.clone()),
+        Some(vec!["container", "normalized_snippet_hash"])
+    );
     assert!(
         !changes.iter().any(|change| matches!(
             change.kind,
@@ -68,10 +76,18 @@ fn detects_equal_precision_selector_field_swaps_as_review_required() {
 
     let changes = policy_changes(&base, &head);
 
-    assert!(changes.iter().any(|change| {
-        change.kind == PolicyChangeKind::SelectorChanged
-            && change.severity == PolicyChangeSeverity::Review
-    }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::SelectorChanged)
+        .unwrap_or_else(|| std::panic::panic_any("selector field swap should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Review);
+    assert_eq!(
+        change
+            .selector_identity
+            .as_ref()
+            .map(|identity| identity.changed_fields.clone()),
+        Some(vec!["callee", "macro_name"])
+    );
     assert!(
         !changes.iter().any(|change| matches!(
             change.kind,

@@ -63,9 +63,9 @@ pub use artifacts::{
     AddReport, DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange,
     DiffLifecycleChange, DiffMetadataChange, DiffOccurrenceLimitChange, DiffPolicyChange,
     DiffPolicyStatusChange, DiffPostureSummary, DiffReport, DiffRequirementChange, DiffScopeChange,
-    DiffSelectorPrecisionChange, DoctorReport, EvidenceReference, ExplainReport, ListFilters,
-    ListRow, MigrateReport, ProposeReport, PruneCandidate, PruneModeContext, WorklistFilters,
-    WorklistItem,
+    DiffSelectorIdentityChange, DiffSelectorPrecisionChange, DoctorReport, EvidenceReference,
+    ExplainReport, ListFilters, ListRow, MigrateReport, ProposeReport, PruneCandidate,
+    PruneModeContext, WorklistFilters, WorklistItem,
 };
 pub use contracts::{
     ADD_SCHEMA_ID, ADD_SCHEMA_VERSION, ARTIFACT_CONTRACTS, ARTIFACT_STATUS_FAILED,

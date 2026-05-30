@@ -16,6 +16,7 @@ fn diff_json_renderer_appends_posture_extension() {
         kind: "scope_broadened",
         message: "allow-0001 selector scope broadened",
         exception_identity: None,
+        selector_identity: None,
         selector_precision: None,
         scope: Some(DiffScopeChange {
             field: "effective",
@@ -123,6 +124,7 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
         kind: "selector_precision_increased",
         message: "allow-0001 selector precision increased",
         exception_identity: None,
+        selector_identity: None,
         selector_precision: None,
         scope: None,
         occurrence_limit: None,
@@ -168,6 +170,7 @@ fn diff_json_renderer_includes_occurrence_limit_change() {
         kind: "occurrence_limit_loosened",
         message: "allow-0001 occurrence_limit increased or removed",
         exception_identity: None,
+        selector_identity: None,
         selector_precision: None,
         scope: None,
         occurrence_limit: Some(DiffOccurrenceLimitChange {
@@ -208,6 +211,7 @@ fn diff_json_renderer_includes_lifecycle_change() {
         kind: "expiry_extended",
         message: "allow-0001 expiry extended or removed",
         exception_identity: None,
+        selector_identity: None,
         selector_precision: None,
         scope: None,
         occurrence_limit: None,
@@ -253,6 +257,7 @@ fn diff_json_renderer_includes_evidence_change() {
         kind: "evidence_removed",
         message: "allow-0001 evidence removed",
         exception_identity: None,
+        selector_identity: None,
         selector_precision: None,
         scope: None,
         occurrence_limit: None,
@@ -296,6 +301,7 @@ fn diff_json_renderer_includes_metadata_change() {
         kind: "owner_removed",
         message: "allow-0001 owner removed",
         exception_identity: None,
+        selector_identity: None,
         selector_precision: None,
         scope: None,
         occurrence_limit: None,
@@ -341,6 +347,7 @@ fn diff_json_renderer_includes_requirement_change() {
         kind: "requirement_loosened",
         message: "requirements.owner_required loosened: true -> false",
         exception_identity: None,
+        selector_identity: None,
         selector_precision: None,
         scope: None,
         occurrence_limit: None,
@@ -384,6 +391,7 @@ fn diff_json_renderer_includes_policy_status_change() {
         kind: "policy_status_weakened",
         message: "policy.status weakened: active -> advisory",
         exception_identity: None,
+        selector_identity: None,
         selector_precision: None,
         scope: None,
         occurrence_limit: None,
@@ -428,6 +436,7 @@ fn diff_json_renderer_includes_exception_identity_change() {
             before: Some("panic"),
             after: Some("unsafe"),
         }),
+        selector_identity: None,
         selector_precision: None,
         scope: None,
         occurrence_limit: None,
@@ -462,6 +471,49 @@ fn diff_json_renderer_includes_exception_identity_change() {
 }
 
 #[test]
+fn diff_json_renderer_includes_selector_identity_change() {
+    let changed_fields = ["container", "normalized_snippet_hash"];
+    let policy_changes = vec![DiffPolicyChange {
+        severity: "review",
+        allow_id: "allow-0001",
+        kind: "selector_changed",
+        message: "allow-0001 selector identity changed",
+        exception_identity: None,
+        selector_identity: Some(DiffSelectorIdentityChange {
+            changed_fields: &changed_fields,
+        }),
+        selector_precision: None,
+        scope: None,
+        occurrence_limit: None,
+        lifecycle: None,
+        evidence: None,
+        metadata: None,
+        requirement: None,
+        policy_status: None,
+    }];
+
+    let json = render_diff_posture_json(DiffReport {
+        net_posture: "review-required",
+        reviewer_action: "review policy changes",
+        summary: DiffPostureSummary {
+            current_failures: 0,
+            new_findings: 0,
+            removed_findings: 0,
+            policy_failures: 0,
+            policy_review_items: 1,
+            policy_improvements: 0,
+        },
+        finding_changes: &[],
+        policy_changes: &policy_changes,
+    });
+
+    assert!(json.contains("\"kind\": \"selector_changed\""));
+    assert!(json.contains(
+        "\"selector_identity\": {\"changed_fields\": [\"container\", \"normalized_snippet_hash\"]}"
+    ));
+}
+
+#[test]
 fn diff_json_report_matches_posture_golden_contract() {
     let finding_changes = vec![DiffFindingChange {
         change: "removed",
@@ -476,6 +528,7 @@ fn diff_json_report_matches_posture_golden_contract() {
         kind: "selector_precision_increased",
         message: "allow-0001 selector precision increased",
         exception_identity: None,
+        selector_identity: None,
         selector_precision: Some(DiffSelectorPrecisionChange {
             before: 42,
             after: 92,
@@ -625,6 +678,7 @@ fn diff_pr_summary_markdown_reports_net_posture() {
         kind: "selector_precision_increased",
         message: "allow-0001 selector precision increased",
         exception_identity: None,
+        selector_identity: None,
         selector_precision: None,
         scope: None,
         occurrence_limit: None,
@@ -659,6 +713,7 @@ fn diff_posture_tables_escape_markdown_cells() {
         kind: "scope_broadened",
         message: "message with | pipe",
         exception_identity: None,
+        selector_identity: None,
         selector_precision: None,
         scope: None,
         occurrence_limit: None,

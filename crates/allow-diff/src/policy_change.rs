@@ -5,6 +5,7 @@ pub struct PolicyChange {
     pub severity: PolicyChangeSeverity,
     pub message: String,
     pub exception_identity: Option<ExceptionIdentityChange>,
+    pub selector_identity: Option<SelectorIdentityChange>,
     pub selector_precision: Option<SelectorPrecisionChange>,
     pub scope: Option<ScopeChange>,
     pub occurrence_limit: Option<OccurrenceLimitChange>,
@@ -28,6 +29,7 @@ impl PolicyChange {
             severity,
             message: message.into(),
             exception_identity: None,
+            selector_identity: None,
             selector_precision: None,
             scope: None,
             occurrence_limit: None,
@@ -46,6 +48,11 @@ impl PolicyChange {
 
     pub fn with_exception_identity(mut self, exception_identity: ExceptionIdentityChange) -> Self {
         self.exception_identity = Some(exception_identity);
+        self
+    }
+
+    pub fn with_selector_identity(mut self, selector_identity: SelectorIdentityChange) -> Self {
+        self.selector_identity = Some(selector_identity);
         self
     }
 
@@ -98,6 +105,11 @@ pub struct ExceptionIdentityChange {
     pub field: ExceptionIdentityChangeField,
     pub before: Option<String>,
     pub after: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SelectorIdentityChange {
+    pub changed_fields: Vec<&'static str>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

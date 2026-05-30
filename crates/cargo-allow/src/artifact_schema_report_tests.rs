@@ -267,6 +267,13 @@ fn report_schema_locks_diff_posture_extension_contract() {
     );
     assert_eq!(
         schema
+            .pointer("/$defs/policy_change/properties/selector_identity/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/selector_identity_change"),
+        "report policy changes should use selector identity change rows"
+    );
+    assert_eq!(
+        schema
             .pointer("/$defs/policy_change/properties/selector_precision/$ref")
             .and_then(Value::as_str),
         Some("#/$defs/selector_precision_change"),
@@ -404,6 +411,50 @@ fn report_schema_locks_diff_posture_extension_contract() {
             ExceptionIdentityChangeField::ALL,
             ExceptionIdentityChangeField::as_str,
         ),
+    );
+    let selector_identity_change =
+        required_schema_pointer("report", &schema, "/$defs/selector_identity_change");
+    assert_eq!(
+        selector_identity_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "report selector identity changes should reject unknown fields"
+    );
+    assert_required_fields(
+        "report selector identity change",
+        selector_identity_change,
+        &["changed_fields"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/selector_identity_change/properties/changed_fields/type")
+            .and_then(Value::as_str),
+        Some("array"),
+        "report selector identity changed_fields type"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/selector_identity_change/properties/changed_fields/items/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/selector_identity_change_field"),
+        "report selector identity changed_fields should use the selector identity field vocabulary"
+    );
+    assert_enum_equals(
+        "report selector identity fields",
+        &schema,
+        "/$defs/selector_identity_change_field/enum",
+        &[
+            "ast_kind",
+            "container",
+            "callee",
+            "macro_name",
+            "lint",
+            "symbol",
+            "receiver_fingerprint",
+            "target_fingerprint",
+            "normalized_snippet_hash",
+        ],
     );
     let requirement_change =
         required_schema_pointer("report", &schema, "/$defs/requirement_change");

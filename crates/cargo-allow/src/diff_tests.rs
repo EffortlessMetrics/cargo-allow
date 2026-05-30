@@ -92,6 +92,7 @@ fn json_report_includes_structured_posture_changes() {
             severity: allow_diff::PolicyChangeSeverity::Fail,
             message: "allow-0001 selector precision decreased: 80 -> 45".to_string(),
             exception_identity: None,
+            selector_identity: None,
             selector_precision: Some(allow_diff::SelectorPrecisionChange {
                 before: 80,
                 after: 45,
@@ -112,6 +113,7 @@ fn json_report_includes_structured_posture_changes() {
             severity: allow_diff::PolicyChangeSeverity::Fail,
             message: "allow-0002 scope broadened".to_string(),
             exception_identity: None,
+            selector_identity: None,
             selector_precision: None,
             scope: Some(allow_diff::ScopeChange {
                 field: allow_diff::ScopeChangeField::Effective,
@@ -131,6 +133,7 @@ fn json_report_includes_structured_posture_changes() {
             severity: allow_diff::PolicyChangeSeverity::Fail,
             message: "allow-0003 occurrence_limit increased or removed".to_string(),
             exception_identity: None,
+            selector_identity: None,
             selector_precision: None,
             scope: None,
             occurrence_limit: Some(allow_diff::OccurrenceLimitChange {
@@ -149,6 +152,7 @@ fn json_report_includes_structured_posture_changes() {
             severity: allow_diff::PolicyChangeSeverity::Review,
             message: "allow-0004 expiry extended or removed".to_string(),
             exception_identity: None,
+            selector_identity: None,
             selector_precision: None,
             scope: None,
             occurrence_limit: None,
@@ -168,6 +172,7 @@ fn json_report_includes_structured_posture_changes() {
             severity: allow_diff::PolicyChangeSeverity::Fail,
             message: "allow-0005 evidence removed".to_string(),
             exception_identity: None,
+            selector_identity: None,
             selector_precision: None,
             scope: None,
             occurrence_limit: None,
@@ -187,6 +192,7 @@ fn json_report_includes_structured_posture_changes() {
             severity: allow_diff::PolicyChangeSeverity::Fail,
             message: "allow-0006 owner removed".to_string(),
             exception_identity: None,
+            selector_identity: None,
             selector_precision: None,
             scope: None,
             occurrence_limit: None,
@@ -206,6 +212,7 @@ fn json_report_includes_structured_posture_changes() {
             severity: allow_diff::PolicyChangeSeverity::Fail,
             message: "requirements.owner_required loosened: true -> false".to_string(),
             exception_identity: None,
+            selector_identity: None,
             selector_precision: None,
             scope: None,
             occurrence_limit: None,
@@ -225,6 +232,7 @@ fn json_report_includes_structured_posture_changes() {
             severity: allow_diff::PolicyChangeSeverity::Fail,
             message: "policy.status weakened: active -> advisory".to_string(),
             exception_identity: None,
+            selector_identity: None,
             selector_precision: None,
             scope: None,
             occurrence_limit: None,
@@ -246,6 +254,25 @@ fn json_report_includes_structured_posture_changes() {
                 field: allow_diff::ExceptionIdentityChangeField::Kind,
                 before: Some("panic".to_string()),
                 after: Some("unsafe".to_string()),
+            }),
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        allow_diff::PolicyChange {
+            allow_id: "allow-0008".to_string(),
+            kind: allow_diff::PolicyChangeKind::SelectorChanged,
+            severity: allow_diff::PolicyChangeSeverity::Review,
+            message: "allow-0008 selector identity changed".to_string(),
+            exception_identity: None,
+            selector_identity: Some(allow_diff::SelectorIdentityChange {
+                changed_fields: vec!["container", "normalized_snippet_hash"],
             }),
             selector_precision: None,
             scope: None,
@@ -305,7 +332,7 @@ fn json_report_includes_structured_posture_changes() {
         value
             .pointer("/diff/summary/policy_review_items")
             .and_then(Value::as_u64),
-        Some(1)
+        Some(2)
     );
     assert_eq!(
         value
@@ -544,6 +571,25 @@ fn json_report_includes_structured_posture_changes() {
             .and_then(Value::as_str),
         Some("unsafe")
     );
+    let selector_identity_change = policy_changes.get(9).unwrap_or_else(|| {
+        std::panic::panic_any("diff policy_changes should include selector identity row")
+    });
+    assert_eq!(
+        selector_identity_change.get("kind").and_then(Value::as_str),
+        Some("selector_changed")
+    );
+    assert_eq!(
+        selector_identity_change
+            .pointer("/selector_identity/changed_fields/0")
+            .and_then(Value::as_str),
+        Some("container")
+    );
+    assert_eq!(
+        selector_identity_change
+            .pointer("/selector_identity/changed_fields/1")
+            .and_then(Value::as_str),
+        Some("normalized_snippet_hash")
+    );
     assert!(json.ends_with("}\n"));
 }
 
@@ -596,6 +642,7 @@ fn policy_change(
         severity,
         message: "allow-0001 changed".to_string(),
         exception_identity: None,
+        selector_identity: None,
         selector_precision: None,
         scope: None,
         occurrence_limit: None,

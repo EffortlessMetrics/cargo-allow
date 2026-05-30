@@ -172,6 +172,11 @@ fn policy_change_rows(
                     after: identity.after.as_deref(),
                 }
             }),
+            selector_identity: change.selector_identity.as_ref().map(|identity| {
+                allow_report::DiffSelectorIdentityChange {
+                    changed_fields: &identity.changed_fields,
+                }
+            }),
             selector_precision: change.selector_precision.as_ref().map(|selector| {
                 allow_report::DiffSelectorPrecisionChange {
                     before: selector.before,

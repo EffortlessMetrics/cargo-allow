@@ -102,6 +102,13 @@ pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
                 option_json(exception_identity.after)
             ));
         }
+        if let Some(selector_identity) = change.selector_identity {
+            out.push_str(", ");
+            out.push_str(&format!(
+                "\"selector_identity\": {{\"changed_fields\": {}}}",
+                json_string_array(selector_identity.changed_fields)
+            ));
+        }
         if let Some(selector_precision) = change.selector_precision {
             out.push_str(", ");
             out.push_str(&format!(

@@ -198,7 +198,9 @@ because the retained exception now covers a different source-tree surface.
 They also use `selector_changed` for equal-precision structural selector
 retargets, such as changing `container`, `callee`, `symbol`, or snippet hash
 values without changing the selector precision score. Line hints are excluded
-from this identity signal.
+from this identity signal. Rows with `selector_changed` may also include an
+optional `selector_identity` object listing the structural selector fields whose
+normalized values changed.
 Rows with `selector_precision_decreased` or `selector_precision_increased` may
 also include an optional `selector_precision` object with before/after scores
 and the selector fields added or removed. This lets consumers classify selector

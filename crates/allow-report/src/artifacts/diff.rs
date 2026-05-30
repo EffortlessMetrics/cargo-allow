@@ -24,6 +24,7 @@ pub struct DiffPolicyChange<'a> {
     pub kind: &'a str,
     pub message: &'a str,
     pub exception_identity: Option<DiffExceptionIdentityChange<'a>>,
+    pub selector_identity: Option<DiffSelectorIdentityChange<'a>>,
     pub selector_precision: Option<DiffSelectorPrecisionChange<'a>>,
     pub scope: Option<DiffScopeChange<'a>>,
     pub occurrence_limit: Option<DiffOccurrenceLimitChange>,
@@ -39,6 +40,11 @@ pub struct DiffExceptionIdentityChange<'a> {
     pub field: &'a str,
     pub before: Option<&'a str>,
     pub after: Option<&'a str>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct DiffSelectorIdentityChange<'a> {
+    pub changed_fields: &'a [&'a str],
 }
 
 #[derive(Debug, Clone, Copy)]
