@@ -1,5 +1,7 @@
-use allow_core::{AllowEntry, LastSeen, Selector};
+use allow_core::AllowEntry;
 
+use crate::render_last_seen::render_last_seen;
+use crate::render_selector::render_selector;
 use crate::render_toml::{
     escape_toml, render_array, render_optional_string_field, render_string_field,
 };
@@ -41,41 +43,4 @@ pub(crate) fn render_allow_entry(out: &mut String, entry: &AllowEntry) {
     if let Some(last_seen) = &entry.last_seen {
         render_last_seen(out, last_seen);
     }
-}
-
-fn render_selector(out: &mut String, selector: &Selector) {
-    out.push_str("\n[allow.selector]\n");
-    render_optional_string_field(out, "ast_kind", selector.ast_kind.as_deref());
-    render_optional_string_field(out, "container", selector.container.as_deref());
-    render_optional_string_field(out, "callee", selector.callee.as_deref());
-    render_optional_string_field(out, "macro_name", selector.macro_name.as_deref());
-    render_optional_string_field(out, "lint", selector.lint.as_deref());
-    render_optional_string_field(out, "symbol", selector.symbol.as_deref());
-    render_optional_string_field(
-        out,
-        "receiver_fingerprint",
-        selector.receiver_fingerprint.as_deref(),
-    );
-    render_optional_string_field(
-        out,
-        "target_fingerprint",
-        selector.target_fingerprint.as_deref(),
-    );
-    render_optional_string_field(
-        out,
-        "normalized_snippet_hash",
-        selector.normalized_snippet_hash.as_deref(),
-    );
-    if let Some(v) = selector.line_hint {
-        out.push_str(&format!("line_hint = {}\n", v));
-    }
-    render_optional_string_field(out, "glob", selector.glob.as_deref());
-}
-
-fn render_last_seen(out: &mut String, last_seen: &LastSeen) {
-    out.push_str("\n[allow.last_seen]\n");
-    out.push_str(&format!(
-        "line = {}\ncolumn = {}\n",
-        last_seen.line, last_seen.column
-    ));
 }
