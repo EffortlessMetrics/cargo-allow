@@ -65,6 +65,8 @@ covered by their individual schema files. Consumers should branch on
 List artifacts currently emit a `filters` object with every known filter key,
 but nested filter fields are optional in the schema so older `cargo-allow.list.v1`
 artifacts and future additive filter fields can remain compatible.
+Worklist artifacts follow the same rule: current renderers emit all known
+filter keys, while the nested `filters` schema keeps those keys optional.
 
 The shared report schema is emitted by `audit`, `check`, and `diff`, but the
 top-level `diff` posture extension is valid only on reports whose

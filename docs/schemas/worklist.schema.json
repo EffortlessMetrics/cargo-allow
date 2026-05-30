@@ -139,7 +139,6 @@
     "filters": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "risk", "difficulty"],
       "properties": {
         "kind": {
           "type": ["string", "null"],
