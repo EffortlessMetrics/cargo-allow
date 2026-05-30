@@ -82,6 +82,92 @@ fn add_json_renderer_records_entry_and_selected_finding() {
     assert!(json.contains("\"evidence_count\": 1"));
     assert!(json.contains("\"source_package\": \"parser\""));
     assert!(json.contains("\"normalized_snippet_hash\": \"fnv1a64:add\""));
+    let expected = format!(
+        r#"{{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.add.v1",
+  "tool": "cargo-allow",
+  "command": "add",
+  "claim_boundary": {},
+  "scanner_limitations": {},
+  "inventory": {{
+    "scope": "source_tree",
+    "scanner": "source_syntax",
+    "source": "git_tracked",
+    "root": "H:/Code/Rust/cargo-allow",
+    "files_scanned": 52
+  }},
+  "options": {{
+    "policy_output": "policy/allow.proposed.toml",
+    "force": true
+  }},
+  "summary": {{
+    "entry_id": "allow-add-json",
+    "selected_finding": "src/lib.rs:42:13",
+    "human_review_required": true
+  }},
+  "allow_entry": {{
+    "id": "allow-add-json",
+    "kind": "panic",
+    "family": "unwrap",
+    "path": "src/lib.rs",
+    "glob": null,
+    "owner": "parser",
+    "classification": "reviewed_exception",
+    "reason": "Parser validates input before unwrapping.",
+    "review_after": "2026-11-01",
+    "expires": "2027-01-01",
+    "evidence_count": 1,
+    "selector": {{
+        "ast_kind": "method_call",
+        "container": "parse_span",
+        "callee": "unwrap",
+        "macro_name": null,
+        "lint": null,
+        "symbol": "value.unwrap()",
+        "receiver_fingerprint": null,
+        "target_fingerprint": null,
+        "normalized_snippet_hash": "fnv1a64:add",
+        "line_hint": 42,
+        "glob": null
+      }},
+    "last_seen": {{
+        "line": 42,
+        "column": 13
+      }}
+  }},
+  "selected_finding":     {{
+      "status": "selected",
+      "kind": "panic",
+      "family": "unwrap",
+      "path": "src/lib.rs",
+      "line": 42,
+      "column": 13,
+      "source_package": "parser",
+      "identity": {{
+        "language": "rust",
+        "crate_name": "parser",
+        "module": null,
+        "container": "parse_span",
+        "ast_kind": "method_call",
+        "symbol": null,
+        "callee": "unwrap",
+        "macro_name": null,
+        "lint": null,
+        "receiver_fingerprint": null,
+        "target_fingerprint": null,
+        "normalized_snippet_hash": null,
+        "line_hint": null,
+        "column_hint": null
+      }},
+      "message": "unwrap call"
+    }}
+}}
+"#,
+        render_claim_boundary_json(),
+        render_scanner_limitations_json()
+    );
+    assert_eq!(json, expected);
 
     let text = render_add_human(AddReport::new(
         InventoryContext::source_syntax("git_tracked", None, None),
