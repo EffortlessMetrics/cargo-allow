@@ -112,7 +112,8 @@ status = "active"
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write invalid policy: {err}")));
 
-    let (valid, diagnostic) = config_status(&root, Some(&policy));
+    let policy = load_doctor_policy(Some(&policy));
+    let (valid, diagnostic) = config_status(&root, policy.as_ref());
 
     assert_eq!(valid, Some(false));
     assert!(

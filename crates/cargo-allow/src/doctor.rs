@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use allow_policy::{load_policy, validate_local_evidence_references};
 use std::env;
@@ -17,7 +17,8 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
     let root_discovery = root_discovery_kind(args.root.root.as_deref(), &root);
     let config = config_path(&root, args.config.as_deref());
-    let opts = doctor_inventory_options(config.as_deref());
+    let policy = load_doctor_policy(config.as_deref());
+    let opts = doctor_inventory_options(policy.as_ref());
     let inventory = inventory(&root, &opts)?;
     let files_scanned = inventory.files.len();
     let source_context = SourceTreeReportContext::new(
@@ -27,7 +28,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let config_text = config
         .as_ref()
         .map(|path| allow_report::source_tree_path_text(path));
-    let (config_valid, config_diagnostic) = config_status(&root, config.as_deref());
+    let (config_valid, config_diagnostic) = config_status(&root, policy.as_ref());
     let report = allow_report::DoctorReport {
         source_tree_root: source_context.source_tree_root(),
         root_discovery,
@@ -45,27 +46,32 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     Ok(())
 }
 
-fn config_status(root: &Path, config: Option<&Path>) -> (Option<bool>, Option<String>) {
-    let Some(config) = config else {
-        return (None, None);
-    };
-    match load_policy(config).and_then(|cfg| validate_local_evidence_references(root, &cfg)) {
-        Ok(()) => (Some(true), None),
-        Err(err) => (Some(false), Some(err.to_string())),
+fn load_doctor_policy(config: Option<&Path>) -> Option<CargoAllowResult<AllowConfig>> {
+    config.map(load_policy)
+}
+
+fn config_status(
+    root: &Path,
+    policy: Option<&CargoAllowResult<AllowConfig>>,
+) -> (Option<bool>, Option<String>) {
+    match policy {
+        None => (None, None),
+        Some(Ok(cfg)) => match validate_local_evidence_references(root, cfg) {
+            Ok(()) => (Some(true), None),
+            Err(err) => (Some(false), Some(err.to_string())),
+        },
+        Some(Err(err)) => (Some(false), Some(err.to_string())),
     }
 }
 
-fn doctor_inventory_options(config: Option<&Path>) -> InventoryOptions {
-    let Some(config) = config else {
-        return InventoryOptions::default();
-    };
-    match load_policy(config) {
-        Ok(cfg) => InventoryOptions {
-            ignored: cfg.workspace.ignored,
-            generated: cfg.workspace.generated,
+fn doctor_inventory_options(policy: Option<&CargoAllowResult<AllowConfig>>) -> InventoryOptions {
+    match policy {
+        Some(Ok(cfg)) => InventoryOptions {
+            ignored: cfg.workspace.ignored.clone(),
+            generated: cfg.workspace.generated.clone(),
             include_untracked: false,
         },
-        Err(_) => InventoryOptions::default(),
+        _ => InventoryOptions::default(),
     }
 }
 
