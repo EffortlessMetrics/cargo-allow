@@ -100,6 +100,16 @@ fn schemas_reference_current_contract_ids() {
     assert!(propose_schema.contains(PROPOSE_SCHEMA_ID));
     assert!(add_schema.contains(ADD_SCHEMA_ID));
     assert!(migrate_schema.contains(MIGRATE_SCHEMA_ID));
+    for command in REPORT_COMMANDS {
+        assert!(
+            report_schema.contains(&format!("\"{command}\"")),
+            "report schema should include report command `{command}`"
+        );
+    }
+    assert!(
+        receipt_schema.contains(&format!("\"{RECEIPT_COMMAND_CHECK}\"")),
+        "receipt schema should include check command"
+    );
     assert!(report_schema.contains("\"files_scanned\""));
     assert!(receipt_schema.contains("\"files_scanned\""));
     assert!(list_schema.contains("\"files_scanned\""));

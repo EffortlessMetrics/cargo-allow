@@ -64,6 +64,12 @@ fn json_report_exposes_v1_schema_contract() {
 }
 
 #[test]
+#[should_panic(expected = "report artifacts support only audit, check, or diff commands")]
+fn json_report_rejects_unknown_artifact_command() {
+    let _ = render_json_with_context("explain", &[], &[], false, ReportContext::default());
+}
+
+#[test]
 fn json_report_exposes_trend_metrics() {
     let outcomes = vec![
         outcome(MatchStatus::New, Some(0)),

@@ -32,6 +32,16 @@ pub const ARTIFACT_STATUS_PASSED: &str = "passed";
 pub const ARTIFACT_STATUS_FAILED: &str = "failed";
 pub const ARTIFACT_STATUSES: &[&str] = &[ARTIFACT_STATUS_PASSED, ARTIFACT_STATUS_FAILED];
 
+pub const REPORT_COMMAND_AUDIT: &str = "audit";
+pub const REPORT_COMMAND_CHECK: &str = "check";
+pub const REPORT_COMMAND_DIFF: &str = "diff";
+pub const REPORT_COMMANDS: &[&str] = &[
+    REPORT_COMMAND_AUDIT,
+    REPORT_COMMAND_CHECK,
+    REPORT_COMMAND_DIFF,
+];
+pub const RECEIPT_COMMAND_CHECK: &str = "check";
+
 pub const INVENTORY_SCOPE_SOURCE_TREE: &str = "source_tree";
 pub const INVENTORY_SCANNER_SOURCE_SYNTAX: &str = "source_syntax";
 pub const INVENTORY_SCANNER_POLICY_MIGRATION: &str = "policy_migration";

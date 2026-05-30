@@ -55,7 +55,7 @@ fn report_schema_locks_report_command_producers() {
         "report command",
         &schema,
         "/properties/command/enum",
-        &["audit", "check", "diff"],
+        allow_report::REPORT_COMMANDS,
     );
 }
 
