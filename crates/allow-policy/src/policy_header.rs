@@ -8,12 +8,17 @@ pub(crate) fn validate_policy_header(cfg: &AllowConfig) -> CargoAllowResult<()> 
             "policy schema_version must not be empty",
         ));
     }
+    validate_header_token("policy schema_version", &cfg.schema_version)?;
     if cfg.schema_version != SUPPORTED_SCHEMA_VERSION {
         return Err(CargoAllowError::new(format!(
             "unsupported policy schema_version `{}`",
             cfg.schema_version
         )));
     }
+    if cfg.policy.trim().is_empty() {
+        return Err(CargoAllowError::new("policy name must not be empty"));
+    }
+    validate_header_token("policy name", &cfg.policy)?;
     if cfg.policy != "cargo-allow" {
         return Err(CargoAllowError::new(format!(
             "unsupported policy `{}`",
@@ -44,11 +49,21 @@ pub(crate) fn validate_policy_header(cfg: &AllowConfig) -> CargoAllowResult<()> 
         return Err(CargoAllowError::new("policy status must not be empty"));
     }
     if let Some(status) = &cfg.status {
+        validate_header_token("policy status", status)?;
         if !matches!(status.as_str(), "active" | "advisory") {
             return Err(CargoAllowError::new(format!(
                 "unsupported policy status `{status}`"
             )));
         }
+    }
+    Ok(())
+}
+
+fn validate_header_token(label: &str, value: &str) -> CargoAllowResult<()> {
+    if value.trim() != value {
+        return Err(CargoAllowError::new(format!(
+            "{label} must not have leading or trailing whitespace"
+        )));
     }
     Ok(())
 }
