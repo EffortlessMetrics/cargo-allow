@@ -2,13 +2,28 @@ use allow_core::json_escape;
 
 use crate::DiffReport;
 use crate::json::option_json;
+use crate::{REPORT_COMMAND_DIFF, REPORT_SCHEMA_ID};
 
 pub fn render_diff_json_with_posture(report_json: &str, report: DiffReport<'_>) -> Option<String> {
+    if !is_diff_report_artifact(report_json) {
+        return None;
+    }
     let diff_json = render_diff_posture_json(report);
     let trimmed = report_json.trim_end();
     trimmed
         .strip_suffix('}')
         .map(|prefix| format!("{prefix},\n  \"diff\": {diff_json}\n}}\n"))
+}
+
+fn is_diff_report_artifact(report_json: &str) -> bool {
+    contains_json_string_field(report_json, "schema_id", REPORT_SCHEMA_ID)
+        && contains_json_string_field(report_json, "command", REPORT_COMMAND_DIFF)
+}
+
+fn contains_json_string_field(json: &str, field: &str, value: &str) -> bool {
+    let spaced = format!("\"{field}\": \"{value}\"");
+    let compact = format!("\"{field}\":\"{value}\"");
+    json.contains(&spaced) || json.contains(&compact)
 }
 
 pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
