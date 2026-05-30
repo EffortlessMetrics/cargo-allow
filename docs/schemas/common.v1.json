@@ -474,6 +474,92 @@
         }
       }
     },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ast_kind",
+        "container",
+        "callee",
+        "macro_name",
+        "lint",
+        "symbol",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+        "line_hint",
+        "glob"
+      ],
+      "properties": {
+        "ast_kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "container": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "callee": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "macro_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "symbol": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "receiver_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "normalized_snippet_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line_hint": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "glob": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
     "canonical_evidence_prefix": {
       "type": "string",
       "enum": [

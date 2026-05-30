@@ -495,6 +495,63 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
             "common structural_identity {field} minimum"
         );
     }
+    let selector = required_schema_pointer("common", &schema, "/$defs/selector");
+    assert_eq!(
+        selector
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common selector should reject unknown fields"
+    );
+    assert_required_fields(
+        "common selector",
+        selector,
+        &[
+            "ast_kind",
+            "container",
+            "callee",
+            "macro_name",
+            "lint",
+            "symbol",
+            "receiver_fingerprint",
+            "target_fingerprint",
+            "normalized_snippet_hash",
+            "line_hint",
+            "glob",
+        ],
+    );
+    for field in [
+        "ast_kind",
+        "container",
+        "callee",
+        "macro_name",
+        "lint",
+        "symbol",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+        "glob",
+    ] {
+        assert_schema_type_equals(
+            &format!("common selector {field}"),
+            &schema,
+            &format!("/$defs/selector/properties/{field}/type"),
+            &["string", "null"],
+        );
+    }
+    assert_schema_type_equals(
+        "common selector line_hint",
+        &schema,
+        "/$defs/selector/properties/line_hint/type",
+        &["integer", "null"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/selector/properties/line_hint/minimum")
+            .and_then(Value::as_u64),
+        Some(0),
+        "common selector line_hint minimum"
+    );
     let canonical_evidence_prefixes =
         allow_policy::canonical_evidence_prefixes().collect::<Vec<_>>();
     assert_enum_equals(
@@ -1277,6 +1334,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "requirement_change",
         "requirement_change_field",
         "scanner_limitation",
+        "selector",
         "selector_identity_change",
         "selector_identity_change_field",
         "selector_precision_change",
@@ -1348,6 +1406,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
 
     for (schema_name, schema) in [("add", &add), ("explain", &explain)] {
         assert_common_fragment_matches(schema_name, schema, &common, "structural_identity");
+        assert_common_fragment_matches(schema_name, schema, &common, "selector");
     }
 }
 
