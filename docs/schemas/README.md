@@ -113,6 +113,14 @@ baseline debt and `baseline_debt_normalized` when an existing
 Both are failing policy-posture signals so generated adoption debt cannot be
 silently laundered into approval.
 
+Diff report `policy_changes` also distinguish traceability and provenance
+changes. Removed policy `links` emit `link_removed` review items, added links
+emit `link_added` improvements, removed `created` dates emit `created_removed`
+failures, changed `created` dates emit `created_changed` review items, and
+added `created` dates emit `created_added` improvements. These are posture
+signals for the exception ledger only; they do not imply build-aware or
+proof-level validation.
+
 ## Broken Evidence Links
 
 Report JSON may include `summary.broken_evidence_links` and
