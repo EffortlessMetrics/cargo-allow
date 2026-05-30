@@ -14,6 +14,10 @@ The primary command form is `cargo-allow ...`. `cargo allow ...` is accepted as
 Cargo external subcommand compatibility, but cargo-allow's own scan is a direct
 source-tree policy scan.
 
+Top-level policy header values such as `schema_version`, `policy`, `owner`, and
+`status` are exact ledger tokens. They must not include leading or trailing
+whitespace.
+
 ## Entry Contract
 
 Each retained exception should have:
