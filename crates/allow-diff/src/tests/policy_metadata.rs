@@ -139,6 +139,17 @@ fn detects_policy_status_weakened_as_failure() {
             && change.allow_id == "policy.status"
             && change.message.contains("active -> advisory")
     }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::PolicyStatusWeakened)
+        .unwrap_or_else(|| std::panic::panic_any("policy status weakening should be reported"));
+    assert_eq!(
+        change
+            .policy_status
+            .as_ref()
+            .map(|status| (status.before.as_deref(), status.after.as_deref())),
+        Some((Some("active"), Some("advisory")))
+    );
 }
 
 #[test]
@@ -278,6 +289,17 @@ fn detects_policy_status_tightened_as_improvement() {
             && change.allow_id == "policy.status"
             && change.message.contains("advisory -> active")
     }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::PolicyStatusTightened)
+        .unwrap_or_else(|| std::panic::panic_any("policy status tightening should be reported"));
+    assert_eq!(
+        change
+            .policy_status
+            .as_ref()
+            .map(|status| (status.before.as_deref(), status.after.as_deref())),
+        Some((Some("advisory"), Some("active")))
+    );
 }
 
 #[test]
@@ -295,6 +317,17 @@ fn detects_policy_status_changed_for_unset_transitions() {
             && change.allow_id == "policy.status"
             && change.message.contains("advisory -> <unset>")
     }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::PolicyStatusChanged)
+        .unwrap_or_else(|| std::panic::panic_any("policy status change should be reported"));
+    assert_eq!(
+        change
+            .policy_status
+            .as_ref()
+            .map(|status| (status.before.as_deref(), status.after.as_deref())),
+        Some((Some("advisory"), None))
+    );
 }
 
 #[test]

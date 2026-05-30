@@ -11,6 +11,7 @@ pub struct PolicyChange {
     pub evidence: Option<EvidenceChange>,
     pub metadata: Option<MetadataChange>,
     pub requirement: Option<RequirementChange>,
+    pub policy_status: Option<PolicyStatusChange>,
 }
 
 impl PolicyChange {
@@ -32,6 +33,7 @@ impl PolicyChange {
             evidence: None,
             metadata: None,
             requirement: None,
+            policy_status: None,
         }
     }
 
@@ -67,6 +69,11 @@ impl PolicyChange {
 
     pub fn with_requirement(mut self, requirement: RequirementChange) -> Self {
         self.requirement = Some(requirement);
+        self
+    }
+
+    pub fn with_policy_status(mut self, policy_status: PolicyStatusChange) -> Self {
+        self.policy_status = Some(policy_status);
         self
     }
 }
@@ -181,6 +188,12 @@ impl RequirementChangeField {
             Self::UnsafeSafetyCommentRequired => "unsafe.safety_comment_required",
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyStatusChange {
+    pub before: Option<String>,
+    pub after: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

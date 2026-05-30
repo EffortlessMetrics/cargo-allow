@@ -156,6 +156,14 @@ pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
                 requirement.after
             ));
         }
+        if let Some(policy_status) = change.policy_status {
+            out.push_str(", ");
+            out.push_str(&format!(
+                "\"policy_status\": {{\"before\": {}, \"after\": {}}}",
+                option_json(policy_status.before),
+                option_json(policy_status.after)
+            ));
+        }
         out.push('}');
     }
     out.push_str("\n    ]\n");

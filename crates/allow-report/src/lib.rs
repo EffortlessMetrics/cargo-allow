@@ -61,8 +61,8 @@ pub use add::{render_add_human, render_add_json};
 pub use allow_entry_json::{render_allow_entry_json, render_last_seen_json, render_selector_json};
 pub use artifacts::{
     AddReport, DiffEvidenceChange, DiffFindingChange, DiffLifecycleChange, DiffMetadataChange,
-    DiffOccurrenceLimitChange, DiffPolicyChange, DiffPostureSummary, DiffReport,
-    DiffRequirementChange, DiffScopeChange, DiffSelectorPrecisionChange, DoctorReport,
+    DiffOccurrenceLimitChange, DiffPolicyChange, DiffPolicyStatusChange, DiffPostureSummary,
+    DiffReport, DiffRequirementChange, DiffScopeChange, DiffSelectorPrecisionChange, DoctorReport,
     EvidenceReference, ExplainReport, ListFilters, ListRow, MigrateReport, ProposeReport,
     PruneCandidate, PruneModeContext, WorklistFilters, WorklistItem,
 };
