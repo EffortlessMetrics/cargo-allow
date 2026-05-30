@@ -246,6 +246,30 @@ fn detects_equal_precision_selector_retarget_as_review_required() {
 }
 
 #[test]
+fn detects_equal_precision_selector_field_swaps_as_review_required() {
+    let base = config_with(entry("allow-1"));
+    let mut swapped = entry("allow-1");
+    swapped.selector.callee = None;
+    swapped.selector.macro_name = Some("panic".to_string());
+    let head = config_with(swapped);
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::SelectorChanged
+            && change.severity == PolicyChangeSeverity::Review
+    }));
+    assert!(
+        !changes.iter().any(|change| matches!(
+            change.kind,
+            PolicyChangeKind::SelectorPrecisionDecreased
+                | PolicyChangeKind::SelectorPrecisionIncreased
+        )),
+        "callee and macro_name have equal precision weight, but the selector identity changed"
+    );
+}
+
+#[test]
 fn selector_retarget_ignores_line_hint_only_changes() {
     let base = config_with(entry("allow-1"));
     let mut moved = entry("allow-1");
