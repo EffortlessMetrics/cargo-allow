@@ -165,6 +165,13 @@ fn policy_change_rows(
             allow_id: &change.allow_id,
             kind: change.kind.as_str(),
             message: &change.message,
+            exception_identity: change.exception_identity.as_ref().map(|identity| {
+                allow_report::DiffExceptionIdentityChange {
+                    field: identity.field.as_str(),
+                    before: identity.before.as_deref(),
+                    after: identity.after.as_deref(),
+                }
+            }),
             selector_precision: change.selector_precision.as_ref().map(|selector| {
                 allow_report::DiffSelectorPrecisionChange {
                     before: selector.before,

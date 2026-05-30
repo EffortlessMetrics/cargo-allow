@@ -612,6 +612,10 @@
           "type": "string",
           "minLength": 1
         },
+        "exception_identity": {
+          "$ref": "#/$defs/exception_identity_change",
+          "description": "Optional structured governed exception identity delta for kind_changed and family_changed policy changes."
+        },
         "selector_precision": {
           "$ref": "#/$defs/selector_precision_change",
           "description": "Optional structured selector precision delta for selector_precision_decreased and selector_precision_increased policy changes."
@@ -645,6 +649,28 @@
           "description": "Optional structured top-level policy status delta for policy_status_weakened, policy_status_tightened, and policy_status_changed policy changes."
         }
       }
+    },
+    "exception_identity_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "before", "after"],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/exception_identity_change_field",
+          "description": "Governed exception identity field that changed."
+        },
+        "before": {
+          "type": ["string", "null"],
+          "description": "Governed exception identity value before the policy change when available."
+        },
+        "after": {
+          "type": ["string", "null"],
+          "description": "Governed exception identity value after the policy change when available."
+        }
+      }
+    },
+    "exception_identity_change_field": {
+      "enum": ["kind", "family"]
     },
     "evidence_change": {
       "type": "object",

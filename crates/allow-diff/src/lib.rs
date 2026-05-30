@@ -23,10 +23,11 @@ pub use finding::{
 };
 pub use policy::{policy_changes, policy_changes_from_git, policy_config_at_revision};
 pub use policy_change::{
-    EvidenceChange, EvidenceChangeField, LifecycleChange, LifecycleChangeField, MetadataChange,
-    MetadataChangeField, OccurrenceLimitChange, PolicyChange, PolicyChangeKind,
-    PolicyChangeSeverity, PolicyStatusChange, RequirementChange, RequirementChangeField,
-    ScopeChange, ScopeChangeField, SelectorPrecisionChange,
+    EvidenceChange, EvidenceChangeField, ExceptionIdentityChange, ExceptionIdentityChangeField,
+    LifecycleChange, LifecycleChangeField, MetadataChange, MetadataChangeField,
+    OccurrenceLimitChange, PolicyChange, PolicyChangeKind, PolicyChangeSeverity,
+    PolicyStatusChange, RequirementChange, RequirementChangeField, ScopeChange, ScopeChangeField,
+    SelectorPrecisionChange,
 };
 pub use policy_scope::selector_precision_score;
 pub use revision::findings_at_revision;

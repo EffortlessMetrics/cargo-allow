@@ -145,3 +145,59 @@ fn detects_non_baseline_added_allow_for_review() {
     assert_eq!(changes[0].kind, PolicyChangeKind::AddedAllow);
     assert_eq!(changes[0].severity, PolicyChangeSeverity::Review);
 }
+
+#[test]
+fn detects_kind_changes_with_structured_exception_identity() {
+    let base = config_with(entry("allow-1"));
+    let mut head_entry = entry("allow-1");
+    head_entry.kind = FindingKind::Unsafe;
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::KindChanged)
+        .unwrap_or_else(|| std::panic::panic_any("kind change should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Fail);
+    assert_eq!(
+        change.exception_identity.as_ref().map(|identity| {
+            (
+                identity.field,
+                identity.before.as_deref(),
+                identity.after.as_deref(),
+            )
+        }),
+        Some((
+            ExceptionIdentityChangeField::Kind,
+            Some("panic"),
+            Some("unsafe")
+        ))
+    );
+}
+
+#[test]
+fn detects_family_changes_with_structured_exception_identity() {
+    let base = config_with(entry("allow-1"));
+    let mut head_entry = entry("allow-1");
+    head_entry.family = None;
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::FamilyChanged)
+        .unwrap_or_else(|| std::panic::panic_any("family change should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Fail);
+    assert_eq!(
+        change.exception_identity.as_ref().map(|identity| {
+            (
+                identity.field,
+                identity.before.as_deref(),
+                identity.after.as_deref(),
+            )
+        }),
+        Some((ExceptionIdentityChangeField::Family, Some("unwrap"), None))
+    );
+}

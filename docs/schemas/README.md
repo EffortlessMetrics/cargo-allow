@@ -145,6 +145,12 @@ added `created` dates emit `created_added` improvements. These are posture
 signals for the exception ledger only; they do not imply build-aware or
 proof-level validation.
 
+Diff report `policy_changes` use `kind_changed` and `family_changed` when an
+existing entry changes the governed exception identity it receipts. These are
+failing policy-posture signals because the retained receipt now covers a
+different source-exception class. These rows may include an optional
+`exception_identity` object with the changed field and before/after values.
+
 Diff report `policy_changes` use `owner_unassigned` when an existing reviewed
 entry changes from a concrete owner to `owner = "unowned"`. This is a failing
 policy-posture signal because retained exceptions must not silently lose

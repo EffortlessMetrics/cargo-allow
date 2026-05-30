@@ -93,6 +93,15 @@ pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
         ));
         out.push_str(&format!("\"kind\": \"{}\", ", json_escape(change.kind)));
         out.push_str(&format!("\"message\": \"{}\"", json_escape(change.message)));
+        if let Some(exception_identity) = change.exception_identity {
+            out.push_str(", ");
+            out.push_str(&format!(
+                "\"exception_identity\": {{\"field\": \"{}\", \"before\": {}, \"after\": {}}}",
+                json_escape(exception_identity.field),
+                option_json(exception_identity.before),
+                option_json(exception_identity.after)
+            ));
+        }
         if let Some(selector_precision) = change.selector_precision {
             out.push_str(", ");
             out.push_str(&format!(

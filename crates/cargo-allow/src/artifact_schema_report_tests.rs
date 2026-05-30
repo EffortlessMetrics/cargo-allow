@@ -3,8 +3,9 @@ use crate::artifact_schema_support::{
     required_schema_pointer,
 };
 use allow_diff::{
-    EvidenceChangeField, FindingPostureKind, LifecycleChangeField, MetadataChangeField,
-    PolicyChangeKind, PolicyChangeSeverity, RequirementChangeField, ScopeChangeField,
+    EvidenceChangeField, ExceptionIdentityChangeField, FindingPostureKind, LifecycleChangeField,
+    MetadataChangeField, PolicyChangeKind, PolicyChangeSeverity, RequirementChangeField,
+    ScopeChangeField,
 };
 use serde_json::Value;
 
@@ -259,6 +260,13 @@ fn report_schema_locks_diff_posture_extension_contract() {
     );
     assert_eq!(
         schema
+            .pointer("/$defs/policy_change/properties/exception_identity/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/exception_identity_change"),
+        "report policy changes should use exception identity change rows"
+    );
+    assert_eq!(
+        schema
             .pointer("/$defs/policy_change/properties/selector_precision/$ref")
             .and_then(Value::as_str),
         Some("#/$defs/selector_precision_change"),
@@ -347,6 +355,56 @@ fn report_schema_locks_diff_posture_extension_contract() {
             "report policy status {field} second type"
         );
     }
+    let exception_identity_change =
+        required_schema_pointer("report", &schema, "/$defs/exception_identity_change");
+    assert_eq!(
+        exception_identity_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "report exception identity changes should reject unknown fields"
+    );
+    assert_required_fields(
+        "report exception identity change",
+        exception_identity_change,
+        &["field", "before", "after"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/exception_identity_change/properties/field/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/exception_identity_change_field"),
+        "report exception identity changes should use the exception identity field vocabulary"
+    );
+    for field in ["before", "after"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/exception_identity_change/properties/{field}/type/0"
+                ))
+                .and_then(Value::as_str),
+            Some("string"),
+            "report exception identity {field} first type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/exception_identity_change/properties/{field}/type/1"
+                ))
+                .and_then(Value::as_str),
+            Some("null"),
+            "report exception identity {field} second type"
+        );
+    }
+    assert_enum_equals(
+        "report exception identity fields",
+        &schema,
+        "/$defs/exception_identity_change_field/enum",
+        &enum_strings(
+            ExceptionIdentityChangeField::ALL,
+            ExceptionIdentityChangeField::as_str,
+        ),
+    );
     let requirement_change =
         required_schema_pointer("report", &schema, "/$defs/requirement_change");
     assert_eq!(
