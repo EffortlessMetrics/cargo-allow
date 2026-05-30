@@ -37,77 +37,97 @@ pub const INVENTORY_SCANNER_SOURCE_SYNTAX: &str = "source_syntax";
 pub const INVENTORY_SCANNER_POLICY_MIGRATION: &str = "policy_migration";
 pub const INVENTORY_SOURCE_UNKNOWN: &str = "unknown";
 
+pub(crate) const ADD_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "add",
+    schema_id: ADD_SCHEMA_ID,
+    schema_version: ADD_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: Some("add"),
+};
+
+pub(crate) const DOCTOR_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "doctor",
+    schema_id: DOCTOR_SCHEMA_ID,
+    schema_version: DOCTOR_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: Some("doctor"),
+};
+
+pub(crate) const EXPLAIN_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "explain",
+    schema_id: EXPLAIN_SCHEMA_ID,
+    schema_version: EXPLAIN_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: Some("explain"),
+};
+
+pub(crate) const LIST_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "list",
+    schema_id: LIST_SCHEMA_ID,
+    schema_version: LIST_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: Some("list"),
+};
+
+pub(crate) const MIGRATE_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "migrate",
+    schema_id: MIGRATE_SCHEMA_ID,
+    schema_version: MIGRATE_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_POLICY_MIGRATION,
+    fixed_command: Some("migrate"),
+};
+
+pub(crate) const PROPOSE_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "propose",
+    schema_id: PROPOSE_SCHEMA_ID,
+    schema_version: PROPOSE_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: Some("propose"),
+};
+
+pub(crate) const PRUNE_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "prune",
+    schema_id: PRUNE_SCHEMA_ID,
+    schema_version: PRUNE_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: Some("prune"),
+};
+
+pub(crate) const RECEIPT_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "receipt",
+    schema_id: RECEIPT_SCHEMA_ID,
+    schema_version: RECEIPT_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: None,
+};
+
+pub(crate) const REPORT_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "report",
+    schema_id: REPORT_SCHEMA_ID,
+    schema_version: REPORT_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: None,
+};
+
+pub(crate) const WORKLIST_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "worklist",
+    schema_id: WORKLIST_SCHEMA_ID,
+    schema_version: WORKLIST_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: Some("worklist"),
+};
+
 pub const ARTIFACT_CONTRACTS: &[ArtifactContract] = &[
-    ArtifactContract {
-        name: "add",
-        schema_id: ADD_SCHEMA_ID,
-        schema_version: ADD_SCHEMA_VERSION,
-        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
-        fixed_command: Some("add"),
-    },
-    ArtifactContract {
-        name: "doctor",
-        schema_id: DOCTOR_SCHEMA_ID,
-        schema_version: DOCTOR_SCHEMA_VERSION,
-        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
-        fixed_command: Some("doctor"),
-    },
-    ArtifactContract {
-        name: "explain",
-        schema_id: EXPLAIN_SCHEMA_ID,
-        schema_version: EXPLAIN_SCHEMA_VERSION,
-        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
-        fixed_command: Some("explain"),
-    },
-    ArtifactContract {
-        name: "list",
-        schema_id: LIST_SCHEMA_ID,
-        schema_version: LIST_SCHEMA_VERSION,
-        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
-        fixed_command: Some("list"),
-    },
-    ArtifactContract {
-        name: "migrate",
-        schema_id: MIGRATE_SCHEMA_ID,
-        schema_version: MIGRATE_SCHEMA_VERSION,
-        inventory_scanner: INVENTORY_SCANNER_POLICY_MIGRATION,
-        fixed_command: Some("migrate"),
-    },
-    ArtifactContract {
-        name: "propose",
-        schema_id: PROPOSE_SCHEMA_ID,
-        schema_version: PROPOSE_SCHEMA_VERSION,
-        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
-        fixed_command: Some("propose"),
-    },
-    ArtifactContract {
-        name: "prune",
-        schema_id: PRUNE_SCHEMA_ID,
-        schema_version: PRUNE_SCHEMA_VERSION,
-        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
-        fixed_command: Some("prune"),
-    },
-    ArtifactContract {
-        name: "receipt",
-        schema_id: RECEIPT_SCHEMA_ID,
-        schema_version: RECEIPT_SCHEMA_VERSION,
-        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
-        fixed_command: None,
-    },
-    ArtifactContract {
-        name: "report",
-        schema_id: REPORT_SCHEMA_ID,
-        schema_version: REPORT_SCHEMA_VERSION,
-        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
-        fixed_command: None,
-    },
-    ArtifactContract {
-        name: "worklist",
-        schema_id: WORKLIST_SCHEMA_ID,
-        schema_version: WORKLIST_SCHEMA_VERSION,
-        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
-        fixed_command: Some("worklist"),
-    },
+    ADD_ARTIFACT,
+    DOCTOR_ARTIFACT,
+    EXPLAIN_ARTIFACT,
+    LIST_ARTIFACT,
+    MIGRATE_ARTIFACT,
+    PROPOSE_ARTIFACT,
+    PRUNE_ARTIFACT,
+    RECEIPT_ARTIFACT,
+    REPORT_ARTIFACT,
+    WORKLIST_ARTIFACT,
 ];
 
 pub fn artifact_contract_for_schema_id(schema_id: &str) -> Option<ArtifactContract> {

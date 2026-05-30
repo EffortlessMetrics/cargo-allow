@@ -1,17 +1,20 @@
 use allow_core::{MatchOutcome, json_escape};
 
-use crate::{CLAIM_BOUNDARY, InventoryContext, SCANNER_LIMITATIONS};
+use crate::{ArtifactContract, CLAIM_BOUNDARY, InventoryContext, SCANNER_LIMITATIONS};
 
 pub(crate) fn push_json_artifact_header(
     out: &mut String,
-    schema_version: u32,
-    schema_id: &str,
+    contract: ArtifactContract,
     command: &str,
 ) {
+    if let Some(fixed_command) = contract.fixed_command {
+        debug_assert_eq!(fixed_command, command);
+    }
+    let schema_version = contract.schema_version;
     out.push_str(&format!("  \"schema_version\": {schema_version},\n"));
     out.push_str(&format!(
         "  \"schema_id\": \"{}\",\n",
-        json_escape(schema_id)
+        json_escape(contract.schema_id)
     ));
     out.push_str("  \"tool\": \"cargo-allow\",\n");
     out.push_str(&format!("  \"command\": \"{}\",\n", json_escape(command)));
@@ -19,13 +22,24 @@ pub(crate) fn push_json_artifact_header(
 
 pub(crate) fn push_json_artifact_preamble(
     out: &mut String,
-    schema_version: u32,
-    schema_id: &str,
+    contract: ArtifactContract,
     command: &str,
     inventory: InventoryContext<'_>,
 ) {
-    push_json_artifact_header(out, schema_version, schema_id, command);
+    push_json_artifact_header(out, contract, command);
     push_json_artifact_source_context(out, inventory);
+}
+
+pub(crate) fn push_json_fixed_artifact_preamble(
+    out: &mut String,
+    contract: ArtifactContract,
+    inventory: InventoryContext<'_>,
+) {
+    let command = match contract.fixed_command {
+        Some(command) => command,
+        None => contract.name,
+    };
+    push_json_artifact_preamble(out, contract, command, inventory);
 }
 
 pub(crate) fn push_json_artifact_source_context(out: &mut String, inventory: InventoryContext<'_>) {

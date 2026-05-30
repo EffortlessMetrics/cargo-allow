@@ -1,12 +1,10 @@
+use crate::contracts::EXPLAIN_ARTIFACT;
 use crate::explain_common::explain_report_status;
 use crate::json::{
-    json_string_array, option_json, option_u32_json, push_json_artifact_preamble,
+    json_string_array, option_json, option_u32_json, push_json_fixed_artifact_preamble,
     render_match_outcome_json,
 };
-use crate::{
-    EXPLAIN_SCHEMA_ID, EXPLAIN_SCHEMA_VERSION, EvidenceReference, ExplainReport,
-    render_allow_entry_json,
-};
+use crate::{EvidenceReference, ExplainReport, render_allow_entry_json};
 use allow_core::{Finding, StructuralIdentity, json_escape, normalize_path};
 
 pub fn render_explain_finding_json(finding: &Finding, status: &str, indent: &str) -> String {
@@ -48,13 +46,7 @@ fn structural_identity_json(identity: &StructuralIdentity, indent: &str) -> Stri
 pub fn render_explain_json(report: ExplainReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    push_json_artifact_preamble(
-        &mut out,
-        EXPLAIN_SCHEMA_VERSION,
-        EXPLAIN_SCHEMA_ID,
-        "explain",
-        report.inventory,
-    );
+    push_json_fixed_artifact_preamble(&mut out, EXPLAIN_ARTIFACT, report.inventory);
     out.push_str("  \"allow_entry\": ");
     out.push_str(&render_allow_entry_json(report.entry, "  "));
     out.push_str(",\n");

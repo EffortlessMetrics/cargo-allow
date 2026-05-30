@@ -1,11 +1,11 @@
+use crate::contracts::REPORT_ARTIFACT;
 use crate::json::{
     bool_json, option_json, push_json_artifact_header, push_json_artifact_source_context,
     render_match_outcome_json_compact,
 };
 use crate::{
-    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, DiffReport, REPORT_SCHEMA_ID,
-    REPORT_SCHEMA_VERSION, ReportContext, ReviewSignals, Summary,
-    render_count_fields_with_policy_context,
+    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, DiffReport, ReportContext, ReviewSignals,
+    Summary, render_count_fields_with_policy_context,
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
 
@@ -56,7 +56,7 @@ fn render_json_report(
     let summary = Summary::from_outcomes(outcomes);
     let mut out = String::new();
     out.push_str("{\n");
-    push_json_artifact_header(&mut out, REPORT_SCHEMA_VERSION, REPORT_SCHEMA_ID, command);
+    push_json_artifact_header(&mut out, REPORT_ARTIFACT, command);
     out.push_str(&format!(
         "  \"status\": \"{}\",\n",
         if failed {

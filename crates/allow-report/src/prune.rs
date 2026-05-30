@@ -1,8 +1,7 @@
-use crate::json::{bool_json, option_json, push_json_artifact_preamble};
+use crate::contracts::PRUNE_ARTIFACT;
+use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
 use crate::text::markdown_cell;
-use crate::{
-    InventoryContext, PRUNE_SCHEMA_ID, PRUNE_SCHEMA_VERSION, PruneCandidate, PruneModeContext,
-};
+use crate::{InventoryContext, PruneCandidate, PruneModeContext};
 use allow_core::json_escape;
 
 pub fn render_prune_human(candidates: &[PruneCandidate<'_>], mode: PruneModeContext<'_>) -> String {
@@ -55,13 +54,7 @@ pub fn render_prune_json(
 ) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    push_json_artifact_preamble(
-        &mut out,
-        PRUNE_SCHEMA_VERSION,
-        PRUNE_SCHEMA_ID,
-        "prune",
-        inventory,
-    );
+    push_json_fixed_artifact_preamble(&mut out, PRUNE_ARTIFACT, inventory);
     out.push_str("  \"mode\": {\n");
     out.push_str(&format!(
         "    \"dry_run\": {},\n",
