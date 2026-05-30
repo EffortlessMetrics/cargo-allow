@@ -78,7 +78,7 @@ fn forbidden_tool_literals() -> &'static [&'static str] {
 }
 
 #[test]
-fn manifests_do_not_add_cargo_metadata_dependencies() {
+fn cargo_dependency_files_do_not_add_cargo_metadata_dependencies() {
     let root = workspace_root();
     let mut violations = Vec::new();
 
