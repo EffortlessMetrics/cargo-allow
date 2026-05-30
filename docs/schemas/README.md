@@ -127,6 +127,13 @@ entry changes from a concrete owner to `owner = "unowned"`. This is a failing
 policy-posture signal because retained exceptions must not silently lose
 ownership.
 
+Diff report `policy_changes` use `policy_status_weakened`,
+`policy_status_tightened`, and `policy_status_changed` for top-level policy
+status changes. These rows use the synthetic `allow_id` value `policy.status`.
+Changing `active` to `advisory` or removing an active status is failing policy
+weakening; changing `advisory` or an unset status to `active` is a policy
+improvement; other status transitions require review.
+
 Diff report `policy_changes` use `requirement_loosened` and
 `requirement_tightened` for policy-level `[requirements]` changes. The
 `allow_id` field is a synthetic stable path such as

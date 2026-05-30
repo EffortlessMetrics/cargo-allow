@@ -52,6 +52,11 @@ review-required, while added links are reported as policy improvements.
 `created` date is reported as an improvement so exception provenance cannot
 drift silently.
 
+Diff mode reports top-level policy `status` changes with the synthetic
+`policy.status` ID. Changing `active` to `advisory` or removing an active status
+is policy weakening, changing `advisory` or an unset status to `active` is a
+policy improvement, and other status transitions require review.
+
 Diff mode also compares policy-level `[requirements]` booleans. Loosening a
 requirement is policy weakening, tightening one is a policy improvement, and the
 reported policy-change `allow_id` uses a synthetic stable path such as
@@ -398,8 +403,9 @@ review of the broad scope.
 `cargo-allow diff --base <rev>` compares the current policy ledger with the
 base revision's `policy/allow.toml` and reports policy weakening in human and
 Markdown output. Current detection covers scope broadening, selector precision
-loss, expiry/review extension, evidence removal, owner/reason/classification
-removal, owner unassignment, occurrence-limit loosening, added
+loss, expiry/review extension, evidence removal, top-level policy status
+weakening, owner/reason/classification removal, owner unassignment,
+occurrence-limit loosening, added
 `baseline_debt`, reviewed entries reclassified as `baseline_debt`, and existing
 `baseline_debt` entries reclassified as reviewed policy, and policy requirement
 loosening. It also reports source-tree inventory carveout changes for

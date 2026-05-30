@@ -601,6 +601,55 @@ fn detects_owner_unassigned_as_failure() {
 }
 
 #[test]
+fn detects_policy_status_weakened_as_failure() {
+    let base = config_with(entry("allow-1"));
+    let mut head = base.clone();
+    head.status = Some("advisory".to_string());
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::PolicyStatusWeakened
+            && change.severity == PolicyChangeSeverity::Fail
+            && change.allow_id == "policy.status"
+            && change.message.contains("active -> advisory")
+    }));
+}
+
+#[test]
+fn detects_policy_status_tightened_as_improvement() {
+    let mut base = config_with(entry("allow-1"));
+    base.status = Some("advisory".to_string());
+    let head = config_with(entry("allow-1"));
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::PolicyStatusTightened
+            && change.severity == PolicyChangeSeverity::Improvement
+            && change.allow_id == "policy.status"
+            && change.message.contains("advisory -> active")
+    }));
+}
+
+#[test]
+fn detects_policy_status_changed_for_unset_transitions() {
+    let mut base = config_with(entry("allow-1"));
+    base.status = Some("advisory".to_string());
+    let mut head = base.clone();
+    head.status = None;
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::PolicyStatusChanged
+            && change.severity == PolicyChangeSeverity::Review
+            && change.allow_id == "policy.status"
+            && change.message.contains("advisory -> <unset>")
+    }));
+}
+
+#[test]
 fn detects_required_metadata_added_as_improvement() {
     let mut base_entry = entry("allow-1");
     base_entry.owner.clear();
@@ -990,6 +1039,18 @@ fn policy_change_string_helpers_cover_all_public_variants() {
         (PolicyChangeKind::OwnerChanged, "owner_changed"),
         (PolicyChangeKind::OwnerRemoved, "owner_removed"),
         (PolicyChangeKind::OwnerUnassigned, "owner_unassigned"),
+        (
+            PolicyChangeKind::PolicyStatusChanged,
+            "policy_status_changed",
+        ),
+        (
+            PolicyChangeKind::PolicyStatusWeakened,
+            "policy_status_weakened",
+        ),
+        (
+            PolicyChangeKind::PolicyStatusTightened,
+            "policy_status_tightened",
+        ),
         (PolicyChangeKind::ReasonAdded, "reason_added"),
         (PolicyChangeKind::ReasonChanged, "reason_changed"),
         (PolicyChangeKind::ReasonRemoved, "reason_removed"),
