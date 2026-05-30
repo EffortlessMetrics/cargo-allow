@@ -495,6 +495,8 @@ unavailable.
 when `--mode` is omitted. Passing `--mode audit`, `--mode no-new`,
 `--mode strict`, or `--mode release` still overrides the policy default for that
 invocation.
+`workspace.inventory` and `workspace.default_mode` are exact policy tokens and
+must not include leading or trailing whitespace.
 
 The current non-Rust family vocabulary is intentionally explicit:
 `ci_declarative`, `documentation`, `release_script`, `test_fixture`,

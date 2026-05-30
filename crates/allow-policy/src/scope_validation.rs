@@ -8,6 +8,7 @@ pub(crate) fn validate_workspace(workspace: &WorkspaceConfig) -> CargoAllowResul
             "workspace inventory must not be empty",
         ));
     }
+    validate_workspace_token("workspace inventory", &workspace.inventory)?;
     if workspace.inventory != "git-tracked" {
         return Err(CargoAllowError::new(format!(
             "unsupported workspace inventory `{}`",
@@ -19,6 +20,7 @@ pub(crate) fn validate_workspace(workspace: &WorkspaceConfig) -> CargoAllowResul
             "workspace default_mode must not be empty",
         ));
     }
+    validate_workspace_token("workspace default_mode", &workspace.default_mode)?;
     if !matches!(
         workspace.default_mode.as_str(),
         "audit" | "no-new" | "strict" | "release"
@@ -33,6 +35,15 @@ pub(crate) fn validate_workspace(workspace: &WorkspaceConfig) -> CargoAllowResul
     }
     for pattern in &workspace.generated {
         validate_glob("source-tree generated glob", pattern)?;
+    }
+    Ok(())
+}
+
+fn validate_workspace_token(label: &str, value: &str) -> CargoAllowResult<()> {
+    if value.trim() != value {
+        return Err(CargoAllowError::new(format!(
+            "{label} must not have leading or trailing whitespace"
+        )));
     }
     Ok(())
 }
