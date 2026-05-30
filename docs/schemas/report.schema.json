@@ -558,6 +558,8 @@
             "review_after_shortened",
             "evidence_added",
             "evidence_removed",
+            "link_added",
+            "link_removed",
             "owner_added",
             "owner_changed",
             "owner_removed",

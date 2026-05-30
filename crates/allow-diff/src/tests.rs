@@ -375,6 +375,29 @@ fn detects_evidence_added_as_improvement() {
 }
 
 #[test]
+fn detects_traceability_link_changes() {
+    let mut base_entry = entry("allow-1");
+    base_entry.links = vec!["adr:docs/adr/0001.md".to_string(), "issue:123".to_string()];
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-1");
+    head_entry.links = vec!["issue:123".to_string(), "pr:456".to_string()];
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::LinkRemoved
+            && change.severity == PolicyChangeSeverity::Review
+            && change.message.contains("traceability link removed")
+    }));
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::LinkAdded
+            && change.severity == PolicyChangeSeverity::Improvement
+            && change.message.contains("traceability link added")
+    }));
+}
+
+#[test]
 fn detects_required_metadata_removed_and_limit_loosened() {
     let base = config_with(entry("allow-1"));
     let mut weaker = entry("allow-1");
@@ -659,6 +682,8 @@ fn policy_change_string_helpers_cover_all_public_variants() {
         ),
         (PolicyChangeKind::EvidenceAdded, "evidence_added"),
         (PolicyChangeKind::EvidenceRemoved, "evidence_removed"),
+        (PolicyChangeKind::LinkAdded, "link_added"),
+        (PolicyChangeKind::LinkRemoved, "link_removed"),
         (PolicyChangeKind::OwnerAdded, "owner_added"),
         (PolicyChangeKind::OwnerChanged, "owner_changed"),
         (PolicyChangeKind::OwnerRemoved, "owner_removed"),
