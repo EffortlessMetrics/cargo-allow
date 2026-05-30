@@ -91,7 +91,13 @@ fn json_report_includes_structured_posture_changes() {
     )];
 
     let json = render_diff_json_with_posture(
-        "{\n  \"schema_id\": \"cargo-allow.report.v1\"\n}".to_string(),
+        allow_report::render_json_with_context(
+            "diff",
+            &[],
+            &[],
+            false,
+            allow_report::ReportContext::default(),
+        ),
         1,
         &outcomes,
         &finding_changes,

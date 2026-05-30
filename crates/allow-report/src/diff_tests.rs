@@ -17,7 +17,7 @@ fn diff_json_renderer_appends_posture_extension() {
     }];
 
     let rendered = render_diff_json_with_posture(
-        "{\n  \"schema_id\": \"cargo-allow.report.v1\"\n}",
+        "{\n  \"schema_id\": \"cargo-allow.report.v1\",\n  \"command\": \"diff\"\n}",
         DiffReport {
             net_posture: "worse",
             reviewer_action: "block until fixed",
@@ -52,6 +52,26 @@ fn diff_json_renderer_appends_posture_extension() {
     assert!(
         render_diff_json_with_posture(
             "not json",
+            DiffReport {
+                net_posture: "unchanged",
+                reviewer_action: "none",
+                summary: DiffPostureSummary {
+                    current_failures: 0,
+                    new_findings: 0,
+                    removed_findings: 0,
+                    policy_failures: 0,
+                    policy_review_items: 0,
+                    policy_improvements: 0,
+                },
+                finding_changes: &[],
+                policy_changes: &[],
+            },
+        )
+        .is_none()
+    );
+    assert!(
+        render_diff_json_with_posture(
+            "{\n  \"schema_id\": \"cargo-allow.report.v1\",\n  \"command\": \"audit\"\n}",
             DiffReport {
                 net_posture: "unchanged",
                 reviewer_action: "none",
