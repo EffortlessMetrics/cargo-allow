@@ -59,6 +59,10 @@ fn suggested_actions_cover_known_worklist_kinds_and_default() {
             "restore or commit the referenced local evidence artifact",
         ),
         (
+            "weak_evidence_reference",
+            "replace the weak evidence string with a typed evidence reference",
+        ),
+        (
             "future_kind",
             "inspect the outcome and update policy or source accordingly",
         ),
