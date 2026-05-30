@@ -615,6 +615,50 @@ fn accepts_path_with_matching_selector_glob() {
 }
 
 #[test]
+fn accepts_path_with_slash_equivalent_selector_glob() {
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "matching-selector-glob"
+                kind = "non_rust_file"
+                path = "docs/policy.md"
+                owner = "core"
+                classification = "documentation"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = "docs\\policy.md"
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy should parse: {err}")));
+
+    assert_eq!(cfg.allow[0].path_or_glob(), "docs/policy.md");
+}
+
+#[test]
+fn accepts_glob_with_slash_equivalent_selector_glob() {
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "matching-selector-glob"
+                kind = "non_rust_file"
+                glob = "docs\\**"
+                owner = "core"
+                classification = "documentation"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = "docs/**"
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy should parse: {err}")));
+
+    assert_eq!(cfg.allow[0].path_or_glob(), "docs/**");
+}
+
+#[test]
 fn rejects_entry_with_path_and_top_level_glob() {
     let err = parse_err(
         r#"
