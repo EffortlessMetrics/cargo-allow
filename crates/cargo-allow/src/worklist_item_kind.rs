@@ -12,6 +12,7 @@ pub(crate) const REVIEW_DUE: &str = "review_due";
 pub(crate) const MATCHED: &str = "matched";
 pub(crate) const BROAD_SCOPE: &str = "broad_scope";
 pub(crate) const BROKEN_EVIDENCE_LINK: &str = "broken_evidence_link";
+pub(crate) const WEAK_EVIDENCE_REFERENCE: &str = "weak_evidence_reference";
 
 #[cfg(test)]
 pub(crate) const WORK_ITEM_KINDS: &[&str] = &[
@@ -29,4 +30,5 @@ pub(crate) const WORK_ITEM_KINDS: &[&str] = &[
     MATCHED,
     BROAD_SCOPE,
     BROKEN_EVIDENCE_LINK,
+    WEAK_EVIDENCE_REFERENCE,
 ];

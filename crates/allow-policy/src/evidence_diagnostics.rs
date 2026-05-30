@@ -36,6 +36,10 @@ impl EvidenceReferenceStatus {
     pub fn is_broken_local_link(self) -> bool {
         matches!(self, Self::LocalFileMissing | Self::InvalidLocalPath)
     }
+
+    pub fn is_weak_reference(self) -> bool {
+        matches!(self, Self::Unstructured)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

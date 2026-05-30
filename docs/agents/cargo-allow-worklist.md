@@ -21,7 +21,8 @@ mistake a filter for approval to ignore the rest of the ledger.
 Use `--family <family>` for scanner-family slices such as `unwrap`, `indexing`,
 `unsafe_fn`, or `ci_declarative`.
 Use `--item-kind <kind>` for queue-type slices such as `stale_allow`,
-`baseline_debt`, `broad_scope`, or `broken_evidence_link`.
+`baseline_debt`, `broad_scope`, `broken_evidence_link`, or
+`weak_evidence_reference`.
 Use `--baseline-debt` or `--broad-scope` for the common generated-debt and
 wildcard-scope advisory queues without needing the underlying item-kind names.
 Use `--status <status>` for match-status slices such as `new`, `stale`,
@@ -78,6 +79,7 @@ Before accepting an agent change, check that it did one of these:
 
 - removed stale policy.
 - repaired a broken local evidence link.
+- replaced weak evidence strings with typed evidence references.
 - narrowed a selector or glob.
 - added missing owner, reason, classification, lifecycle, or evidence.
 - removed or changed source code so a finding disappeared.

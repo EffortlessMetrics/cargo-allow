@@ -354,6 +354,59 @@ fn saved_worklist_output_includes_policy_missing_evidence_items() {
 }
 
 #[test]
+fn saved_worklist_output_includes_weak_evidence_items() {
+    let fixture = SourceTreeFixture::new("saved-worklist-weak-evidence");
+    fixture.write_policy_with_weak_evidence();
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let worklist = artifact_dir.join("worklist-weak-evidence.json");
+
+    run_cargo_allow(&[
+        "worklist",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--item-kind",
+        "weak_evidence_reference",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&worklist),
+    ]);
+    let value =
+        assert_source_syntax_artifact(&worklist, allow_report::WORKLIST_SCHEMA_ID, "worklist");
+    assert_eq!(
+        value
+            .pointer("/summary/work_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "worklist should contain one weak evidence item"
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/item_kind")
+            .and_then(serde_json::Value::as_str),
+        Some("weak_evidence_reference"),
+        "worklist artifact should preserve the weak-evidence item-kind filter"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/kind")
+            .and_then(serde_json::Value::as_str),
+        Some("weak_evidence_reference"),
+        "worklist item kind"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/allow_id")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-weak-evidence"),
+        "worklist allow id"
+    );
+}
+
+#[test]
 fn saved_worklist_output_includes_policy_baseline_debt_items() {
     let fixture = SourceTreeFixture::new("saved-worklist-baseline-debt");
     fixture.write_policy_with_baseline_debt_entry();
@@ -1261,6 +1314,14 @@ callee = "unwrap"
         );
         fs::write(self.root.join("policy/allow.toml"), policy)
             .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    }
+
+    fn write_policy_with_weak_evidence(&self) {
+        self.write_policy_with_evidence(
+            "allow-weak-evidence",
+            "Fixture exercises weak evidence worklist output.",
+            "spreadsheet:manual-review",
+        );
     }
 
     fn write_policy_with_present_and_traceability_evidence(&self) {

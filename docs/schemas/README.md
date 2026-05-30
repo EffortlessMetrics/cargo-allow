@@ -145,8 +145,11 @@ outputs are requested. `doctor` reports invalid policy state, `add` validates
 evidence before writing a reviewed entry, and `prune --stale --write`
 revalidates the remaining policy before writing. Use
 `cargo-allow worklist --item-kind broken_evidence_link --format json` for the
-broken-link repair queue and `cargo-allow worklist --missing-evidence --format
-json` for retained entries that still need evidence references.
+broken-link repair queue,
+`cargo-allow worklist --item-kind weak_evidence_reference --format json` for
+unstructured or unknown-prefix evidence cleanup, and
+`cargo-allow worklist --missing-evidence --format json` for retained entries
+that still need evidence references.
 
 ## Compatibility Coverage
 
