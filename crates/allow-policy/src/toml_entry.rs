@@ -1,10 +1,11 @@
-use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, Lifecycle};
+use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, FindingKind};
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 use crate::toml_de::string_or_vec;
 use crate::toml_last_seen::LastSeenToml;
+use crate::toml_lifecycle::LifecycleToml;
 use crate::toml_selector::SelectorToml;
 
 #[derive(Debug, Default, Deserialize)]
@@ -24,9 +25,8 @@ pub(crate) struct AllowEntryToml {
     links: Vec<String>,
     #[serde(alias = "count")]
     occurrence_limit: Option<u32>,
-    created: Option<String>,
-    review_after: Option<String>,
-    expires: Option<String>,
+    #[serde(flatten)]
+    lifecycle: LifecycleToml,
     #[serde(default)]
     selector: SelectorToml,
     #[serde(default)]
@@ -53,11 +53,7 @@ impl AllowEntryToml {
             evidence: self.evidence,
             links: self.links,
             occurrence_limit: self.occurrence_limit,
-            lifecycle: Lifecycle {
-                created: self.created,
-                review_after: self.review_after,
-                expires: self.expires,
-            },
+            lifecycle: self.lifecycle.into_lifecycle(),
             selector: self.selector.into_selector(),
             last_seen,
         })
