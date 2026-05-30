@@ -177,7 +177,8 @@ scopes are improvements. `workspace_generated_added` and
 `workspace_generated_removed` report generated-code scope changes. Added
 generated scopes require review because they can reclassify non-Rust inventory,
 while removed generated scopes are improvements. These rows use synthetic
-`allow_id` values such as `workspace.ignored` or `workspace.generated`.
+`allow_id` values such as `workspace.ignored` or `workspace.generated`, and may
+include an optional `scope` object with the added or removed source-tree scope.
 
 Diff report `policy_changes` use `scope_changed` for source-tree scope retargets
 that are neither broadening nor narrowing, such as exact path changes or sibling

@@ -1,7 +1,9 @@
 use allow_core::WorkspaceConfig;
 use std::collections::BTreeSet;
 
-use crate::policy_change::{PolicyChange, PolicyChangeKind, PolicyChangeSeverity};
+use crate::policy_change::{
+    PolicyChange, PolicyChangeKind, PolicyChangeSeverity, ScopeChange, ScopeChangeField,
+};
 
 pub(crate) fn workspace_policy_changes(
     base: &WorkspaceConfig,
@@ -57,7 +59,8 @@ fn list_changes(policy: ListPolicy, base: &[String], head: &[String]) -> Vec<Pol
             policy.added_kind,
             policy.added_severity,
             policy.added_message,
-            value,
+            None,
+            Some(value),
         ));
     }
     for value in base_values.difference(&head_values) {
@@ -66,7 +69,8 @@ fn list_changes(policy: ListPolicy, base: &[String], head: &[String]) -> Vec<Pol
             policy.removed_kind,
             policy.removed_severity,
             policy.removed_message,
-            value,
+            Some(value),
+            None,
         ));
     }
     changes
@@ -85,12 +89,19 @@ fn change(
     kind: PolicyChangeKind,
     severity: PolicyChangeSeverity,
     message: &str,
-    value: &str,
+    before: Option<&str>,
+    after: Option<&str>,
 ) -> PolicyChange {
+    let value = after.or(before).unwrap_or("<unset>");
     PolicyChange::new(
         policy_id,
         kind,
         severity,
         format!("{policy_id} {message}: {value}"),
     )
+    .with_scope(ScopeChange {
+        field: ScopeChangeField::Effective,
+        before: before.map(str::to_string),
+        after: after.map(str::to_string),
+    })
 }
