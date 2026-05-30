@@ -53,6 +53,77 @@
         "unknown"
       ]
     },
+    "canonical_evidence_prefix": {
+      "type": "string",
+      "enum": [
+        "doc",
+        "spec",
+        "adr",
+        "ripr",
+        "unsafe-review",
+        "coverage",
+        "test",
+        "cargo",
+        "issue",
+        "pr",
+        "legacy-policy"
+      ],
+      "description": "Canonical typed evidence prefixes shown in cargo-allow user guidance."
+    },
+    "recognized_evidence_prefix": {
+      "type": "string",
+      "enum": [
+        "doc",
+        "spec",
+        "adr",
+        "ripr",
+        "unsafe-review",
+        "unsafe_review",
+        "coverage",
+        "test",
+        "cargo",
+        "issue",
+        "pr",
+        "legacy-policy",
+        "legacy_policy"
+      ],
+      "description": "All evidence prefixes recognized by the policy parser, including compatibility aliases."
+    },
+    "local_file_evidence_prefix": {
+      "type": "string",
+      "enum": [
+        "doc",
+        "spec",
+        "adr",
+        "ripr",
+        "unsafe-review",
+        "unsafe_review",
+        "coverage"
+      ],
+      "description": "Recognized evidence prefixes that cargo-allow validates as local source-tree file references."
+    },
+    "traceability_evidence_prefix": {
+      "type": "string",
+      "enum": [
+        "test",
+        "cargo",
+        "issue",
+        "pr",
+        "legacy-policy",
+        "legacy_policy"
+      ],
+      "description": "Recognized evidence prefixes treated as traceability references; cargo-allow does not execute or resolve them."
+    },
+    "evidence_reference_status": {
+      "type": "string",
+      "enum": [
+        "local_file_present",
+        "local_file_missing",
+        "invalid_local_path",
+        "traceability_only",
+        "unstructured"
+      ]
+    },
     "source_syntax_inventory": {
       "type": "object",
       "additionalProperties": false,

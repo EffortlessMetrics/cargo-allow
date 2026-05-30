@@ -140,6 +140,48 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         "/$defs/inventory_source/enum",
         &inventory_source_enum(),
     );
+    let canonical_evidence_prefixes =
+        allow_policy::canonical_evidence_prefixes().collect::<Vec<_>>();
+    assert_enum_equals(
+        "common",
+        &schema,
+        "/$defs/canonical_evidence_prefix/enum",
+        &canonical_evidence_prefixes,
+    );
+    let recognized_evidence_prefixes =
+        allow_policy::recognized_evidence_prefixes().collect::<Vec<_>>();
+    assert_enum_equals(
+        "common",
+        &schema,
+        "/$defs/recognized_evidence_prefix/enum",
+        &recognized_evidence_prefixes,
+    );
+    let local_file_evidence_prefixes =
+        allow_policy::local_file_evidence_prefixes().collect::<Vec<_>>();
+    assert_enum_equals(
+        "common",
+        &schema,
+        "/$defs/local_file_evidence_prefix/enum",
+        &local_file_evidence_prefixes,
+    );
+    let traceability_evidence_prefixes =
+        allow_policy::traceability_evidence_prefixes().collect::<Vec<_>>();
+    assert_enum_equals(
+        "common",
+        &schema,
+        "/$defs/traceability_evidence_prefix/enum",
+        &traceability_evidence_prefixes,
+    );
+    let evidence_reference_statuses = allow_policy::EvidenceReferenceStatus::ALL
+        .iter()
+        .map(|status| status.as_str())
+        .collect::<Vec<_>>();
+    assert_enum_equals(
+        "common",
+        &schema,
+        "/$defs/evidence_reference_status/enum",
+        &evidence_reference_statuses,
+    );
 
     let source_syntax =
         required_schema_pointer("common", &schema, "/$defs/source_syntax_inventory");
