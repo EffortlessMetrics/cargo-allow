@@ -59,14 +59,29 @@ pub(crate) fn assert_policy_migration_artifact(
     path: &Path,
     expected_schema_id: &str,
     expected_command: &str,
-) {
+) -> serde_json::Value {
+    assert_policy_migration_artifact_with_inventory(
+        path,
+        expected_schema_id,
+        expected_command,
+        allow_report::INVENTORY_SOURCE_UNKNOWN,
+    )
+}
+
+pub(crate) fn assert_policy_migration_artifact_with_inventory(
+    path: &Path,
+    expected_schema_id: &str,
+    expected_command: &str,
+    expected_source: &str,
+) -> serde_json::Value {
     let value =
         assert_saved_json_artifact(path, expected_command, expected_schema_id, expected_command);
     assert_inventory(
         &value,
         allow_report::INVENTORY_SCANNER_POLICY_MIGRATION,
-        allow_report::INVENTORY_SOURCE_UNKNOWN,
+        expected_source,
     );
+    value
 }
 
 fn assert_inventory(value: &serde_json::Value, expected_scanner: &str, expected_source: &str) {
