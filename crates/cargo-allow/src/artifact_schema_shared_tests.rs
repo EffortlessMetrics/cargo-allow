@@ -1,7 +1,7 @@
 use crate::artifact_schema_support::{
     assert_command_contract, assert_enum_equals, assert_inventory_schema, assert_required_fields,
-    assert_schema_type_equals, inventory_source_enum, parse_schema, required_schema_pointer,
-    schema_contracts,
+    assert_schema_type_equals, governed_kind_enum, inventory_source_enum, match_status_enum,
+    parse_schema, required_schema_pointer, schema_contracts,
 };
 use serde_json::Value;
 use std::{collections::BTreeSet, fs, path::Path};
@@ -140,6 +140,18 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         &schema,
         "/$defs/inventory_source/enum",
         &inventory_source_enum(),
+    );
+    assert_enum_equals(
+        "common",
+        &schema,
+        "/$defs/governed_source_exception_kind/enum",
+        &governed_kind_enum(),
+    );
+    assert_enum_equals(
+        "common",
+        &schema,
+        "/$defs/match_status/enum",
+        &match_status_enum(),
     );
     let canonical_evidence_prefixes =
         allow_policy::canonical_evidence_prefixes().collect::<Vec<_>>();
@@ -514,10 +526,12 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "evidence_reference",
         "evidence_reference_status",
         "finding_posture_kind",
+        "governed_source_exception_kind",
         "inventory_source",
         "local_file_evidence_prefix",
         "lifecycle_change",
         "lifecycle_change_field",
+        "match_status",
         "occurrence_limit_change",
         "policy_change_kind",
         "policy_change_severity",
