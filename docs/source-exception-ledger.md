@@ -265,9 +265,10 @@ instead of silently broadening the exception.
 
 Diff mode reports occurrence-limit increases or removals as policy weakening
 and occurrence-limit additions or reductions as policy improvements. It also
-reports an existing `baseline_debt` entry being reclassified as reviewed policy
-as policy weakening, because generated adoption debt must not be normalized
-without an explicit retained-exception review.
+reports an existing `baseline_debt` entry being reclassified as reviewed policy,
+or a reviewed entry being reclassified as `baseline_debt`, as policy weakening,
+because generated adoption debt must not be normalized or introduced without an
+explicit retained-exception review.
 
 `cargo-allow explain <id>` reports this live posture for a single entry. It
 shows the policy metadata, selector, current match status, matched finding
@@ -383,9 +384,9 @@ review of the broad scope.
 base revision's `policy/allow.toml` and reports policy weakening in human and
 Markdown output. Current detection covers scope broadening, selector precision
 loss, expiry/review extension, evidence removal, owner/reason/classification
-removal, occurrence-limit loosening, added `baseline_debt`, and existing
-`baseline_debt` entries reclassified as reviewed policy. This is policy ledger
-comparison only.
+removal, occurrence-limit loosening, added `baseline_debt`, reviewed entries
+reclassified as `baseline_debt`, and existing `baseline_debt` entries
+reclassified as reviewed policy. This is policy ledger comparison only.
 
 The same command also compares source finding posture between the base git tree
 and the current checkout, or the optional `--head` git tree when provided. It
