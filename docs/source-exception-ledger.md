@@ -43,7 +43,9 @@ Diff mode reports owner, reason, or classification removals as policy
 weakening, additions of those required metadata fields as policy improvements,
 and non-empty replacements as review-required policy changes. Removed
 traceability links are also review-required, while added links are reported as
-policy improvements.
+policy improvements. `created` date removal fails, changes require review, and
+adding a missing `created` date is reported as an improvement so exception
+provenance cannot drift silently.
 
 ## Reason And Evidence
 

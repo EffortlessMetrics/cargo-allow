@@ -51,6 +51,31 @@ pub(crate) fn changed_required_text(base: &str, head: &str) -> bool {
     !base.is_empty() && !head.is_empty() && base != head
 }
 
+pub(crate) fn optional_text_removed(base: Option<&str>, head: Option<&str>) -> bool {
+    matches!(
+        (trimmed_non_empty(base), trimmed_non_empty(head)),
+        (Some(_), None)
+    )
+}
+
+pub(crate) fn optional_text_added(base: Option<&str>, head: Option<&str>) -> bool {
+    matches!(
+        (trimmed_non_empty(base), trimmed_non_empty(head)),
+        (None, Some(_))
+    )
+}
+
+pub(crate) fn optional_text_changed(base: Option<&str>, head: Option<&str>) -> bool {
+    match (trimmed_non_empty(base), trimmed_non_empty(head)) {
+        (Some(base), Some(head)) => base != head,
+        _ => false,
+    }
+}
+
+fn trimmed_non_empty(value: Option<&str>) -> Option<&str> {
+    value.map(str::trim).filter(|value| !value.is_empty())
+}
+
 pub(crate) fn occurrence_limit_loosened(base: Option<u32>, head: Option<u32>) -> bool {
     match (base, head) {
         (Some(_), None) => true,
