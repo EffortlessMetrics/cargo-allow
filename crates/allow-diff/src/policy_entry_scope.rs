@@ -44,17 +44,13 @@ fn change(
     severity: PolicyChangeSeverity,
     message: &str,
 ) -> PolicyChange {
-    PolicyChange {
-        allow_id: entry.id.clone(),
+    PolicyChange::new(
+        entry.id.clone(),
         kind,
         severity,
-        message: format!("{} {message}", entry.id),
-        selector_precision: None,
-        scope: Some(scope_change(base, entry)),
-        occurrence_limit: None,
-        lifecycle: None,
-        evidence: None,
-    }
+        format!("{} {message}", entry.id),
+    )
+    .with_scope(scope_change(base, entry))
 }
 
 fn scope_change(base: &AllowEntry, head: &AllowEntry) -> ScopeChange {

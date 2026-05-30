@@ -41,21 +41,16 @@ fn owner_change(base: Option<&str>, head: Option<&str>) -> Option<PolicyChange> 
             "changed",
         ),
     };
-    Some(PolicyChange {
-        allow_id: "policy.owner".to_string(),
+    Some(PolicyChange::new(
+        "policy.owner",
         kind,
         severity,
-        message: format!(
+        format!(
             "policy.owner {direction}: {} -> {}",
             display_text(base),
             display_text(head)
         ),
-        selector_precision: None,
-        scope: None,
-        occurrence_limit: None,
-        lifecycle: None,
-        evidence: None,
-    })
+    ))
 }
 
 fn status_change(base: Option<&str>, head: Option<&str>) -> Option<PolicyChange> {
@@ -81,21 +76,16 @@ fn status_change(base: Option<&str>, head: Option<&str>) -> Option<PolicyChange>
             "changed",
         ),
     };
-    Some(PolicyChange {
-        allow_id: "policy.status".to_string(),
+    Some(PolicyChange::new(
+        "policy.status",
         kind,
         severity,
-        message: format!(
+        format!(
             "policy.status {direction}: {} -> {}",
             display_text(base),
             display_text(head)
         ),
-        selector_precision: None,
-        scope: None,
-        occurrence_limit: None,
-        lifecycle: None,
-        evidence: None,
-    })
+    ))
 }
 
 fn normalized_text(value: Option<&str>) -> Option<&str> {

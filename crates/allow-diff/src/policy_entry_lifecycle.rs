@@ -118,21 +118,17 @@ fn change(
     severity: PolicyChangeSeverity,
     message: &str,
 ) -> PolicyChange {
-    PolicyChange {
-        allow_id: entry.id.clone(),
+    PolicyChange::new(
+        entry.id.clone(),
         kind,
         severity,
-        message: format!("{} {message}", entry.id),
-        selector_precision: None,
-        scope: None,
-        occurrence_limit: None,
-        lifecycle: Some(LifecycleChange {
-            field,
-            before: normalized_optional_text(before),
-            after: normalized_optional_text(after),
-        }),
-        evidence: None,
-    }
+        format!("{} {message}", entry.id),
+    )
+    .with_lifecycle(LifecycleChange {
+        field,
+        before: normalized_optional_text(before),
+        after: normalized_optional_text(after),
+    })
 }
 
 fn normalized_optional_text(value: Option<&str>) -> Option<String> {
