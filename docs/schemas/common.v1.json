@@ -370,6 +370,30 @@
         }
       }
     },
+    "policy_status_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "before",
+        "after"
+      ],
+      "properties": {
+        "before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy status value before the policy change when available."
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy status value after the policy change when available."
+        }
+      }
+    },
     "evidence_change": {
       "type": "object",
       "additionalProperties": false,
