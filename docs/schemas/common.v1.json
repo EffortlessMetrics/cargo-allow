@@ -208,6 +208,84 @@
         }
       }
     },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "matched",
+        "new",
+        "expired",
+        "review_due",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt"
+      ],
+      "properties": {
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expired": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_due": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ambiguous": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid_selector": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_required_field": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_missing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "baseline_debt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy_baseline_debt": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Policy-level baseline_debt entries retained in the scanned policy. This is distinct from outcome-level baseline_debt status and is present when retained generated debt would otherwise be hidden by matched outcomes."
+        },
+        "policy_missing_evidence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Policy-level allow entries with no evidence references. This is distinct from outcome-level evidence_missing status and is present when retained evidence gaps would otherwise be hidden by matched outcomes."
+        },
+        "broken_evidence_links": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of missing or invalid local evidence references found while auditing policy evidence."
+        },
+        "weak_evidence_references": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of unstructured or unknown-prefix evidence references. These evidence strings are retained as traceability but are not recognized as typed evidence by cargo-allow."
+        }
+      }
+    },
     "summary": {
       "type": "object",
       "additionalProperties": false,

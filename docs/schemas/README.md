@@ -35,7 +35,8 @@ macro-expansion, or proof-level coverage.
   source-tree inventory, governed source-exception kind and match-status
   vocabularies, structural identity, selector, evidence-prefix vocabularies, and
   evidence diagnostic row shapes used by `explain` and `worklist`, plus report
-  inventory, summary, trend, finding, and outcome rows, the diff posture
+  inventory, summary, trend, finding, and outcome rows, receipt count rows,
+  the diff posture
   object, diff-summary, finding-change, policy-change,
   selector-identity, selector-precision, exception-identity, scope-change,
   occurrence-limit, lifecycle, evidence-change, metadata-change,
