@@ -64,6 +64,77 @@ fn json_report_exposes_v1_schema_contract() {
 }
 
 #[test]
+fn json_report_matches_empty_audit_golden_contract() {
+    let json = render_json_with_context(
+        "audit",
+        &[],
+        &[],
+        false,
+        ReportContext::source_syntax(
+            "filesystem_fallback",
+            Some("fixtures/source-snapshot"),
+            Some(7),
+            None,
+        ),
+    );
+    let expected = format!(
+        r#"{{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.report.v1",
+  "tool": "cargo-allow",
+  "command": "audit",
+  "status": "passed",
+  "failed": false,
+  "claim_boundary": {},
+  "scanner_limitations": {},
+  "inventory": {{
+    "scope": "source_tree",
+    "scanner": "source_syntax",
+    "source": "filesystem_fallback",
+    "root": "fixtures/source-snapshot",
+    "files_scanned": 7
+  }},
+  "summary": {{
+    "findings": 0,
+    "outcomes": 0,
+    "matched": 0,
+    "new": 0,
+    "expired": 0,
+    "review_due": 0,
+    "stale": 0,
+    "ambiguous": 0,
+    "invalid_selector": 0,
+    "evidence_missing": 0,
+    "missing_required_field": 0,
+    "baseline_debt": 0
+  }},
+  "trend": {{
+    "review_items": 0,
+    "new": 0,
+    "expired": 0,
+    "review_due": 0,
+    "stale": 0,
+    "ambiguous": 0,
+    "invalid_selector": 0,
+    "missing_required_field": 0,
+    "evidence_missing": 0,
+    "baseline_debt": 0
+  }},
+  "outcomes": [
+
+  ],
+  "findings": [
+
+  ]
+}}"#,
+        render_claim_boundary_json(),
+        render_scanner_limitations_json()
+    );
+
+    assert_eq!(json, expected);
+}
+
+#[test]
 #[should_panic(expected = "report artifacts support only audit, check, or diff commands")]
 fn json_report_rejects_unknown_artifact_command() {
     let _ = render_json_with_context("explain", &[], &[], false, ReportContext::default());
