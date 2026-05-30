@@ -13,9 +13,20 @@ The example workflows are intentionally small and copyable:
 - [cargo-allow-check.yml](../examples/github-actions/cargo-allow-check.yml)
 
 The examples install and run the standalone `cargo-allow` binary before
-scanning. Replace the install step with a pinned release/package source once one
-exists for your environment. `cargo allow ...` remains optional Cargo external
-subcommand compatibility.
+scanning. They pin the published crates.io release by default:
+
+```bash
+cargo install cargo-allow --version 0.1.0 --locked
+```
+
+If you are testing an unreleased branch, replace only the install step with a
+Git source such as:
+
+```bash
+cargo install --git https://github.com/EffortlessMetrics/cargo-allow cargo-allow --locked
+```
+
+`cargo allow ...` remains optional Cargo external subcommand compatibility.
 
 ## Pull Requests
 
