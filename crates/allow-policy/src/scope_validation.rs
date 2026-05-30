@@ -146,7 +146,8 @@ pub(crate) fn validate_scope_consistency(entry: &AllowEntry) -> CargoAllowResult
     }
     if let (Some(path), Some(selector_glob)) = (&entry.path, &entry.selector.glob) {
         let path = normalize_path(path);
-        if selector_glob != &path {
+        let selector_glob = normalize_source_tree_scope(selector_glob);
+        if selector_glob != path {
             return Err(CargoAllowError::new(format!(
                 "{} selector glob `{selector_glob}` must match path `{path}` or omit one scope",
                 entry.id
@@ -154,6 +155,8 @@ pub(crate) fn validate_scope_consistency(entry: &AllowEntry) -> CargoAllowResult
         }
     }
     if let (Some(glob), Some(selector_glob)) = (&entry.glob, &entry.selector.glob) {
+        let glob = normalize_source_tree_scope(glob);
+        let selector_glob = normalize_source_tree_scope(selector_glob);
         if selector_glob != glob {
             return Err(CargoAllowError::new(format!(
                 "{} selector glob `{selector_glob}` must match glob `{glob}` or omit one scope",
@@ -162,4 +165,8 @@ pub(crate) fn validate_scope_consistency(entry: &AllowEntry) -> CargoAllowResult
         }
     }
     Ok(())
+}
+
+fn normalize_source_tree_scope(scope: &str) -> String {
+    scope.replace('\\', "/")
 }

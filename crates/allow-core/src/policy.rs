@@ -1,4 +1,4 @@
-use crate::{FindingKind, normalize_path};
+use crate::{FindingKind, normalize_path, source_tree_path::normalize_source_tree_scope};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,9 +80,9 @@ impl AllowEntry {
         if let Some(path) = &self.path {
             normalize_path(path)
         } else if let Some(glob) = &self.glob {
-            glob.clone()
+            normalize_source_tree_scope(glob)
         } else if let Some(glob) = &self.selector.glob {
-            glob.clone()
+            normalize_source_tree_scope(glob)
         } else {
             String::new()
         }

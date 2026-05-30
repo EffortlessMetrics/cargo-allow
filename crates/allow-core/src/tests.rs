@@ -274,7 +274,13 @@ fn allow_entry_path_or_glob_prefers_path_then_entry_glob_then_selector_glob() {
     entry.path = None;
     assert_eq!(entry.path_or_glob(), "crates/**/*.rs");
 
+    entry.glob = Some(r"crates\**\*.rs".to_string());
+    assert_eq!(entry.path_or_glob(), "crates/**/*.rs");
+
     entry.glob = None;
+    assert_eq!(entry.path_or_glob(), "src/**/*.rs");
+
+    entry.selector.glob = Some(r"src\**\*.rs".to_string());
     assert_eq!(entry.path_or_glob(), "src/**/*.rs");
 
     entry.selector.glob = None;

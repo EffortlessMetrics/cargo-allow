@@ -27,6 +27,10 @@ pub fn normalize_path(path: impl AsRef<Path>) -> String {
     }
 }
 
+pub(crate) fn normalize_source_tree_scope(scope: &str) -> String {
+    scope.replace('\\', "/")
+}
+
 pub fn glob_matches(pattern: &str, path: &Path) -> bool {
     let path = normalize_path(path);
     glob_matches_str(pattern, &path)
@@ -80,14 +84,16 @@ pub fn allow_entry_broad_scope(entry: &AllowEntry) -> Option<String> {
         .or_else(|| {
             entry
                 .glob
-                .clone()
+                .as_deref()
+                .map(normalize_source_tree_scope)
                 .filter(|scope| source_tree_scope_has_wildcard(scope))
         })
         .or_else(|| {
             entry
                 .selector
                 .glob
-                .clone()
+                .as_deref()
+                .map(normalize_source_tree_scope)
                 .filter(|scope| source_tree_scope_has_wildcard(scope))
         })
 }
