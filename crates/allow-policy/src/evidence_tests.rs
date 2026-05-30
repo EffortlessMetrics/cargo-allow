@@ -316,6 +316,67 @@ fn diagnostics_classify_traceability_evidence_without_local_validation() {
 }
 
 #[test]
+fn diagnostics_classify_empty_traceability_evidence_as_weak() {
+    let root = unique_test_dir("empty-traceability-evidence");
+    let entry = AllowEntry {
+        id: "allow-empty-traceability".to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: Some(PathBuf::from("src/lib.rs")),
+        glob: None,
+        owner: "core".to_string(),
+        classification: "reviewed".to_string(),
+        reason: "fixture".to_string(),
+        evidence: vec!["test:".to_string(), "issue:   ".to_string()],
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: None,
+            review_after: None,
+            expires: Some("2026-08-01".to_string()),
+        },
+        selector: Selector {
+            ast_kind: Some("method_call".to_string()),
+            callee: Some("unwrap".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    };
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry.clone());
+
+    let diagnostics = evidence_reference_diagnostics(&root, &entry);
+
+    assert_eq!(
+        diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.status)
+            .collect::<Vec<_>>(),
+        vec![
+            EvidenceReferenceStatus::Unstructured,
+            EvidenceReferenceStatus::Unstructured
+        ]
+    );
+    assert!(diagnostics.iter().all(|diagnostic| {
+        diagnostic
+            .message
+            .contains("empty evidence reference target")
+    }));
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.target.is_none())
+    );
+    assert_eq!(weak_evidence_reference_count(&root, &cfg), 2);
+    validate_local_evidence_references(&root, &cfg).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "weak traceability evidence remains advisory: {err}"
+        ))
+    });
+    remove_test_dir(root);
+}
+
+#[test]
 fn evidence_status_identifies_broken_local_links() {
     assert!(!EvidenceReferenceStatus::LocalFilePresent.is_broken_local_link());
     assert!(EvidenceReferenceStatus::LocalFileMissing.is_broken_local_link());
