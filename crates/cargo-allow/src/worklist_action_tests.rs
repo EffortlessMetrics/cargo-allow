@@ -98,6 +98,31 @@ fn suggested_actions_cover_known_worklist_kinds_and_default() {
 }
 
 #[test]
+fn weak_evidence_actions_name_canonical_prefix_examples() {
+    let actions = suggested_actions("weak_evidence_reference");
+    let guidance = actions.join(" ");
+
+    for prefix in [
+        "doc:",
+        "spec:",
+        "adr:",
+        "ripr:",
+        "unsafe-review:",
+        "coverage:",
+        "test:",
+        "cargo:",
+        "issue:",
+        "pr:",
+        "legacy-policy:",
+    ] {
+        assert!(
+            guidance.contains(prefix),
+            "weak evidence guidance should mention {prefix}"
+        );
+    }
+}
+
+#[test]
 fn proof_commands_cover_known_worklist_kinds() {
     for kind in WORK_ITEM_KINDS {
         let commands = proof_commands(kind, None, None);

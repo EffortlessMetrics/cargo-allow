@@ -64,8 +64,11 @@ pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
         ],
         WEAK_EVIDENCE_REFERENCE => vec![
             "replace the weak evidence string with a typed evidence reference".to_string(),
-            "use a recognized prefix such as doc:, spec:, adr:, test:, issue:, pr:, or legacy-policy:"
-                .to_string(),
+            concat!(
+                "use a recognized prefix such as doc:, spec:, adr:, ripr:, unsafe-review:, ",
+                "coverage:, test:, cargo:, issue:, pr:, or legacy-policy:"
+            )
+            .to_string(),
         ],
         _ => vec!["inspect the outcome and update policy or source accordingly".to_string()],
     }
