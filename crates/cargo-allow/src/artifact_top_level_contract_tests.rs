@@ -53,6 +53,16 @@ fn core_artifacts_keep_explicit_top_level_contracts() {
     }
 }
 
+#[test]
+fn artifact_samples_keep_nested_keys_covered_by_schemas() {
+    let mut samples = command_artifact_samples();
+    samples.extend(core_artifact_samples());
+
+    for sample in samples {
+        assert_artifact_nested_schema_contract(&sample);
+    }
+}
+
 fn command_artifact_samples() -> Vec<ArtifactSample> {
     vec![
         ArtifactSample {
@@ -394,6 +404,148 @@ fn assert_artifact_contract(sample: &ArtifactSample) {
         "scanner_limitations",
         allow_report::SCANNER_LIMITATIONS,
     );
+}
+
+fn assert_artifact_nested_schema_contract(sample: &ArtifactSample) {
+    let contract = schema_contract_by_name(sample.schema_name);
+    let value = parse_json_artifact(
+        sample.name,
+        &sample.json,
+        contract.schema_id,
+        sample.expected_command,
+    );
+    let schema = parse_schema(contract.name, contract.schema);
+
+    if let Err(message) = schema_covers_sample_value(&schema, &schema, &value, "$") {
+        std::panic::panic_any(format!(
+            "{} sample emitted JSON outside {} schema: {message}",
+            sample.name, contract.name
+        ));
+    }
+}
+
+fn schema_covers_sample_value(
+    root_schema: &Value,
+    schema: &Value,
+    value: &Value,
+    path: &str,
+) -> Result<(), String> {
+    let schema = resolve_local_schema_ref(root_schema, schema, path)?;
+
+    if let Some(branches) = schema.get("anyOf").and_then(Value::as_array) {
+        let mut errors = Vec::new();
+        for branch in branches {
+            match schema_covers_sample_value(root_schema, branch, value, path) {
+                Ok(()) => return Ok(()),
+                Err(err) => errors.push(err),
+            }
+        }
+        return Err(format!(
+            "{path} did not match any anyOf branch: {}",
+            errors.join("; ")
+        ));
+    }
+
+    match value {
+        Value::Object(object) => {
+            let Some(properties) = schema.get("properties").and_then(Value::as_object) else {
+                return if object.is_empty() {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "{path} has object keys but schema has no properties"
+                    ))
+                };
+            };
+
+            let actual = object.keys().map(String::as_str).collect::<BTreeSet<_>>();
+            let allowed = properties
+                .keys()
+                .map(String::as_str)
+                .collect::<BTreeSet<_>>();
+            let unknown = actual.difference(&allowed).copied().collect::<Vec<_>>();
+            if !unknown.is_empty() {
+                return Err(format!(
+                    "{path} has keys absent from schema properties: {}",
+                    unknown.join(", ")
+                ));
+            }
+
+            if let Some(required) = schema.get("required").and_then(Value::as_array) {
+                let missing = required
+                    .iter()
+                    .map(|field| {
+                        field.as_str().ok_or_else(|| {
+                            format!("{path} schema required entries should be strings")
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter()
+                    .filter(|field| !object.contains_key(*field))
+                    .collect::<Vec<_>>();
+                if !missing.is_empty() {
+                    return Err(format!(
+                        "{path} is missing schema-required keys: {}",
+                        missing.join(", ")
+                    ));
+                }
+            }
+
+            for (key, child) in object {
+                if let Some(child_schema) = properties.get(key) {
+                    schema_covers_sample_value(
+                        root_schema,
+                        child_schema,
+                        child,
+                        &format!("{path}.{}", key),
+                    )?;
+                }
+            }
+        }
+        Value::Array(items) => {
+            if let Some(item_schema) = schema.get("items") {
+                for (index, item) in items.iter().enumerate() {
+                    schema_covers_sample_value(
+                        root_schema,
+                        item_schema,
+                        item,
+                        &format!("{path}[{index}]"),
+                    )?;
+                }
+            }
+        }
+        Value::Null => {
+            if schema.get("type").and_then(Value::as_str) == Some("null") {
+                return Ok(());
+            }
+            if schema
+                .get("type")
+                .and_then(Value::as_array)
+                .is_some_and(|types| types.iter().any(|item| item.as_str() == Some("null")))
+            {
+                return Ok(());
+            }
+        }
+        _ => {}
+    }
+
+    Ok(())
+}
+
+fn resolve_local_schema_ref<'a>(
+    root_schema: &'a Value,
+    schema: &'a Value,
+    path: &str,
+) -> Result<&'a Value, String> {
+    let Some(reference) = schema.get("$ref").and_then(Value::as_str) else {
+        return Ok(schema);
+    };
+    let Some(pointer) = reference.strip_prefix('#') else {
+        return Err(format!("{path} schema uses non-local ref {reference}"));
+    };
+    root_schema
+        .pointer(pointer)
+        .ok_or_else(|| format!("{path} schema ref {reference} did not resolve"))
 }
 
 fn assert_sample_inventory_scanner_matches_schema(name: &str, schema_name: &str, value: &Value) {
