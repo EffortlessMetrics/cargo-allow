@@ -10,16 +10,7 @@ fn rust_sources_do_not_spawn_cargo_or_compiler_tools() {
         let text = fs::read_to_string(&path)
             .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
         let compact_text = compact_for_token_scan(&text);
-        for tool in [
-            "\"cargo\"",
-            "\"rustc\"",
-            "\"clippy\"",
-            "\"cargo-clippy\"",
-            "\"cargo-deny\"",
-            "\"cargo-vet\"",
-            "\"ripr\"",
-            "\"unsafe-review\"",
-        ] {
+        for tool in forbidden_tool_literals() {
             let forbidden = format!("Command::new({tool}");
             if compact_text.contains(&forbidden) {
                 violations.push(format!(
@@ -54,6 +45,36 @@ fn forbidden_invocation_scan_catches_whitespace_variants() {
     let text = "std::process::Command::new ( \"cargo\" ).arg(\"metadata\")";
 
     assert!(compact_for_token_scan(text).contains("Command::new(\"cargo\""));
+}
+
+#[test]
+fn forbidden_tool_literals_cover_windows_executable_names() {
+    assert!(forbidden_tool_literals().contains(&"\"cargo.exe\""));
+    assert!(forbidden_tool_literals().contains(&"\"rustc.exe\""));
+    assert!(forbidden_tool_literals().contains(&"\"cargo-clippy.exe\""));
+}
+
+fn forbidden_tool_literals() -> &'static [&'static str] {
+    &[
+        "\"cargo\"",
+        "\"cargo.exe\"",
+        "\"rustc\"",
+        "\"rustc.exe\"",
+        "\"clippy\"",
+        "\"clippy.exe\"",
+        "\"clippy-driver\"",
+        "\"clippy-driver.exe\"",
+        "\"cargo-clippy\"",
+        "\"cargo-clippy.exe\"",
+        "\"cargo-deny\"",
+        "\"cargo-deny.exe\"",
+        "\"cargo-vet\"",
+        "\"cargo-vet.exe\"",
+        "\"ripr\"",
+        "\"ripr.exe\"",
+        "\"unsafe-review\"",
+        "\"unsafe-review.exe\"",
+    ]
 }
 
 #[test]
