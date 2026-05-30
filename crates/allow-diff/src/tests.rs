@@ -216,6 +216,9 @@ fn detects_selector_precision_decrease() {
     assert!(changes.iter().any(|change| {
         change.kind == PolicyChangeKind::SelectorPrecisionDecreased
             && change.message.contains("decreased")
+            && change
+                .message
+                .contains("removed: container, normalized_snippet_hash")
     }));
 }
 
@@ -322,6 +325,9 @@ fn detects_selector_precision_increase_as_improvement() {
         change.kind == PolicyChangeKind::SelectorPrecisionIncreased
             && change.severity == PolicyChangeSeverity::Improvement
             && change.message.contains("increased")
+            && change
+                .message
+                .contains("added: container, normalized_snippet_hash")
     }));
 }
 
