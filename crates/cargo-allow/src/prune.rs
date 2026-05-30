@@ -3,8 +3,8 @@ use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_local_evidence_references, validate_policy};
 
 use crate::{
-    SourceTreeReportContext, config_path, emit_text, load_world_with_evidence_validation,
-    write_file,
+    EvidenceValidationMode, SourceTreeReportContext, config_path, emit_text,
+    load_world_with_evidence_mode, write_file,
 };
 
 #[path = "prune_args.rs"]
@@ -39,13 +39,13 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             "pass either --dry-run or --write, not both",
         ));
     }
-    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_validation(
+    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         None,
         args.include_untracked,
-        false,
+        EvidenceValidationMode::ReportOnly,
     )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let candidates = prune_stale_candidates(&cfg, &outcomes);

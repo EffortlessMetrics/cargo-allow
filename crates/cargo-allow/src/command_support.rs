@@ -11,14 +11,12 @@ pub(crate) use crate::kind_filter::{
     parse_kind_filter,
 };
 pub(crate) use crate::policy_config::{
-    config_path, git_relative_config_path, load_config_optional, load_config_required,
-    root_relative_path,
+    EvidenceValidationMode, config_path, git_relative_config_path, load_config_optional,
+    load_config_required, root_relative_path,
 };
 pub(crate) use crate::reporting::{
-    ReportRenderArgs, SourceTreeReportContext, print_report, report_config,
+    EvidenceReportSummary, ReportRenderArgs, SourceTreeReportContext, print_report, report_config,
 };
 pub(crate) use crate::selector::selector_from_finding;
-pub(crate) use crate::world::{load_world, load_world_with_evidence_validation};
-pub(crate) use allow_report::{
-    matched_policy_missing_evidence_entries, policy_baseline_debt_entries,
-};
+pub(crate) use crate::world::{load_world, load_world_with_evidence_mode};
+pub(crate) use allow_report::policy_baseline_debt_entries;

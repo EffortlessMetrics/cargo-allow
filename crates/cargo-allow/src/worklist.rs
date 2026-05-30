@@ -2,7 +2,8 @@ use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
 
 use crate::{
-    SourceTreeReportContext, emit_text, load_world_with_evidence_validation, report_config,
+    EvidenceValidationMode, SourceTreeReportContext, emit_text, load_world_with_evidence_mode,
+    report_config,
 };
 
 #[path = "worklist_actions.rs"]
@@ -46,13 +47,13 @@ use worklist_types::{WorkItem, WorklistContext, WorklistFilters};
 use allow_core::{AllowConfig, FindingKind, MatchOutcome, MatchStatus};
 
 pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_validation(
+    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         args.kind.as_deref(),
         args.include_untracked,
-        false,
+        EvidenceValidationMode::ReportOnly,
     )?;
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);

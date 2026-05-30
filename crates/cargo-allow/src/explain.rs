@@ -4,7 +4,9 @@ use allow_core::{
 use allow_match::{CheckMode, evaluate, score_match};
 use std::path::Path;
 
-use crate::{SourceTreeReportContext, emit_text, load_world_with_evidence_validation};
+use crate::{
+    EvidenceValidationMode, SourceTreeReportContext, emit_text, load_world_with_evidence_mode,
+};
 
 #[path = "explain_args.rs"]
 mod explain_args;
@@ -20,13 +22,13 @@ use explain_render::{render_explain_entry, render_explain_entry_json};
 pub(super) use explain_types::ExplainContext;
 
 pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_validation(
+    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         None,
         args.include_untracked,
-        false,
+        EvidenceValidationMode::ReportOnly,
     )?;
     let entry = cfg
         .allow

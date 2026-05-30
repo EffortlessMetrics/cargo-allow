@@ -1,15 +1,46 @@
 use allow_core::{AllowConfig, CargoAllowResult, Finding, MatchOutcome};
+use allow_policy::{broken_evidence_link_count, weak_evidence_reference_count};
 use std::path::Path;
 
 use crate::{InventoryFacts, OutputFormat, emit_text, parse_kind_filter};
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct EvidenceReportSummary {
+    pub(crate) policy_missing_evidence_entries: usize,
+    pub(crate) broken_evidence_links: usize,
+    pub(crate) weak_evidence_references: usize,
+}
+
+impl EvidenceReportSummary {
+    pub(crate) fn from_policy(root: &Path, cfg: &AllowConfig, outcomes: &[MatchOutcome]) -> Self {
+        Self {
+            policy_missing_evidence_entries: allow_report::matched_policy_missing_evidence_entries(
+                cfg, outcomes,
+            ),
+            broken_evidence_links: broken_evidence_link_count(root, cfg),
+            weak_evidence_references: weak_evidence_reference_count(root, cfg),
+        }
+    }
+
+    pub(crate) fn has_broken_evidence_links(self) -> bool {
+        self.broken_evidence_links > 0
+    }
+
+    pub(crate) fn apply_to(self, context: &mut allow_report::ReportContext<'_>) {
+        context.broken_evidence_links =
+            (self.broken_evidence_links > 0).then_some(self.broken_evidence_links);
+        context.weak_evidence_references =
+            (self.weak_evidence_references > 0).then_some(self.weak_evidence_references);
+        context.policy_missing_evidence_entries = (self.policy_missing_evidence_entries > 0)
+            .then_some(self.policy_missing_evidence_entries);
+    }
+}
 
 pub(crate) struct ReportRenderArgs<'a> {
     pub(crate) command: &'a str,
     pub(crate) format: OutputFormat,
     pub(crate) baseline_debt_entries: usize,
-    pub(crate) policy_missing_evidence_entries: usize,
-    pub(crate) broken_evidence_links: usize,
-    pub(crate) weak_evidence_references: usize,
+    pub(crate) evidence: EvidenceReportSummary,
     pub(crate) findings: &'a [Finding],
     pub(crate) outcomes: &'a [MatchOutcome],
     pub(crate) failed: bool,
@@ -68,12 +99,7 @@ impl SourceTreeReportContext {
 pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
     let source_context = SourceTreeReportContext::new(args.root, args.inventory_facts);
     let mut context = source_context.report(Some(args.baseline_debt_entries));
-    context.broken_evidence_links =
-        (args.broken_evidence_links > 0).then_some(args.broken_evidence_links);
-    context.weak_evidence_references =
-        (args.weak_evidence_references > 0).then_some(args.weak_evidence_references);
-    context.policy_missing_evidence_entries =
-        (args.policy_missing_evidence_entries > 0).then_some(args.policy_missing_evidence_entries);
+    args.evidence.apply_to(&mut context);
     let text = match args.format {
         OutputFormat::Human => allow_report::render_human_with_context(
             args.command,
