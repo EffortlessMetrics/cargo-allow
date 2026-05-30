@@ -460,6 +460,44 @@
         }
       }
     },
+    "diff_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current_failures",
+        "new_findings",
+        "removed_findings",
+        "policy_failures",
+        "policy_review_items",
+        "policy_improvements"
+      ],
+      "properties": {
+        "current_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "new_findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removed_findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy_review_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy_improvements": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
     "finding_posture_kind": {
       "type": "string",
       "enum": [
