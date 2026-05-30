@@ -283,6 +283,49 @@ fn schema_contract_registry_covers_schema_index_links() {
 }
 
 #[test]
+fn schema_index_documents_evidence_prefix_vocabulary() {
+    let index = include_str!("../../../docs/schemas/README.md");
+    assert!(
+        index.contains("## Evidence Prefix Vocabulary"),
+        "schema index should document the evidence prefix vocabulary"
+    );
+
+    let local_file_prefixes = allow_policy::local_file_evidence_prefixes().collect::<BTreeSet<_>>();
+    let traceability_prefixes =
+        allow_policy::traceability_evidence_prefixes().collect::<BTreeSet<_>>();
+    let recognized_prefixes = allow_policy::recognized_evidence_prefixes().collect::<Vec<_>>();
+
+    for prefix in recognized_prefixes {
+        let prefix_text = format!("`{prefix}:`");
+        let Some(row) = index.lines().find(|line| line.contains(&prefix_text)) else {
+            std::panic::panic_any(format!(
+                "schema index should document evidence prefix {prefix_text}"
+            ));
+        };
+        if local_file_prefixes.contains(prefix) {
+            assert!(
+                row.contains("Local source-tree file reference"),
+                "{prefix_text} should be documented as local source-tree evidence"
+            );
+        } else {
+            assert!(
+                traceability_prefixes.contains(prefix),
+                "{prefix_text} should be classified by allow-policy"
+            );
+            assert!(
+                row.contains("Traceability only"),
+                "{prefix_text} should be documented as traceability-only evidence"
+            );
+        }
+    }
+
+    assert!(
+        index.contains("Unknown prefixes and unstructured strings are reported as weak evidence"),
+        "schema index should distinguish weak evidence from broken local evidence links"
+    );
+}
+
+#[test]
 fn schema_files_keep_document_metadata_aligned_with_contracts() {
     for contract in schema_contracts() {
         let schema = parse_schema(contract.name, contract.schema);
