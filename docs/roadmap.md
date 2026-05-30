@@ -8,13 +8,14 @@ not switch into another repository from this roadmap unless that dogfood run is
 explicitly selected for the current PR. Keep cargo-allow repo work focused on
 in-repo product, scanner, policy, report, and documentation slices.
 
-## Phase 1: Stabilize The MVP
+## Phase 1: Stabilize The Imported Baseline
 
-Goal: make the imported MVP boring, tested, documented, and safe to evolve.
+Goal: make the imported source-tree implementation boring, tested, documented,
+and safe to evolve.
 
 Completed:
 
-- Import the repo-ready MVP source tree.
+- Import the repo-ready source tree.
 - Add CI gates and the generated no-new baseline.
 - Harden path normalization, inventory traversal, indexing heuristics, and
   snippet-hash matching regressions.

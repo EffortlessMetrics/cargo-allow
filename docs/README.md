@@ -1,14 +1,15 @@
 # cargo-allow docs
 
-These documents define the product lane before the implementation expands
-beyond the MVP scaffold.
+These documents define the product lane for the current source-tree exception
+ledger and the planned growth around it.
 
 - [Design](design.md): cargo-allow's source-exception governance model.
 - [Claim boundaries](claim-boundaries.md): what current and future reports may
   claim.
 - [Contributing](../CONTRIBUTING.md): local development, product boundaries,
   and pull request expectations.
-- [Roadmap](roadmap.md): the PR-sized path from MVP to useful product.
+- [Roadmap](roadmap.md): the PR-sized path from source-tree ledger to mature
+  product.
 - [Source exception ledger](source-exception-ledger.md): the policy concepts and
   entry model.
 - [Structural identity v1](identity.md): the source-syntax identity contract
