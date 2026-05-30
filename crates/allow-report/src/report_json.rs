@@ -4,8 +4,9 @@ use crate::json::{
     render_match_outcome_json_compact,
 };
 use crate::{
-    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, DiffReport, REPORT_COMMANDS, ReportContext,
-    ReviewSignals, Summary, render_count_fields_with_policy_context,
+    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, DiffReport, REPORT_COMMAND_DIFF,
+    REPORT_COMMANDS, ReportContext, ReviewSignals, Summary,
+    render_count_fields_with_policy_context,
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
 
@@ -42,6 +43,10 @@ pub fn render_json_with_context_and_diff(
     context: ReportContext<'_>,
     diff: DiffReport<'_>,
 ) -> String {
+    assert_eq!(
+        command, REPORT_COMMAND_DIFF,
+        "diff report artifacts support only diff command"
+    );
     render_json_report(command, findings, outcomes, failed, context, Some(diff))
 }
 
