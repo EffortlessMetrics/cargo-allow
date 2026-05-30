@@ -296,6 +296,45 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         &evidence_change_fields(),
     );
     assert_enum_equals(
+        "common exception identity fields",
+        &schema,
+        "/$defs/exception_identity_change_field/enum",
+        &exception_identity_change_fields(),
+    );
+    let exception_identity_change =
+        required_schema_pointer("common", &schema, "/$defs/exception_identity_change");
+    assert_eq!(
+        exception_identity_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common exception_identity_change should reject unknown fields"
+    );
+    assert_required_fields(
+        "common exception_identity_change",
+        exception_identity_change,
+        &["field", "before", "after"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/exception_identity_change/properties/field/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/exception_identity_change_field"),
+        "common exception_identity_change field should use the shared exception identity field vocabulary"
+    );
+    assert_schema_type_equals(
+        "common exception_identity_change before",
+        &schema,
+        "/$defs/exception_identity_change/properties/before/type",
+        &["string", "null"],
+    );
+    assert_schema_type_equals(
+        "common exception_identity_change after",
+        &schema,
+        "/$defs/exception_identity_change/properties/after/type",
+        &["string", "null"],
+    );
+    assert_enum_equals(
         "common metadata fields",
         &schema,
         "/$defs/metadata_change_field/enum",
@@ -688,6 +727,8 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "evidence_change_field",
         "evidence_reference",
         "evidence_reference_status",
+        "exception_identity_change",
+        "exception_identity_change_field",
         "finding_posture_kind",
         "governed_source_exception_kind",
         "inventory_source",
@@ -749,6 +790,8 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         "lifecycle_change",
         "evidence_change_field",
         "evidence_change",
+        "exception_identity_change_field",
+        "exception_identity_change",
         "metadata_change_field",
         "metadata_change",
         "requirement_change_field",
@@ -1133,6 +1176,14 @@ fn evidence_change_fields() -> Vec<&'static str> {
         .iter()
         .copied()
         .map(allow_diff::EvidenceChangeField::as_str)
+        .collect()
+}
+
+fn exception_identity_change_fields() -> Vec<&'static str> {
+    allow_diff::ExceptionIdentityChangeField::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::ExceptionIdentityChangeField::as_str)
         .collect()
 }
 

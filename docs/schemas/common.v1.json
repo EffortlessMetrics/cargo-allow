@@ -297,6 +297,41 @@
         "links"
       ]
     },
+    "exception_identity_change_field": {
+      "enum": [
+        "kind",
+        "family"
+      ]
+    },
+    "exception_identity_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "before",
+        "after"
+      ],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/exception_identity_change_field",
+          "description": "Governed exception identity field that changed."
+        },
+        "before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Governed exception identity value before the policy change when available."
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Governed exception identity value after the policy change when available."
+        }
+      }
+    },
     "metadata_change_field": {
       "enum": [
         "owner",
