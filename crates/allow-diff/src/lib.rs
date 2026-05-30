@@ -27,7 +27,7 @@ pub use policy_change::{
     LifecycleChange, LifecycleChangeField, MetadataChange, MetadataChangeField,
     OccurrenceLimitChange, PolicyChange, PolicyChangeKind, PolicyChangeSeverity,
     PolicyStatusChange, RequirementChange, RequirementChangeField, ScopeChange, ScopeChangeField,
-    SelectorPrecisionChange,
+    SelectorIdentityChange, SelectorPrecisionChange,
 };
 pub use policy_scope::selector_precision_score;
 pub use revision::findings_at_revision;

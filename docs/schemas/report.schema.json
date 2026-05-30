@@ -616,6 +616,10 @@
           "$ref": "#/$defs/exception_identity_change",
           "description": "Optional structured governed exception identity delta for kind_changed and family_changed policy changes."
         },
+        "selector_identity": {
+          "$ref": "#/$defs/selector_identity_change",
+          "description": "Optional structured selector identity delta for selector_changed policy changes."
+        },
         "selector_precision": {
           "$ref": "#/$defs/selector_precision_change",
           "description": "Optional structured selector precision delta for selector_precision_decreased and selector_precision_increased policy changes."
@@ -832,6 +836,33 @@
     },
     "scope_change_field": {
       "enum": ["path", "glob", "selector.glob", "effective"]
+    },
+    "selector_identity_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["changed_fields"],
+      "properties": {
+        "changed_fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/selector_identity_change_field"
+          },
+          "description": "Structural selector fields whose normalized values changed without changing selector precision."
+        }
+      }
+    },
+    "selector_identity_change_field": {
+      "enum": [
+        "ast_kind",
+        "container",
+        "callee",
+        "macro_name",
+        "lint",
+        "symbol",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash"
+      ]
     },
     "selector_precision_change": {
       "type": "object",

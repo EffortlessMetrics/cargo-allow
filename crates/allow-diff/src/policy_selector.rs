@@ -1,15 +1,39 @@
 use allow_core::Selector;
 
 pub(crate) fn selector_identity_changed(base: &Selector, head: &Selector) -> bool {
-    text_field_changed(&base.ast_kind, &head.ast_kind)
-        || text_field_changed(&base.container, &head.container)
-        || text_field_changed(&base.callee, &head.callee)
-        || text_field_changed(&base.macro_name, &head.macro_name)
-        || text_field_changed(&base.lint, &head.lint)
-        || text_field_changed(&base.symbol, &head.symbol)
-        || text_field_changed(&base.receiver_fingerprint, &head.receiver_fingerprint)
-        || text_field_changed(&base.target_fingerprint, &head.target_fingerprint)
-        || text_field_changed(&base.normalized_snippet_hash, &head.normalized_snippet_hash)
+    !selector_identity_changed_fields(base, head).is_empty()
+}
+
+pub(crate) fn selector_identity_changed_fields(
+    base: &Selector,
+    head: &Selector,
+) -> Vec<&'static str> {
+    [
+        ("ast_kind", &base.ast_kind, &head.ast_kind),
+        ("container", &base.container, &head.container),
+        ("callee", &base.callee, &head.callee),
+        ("macro_name", &base.macro_name, &head.macro_name),
+        ("lint", &base.lint, &head.lint),
+        ("symbol", &base.symbol, &head.symbol),
+        (
+            "receiver_fingerprint",
+            &base.receiver_fingerprint,
+            &head.receiver_fingerprint,
+        ),
+        (
+            "target_fingerprint",
+            &base.target_fingerprint,
+            &head.target_fingerprint,
+        ),
+        (
+            "normalized_snippet_hash",
+            &base.normalized_snippet_hash,
+            &head.normalized_snippet_hash,
+        ),
+    ]
+    .into_iter()
+    .filter_map(|(label, base, head)| text_field_changed(base, head).then_some(label))
+    .collect()
 }
 
 fn text_field_changed(base: &Option<String>, head: &Option<String>) -> bool {

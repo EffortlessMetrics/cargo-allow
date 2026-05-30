@@ -13,7 +13,7 @@ pub use diff::{
     DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange, DiffLifecycleChange,
     DiffMetadataChange, DiffOccurrenceLimitChange, DiffPolicyChange, DiffPolicyStatusChange,
     DiffPostureSummary, DiffReport, DiffRequirementChange, DiffScopeChange,
-    DiffSelectorPrecisionChange,
+    DiffSelectorIdentityChange, DiffSelectorPrecisionChange,
 };
 pub use doctor::DoctorReport;
 pub use explain::{EvidenceReference, ExplainReport};

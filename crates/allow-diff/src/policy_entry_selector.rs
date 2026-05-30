@@ -1,10 +1,11 @@
 use allow_core::AllowEntry;
 
 use crate::policy_change::{
-    PolicyChange, PolicyChangeKind, PolicyChangeSeverity, SelectorPrecisionChange,
+    PolicyChange, PolicyChangeKind, PolicyChangeSeverity, SelectorIdentityChange,
+    SelectorPrecisionChange,
 };
 use crate::policy_scope::{selector_precision_fields, selector_precision_score};
-use crate::policy_selector::selector_identity_changed;
+use crate::policy_selector::{selector_identity_changed, selector_identity_changed_fields};
 
 pub(crate) fn selector_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<PolicyChange> {
     let base_precision = selector_precision_score(base);
@@ -46,12 +47,17 @@ pub(crate) fn selector_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
             .with_selector_precision(selector_precision),
         ]
     } else if selector_identity_changed(&base.selector, &head.selector) {
-        vec![change(
-            head,
-            PolicyChangeKind::SelectorChanged,
-            PolicyChangeSeverity::Review,
-            "selector identity changed",
-        )]
+        vec![
+            change(
+                head,
+                PolicyChangeKind::SelectorChanged,
+                PolicyChangeSeverity::Review,
+                "selector identity changed",
+            )
+            .with_selector_identity(SelectorIdentityChange {
+                changed_fields: selector_identity_changed_fields(&base.selector, &head.selector),
+            }),
+        ]
     } else {
         Vec::new()
     }
