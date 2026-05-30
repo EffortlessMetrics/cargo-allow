@@ -127,6 +127,13 @@ entry changes from a concrete owner to `owner = "unowned"`. This is a failing
 policy-posture signal because retained exceptions must not silently lose
 ownership.
 
+Diff report `policy_changes` use `requirement_loosened` and
+`requirement_tightened` for policy-level `[requirements]` changes. The
+`allow_id` field is a synthetic stable path such as
+`requirements.owner_required` because these are ledger policy controls rather
+than individual allow entries. Loosening is a failing policy-posture signal;
+tightening is a policy improvement.
+
 Diff report `policy_changes` use `scope_changed` for source-tree scope retargets
 that are neither broadening nor narrowing, such as exact path changes or sibling
 glob replacements. Consumers should treat these as review-required changes
