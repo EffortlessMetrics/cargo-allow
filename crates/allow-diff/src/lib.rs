@@ -3,6 +3,7 @@ mod policy;
 mod policy_change;
 mod policy_compare;
 mod policy_entry;
+mod policy_entry_lifecycle;
 mod policy_header;
 mod policy_requirements;
 mod policy_scope;

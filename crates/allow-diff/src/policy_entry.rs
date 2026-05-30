@@ -2,10 +2,10 @@ use allow_core::AllowEntry;
 
 use crate::policy_change::{PolicyChange, PolicyChangeKind, PolicyChangeSeverity};
 use crate::policy_compare::{
-    added_required_text, added_values, changed_required_text, date_extended, date_shortened,
-    occurrence_limit_loosened, occurrence_limit_tightened, optional_text_added,
-    optional_text_changed, optional_text_removed, removed_required_text, removed_values,
+    added_required_text, added_values, changed_required_text, occurrence_limit_loosened,
+    occurrence_limit_tightened, removed_required_text, removed_values,
 };
+use crate::policy_entry_lifecycle::lifecycle_policy_changes;
 use crate::policy_scope::{
     scope_broadened, scope_changed, scope_narrowed, selector_precision_fields,
     selector_precision_score,
@@ -96,83 +96,7 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
         ));
     }
     append_selector_changes(&mut changes, base, head);
-    if optional_text_removed(
-        base.lifecycle.created.as_deref(),
-        head.lifecycle.created.as_deref(),
-    ) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::CreatedRemoved,
-            PolicyChangeSeverity::Fail,
-            "created date removed",
-        ));
-    }
-    if optional_text_changed(
-        base.lifecycle.created.as_deref(),
-        head.lifecycle.created.as_deref(),
-    ) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::CreatedChanged,
-            PolicyChangeSeverity::Review,
-            "created date changed",
-        ));
-    }
-    if optional_text_added(
-        base.lifecycle.created.as_deref(),
-        head.lifecycle.created.as_deref(),
-    ) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::CreatedAdded,
-            PolicyChangeSeverity::Improvement,
-            "created date added",
-        ));
-    }
-    if date_extended(
-        base.lifecycle.expires.as_deref(),
-        head.lifecycle.expires.as_deref(),
-    ) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::ExpiryExtended,
-            PolicyChangeSeverity::Review,
-            "expiry extended or removed",
-        ));
-    }
-    if date_shortened(
-        base.lifecycle.expires.as_deref(),
-        head.lifecycle.expires.as_deref(),
-    ) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::ExpiryShortened,
-            PolicyChangeSeverity::Improvement,
-            "expiry shortened or added",
-        ));
-    }
-    if date_extended(
-        base.lifecycle.review_after.as_deref(),
-        head.lifecycle.review_after.as_deref(),
-    ) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::ReviewAfterExtended,
-            PolicyChangeSeverity::Review,
-            "review_after extended or removed",
-        ));
-    }
-    if date_shortened(
-        base.lifecycle.review_after.as_deref(),
-        head.lifecycle.review_after.as_deref(),
-    ) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::ReviewAfterShortened,
-            PolicyChangeSeverity::Improvement,
-            "review_after shortened or added",
-        ));
-    }
+    changes.extend(lifecycle_policy_changes(base, head));
     if removed_values(&base.evidence, &head.evidence) {
         changes.push(change(
             head,
