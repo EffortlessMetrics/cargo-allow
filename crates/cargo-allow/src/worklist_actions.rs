@@ -64,13 +64,41 @@ pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
         ],
         WEAK_EVIDENCE_REFERENCE => vec![
             "replace the weak evidence string with a typed evidence reference".to_string(),
-            concat!(
-                "use a recognized prefix such as doc:, spec:, adr:, ripr:, unsafe-review:, ",
-                "coverage:, test:, cargo:, issue:, pr:, or legacy-policy:"
-            )
-            .to_string(),
+            format!(
+                "use a recognized prefix such as {}",
+                evidence_prefix_examples()
+            ),
         ],
         _ => vec!["inspect the outcome and update policy or source accordingly".to_string()],
+    }
+}
+
+fn evidence_prefix_examples() -> String {
+    let prefixes = allow_policy::canonical_evidence_prefixes()
+        .map(|prefix| format!("{prefix}:"))
+        .collect::<Vec<_>>();
+    english_join(&prefixes)
+}
+
+fn english_join(values: &[String]) -> String {
+    match values {
+        [] => String::new(),
+        [one] => one.clone(),
+        [one, two] => format!("{one} or {two}"),
+        _ => {
+            let mut out = String::new();
+            for (index, value) in values.iter().enumerate() {
+                if index > 0 {
+                    if index + 1 == values.len() {
+                        out.push_str(", or ");
+                    } else {
+                        out.push_str(", ");
+                    }
+                }
+                out.push_str(value);
+            }
+            out
+        }
     }
 }
 

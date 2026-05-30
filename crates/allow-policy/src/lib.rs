@@ -35,6 +35,10 @@ pub use evidence::{
 pub use evidence_diagnostics::{
     EvidenceReferenceDiagnostic, EvidenceReferenceStatus, evidence_reference_diagnostics,
 };
+pub use evidence_reference::{
+    canonical_evidence_prefixes, local_file_evidence_prefixes, recognized_evidence_prefixes,
+    traceability_evidence_prefixes,
+};
 pub use render::render_policy;
 pub use starter::starter_policy;
 pub use validation::validate_policy;
