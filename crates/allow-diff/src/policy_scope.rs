@@ -12,37 +12,41 @@ pub fn selector_precision_score(entry: &AllowEntry) -> u32 {
     if entry.family.is_some() {
         score += 10;
     }
-    if selector.ast_kind.is_some() {
+    if present(selector.ast_kind.as_deref()) {
         score += 15;
     }
-    if selector.container.is_some() {
+    if present(selector.container.as_deref()) {
         score += 15;
     }
-    if selector.callee.is_some() {
+    if present(selector.callee.as_deref()) {
         score += 10;
     }
-    if selector.macro_name.is_some() {
+    if present(selector.macro_name.as_deref()) {
         score += 10;
     }
-    if selector.lint.is_some() {
+    if present(selector.lint.as_deref()) {
         score += 10;
     }
-    if selector.symbol.is_some() {
+    if present(selector.symbol.as_deref()) {
         score += 8;
     }
-    if selector.receiver_fingerprint.is_some() {
+    if present(selector.receiver_fingerprint.as_deref()) {
         score += 6;
     }
-    if selector.target_fingerprint.is_some() {
+    if present(selector.target_fingerprint.as_deref()) {
         score += 6;
     }
-    if selector.normalized_snippet_hash.is_some() {
+    if present(selector.normalized_snippet_hash.as_deref()) {
         score += 20;
     }
     if entry.occurrence_limit.is_some() {
         score += 5;
     }
     score
+}
+
+fn present(value: Option<&str>) -> bool {
+    value.is_some_and(|text| !text.trim().is_empty())
 }
 
 pub(crate) fn scope_broadened(base: &AllowEntry, head: &AllowEntry) -> bool {

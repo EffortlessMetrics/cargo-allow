@@ -244,6 +244,36 @@ fn selector_precision_ignores_line_hints() {
 }
 
 #[test]
+fn selector_precision_ignores_blank_selector_fields() {
+    let mut blank = entry("allow-1");
+    blank.selector.ast_kind = Some("   ".to_string());
+    blank.selector.container = Some("".to_string());
+    blank.selector.callee = Some("   ".to_string());
+    blank.selector.macro_name = Some("".to_string());
+    blank.selector.lint = Some("   ".to_string());
+    blank.selector.symbol = Some("".to_string());
+    blank.selector.receiver_fingerprint = Some("   ".to_string());
+    blank.selector.target_fingerprint = Some("".to_string());
+    blank.selector.normalized_snippet_hash = Some("   ".to_string());
+
+    let mut absent = blank.clone();
+    absent.selector.ast_kind = None;
+    absent.selector.container = None;
+    absent.selector.callee = None;
+    absent.selector.macro_name = None;
+    absent.selector.lint = None;
+    absent.selector.symbol = None;
+    absent.selector.receiver_fingerprint = None;
+    absent.selector.target_fingerprint = None;
+    absent.selector.normalized_snippet_hash = None;
+
+    assert_eq!(
+        selector_precision_score(&blank),
+        selector_precision_score(&absent)
+    );
+}
+
+#[test]
 fn detects_evidence_removed_and_lifecycle_extended() {
     let base = config_with(entry("allow-1"));
     let mut weaker = entry("allow-1");
