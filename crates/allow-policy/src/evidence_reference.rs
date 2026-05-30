@@ -128,7 +128,7 @@ impl<'a> EvidenceReference<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{EvidenceKind, EvidenceReference};
+    use super::{EVIDENCE_KIND_SPECS, EvidenceKind, EvidenceReference};
     use std::path::PathBuf;
 
     #[test]
@@ -166,6 +166,38 @@ mod tests {
             EvidenceKind::LegacyPolicy
         );
         assert_eq!(EvidenceKind::parse("unknown"), EvidenceKind::Unknown);
+    }
+
+    #[test]
+    fn locks_evidence_prefix_classification_contract() {
+        let actual = EVIDENCE_KIND_SPECS
+            .iter()
+            .flat_map(|spec| {
+                spec.prefixes
+                    .iter()
+                    .map(|prefix| (*prefix, spec.kind, spec.local_file))
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            actual,
+            vec![
+                ("test", EvidenceKind::Test, false),
+                ("cargo", EvidenceKind::Cargo, false),
+                ("ripr", EvidenceKind::Ripr, true),
+                ("unsafe-review", EvidenceKind::UnsafeReview, true),
+                ("unsafe_review", EvidenceKind::UnsafeReview, true),
+                ("coverage", EvidenceKind::Coverage, true),
+                ("doc", EvidenceKind::Doc, true),
+                ("spec", EvidenceKind::Spec, true),
+                ("adr", EvidenceKind::Adr, true),
+                ("issue", EvidenceKind::Issue, false),
+                ("pr", EvidenceKind::Pr, false),
+                ("legacy-policy", EvidenceKind::LegacyPolicy, false),
+                ("legacy_policy", EvidenceKind::LegacyPolicy, false),
+            ],
+            "evidence prefix classification is a source-exception contract"
+        );
     }
 
     #[test]
