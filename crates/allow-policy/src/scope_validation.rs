@@ -2,27 +2,18 @@ use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, WorkspaceConfig,
 use std::path::Path;
 
 use crate::source_tree_scope::{normalize_source_tree_scope, validate_glob, validate_path_scope};
+use crate::text_validation::validate_required_text;
 
 pub(crate) fn validate_workspace(workspace: &WorkspaceConfig) -> CargoAllowResult<()> {
     validate_path_scope("workspace root", Path::new(&workspace.root))?;
-    if workspace.inventory.trim().is_empty() {
-        return Err(CargoAllowError::new(
-            "workspace inventory must not be empty",
-        ));
-    }
-    validate_workspace_token("workspace inventory", &workspace.inventory)?;
+    validate_required_text("workspace inventory", &workspace.inventory)?;
     if workspace.inventory != "git-tracked" {
         return Err(CargoAllowError::new(format!(
             "unsupported workspace inventory `{}`",
             workspace.inventory
         )));
     }
-    if workspace.default_mode.trim().is_empty() {
-        return Err(CargoAllowError::new(
-            "workspace default_mode must not be empty",
-        ));
-    }
-    validate_workspace_token("workspace default_mode", &workspace.default_mode)?;
+    validate_required_text("workspace default_mode", &workspace.default_mode)?;
     if !matches!(
         workspace.default_mode.as_str(),
         "audit" | "no-new" | "strict" | "release"
@@ -37,15 +28,6 @@ pub(crate) fn validate_workspace(workspace: &WorkspaceConfig) -> CargoAllowResul
     }
     for pattern in &workspace.generated {
         validate_glob("source-tree generated glob", pattern)?;
-    }
-    Ok(())
-}
-
-fn validate_workspace_token(label: &str, value: &str) -> CargoAllowResult<()> {
-    if value.trim() != value {
-        return Err(CargoAllowError::new(format!(
-            "{label} must not have leading or trailing whitespace"
-        )));
     }
     Ok(())
 }
