@@ -257,7 +257,15 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
             "owner removed",
         ));
     }
-    if changed_required_text(&base.owner, &head.owner) {
+    if owner_unassigned(base, head) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::OwnerUnassigned,
+            PolicyChangeSeverity::Fail,
+            "owner changed to unowned",
+        ));
+    }
+    if changed_required_text(&base.owner, &head.owner) && !owner_unassigned(base, head) {
         changes.push(change(
             head,
             PolicyChangeKind::OwnerChanged,
@@ -351,6 +359,11 @@ fn baseline_debt_normalized(base: &AllowEntry, head: &AllowEntry) -> bool {
 
 fn baseline_debt_introduced(base: &AllowEntry, head: &AllowEntry) -> bool {
     base.classification != "baseline_debt" && head.classification == "baseline_debt"
+}
+
+fn owner_unassigned(base: &AllowEntry, head: &AllowEntry) -> bool {
+    let base_owner = base.owner.trim();
+    !base_owner.is_empty() && base_owner != "unowned" && head.owner.trim() == "unowned"
 }
 
 fn change(

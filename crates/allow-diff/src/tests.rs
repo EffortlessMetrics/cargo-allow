@@ -579,6 +579,28 @@ fn detects_required_metadata_changed_for_review() {
 }
 
 #[test]
+fn detects_owner_unassigned_as_failure() {
+    let base = config_with(entry("allow-1"));
+    let mut head_entry = entry("allow-1");
+    head_entry.owner = "unowned".to_string();
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::OwnerUnassigned
+            && change.severity == PolicyChangeSeverity::Fail
+            && change.message.contains("unowned")
+    }));
+    assert!(
+        !changes
+            .iter()
+            .any(|change| change.kind == PolicyChangeKind::OwnerChanged),
+        "changing a real owner to unowned should not be downgraded to a generic owner change"
+    );
+}
+
+#[test]
 fn detects_required_metadata_added_as_improvement() {
     let mut base_entry = entry("allow-1");
     base_entry.owner.clear();
@@ -840,6 +862,7 @@ fn policy_change_string_helpers_cover_all_public_variants() {
         (PolicyChangeKind::OwnerAdded, "owner_added"),
         (PolicyChangeKind::OwnerChanged, "owner_changed"),
         (PolicyChangeKind::OwnerRemoved, "owner_removed"),
+        (PolicyChangeKind::OwnerUnassigned, "owner_unassigned"),
         (PolicyChangeKind::ReasonAdded, "reason_added"),
         (PolicyChangeKind::ReasonChanged, "reason_changed"),
         (PolicyChangeKind::ReasonRemoved, "reason_removed"),

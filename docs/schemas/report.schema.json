@@ -569,6 +569,7 @@
             "owner_added",
             "owner_changed",
             "owner_removed",
+            "owner_unassigned",
             "reason_added",
             "reason_changed",
             "reason_removed",

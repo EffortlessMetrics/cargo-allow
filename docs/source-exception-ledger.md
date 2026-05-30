@@ -44,11 +44,13 @@ narrowing.
 
 Diff mode reports owner, reason, or classification removals as policy
 weakening, additions of those required metadata fields as policy improvements,
-and non-empty replacements as review-required policy changes. Removed
-traceability links are also review-required, while added links are reported as
-policy improvements. `created` date removal fails, changes require review, and
-adding a missing `created` date is reported as an improvement so exception
-provenance cannot drift silently.
+and non-empty replacements as review-required policy changes. Changing a
+concrete owner to `owner = "unowned"` is also policy weakening, because retained
+exceptions must not silently lose ownership. Removed traceability links are also
+review-required, while added links are reported as policy improvements.
+`created` date removal fails, changes require review, and adding a missing
+`created` date is reported as an improvement so exception provenance cannot
+drift silently.
 
 ## Reason And Evidence
 
@@ -384,8 +386,9 @@ review of the broad scope.
 base revision's `policy/allow.toml` and reports policy weakening in human and
 Markdown output. Current detection covers scope broadening, selector precision
 loss, expiry/review extension, evidence removal, owner/reason/classification
-removal, occurrence-limit loosening, added `baseline_debt`, reviewed entries
-reclassified as `baseline_debt`, and existing `baseline_debt` entries
+removal, owner unassignment, occurrence-limit loosening, added
+`baseline_debt`, reviewed entries reclassified as `baseline_debt`, and existing
+`baseline_debt` entries
 reclassified as reviewed policy. This is policy ledger comparison only.
 
 The same command also compares source finding posture between the base git tree
