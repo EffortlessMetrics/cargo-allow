@@ -2,9 +2,10 @@ use allow_core::AllowEntry;
 
 use crate::policy_change::{PolicyChange, PolicyChangeKind, PolicyChangeSeverity};
 use crate::policy_compare::{
-    added_required_text, added_values, changed_required_text, occurrence_limit_loosened,
-    occurrence_limit_tightened, removed_required_text, removed_values,
+    added_required_text, changed_required_text, occurrence_limit_loosened,
+    occurrence_limit_tightened, removed_required_text,
 };
+use crate::policy_entry_evidence::evidence_policy_changes;
 use crate::policy_entry_lifecycle::lifecycle_policy_changes;
 use crate::policy_scope::{
     scope_broadened, scope_changed, scope_narrowed, selector_precision_fields,
@@ -97,38 +98,7 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
     }
     append_selector_changes(&mut changes, base, head);
     changes.extend(lifecycle_policy_changes(base, head));
-    if removed_values(&base.evidence, &head.evidence) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::EvidenceRemoved,
-            PolicyChangeSeverity::Fail,
-            "evidence removed",
-        ));
-    }
-    if added_values(&base.evidence, &head.evidence) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::EvidenceAdded,
-            PolicyChangeSeverity::Improvement,
-            "evidence added",
-        ));
-    }
-    if removed_values(&base.links, &head.links) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::LinkRemoved,
-            PolicyChangeSeverity::Review,
-            "traceability link removed",
-        ));
-    }
-    if added_values(&base.links, &head.links) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::LinkAdded,
-            PolicyChangeSeverity::Improvement,
-            "traceability link added",
-        ));
-    }
+    changes.extend(evidence_policy_changes(base, head));
     if baseline_debt_normalized(base, head) {
         changes.push(change(
             head,
