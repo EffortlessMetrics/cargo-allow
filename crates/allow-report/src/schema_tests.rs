@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::BTreeSet;
 
 #[test]
 fn artifact_contract_helpers_render_source_tree_inventory() {
@@ -20,6 +21,47 @@ fn artifact_contract_helpers_render_source_tree_inventory() {
     assert!(inventory.contains("\"source\": \"git_tracked\""));
     assert!(inventory.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
     assert!(inventory.contains("\"files_scanned\": 76"));
+}
+
+#[test]
+fn artifact_contract_registry_covers_current_v1_artifacts() {
+    let names = ARTIFACT_CONTRACTS
+        .iter()
+        .map(|contract| contract.name)
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        names,
+        BTreeSet::from([
+            "add", "doctor", "explain", "list", "migrate", "propose", "prune", "receipt", "report",
+            "worklist"
+        ])
+    );
+
+    for contract in ARTIFACT_CONTRACTS {
+        assert_eq!(
+            contract.schema_version, 1,
+            "{} schema version",
+            contract.name
+        );
+        assert_eq!(
+            artifact_contract_for_schema_id(contract.schema_id),
+            Some(*contract),
+            "{} schema-id lookup",
+            contract.name
+        );
+        if contract.name == "migrate" {
+            assert_eq!(
+                contract.inventory_scanner, INVENTORY_SCANNER_POLICY_MIGRATION,
+                "migrate inventory scanner"
+            );
+        } else {
+            assert_eq!(
+                contract.inventory_scanner, INVENTORY_SCANNER_SOURCE_SYNTAX,
+                "{} inventory scanner",
+                contract.name
+            );
+        }
+    }
 }
 
 #[test]

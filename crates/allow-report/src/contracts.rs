@@ -19,6 +19,15 @@ pub const ADD_SCHEMA_ID: &str = "cargo-allow.add.v1";
 pub const MIGRATE_SCHEMA_VERSION: u32 = 1;
 pub const MIGRATE_SCHEMA_ID: &str = "cargo-allow.migrate.v1";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ArtifactContract {
+    pub name: &'static str,
+    pub schema_id: &'static str,
+    pub schema_version: u32,
+    pub inventory_scanner: &'static str,
+    pub fixed_command: Option<&'static str>,
+}
+
 pub const ARTIFACT_STATUS_PASSED: &str = "passed";
 pub const ARTIFACT_STATUS_FAILED: &str = "failed";
 pub const ARTIFACT_STATUSES: &[&str] = &[ARTIFACT_STATUS_PASSED, ARTIFACT_STATUS_FAILED];
@@ -27,6 +36,86 @@ pub const INVENTORY_SCOPE_SOURCE_TREE: &str = "source_tree";
 pub const INVENTORY_SCANNER_SOURCE_SYNTAX: &str = "source_syntax";
 pub const INVENTORY_SCANNER_POLICY_MIGRATION: &str = "policy_migration";
 pub const INVENTORY_SOURCE_UNKNOWN: &str = "unknown";
+
+pub const ARTIFACT_CONTRACTS: &[ArtifactContract] = &[
+    ArtifactContract {
+        name: "add",
+        schema_id: ADD_SCHEMA_ID,
+        schema_version: ADD_SCHEMA_VERSION,
+        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+        fixed_command: Some("add"),
+    },
+    ArtifactContract {
+        name: "doctor",
+        schema_id: DOCTOR_SCHEMA_ID,
+        schema_version: DOCTOR_SCHEMA_VERSION,
+        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+        fixed_command: Some("doctor"),
+    },
+    ArtifactContract {
+        name: "explain",
+        schema_id: EXPLAIN_SCHEMA_ID,
+        schema_version: EXPLAIN_SCHEMA_VERSION,
+        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+        fixed_command: Some("explain"),
+    },
+    ArtifactContract {
+        name: "list",
+        schema_id: LIST_SCHEMA_ID,
+        schema_version: LIST_SCHEMA_VERSION,
+        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+        fixed_command: Some("list"),
+    },
+    ArtifactContract {
+        name: "migrate",
+        schema_id: MIGRATE_SCHEMA_ID,
+        schema_version: MIGRATE_SCHEMA_VERSION,
+        inventory_scanner: INVENTORY_SCANNER_POLICY_MIGRATION,
+        fixed_command: Some("migrate"),
+    },
+    ArtifactContract {
+        name: "propose",
+        schema_id: PROPOSE_SCHEMA_ID,
+        schema_version: PROPOSE_SCHEMA_VERSION,
+        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+        fixed_command: Some("propose"),
+    },
+    ArtifactContract {
+        name: "prune",
+        schema_id: PRUNE_SCHEMA_ID,
+        schema_version: PRUNE_SCHEMA_VERSION,
+        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+        fixed_command: Some("prune"),
+    },
+    ArtifactContract {
+        name: "receipt",
+        schema_id: RECEIPT_SCHEMA_ID,
+        schema_version: RECEIPT_SCHEMA_VERSION,
+        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+        fixed_command: None,
+    },
+    ArtifactContract {
+        name: "report",
+        schema_id: REPORT_SCHEMA_ID,
+        schema_version: REPORT_SCHEMA_VERSION,
+        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+        fixed_command: None,
+    },
+    ArtifactContract {
+        name: "worklist",
+        schema_id: WORKLIST_SCHEMA_ID,
+        schema_version: WORKLIST_SCHEMA_VERSION,
+        inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+        fixed_command: Some("worklist"),
+    },
+];
+
+pub fn artifact_contract_for_schema_id(schema_id: &str) -> Option<ArtifactContract> {
+    ARTIFACT_CONTRACTS
+        .iter()
+        .copied()
+        .find(|contract| contract.schema_id == schema_id)
+}
 
 pub const CLAIM_BOUNDARY: &[&str] = &[
     "source_tree_inventory",

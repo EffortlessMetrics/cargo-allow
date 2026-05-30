@@ -35,87 +35,60 @@ pub(crate) struct SchemaContract {
 
 pub(crate) fn schema_contracts() -> [SchemaContract; 10] {
     [
-        SchemaContract {
-            name: "add",
-            schema: include_str!("../../../docs/schemas/add.schema.json"),
-            schema_id: allow_report::ADD_SCHEMA_ID,
-            schema_version: allow_report::ADD_SCHEMA_VERSION,
-            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
-            fixed_command: Some("add"),
-        },
-        SchemaContract {
-            name: "doctor",
-            schema: include_str!("../../../docs/schemas/doctor.schema.json"),
-            schema_id: allow_report::DOCTOR_SCHEMA_ID,
-            schema_version: allow_report::DOCTOR_SCHEMA_VERSION,
-            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
-            fixed_command: Some("doctor"),
-        },
-        SchemaContract {
-            name: "explain",
-            schema: include_str!("../../../docs/schemas/explain.schema.json"),
-            schema_id: allow_report::EXPLAIN_SCHEMA_ID,
-            schema_version: allow_report::EXPLAIN_SCHEMA_VERSION,
-            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
-            fixed_command: Some("explain"),
-        },
-        SchemaContract {
-            name: "list",
-            schema: include_str!("../../../docs/schemas/list.schema.json"),
-            schema_id: allow_report::LIST_SCHEMA_ID,
-            schema_version: allow_report::LIST_SCHEMA_VERSION,
-            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
-            fixed_command: Some("list"),
-        },
-        SchemaContract {
-            name: "migrate",
-            schema: include_str!("../../../docs/schemas/migrate.schema.json"),
-            schema_id: allow_report::MIGRATE_SCHEMA_ID,
-            schema_version: allow_report::MIGRATE_SCHEMA_VERSION,
-            inventory_scanner: allow_report::INVENTORY_SCANNER_POLICY_MIGRATION,
-            fixed_command: Some("migrate"),
-        },
-        SchemaContract {
-            name: "propose",
-            schema: include_str!("../../../docs/schemas/propose.schema.json"),
-            schema_id: allow_report::PROPOSE_SCHEMA_ID,
-            schema_version: allow_report::PROPOSE_SCHEMA_VERSION,
-            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
-            fixed_command: Some("propose"),
-        },
-        SchemaContract {
-            name: "prune",
-            schema: include_str!("../../../docs/schemas/prune.schema.json"),
-            schema_id: allow_report::PRUNE_SCHEMA_ID,
-            schema_version: allow_report::PRUNE_SCHEMA_VERSION,
-            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
-            fixed_command: Some("prune"),
-        },
-        SchemaContract {
-            name: "receipt",
-            schema: include_str!("../../../docs/schemas/receipt.schema.json"),
-            schema_id: allow_report::RECEIPT_SCHEMA_ID,
-            schema_version: allow_report::RECEIPT_SCHEMA_VERSION,
-            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
-            fixed_command: None,
-        },
-        SchemaContract {
-            name: "report",
-            schema: include_str!("../../../docs/schemas/report.schema.json"),
-            schema_id: allow_report::REPORT_SCHEMA_ID,
-            schema_version: allow_report::REPORT_SCHEMA_VERSION,
-            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
-            fixed_command: None,
-        },
-        SchemaContract {
-            name: "worklist",
-            schema: include_str!("../../../docs/schemas/worklist.schema.json"),
-            schema_id: allow_report::WORKLIST_SCHEMA_ID,
-            schema_version: allow_report::WORKLIST_SCHEMA_VERSION,
-            inventory_scanner: allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
-            fixed_command: Some("worklist"),
-        },
+        schema_contract("add", include_str!("../../../docs/schemas/add.schema.json")),
+        schema_contract(
+            "doctor",
+            include_str!("../../../docs/schemas/doctor.schema.json"),
+        ),
+        schema_contract(
+            "explain",
+            include_str!("../../../docs/schemas/explain.schema.json"),
+        ),
+        schema_contract(
+            "list",
+            include_str!("../../../docs/schemas/list.schema.json"),
+        ),
+        schema_contract(
+            "migrate",
+            include_str!("../../../docs/schemas/migrate.schema.json"),
+        ),
+        schema_contract(
+            "propose",
+            include_str!("../../../docs/schemas/propose.schema.json"),
+        ),
+        schema_contract(
+            "prune",
+            include_str!("../../../docs/schemas/prune.schema.json"),
+        ),
+        schema_contract(
+            "receipt",
+            include_str!("../../../docs/schemas/receipt.schema.json"),
+        ),
+        schema_contract(
+            "report",
+            include_str!("../../../docs/schemas/report.schema.json"),
+        ),
+        schema_contract(
+            "worklist",
+            include_str!("../../../docs/schemas/worklist.schema.json"),
+        ),
     ]
+}
+
+fn schema_contract(name: &'static str, schema: &'static str) -> SchemaContract {
+    let artifact = allow_report::ARTIFACT_CONTRACTS
+        .iter()
+        .copied()
+        .find(|contract| contract.name == name)
+        .unwrap_or_else(|| std::panic::panic_any(format!("missing artifact contract {name}")));
+    SchemaContract {
+        name: artifact.name,
+        schema,
+        schema_id: artifact.schema_id,
+        schema_version: artifact.schema_version,
+        inventory_scanner: artifact.inventory_scanner,
+        fixed_command: artifact.fixed_command,
+    }
 }
 
 pub(crate) fn parse_schema(name: &str, schema: &str) -> Value {
