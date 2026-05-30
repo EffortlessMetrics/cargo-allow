@@ -122,6 +122,11 @@ added `created` dates emit `created_added` improvements. These are posture
 signals for the exception ledger only; they do not imply build-aware or
 proof-level validation.
 
+Diff report `policy_changes` use `owner_unassigned` when an existing reviewed
+entry changes from a concrete owner to `owner = "unowned"`. This is a failing
+policy-posture signal because retained exceptions must not silently lose
+ownership.
+
 Diff report `policy_changes` use `scope_changed` for source-tree scope retargets
 that are neither broadening nor narrowing, such as exact path changes or sibling
 glob replacements. Consumers should treat these as review-required changes
