@@ -177,6 +177,30 @@ fn glob_scope_changes_respect_directory_segment_boundaries() {
         }),
         "sibling directory globs should not be classified as broadened or narrowed"
     );
+    assert!(
+        changes
+            .iter()
+            .any(|change| change.kind == PolicyChangeKind::ScopeChanged),
+        "sibling directory globs should be surfaced as a review-required retarget"
+    );
+}
+
+#[test]
+fn detects_exact_scope_retarget_as_review_required() {
+    let mut base_entry = entry("allow-1");
+    base_entry.path = Some(PathBuf::from("src/parser/lib.rs"));
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-1");
+    head_entry.path = Some(PathBuf::from(r"src\runtime\lib.rs"));
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::ScopeChanged
+            && change.severity == PolicyChangeSeverity::Review
+            && change.message.contains("scope changed")
+    }));
 }
 
 #[test]
@@ -692,6 +716,7 @@ fn policy_change_string_helpers_cover_all_public_variants() {
         (PolicyChangeKind::KindChanged, "kind_changed"),
         (PolicyChangeKind::FamilyChanged, "family_changed"),
         (PolicyChangeKind::ScopeBroadened, "scope_broadened"),
+        (PolicyChangeKind::ScopeChanged, "scope_changed"),
         (PolicyChangeKind::ScopeNarrowed, "scope_narrowed"),
         (
             PolicyChangeKind::SelectorPrecisionDecreased,

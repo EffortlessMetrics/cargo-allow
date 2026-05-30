@@ -121,6 +121,11 @@ added `created` dates emit `created_added` improvements. These are posture
 signals for the exception ledger only; they do not imply build-aware or
 proof-level validation.
 
+Diff report `policy_changes` use `scope_changed` for source-tree scope retargets
+that are neither broadening nor narrowing, such as exact path changes or sibling
+glob replacements. Consumers should treat these as review-required changes
+because the retained exception now covers a different source-tree surface.
+
 ## Broken Evidence Links
 
 Report JSON may include `summary.broken_evidence_links` and

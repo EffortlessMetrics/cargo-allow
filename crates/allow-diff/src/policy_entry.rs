@@ -6,7 +6,9 @@ use crate::policy_compare::{
     occurrence_limit_loosened, occurrence_limit_tightened, optional_text_added,
     optional_text_changed, optional_text_removed, removed_required_text, removed_values,
 };
-use crate::policy_scope::{scope_broadened, scope_narrowed, selector_precision_score};
+use crate::policy_scope::{
+    scope_broadened, scope_changed, scope_narrowed, selector_precision_score,
+};
 
 pub(crate) fn added_allow_change(entry: &AllowEntry) -> PolicyChange {
     let baseline = entry.classification == "baseline_debt";
@@ -81,6 +83,14 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
             PolicyChangeKind::ScopeNarrowed,
             PolicyChangeSeverity::Improvement,
             "scope narrowed",
+        ));
+    }
+    if scope_changed(base, head) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::ScopeChanged,
+            PolicyChangeSeverity::Review,
+            "scope changed",
         ));
     }
     let base_precision = selector_precision_score(base);
