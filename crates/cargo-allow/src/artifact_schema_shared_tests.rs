@@ -385,6 +385,55 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
             "common summary {field} minimum"
         );
     }
+    let trend = required_schema_pointer("common", &schema, "/$defs/trend");
+    assert_eq!(
+        trend.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "common trend should reject unknown fields"
+    );
+    let trend_required_fields = [
+        "review_items",
+        "new",
+        "expired",
+        "review_due",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt",
+    ];
+    assert_required_fields("common trend", trend, &trend_required_fields);
+    for field in [
+        "review_items",
+        "new",
+        "expired",
+        "review_due",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt",
+        "policy_missing_evidence",
+        "broken_evidence_links",
+        "weak_evidence_references",
+    ] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/trend/properties/{field}/type"))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "common trend {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/trend/properties/{field}/minimum"))
+                .and_then(Value::as_u64),
+            Some(0),
+            "common trend {field} minimum"
+        );
+    }
     let structural_identity =
         required_schema_pointer("common", &schema, "/$defs/structural_identity");
     assert_eq!(
@@ -1237,6 +1286,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "summary",
         "structural_identity",
         "source_syntax_inventory",
+        "trend",
         "traceability_evidence_prefix",
     ]
     .into_iter()
@@ -1271,6 +1321,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         "inventory",
         "outcome",
         "summary",
+        "trend",
         "finding_posture_change",
         "policy_change",
         "selector_precision_field",
