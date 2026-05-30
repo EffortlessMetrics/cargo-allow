@@ -233,6 +233,38 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
 }
 
 #[test]
+fn common_schema_fragment_catalog_keeps_expected_defs() {
+    let schema = parse_schema(
+        "common",
+        include_str!("../../../docs/schemas/common.v1.json"),
+    );
+
+    let Some(defs) = schema.get("$defs").and_then(Value::as_object) else {
+        std::panic::panic_any("common schema $defs should be an object");
+    };
+    let actual = defs.keys().map(String::as_str).collect::<BTreeSet<_>>();
+    let expected = [
+        "canonical_evidence_prefix",
+        "claim_boundary_flag",
+        "evidence_reference_status",
+        "inventory_source",
+        "local_file_evidence_prefix",
+        "policy_migration_inventory",
+        "recognized_evidence_prefix",
+        "scanner_limitation",
+        "source_syntax_inventory",
+        "traceability_evidence_prefix",
+    ]
+    .into_iter()
+    .collect::<BTreeSet<_>>();
+
+    assert_eq!(
+        actual, expected,
+        "common.v1 shared fragment names are part of the schema compatibility surface"
+    );
+}
+
+#[test]
 fn schema_contract_registry_covers_schema_index_links() {
     let index = include_str!("../../../docs/schemas/README.md");
 
