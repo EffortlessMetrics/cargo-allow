@@ -10,8 +10,8 @@ mod worklist;
 
 pub use add::AddReport;
 pub use diff::{
-    DiffFindingChange, DiffPolicyChange, DiffPostureSummary, DiffReport, DiffScopeChange,
-    DiffSelectorPrecisionChange,
+    DiffFindingChange, DiffOccurrenceLimitChange, DiffPolicyChange, DiffPostureSummary, DiffReport,
+    DiffScopeChange, DiffSelectorPrecisionChange,
 };
 pub use doctor::DoctorReport;
 pub use explain::{EvidenceReference, ExplainReport};

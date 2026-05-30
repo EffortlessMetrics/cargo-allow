@@ -11,10 +11,18 @@ fn detects_occurrence_limit_tightened_as_improvement() {
 
     let changes = policy_changes(&base, &head);
 
-    assert!(changes.iter().any(|change| {
-        change.kind == PolicyChangeKind::OccurrenceLimitTightened
-            && change.severity == PolicyChangeSeverity::Improvement
-    }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::OccurrenceLimitTightened)
+        .unwrap_or_else(|| std::panic::panic_any("occurrence limit tightening should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Improvement);
+    assert_eq!(
+        change
+            .occurrence_limit
+            .as_ref()
+            .map(|limit| (limit.before, limit.after)),
+        Some((Some(4), Some(2)))
+    );
 }
 
 #[test]
@@ -112,10 +120,18 @@ fn detects_occurrence_limit_increase_as_loosened() {
 
     let changes = policy_changes(&base, &head);
 
-    assert!(changes.iter().any(|change| {
-        change.kind == PolicyChangeKind::OccurrenceLimitLoosened
-            && change.severity == PolicyChangeSeverity::Fail
-    }));
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::OccurrenceLimitLoosened)
+        .unwrap_or_else(|| std::panic::panic_any("occurrence limit loosening should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Fail);
+    assert_eq!(
+        change
+            .occurrence_limit
+            .as_ref()
+            .map(|limit| (limit.before, limit.after)),
+        Some((Some(1), Some(3)))
+    );
 }
 
 #[test]

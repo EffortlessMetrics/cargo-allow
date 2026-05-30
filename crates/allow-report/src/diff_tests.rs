@@ -1,4 +1,5 @@
 use super::*;
+use crate::diff_json::render_diff_posture_json;
 
 #[test]
 fn diff_json_renderer_appends_posture_extension() {
@@ -20,6 +21,7 @@ fn diff_json_renderer_appends_posture_extension() {
             before: Some("src/lib.rs"),
             after: Some("src/**"),
         }),
+        occurrence_limit: None,
     }];
 
     let rendered = render_diff_json_with_posture(
@@ -116,6 +118,7 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
         message: "allow-0001 selector precision increased",
         selector_precision: None,
         scope: None,
+        occurrence_limit: None,
     }];
     let report = DiffReport {
         net_posture: "improved",
@@ -146,6 +149,40 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
 }
 
 #[test]
+fn diff_json_renderer_includes_occurrence_limit_change() {
+    let policy_changes = vec![DiffPolicyChange {
+        severity: "fail",
+        allow_id: "allow-0001",
+        kind: "occurrence_limit_loosened",
+        message: "allow-0001 occurrence_limit increased or removed",
+        selector_precision: None,
+        scope: None,
+        occurrence_limit: Some(DiffOccurrenceLimitChange {
+            before: Some(1),
+            after: None,
+        }),
+    }];
+
+    let json = render_diff_posture_json(DiffReport {
+        net_posture: "worse",
+        reviewer_action: "block until fixed",
+        summary: DiffPostureSummary {
+            current_failures: 0,
+            new_findings: 0,
+            removed_findings: 0,
+            policy_failures: 1,
+            policy_review_items: 0,
+            policy_improvements: 0,
+        },
+        finding_changes: &[],
+        policy_changes: &policy_changes,
+    });
+
+    assert!(json.contains("\"kind\": \"occurrence_limit_loosened\""));
+    assert!(json.contains("\"occurrence_limit\": {\"before\": 1, \"after\": null}"));
+}
+
+#[test]
 fn diff_json_report_matches_posture_golden_contract() {
     let finding_changes = vec![DiffFindingChange {
         change: "removed",
@@ -166,6 +203,7 @@ fn diff_json_report_matches_posture_golden_contract() {
             added_fields: &["container", "normalized_snippet_hash"],
         }),
         scope: None,
+        occurrence_limit: None,
     }];
     let report = DiffReport {
         net_posture: "improved",
@@ -303,6 +341,7 @@ fn diff_pr_summary_markdown_reports_net_posture() {
         message: "allow-0001 selector precision increased",
         selector_precision: None,
         scope: None,
+        occurrence_limit: None,
     }];
 
     let summary = render_diff_pr_summary_markdown(0, &finding_changes, &policy_changes);
@@ -330,6 +369,7 @@ fn diff_posture_tables_escape_markdown_cells() {
         message: "message with | pipe",
         selector_precision: None,
         scope: None,
+        occurrence_limit: None,
     }];
 
     let findings = render_diff_finding_changes_markdown(&finding_changes);

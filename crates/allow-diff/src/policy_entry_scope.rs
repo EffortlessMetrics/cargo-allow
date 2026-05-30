@@ -51,6 +51,7 @@ fn change(
         message: format!("{} {message}", entry.id),
         selector_precision: None,
         scope: Some(scope_change(base, entry)),
+        occurrence_limit: None,
     }
 }
 

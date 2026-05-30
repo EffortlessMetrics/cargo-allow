@@ -268,6 +268,56 @@ fn report_schema_locks_diff_posture_extension_contract() {
         Some("#/$defs/scope_change"),
         "report policy changes should use scope change rows"
     );
+    assert_eq!(
+        schema
+            .pointer("/$defs/policy_change/properties/occurrence_limit/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/occurrence_limit_change"),
+        "report policy changes should use occurrence limit rows"
+    );
+    let occurrence_limit =
+        required_schema_pointer("report", &schema, "/$defs/occurrence_limit_change");
+    assert_eq!(
+        occurrence_limit
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "report occurrence limit changes should reject unknown fields"
+    );
+    assert_required_fields(
+        "report occurrence limit change",
+        occurrence_limit,
+        &["before", "after"],
+    );
+    for field in ["before", "after"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/occurrence_limit_change/properties/{field}/type/0"
+                ))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "report occurrence limit {field} first type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/occurrence_limit_change/properties/{field}/type/1"
+                ))
+                .and_then(Value::as_str),
+            Some("null"),
+            "report occurrence limit {field} second type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/occurrence_limit_change/properties/{field}/minimum"
+                ))
+                .and_then(Value::as_u64),
+            Some(0),
+            "report occurrence limit {field} minimum"
+        );
+    }
     let scope_change = required_schema_pointer("report", &schema, "/$defs/scope_change");
     assert_eq!(
         scope_change

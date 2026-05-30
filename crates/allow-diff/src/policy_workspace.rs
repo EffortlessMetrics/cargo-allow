@@ -94,5 +94,6 @@ fn change(
         message: format!("{policy_id} {message}: {value}"),
         selector_precision: None,
         scope: None,
+        occurrence_limit: None,
     }
 }
