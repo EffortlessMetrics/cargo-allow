@@ -183,6 +183,29 @@ retargets, such as changing `container`, `callee`, `symbol`, or snippet hash
 values without changing the selector precision score. Line hints are excluded
 from this identity signal.
 
+## Evidence Prefix Vocabulary
+
+Evidence strings may use typed prefixes so cargo-allow can distinguish local
+source-tree evidence from offline traceability. The policy parser owns this
+vocabulary; [common.v1.json](common.v1.json) mirrors it for schema consumers.
+
+| Prefix | Aliases | Treatment |
+|---|---|---|
+| `doc:` | | Local source-tree file reference |
+| `spec:` | | Local source-tree file reference |
+| `adr:` | | Local source-tree file reference |
+| `ripr:` | | Local source-tree file reference |
+| `unsafe-review:` | `unsafe_review:` | Local source-tree file reference |
+| `coverage:` | | Local source-tree file reference |
+| `test:` | | Traceability only; not executed or resolved |
+| `cargo:` | | Traceability only; not executed or resolved |
+| `issue:` | | Traceability only; not resolved over the network |
+| `pr:` | | Traceability only; not resolved over the network |
+| `legacy-policy:` | `legacy_policy:` | Traceability only |
+
+Unknown prefixes and unstructured strings are reported as weak evidence, not as
+broken local links. Empty traceability targets are also weak evidence.
+
 ## Broken Evidence Links
 
 Report JSON may include `summary.broken_evidence_links` and
