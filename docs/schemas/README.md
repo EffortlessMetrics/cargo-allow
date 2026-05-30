@@ -219,7 +219,7 @@ the renderer-level schema contract.
 
 Schema compatibility tests also lock:
 
-- schema document metadata, including draft, `$id`, and title;
+- schema document metadata, including `$schema`, `$id`, and `title`;
 - the exact top-level property set for each schema;
 - the exact top-level required-field set for each schema;
 - rendered sample artifacts against their registered schema top-level fields;
