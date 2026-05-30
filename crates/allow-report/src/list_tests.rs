@@ -48,6 +48,64 @@ fn list_json_renderer_records_filters_context_and_rows() {
     assert!(json.contains("\"broad_scope\": true"));
     assert!(json.contains("\"review_after\": \"2026-07-01\""));
     assert!(json.contains("\"expires\": null"));
+    let expected = format!(
+        r#"{{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.list.v1",
+  "tool": "cargo-allow",
+  "command": "list",
+  "claim_boundary": {},
+  "scanner_limitations": {},
+  "inventory": {{
+    "scope": "source_tree",
+    "scanner": "source_syntax",
+    "source": "git_tracked",
+    "root": "H:/Code/Rust/cargo-allow",
+    "files_scanned": 46
+  }},
+  "filters": {{
+    "kind": "panic",
+    "family": "unwrap",
+    "owner": "parser",
+    "classification": null,
+    "path": null,
+    "source_package": null,
+    "status": null,
+    "expired": false,
+    "review_due": false,
+    "stale": false,
+    "baseline_debt": true,
+    "broad_scope": false,
+    "missing_evidence": false
+  }},
+  "summary": {{
+    "allow_entries": 1
+  }},
+  "allow_entries": [
+    {{
+      "id": "allow-json",
+      "status": "baseline_debt",
+      "matches": 1,
+      "kind": "panic",
+      "family": "unwrap",
+      "owner": "parser",
+      "classification": "baseline_debt",
+      "scope": "crates/parser/src/lib.rs",
+      "source_package": "parser",
+      "evidence_count": 2,
+      "selector_precision": 42,
+      "broad_scope": true,
+      "review_after": "2026-07-01",
+      "expires": null,
+      "reason": "generated baseline"
+    }}
+  ]
+}}
+"#,
+        render_claim_boundary_json(),
+        render_scanner_limitations_json()
+    );
+    assert_eq!(json, expected);
 
     let text = render_list_human(&rows);
 
