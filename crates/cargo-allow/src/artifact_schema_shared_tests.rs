@@ -147,6 +147,60 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         "/$defs/governed_source_exception_kind/enum",
         &governed_kind_enum(),
     );
+    let finding = required_schema_pointer("common", &schema, "/$defs/finding");
+    assert_eq!(
+        finding.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "common finding should reject unknown fields"
+    );
+    assert_required_fields(
+        "common finding",
+        finding,
+        &["kind", "family", "path", "line", "container", "ast_kind"],
+    );
+    assert_enum_equals(
+        "common finding kind",
+        &schema,
+        "/$defs/finding/properties/kind/enum",
+        &governed_kind_enum(),
+    );
+    for field in ["family", "container", "source_package"] {
+        assert_schema_type_equals(
+            &format!("common finding {field}"),
+            &schema,
+            &format!("/$defs/finding/properties/{field}/type"),
+            &["string", "null"],
+        );
+    }
+    assert_schema_type_equals(
+        "common finding line",
+        &schema,
+        "/$defs/finding/properties/line/type",
+        &["integer", "null"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/finding/properties/line/minimum")
+            .and_then(Value::as_u64),
+        Some(1),
+        "common finding line minimum"
+    );
+    for field in ["path", "ast_kind"] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/finding/properties/{field}/type"))
+                .and_then(Value::as_str),
+            Some("string"),
+            "common finding {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/finding/properties/{field}/minLength"))
+                .and_then(Value::as_u64),
+            Some(1),
+            "common finding {field} minLength"
+        );
+    }
     assert_enum_equals(
         "common",
         &schema,
@@ -1031,6 +1085,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "evidence_reference_status",
         "exception_identity_change",
         "exception_identity_change_field",
+        "finding",
         "finding_posture_change",
         "finding_posture_kind",
         "governed_source_exception_kind",
@@ -1090,6 +1145,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
     for fragment in [
         "diff",
         "diff_summary",
+        "finding",
         "outcome",
         "finding_posture_change",
         "policy_change",

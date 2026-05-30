@@ -64,6 +64,64 @@
         "policy_exception"
       ]
     },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "family",
+        "path",
+        "line",
+        "container",
+        "ast_kind"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "container": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_package": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional source-derived package context from scanned repository files; not Cargo metadata or build proof."
+        },
+        "ast_kind": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "match_status": {
       "type": "string",
       "enum": [
