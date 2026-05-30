@@ -85,6 +85,53 @@ fn rejects_unowned_owner_for_reviewed_entries() {
 }
 
 #[test]
+fn rejects_owner_with_surrounding_whitespace() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "padded-owner"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = " core "
+                classification = "reviewed"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains("padded-owner owner must not have leading or trailing whitespace"));
+}
+
+#[test]
+fn rejects_classification_with_surrounding_whitespace() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "padded-classification"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = " baseline_debt "
+                reason = "fixture"
+                created = "2026-05-26"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains(
+        "padded-classification classification must not have leading or trailing whitespace"
+    ));
+}
+
+#[test]
 fn allows_unowned_owner_for_baseline_debt() {
     let cfg = parse_policy(
         r#"
@@ -432,6 +479,29 @@ fn rejects_blank_allow_family() {
     );
 
     assert!(err.contains("blank-family family must not be empty"));
+}
+
+#[test]
+fn rejects_family_with_surrounding_whitespace() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "padded-family"
+                kind = "panic"
+                family = " unwrap "
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains("padded-family family must not have leading or trailing whitespace"));
 }
 
 #[test]
