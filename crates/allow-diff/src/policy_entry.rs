@@ -94,36 +94,7 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
             "scope changed",
         ));
     }
-    let base_precision = selector_precision_score(base);
-    let head_precision = selector_precision_score(head);
-    if head_precision < base_precision {
-        changes.push(PolicyChange {
-            allow_id: head.id.clone(),
-            kind: PolicyChangeKind::SelectorPrecisionDecreased,
-            severity: PolicyChangeSeverity::Fail,
-            message: format!(
-                "{} selector precision decreased: {} -> {}",
-                head.id, base_precision, head_precision
-            ),
-        });
-    } else if head_precision > base_precision {
-        changes.push(PolicyChange {
-            allow_id: head.id.clone(),
-            kind: PolicyChangeKind::SelectorPrecisionIncreased,
-            severity: PolicyChangeSeverity::Improvement,
-            message: format!(
-                "{} selector precision increased: {} -> {}",
-                head.id, base_precision, head_precision
-            ),
-        });
-    } else if selector_identity_changed(&base.selector, &head.selector) {
-        changes.push(change(
-            head,
-            PolicyChangeKind::SelectorChanged,
-            PolicyChangeSeverity::Review,
-            "selector identity changed",
-        ));
-    }
+    append_selector_changes(&mut changes, base, head);
     if optional_text_removed(
         base.lifecycle.created.as_deref(),
         head.lifecycle.created.as_deref(),
@@ -349,6 +320,39 @@ pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<
         ));
     }
     changes
+}
+
+fn append_selector_changes(changes: &mut Vec<PolicyChange>, base: &AllowEntry, head: &AllowEntry) {
+    let base_precision = selector_precision_score(base);
+    let head_precision = selector_precision_score(head);
+    if head_precision < base_precision {
+        changes.push(PolicyChange {
+            allow_id: head.id.clone(),
+            kind: PolicyChangeKind::SelectorPrecisionDecreased,
+            severity: PolicyChangeSeverity::Fail,
+            message: format!(
+                "{} selector precision decreased: {} -> {}",
+                head.id, base_precision, head_precision
+            ),
+        });
+    } else if head_precision > base_precision {
+        changes.push(PolicyChange {
+            allow_id: head.id.clone(),
+            kind: PolicyChangeKind::SelectorPrecisionIncreased,
+            severity: PolicyChangeSeverity::Improvement,
+            message: format!(
+                "{} selector precision increased: {} -> {}",
+                head.id, base_precision, head_precision
+            ),
+        });
+    } else if selector_identity_changed(&base.selector, &head.selector) {
+        changes.push(change(
+            head,
+            PolicyChangeKind::SelectorChanged,
+            PolicyChangeSeverity::Review,
+            "selector identity changed",
+        ));
+    }
 }
 
 fn baseline_debt_normalized(base: &AllowEntry, head: &AllowEntry) -> bool {
