@@ -88,6 +88,9 @@ values such as `workspace.ignored` and `workspace.generated`.
 `reason` is the human rationale.
 
 `evidence` is the support for that rationale.
+Evidence and link list entries must not include leading or trailing whitespace.
+They are saved as exact ledger references, even when the current implementation
+classifies some prefixes as traceability-only instead of resolving them.
 
 Example:
 

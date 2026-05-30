@@ -129,6 +129,12 @@ fn validate_non_empty_values(id: &str, label: &str, values: &[String]) -> CargoA
                 index + 1
             )));
         }
+        if value.trim() != value {
+            return Err(CargoAllowError::new(format!(
+                "{id} {label} entry {} must not have leading or trailing whitespace",
+                index + 1
+            )));
+        }
     }
     Ok(())
 }
