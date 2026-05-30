@@ -14,7 +14,6 @@ use crate::{
 };
 
 pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
-    let mode = CheckMode::parse(&args.mode);
     let (root, cfg, findings, inventory_facts) = if args.compat {
         load_compat_world(
             args.root.root.as_deref(),
@@ -33,6 +32,11 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
         )?
     };
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
+    let mode = CheckMode::parse(
+        args.mode
+            .as_deref()
+            .unwrap_or(report_cfg.workspace.default_mode.as_str()),
+    );
     let outcomes = evaluate(&report_cfg, &findings, mode);
     let broken_evidence_links = broken_evidence_link_count(&root, &report_cfg);
     let weak_evidence_references = weak_evidence_reference_count(&root, &report_cfg);

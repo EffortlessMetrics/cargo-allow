@@ -55,6 +55,37 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn clap_leaves_check_mode_unset_when_not_provided() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "check"]))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse check: {err}")));
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(check::CheckArgs {
+                mode: None,
+                ..
+            }))
+        ));
+    }
+
+    #[test]
+    fn clap_parses_explicit_check_mode() {
+        let parsed =
+            CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "check", "--mode", "strict"]))
+                .unwrap_or_else(|err| {
+                    std::panic::panic_any(format!("CLI should parse --mode strict: {err}"))
+                });
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(check::CheckArgs {
+                mode: Some(mode),
+                ..
+            })) if mode == "strict"
+        ));
+    }
+
     fn argv(items: Vec<&str>) -> Vec<String> {
         items.into_iter().map(String::from).collect()
     }

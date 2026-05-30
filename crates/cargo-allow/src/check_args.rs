@@ -28,7 +28,7 @@ pub(crate) struct CheckArgs {
     /// Write machine-readable receipt to a file.
     #[arg(long)]
     pub(crate) receipt: Option<PathBuf>,
-    /// Check mode.
-    #[arg(long, default_value = "no-new", value_parser = ["audit", "no-new", "strict", "release"])]
-    pub(crate) mode: String,
+    /// Check mode. Defaults to the policy workspace.default_mode value.
+    #[arg(long, value_parser = ["audit", "no-new", "strict", "release"])]
+    pub(crate) mode: Option<String>,
 }

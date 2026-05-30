@@ -204,6 +204,135 @@ fn check_reports_new_findings_after_policy_baseline_is_outdated() {
 }
 
 #[test]
+fn check_uses_policy_default_mode_when_mode_is_omitted() {
+    let root = temp_root("e2e-policy-default-mode");
+    write_panic_source(
+        &root,
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    );
+    write_file(
+        &root,
+        "policy/allow.toml",
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+owner = "core/policy"
+status = "active"
+
+[workspace]
+root = "."
+inventory = "git-tracked"
+default_mode = "audit"
+ignored = ["target/**"]
+generated = ["target/**", "vendor/**"]
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+stale_entries_fail = false
+
+[requirements.unsafe]
+evidence_required = true
+safety_comment_required = false
+"#,
+    );
+
+    let audit_default_output = root.join("target/cargo-allow/check-audit-default.json");
+    let audit_default = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--config")
+        .arg("policy/allow.toml")
+        .arg("--kind")
+        .arg("panic")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&audit_default_output)
+        .output()
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("run cargo-allow check default mode: {err}"))
+        });
+
+    assert_success_and_quiet("check default audit mode", &audit_default);
+    let audit_default_report = assert_saved_json_artifact(
+        &audit_default_output,
+        "check default audit mode",
+        "cargo-allow.report.v1",
+        "check",
+    );
+    assert_json_str(
+        &audit_default_report,
+        "/status",
+        "passed",
+        "audit default should not fail the gate",
+    );
+    assert_json_u64(
+        &audit_default_report,
+        "/summary/new",
+        1,
+        "audit default should still report the new finding",
+    );
+
+    let no_new_output = root.join("target/cargo-allow/check-no-new.json");
+    let no_new = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--config")
+        .arg("policy/allow.toml")
+        .arg("--kind")
+        .arg("panic")
+        .arg("--mode")
+        .arg("no-new")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&no_new_output)
+        .output()
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("run cargo-allow check explicit no-new mode: {err}"))
+        });
+
+    assert_status("check explicit no-new mode", &no_new, false);
+    assert_stdout_empty(
+        "check explicit no-new mode",
+        &no_new,
+        "--output should not emit failure report JSON to stdout",
+    );
+    assert_stderr_empty(
+        "check explicit no-new mode",
+        &no_new,
+        "--output should not emit human failure status to stderr",
+    );
+    let no_new_report = assert_saved_json_artifact(
+        &no_new_output,
+        "check explicit no-new mode",
+        "cargo-allow.report.v1",
+        "check",
+    );
+    assert_json_str(
+        &no_new_report,
+        "/status",
+        "failed",
+        "explicit no-new should override the audit policy default",
+    );
+    assert_json_u64(
+        &no_new_report,
+        "/summary/new",
+        1,
+        "explicit no-new should report the same new finding",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn capped_manifest_policy_reports_extra_crate_manifest_as_new_debt() {
     let root = temp_root("e2e-manifest-occurrence-limit");
     write_file(
