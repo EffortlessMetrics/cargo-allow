@@ -34,7 +34,7 @@ macro-expansion, or proof-level coverage.
   remain self-contained for consumer portability. The shared catalog includes
   source-tree inventory, evidence-prefix vocabularies, and evidence diagnostic
   row shapes used by `explain` and `worklist`, plus selector-precision
-  posture fragments used by `diff`.
+  and scope-change posture fragments used by `diff`.
 
 ## Contract Status
 

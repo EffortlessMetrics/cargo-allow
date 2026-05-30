@@ -267,6 +267,44 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
             "common selector precision {field} should use the field vocabulary"
         );
     }
+    assert_enum_equals(
+        "common scope fields",
+        &schema,
+        "/$defs/scope_change_field/enum",
+        &scope_change_fields(),
+    );
+    let scope_change = required_schema_pointer("common", &schema, "/$defs/scope_change");
+    assert_eq!(
+        scope_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common scope_change should reject unknown fields"
+    );
+    assert_required_fields(
+        "common scope_change",
+        scope_change,
+        &["field", "before", "after"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/scope_change/properties/field/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/scope_change_field"),
+        "common scope_change field should use the shared scope field vocabulary"
+    );
+    assert_schema_type_equals(
+        "common scope_change before",
+        &schema,
+        "/$defs/scope_change/properties/before/type",
+        &["string", "null"],
+    );
+    assert_schema_type_equals(
+        "common scope_change after",
+        &schema,
+        "/$defs/scope_change/properties/after/type",
+        &["string", "null"],
+    );
 
     let source_syntax =
         required_schema_pointer("common", &schema, "/$defs/source_syntax_inventory");
@@ -340,6 +378,8 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "scanner_limitation",
         "selector_precision_change",
         "selector_precision_field",
+        "scope_change",
+        "scope_change_field",
         "source_syntax_inventory",
         "traceability_evidence_prefix",
     ]
@@ -664,6 +704,14 @@ fn selector_precision_fields() -> Vec<&'static str> {
         "normalized_snippet_hash",
         "occurrence_limit",
     ]
+}
+
+fn scope_change_fields() -> Vec<&'static str> {
+    allow_diff::ScopeChangeField::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::ScopeChangeField::as_str)
+        .collect()
 }
 
 fn expected_top_level_schema_properties() -> [(&'static str, &'static [&'static str]); 10] {
