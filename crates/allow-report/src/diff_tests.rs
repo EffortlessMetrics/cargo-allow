@@ -135,6 +135,113 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
 }
 
 #[test]
+fn diff_json_report_matches_posture_golden_contract() {
+    let finding_changes = vec![DiffFindingChange {
+        change: "removed",
+        key: "panic|unwrap|src/lib.rs",
+        kind: "panic",
+        family: Some("unwrap"),
+        path: "src/lib.rs",
+    }];
+    let policy_changes = vec![DiffPolicyChange {
+        severity: "improvement",
+        allow_id: "allow-0001",
+        kind: "selector_precision_increased",
+        message: "allow-0001 selector precision increased",
+    }];
+    let report = DiffReport {
+        net_posture: "improved",
+        reviewer_action: "keep narrower posture",
+        summary: DiffPostureSummary {
+            current_failures: 0,
+            new_findings: 0,
+            removed_findings: 1,
+            policy_failures: 0,
+            policy_review_items: 0,
+            policy_improvements: 1,
+        },
+        finding_changes: &finding_changes,
+        policy_changes: &policy_changes,
+    };
+    let context = ReportContext::source_syntax("git_tracked", Some("H:/repo"), Some(2), None);
+    let json = render_json_with_context_and_diff("diff", &[], &[], false, context, report);
+    let expected = format!(
+        r#"{{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.report.v1",
+  "tool": "cargo-allow",
+  "command": "diff",
+  "status": "passed",
+  "failed": false,
+  "claim_boundary": {},
+  "scanner_limitations": {},
+  "inventory": {{
+    "scope": "source_tree",
+    "scanner": "source_syntax",
+    "source": "git_tracked",
+    "root": "H:/repo",
+    "files_scanned": 2
+  }},
+  "summary": {{
+    "findings": 0,
+    "outcomes": 0,
+    "matched": 0,
+    "new": 0,
+    "expired": 0,
+    "review_due": 0,
+    "stale": 0,
+    "ambiguous": 0,
+    "invalid_selector": 0,
+    "evidence_missing": 0,
+    "missing_required_field": 0,
+    "baseline_debt": 0
+  }},
+  "trend": {{
+    "review_items": 0,
+    "new": 0,
+    "expired": 0,
+    "review_due": 0,
+    "stale": 0,
+    "ambiguous": 0,
+    "invalid_selector": 0,
+    "missing_required_field": 0,
+    "evidence_missing": 0,
+    "baseline_debt": 0
+  }},
+  "outcomes": [
+
+  ],
+  "findings": [
+
+  ],
+  "diff": {{
+    "net_posture": "improved",
+    "reviewer_action": "keep narrower posture",
+    "summary": {{
+      "current_failures": 0,
+      "new_findings": 0,
+      "removed_findings": 1,
+      "policy_failures": 0,
+      "policy_review_items": 0,
+      "policy_improvements": 1
+    }},
+    "finding_changes": [
+      {{"change": "removed", "key": "panic|unwrap|src/lib.rs", "kind": "panic", "family": "unwrap", "path": "src/lib.rs"}}
+    ],
+    "policy_changes": [
+      {{"severity": "improvement", "allow_id": "allow-0001", "kind": "selector_precision_increased", "message": "allow-0001 selector precision increased"}}
+    ]
+  }}
+}}
+"#,
+        render_claim_boundary_json(),
+        render_scanner_limitations_json()
+    );
+
+    assert_eq!(json, expected);
+}
+
+#[test]
 #[should_panic(expected = "diff report artifacts support only diff command")]
 fn diff_json_report_renderer_rejects_non_diff_command() {
     let report = DiffReport {
