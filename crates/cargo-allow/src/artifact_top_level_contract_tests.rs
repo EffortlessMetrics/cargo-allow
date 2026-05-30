@@ -4,160 +4,184 @@ use crate::{add, diff, doctor, explain, list, migrate, propose, prune, worklist}
 use serde_json::Value;
 use std::collections::BTreeSet;
 
+struct ArtifactSample {
+    name: &'static str,
+    schema_name: &'static str,
+    json: String,
+    expected_command: &'static str,
+    expected_top_level_keys: &'static [&'static str],
+}
+
 #[test]
 fn command_artifacts_keep_explicit_top_level_contracts() {
-    assert_artifact_contract(
-        "add",
-        &add::sample_add_json_for_contract_test(),
-        allow_report::ADD_SCHEMA_ID,
-        "add",
-        &[
-            "allow_entry",
-            "claim_boundary",
-            "command",
-            "inventory",
-            "options",
-            "scanner_limitations",
-            "schema_id",
-            "schema_version",
-            "selected_finding",
-            "summary",
-            "tool",
-        ],
-    );
-    assert_artifact_contract(
-        "doctor",
-        &doctor::sample_doctor_json_for_contract_test(),
-        allow_report::DOCTOR_SCHEMA_ID,
-        "doctor",
-        &[
-            "claim_boundary",
-            "command",
-            "config",
-            "inventory",
-            "root",
-            "scanner_limitations",
-            "schema_id",
-            "schema_version",
-            "tool",
-        ],
-    );
-    assert_artifact_contract(
-        "explain",
-        &explain::sample_explain_json_for_contract_test(),
-        allow_report::EXPLAIN_SCHEMA_ID,
-        "explain",
-        &[
-            "allow_entry",
-            "claim_boundary",
-            "command",
-            "current_findings",
-            "evidence_references",
-            "inventory",
-            "match_outcomes",
-            "next",
-            "scanner_limitations",
-            "schema_id",
-            "schema_version",
-            "summary",
-            "tool",
-        ],
-    );
-    assert_artifact_contract(
-        "list",
-        &list::sample_list_json_for_contract_test(),
-        allow_report::LIST_SCHEMA_ID,
-        "list",
-        &[
-            "allow_entries",
-            "claim_boundary",
-            "command",
-            "filters",
-            "inventory",
-            "scanner_limitations",
-            "schema_id",
-            "schema_version",
-            "summary",
-            "tool",
-        ],
-    );
-    assert_artifact_contract(
-        "migrate",
-        &migrate::sample_migrate_json_for_contract_test(),
-        allow_report::MIGRATE_SCHEMA_ID,
-        "migrate",
-        &[
-            "claim_boundary",
-            "command",
-            "input",
-            "inventory",
-            "notes",
-            "output",
-            "scanner_limitations",
-            "schema_id",
-            "schema_version",
-            "summary",
-            "tool",
-        ],
-    );
-    assert_artifact_contract(
-        "propose",
-        &propose::sample_propose_json_for_contract_test(),
-        allow_report::PROPOSE_SCHEMA_ID,
-        "propose",
-        &[
-            "claim_boundary",
-            "command",
-            "generated_entry_defaults",
-            "inventory",
-            "options",
-            "scanner_limitations",
-            "schema_id",
-            "schema_version",
-            "summary",
-            "tool",
-        ],
-    );
-    assert_artifact_contract(
-        "prune",
-        &prune::sample_prune_json_for_contract_test(),
-        allow_report::PRUNE_SCHEMA_ID,
-        "prune",
-        &[
-            "claim_boundary",
-            "command",
-            "inventory",
-            "mode",
-            "scanner_limitations",
-            "schema_id",
-            "schema_version",
-            "stale_entries",
-            "summary",
-            "tool",
-        ],
-    );
-    assert_artifact_contract(
-        "worklist",
-        &worklist::sample_worklist_json_for_contract_test(),
-        allow_report::WORKLIST_SCHEMA_ID,
-        "worklist",
-        &[
-            "claim_boundary",
-            "command",
-            "filters",
-            "inventory",
-            "scanner_limitations",
-            "schema_id",
-            "schema_version",
-            "summary",
-            "tool",
-            "work_items",
-        ],
-    );
+    let samples = command_artifact_samples();
+    assert_sample_coverage_matches_fixed_command_contracts(&samples);
+    for sample in samples {
+        assert_artifact_contract(&sample);
+    }
 }
 
 #[test]
 fn core_artifacts_keep_explicit_top_level_contracts() {
+    for sample in core_artifact_samples() {
+        assert_artifact_contract(&sample);
+    }
+}
+
+fn command_artifact_samples() -> Vec<ArtifactSample> {
+    vec![
+        ArtifactSample {
+            name: "add",
+            schema_name: "add",
+            json: add::sample_add_json_for_contract_test(),
+            expected_command: "add",
+            expected_top_level_keys: &[
+                "allow_entry",
+                "claim_boundary",
+                "command",
+                "inventory",
+                "options",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "selected_finding",
+                "summary",
+                "tool",
+            ],
+        },
+        ArtifactSample {
+            name: "doctor",
+            schema_name: "doctor",
+            json: doctor::sample_doctor_json_for_contract_test(),
+            expected_command: "doctor",
+            expected_top_level_keys: &[
+                "claim_boundary",
+                "command",
+                "config",
+                "inventory",
+                "root",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "tool",
+            ],
+        },
+        ArtifactSample {
+            name: "explain",
+            schema_name: "explain",
+            json: explain::sample_explain_json_for_contract_test(),
+            expected_command: "explain",
+            expected_top_level_keys: &[
+                "allow_entry",
+                "claim_boundary",
+                "command",
+                "current_findings",
+                "evidence_references",
+                "inventory",
+                "match_outcomes",
+                "next",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        },
+        ArtifactSample {
+            name: "list",
+            schema_name: "list",
+            json: list::sample_list_json_for_contract_test(),
+            expected_command: "list",
+            expected_top_level_keys: &[
+                "allow_entries",
+                "claim_boundary",
+                "command",
+                "filters",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        },
+        ArtifactSample {
+            name: "migrate",
+            schema_name: "migrate",
+            json: migrate::sample_migrate_json_for_contract_test(),
+            expected_command: "migrate",
+            expected_top_level_keys: &[
+                "claim_boundary",
+                "command",
+                "input",
+                "inventory",
+                "notes",
+                "output",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        },
+        ArtifactSample {
+            name: "propose",
+            schema_name: "propose",
+            json: propose::sample_propose_json_for_contract_test(),
+            expected_command: "propose",
+            expected_top_level_keys: &[
+                "claim_boundary",
+                "command",
+                "generated_entry_defaults",
+                "inventory",
+                "options",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        },
+        ArtifactSample {
+            name: "prune",
+            schema_name: "prune",
+            json: prune::sample_prune_json_for_contract_test(),
+            expected_command: "prune",
+            expected_top_level_keys: &[
+                "claim_boundary",
+                "command",
+                "inventory",
+                "mode",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "stale_entries",
+                "summary",
+                "tool",
+            ],
+        },
+        ArtifactSample {
+            name: "worklist",
+            schema_name: "worklist",
+            json: worklist::sample_worklist_json_for_contract_test(),
+            expected_command: "worklist",
+            expected_top_level_keys: &[
+                "claim_boundary",
+                "command",
+                "filters",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+                "work_items",
+            ],
+        },
+    ]
+}
+
+fn core_artifact_samples() -> Vec<ArtifactSample> {
     let report_json = allow_report::render_json_with_context(
         "audit",
         &[],
@@ -170,28 +194,6 @@ fn core_artifacts_keep_explicit_top_level_contracts() {
             None,
         ),
     );
-    assert_artifact_contract(
-        "report",
-        &report_json,
-        allow_report::REPORT_SCHEMA_ID,
-        "audit",
-        &[
-            "claim_boundary",
-            "command",
-            "failed",
-            "findings",
-            "inventory",
-            "outcomes",
-            "scanner_limitations",
-            "schema_id",
-            "schema_version",
-            "status",
-            "summary",
-            "tool",
-            "trend",
-        ],
-    );
-
     let receipt_json = allow_report::render_receipt_with_context(
         "check",
         &[],
@@ -203,25 +205,6 @@ fn core_artifacts_keep_explicit_top_level_contracts() {
             None,
         ),
     );
-    assert_artifact_contract(
-        "receipt",
-        &receipt_json,
-        allow_report::RECEIPT_SCHEMA_ID,
-        "check",
-        &[
-            "claim_boundary",
-            "command",
-            "counts",
-            "failed",
-            "inventory",
-            "scanner_limitations",
-            "schema_id",
-            "schema_version",
-            "status",
-            "tool",
-        ],
-    );
-
     let diff_base_json = allow_report::render_json_with_context(
         "diff",
         &[],
@@ -235,68 +218,127 @@ fn core_artifacts_keep_explicit_top_level_contracts() {
         ),
     );
     let diff_json = diff::render_diff_json_with_posture(diff_base_json, 0, &[], &[], &[]);
-    assert_artifact_contract(
-        "diff",
-        &diff_json,
-        allow_report::REPORT_SCHEMA_ID,
-        "diff",
-        &[
-            "claim_boundary",
-            "command",
-            "diff",
-            "failed",
-            "findings",
-            "inventory",
-            "outcomes",
-            "scanner_limitations",
-            "schema_id",
-            "schema_version",
-            "status",
-            "summary",
-            "tool",
-            "trend",
-        ],
+    vec![
+        ArtifactSample {
+            name: "report",
+            schema_name: "report",
+            json: report_json,
+            expected_command: "audit",
+            expected_top_level_keys: &[
+                "claim_boundary",
+                "command",
+                "failed",
+                "findings",
+                "inventory",
+                "outcomes",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "status",
+                "summary",
+                "tool",
+                "trend",
+            ],
+        },
+        ArtifactSample {
+            name: "receipt",
+            schema_name: "receipt",
+            json: receipt_json,
+            expected_command: "check",
+            expected_top_level_keys: &[
+                "claim_boundary",
+                "command",
+                "counts",
+                "failed",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "status",
+                "tool",
+            ],
+        },
+        ArtifactSample {
+            name: "diff",
+            schema_name: "report",
+            json: diff_json,
+            expected_command: "diff",
+            expected_top_level_keys: &[
+                "claim_boundary",
+                "command",
+                "diff",
+                "failed",
+                "findings",
+                "inventory",
+                "outcomes",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "status",
+                "summary",
+                "tool",
+                "trend",
+            ],
+        },
+    ]
+}
+
+fn assert_sample_coverage_matches_fixed_command_contracts(samples: &[ArtifactSample]) {
+    let expected = schema_contracts()
+        .into_iter()
+        .filter(|contract| contract.fixed_command.is_some())
+        .map(|contract| contract.name)
+        .collect::<BTreeSet<_>>();
+    let actual = samples
+        .iter()
+        .map(|sample| sample.schema_name)
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        actual, expected,
+        "every fixed-command artifact contract should have top-level sample coverage"
     );
 }
 
-fn assert_artifact_contract(
-    name: &str,
-    json: &str,
-    expected_schema_id: &str,
-    expected_command: &str,
-    expected_top_level_keys: &[&str],
-) {
-    let value = parse_json_artifact(name, json, expected_schema_id, expected_command);
+fn schema_contract_by_name(name: &str) -> crate::artifact_schema_support::SchemaContract {
+    schema_contracts()
+        .into_iter()
+        .find(|contract| contract.name == name)
+        .unwrap_or_else(|| std::panic::panic_any(format!("missing schema contract {name}")))
+}
+
+fn assert_artifact_contract(sample: &ArtifactSample) {
+    let contract = schema_contract_by_name(sample.schema_name);
+    let value = parse_json_artifact(
+        sample.name,
+        &sample.json,
+        contract.schema_id,
+        sample.expected_command,
+    );
     assert_eq!(
         value.get("tool").and_then(Value::as_str),
         Some("cargo-allow"),
-        "{name} tool"
+        "{} tool",
+        sample.name
     );
-    assert_top_level_keys(name, &value, expected_top_level_keys);
-    assert_schema_covers_sample_top_level_keys(name, expected_schema_id, &value);
-    assert_sample_inventory_scanner_matches_schema(name, expected_schema_id, &value);
-    assert_string_array_eq(name, &value, "claim_boundary", allow_report::CLAIM_BOUNDARY);
+    assert_top_level_keys(sample.name, &value, sample.expected_top_level_keys);
+    assert_schema_covers_sample_top_level_keys(sample.name, contract.name, &value);
+    assert_sample_inventory_scanner_matches_schema(sample.name, contract.name, &value);
     assert_string_array_eq(
-        name,
+        sample.name,
+        &value,
+        "claim_boundary",
+        allow_report::CLAIM_BOUNDARY,
+    );
+    assert_string_array_eq(
+        sample.name,
         &value,
         "scanner_limitations",
         allow_report::SCANNER_LIMITATIONS,
     );
 }
 
-fn assert_sample_inventory_scanner_matches_schema(
-    name: &str,
-    expected_schema_id: &str,
-    value: &Value,
-) {
-    let contract = schema_contracts()
-        .into_iter()
-        .find(|contract| contract.schema_id == expected_schema_id)
-        .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
-                "missing schema contract for {name} schema_id {expected_schema_id}"
-            ))
-        });
+fn assert_sample_inventory_scanner_matches_schema(name: &str, schema_name: &str, value: &Value) {
+    let contract = schema_contract_by_name(schema_name);
     assert_eq!(
         value.pointer("/inventory/scanner").and_then(Value::as_str),
         Some(contract.inventory_scanner),
@@ -313,15 +355,8 @@ fn assert_top_level_keys(name: &str, value: &Value, expected: &[&str]) {
     assert_eq!(actual, expected, "{name} top-level keys");
 }
 
-fn assert_schema_covers_sample_top_level_keys(name: &str, expected_schema_id: &str, value: &Value) {
-    let contract = schema_contracts()
-        .into_iter()
-        .find(|contract| contract.schema_id == expected_schema_id)
-        .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
-                "missing schema contract for {name} schema_id {expected_schema_id}"
-            ))
-        });
+fn assert_schema_covers_sample_top_level_keys(name: &str, schema_name: &str, value: &Value) {
+    let contract = schema_contract_by_name(schema_name);
     let schema = parse_schema(contract.name, contract.schema);
     let Some(sample) = value.as_object() else {
         std::panic::panic_any(format!("{name} sample should be a JSON object"));
