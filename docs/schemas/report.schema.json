@@ -631,6 +631,10 @@
         "evidence": {
           "$ref": "#/$defs/evidence_change",
           "description": "Optional structured evidence/link delta for evidence_added, evidence_removed, link_added, and link_removed policy changes."
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata_change",
+          "description": "Optional structured owner/reason/classification delta for metadata and baseline_debt classification policy changes."
         }
       }
     },
@@ -663,6 +667,28 @@
     },
     "evidence_change_field": {
       "enum": ["evidence", "links"]
+    },
+    "metadata_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "before", "after"],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/metadata_change_field",
+          "description": "Policy metadata field that changed."
+        },
+        "before": {
+          "type": ["string", "null"],
+          "description": "Policy metadata value before the policy change when available."
+        },
+        "after": {
+          "type": ["string", "null"],
+          "description": "Policy metadata value after the policy change when available."
+        }
+      }
+    },
+    "metadata_change_field": {
+      "enum": ["owner", "reason", "classification"]
     },
     "lifecycle_change": {
       "type": "object",

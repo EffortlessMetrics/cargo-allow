@@ -206,6 +206,11 @@ the changed lifecycle field and before/after values.
 Rows with `evidence_added`, `evidence_removed`, `link_added`, or `link_removed`
 may also include an optional `evidence` object with the changed collection and
 added/removed values.
+Rows with `owner_added`, `owner_changed`, `owner_removed`, `owner_unassigned`,
+`reason_added`, `reason_changed`, `reason_removed`, `classification_added`,
+`classification_changed`, `classification_removed`,
+`baseline_debt_introduced`, or `baseline_debt_normalized` may also include an
+optional `metadata` object with the changed field and before/after values.
 
 ## Evidence Prefix Vocabulary
 

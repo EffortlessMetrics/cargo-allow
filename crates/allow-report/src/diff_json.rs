@@ -138,6 +138,15 @@ pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
                 json_string_array(evidence.added)
             ));
         }
+        if let Some(metadata) = change.metadata {
+            out.push_str(", ");
+            out.push_str(&format!(
+                "\"metadata\": {{\"field\": \"{}\", \"before\": {}, \"after\": {}}}",
+                json_escape(metadata.field),
+                option_json(metadata.before),
+                option_json(metadata.after)
+            ));
+        }
         out.push('}');
     }
     out.push_str("\n    ]\n");
