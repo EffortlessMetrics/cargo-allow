@@ -37,6 +37,42 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(json.contains("\"unsafe_entries\": 2"));
     assert!(json.contains("\"entries_with_evidence\": 3"));
     assert!(json.contains("\"notes\": \"migration notes\""));
+    let expected = format!(
+        r#"{{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.migrate.v1",
+  "tool": "cargo-allow",
+  "command": "migrate",
+  "claim_boundary": {},
+  "scanner_limitations": {},
+  "inventory": {{
+    "scope": "source_tree",
+    "scanner": "policy_migration",
+    "source": "git_tracked",
+    "root": "H:/Code/Rust/cargo-allow",
+    "files_scanned": 76
+  }},
+  "input": {{
+    "kind": "repo_policy",
+    "path": "policy"
+  }},
+  "output": {{
+    "path": "policy/allow.toml",
+    "force": true
+  }},
+  "summary": {{
+    "allow_entries": 12,
+    "baseline_debt": 5,
+    "unsafe_entries": 2,
+    "entries_with_evidence": 3
+  }},
+  "notes": "migration notes"
+}}
+"#,
+        render_claim_boundary_json(),
+        render_scanner_limitations_json()
+    );
+    assert_eq!(json, expected);
 
     let text = render_migrate_human(report);
 
