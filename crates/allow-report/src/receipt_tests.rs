@@ -28,6 +28,57 @@ fn receipt_exposes_v1_schema_contract() {
 }
 
 #[test]
+fn receipt_matches_empty_check_golden_contract() {
+    let json = render_receipt_with_context(
+        "check",
+        &[],
+        false,
+        ReportContext::source_syntax(
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(42),
+            None,
+        ),
+    );
+    let expected = format!(
+        r#"{{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.receipt.v1",
+  "tool": "cargo-allow",
+  "command": "check",
+  "status": "passed",
+  "failed": false,
+  "claim_boundary": {},
+  "scanner_limitations": {},
+  "inventory": {{
+    "scope": "source_tree",
+    "scanner": "source_syntax",
+    "source": "git_tracked",
+    "root": "H:/Code/Rust/cargo-allow",
+    "files_scanned": 42
+  }},
+  "counts": {{
+    "matched": 0,
+    "new": 0,
+    "expired": 0,
+    "review_due": 0,
+    "stale": 0,
+    "ambiguous": 0,
+    "invalid_selector": 0,
+    "evidence_missing": 0,
+    "missing_required_field": 0,
+    "baseline_debt": 0
+  }}
+}}
+"#,
+        render_claim_boundary_json(),
+        render_scanner_limitations_json()
+    );
+
+    assert_eq!(json, expected);
+}
+
+#[test]
 #[should_panic(expected = "receipt artifacts support only the check command")]
 fn receipt_rejects_unknown_artifact_command() {
     let _ = render_receipt_with_context("audit", &[], false, ReportContext::default());
