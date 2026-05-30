@@ -270,6 +270,24 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         );
     }
     assert_enum_equals(
+        "common finding posture kinds",
+        &schema,
+        "/$defs/finding_posture_kind/enum",
+        &finding_posture_kinds(),
+    );
+    assert_enum_equals(
+        "common policy change severities",
+        &schema,
+        "/$defs/policy_change_severity/enum",
+        &policy_change_severities(),
+    );
+    assert_enum_equals(
+        "common policy change kinds",
+        &schema,
+        "/$defs/policy_change_kind/enum",
+        &policy_change_kinds(),
+    );
+    assert_enum_equals(
         "common selector precision fields",
         &schema,
         "/$defs/selector_precision_field/enum",
@@ -495,11 +513,14 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "evidence_change_field",
         "evidence_reference",
         "evidence_reference_status",
+        "finding_posture_kind",
         "inventory_source",
         "local_file_evidence_prefix",
         "lifecycle_change",
         "lifecycle_change_field",
         "occurrence_limit_change",
+        "policy_change_kind",
+        "policy_change_severity",
         "policy_migration_inventory",
         "recognized_evidence_prefix",
         "scanner_limitation",
@@ -838,6 +859,30 @@ fn evidence_change_fields() -> Vec<&'static str> {
         .iter()
         .copied()
         .map(allow_diff::EvidenceChangeField::as_str)
+        .collect()
+}
+
+fn finding_posture_kinds() -> Vec<&'static str> {
+    allow_diff::FindingPostureKind::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::FindingPostureKind::as_str)
+        .collect()
+}
+
+fn policy_change_severities() -> Vec<&'static str> {
+    allow_diff::PolicyChangeSeverity::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::PolicyChangeSeverity::as_str)
+        .collect()
+}
+
+fn policy_change_kinds() -> Vec<&'static str> {
+    allow_diff::PolicyChangeKind::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::PolicyChangeKind::as_str)
         .collect()
 }
 
