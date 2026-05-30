@@ -1,7 +1,8 @@
+use crate::contracts::RECEIPT_ARTIFACT;
 use crate::json::{bool_json, push_json_artifact_header, push_json_artifact_source_context};
 use crate::{
-    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, RECEIPT_SCHEMA_ID, RECEIPT_SCHEMA_VERSION,
-    ReportContext, Summary, baseline_debt_count, render_count_fields_with_policy_context,
+    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, ReportContext, Summary, baseline_debt_count,
+    render_count_fields_with_policy_context,
 };
 use allow_core::MatchOutcome;
 
@@ -18,7 +19,7 @@ pub fn render_receipt_with_context(
     let summary = Summary::from_outcomes(outcomes);
     let mut out = String::new();
     out.push_str("{\n");
-    push_json_artifact_header(&mut out, RECEIPT_SCHEMA_VERSION, RECEIPT_SCHEMA_ID, command);
+    push_json_artifact_header(&mut out, RECEIPT_ARTIFACT, command);
     out.push_str(&format!(
         "  \"status\": \"{}\",\n",
         if failed {

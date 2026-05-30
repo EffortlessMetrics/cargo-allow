@@ -1,8 +1,7 @@
-use crate::json::{bool_json, json_string_array, option_json, push_json_artifact_preamble};
+use crate::contracts::WORKLIST_ARTIFACT;
+use crate::json::{bool_json, json_string_array, option_json, push_json_fixed_artifact_preamble};
 use crate::worklist_summary::{worklist_difficulty_count, worklist_risk_count};
-use crate::{
-    InventoryContext, WORKLIST_SCHEMA_ID, WORKLIST_SCHEMA_VERSION, WorklistFilters, WorklistItem,
-};
+use crate::{InventoryContext, WorklistFilters, WorklistItem};
 use allow_core::json_escape;
 
 pub fn render_worklist_json(
@@ -12,13 +11,7 @@ pub fn render_worklist_json(
 ) -> String {
     let mut out = String::new();
     out.push_str("{\n");
-    push_json_artifact_preamble(
-        &mut out,
-        WORKLIST_SCHEMA_VERSION,
-        WORKLIST_SCHEMA_ID,
-        "worklist",
-        inventory,
-    );
+    push_json_fixed_artifact_preamble(&mut out, WORKLIST_ARTIFACT, inventory);
     out.push_str("  \"filters\": ");
     out.push_str(&render_worklist_filters_json(filters, "  "));
     out.push_str(",\n");

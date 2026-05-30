@@ -1,7 +1,8 @@
-use crate::json::{bool_json, option_json, push_json_artifact_preamble};
+use crate::contracts::ADD_ARTIFACT;
+use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
 use crate::{
-    ADD_SCHEMA_ID, ADD_SCHEMA_VERSION, AddReport, finding_location_text,
-    render_explain_finding_json, render_last_seen_json, render_selector_json,
+    AddReport, finding_location_text, render_explain_finding_json, render_last_seen_json,
+    render_selector_json,
 };
 use allow_core::{json_escape, normalize_path};
 
@@ -37,13 +38,7 @@ pub fn render_add_json(report: AddReport<'_>) -> String {
     let path = entry.path.as_ref().map(normalize_path);
     let mut out = String::new();
     out.push_str("{\n");
-    push_json_artifact_preamble(
-        &mut out,
-        ADD_SCHEMA_VERSION,
-        ADD_SCHEMA_ID,
-        "add",
-        report.inventory,
-    );
+    push_json_fixed_artifact_preamble(&mut out, ADD_ARTIFACT, report.inventory);
     out.push_str("  \"options\": {\n");
     out.push_str(&format!(
         "    \"policy_output\": {},\n",
