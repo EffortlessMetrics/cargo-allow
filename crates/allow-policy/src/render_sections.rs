@@ -1,6 +1,6 @@
 use allow_core::{AllowConfig, Requirements, WorkspaceConfig};
 
-use crate::render_toml::{escape_toml, render_array};
+use crate::render_toml::{escape_toml, render_array, render_bool_field};
 
 pub(crate) fn render_policy_header(out: &mut String, cfg: &AllowConfig) {
     out.push_str(&format!(
@@ -72,11 +72,4 @@ pub(crate) fn render_requirements(out: &mut String, requirements: &Requirements)
         "safety_comment_required",
         requirements.unsafe_safety_comment_required,
     );
-}
-
-fn render_bool_field(out: &mut String, name: &str, value: bool) {
-    out.push_str(name);
-    out.push_str(" = ");
-    out.push_str(if value { "true" } else { "false" });
-    out.push('\n');
 }

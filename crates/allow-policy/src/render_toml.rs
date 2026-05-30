@@ -23,3 +23,23 @@ pub(crate) fn render_array(values: &[String]) -> String {
         .collect::<Vec<_>>()
         .join(", ")
 }
+
+pub(crate) fn render_string_field(out: &mut String, name: &str, value: &str) {
+    out.push_str(name);
+    out.push_str(" = \"");
+    out.push_str(&escape_toml(value));
+    out.push_str("\"\n");
+}
+
+pub(crate) fn render_optional_string_field(out: &mut String, name: &str, value: Option<&str>) {
+    if let Some(value) = value {
+        render_string_field(out, name, value);
+    }
+}
+
+pub(crate) fn render_bool_field(out: &mut String, name: &str, value: bool) {
+    out.push_str(name);
+    out.push_str(" = ");
+    out.push_str(if value { "true" } else { "false" });
+    out.push('\n');
+}
