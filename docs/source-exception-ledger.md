@@ -33,6 +33,10 @@ Each retained exception should have:
 - `[allow.selector]`: structural selector.
 - `[allow.last_seen]`: review hint only.
 
+`owner = "unowned"` is reserved for generated `classification = "baseline_debt"`
+entries. Reviewed retained exceptions must use a concrete owner so accountability
+does not disappear after adoption.
+
 `path` scopes are exact source-tree paths. Source-tree glob syntax is
 intentionally small and build-independent; canonical policy globs support `*`,
 `?`, and whole-segment `**`. Bracket classes such as `[ab]` and brace

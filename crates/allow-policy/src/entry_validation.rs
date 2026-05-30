@@ -32,6 +32,15 @@ pub(crate) fn validate_allow_entry_requirements(
     if requirements.owner_required && entry.owner.trim().is_empty() {
         return Err(CargoAllowError::new(format!("{} missing owner", entry.id)));
     }
+    if requirements.owner_required
+        && entry.owner.trim() == "unowned"
+        && entry.classification != "baseline_debt"
+    {
+        return Err(CargoAllowError::new(format!(
+            "{} missing concrete owner",
+            entry.id
+        )));
+    }
     if requirements.reason_required && entry.reason.trim().is_empty() {
         return Err(CargoAllowError::new(format!("{} missing reason", entry.id)));
     }
