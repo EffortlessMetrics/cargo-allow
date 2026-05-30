@@ -41,9 +41,10 @@ The governed surfaces are:
 - generated-code and ignored-surface carveouts.
 - legacy policy exceptions from bespoke xtasks.
 
-## Current MVP
+## Current Product Surface
 
-The current MVP keeps the scanner and policy surface narrow. It provides:
+The current product keeps the scanner and policy surface scoped to the source
+tree. It provides:
 
 - `cargo-allow audit`
 - `cargo-allow check`
@@ -55,8 +56,9 @@ The current MVP keeps the scanner and policy surface narrow. It provides:
 - `cargo-allow prune`
 - `cargo-allow doctor`
 
-The MVP scanner is source-syntax based and line-oriented. The matcher already
-uses structural selectors where the current scanner can provide them:
+The current scanner is based on source syntax and remains line-oriented where
+needed. The matcher already uses structural selectors where the current scanner
+can provide them:
 
 - finding kind and family.
 - path or exact glob.
@@ -125,14 +127,17 @@ Matching must move toward durable source identity:
 - stale entries are reported instead of silently retained.
 - generated baseline debt remains uncomfortable and temporary.
 
-Future matching should detect policy weakening and review-required policy
-changes, including:
+The diff posture analysis detects policy weakening, review-required policy
+changes, and policy improvements, including:
 
 - exact path changed to broad glob.
 - selector precision decreased.
 - expiry extended for explicit review.
 - owner, reason, classification, or evidence removed.
 - baseline debt added or normalized as permanent approval.
+- occurrence-limit loosening or tightening.
+- evidence, owner, reason, classification, and lifecycle additions.
+- stale allow removals and source finding additions/removals.
 
 ## Evidence Model
 
@@ -175,8 +180,8 @@ The desired report artifacts are:
 - `target/cargo-allow/pr-summary.md`
 - `target/cargo-allow/worklist.json`
 
-All machine-readable formats need explicit schema versions before users or
-agents depend on them.
+Machine-readable formats carry explicit schema IDs and versions so users,
+review automation, and agents can depend on the JSON artifacts deliberately.
 
 ## Non-Goals
 
