@@ -54,6 +54,14 @@ pub(crate) fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
             )));
         }
     }
+    if let (Some(review_after), Some(expires)) = (review_after, expires) {
+        if review_after.days_until(expires) < 0 {
+            return Err(CargoAllowError::new(format!(
+                "{} review_after must not be after expires",
+                entry.id
+            )));
+        }
+    }
     if entry.classification == "baseline_debt" {
         let expires = expires.ok_or_else(|| {
             CargoAllowError::new(format!("{} baseline_debt requires expires", entry.id))

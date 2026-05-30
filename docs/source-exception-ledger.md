@@ -235,9 +235,10 @@ Do not auto-extend expiry. Extending expiry is a policy decision and should be
 visible in review.
 
 The validator rejects invalid calendar dates, lifecycle dates that move backward
-from `created`, empty or parent-directory scopes, source-code selectors that
-contain no structural identity beyond path/glob scope and line hints, and
-non-source selectors that contain no structural identity or selector glob.
+from `created`, `review_after` dates later than `expires`, empty or
+parent-directory scopes, source-code selectors that contain no structural
+identity beyond path/glob scope and line hints, and non-source selectors that
+contain no structural identity or selector glob.
 
 Diff mode reports expiry or review-date extensions/removals as review-required
 lifecycle changes, and added or earlier lifecycle dates as policy improvements.

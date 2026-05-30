@@ -481,6 +481,29 @@ fn rejects_expiry_date_before_created() {
 }
 
 #[test]
+fn rejects_review_after_later_than_expiry() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "bad-review-expiry-order"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                review_after = "2026-09-01"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains("review_after must not be after expires"));
+}
+
+#[test]
 fn rejects_never_expiry_without_review_after_when_lifecycle_required() {
     let err = parse_err(
         r#"
