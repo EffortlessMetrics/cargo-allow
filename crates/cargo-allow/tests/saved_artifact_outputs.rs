@@ -2,6 +2,7 @@ mod support;
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use support::{
     assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
@@ -202,6 +203,45 @@ fn saved_summary_outputs_keep_policy_and_summary_streams_separate() {
     ]);
     assert_policy_output(&migrate_policy);
     assert_policy_migration_artifact(&migrate_summary, allow_report::MIGRATE_SCHEMA_ID, "migrate");
+}
+
+#[test]
+fn saved_diff_output_keeps_source_tree_contract() {
+    let fixture = SourceTreeFixture::new("saved-diff-contract");
+    fixture.write_minimal_policy();
+    fixture.write_panic_source();
+    fixture.append_saved_artifact_allow_entries();
+    commit_fixture_base(&fixture.root);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("unchanged"),
+        "saved diff artifact should include unchanged PR posture"
+    );
 }
 
 #[test]
@@ -930,12 +970,26 @@ fn assert_source_syntax_artifact(
     expected_schema_id: &str,
     expected_command: &str,
 ) -> serde_json::Value {
+    assert_source_syntax_artifact_with_inventory(
+        path,
+        expected_schema_id,
+        expected_command,
+        "filesystem_fallback",
+    )
+}
+
+fn assert_source_syntax_artifact_with_inventory(
+    path: &Path,
+    expected_schema_id: &str,
+    expected_command: &str,
+    expected_source: &str,
+) -> serde_json::Value {
     let value =
         assert_saved_json_artifact(path, expected_command, expected_schema_id, expected_command);
     assert_inventory(
         &value,
         allow_report::INVENTORY_SCANNER_SOURCE_SYNTAX,
-        "filesystem_fallback",
+        expected_source,
     );
     value
 }
@@ -988,6 +1042,33 @@ fn assert_policy_output(path: &Path) {
 fn path_arg(path: &Path) -> &str {
     path.to_str()
         .unwrap_or_else(|| std::panic::panic_any(format!("non-UTF-8 path: {}", path.display())))
+}
+
+fn commit_fixture_base(root: &Path) {
+    git(root, &["init"]);
+    git(
+        root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(root, &["config", "user.name", "cargo-allow test"]);
+    git(root, &["add", "."]);
+    git(root, &["commit", "-m", "base"]);
+}
+
+fn git(root: &Path, args: &[&str]) {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+    if !output.status.success() {
+        std::panic::panic_any(format!(
+            "git {args:?} failed: stdout=`{}` stderr=`{}`",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
 }
 
 struct SourceTreeFixture {
