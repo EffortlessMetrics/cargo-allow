@@ -6,6 +6,7 @@ pub struct ListFilters<'a> {
     pub classification: Option<&'a str>,
     pub path: Option<&'a str>,
     pub source_package: Option<&'a str>,
+    pub allow_id: Option<&'a str>,
     pub status: Option<&'a str>,
     pub expired: bool,
     pub review_due: bool,

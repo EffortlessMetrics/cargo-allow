@@ -82,6 +82,7 @@ pub(crate) fn sample_list_json_for_contract_test() -> String {
         classification: Some("baseline_debt"),
         path: Some("src/lib.rs"),
         source_package: Some("allow-core"),
+        allow_id: Some("allow-json"),
         status: Some("baseline_debt"),
         expired: false,
         review_due: false,

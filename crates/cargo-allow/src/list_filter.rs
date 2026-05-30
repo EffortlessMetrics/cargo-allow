@@ -33,6 +33,11 @@ pub(super) fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool
             return false;
         }
     }
+    if let Some(allow_id) = filters.allow_id {
+        if row.id != allow_id {
+            return false;
+        }
+    }
     if let Some(status) = filters.status {
         if row.status.as_str() != status {
             return false;

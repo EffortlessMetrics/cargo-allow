@@ -131,6 +131,7 @@
         "classification",
         "path",
         "source_package",
+        "allow_id",
         "status",
         "expired",
         "review_due",
@@ -163,6 +164,10 @@
         "source_package": {
           "type": ["string", "null"],
           "description": "Applied --source-package filter, or null when all scanner-provided source package contexts are included."
+        },
+        "allow_id": {
+          "type": ["string", "null"],
+          "description": "Applied --allow-id filter, or null when all durable allow IDs are included."
         },
         "status": {
           "type": ["string", "null"],

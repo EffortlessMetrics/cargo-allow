@@ -31,6 +31,9 @@ pub(crate) struct ListArgs {
     /// Filter allow entries by scanner-provided source-tree package context.
     #[arg(long)]
     pub(super) source_package: Option<String>,
+    /// Filter allow entries by durable allow ID.
+    #[arg(long)]
+    pub(super) allow_id: Option<String>,
     /// Filter allow entries by current match status.
     #[arg(
         long,
@@ -91,6 +94,7 @@ pub(super) fn list_filters(args: &ListArgs) -> CargoAllowResult<ListFilters<'_>>
         classification: args.classification.as_deref(),
         path: args.path.as_deref(),
         source_package: args.source_package.as_deref(),
+        allow_id: args.allow_id.as_deref(),
         status: args.status.as_deref(),
         expired: args.expired,
         review_due: args.review_due,

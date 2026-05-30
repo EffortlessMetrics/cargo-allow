@@ -29,6 +29,7 @@ pub(super) struct ListFilters<'a> {
     pub(super) classification: Option<&'a str>,
     pub(super) path: Option<&'a str>,
     pub(super) source_package: Option<&'a str>,
+    pub(super) allow_id: Option<&'a str>,
     pub(super) status: Option<&'a str>,
     pub(super) expired: bool,
     pub(super) review_due: bool,

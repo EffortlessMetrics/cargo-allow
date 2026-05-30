@@ -49,7 +49,8 @@ Treat `work-*` IDs as queue-local handles; cite `allow_id` when you need a
 durable policy reference, and use `--allow-id <id>` to reopen that policy-backed
 slice.
 Use the included owner, classification, and reason fields to route the work, but
-verify details with `cargo-allow explain <allow_id>` before changing policy.
+verify details with `cargo-allow explain <allow_id>` and
+`cargo-allow list --allow-id <allow_id> --format json` before changing policy.
 Use lifecycle dates and evidence counts to prioritize expiring or weakly
 evidenced policy debt.
 If a work item includes `source_package`, use it only as source-tree context for

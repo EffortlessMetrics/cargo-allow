@@ -31,8 +31,15 @@ fn saved_worklist_output_includes_broken_evidence_items() {
         value
             .pointer("/work_items/0/proof_commands/1")
             .and_then(serde_json::Value::as_str),
+        Some("cargo-allow list --allow-id allow-broken-evidence --format json"),
+        "worklist list allow-id proof command"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/proof_commands/2")
+            .and_then(serde_json::Value::as_str),
         Some("cargo-allow worklist --allow-id allow-broken-evidence --format json"),
-        "worklist allow-id proof command"
+        "worklist worklist allow-id proof command"
     );
 }
 
@@ -104,8 +111,15 @@ fn saved_worklist_output_includes_policy_missing_evidence_items() {
         value
             .pointer("/work_items/0/proof_commands/1")
             .and_then(serde_json::Value::as_str),
+        Some("cargo-allow list --allow-id allow-missing-evidence --format json"),
+        "worklist list allow-id proof command"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/proof_commands/2")
+            .and_then(serde_json::Value::as_str),
         Some("cargo-allow worklist --allow-id allow-missing-evidence --format json"),
-        "worklist allow-id proof command"
+        "worklist worklist allow-id proof command"
     );
 }
 
@@ -237,8 +251,15 @@ fn saved_worklist_output_includes_policy_baseline_debt_items() {
         value
             .pointer("/work_items/0/proof_commands/1")
             .and_then(serde_json::Value::as_str),
+        Some("cargo-allow list --allow-id allow-baseline-debt --format json"),
+        "worklist list allow-id proof command"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/proof_commands/2")
+            .and_then(serde_json::Value::as_str),
         Some("cargo-allow worklist --allow-id allow-baseline-debt --format json"),
-        "worklist allow-id proof command"
+        "worklist worklist allow-id proof command"
     );
 }
 

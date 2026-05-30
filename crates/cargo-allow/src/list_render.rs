@@ -58,6 +58,7 @@ fn report_list_filters<'a>(
         classification: filters.classification,
         path: filters.path,
         source_package: filters.source_package,
+        allow_id: filters.allow_id,
         status: filters.status,
         expired: filters.expired,
         review_due: filters.review_due,
