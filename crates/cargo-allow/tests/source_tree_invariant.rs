@@ -9,20 +9,23 @@ fn rust_sources_do_not_spawn_cargo_or_compiler_tools() {
     for path in rust_files(&root.join("crates")) {
         let text = fs::read_to_string(&path)
             .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
-        for (call, tool) in [
-            ("Command::new(", "\"cargo\""),
-            ("Command::new(", "\"rustc\""),
-            ("Command::new(", "\"clippy\""),
-            ("Command::new(", "\"cargo-clippy\""),
-            ("Command::new(", "\"cargo-deny\""),
-            ("Command::new(", "\"cargo-vet\""),
-            ("Command::new(", "\"ripr\""),
-            ("Command::new(", "\"unsafe-review\""),
+        let compact_text = compact_for_token_scan(&text);
+        for tool in [
+            "\"cargo\"",
+            "\"rustc\"",
+            "\"clippy\"",
+            "\"cargo-clippy\"",
+            "\"cargo-deny\"",
+            "\"cargo-vet\"",
+            "\"ripr\"",
+            "\"unsafe-review\"",
         ] {
-            if text.contains(call) && text.contains(&format!("{call}{tool}")) {
+            let forbidden = format!("Command::new({tool}");
+            if compact_text.contains(&forbidden) {
                 violations.push(format!(
-                    "{} contains forbidden process invocation {call}{tool}",
-                    source_tree_path(&root, &path)
+                    "{} contains forbidden process invocation {}",
+                    source_tree_path(&root, &path),
+                    forbidden
                 ));
             }
         }
@@ -44,6 +47,13 @@ fn rust_sources_do_not_spawn_cargo_or_compiler_tools() {
         "cargo-allow scans source trees directly and must not invoke Cargo/rustc tooling:\n{}",
         violations.join("\n")
     );
+}
+
+#[test]
+fn forbidden_invocation_scan_catches_whitespace_variants() {
+    let text = "std::process::Command::new ( \"cargo\" ).arg(\"metadata\")";
+
+    assert!(compact_for_token_scan(text).contains("Command::new(\"cargo\""));
 }
 
 #[test]
@@ -72,6 +82,10 @@ fn manifests_do_not_add_cargo_metadata_dependencies() {
         "cargo-allow must not require Cargo metadata to scan source trees:\n{}",
         violations.join("\n")
     );
+}
+
+fn compact_for_token_scan(text: &str) -> String {
+    text.chars().filter(|ch| !ch.is_whitespace()).collect()
 }
 
 fn workspace_root() -> PathBuf {
