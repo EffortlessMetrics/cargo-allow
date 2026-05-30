@@ -446,6 +446,8 @@ fn schema_covers_sample_value(
         ));
     }
 
+    validate_sample_value_constraints(schema, value, path)?;
+
     match value {
         Value::Object(object) => {
             let Some(properties) = schema.get("properties").and_then(Value::as_object) else {
@@ -530,6 +532,136 @@ fn schema_covers_sample_value(
     }
 
     Ok(())
+}
+
+fn validate_sample_value_constraints(
+    schema: &Value,
+    value: &Value,
+    path: &str,
+) -> Result<(), String> {
+    if let Some(expected) = schema.get("const") {
+        if value != expected {
+            return Err(format!(
+                "{path} has value {}, expected const {}",
+                value, expected
+            ));
+        }
+    }
+
+    if let Some(values) = schema.get("enum").and_then(Value::as_array) {
+        if !values.iter().any(|expected| expected == value) {
+            return Err(format!("{path} has value {value}, outside schema enum"));
+        }
+    }
+
+    if !schema_accepts_value_type(schema, value) {
+        return Err(format!(
+            "{path} has JSON type {}, outside schema type",
+            json_value_type(value)
+        ));
+    }
+
+    if let (Some(value), Some(minimum)) = (
+        value.as_f64(),
+        schema.get("minimum").and_then(Value::as_f64),
+    ) {
+        if value < minimum {
+            return Err(format!(
+                "{path} has numeric value {value}, below minimum {minimum}"
+            ));
+        }
+    }
+
+    if let (Some(value), Some(min_length)) = (
+        value.as_str(),
+        schema.get("minLength").and_then(Value::as_u64),
+    ) {
+        if value.chars().count() < min_length as usize {
+            return Err(format!(
+                "{path} has string shorter than minLength {min_length}"
+            ));
+        }
+    }
+
+    if let (Some(value), Some(pattern)) = (
+        value.as_str(),
+        schema.get("pattern").and_then(Value::as_str),
+    ) {
+        if !sample_string_matches_supported_pattern(value, pattern) {
+            return Err(format!(
+                "{path} has string {value:?}, outside supported schema pattern {pattern:?}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn schema_accepts_value_type(schema: &Value, value: &Value) -> bool {
+    let Some(schema_type) = schema.get("type") else {
+        return true;
+    };
+
+    if let Some(schema_type) = schema_type.as_str() {
+        return json_value_matches_schema_type(value, schema_type);
+    }
+    schema_type.as_array().is_none_or(|types| {
+        types.iter().any(|schema_type| {
+            schema_type
+                .as_str()
+                .is_some_and(|schema_type| json_value_matches_schema_type(value, schema_type))
+        })
+    })
+}
+
+fn json_value_matches_schema_type(value: &Value, schema_type: &str) -> bool {
+    match schema_type {
+        "array" => value.is_array(),
+        "boolean" => value.is_boolean(),
+        "integer" => value.as_i64().is_some() || value.as_u64().is_some(),
+        "null" => value.is_null(),
+        "number" => value.is_number(),
+        "object" => value.is_object(),
+        "string" => value.is_string(),
+        _ => true,
+    }
+}
+
+fn json_value_type(value: &Value) -> &'static str {
+    match value {
+        Value::Array(_) => "array",
+        Value::Bool(_) => "boolean",
+        Value::Null => "null",
+        Value::Number(number) if number.as_i64().is_some() || number.as_u64().is_some() => {
+            "integer"
+        }
+        Value::Number(_) => "number",
+        Value::Object(_) => "object",
+        Value::String(_) => "string",
+    }
+}
+
+fn sample_string_matches_supported_pattern(value: &str, pattern: &str) -> bool {
+    match pattern {
+        "^cargo-allow " => value.starts_with("cargo-allow "),
+        "^work-[a-z0-9-]+-[0-9]{4}$" => sample_string_matches_work_item_id(value),
+        _ => true,
+    }
+}
+
+fn sample_string_matches_work_item_id(value: &str) -> bool {
+    let Some(rest) = value.strip_prefix("work-") else {
+        return false;
+    };
+    let Some((kind, number)) = rest.rsplit_once('-') else {
+        return false;
+    };
+    !kind.is_empty()
+        && kind
+            .chars()
+            .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '-')
+        && number.len() == 4
+        && number.chars().all(|ch| ch.is_ascii_digit())
 }
 
 fn resolve_local_schema_ref<'a>(
