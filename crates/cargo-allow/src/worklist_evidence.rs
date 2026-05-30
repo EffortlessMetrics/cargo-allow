@@ -39,6 +39,11 @@ fn work_item_from_evidence_diagnostic(
         BROKEN_EVIDENCE_LINK
     };
     let proof_commands = proof_commands(kind, None, Some(entry));
+    let path = if kind == BROKEN_EVIDENCE_LINK {
+        diagnostic.target.as_ref().map(normalize_path)
+    } else {
+        None
+    };
     WorkItem {
         id: format!("work-{}-{item_index:04}", kind.replace('_', "-")),
         kind: kind.to_string(),
@@ -60,7 +65,7 @@ fn work_item_from_evidence_diagnostic(
         status: MatchStatus::EvidenceMissing,
         allow_id: Some(entry.id.clone()),
         finding_index: None,
-        path: diagnostic.target.as_ref().map(normalize_path),
+        path,
         source_package: None,
         message: format!(
             "{} evidence `{}`: {}",

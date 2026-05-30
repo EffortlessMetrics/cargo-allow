@@ -323,7 +323,10 @@ fn worklist_items_report_weak_evidence_references() {
     assert_eq!(item.difficulty, "small");
     assert_eq!(item.status, MatchStatus::EvidenceMissing);
     assert_eq!(item.allow_id.as_deref(), Some("allow-weak-evidence"));
-    assert_eq!(item.path.as_deref(), Some("manual-review"));
+    assert_eq!(
+        item.path, None,
+        "weak evidence targets are not source-tree paths"
+    );
     assert!(item.message.contains("unrecognized evidence prefix"));
     assert!(
         item.suggested_actions
