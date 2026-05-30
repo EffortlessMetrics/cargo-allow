@@ -553,6 +553,69 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         "/$defs/policy_change_kind/enum",
         &policy_change_kinds(),
     );
+    let policy_change = required_schema_pointer("common", &schema, "/$defs/policy_change");
+    assert_eq!(
+        policy_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common policy_change should reject unknown fields"
+    );
+    assert_required_fields(
+        "common policy_change",
+        policy_change,
+        &["severity", "allow_id", "kind", "message"],
+    );
+    assert_enum_equals(
+        "common policy_change severity",
+        &schema,
+        "/$defs/policy_change/properties/severity/enum",
+        &policy_change_severities(),
+    );
+    assert_enum_equals(
+        "common policy_change kind",
+        &schema,
+        "/$defs/policy_change/properties/kind/enum",
+        &policy_change_kinds(),
+    );
+    for field in ["allow_id", "message"] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/policy_change/properties/{field}/type"))
+                .and_then(Value::as_str),
+            Some("string"),
+            "common policy_change {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/policy_change/properties/{field}/minLength"
+                ))
+                .and_then(Value::as_u64),
+            Some(1),
+            "common policy_change {field} minLength"
+        );
+    }
+    for (field, reference) in [
+        ("exception_identity", "#/$defs/exception_identity_change"),
+        ("selector_identity", "#/$defs/selector_identity_change"),
+        ("selector_precision", "#/$defs/selector_precision_change"),
+        ("scope", "#/$defs/scope_change"),
+        ("occurrence_limit", "#/$defs/occurrence_limit_change"),
+        ("lifecycle", "#/$defs/lifecycle_change"),
+        ("evidence", "#/$defs/evidence_change"),
+        ("metadata", "#/$defs/metadata_change"),
+        ("requirement", "#/$defs/requirement_change"),
+        ("policy_status", "#/$defs/policy_status_change"),
+    ] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/policy_change/properties/{field}/$ref"))
+                .and_then(Value::as_str),
+            Some(reference),
+            "common policy_change {field} ref"
+        );
+    }
     assert_enum_equals(
         "common selector precision fields",
         &schema,
@@ -823,6 +886,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "lifecycle_change",
         "lifecycle_change_field",
         "match_status",
+        "policy_change",
         "metadata_change",
         "metadata_change_field",
         "occurrence_limit_change",
@@ -871,6 +935,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
 
     for fragment in [
         "finding_posture_change",
+        "policy_change",
         "selector_precision_field",
         "selector_precision_change",
         "scope_change_field",

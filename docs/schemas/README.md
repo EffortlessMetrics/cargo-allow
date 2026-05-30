@@ -35,10 +35,10 @@ macro-expansion, or proof-level coverage.
   source-tree inventory, governed source-exception kind and match-status
   vocabularies, structural identity, evidence-prefix vocabularies, and evidence
   diagnostic row shapes used by `explain` and `worklist`, plus diff posture
-  vocabularies, finding-change, selector-identity, selector-precision,
-  exception-identity, scope-change, occurrence-limit, lifecycle,
-  evidence-change, metadata-change, requirement-change, and policy-status
-  posture fragments used by `diff`.
+  vocabularies, finding-change, policy-change, selector-identity,
+  selector-precision, exception-identity, scope-change, occurrence-limit,
+  lifecycle, evidence-change, metadata-change, requirement-change, and
+  policy-status posture fragments used by `diff`.
 
 ## Contract Status
 

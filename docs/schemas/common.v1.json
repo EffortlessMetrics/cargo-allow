@@ -572,6 +572,126 @@
         "occurrence_limit_loosened"
       ]
     },
+    "policy_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "severity",
+        "allow_id",
+        "kind",
+        "message"
+      ],
+      "properties": {
+        "severity": {
+          "enum": [
+            "improvement",
+            "review",
+            "fail"
+          ]
+        },
+        "allow_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "added_allow",
+            "removed_allow",
+            "baseline_debt_added",
+            "baseline_debt_introduced",
+            "baseline_debt_normalized",
+            "kind_changed",
+            "family_changed",
+            "scope_broadened",
+            "scope_changed",
+            "scope_narrowed",
+            "selector_changed",
+            "selector_precision_decreased",
+            "selector_precision_increased",
+            "created_added",
+            "created_changed",
+            "created_removed",
+            "expiry_extended",
+            "expiry_shortened",
+            "review_after_extended",
+            "review_after_shortened",
+            "evidence_added",
+            "evidence_removed",
+            "link_added",
+            "link_removed",
+            "owner_added",
+            "owner_changed",
+            "owner_removed",
+            "owner_unassigned",
+            "policy_owner_added",
+            "policy_owner_changed",
+            "policy_owner_removed",
+            "policy_owner_unassigned",
+            "policy_status_changed",
+            "policy_status_weakened",
+            "policy_status_tightened",
+            "reason_added",
+            "reason_changed",
+            "reason_removed",
+            "requirement_loosened",
+            "requirement_tightened",
+            "workspace_ignored_added",
+            "workspace_ignored_removed",
+            "workspace_generated_added",
+            "workspace_generated_removed",
+            "classification_added",
+            "classification_changed",
+            "classification_removed",
+            "occurrence_limit_tightened",
+            "occurrence_limit_loosened"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exception_identity": {
+          "$ref": "#/$defs/exception_identity_change",
+          "description": "Optional structured governed exception identity delta for kind_changed and family_changed policy changes."
+        },
+        "selector_identity": {
+          "$ref": "#/$defs/selector_identity_change",
+          "description": "Optional structured selector identity delta for selector_changed policy changes."
+        },
+        "selector_precision": {
+          "$ref": "#/$defs/selector_precision_change",
+          "description": "Optional structured selector precision delta for selector_precision_decreased and selector_precision_increased policy changes."
+        },
+        "scope": {
+          "$ref": "#/$defs/scope_change",
+          "description": "Optional structured source-tree scope delta for scope_broadened, scope_narrowed, and scope_changed policy changes."
+        },
+        "occurrence_limit": {
+          "$ref": "#/$defs/occurrence_limit_change",
+          "description": "Optional structured occurrence-limit delta for occurrence_limit_tightened and occurrence_limit_loosened policy changes."
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/lifecycle_change",
+          "description": "Optional structured lifecycle delta for created, expiry, and review_after policy changes."
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence_change",
+          "description": "Optional structured evidence/link delta for evidence_added, evidence_removed, link_added, and link_removed policy changes."
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata_change",
+          "description": "Optional structured owner/reason/classification delta for metadata and baseline_debt classification policy changes."
+        },
+        "requirement": {
+          "$ref": "#/$defs/requirement_change",
+          "description": "Optional structured requirement delta for requirement_loosened and requirement_tightened policy changes."
+        },
+        "policy_status": {
+          "$ref": "#/$defs/policy_status_change",
+          "description": "Optional structured top-level policy status delta for policy_status_weakened, policy_status_tightened, and policy_status_changed policy changes."
+        }
+      }
+    },
     "selector_precision_field": {
       "enum": [
         "path",
