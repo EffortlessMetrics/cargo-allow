@@ -237,7 +237,9 @@ Schema compatibility tests also lock:
 - `report.diff` posture, severity, finding-change, and policy-change
   vocabularies for PR posture weakening and improvement signals; and
 - the `worklist` artifact's queue item kind, risk, and difficulty
-  vocabularies.
+  vocabularies; and
+- `worklist` and `explain` proof commands remain standalone `cargo-allow`
+  commands.
 
 This is not a promise that every field is permanently frozen. Breaking changes
 should either preserve the existing `*.v1` contract or introduce a new schema ID

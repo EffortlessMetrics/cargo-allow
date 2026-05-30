@@ -196,4 +196,11 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
         next,
         &["suggested_actions", "proof_commands"],
     );
+    assert_eq!(
+        schema
+            .pointer("/properties/next/properties/proof_commands/items/pattern")
+            .and_then(Value::as_str),
+        Some("^cargo-allow "),
+        "explain proof commands should stay cargo-allow first"
+    );
 }

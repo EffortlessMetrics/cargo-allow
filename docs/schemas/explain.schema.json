@@ -118,7 +118,9 @@
         "proof_commands": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^cargo-allow ",
+            "description": "Suggested follow-up command. cargo-allow emits standalone cargo-allow commands here; it does not execute them."
           }
         }
       }
