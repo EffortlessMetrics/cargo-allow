@@ -14,6 +14,7 @@ fn diff_json_renderer_appends_posture_extension() {
         allow_id: "allow-0001",
         kind: "scope_broadened",
         message: "allow-0001 selector scope broadened",
+        selector_precision: None,
     }];
 
     let rendered = render_diff_json_with_posture(
@@ -105,6 +106,7 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
         allow_id: "allow-0001",
         kind: "selector_precision_increased",
         message: "allow-0001 selector precision increased",
+        selector_precision: None,
     }];
     let report = DiffReport {
         net_posture: "improved",
@@ -148,6 +150,12 @@ fn diff_json_report_matches_posture_golden_contract() {
         allow_id: "allow-0001",
         kind: "selector_precision_increased",
         message: "allow-0001 selector precision increased",
+        selector_precision: Some(DiffSelectorPrecisionChange {
+            before: 42,
+            after: 92,
+            removed_fields: &[],
+            added_fields: &["container", "normalized_snippet_hash"],
+        }),
     }];
     let report = DiffReport {
         net_posture: "improved",
@@ -229,7 +237,7 @@ fn diff_json_report_matches_posture_golden_contract() {
       {{"change": "removed", "key": "panic|unwrap|src/lib.rs", "kind": "panic", "family": "unwrap", "path": "src/lib.rs"}}
     ],
     "policy_changes": [
-      {{"severity": "improvement", "allow_id": "allow-0001", "kind": "selector_precision_increased", "message": "allow-0001 selector precision increased"}}
+      {{"severity": "improvement", "allow_id": "allow-0001", "kind": "selector_precision_increased", "message": "allow-0001 selector precision increased", "selector_precision": {{"before": 42, "after": 92, "removed_fields": [], "added_fields": ["container", "normalized_snippet_hash"]}}}}
     ]
   }}
 }}
@@ -283,6 +291,7 @@ fn diff_pr_summary_markdown_reports_net_posture() {
         allow_id: "allow-0001",
         kind: "selector_precision_increased",
         message: "allow-0001 selector precision increased",
+        selector_precision: None,
     }];
 
     let summary = render_diff_pr_summary_markdown(0, &finding_changes, &policy_changes);
@@ -308,6 +317,7 @@ fn diff_posture_tables_escape_markdown_cells() {
         allow_id: "allow|0001",
         kind: "scope_broadened",
         message: "message with | pipe",
+        selector_precision: None,
     }];
 
     let findings = render_diff_finding_changes_markdown(&finding_changes);

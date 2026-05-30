@@ -23,6 +23,15 @@ pub struct DiffPolicyChange<'a> {
     pub allow_id: &'a str,
     pub kind: &'a str,
     pub message: &'a str,
+    pub selector_precision: Option<DiffSelectorPrecisionChange<'a>>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct DiffSelectorPrecisionChange<'a> {
+    pub before: u32,
+    pub after: u32,
+    pub removed_fields: &'a [&'a str],
+    pub added_fields: &'a [&'a str],
 }
 
 #[derive(Debug, Clone, Copy)]

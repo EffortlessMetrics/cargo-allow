@@ -15,6 +15,7 @@ pub(crate) fn identity_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
                 base.kind.as_str(),
                 head.kind.as_str()
             ),
+            selector_precision: None,
         });
     }
     if base.family != head.family {
@@ -28,6 +29,7 @@ pub(crate) fn identity_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
                 base.family.as_deref().unwrap_or("<none>"),
                 head.family.as_deref().unwrap_or("<none>")
             ),
+            selector_precision: None,
         });
     }
     changes

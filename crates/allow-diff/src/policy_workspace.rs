@@ -92,5 +92,6 @@ fn change(
         kind,
         severity,
         message: format!("{policy_id} {message}: {value}"),
+        selector_precision: None,
     }
 }

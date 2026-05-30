@@ -50,6 +50,7 @@ fn owner_change(base: Option<&str>, head: Option<&str>) -> Option<PolicyChange> 
             display_text(base),
             display_text(head)
         ),
+        selector_precision: None,
     })
 }
 
@@ -85,6 +86,7 @@ fn status_change(base: Option<&str>, head: Option<&str>) -> Option<PolicyChange>
             display_text(base),
             display_text(head)
         ),
+        selector_precision: None,
     })
 }
 

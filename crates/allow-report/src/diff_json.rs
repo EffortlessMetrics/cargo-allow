@@ -1,7 +1,7 @@
 use allow_core::json_escape;
 
 use crate::DiffReport;
-use crate::json::option_json;
+use crate::json::{json_string_array, option_json};
 use crate::{REPORT_COMMAND_DIFF, REPORT_SCHEMA_ID};
 
 pub fn render_diff_json_with_posture(report_json: &str, report: DiffReport<'_>) -> Option<String> {
@@ -93,6 +93,16 @@ pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
         ));
         out.push_str(&format!("\"kind\": \"{}\", ", json_escape(change.kind)));
         out.push_str(&format!("\"message\": \"{}\"", json_escape(change.message)));
+        if let Some(selector_precision) = change.selector_precision {
+            out.push_str(", ");
+            out.push_str(&format!(
+                "\"selector_precision\": {{\"before\": {}, \"after\": {}, \"removed_fields\": {}, \"added_fields\": {}}}",
+                selector_precision.before,
+                selector_precision.after,
+                json_string_array(selector_precision.removed_fields),
+                json_string_array(selector_precision.added_fields)
+            ));
+        }
         out.push('}');
     }
     out.push_str("\n    ]\n");

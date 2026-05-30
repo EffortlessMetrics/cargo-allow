@@ -42,6 +42,7 @@ fn requirement_change(field: RequirementField) -> Option<PolicyChange> {
             "requirements.{} {direction}: {} -> {}",
             field.name, field.base, field.head
         ),
+        selector_precision: None,
     })
 }
 

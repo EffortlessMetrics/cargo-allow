@@ -85,10 +85,18 @@ fn json_report_includes_structured_posture_changes() {
         Some("unwrap"),
         "src/lib.rs",
     )];
-    let policy_changes = vec![policy_change(
-        allow_diff::PolicyChangeSeverity::Fail,
-        allow_diff::PolicyChangeKind::ScopeBroadened,
-    )];
+    let policy_changes = vec![allow_diff::PolicyChange {
+        allow_id: "allow-0001".to_string(),
+        kind: allow_diff::PolicyChangeKind::SelectorPrecisionDecreased,
+        severity: allow_diff::PolicyChangeSeverity::Fail,
+        message: "allow-0001 selector precision decreased: 80 -> 45".to_string(),
+        selector_precision: Some(allow_diff::SelectorPrecisionChange {
+            before: 80,
+            after: 45,
+            removed_fields: vec!["container", "normalized_snippet_hash"],
+            added_fields: vec![],
+        }),
+    }];
 
     let json = render_diff_json_with_posture(
         allow_report::render_json_with_context(
@@ -167,7 +175,25 @@ fn json_report_includes_structured_posture_changes() {
     );
     assert_eq!(
         policy_change.get("kind").and_then(Value::as_str),
-        Some("scope_broadened")
+        Some("selector_precision_decreased")
+    );
+    assert_eq!(
+        policy_change
+            .pointer("/selector_precision/before")
+            .and_then(Value::as_u64),
+        Some(80)
+    );
+    assert_eq!(
+        policy_change
+            .pointer("/selector_precision/after")
+            .and_then(Value::as_u64),
+        Some(45)
+    );
+    assert_eq!(
+        policy_change
+            .pointer("/selector_precision/removed_fields/0")
+            .and_then(Value::as_str),
+        Some("container")
     );
     assert!(json.ends_with("}\n"));
 }
@@ -220,6 +246,7 @@ fn policy_change(
         kind,
         severity,
         message: "allow-0001 changed".to_string(),
+        selector_precision: None,
     }
 }
 
