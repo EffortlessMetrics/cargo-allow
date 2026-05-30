@@ -22,6 +22,24 @@ pub struct Selector {
     pub glob: Option<String>,
 }
 
+impl Selector {
+    pub fn has_structural_identity(&self) -> bool {
+        [
+            self.ast_kind.as_deref(),
+            self.container.as_deref(),
+            self.callee.as_deref(),
+            self.macro_name.as_deref(),
+            self.lint.as_deref(),
+            self.symbol.as_deref(),
+            self.receiver_fingerprint.as_deref(),
+            self.target_fingerprint.as_deref(),
+            self.normalized_snippet_hash.as_deref(),
+        ]
+        .into_iter()
+        .any(|value| value.is_some_and(|text| !text.trim().is_empty()))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Lifecycle {
     pub created: Option<String>,

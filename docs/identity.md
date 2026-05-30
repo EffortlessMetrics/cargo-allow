@@ -138,8 +138,12 @@ surface:
 | Lint suppressions | `ast_kind`, `container`, `lint`, `symbol`, `normalized_snippet_hash` |
 | Non-Rust files | `ast_kind`, `glob`, `symbol`, `target_fingerprint` |
 
-Broad selectors are valid during migration, but they are weaker. Diff mode
-should treat precision loss as policy weakening.
+For source-code exception kinds (`panic`, `unsafe`, and `lint_exception`), a
+path or glob only scopes the search and is not enough identity by itself. At
+least one structural selector field must be present so a broad or repeated file
+surface cannot be silently receipted by scope alone. Broad selectors are valid
+during migration, but they are weaker. Diff mode should treat precision loss as
+policy weakening.
 
 ## Compatibility
 
