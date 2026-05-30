@@ -1357,6 +1357,36 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
 }
 
 #[test]
+fn report_schema_fragments_are_mirrored_in_common_catalog() {
+    let common = parse_schema(
+        "common",
+        include_str!("../../../docs/schemas/common.v1.json"),
+    );
+    let report = parse_schema(
+        "report",
+        include_str!("../../../docs/schemas/report.schema.json"),
+    );
+
+    let Some(common_defs) = common.get("$defs").and_then(Value::as_object) else {
+        std::panic::panic_any("common schema $defs should be an object");
+    };
+    let Some(report_defs) = report.get("$defs").and_then(Value::as_object) else {
+        std::panic::panic_any("report schema $defs should be an object");
+    };
+
+    let missing = report_defs
+        .keys()
+        .filter(|name| !common_defs.contains_key(*name))
+        .map(String::as_str)
+        .collect::<Vec<_>>();
+
+    assert!(
+        missing.is_empty(),
+        "report.schema.json $defs should be mirrored in common.v1.json: {missing:?}"
+    );
+}
+
+#[test]
 fn artifact_local_fragments_match_common_wire_shapes() {
     let common = parse_schema(
         "common",
