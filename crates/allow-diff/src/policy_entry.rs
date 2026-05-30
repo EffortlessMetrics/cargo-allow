@@ -6,6 +6,7 @@ use crate::policy_compare::{
     occurrence_limit_tightened, removed_required_text,
 };
 use crate::policy_entry_evidence::evidence_policy_changes;
+use crate::policy_entry_identity::identity_policy_changes;
 use crate::policy_entry_lifecycle::lifecycle_policy_changes;
 use crate::policy_entry_scope::scope_policy_changes;
 use crate::policy_entry_selector::selector_policy_changes;
@@ -43,32 +44,7 @@ pub(crate) fn removed_allow_change(entry: &AllowEntry) -> PolicyChange {
 
 pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<PolicyChange> {
     let mut changes = Vec::new();
-    if base.kind != head.kind {
-        changes.push(PolicyChange {
-            allow_id: head.id.clone(),
-            kind: PolicyChangeKind::KindChanged,
-            severity: PolicyChangeSeverity::Fail,
-            message: format!(
-                "{} changed governed exception kind: {} -> {}",
-                head.id,
-                base.kind.as_str(),
-                head.kind.as_str()
-            ),
-        });
-    }
-    if base.family != head.family {
-        changes.push(PolicyChange {
-            allow_id: head.id.clone(),
-            kind: PolicyChangeKind::FamilyChanged,
-            severity: PolicyChangeSeverity::Fail,
-            message: format!(
-                "{} changed governed exception family: {} -> {}",
-                head.id,
-                base.family.as_deref().unwrap_or("<none>"),
-                head.family.as_deref().unwrap_or("<none>")
-            ),
-        });
-    }
+    changes.extend(identity_policy_changes(base, head));
     changes.extend(scope_policy_changes(base, head));
     changes.extend(selector_policy_changes(base, head));
     changes.extend(lifecycle_policy_changes(base, head));
