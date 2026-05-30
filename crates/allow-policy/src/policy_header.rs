@@ -28,6 +28,15 @@ pub(crate) fn validate_policy_header(cfg: &AllowConfig) -> CargoAllowResult<()> 
         return Err(CargoAllowError::new("policy owner must not be empty"));
     }
     if cfg
+        .owner
+        .as_deref()
+        .is_some_and(|owner| owner.trim() != owner)
+    {
+        return Err(CargoAllowError::new(
+            "policy owner must not have leading or trailing whitespace",
+        ));
+    }
+    if cfg
         .status
         .as_deref()
         .is_some_and(|status| status.trim().is_empty())
