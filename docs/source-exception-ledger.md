@@ -458,6 +458,10 @@ The `workspace.inventory` policy value is canonically `git-tracked`; the parser
 also accepts the artifact-style alias `git_tracked`. This field does not disable
 the normal source-tree fallback behavior when git-tracked inventory is
 unavailable.
+`workspace.default_mode` is the default gate mode used by `cargo-allow check`
+when `--mode` is omitted. Passing `--mode audit`, `--mode no-new`,
+`--mode strict`, or `--mode release` still overrides the policy default for that
+invocation.
 
 The current non-Rust family vocabulary is intentionally explicit:
 `ci_declarative`, `documentation`, `release_script`, `test_fixture`,
