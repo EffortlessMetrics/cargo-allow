@@ -19,67 +19,107 @@ pub(crate) enum EvidenceKind {
 #[derive(Debug, Clone, Copy)]
 struct EvidenceKindSpec {
     kind: EvidenceKind,
+    canonical_prefix: &'static str,
     prefixes: &'static [&'static str],
     local_file: bool,
 }
 
 const EVIDENCE_KIND_SPECS: &[EvidenceKindSpec] = &[
     EvidenceKindSpec {
-        kind: EvidenceKind::Test,
-        prefixes: &["test"],
-        local_file: false,
-    },
-    EvidenceKindSpec {
-        kind: EvidenceKind::Cargo,
-        prefixes: &["cargo"],
-        local_file: false,
-    },
-    EvidenceKindSpec {
-        kind: EvidenceKind::Ripr,
-        prefixes: &["ripr"],
-        local_file: true,
-    },
-    EvidenceKindSpec {
-        kind: EvidenceKind::UnsafeReview,
-        prefixes: &["unsafe-review", "unsafe_review"],
-        local_file: true,
-    },
-    EvidenceKindSpec {
-        kind: EvidenceKind::Coverage,
-        prefixes: &["coverage"],
-        local_file: true,
-    },
-    EvidenceKindSpec {
         kind: EvidenceKind::Doc,
+        canonical_prefix: "doc",
         prefixes: &["doc"],
         local_file: true,
     },
     EvidenceKindSpec {
         kind: EvidenceKind::Spec,
+        canonical_prefix: "spec",
         prefixes: &["spec"],
         local_file: true,
     },
     EvidenceKindSpec {
         kind: EvidenceKind::Adr,
+        canonical_prefix: "adr",
         prefixes: &["adr"],
         local_file: true,
     },
     EvidenceKindSpec {
+        kind: EvidenceKind::Ripr,
+        canonical_prefix: "ripr",
+        prefixes: &["ripr"],
+        local_file: true,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::UnsafeReview,
+        canonical_prefix: "unsafe-review",
+        prefixes: &["unsafe-review", "unsafe_review"],
+        local_file: true,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::Coverage,
+        canonical_prefix: "coverage",
+        prefixes: &["coverage"],
+        local_file: true,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::Test,
+        canonical_prefix: "test",
+        prefixes: &["test"],
+        local_file: false,
+    },
+    EvidenceKindSpec {
+        kind: EvidenceKind::Cargo,
+        canonical_prefix: "cargo",
+        prefixes: &["cargo"],
+        local_file: false,
+    },
+    EvidenceKindSpec {
         kind: EvidenceKind::Issue,
+        canonical_prefix: "issue",
         prefixes: &["issue"],
         local_file: false,
     },
     EvidenceKindSpec {
         kind: EvidenceKind::Pr,
+        canonical_prefix: "pr",
         prefixes: &["pr"],
         local_file: false,
     },
     EvidenceKindSpec {
         kind: EvidenceKind::LegacyPolicy,
+        canonical_prefix: "legacy-policy",
         prefixes: &["legacy-policy", "legacy_policy"],
         local_file: false,
     },
 ];
+
+/// Canonical evidence prefixes shown in user-facing guidance.
+pub fn canonical_evidence_prefixes() -> impl Iterator<Item = &'static str> {
+    EVIDENCE_KIND_SPECS.iter().map(|spec| spec.canonical_prefix)
+}
+
+/// All evidence prefixes recognized by the policy parser, including aliases.
+pub fn recognized_evidence_prefixes() -> impl Iterator<Item = &'static str> {
+    EVIDENCE_KIND_SPECS
+        .iter()
+        .flat_map(|spec| spec.prefixes.iter().copied())
+}
+
+/// Recognized evidence prefixes that must point to local source-tree files.
+pub fn local_file_evidence_prefixes() -> impl Iterator<Item = &'static str> {
+    EVIDENCE_KIND_SPECS
+        .iter()
+        .filter(|spec| spec.local_file)
+        .flat_map(|spec| spec.prefixes.iter().copied())
+}
+
+/// Recognized evidence prefixes that cargo-allow treats as traceability only.
+pub fn traceability_evidence_prefixes() -> impl Iterator<Item = &'static str> {
+    EVIDENCE_KIND_SPECS
+        .iter()
+        .filter(|spec| !spec.local_file)
+        .flat_map(|spec| spec.prefixes.iter().copied())
+}
 
 impl EvidenceKind {
     pub(crate) fn parse(prefix: &str) -> Self {
@@ -128,7 +168,10 @@ impl<'a> EvidenceReference<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{EVIDENCE_KIND_SPECS, EvidenceKind, EvidenceReference};
+    use super::{
+        EVIDENCE_KIND_SPECS, EvidenceKind, EvidenceReference, canonical_evidence_prefixes,
+        local_file_evidence_prefixes, recognized_evidence_prefixes, traceability_evidence_prefixes,
+    };
     use std::path::PathBuf;
 
     #[test]
@@ -175,28 +218,111 @@ mod tests {
             .flat_map(|spec| {
                 spec.prefixes
                     .iter()
-                    .map(|prefix| (*prefix, spec.kind, spec.local_file))
+                    .map(|prefix| (*prefix, spec.canonical_prefix, spec.kind, spec.local_file))
             })
             .collect::<Vec<_>>();
 
         assert_eq!(
             actual,
             vec![
-                ("test", EvidenceKind::Test, false),
-                ("cargo", EvidenceKind::Cargo, false),
-                ("ripr", EvidenceKind::Ripr, true),
-                ("unsafe-review", EvidenceKind::UnsafeReview, true),
-                ("unsafe_review", EvidenceKind::UnsafeReview, true),
-                ("coverage", EvidenceKind::Coverage, true),
-                ("doc", EvidenceKind::Doc, true),
-                ("spec", EvidenceKind::Spec, true),
-                ("adr", EvidenceKind::Adr, true),
-                ("issue", EvidenceKind::Issue, false),
-                ("pr", EvidenceKind::Pr, false),
-                ("legacy-policy", EvidenceKind::LegacyPolicy, false),
-                ("legacy_policy", EvidenceKind::LegacyPolicy, false),
+                ("doc", "doc", EvidenceKind::Doc, true),
+                ("spec", "spec", EvidenceKind::Spec, true),
+                ("adr", "adr", EvidenceKind::Adr, true),
+                ("ripr", "ripr", EvidenceKind::Ripr, true),
+                (
+                    "unsafe-review",
+                    "unsafe-review",
+                    EvidenceKind::UnsafeReview,
+                    true,
+                ),
+                (
+                    "unsafe_review",
+                    "unsafe-review",
+                    EvidenceKind::UnsafeReview,
+                    true,
+                ),
+                ("coverage", "coverage", EvidenceKind::Coverage, true),
+                ("test", "test", EvidenceKind::Test, false),
+                ("cargo", "cargo", EvidenceKind::Cargo, false),
+                ("issue", "issue", EvidenceKind::Issue, false),
+                ("pr", "pr", EvidenceKind::Pr, false),
+                (
+                    "legacy-policy",
+                    "legacy-policy",
+                    EvidenceKind::LegacyPolicy,
+                    false,
+                ),
+                (
+                    "legacy_policy",
+                    "legacy-policy",
+                    EvidenceKind::LegacyPolicy,
+                    false,
+                ),
             ],
             "evidence prefix classification is a source-exception contract"
+        );
+    }
+
+    #[test]
+    fn exposes_parser_owned_evidence_prefix_vocabulary() {
+        assert_eq!(
+            canonical_evidence_prefixes().collect::<Vec<_>>(),
+            vec![
+                "doc",
+                "spec",
+                "adr",
+                "ripr",
+                "unsafe-review",
+                "coverage",
+                "test",
+                "cargo",
+                "issue",
+                "pr",
+                "legacy-policy",
+            ],
+            "canonical prefixes should stay in user guidance order"
+        );
+        assert_eq!(
+            recognized_evidence_prefixes().collect::<Vec<_>>(),
+            vec![
+                "doc",
+                "spec",
+                "adr",
+                "ripr",
+                "unsafe-review",
+                "unsafe_review",
+                "coverage",
+                "test",
+                "cargo",
+                "issue",
+                "pr",
+                "legacy-policy",
+                "legacy_policy",
+            ],
+            "recognized prefixes include compatibility aliases"
+        );
+        assert_eq!(
+            local_file_evidence_prefixes().collect::<Vec<_>>(),
+            vec![
+                "doc",
+                "spec",
+                "adr",
+                "ripr",
+                "unsafe-review",
+                "unsafe_review",
+                "coverage",
+            ]
+        );
+        assert_eq!(
+            traceability_evidence_prefixes().collect::<Vec<_>>(),
+            vec![
+                "test",
+                "cargo",
+                "issue",
+                "pr",
+                "legacy-policy",
+                "legacy_policy",
+            ]
         );
     }
 

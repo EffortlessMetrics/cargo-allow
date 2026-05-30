@@ -102,21 +102,9 @@ fn weak_evidence_actions_name_canonical_prefix_examples() {
     let actions = suggested_actions("weak_evidence_reference");
     let guidance = actions.join(" ");
 
-    for prefix in [
-        "doc:",
-        "spec:",
-        "adr:",
-        "ripr:",
-        "unsafe-review:",
-        "coverage:",
-        "test:",
-        "cargo:",
-        "issue:",
-        "pr:",
-        "legacy-policy:",
-    ] {
+    for prefix in allow_policy::canonical_evidence_prefixes().map(|prefix| format!("{prefix}:")) {
         assert!(
-            guidance.contains(prefix),
+            guidance.contains(&prefix),
             "weak evidence guidance should mention {prefix}"
         );
     }
