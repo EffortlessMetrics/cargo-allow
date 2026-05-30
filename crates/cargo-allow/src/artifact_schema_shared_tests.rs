@@ -1438,6 +1438,8 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         assert_common_fragment_matches(schema_name, schema, &common, "structural_identity");
         assert_common_fragment_matches(schema_name, schema, &common, "selector");
     }
+
+    assert_common_fragment_matches_named("explain", &explain, "match_outcome", &common, "outcome");
 }
 
 #[test]
@@ -1742,13 +1744,24 @@ fn assert_common_fragment_matches(
     common: &Value,
     fragment: &str,
 ) {
-    let pointer = format!("/$defs/{fragment}");
-    let schema_fragment = required_schema_pointer(schema_name, schema, &pointer);
-    let common_fragment = required_schema_pointer("common", common, &pointer);
+    assert_common_fragment_matches_named(schema_name, schema, fragment, common, fragment);
+}
+
+fn assert_common_fragment_matches_named(
+    schema_name: &str,
+    schema: &Value,
+    schema_fragment: &str,
+    common: &Value,
+    common_fragment: &str,
+) {
+    let schema_pointer = format!("/$defs/{schema_fragment}");
+    let common_pointer = format!("/$defs/{common_fragment}");
+    let schema_fragment = required_schema_pointer(schema_name, schema, &schema_pointer);
+    let common_fragment = required_schema_pointer("common", common, &common_pointer);
     assert_eq!(
         schema_wire_shape(schema_fragment),
         schema_wire_shape(common_fragment),
-        "{schema_name} {fragment} should match common.v1 wire shape"
+        "{schema_name} {schema_pointer} should match common.v1 {common_pointer} wire shape"
     );
 }
 
