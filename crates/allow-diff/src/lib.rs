@@ -6,6 +6,7 @@ mod policy_entry;
 mod policy_requirements;
 mod policy_scope;
 mod policy_selector;
+mod policy_workspace;
 mod revision;
 mod revision_git;
 

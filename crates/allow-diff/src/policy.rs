@@ -6,6 +6,7 @@ use std::path::Path;
 use crate::policy_change::PolicyChange;
 use crate::policy_entry::{added_allow_change, entry_policy_changes, removed_allow_change};
 use crate::policy_requirements::requirement_policy_changes;
+use crate::policy_workspace::workspace_policy_changes;
 
 pub fn policy_changes_from_git(
     root: impl AsRef<Path>,
@@ -42,6 +43,7 @@ pub fn policy_changes(base: &AllowConfig, head: &AllowConfig) -> Vec<PolicyChang
         .map(|entry| entry.id.as_str())
         .collect::<BTreeSet<_>>();
     let mut changes = requirement_policy_changes(&base.requirements, &head.requirements);
+    changes.extend(workspace_policy_changes(&base.workspace, &head.workspace));
     for head_entry in &head.allow {
         let Some(base_entry) = base_by_id.get(head_entry.id.as_str()).copied() else {
             changes.push(added_allow_change(head_entry));
