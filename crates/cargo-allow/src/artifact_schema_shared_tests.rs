@@ -217,6 +217,59 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         "common evidence_reference status should use the shared status vocabulary"
     );
     assert_enum_equals(
+        "common evidence fields",
+        &schema,
+        "/$defs/evidence_change_field/enum",
+        &evidence_change_fields(),
+    );
+    let evidence_change = required_schema_pointer("common", &schema, "/$defs/evidence_change");
+    assert_eq!(
+        evidence_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common evidence_change should reject unknown fields"
+    );
+    assert_required_fields(
+        "common evidence_change",
+        evidence_change,
+        &["field", "removed", "added"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/evidence_change/properties/field/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/evidence_change_field"),
+        "common evidence_change field should use the shared evidence field vocabulary"
+    );
+    for field in ["removed", "added"] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/evidence_change/properties/{field}/type"))
+                .and_then(Value::as_str),
+            Some("array"),
+            "common evidence_change {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/evidence_change/properties/{field}/items/type"
+                ))
+                .and_then(Value::as_str),
+            Some("string"),
+            "common evidence_change {field} item type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/evidence_change/properties/{field}/items/minLength"
+                ))
+                .and_then(Value::as_u64),
+            Some(1),
+            "common evidence_change {field} item minLength"
+        );
+    }
+    assert_enum_equals(
         "common selector precision fields",
         &schema,
         "/$defs/selector_precision_field/enum",
@@ -438,6 +491,8 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
     let expected = [
         "canonical_evidence_prefix",
         "claim_boundary_flag",
+        "evidence_change",
+        "evidence_change_field",
         "evidence_reference",
         "evidence_reference_status",
         "inventory_source",
@@ -776,6 +831,14 @@ fn selector_precision_fields() -> Vec<&'static str> {
         "normalized_snippet_hash",
         "occurrence_limit",
     ]
+}
+
+fn evidence_change_fields() -> Vec<&'static str> {
+    allow_diff::EvidenceChangeField::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::EvidenceChangeField::as_str)
+        .collect()
 }
 
 fn scope_change_fields() -> Vec<&'static str> {

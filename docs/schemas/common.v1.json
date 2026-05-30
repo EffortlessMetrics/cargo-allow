@@ -163,6 +163,43 @@
         }
       }
     },
+    "evidence_change_field": {
+      "enum": [
+        "evidence",
+        "links"
+      ]
+    },
+    "evidence_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "removed",
+        "added"
+      ],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/evidence_change_field",
+          "description": "Policy collection that changed."
+        },
+        "removed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Values removed from the policy collection."
+        },
+        "added": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Values added to the policy collection."
+        }
+      }
+    },
     "selector_precision_field": {
       "enum": [
         "path",
