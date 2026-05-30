@@ -1,4 +1,5 @@
 use super::*;
+use std::fs;
 
 #[test]
 fn saved_prune_output_allows_broken_evidence_preview() {
