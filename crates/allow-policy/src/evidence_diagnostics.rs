@@ -83,6 +83,15 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             message: "unrecognized evidence prefix; not locally validated".to_string(),
         };
     }
+    if !reference.kind.is_local_file() && reference.value.as_os_str().is_empty() {
+        return EvidenceReferenceDiagnostic {
+            raw: raw.to_string(),
+            prefix,
+            target: None,
+            status: EvidenceReferenceStatus::Unstructured,
+            message: "empty evidence reference target; not locally validated".to_string(),
+        };
+    }
     if !reference.kind.is_local_file() {
         return EvidenceReferenceDiagnostic {
             raw: raw.to_string(),

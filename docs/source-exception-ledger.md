@@ -91,6 +91,9 @@ and are not executed or resolved over the network.
 
 Evidence strings with no `prefix:value` shape or with an unknown prefix are
 retained as weak traceability, but they are not recognized as typed evidence.
+Recognized traceability prefixes with an empty value, such as `test:` or
+`issue:`, are also treated as weak evidence because they do not identify an
+artifact or review target.
 Audit, check, diff, and receipt artifacts may report these under
 `weak_evidence_references` so weak evidence quality is visible even when the
 entry has some evidence and otherwise matches current source findings.
