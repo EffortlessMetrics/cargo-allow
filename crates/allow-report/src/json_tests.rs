@@ -70,6 +70,17 @@ fn json_report_rejects_unknown_artifact_command() {
 }
 
 #[test]
+#[should_panic(expected = "fixed artifact preamble requires a fixed-command artifact contract")]
+fn fixed_artifact_preamble_rejects_variable_command_contract() {
+    let mut out = String::new();
+    crate::json::push_json_fixed_artifact_preamble(
+        &mut out,
+        crate::contracts::REPORT_ARTIFACT,
+        InventoryContext::default(),
+    );
+}
+
+#[test]
 fn json_report_exposes_trend_metrics() {
     let outcomes = vec![
         outcome(MatchStatus::New, Some(0)),

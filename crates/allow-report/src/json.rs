@@ -35,9 +35,8 @@ pub(crate) fn push_json_fixed_artifact_preamble(
     contract: ArtifactContract,
     inventory: InventoryContext<'_>,
 ) {
-    let command = match contract.fixed_command {
-        Some(command) => command,
-        None => contract.name,
+    let Some(command) = contract.fixed_command else {
+        std::panic::panic_any("fixed artifact preamble requires a fixed-command artifact contract");
     };
     push_json_artifact_preamble(out, contract, command, inventory);
 }
