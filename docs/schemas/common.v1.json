@@ -590,6 +590,35 @@
         "effective"
       ]
     },
+    "selector_identity_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "changed_fields"
+      ],
+      "properties": {
+        "changed_fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/selector_identity_change_field"
+          },
+          "description": "Structural selector fields whose normalized values changed without changing selector precision."
+        }
+      }
+    },
+    "selector_identity_change_field": {
+      "enum": [
+        "ast_kind",
+        "container",
+        "callee",
+        "macro_name",
+        "lint",
+        "symbol",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash"
+      ]
+    },
     "lifecycle_change_field": {
       "enum": [
         "created",
