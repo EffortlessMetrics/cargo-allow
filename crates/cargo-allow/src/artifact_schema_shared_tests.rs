@@ -507,6 +507,40 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         "/$defs/selector_precision_field/enum",
         &selector_precision_fields(),
     );
+    assert_enum_equals(
+        "common selector identity fields",
+        &schema,
+        "/$defs/selector_identity_change_field/enum",
+        &selector_identity_change_fields(),
+    );
+    let selector_identity =
+        required_schema_pointer("common", &schema, "/$defs/selector_identity_change");
+    assert_eq!(
+        selector_identity
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common selector_identity_change should reject unknown fields"
+    );
+    assert_required_fields(
+        "common selector_identity_change",
+        selector_identity,
+        &["changed_fields"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/selector_identity_change/properties/changed_fields/type")
+            .and_then(Value::as_str),
+        Some("array"),
+        "common selector identity changed_fields type"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/selector_identity_change/properties/changed_fields/items/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/selector_identity_change_field"),
+        "common selector identity changed_fields should use the selector identity field vocabulary"
+    );
     let selector_precision =
         required_schema_pointer("common", &schema, "/$defs/selector_precision_change");
     assert_eq!(
@@ -747,6 +781,8 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "requirement_change",
         "requirement_change_field",
         "scanner_limitation",
+        "selector_identity_change",
+        "selector_identity_change_field",
         "selector_precision_change",
         "selector_precision_field",
         "scope_change",
@@ -792,6 +828,8 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         "evidence_change",
         "exception_identity_change_field",
         "exception_identity_change",
+        "selector_identity_change_field",
+        "selector_identity_change",
         "metadata_change_field",
         "metadata_change",
         "requirement_change_field",
@@ -1149,6 +1187,20 @@ fn selector_precision_fields() -> Vec<&'static str> {
         "target_fingerprint",
         "normalized_snippet_hash",
         "occurrence_limit",
+    ]
+}
+
+fn selector_identity_change_fields() -> Vec<&'static str> {
+    vec![
+        "ast_kind",
+        "container",
+        "callee",
+        "macro_name",
+        "lint",
+        "symbol",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
     ]
 }
 
