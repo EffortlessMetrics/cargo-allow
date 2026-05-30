@@ -1,4 +1,4 @@
-use allow_core::{AllowEntry, glob_matches_str};
+use allow_core::{AllowEntry, glob_matches_str, normalize_path};
 
 pub fn selector_precision_score(entry: &AllowEntry) -> u32 {
     let selector = &entry.selector;
@@ -59,7 +59,7 @@ pub(crate) fn scope_broadened(base: &AllowEntry, head: &AllowEntry) -> bool {
         (Some(base_scope), Some(head_scope)) => {
             head_scope.contains('*')
                 && !base_scope.contains('*')
-                && wildcard_covers_path(head_scope, base_scope)
+                && wildcard_covers_path(&head_scope, &base_scope)
         }
         _ => false,
     }
@@ -71,23 +71,31 @@ pub(crate) fn scope_narrowed(base: &AllowEntry, head: &AllowEntry) -> bool {
 
 fn glob_scope_broadened(base: Option<&str>, head: Option<&str>) -> bool {
     match (base, head) {
-        (Some(base), Some(head)) => head != base && wildcard_covers_path(head, base),
+        (Some(base), Some(head)) => {
+            let base = normalize_scope_text(base);
+            let head = normalize_scope_text(head);
+            head != base && wildcard_covers_path(&head, &base)
+        }
         _ => false,
     }
 }
 
-fn entry_scope_text(entry: &AllowEntry) -> Option<&str> {
+fn entry_scope_text(entry: &AllowEntry) -> Option<String> {
     entry
         .path
         .as_ref()
-        .and_then(|path| path.to_str())
-        .or(entry.glob.as_deref())
-        .or(entry.selector.glob.as_deref())
+        .map(normalize_path)
+        .or_else(|| entry.glob.as_deref().map(normalize_scope_text))
+        .or_else(|| entry.selector.glob.as_deref().map(normalize_scope_text))
 }
 
 fn wildcard_covers_path(pattern: &str, path: &str) -> bool {
     if pattern == "*" || pattern == "**" {
         return true;
     }
-    glob_matches_str(pattern, path)
+    glob_matches_str(pattern, &normalize_scope_text(path))
+}
+
+fn normalize_scope_text(scope: &str) -> String {
+    scope.replace('\\', "/")
 }
