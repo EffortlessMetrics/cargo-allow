@@ -122,6 +122,14 @@ fn validate_supported_glob_syntax(label: &str, glob: &str) -> CargoAllowResult<(
             "{label} uses unsupported glob token `{ch}`; supported source-tree glob tokens are `*`, `?`, and whole-segment `**`"
         )));
     }
+    if glob
+        .split('/')
+        .any(|segment| segment.contains("**") && segment != "**")
+    {
+        return Err(CargoAllowError::new(format!(
+            "{label} uses unsupported glob token `**`; `**` must occupy a whole source-tree path segment"
+        )));
+    }
     Ok(())
 }
 
