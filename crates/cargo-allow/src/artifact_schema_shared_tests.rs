@@ -489,6 +489,58 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         "/$defs/finding_posture_kind/enum",
         &finding_posture_kinds(),
     );
+    let finding_posture_change =
+        required_schema_pointer("common", &schema, "/$defs/finding_posture_change");
+    assert_eq!(
+        finding_posture_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "common finding_posture_change should reject unknown fields"
+    );
+    assert_required_fields(
+        "common finding_posture_change",
+        finding_posture_change,
+        &["change", "key", "kind", "family", "path"],
+    );
+    assert_enum_equals(
+        "common finding_posture_change change",
+        &schema,
+        "/$defs/finding_posture_change/properties/change/enum",
+        &["new", "removed"],
+    );
+    assert_enum_equals(
+        "common finding_posture_change kind",
+        &schema,
+        "/$defs/finding_posture_change/properties/kind/enum",
+        &governed_kind_enum(),
+    );
+    for field in ["key", "path"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/finding_posture_change/properties/{field}/type"
+                ))
+                .and_then(Value::as_str),
+            Some("string"),
+            "common finding posture {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/finding_posture_change/properties/{field}/minLength"
+                ))
+                .and_then(Value::as_u64),
+            Some(1),
+            "common finding posture {field} minLength"
+        );
+    }
+    assert_schema_type_equals(
+        "common finding_posture_change family",
+        &schema,
+        "/$defs/finding_posture_change/properties/family/type",
+        &["string", "null"],
+    );
     assert_enum_equals(
         "common policy change severities",
         &schema,
@@ -763,6 +815,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "evidence_reference_status",
         "exception_identity_change",
         "exception_identity_change_field",
+        "finding_posture_change",
         "finding_posture_kind",
         "governed_source_exception_kind",
         "inventory_source",
@@ -817,6 +870,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
     );
 
     for fragment in [
+        "finding_posture_change",
         "selector_precision_field",
         "selector_precision_change",
         "scope_change_field",
