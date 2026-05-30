@@ -5,6 +5,7 @@ use crate::*;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::CommandFactory;
     use clap::Parser;
 
     #[test]
@@ -84,6 +85,22 @@ mod tests {
                 ..
             })) if mode == "strict"
         ));
+    }
+
+    #[test]
+    fn check_help_describes_policy_default_as_source_tree_gate_mode() {
+        let mut command = CargoAllowCli::command();
+        let help = command.render_help().to_string();
+
+        assert!(help.contains("Source exception ledger for source trees"));
+
+        let Some(check) = command.find_subcommand_mut("check") else {
+            std::panic::panic_any("check subcommand should exist");
+        };
+        let help = check.render_help().to_string();
+
+        assert!(help.contains("policy-configured source-tree gate mode"));
+        assert!(!help.contains("workspace.default_mode"));
     }
 
     fn argv(items: Vec<&str>) -> Vec<String> {
