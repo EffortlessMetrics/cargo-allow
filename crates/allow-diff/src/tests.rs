@@ -409,6 +409,31 @@ fn detects_required_metadata_removed_and_limit_loosened() {
 }
 
 #[test]
+fn detects_required_metadata_changed_for_review() {
+    let base = config_with(entry("allow-1"));
+    let mut changed = entry("allow-1");
+    changed.owner = "security".to_string();
+    changed.reason = "Different retained exception rationale.".to_string();
+    changed.classification = "different_review_bucket".to_string();
+    let head = config_with(changed);
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::OwnerChanged
+            && change.severity == PolicyChangeSeverity::Review
+    }));
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::ReasonChanged
+            && change.severity == PolicyChangeSeverity::Review
+    }));
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::ClassificationChanged
+            && change.severity == PolicyChangeSeverity::Review
+    }));
+}
+
+#[test]
 fn detects_required_metadata_added_as_improvement() {
     let mut base_entry = entry("allow-1");
     base_entry.owner.clear();
@@ -635,12 +660,18 @@ fn policy_change_string_helpers_cover_all_public_variants() {
         (PolicyChangeKind::EvidenceAdded, "evidence_added"),
         (PolicyChangeKind::EvidenceRemoved, "evidence_removed"),
         (PolicyChangeKind::OwnerAdded, "owner_added"),
+        (PolicyChangeKind::OwnerChanged, "owner_changed"),
         (PolicyChangeKind::OwnerRemoved, "owner_removed"),
         (PolicyChangeKind::ReasonAdded, "reason_added"),
+        (PolicyChangeKind::ReasonChanged, "reason_changed"),
         (PolicyChangeKind::ReasonRemoved, "reason_removed"),
         (
             PolicyChangeKind::ClassificationAdded,
             "classification_added",
+        ),
+        (
+            PolicyChangeKind::ClassificationChanged,
+            "classification_changed",
         ),
         (
             PolicyChangeKind::ClassificationRemoved,

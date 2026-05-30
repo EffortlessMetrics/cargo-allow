@@ -559,10 +559,13 @@
             "evidence_added",
             "evidence_removed",
             "owner_added",
+            "owner_changed",
             "owner_removed",
             "reason_added",
+            "reason_changed",
             "reason_removed",
             "classification_added",
+            "classification_changed",
             "classification_removed",
             "occurrence_limit_tightened",
             "occurrence_limit_loosened"
