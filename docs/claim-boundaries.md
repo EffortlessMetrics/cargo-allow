@@ -5,7 +5,8 @@ inside what the implementation actually proves.
 
 ## Current Valid Claims
 
-For the MVP, a passing `cargo-allow check --mode no-new` may claim:
+For current source-syntax scans, a passing `cargo-allow check --mode no-new`
+may claim:
 
 - The scanned source-tree inventory produced findings.
 - Each finding was matched to the current policy ledger, or no failing new
@@ -34,8 +35,8 @@ All exceptions are proven safe.
 
 ## Source Syntax Only
 
-The MVP scanner reads source-tree files and source text. It does not require a
-successful build and does not execute repository code. It does not analyze:
+The current scanner reads source-tree files and source text. It does not require
+a successful build and does not execute repository code. It does not analyze:
 
 - macro expansion.
 - macro token-tree contents as Rust expressions.
