@@ -102,7 +102,6 @@ fn list_schema_locks_allow_id_filter_contract() {
             "classification",
             "path",
             "source_package",
-            "allow_id",
             "status",
             "expired",
             "review_due",
@@ -111,6 +110,16 @@ fn list_schema_locks_allow_id_filter_contract() {
             "broad_scope",
             "missing_evidence",
         ],
+    );
+    let required = filters
+        .get("required")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("list filters required should be an array"));
+    assert!(
+        !required
+            .iter()
+            .any(|field| field.as_str() == Some("allow_id")),
+        "allow_id filter should stay optional for list.v1 compatibility"
     );
     let allow_id = required_schema_pointer("list filters", filters, "/properties/allow_id");
     let types = allow_id

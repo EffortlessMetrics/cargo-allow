@@ -131,7 +131,6 @@
         "classification",
         "path",
         "source_package",
-        "allow_id",
         "status",
         "expired",
         "review_due",
