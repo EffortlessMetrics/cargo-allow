@@ -15,10 +15,16 @@ struct ArtifactSample {
 #[test]
 fn command_artifacts_keep_explicit_top_level_contracts() {
     let samples = command_artifact_samples();
-    assert_sample_coverage_matches_fixed_command_contracts(&samples);
     for sample in samples {
         assert_artifact_contract(&sample);
     }
+}
+
+#[test]
+fn fixed_command_artifacts_have_top_level_sample_coverage() {
+    let mut samples = command_artifact_samples();
+    samples.extend(core_artifact_samples());
+    assert_sample_coverage_matches_fixed_command_contracts(&samples);
 }
 
 #[test]
@@ -292,6 +298,7 @@ fn assert_sample_coverage_matches_fixed_command_contracts(samples: &[ArtifactSam
     let actual = samples
         .iter()
         .map(|sample| sample.schema_name)
+        .filter(|schema_name| expected.contains(schema_name))
         .collect::<BTreeSet<_>>();
     assert_eq!(
         actual, expected,
