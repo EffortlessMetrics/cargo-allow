@@ -2,6 +2,7 @@ use crate::artifact_schema_support::{
     assert_required_fields, assert_schema_type_equals, parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
+use std::collections::BTreeSet;
 
 #[test]
 fn propose_schema_locks_generated_baseline_summary_contract() {
@@ -33,11 +34,11 @@ fn propose_schema_locks_generated_baseline_summary_contract() {
         Some(false),
         "propose options should reject unknown fields"
     );
-    assert_required_fields(
-        "propose options",
-        options,
-        &["kind", "expires", "policy_output", "force"],
+    assert!(
+        options.get("required").is_none(),
+        "propose option fields should stay optional for propose.v1 compatibility"
     );
+    assert_propose_option_properties(options);
     assert_schema_type_equals(
         "propose options kind",
         &schema,
@@ -106,4 +107,19 @@ fn propose_schema_locks_generated_baseline_summary_contract() {
         Some("baseline_debt"),
         "propose generated classification should stay baseline_debt"
     );
+}
+
+fn assert_propose_option_properties(options: &Value) {
+    let Some(properties) = options.get("properties").and_then(Value::as_object) else {
+        std::panic::panic_any("propose options properties should be an object");
+    };
+    let actual = properties
+        .keys()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    let expected = ["kind", "expires", "policy_output", "force"]
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+
+    assert_eq!(actual, expected, "propose option schema properties");
 }

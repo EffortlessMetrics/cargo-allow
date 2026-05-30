@@ -47,12 +47,6 @@
     "options": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "kind",
-        "expires",
-        "policy_output",
-        "force"
-      ],
       "properties": {
         "kind": {
           "type": [

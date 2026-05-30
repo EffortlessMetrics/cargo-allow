@@ -48,10 +48,6 @@
     "options": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "policy_output",
-        "force"
-      ],
       "properties": {
         "policy_output": {
           "type": [

@@ -3,6 +3,7 @@ use crate::artifact_schema_support::{
     parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
+use std::collections::BTreeSet;
 
 #[test]
 fn add_schema_locks_selected_finding_and_review_contract() {
@@ -32,7 +33,11 @@ fn add_schema_locks_selected_finding_and_review_contract() {
         Some(false),
         "add options should reject unknown fields"
     );
-    assert_required_fields("add options", options, &["policy_output", "force"]);
+    assert!(
+        options.get("required").is_none(),
+        "add option fields should stay optional for add.v1 compatibility"
+    );
+    assert_add_option_properties(options);
     assert_schema_type_equals(
         "add options policy_output",
         &schema,
@@ -191,4 +196,19 @@ fn add_schema_locks_selected_finding_and_review_contract() {
         "/$defs/finding/properties/source_package/type",
         &["string", "null"],
     );
+}
+
+fn assert_add_option_properties(options: &Value) {
+    let Some(properties) = options.get("properties").and_then(Value::as_object) else {
+        std::panic::panic_any("add options properties should be an object");
+    };
+    let actual = properties
+        .keys()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    let expected = ["policy_output", "force"]
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+
+    assert_eq!(actual, expected, "add option schema properties");
 }
