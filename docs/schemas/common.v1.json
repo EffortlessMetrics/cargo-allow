@@ -124,6 +124,45 @@
         "unstructured"
       ]
     },
+    "evidence_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw",
+        "prefix",
+        "target",
+        "status",
+        "message"
+      ],
+      "properties": {
+        "raw": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Original evidence reference string from the allow entry."
+        },
+        "prefix": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Evidence reference prefix before ':', or null for unstructured evidence strings."
+        },
+        "target": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Normalized evidence reference target when present."
+        },
+        "status": {
+          "$ref": "#/$defs/evidence_reference_status"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "source_syntax_inventory": {
       "type": "object",
       "additionalProperties": false,
