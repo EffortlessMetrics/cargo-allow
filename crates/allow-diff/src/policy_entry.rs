@@ -11,43 +11,33 @@ use crate::policy_entry_selector::selector_policy_changes;
 
 pub(crate) fn added_allow_change(entry: &AllowEntry) -> PolicyChange {
     let baseline = entry.classification == "baseline_debt";
-    PolicyChange {
-        allow_id: entry.id.clone(),
-        kind: if baseline {
+    PolicyChange::new(
+        entry.id.clone(),
+        if baseline {
             PolicyChangeKind::BaselineDebtAdded
         } else {
             PolicyChangeKind::AddedAllow
         },
-        severity: if baseline {
+        if baseline {
             PolicyChangeSeverity::Fail
         } else {
             PolicyChangeSeverity::Review
         },
-        message: if baseline {
+        if baseline {
             format!("{} added generated baseline debt", entry.id)
         } else {
             format!("{} added a new allow entry", entry.id)
         },
-        selector_precision: None,
-        scope: None,
-        occurrence_limit: None,
-        lifecycle: None,
-        evidence: None,
-    }
+    )
 }
 
 pub(crate) fn removed_allow_change(entry: &AllowEntry) -> PolicyChange {
-    PolicyChange {
-        allow_id: entry.id.clone(),
-        kind: PolicyChangeKind::RemovedAllow,
-        severity: PolicyChangeSeverity::Improvement,
-        message: format!("{} removed an allow entry", entry.id),
-        selector_precision: None,
-        scope: None,
-        occurrence_limit: None,
-        lifecycle: None,
-        evidence: None,
-    }
+    PolicyChange::new(
+        entry.id.clone(),
+        PolicyChangeKind::RemovedAllow,
+        PolicyChangeSeverity::Improvement,
+        format!("{} removed an allow entry", entry.id),
+    )
 }
 
 pub(crate) fn entry_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<PolicyChange> {

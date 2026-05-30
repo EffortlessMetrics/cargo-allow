@@ -38,18 +38,14 @@ fn change(
     severity: PolicyChangeSeverity,
     message: &str,
 ) -> PolicyChange {
-    PolicyChange {
-        allow_id: entry.id.clone(),
+    PolicyChange::new(
+        entry.id.clone(),
         kind,
         severity,
-        message: format!("{} {message}", entry.id),
-        selector_precision: None,
-        scope: None,
-        occurrence_limit: Some(OccurrenceLimitChange {
-            before: base.occurrence_limit,
-            after: entry.occurrence_limit,
-        }),
-        lifecycle: None,
-        evidence: None,
-    }
+        format!("{} {message}", entry.id),
+    )
+    .with_occurrence_limit(OccurrenceLimitChange {
+        before: base.occurrence_limit,
+        after: entry.occurrence_limit,
+    })
 }

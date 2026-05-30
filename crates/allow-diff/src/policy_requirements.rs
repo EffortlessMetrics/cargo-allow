@@ -34,20 +34,15 @@ fn requirement_change(field: RequirementField) -> Option<PolicyChange> {
             "tightened",
         )
     };
-    Some(PolicyChange {
-        allow_id: format!("requirements.{}", field.name),
+    Some(PolicyChange::new(
+        format!("requirements.{}", field.name),
         kind,
         severity,
-        message: format!(
+        format!(
             "requirements.{} {direction}: {} -> {}",
             field.name, field.base, field.head
         ),
-        selector_precision: None,
-        scope: None,
-        occurrence_limit: None,
-        lifecycle: None,
-        evidence: None,
-    })
+    ))
 }
 
 struct RequirementField {

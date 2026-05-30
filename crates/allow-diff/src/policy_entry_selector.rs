@@ -12,43 +12,39 @@ pub(crate) fn selector_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
     if head_precision < base_precision {
         let selector_precision =
             selector_precision_change(base, head, base_precision, head_precision);
-        vec![PolicyChange {
-            allow_id: head.id.clone(),
-            kind: PolicyChangeKind::SelectorPrecisionDecreased,
-            severity: PolicyChangeSeverity::Fail,
-            message: format!(
-                "{} selector precision decreased: {} -> {}{}",
-                head.id,
-                base_precision,
-                head_precision,
-                selector_precision_detail(&selector_precision)
-            ),
-            selector_precision: Some(selector_precision),
-            scope: None,
-            occurrence_limit: None,
-            lifecycle: None,
-            evidence: None,
-        }]
+        vec![
+            PolicyChange::new(
+                head.id.clone(),
+                PolicyChangeKind::SelectorPrecisionDecreased,
+                PolicyChangeSeverity::Fail,
+                format!(
+                    "{} selector precision decreased: {} -> {}{}",
+                    head.id,
+                    base_precision,
+                    head_precision,
+                    selector_precision_detail(&selector_precision)
+                ),
+            )
+            .with_selector_precision(selector_precision),
+        ]
     } else if head_precision > base_precision {
         let selector_precision =
             selector_precision_change(base, head, base_precision, head_precision);
-        vec![PolicyChange {
-            allow_id: head.id.clone(),
-            kind: PolicyChangeKind::SelectorPrecisionIncreased,
-            severity: PolicyChangeSeverity::Improvement,
-            message: format!(
-                "{} selector precision increased: {} -> {}{}",
-                head.id,
-                base_precision,
-                head_precision,
-                selector_precision_detail(&selector_precision)
-            ),
-            selector_precision: Some(selector_precision),
-            scope: None,
-            occurrence_limit: None,
-            lifecycle: None,
-            evidence: None,
-        }]
+        vec![
+            PolicyChange::new(
+                head.id.clone(),
+                PolicyChangeKind::SelectorPrecisionIncreased,
+                PolicyChangeSeverity::Improvement,
+                format!(
+                    "{} selector precision increased: {} -> {}{}",
+                    head.id,
+                    base_precision,
+                    head_precision,
+                    selector_precision_detail(&selector_precision)
+                ),
+            )
+            .with_selector_precision(selector_precision),
+        ]
     } else if selector_identity_changed(&base.selector, &head.selector) {
         vec![change(
             head,
@@ -109,15 +105,10 @@ fn change(
     severity: PolicyChangeSeverity,
     message: &str,
 ) -> PolicyChange {
-    PolicyChange {
-        allow_id: entry.id.clone(),
+    PolicyChange::new(
+        entry.id.clone(),
         kind,
         severity,
-        message: format!("{} {message}", entry.id),
-        selector_precision: None,
-        scope: None,
-        occurrence_limit: None,
-        lifecycle: None,
-        evidence: None,
-    }
+        format!("{} {message}", entry.id),
+    )
 }

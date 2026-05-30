@@ -87,15 +87,10 @@ fn change(
     message: &str,
     value: &str,
 ) -> PolicyChange {
-    PolicyChange {
-        allow_id: policy_id.to_string(),
+    PolicyChange::new(
+        policy_id,
         kind,
         severity,
-        message: format!("{policy_id} {message}: {value}"),
-        selector_precision: None,
-        scope: None,
-        occurrence_limit: None,
-        lifecycle: None,
-        evidence: None,
-    }
+        format!("{policy_id} {message}: {value}"),
+    )
 }

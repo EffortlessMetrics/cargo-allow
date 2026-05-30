@@ -11,6 +11,52 @@ pub struct PolicyChange {
     pub evidence: Option<EvidenceChange>,
 }
 
+impl PolicyChange {
+    pub fn new(
+        allow_id: impl Into<String>,
+        kind: PolicyChangeKind,
+        severity: PolicyChangeSeverity,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            allow_id: allow_id.into(),
+            kind,
+            severity,
+            message: message.into(),
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+        }
+    }
+
+    pub fn with_selector_precision(mut self, selector_precision: SelectorPrecisionChange) -> Self {
+        self.selector_precision = Some(selector_precision);
+        self
+    }
+
+    pub fn with_scope(mut self, scope: ScopeChange) -> Self {
+        self.scope = Some(scope);
+        self
+    }
+
+    pub fn with_occurrence_limit(mut self, occurrence_limit: OccurrenceLimitChange) -> Self {
+        self.occurrence_limit = Some(occurrence_limit);
+        self
+    }
+
+    pub fn with_lifecycle(mut self, lifecycle: LifecycleChange) -> Self {
+        self.lifecycle = Some(lifecycle);
+        self
+    }
+
+    pub fn with_evidence(mut self, evidence: EvidenceChange) -> Self {
+        self.evidence = Some(evidence);
+        self
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SelectorPrecisionChange {
     pub before: u32,
