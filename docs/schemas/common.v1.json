@@ -216,6 +216,43 @@
         }
       }
     },
+    "scope_change_field": {
+      "enum": [
+        "path",
+        "glob",
+        "selector.glob",
+        "effective"
+      ]
+    },
+    "scope_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "before",
+        "after"
+      ],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/scope_change_field",
+          "description": "Scope carrier that changed, or effective when the scope moved between carriers."
+        },
+        "before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Normalized source-tree scope before the policy change when available."
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Normalized source-tree scope after the policy change when available."
+        }
+      }
+    },
     "source_syntax_inventory": {
       "type": "object",
       "additionalProperties": false,
