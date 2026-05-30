@@ -67,6 +67,9 @@ but nested filter fields are optional in the schema so older `cargo-allow.list.v
 artifacts and future additive filter fields can remain compatible.
 Worklist artifacts follow the same rule: current renderers emit all known
 filter keys, while the nested `filters` schema keeps those keys optional.
+Adoption summary artifacts such as `add` and `propose` also emit all known
+`options` keys today, while nested option fields remain optional in the schema
+for v1 compatibility.
 
 The shared report schema is emitted by `audit`, `check`, and `diff`, but the
 top-level `diff` posture extension is valid only on reports whose
