@@ -125,11 +125,12 @@ Matching must move toward durable source identity:
 - stale entries are reported instead of silently retained.
 - generated baseline debt remains uncomfortable and temporary.
 
-Future matching should detect policy weakening, including:
+Future matching should detect policy weakening and review-required policy
+changes, including:
 
 - exact path changed to broad glob.
 - selector precision decreased.
-- expiry extended.
+- expiry extended for explicit review.
 - owner, reason, classification, or evidence removed.
 - baseline debt added or normalized as permanent approval.
 

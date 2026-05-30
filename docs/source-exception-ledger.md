@@ -239,8 +239,8 @@ from `created`, empty or parent-directory scopes, source-code selectors that
 contain no structural identity beyond path/glob scope and line hints, and
 non-source selectors that contain no structural identity or selector glob.
 
-Diff mode reports expiry or review-date extensions/removals as policy weakening
-and added or earlier lifecycle dates as policy improvements.
+Diff mode reports expiry or review-date extensions/removals as review-required
+lifecycle changes, and added or earlier lifecycle dates as policy improvements.
 
 ## Baseline Debt
 
@@ -406,17 +406,16 @@ policy failed; they route cleanup work toward narrower selectors or explicit
 review of the broad scope.
 
 `cargo-allow diff --base <rev>` compares the current policy ledger with the
-base revision's `policy/allow.toml` and reports policy weakening in human and
-Markdown output. Current detection covers scope broadening, selector precision
-loss, expiry/review extension, evidence removal, top-level policy status
-weakening, top-level policy owner removal/unassignment,
-owner/reason/classification removal, owner unassignment, occurrence-limit
-loosening, added
-`baseline_debt`, reviewed entries reclassified as `baseline_debt`, and existing
-`baseline_debt` entries reclassified as reviewed policy, and policy requirement
-loosening. It also reports source-tree inventory carveout changes for
-`workspace.ignored` and `workspace.generated`. This is policy ledger comparison
-only.
+base revision's `policy/allow.toml` and reports policy weakening and
+review-required policy changes in human and Markdown output. Current detection
+covers scope broadening, selector precision loss, expiry/review extension,
+evidence removal, top-level policy status weakening, top-level policy owner
+removal/unassignment, owner/reason/classification removal, owner unassignment,
+occurrence-limit loosening, added `baseline_debt`, reviewed entries reclassified
+as `baseline_debt`, existing `baseline_debt` entries reclassified as reviewed
+policy, and policy requirement loosening. It also reports source-tree inventory
+carveout changes for `workspace.ignored` and `workspace.generated`. This is
+policy ledger comparison only.
 
 The same command also compares source finding posture between the base git tree
 and the current checkout, or the optional `--head` git tree when provided. It

@@ -443,13 +443,13 @@ fn detects_evidence_removed_and_lifecycle_extended() {
     assert!(
         changes
             .iter()
-            .any(|change| change.kind == PolicyChangeKind::ExpiryExtended)
+            .any(|change| change.kind == PolicyChangeKind::ExpiryExtended
+                && change.severity == PolicyChangeSeverity::Review)
     );
-    assert!(
-        changes
-            .iter()
-            .any(|change| change.kind == PolicyChangeKind::ReviewAfterExtended)
-    );
+    assert!(changes.iter().any(
+        |change| change.kind == PolicyChangeKind::ReviewAfterExtended
+            && change.severity == PolicyChangeSeverity::Review
+    ));
 }
 
 #[test]
