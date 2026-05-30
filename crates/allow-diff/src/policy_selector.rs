@@ -13,13 +13,12 @@ pub(crate) fn selector_identity_changed(base: &Selector, head: &Selector) -> boo
 }
 
 fn text_field_changed(base: &Option<String>, head: &Option<String>) -> bool {
-    let base = base
+    normalized_text(base) != normalized_text(head)
+}
+
+fn normalized_text(value: &Option<String>) -> Option<&str> {
+    value
         .as_deref()
         .map(str::trim)
-        .filter(|value| !value.is_empty());
-    let head = head
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty());
-    matches!((base, head), (Some(base), Some(head)) if base != head)
+        .filter(|value| !value.is_empty())
 }
