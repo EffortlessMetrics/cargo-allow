@@ -17,6 +17,7 @@ mod render_selector;
 mod render_toml;
 mod scope_validation;
 mod selector_validation;
+mod source_tree_scope;
 mod starter;
 mod toml_de;
 mod toml_entry;
