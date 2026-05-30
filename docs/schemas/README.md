@@ -108,10 +108,11 @@ use the policy-level field for debt-burn-down metrics and the outcome-level
 field for current check-status accounting.
 
 Diff report `policy_changes` use `baseline_debt_added` when a PR adds generated
-baseline debt and `baseline_debt_normalized` when an existing
-`classification = "baseline_debt"` entry is reclassified as reviewed policy.
-Both are failing policy-posture signals so generated adoption debt cannot be
-silently laundered into approval.
+baseline debt, `baseline_debt_introduced` when an existing reviewed entry is
+reclassified as generated baseline debt, and `baseline_debt_normalized` when an
+existing `classification = "baseline_debt"` entry is reclassified as reviewed
+policy. These are failing policy-posture signals so generated adoption debt
+cannot be silently laundered into approval or introduced into reviewed entries.
 
 Diff report `policy_changes` also distinguish traceability and provenance
 changes. Removed policy `links` emit `link_removed` review items, added links
