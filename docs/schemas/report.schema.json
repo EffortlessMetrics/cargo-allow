@@ -615,8 +615,34 @@
         "selector_precision": {
           "$ref": "#/$defs/selector_precision_change",
           "description": "Optional structured selector precision delta for selector_precision_decreased and selector_precision_increased policy changes."
+        },
+        "scope": {
+          "$ref": "#/$defs/scope_change",
+          "description": "Optional structured source-tree scope delta for scope_broadened, scope_narrowed, and scope_changed policy changes."
         }
       }
+    },
+    "scope_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "before", "after"],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/scope_change_field",
+          "description": "Scope carrier that changed, or effective when the scope moved between carriers."
+        },
+        "before": {
+          "type": ["string", "null"],
+          "description": "Normalized source-tree scope before the policy change when available."
+        },
+        "after": {
+          "type": ["string", "null"],
+          "description": "Normalized source-tree scope after the policy change when available."
+        }
+      }
+    },
+    "scope_change_field": {
+      "enum": ["path", "glob", "selector.glob", "effective"]
     },
     "selector_precision_change": {
       "type": "object",

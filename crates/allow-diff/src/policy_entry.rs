@@ -29,6 +29,7 @@ pub(crate) fn added_allow_change(entry: &AllowEntry) -> PolicyChange {
             format!("{} added a new allow entry", entry.id)
         },
         selector_precision: None,
+        scope: None,
     }
 }
 
@@ -39,6 +40,7 @@ pub(crate) fn removed_allow_change(entry: &AllowEntry) -> PolicyChange {
         severity: PolicyChangeSeverity::Improvement,
         message: format!("{} removed an allow entry", entry.id),
         selector_precision: None,
+        scope: None,
     }
 }
 
