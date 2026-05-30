@@ -1,7 +1,8 @@
 use allow_core::FindingKind;
+use std::collections::BTreeSet;
 
 use super::test_support::{test_entry, test_finding};
-use super::{proof_commands, suggested_actions};
+use super::{WORK_ITEM_KINDS, proof_commands, suggested_actions};
 
 #[test]
 fn suggested_actions_cover_known_worklist_kinds_and_default() {
@@ -51,6 +52,10 @@ fn suggested_actions_cover_known_worklist_kinds_and_default() {
             "review the retained exception and update evidence or remove it",
         ),
         (
+            "matched",
+            "inspect the outcome and update policy or source accordingly",
+        ),
+        (
             "broad_scope",
             "replace the broad glob with exact paths or a narrower glob where practical",
         ),
@@ -67,6 +72,17 @@ fn suggested_actions_cover_known_worklist_kinds_and_default() {
             "inspect the outcome and update policy or source accordingly",
         ),
     ];
+
+    let covered = cases
+        .iter()
+        .map(|(kind, _)| *kind)
+        .filter(|kind| *kind != "future_kind")
+        .collect::<BTreeSet<_>>();
+    let known = WORK_ITEM_KINDS.iter().copied().collect::<BTreeSet<_>>();
+    assert_eq!(
+        covered, known,
+        "every known worklist item kind should have deliberate suggested-action coverage"
+    );
 
     for (kind, expected_first_action) in cases {
         let actions = suggested_actions(kind);
