@@ -169,7 +169,9 @@ Diff report `policy_changes` use `requirement_loosened` and
 `allow_id` field is a synthetic stable path such as
 `requirements.owner_required` because these are ledger policy controls rather
 than individual allow entries. Loosening is a failing policy-posture signal;
-tightening is a policy improvement.
+tightening is a policy improvement. These rows may include an optional
+`requirement` object with the changed requirement and before/after boolean
+values.
 
 Diff report `policy_changes` use `workspace_ignored_added` and
 `workspace_ignored_removed` for source-tree inventory exclusions. Added ignored

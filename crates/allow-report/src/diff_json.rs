@@ -147,6 +147,15 @@ pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
                 option_json(metadata.after)
             ));
         }
+        if let Some(requirement) = change.requirement {
+            out.push_str(", ");
+            out.push_str(&format!(
+                "\"requirement\": {{\"field\": \"{}\", \"before\": {}, \"after\": {}}}",
+                json_escape(requirement.field),
+                requirement.before,
+                requirement.after
+            ));
+        }
         out.push('}');
     }
     out.push_str("\n    ]\n");

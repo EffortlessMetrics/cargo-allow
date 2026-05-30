@@ -1,6 +1,8 @@
 use allow_core::Requirements;
 
-use crate::policy_change::{PolicyChange, PolicyChangeKind, PolicyChangeSeverity};
+use crate::policy_change::{
+    PolicyChange, PolicyChangeKind, PolicyChangeSeverity, RequirementChange, RequirementChangeField,
+};
 
 pub(crate) fn requirement_policy_changes(
     base: &Requirements,
@@ -34,19 +36,28 @@ fn requirement_change(field: RequirementField) -> Option<PolicyChange> {
             "tightened",
         )
     };
-    Some(PolicyChange::new(
-        format!("requirements.{}", field.name),
-        kind,
-        severity,
-        format!(
-            "requirements.{} {direction}: {} -> {}",
-            field.name, field.base, field.head
-        ),
-    ))
+    Some(
+        PolicyChange::new(
+            format!("requirements.{}", field.name.as_str()),
+            kind,
+            severity,
+            format!(
+                "requirements.{} {direction}: {} -> {}",
+                field.name.as_str(),
+                field.base,
+                field.head
+            ),
+        )
+        .with_requirement(RequirementChange {
+            field: field.name,
+            before: field.base,
+            after: field.head,
+        }),
+    )
 }
 
 struct RequirementField {
-    name: &'static str,
+    name: RequirementChangeField,
     base: bool,
     head: bool,
     true_is_strict: bool,
@@ -55,61 +66,61 @@ struct RequirementField {
 fn requirement_fields(base: &Requirements, head: &Requirements) -> Vec<RequirementField> {
     vec![
         field(
-            "owner_required",
+            RequirementChangeField::OwnerRequired,
             base.owner_required,
             head.owner_required,
             true,
         ),
         field(
-            "reason_required",
+            RequirementChangeField::ReasonRequired,
             base.reason_required,
             head.reason_required,
             true,
         ),
         field(
-            "classification_required",
+            RequirementChangeField::ClassificationRequired,
             base.classification_required,
             head.classification_required,
             true,
         ),
         field(
-            "evidence_required",
+            RequirementChangeField::EvidenceRequired,
             base.evidence_required,
             head.evidence_required,
             true,
         ),
         field(
-            "expires_or_review_after_required",
+            RequirementChangeField::ExpiresOrReviewAfterRequired,
             base.expires_or_review_after_required,
             head.expires_or_review_after_required,
             true,
         ),
         field(
-            "allow_bare_allow_attributes",
+            RequirementChangeField::AllowBareAllowAttributes,
             base.allow_bare_allow_attributes,
             head.allow_bare_allow_attributes,
             false,
         ),
         field(
-            "lint_policy_id_required",
+            RequirementChangeField::LintPolicyIdRequired,
             base.lint_policy_id_required,
             head.lint_policy_id_required,
             true,
         ),
         field(
-            "stale_entries_fail",
+            RequirementChangeField::StaleEntriesFail,
             base.stale_entries_fail,
             head.stale_entries_fail,
             true,
         ),
         field(
-            "unsafe.evidence_required",
+            RequirementChangeField::UnsafeEvidenceRequired,
             base.unsafe_evidence_required,
             head.unsafe_evidence_required,
             true,
         ),
         field(
-            "unsafe.safety_comment_required",
+            RequirementChangeField::UnsafeSafetyCommentRequired,
             base.unsafe_safety_comment_required,
             head.unsafe_safety_comment_required,
             true,
@@ -117,7 +128,12 @@ fn requirement_fields(base: &Requirements, head: &Requirements) -> Vec<Requireme
     ]
 }
 
-fn field(name: &'static str, base: bool, head: bool, true_is_strict: bool) -> RequirementField {
+fn field(
+    name: RequirementChangeField,
+    base: bool,
+    head: bool,
+    true_is_strict: bool,
+) -> RequirementField {
     RequirementField {
         name,
         base,

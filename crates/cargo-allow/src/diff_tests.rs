@@ -102,6 +102,7 @@ fn json_report_includes_structured_posture_changes() {
             lifecycle: None,
             evidence: None,
             metadata: None,
+            requirement: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0002".to_string(),
@@ -118,6 +119,7 @@ fn json_report_includes_structured_posture_changes() {
             lifecycle: None,
             evidence: None,
             metadata: None,
+            requirement: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0003".to_string(),
@@ -133,6 +135,7 @@ fn json_report_includes_structured_posture_changes() {
             lifecycle: None,
             evidence: None,
             metadata: None,
+            requirement: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0004".to_string(),
@@ -149,6 +152,7 @@ fn json_report_includes_structured_posture_changes() {
             }),
             evidence: None,
             metadata: None,
+            requirement: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0005".to_string(),
@@ -165,6 +169,7 @@ fn json_report_includes_structured_posture_changes() {
                 added: vec![],
             }),
             metadata: None,
+            requirement: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0006".to_string(),
@@ -180,6 +185,24 @@ fn json_report_includes_structured_posture_changes() {
                 field: allow_diff::MetadataChangeField::Owner,
                 before: Some("core".to_string()),
                 after: None,
+            }),
+            requirement: None,
+        },
+        allow_diff::PolicyChange {
+            allow_id: "requirements.owner_required".to_string(),
+            kind: allow_diff::PolicyChangeKind::RequirementLoosened,
+            severity: allow_diff::PolicyChangeSeverity::Fail,
+            message: "requirements.owner_required loosened: true -> false".to_string(),
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: Some(allow_diff::RequirementChange {
+                field: allow_diff::RequirementChangeField::OwnerRequired,
+                before: true,
+                after: false,
             }),
         },
     ];
@@ -225,7 +248,7 @@ fn json_report_includes_structured_posture_changes() {
         value
             .pointer("/diff/summary/policy_failures")
             .and_then(Value::as_u64),
-        Some(5)
+        Some(6)
     );
     assert_eq!(
         value
@@ -403,6 +426,29 @@ fn json_report_includes_structured_posture_changes() {
             .pointer("/metadata/after")
             .is_some_and(Value::is_null)
     );
+    let requirement_change = policy_changes.get(6).unwrap_or_else(|| {
+        std::panic::panic_any("diff policy_changes should include requirement row")
+    });
+    assert_eq!(
+        requirement_change.get("kind").and_then(Value::as_str),
+        Some("requirement_loosened")
+    );
+    assert_eq!(
+        requirement_change
+            .pointer("/requirement/field")
+            .and_then(Value::as_str),
+        Some("owner_required")
+    );
+    assert!(
+        requirement_change
+            .pointer("/requirement/before")
+            .is_some_and(|value| value == &Value::Bool(true))
+    );
+    assert!(
+        requirement_change
+            .pointer("/requirement/after")
+            .is_some_and(|value| value == &Value::Bool(false))
+    );
     assert!(json.ends_with("}\n"));
 }
 
@@ -460,6 +506,7 @@ fn policy_change(
         lifecycle: None,
         evidence: None,
         metadata: None,
+        requirement: None,
     }
 }
 

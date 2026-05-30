@@ -4,7 +4,7 @@ use crate::artifact_schema_support::{
 };
 use allow_diff::{
     EvidenceChangeField, FindingPostureKind, LifecycleChangeField, MetadataChangeField,
-    PolicyChangeKind, PolicyChangeSeverity, ScopeChangeField,
+    PolicyChangeKind, PolicyChangeSeverity, RequirementChangeField, ScopeChangeField,
 };
 use serde_json::Value;
 
@@ -298,6 +298,51 @@ fn report_schema_locks_diff_posture_extension_contract() {
             .and_then(Value::as_str),
         Some("#/$defs/metadata_change"),
         "report policy changes should use metadata change rows"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/policy_change/properties/requirement/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/requirement_change"),
+        "report policy changes should use requirement change rows"
+    );
+    let requirement_change =
+        required_schema_pointer("report", &schema, "/$defs/requirement_change");
+    assert_eq!(
+        requirement_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "report requirement changes should reject unknown fields"
+    );
+    assert_required_fields(
+        "report requirement change",
+        requirement_change,
+        &["field", "before", "after"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/requirement_change/properties/field/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/requirement_change_field"),
+        "report requirement changes should use the requirement field vocabulary"
+    );
+    for field in ["before", "after"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/requirement_change/properties/{field}/type"
+                ))
+                .and_then(Value::as_str),
+            Some("boolean"),
+            "report requirement {field} type"
+        );
+    }
+    assert_enum_equals(
+        "report requirement fields",
+        &schema,
+        "/$defs/requirement_change_field/enum",
+        &enum_strings(RequirementChangeField::ALL, RequirementChangeField::as_str),
     );
     let metadata_change = required_schema_pointer("report", &schema, "/$defs/metadata_change");
     assert_eq!(

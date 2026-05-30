@@ -10,6 +10,7 @@ pub struct PolicyChange {
     pub lifecycle: Option<LifecycleChange>,
     pub evidence: Option<EvidenceChange>,
     pub metadata: Option<MetadataChange>,
+    pub requirement: Option<RequirementChange>,
 }
 
 impl PolicyChange {
@@ -30,6 +31,7 @@ impl PolicyChange {
             lifecycle: None,
             evidence: None,
             metadata: None,
+            requirement: None,
         }
     }
 
@@ -60,6 +62,11 @@ impl PolicyChange {
 
     pub fn with_metadata(mut self, metadata: MetadataChange) -> Self {
         self.metadata = Some(metadata);
+        self
+    }
+
+    pub fn with_requirement(mut self, requirement: RequirementChange) -> Self {
+        self.requirement = Some(requirement);
         self
     }
 }
@@ -121,6 +128,57 @@ impl MetadataChangeField {
             Self::Owner => "owner",
             Self::Reason => "reason",
             Self::Classification => "classification",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RequirementChange {
+    pub field: RequirementChangeField,
+    pub before: bool,
+    pub after: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RequirementChangeField {
+    OwnerRequired,
+    ReasonRequired,
+    ClassificationRequired,
+    EvidenceRequired,
+    ExpiresOrReviewAfterRequired,
+    AllowBareAllowAttributes,
+    LintPolicyIdRequired,
+    StaleEntriesFail,
+    UnsafeEvidenceRequired,
+    UnsafeSafetyCommentRequired,
+}
+
+impl RequirementChangeField {
+    pub const ALL: &[Self] = &[
+        Self::OwnerRequired,
+        Self::ReasonRequired,
+        Self::ClassificationRequired,
+        Self::EvidenceRequired,
+        Self::ExpiresOrReviewAfterRequired,
+        Self::AllowBareAllowAttributes,
+        Self::LintPolicyIdRequired,
+        Self::StaleEntriesFail,
+        Self::UnsafeEvidenceRequired,
+        Self::UnsafeSafetyCommentRequired,
+    ];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::OwnerRequired => "owner_required",
+            Self::ReasonRequired => "reason_required",
+            Self::ClassificationRequired => "classification_required",
+            Self::EvidenceRequired => "evidence_required",
+            Self::ExpiresOrReviewAfterRequired => "expires_or_review_after_required",
+            Self::AllowBareAllowAttributes => "allow_bare_allow_attributes",
+            Self::LintPolicyIdRequired => "lint_policy_id_required",
+            Self::StaleEntriesFail => "stale_entries_fail",
+            Self::UnsafeEvidenceRequired => "unsafe.evidence_required",
+            Self::UnsafeSafetyCommentRequired => "unsafe.safety_comment_required",
         }
     }
 }

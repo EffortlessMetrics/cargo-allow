@@ -635,6 +635,10 @@
         "metadata": {
           "$ref": "#/$defs/metadata_change",
           "description": "Optional structured owner/reason/classification delta for metadata and baseline_debt classification policy changes."
+        },
+        "requirement": {
+          "$ref": "#/$defs/requirement_change",
+          "description": "Optional structured requirement delta for requirement_loosened and requirement_tightened policy changes."
         }
       }
     },
@@ -689,6 +693,39 @@
     },
     "metadata_change_field": {
       "enum": ["owner", "reason", "classification"]
+    },
+    "requirement_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "before", "after"],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/requirement_change_field",
+          "description": "Policy requirement field that changed."
+        },
+        "before": {
+          "type": "boolean",
+          "description": "Requirement value before the policy change."
+        },
+        "after": {
+          "type": "boolean",
+          "description": "Requirement value after the policy change."
+        }
+      }
+    },
+    "requirement_change_field": {
+      "enum": [
+        "owner_required",
+        "reason_required",
+        "classification_required",
+        "evidence_required",
+        "expires_or_review_after_required",
+        "allow_bare_allow_attributes",
+        "lint_policy_id_required",
+        "stale_entries_fail",
+        "unsafe.evidence_required",
+        "unsafe.safety_comment_required"
+      ]
     },
     "lifecycle_change": {
       "type": "object",

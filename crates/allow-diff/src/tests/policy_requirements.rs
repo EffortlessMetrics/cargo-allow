@@ -14,6 +14,18 @@ fn detects_requirement_loosened_as_failure() {
             && change.allow_id == "requirements.owner_required"
             && change.message.contains("true -> false")
     }));
+    let change = changes
+        .iter()
+        .find(|change| change.allow_id == "requirements.owner_required")
+        .unwrap_or_else(|| std::panic::panic_any("owner requirement change should be reported"));
+    assert_eq!(
+        change.requirement.as_ref().map(|requirement| (
+            requirement.field,
+            requirement.before,
+            requirement.after
+        )),
+        Some((RequirementChangeField::OwnerRequired, true, false))
+    );
 }
 
 #[test]
@@ -31,6 +43,18 @@ fn detects_requirement_tightened_as_improvement() {
             && change.allow_id == "requirements.evidence_required"
             && change.message.contains("false -> true")
     }));
+    let change = changes
+        .iter()
+        .find(|change| change.allow_id == "requirements.evidence_required")
+        .unwrap_or_else(|| std::panic::panic_any("evidence requirement change should be reported"));
+    assert_eq!(
+        change.requirement.as_ref().map(|requirement| (
+            requirement.field,
+            requirement.before,
+            requirement.after
+        )),
+        Some((RequirementChangeField::EvidenceRequired, false, true))
+    );
 }
 
 #[test]
