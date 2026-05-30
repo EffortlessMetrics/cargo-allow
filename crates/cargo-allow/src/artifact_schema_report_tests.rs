@@ -143,6 +143,20 @@ fn report_schema_locks_diff_posture_extension_contract() {
 
     assert_eq!(
         schema
+            .pointer("/allOf/0/if/required/0")
+            .and_then(Value::as_str),
+        Some("diff"),
+        "report schema should condition on the diff extension"
+    );
+    assert_eq!(
+        schema
+            .pointer("/allOf/0/then/properties/command/const")
+            .and_then(Value::as_str),
+        Some("diff"),
+        "report schema should allow the diff extension only on diff reports"
+    );
+    assert_eq!(
+        schema
             .pointer("/properties/diff/$ref")
             .and_then(Value::as_str),
         Some("#/$defs/diff"),

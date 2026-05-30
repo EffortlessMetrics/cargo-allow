@@ -59,6 +59,11 @@ Artifact-specific fields such as `diff`, `summary`, `allow_entries`,
 covered by their individual schema files. Consumers should branch on
 `schema_id`, not on command-line spelling or filenames.
 
+The shared report schema is emitted by `audit`, `check`, and `diff`, but the
+top-level `diff` posture extension is valid only on reports whose
+`command = "diff"`. Audit and check reports use the same base schema without
+the PR-posture extension.
+
 ## Contract Change Rules
 
 Treat the JSON artifacts as producer-consumer contracts. A PR that changes an
