@@ -1,6 +1,8 @@
 use allow_core::AllowEntry;
 
-use crate::policy_change::{PolicyChange, PolicyChangeKind, PolicyChangeSeverity};
+use crate::policy_change::{
+    EvidenceChange, EvidenceChangeField, PolicyChange, PolicyChangeKind, PolicyChangeSeverity,
+};
 use crate::policy_compare::{added_values, removed_values};
 
 pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<PolicyChange> {
@@ -8,6 +10,9 @@ pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
     if removed_values(&base.evidence, &head.evidence) {
         changes.push(change(
             head,
+            EvidenceChangeField::Evidence,
+            removed_items(&base.evidence, &head.evidence),
+            Vec::new(),
             PolicyChangeKind::EvidenceRemoved,
             PolicyChangeSeverity::Fail,
             "evidence removed",
@@ -16,6 +21,9 @@ pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
     if added_values(&base.evidence, &head.evidence) {
         changes.push(change(
             head,
+            EvidenceChangeField::Evidence,
+            Vec::new(),
+            added_items(&base.evidence, &head.evidence),
             PolicyChangeKind::EvidenceAdded,
             PolicyChangeSeverity::Improvement,
             "evidence added",
@@ -24,6 +32,9 @@ pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
     if removed_values(&base.links, &head.links) {
         changes.push(change(
             head,
+            EvidenceChangeField::Links,
+            removed_items(&base.links, &head.links),
+            Vec::new(),
             PolicyChangeKind::LinkRemoved,
             PolicyChangeSeverity::Review,
             "traceability link removed",
@@ -32,6 +43,9 @@ pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
     if added_values(&base.links, &head.links) {
         changes.push(change(
             head,
+            EvidenceChangeField::Links,
+            Vec::new(),
+            added_items(&base.links, &head.links),
             PolicyChangeKind::LinkAdded,
             PolicyChangeSeverity::Improvement,
             "traceability link added",
@@ -42,6 +56,9 @@ pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
 
 fn change(
     entry: &AllowEntry,
+    field: EvidenceChangeField,
+    removed: Vec<String>,
+    added: Vec<String>,
     kind: PolicyChangeKind,
     severity: PolicyChangeSeverity,
     message: &str,
@@ -55,5 +72,24 @@ fn change(
         scope: None,
         occurrence_limit: None,
         lifecycle: None,
+        evidence: Some(EvidenceChange {
+            field,
+            removed,
+            added,
+        }),
     }
+}
+
+fn removed_items(base: &[String], head: &[String]) -> Vec<String> {
+    base.iter()
+        .filter(|item| !head.iter().any(|head| head == *item))
+        .cloned()
+        .collect()
+}
+
+fn added_items(base: &[String], head: &[String]) -> Vec<String> {
+    head.iter()
+        .filter(|item| !base.iter().any(|base| base == *item))
+        .cloned()
+        .collect()
 }

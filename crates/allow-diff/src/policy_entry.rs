@@ -32,6 +32,7 @@ pub(crate) fn added_allow_change(entry: &AllowEntry) -> PolicyChange {
         scope: None,
         occurrence_limit: None,
         lifecycle: None,
+        evidence: None,
     }
 }
 
@@ -45,6 +46,7 @@ pub(crate) fn removed_allow_change(entry: &AllowEntry) -> PolicyChange {
         scope: None,
         occurrence_limit: None,
         lifecycle: None,
+        evidence: None,
     }
 }
 

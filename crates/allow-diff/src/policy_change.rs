@@ -8,6 +8,7 @@ pub struct PolicyChange {
     pub scope: Option<ScopeChange>,
     pub occurrence_limit: Option<OccurrenceLimitChange>,
     pub lifecycle: Option<LifecycleChange>,
+    pub evidence: Option<EvidenceChange>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,6 +37,30 @@ pub struct LifecycleChange {
     pub field: LifecycleChangeField,
     pub before: Option<String>,
     pub after: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EvidenceChange {
+    pub field: EvidenceChangeField,
+    pub removed: Vec<String>,
+    pub added: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EvidenceChangeField {
+    Evidence,
+    Links,
+}
+
+impl EvidenceChangeField {
+    pub const ALL: &[Self] = &[Self::Evidence, Self::Links];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Evidence => "evidence",
+            Self::Links => "links",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

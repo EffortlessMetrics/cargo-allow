@@ -3,8 +3,8 @@ use crate::artifact_schema_support::{
     required_schema_pointer,
 };
 use allow_diff::{
-    FindingPostureKind, LifecycleChangeField, PolicyChangeKind, PolicyChangeSeverity,
-    ScopeChangeField,
+    EvidenceChangeField, FindingPostureKind, LifecycleChangeField, PolicyChangeKind,
+    PolicyChangeSeverity, ScopeChangeField,
 };
 use serde_json::Value;
 
@@ -284,6 +284,66 @@ fn report_schema_locks_diff_posture_extension_contract() {
             .and_then(Value::as_str),
         Some("#/$defs/lifecycle_change"),
         "report policy changes should use lifecycle change rows"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/policy_change/properties/evidence/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/evidence_change"),
+        "report policy changes should use evidence change rows"
+    );
+    let evidence_change = required_schema_pointer("report", &schema, "/$defs/evidence_change");
+    assert_eq!(
+        evidence_change
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "report evidence changes should reject unknown fields"
+    );
+    assert_required_fields(
+        "report evidence change",
+        evidence_change,
+        &["field", "removed", "added"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/evidence_change/properties/field/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/evidence_change_field"),
+        "report evidence changes should use the evidence field vocabulary"
+    );
+    for field in ["removed", "added"] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/evidence_change/properties/{field}/type"))
+                .and_then(Value::as_str),
+            Some("array"),
+            "report evidence {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/evidence_change/properties/{field}/items/type"
+                ))
+                .and_then(Value::as_str),
+            Some("string"),
+            "report evidence {field} item type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/evidence_change/properties/{field}/items/minLength"
+                ))
+                .and_then(Value::as_u64),
+            Some(1),
+            "report evidence {field} item minLength"
+        );
+    }
+    assert_enum_equals(
+        "report evidence fields",
+        &schema,
+        "/$defs/evidence_change_field/enum",
+        &enum_strings(EvidenceChangeField::ALL, EvidenceChangeField::as_str),
     );
     let lifecycle_change = required_schema_pointer("report", &schema, "/$defs/lifecycle_change");
     assert_eq!(

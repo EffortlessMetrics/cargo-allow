@@ -100,6 +100,7 @@ fn json_report_includes_structured_posture_changes() {
             scope: None,
             occurrence_limit: None,
             lifecycle: None,
+            evidence: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0002".to_string(),
@@ -114,6 +115,7 @@ fn json_report_includes_structured_posture_changes() {
             }),
             occurrence_limit: None,
             lifecycle: None,
+            evidence: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0003".to_string(),
@@ -127,6 +129,7 @@ fn json_report_includes_structured_posture_changes() {
                 after: None,
             }),
             lifecycle: None,
+            evidence: None,
         },
         allow_diff::PolicyChange {
             allow_id: "allow-0004".to_string(),
@@ -140,6 +143,22 @@ fn json_report_includes_structured_posture_changes() {
                 field: allow_diff::LifecycleChangeField::Expires,
                 before: Some("2026-09-01".to_string()),
                 after: Some("2026-12-01".to_string()),
+            }),
+            evidence: None,
+        },
+        allow_diff::PolicyChange {
+            allow_id: "allow-0005".to_string(),
+            kind: allow_diff::PolicyChangeKind::EvidenceRemoved,
+            severity: allow_diff::PolicyChangeSeverity::Fail,
+            message: "allow-0005 evidence removed".to_string(),
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: Some(allow_diff::EvidenceChange {
+                field: allow_diff::EvidenceChangeField::Evidence,
+                removed: vec!["test:old-proof".to_string()],
+                added: vec![],
             }),
         },
     ];
@@ -185,7 +204,7 @@ fn json_report_includes_structured_posture_changes() {
         value
             .pointer("/diff/summary/policy_failures")
             .and_then(Value::as_u64),
-        Some(3)
+        Some(4)
     );
     assert_eq!(
         value
@@ -315,6 +334,30 @@ fn json_report_includes_structured_posture_changes() {
             .and_then(Value::as_str),
         Some("2026-12-01")
     );
+    let evidence_change = policy_changes.get(4).unwrap_or_else(|| {
+        std::panic::panic_any("diff policy_changes should include evidence row")
+    });
+    assert_eq!(
+        evidence_change.get("kind").and_then(Value::as_str),
+        Some("evidence_removed")
+    );
+    assert_eq!(
+        evidence_change
+            .pointer("/evidence/field")
+            .and_then(Value::as_str),
+        Some("evidence")
+    );
+    assert_eq!(
+        evidence_change
+            .pointer("/evidence/removed/0")
+            .and_then(Value::as_str),
+        Some("test:old-proof")
+    );
+    let added = evidence_change
+        .pointer("/evidence/added")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("evidence added should be an array"));
+    assert!(added.is_empty());
     assert!(json.ends_with("}\n"));
 }
 
@@ -370,6 +413,7 @@ fn policy_change(
         scope: None,
         occurrence_limit: None,
         lifecycle: None,
+        evidence: None,
     }
 }
 

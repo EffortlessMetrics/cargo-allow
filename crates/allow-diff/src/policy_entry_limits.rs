@@ -50,5 +50,6 @@ fn change(
             after: entry.occurrence_limit,
         }),
         lifecycle: None,
+        evidence: None,
     }
 }
