@@ -43,6 +43,7 @@ pub(super) fn work_items_from_policy_advisories(
                 path: finding
                     .map(|finding| normalize_path(&finding.path))
                     .or_else(|| Some(entry.path_or_glob())),
+                evidence_reference: None,
                 source_package: source_package_name(finding),
                 message: format!(
                     "{} is generated baseline_debt and still needs human review",
@@ -76,6 +77,7 @@ pub(super) fn work_items_from_policy_advisories(
                 path: finding
                     .map(|finding| normalize_path(&finding.path))
                     .or_else(|| Some(entry.path_or_glob())),
+                evidence_reference: None,
                 source_package: source_package_name(finding),
                 message: format!("{} has no evidence references", entry.id),
                 suggested_actions: suggested_actions(&kind),
@@ -104,6 +106,7 @@ pub(super) fn work_items_from_policy_advisories(
                 allow_id: Some(entry.id.clone()),
                 finding_index: outcome.finding_index,
                 path: Some(scope.clone()),
+                evidence_reference: None,
                 source_package: source_package_name(finding),
                 message: format!("{} uses a broad source-tree scope `{}`", entry.id, scope),
                 suggested_actions: suggested_actions(BROAD_SCOPE),

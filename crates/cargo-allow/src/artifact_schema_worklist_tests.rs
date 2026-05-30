@@ -167,6 +167,21 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
             "proof_commands",
         ],
     );
+    let work_item_required = work_item
+        .get("required")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("worklist item required should be an array"))
+        .iter()
+        .map(|field| {
+            field.as_str().unwrap_or_else(|| {
+                std::panic::panic_any("worklist item required entries should be strings")
+            })
+        })
+        .collect::<BTreeSet<_>>();
+    assert!(
+        !work_item_required.contains("evidence_reference"),
+        "worklist evidence_reference should stay optional for worklist.v1 compatibility"
+    );
     assert_enum_equals(
         "worklist item risk",
         &schema,
@@ -222,6 +237,37 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
     assert!(
         path_description.contains("weak_evidence_reference"),
         "worklist item path should document why weak evidence references use null"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/work_item/properties/evidence_reference/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/evidence_reference"),
+        "worklist evidence references should use evidence reference rows"
+    );
+    let evidence_reference =
+        required_schema_pointer("worklist", &schema, "/$defs/evidence_reference");
+    assert_eq!(
+        evidence_reference
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "worklist evidence references should reject unknown fields"
+    );
+    assert_required_fields(
+        "worklist evidence reference",
+        evidence_reference,
+        &["raw", "prefix", "target", "status", "message"],
+    );
+    let evidence_statuses = allow_policy::EvidenceReferenceStatus::ALL
+        .iter()
+        .map(|status| status.as_str())
+        .collect::<Vec<_>>();
+    assert_enum_equals(
+        "worklist evidence reference status",
+        &schema,
+        "/$defs/evidence_reference/properties/status/enum",
+        &evidence_statuses,
     );
     assert_eq!(
         schema

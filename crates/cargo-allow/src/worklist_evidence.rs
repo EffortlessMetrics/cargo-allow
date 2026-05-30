@@ -1,6 +1,6 @@
 use super::worklist_item_kind::{BROKEN_EVIDENCE_LINK, WEAK_EVIDENCE_REFERENCE};
 use super::worklist_priority::{DIFFICULTY_SMALL, RISK_HIGH, RISK_MEDIUM};
-use super::{WorkItem, proof_commands};
+use super::{WorkItem, WorkItemEvidenceReference, proof_commands};
 use allow_core::{AllowConfig, AllowEntry, FindingKind, MatchStatus, normalize_path};
 use allow_policy::{EvidenceReferenceDiagnostic, evidence_reference_diagnostics};
 use std::path::Path;
@@ -44,6 +44,13 @@ fn work_item_from_evidence_diagnostic(
     } else {
         None
     };
+    let evidence_reference = WorkItemEvidenceReference {
+        raw: diagnostic.raw.clone(),
+        prefix: diagnostic.prefix.clone(),
+        target: diagnostic.target.as_ref().map(normalize_path),
+        status: diagnostic.status.as_str().to_string(),
+        message: diagnostic.message.clone(),
+    };
     WorkItem {
         id: format!("work-{}-{item_index:04}", kind.replace('_', "-")),
         kind: kind.to_string(),
@@ -66,6 +73,7 @@ fn work_item_from_evidence_diagnostic(
         allow_id: Some(entry.id.clone()),
         finding_index: None,
         path,
+        evidence_reference: Some(evidence_reference),
         source_package: None,
         message: format!(
             "{} evidence `{}`: {}",

@@ -22,6 +22,7 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
         allow_id: Some("allow-0001"),
         finding_index: None,
         path: Some("crates/parser/src/lib.rs"),
+        evidence_reference: None,
         source_package: Some("parser"),
         message: "stale allow",
         suggested_actions: &suggested_actions,
@@ -158,4 +159,54 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
     assert!(text.contains("  exception: panic.unwrap"));
     assert!(text.contains("  action: review stale allow"));
     assert!(text.contains("  proof: cargo-allow check --mode no-new"));
+}
+
+#[test]
+fn worklist_json_renderer_includes_optional_evidence_reference() {
+    let suggested_actions = vec!["replace weak evidence reference".to_string()];
+    let proof_commands = vec!["cargo-allow explain allow-weak".to_string()];
+    let items = vec![WorklistItem {
+        id: "work-weak-evidence-reference-0001",
+        kind: "weak_evidence_reference",
+        exception_kind: Some("unsafe"),
+        family: Some("unsafe_block"),
+        owner: Some("runtime"),
+        classification: Some("reviewed_unsafe_boundary"),
+        reason: Some("fixture"),
+        created: None,
+        review_after: None,
+        expires: None,
+        evidence_count: Some(1),
+        risk: "high",
+        difficulty: "small",
+        status: "evidence_missing",
+        allow_id: Some("allow-weak"),
+        finding_index: None,
+        path: None,
+        evidence_reference: Some(EvidenceReference {
+            raw: "spreadsheet:manual-review",
+            prefix: Some("spreadsheet"),
+            target: Some("manual-review"),
+            status: "unstructured",
+            message: "unrecognized evidence prefix; not locally validated",
+        }),
+        source_package: None,
+        message: "allow-weak evidence `spreadsheet:manual-review`: unrecognized evidence prefix; not locally validated",
+        suggested_actions: &suggested_actions,
+        proof_commands: &proof_commands,
+    }];
+
+    let json = render_worklist_json(
+        &items,
+        WorklistFilters::default(),
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(47)),
+    );
+
+    assert!(json.contains("\"path\": null"));
+    assert!(json.contains("\"evidence_reference\": {"));
+    assert!(json.contains("\"raw\": \"spreadsheet:manual-review\""));
+    assert!(json.contains("\"prefix\": \"spreadsheet\""));
+    assert!(json.contains("\"target\": \"manual-review\""));
+    assert!(json.contains("\"status\": \"unstructured\""));
+    assert!(json.contains("\"source_package\": null"));
 }

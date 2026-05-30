@@ -243,6 +243,12 @@ broken-link repair queue,
 unstructured or unknown-prefix evidence cleanup, and
 `cargo-allow worklist --missing-evidence --format json` for retained entries
 that still need evidence references.
+Worklist JSON items for broken or weak evidence diagnostics may include an
+optional `evidence_reference` object with the original evidence string,
+normalized prefix/target metadata, diagnostic status, and diagnostic message.
+This object is evidence metadata; `work_items[].path` remains the source-tree
+path for source-backed work or a local evidence path for broken local evidence
+links.
 
 ## Compatibility Coverage
 

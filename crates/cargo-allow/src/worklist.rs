@@ -41,7 +41,7 @@ pub(crate) use worklist_priority::{DIFFICULTY_LEVELS, RISK_LEVELS};
 use worklist_queue::{filter_work_items, renumber_work_items, sort_work_items};
 use worklist_render::{render_worklist_human_with_context, render_worklist_json_with_context};
 pub(crate) use worklist_scoring::work_item_kind;
-use worklist_types::{WorkItem, WorklistContext, WorklistFilters};
+use worklist_types::{WorkItem, WorkItemEvidenceReference, WorklistContext, WorklistFilters};
 
 #[cfg(test)]
 use allow_core::{AllowConfig, FindingKind, MatchOutcome, MatchStatus};
@@ -107,6 +107,7 @@ pub(crate) fn sample_worklist_json_for_contract_test() -> String {
         allow_id: Some("allow-baseline".to_string()),
         finding_index: Some(0),
         path: Some("src/lib.rs".to_string()),
+        evidence_reference: None,
         source_package: Some("parser".to_string()),
         message: "allow-baseline is generated baseline debt and still needs human review"
             .to_string(),
