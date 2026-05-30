@@ -7,7 +7,8 @@ use crate::policy_compare::{
     optional_text_changed, optional_text_removed, removed_required_text, removed_values,
 };
 use crate::policy_scope::{
-    scope_broadened, scope_changed, scope_narrowed, selector_precision_score,
+    scope_broadened, scope_changed, scope_narrowed, selector_precision_fields,
+    selector_precision_score,
 };
 use crate::policy_selector::selector_identity_changed;
 
@@ -367,10 +368,10 @@ fn selector_precision_detail(base: &AllowEntry, head: &AllowEntry) -> String {
     let mut removed = Vec::new();
     let mut added = Vec::new();
 
-    for ((label, base_present), (_, head_present)) in base_fields.into_iter().zip(head_fields) {
-        match (base_present, head_present) {
-            (true, false) => removed.push(label),
-            (false, true) => added.push(label),
+    for (base_field, head_field) in base_fields.into_iter().zip(head_fields) {
+        match (base_field.present, head_field.present) {
+            (true, false) => removed.push(base_field.label),
+            (false, true) => added.push(head_field.label),
             _ => {}
         }
     }
@@ -387,40 +388,6 @@ fn selector_precision_detail(base: &AllowEntry, head: &AllowEntry) -> String {
     } else {
         format!(" ({})", details.join("; "))
     }
-}
-
-fn selector_precision_fields(entry: &AllowEntry) -> [(&'static str, bool); 13] {
-    [
-        ("path", entry.path.is_some()),
-        (
-            "glob",
-            entry.glob.is_some() || entry.selector.glob.is_some(),
-        ),
-        ("family", entry.family.is_some()),
-        ("ast_kind", present(entry.selector.ast_kind.as_deref())),
-        ("container", present(entry.selector.container.as_deref())),
-        ("callee", present(entry.selector.callee.as_deref())),
-        ("macro_name", present(entry.selector.macro_name.as_deref())),
-        ("lint", present(entry.selector.lint.as_deref())),
-        ("symbol", present(entry.selector.symbol.as_deref())),
-        (
-            "receiver_fingerprint",
-            present(entry.selector.receiver_fingerprint.as_deref()),
-        ),
-        (
-            "target_fingerprint",
-            present(entry.selector.target_fingerprint.as_deref()),
-        ),
-        (
-            "normalized_snippet_hash",
-            present(entry.selector.normalized_snippet_hash.as_deref()),
-        ),
-        ("occurrence_limit", entry.occurrence_limit.is_some()),
-    ]
-}
-
-fn present(value: Option<&str>) -> bool {
-    value.is_some_and(|text| !text.trim().is_empty())
 }
 
 fn baseline_debt_normalized(base: &AllowEntry, head: &AllowEntry) -> bool {
