@@ -56,7 +56,11 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         Some(false),
         "worklist filters should reject unknown fields"
     );
-    assert_required_fields("worklist filters", filters, &["kind", "risk", "difficulty"]);
+    assert!(
+        filters.get("required").is_none(),
+        "worklist filter fields should stay optional for worklist.v1 compatibility"
+    );
+    assert_worklist_filter_properties(filters);
     for field in [
         "kind",
         "family",
@@ -233,4 +237,34 @@ fn assert_nullable_string_enum_equals(
         .chain(std::iter::once("<null>".to_string()))
         .collect::<BTreeSet<_>>();
     assert_eq!(actual, expected, "{name} {pointer} enum values");
+}
+
+fn assert_worklist_filter_properties(filters: &Value) {
+    let Some(properties) = filters.get("properties").and_then(Value::as_object) else {
+        std::panic::panic_any("worklist filters properties should be an object");
+    };
+    let actual = properties
+        .keys()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    let expected = [
+        "kind",
+        "family",
+        "item_kind",
+        "status",
+        "allow_id",
+        "path",
+        "source_package",
+        "owner",
+        "classification",
+        "baseline_debt",
+        "broad_scope",
+        "risk",
+        "difficulty",
+        "missing_evidence",
+    ]
+    .into_iter()
+    .collect::<BTreeSet<_>>();
+
+    assert_eq!(actual, expected, "worklist filter schema properties");
 }
