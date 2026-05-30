@@ -340,6 +340,37 @@ fn detects_lifecycle_shortened_as_improvement() {
 }
 
 #[test]
+fn detects_created_lifecycle_provenance_changes() {
+    let base = config_with(entry("allow-1"));
+    let mut removed = entry("allow-1");
+    removed.lifecycle.created = None;
+    let changes = policy_changes(&base, &config_with(removed));
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::CreatedRemoved
+            && change.severity == PolicyChangeSeverity::Fail
+    }));
+
+    let mut changed = entry("allow-1");
+    changed.lifecycle.created = Some("2026-06-01".to_string());
+    let changes = policy_changes(&base, &config_with(changed));
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::CreatedChanged
+            && change.severity == PolicyChangeSeverity::Review
+    }));
+
+    let mut missing = entry("allow-1");
+    missing.lifecycle.created = None;
+    let changes = policy_changes(&config_with(missing), &config_with(entry("allow-1")));
+
+    assert!(changes.iter().any(|change| {
+        change.kind == PolicyChangeKind::CreatedAdded
+            && change.severity == PolicyChangeSeverity::Improvement
+    }));
+}
+
+#[test]
 fn detects_added_lifecycle_as_improvement() {
     let mut base_entry = entry("allow-1");
     base_entry.lifecycle.expires = None;
@@ -670,6 +701,9 @@ fn policy_change_string_helpers_cover_all_public_variants() {
             PolicyChangeKind::SelectorPrecisionIncreased,
             "selector_precision_increased",
         ),
+        (PolicyChangeKind::CreatedAdded, "created_added"),
+        (PolicyChangeKind::CreatedChanged, "created_changed"),
+        (PolicyChangeKind::CreatedRemoved, "created_removed"),
         (PolicyChangeKind::ExpiryExtended, "expiry_extended"),
         (PolicyChangeKind::ExpiryShortened, "expiry_shortened"),
         (
