@@ -1,8 +1,8 @@
 use crate::contracts::RECEIPT_ARTIFACT;
 use crate::json::{bool_json, push_json_artifact_header, push_json_artifact_source_context};
 use crate::{
-    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, ReportContext, Summary, baseline_debt_count,
-    render_count_fields_with_policy_context,
+    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, RECEIPT_COMMAND_CHECK, ReportContext, Summary,
+    baseline_debt_count, render_count_fields_with_policy_context,
 };
 use allow_core::MatchOutcome;
 
@@ -16,6 +16,10 @@ pub fn render_receipt_with_context(
     failed: bool,
     context: ReportContext<'_>,
 ) -> String {
+    assert_eq!(
+        command, RECEIPT_COMMAND_CHECK,
+        "receipt artifacts support only the check command"
+    );
     let summary = Summary::from_outcomes(outcomes);
     let mut out = String::new();
     out.push_str("{\n");

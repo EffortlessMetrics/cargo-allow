@@ -28,6 +28,12 @@ fn receipt_exposes_v1_schema_contract() {
 }
 
 #[test]
+#[should_panic(expected = "receipt artifacts support only the check command")]
+fn receipt_rejects_unknown_artifact_command() {
+    let _ = render_receipt_with_context("audit", &[], false, ReportContext::default());
+}
+
+#[test]
 fn receipt_counts_policy_baseline_debt_context() {
     let json = render_receipt_with_context(
         "check",
