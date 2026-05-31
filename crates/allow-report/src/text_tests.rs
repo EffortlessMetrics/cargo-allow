@@ -181,6 +181,26 @@ fn markdown_audit_report_includes_review_summary() {
 }
 
 #[test]
+fn human_audit_report_discloses_omitted_review_queue_items() {
+    let outcomes = audit_review_queue_outcomes(21);
+
+    let text = render_human_with_context("audit", &[], &outcomes, false, context("git_tracked"));
+
+    assert!(text.contains("Audit review queue:"));
+    assert!(text.contains("... 1 additional audit review item omitted from this queue"));
+}
+
+#[test]
+fn markdown_audit_report_discloses_omitted_review_queue_items() {
+    let outcomes = audit_review_queue_outcomes(21);
+
+    let text = render_markdown_with_context("audit", &[], &outcomes, false, context("git_tracked"));
+
+    assert!(text.contains("## Audit Review Queue"));
+    assert!(text.contains("1 additional audit review item omitted from this queue."));
+}
+
+#[test]
 fn human_report_discloses_omitted_non_matched_outcomes() {
     let outcomes = (0..81)
         .map(|index| MatchOutcome {
@@ -415,4 +435,16 @@ fn outcome(status: MatchStatus, finding_index: Option<usize>) -> MatchOutcome {
         message: String::new(),
         score: 0,
     }
+}
+
+fn audit_review_queue_outcomes(count: usize) -> Vec<MatchOutcome> {
+    (0..count)
+        .map(|index| MatchOutcome {
+            status: MatchStatus::New,
+            allow_id: None,
+            finding_index: None,
+            message: format!("new source exception {index}"),
+            score: 0,
+        })
+        .collect()
 }

@@ -9,6 +9,7 @@ use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape};
 
 const HUMAN_NON_MATCHED_OUTCOME_LIMIT: usize = 80;
 const MARKDOWN_NON_MATCHED_OUTCOME_LIMIT: usize = 100;
+const AUDIT_REVIEW_QUEUE_LIMIT: usize = 20;
 
 pub fn render_human(
     command: &str,
@@ -117,7 +118,6 @@ fn render_audit_summary_human(
     let queue = outcomes
         .iter()
         .filter(|outcome| AUDIT_REVIEW_QUEUE_STATUSES.contains(&outcome.status))
-        .take(20)
         .collect::<Vec<_>>();
     out.push_str("\nAudit summary:\n");
     out.push_str(&format!("  {:24} {}\n", "match_outcomes", summary.total));
@@ -163,13 +163,14 @@ fn render_audit_summary_human(
     ));
     if !queue.is_empty() {
         out.push_str("\nAudit review queue:\n");
-        for outcome in queue {
+        for outcome in queue.iter().take(AUDIT_REVIEW_QUEUE_LIMIT) {
             out.push_str(&format!(
                 "  {}: {}\n",
                 outcome.status.as_str(),
                 outcome.message
             ));
         }
+        append_human_omitted_review_queue_note(out, queue.len());
     }
 }
 
@@ -297,7 +298,6 @@ fn render_audit_summary_markdown(
     let queue = outcomes
         .iter()
         .filter(|outcome| AUDIT_REVIEW_QUEUE_STATUSES.contains(&outcome.status))
-        .take(20)
         .collect::<Vec<_>>();
     out.push_str("\n## Audit Summary\n\n");
     out.push_str("| Signal | Count |\n|---|---:|\n");
@@ -336,13 +336,34 @@ fn render_audit_summary_markdown(
 
     if !queue.is_empty() {
         out.push_str("\n## Audit Review Queue\n\n");
-        for outcome in queue {
+        for outcome in queue.iter().take(AUDIT_REVIEW_QUEUE_LIMIT) {
             out.push_str(&format!(
                 "- `{}`: {}\n",
                 outcome.status.as_str(),
                 outcome.message
             ));
         }
+        append_markdown_omitted_review_queue_note(out, queue.len());
+    }
+}
+
+fn append_human_omitted_review_queue_note(out: &mut String, queue_count: usize) {
+    if queue_count > AUDIT_REVIEW_QUEUE_LIMIT {
+        let omitted = queue_count - AUDIT_REVIEW_QUEUE_LIMIT;
+        let plural = if omitted == 1 { "" } else { "s" };
+        out.push_str(&format!(
+            "  ... {omitted} additional audit review item{plural} omitted from this queue\n"
+        ));
+    }
+}
+
+fn append_markdown_omitted_review_queue_note(out: &mut String, queue_count: usize) {
+    if queue_count > AUDIT_REVIEW_QUEUE_LIMIT {
+        let omitted = queue_count - AUDIT_REVIEW_QUEUE_LIMIT;
+        let plural = if omitted == 1 { "" } else { "s" };
+        out.push_str(&format!(
+            "\n{omitted} additional audit review item{plural} omitted from this queue.\n"
+        ));
     }
 }
 
