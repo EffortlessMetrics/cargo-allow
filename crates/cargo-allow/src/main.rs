@@ -76,6 +76,8 @@ mod artifact_schema_source_location_tests;
 #[cfg(test)]
 mod artifact_schema_strictness_tests;
 #[cfg(test)]
+mod artifact_schema_summary_tests;
+#[cfg(test)]
 mod artifact_schema_support;
 #[cfg(test)]
 mod artifact_schema_worklist_tests;
