@@ -1358,6 +1358,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "canonical_evidence_prefix",
         "claim_boundary_flag",
         "counts",
+        "current_finding",
         "diff",
         "diff_summary",
         "evidence_change",
@@ -1395,6 +1396,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "selector_identity_change_field",
         "selector_precision_change",
         "selector_precision_field",
+        "selected_finding",
         "scope_change",
         "scope_change_field",
         "span",
@@ -1503,6 +1505,15 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         assert_common_fragment_matches(schema_name, schema, &common, "structural_identity");
         assert_common_fragment_matches(schema_name, schema, &common, "selector");
     }
+
+    assert_common_fragment_matches_named("add", &add, "finding", &common, "selected_finding");
+    assert_common_fragment_matches_named(
+        "explain",
+        &explain,
+        "current_finding",
+        &common,
+        "current_finding",
+    );
 
     for (schema_name, schema) in [("explain", &explain), ("worklist", &worklist)] {
         assert_common_fragment_matches(schema_name, schema, &common, "evidence_reference");
