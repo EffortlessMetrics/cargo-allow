@@ -65,6 +65,9 @@ files in that inventory, not required build metadata.
 ## Line Hints Are Not Identity
 
 Line and column values are useful review hints. They are not stable identity.
+They are one-based source positions; source-text scanners should report columns
+as character positions rather than byte offsets when the source line is
+available.
 
 Durable identity should come from a combination of:
 

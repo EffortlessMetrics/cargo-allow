@@ -79,11 +79,14 @@ Hint fields:
 
 | Field | Meaning |
 |---|---|
-| `line_hint` | Last-seen line for review and tie-breaking only. |
-| `column_hint` | Last-seen column for review and tie-breaking only. |
+| `line_hint` | Last-seen one-based source line for review and tie-breaking only. |
+| `column_hint` | Last-seen one-based source column for review and tie-breaking only. |
 
 Line and column hints are not identity. Moving an unchanged source exception
 should preserve the stable identity key.
+When a scanner can derive a source-text column, the column is a character
+position in the source line, not a byte offset. These values are intended for
+human review and editor navigation, not for durable matching.
 
 ## Stable Key
 

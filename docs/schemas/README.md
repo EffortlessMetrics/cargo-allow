@@ -70,6 +70,11 @@ Artifact-specific fields such as `diff`, `summary`, `allow_entries`,
 `work_items`, `stale_entries`, `allow_entry`, and evidence diagnostics are
 covered by their individual schema files. Consumers should branch on
 `schema_id`, not on command-line spelling or filenames.
+Source location fields such as `span.line`, `span.column`, `line_hint`, and
+`column_hint` are review and navigation hints. They are one-based source
+positions; when cargo-allow can derive a column from source text, the column is
+a character position in the line rather than a byte offset. Consumers must not
+use those fields as durable identity.
 
 Every `report.schema.json` `$defs` fragment is mirrored in
 `common.v1.json` and covered by shared compatibility tests. Future report
