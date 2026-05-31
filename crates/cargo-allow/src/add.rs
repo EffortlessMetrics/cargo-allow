@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult, FindingKind};
+use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, SimpleDate};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_local_evidence_references, validate_policy};
 
@@ -23,6 +23,8 @@ use crate::{
     SourceTreeReportContext, emit_stderr_text, load_world, parse_kind_filter,
     write_file_no_overwrite,
 };
+
+const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
 
 #[cfg(test)]
 use allow_core::{Finding, MatchStatus};
@@ -64,7 +66,10 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         classification: args.classification.clone(),
         reason: args.reason.clone(),
         evidence: args.evidence.clone(),
-        review_after: args.review_after.clone(),
+        review_after: args
+            .review_after
+            .clone()
+            .unwrap_or_else(default_add_review_after),
         expires: args.expires.clone(),
     });
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
@@ -88,6 +93,12 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     }
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())
+}
+
+fn default_add_review_after() -> String {
+    SimpleDate::today_utc_approx()
+        .add_days(ADD_REVIEW_AFTER_DEFAULT_DAYS)
+        .to_string()
 }
 
 #[cfg(test)]
