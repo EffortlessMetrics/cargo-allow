@@ -80,6 +80,22 @@ fn doctor_schema_locks_setup_artifact_contract() {
         "/properties/config/properties/diagnostic/type",
         &["string", "null"],
     );
+    for field in ["broken_evidence_links", "weak_evidence_references"] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/properties/config/properties/{field}/type"))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "doctor config {field} should be an integer"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!("/properties/config/properties/{field}/minimum"))
+                .and_then(Value::as_u64),
+            Some(0),
+            "doctor config {field} minimum"
+        );
+    }
 
     assert_eq!(
         schema

@@ -384,6 +384,9 @@ status when available, whether that policy parses and passes local validation,
 any validation diagnostic, and the source-tree inventory source and file count.
 Local policy validation includes locally referenced evidence file existence, but
 it still does not execute external evidence tools or repository code.
+When a policy model can be loaded, doctor JSON also reports non-zero broken
+local evidence-link and weak evidence-reference counts under `config` so setup
+diagnostics can route evidence repair before wider scans.
 `--format json` emits the same setup diagnostics as `cargo-allow.doctor.v1` so
 CI or agent runners can verify which source tree, policy contract, policy owner,
 policy state, and inventory mode a command would use before running wider policy

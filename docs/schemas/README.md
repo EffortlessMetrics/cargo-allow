@@ -374,6 +374,10 @@ The test suite parses the current report, receipt, diff, list, explain,
 worklist, prune, propose, add, migrate, and doctor JSON renderers as JSON and
 checks the shared v1 source-tree contract fields. That protects the artifact
 root shape from accidental manual-rendering drift.
+Doctor artifacts may include optional `config.broken_evidence_links` and
+`config.weak_evidence_references` counts when setup diagnostics can load a
+policy model and find non-zero evidence-health issues. These fields are omitted
+when no policy model is available or when the counts are zero.
 
 Black-box integration tests also parse saved JSON artifacts written by the
 `cargo-allow` binary itself, including `--output` report-style artifacts,

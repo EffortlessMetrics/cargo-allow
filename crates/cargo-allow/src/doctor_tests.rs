@@ -51,6 +51,8 @@ fn render_doctor_json_records_setup_context() {
         config_status: Some("active"),
         config_valid: Some(true),
         config_diagnostic: None,
+        broken_evidence_links: None,
+        weak_evidence_references: None,
         inventory_source: "git_tracked",
         files_scanned: 50,
     });
@@ -95,6 +97,8 @@ fn render_doctor_json_records_setup_context() {
         Some(true)
     );
     assert_eq!(value.pointer("/config/diagnostic"), Some(&Value::Null));
+    assert_eq!(value.pointer("/config/broken_evidence_links"), None);
+    assert_eq!(value.pointer("/config/weak_evidence_references"), None);
     assert_eq!(
         value.pointer("/inventory/scope").and_then(Value::as_str),
         Some("source_tree")
@@ -193,6 +197,67 @@ ignored = ["policy/**", "ignored/**"]
         value.pointer("/config/valid").and_then(Value::as_bool),
         Some(true),
         "policy should remain valid"
+    );
+    remove_doctor_fixture_dir(root);
+}
+
+#[test]
+fn doctor_reports_policy_evidence_health_counts() {
+    let root = doctor_fixture_dir();
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    let policy = root.join("policy/allow.toml");
+    fs::write(
+        &policy,
+        r#"
+policy = "cargo-allow"
+
+[[allow]]
+id = "allow-doc"
+kind = "non_rust_file"
+path = "docs/policy.md"
+owner = "docs"
+classification = "reviewed"
+reason = "Tracked documentation policy."
+evidence = ["doc:docs/missing.md", "spreadsheet:manual-review"]
+review_after = "2026-06-30"
+
+[allow.selector]
+ast_kind = "tracked_file"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    let output = root.join("doctor.json");
+
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy),
+        format: DoctorFormat::Json,
+        output: Some(output.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
+
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    let value = parse_json_artifact("doctor", &json, allow_report::DOCTOR_SCHEMA_ID, "doctor");
+    assert_eq!(
+        value.pointer("/config/valid").and_then(Value::as_bool),
+        Some(false),
+        "broken local evidence should make doctor config invalid"
+    );
+    assert_eq!(
+        value
+            .pointer("/config/broken_evidence_links")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        value
+            .pointer("/config/weak_evidence_references")
+            .and_then(Value::as_u64),
+        Some(1)
     );
     remove_doctor_fixture_dir(root);
 }

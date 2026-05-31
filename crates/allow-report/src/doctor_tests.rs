@@ -12,6 +12,8 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
         config_status: Some("active"),
         config_valid: Some(true),
         config_diagnostic: None,
+        broken_evidence_links: None,
+        weak_evidence_references: None,
         inventory_source: "git_tracked",
         files_scanned: 50,
     });
@@ -83,6 +85,8 @@ fn doctor_human_renderer_records_root_config_and_inventory() {
         config_status: None,
         config_valid: None,
         config_diagnostic: None,
+        broken_evidence_links: None,
+        weak_evidence_references: None,
         inventory_source: "filesystem_fallback",
         files_scanned: 7,
     });
@@ -109,6 +113,8 @@ fn doctor_human_renderer_reports_invalid_config_status() {
         config_status: Some("active"),
         config_valid: Some(false),
         config_diagnostic: Some("policy schema_version must not be empty"),
+        broken_evidence_links: Some(2),
+        weak_evidence_references: Some(1),
         inventory_source: "git_tracked",
         files_scanned: 7,
     });
@@ -119,4 +125,28 @@ fn doctor_human_renderer_reports_invalid_config_status() {
     assert!(text.contains("policy owner: core/policy"));
     assert!(text.contains("policy status: active"));
     assert!(text.contains("config status: invalid: policy schema_version must not be empty"));
+    assert!(text.contains("broken evidence links: 2"));
+    assert!(text.contains("weak evidence references: 1"));
+}
+
+#[test]
+fn doctor_json_renderer_includes_optional_evidence_health_counts() {
+    let json = render_doctor_json(DoctorReport {
+        source_tree_root: "H:/Code/Rust/cargo-allow",
+        root_discovery: "nearest_git_root",
+        config_path: Some("policy/allow.toml"),
+        config_schema_version: Some("0.1"),
+        config_policy: Some("cargo-allow"),
+        config_owner: Some("core/policy"),
+        config_status: Some("active"),
+        config_valid: Some(false),
+        config_diagnostic: Some("missing evidence file"),
+        broken_evidence_links: Some(2),
+        weak_evidence_references: Some(1),
+        inventory_source: "git_tracked",
+        files_scanned: 7,
+    });
+
+    assert!(json.contains("\"broken_evidence_links\": 2"));
+    assert!(json.contains("\"weak_evidence_references\": 1"));
 }
