@@ -22,10 +22,10 @@ pub(crate) struct DiffArgs {
     /// Write report to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
-    /// Base git revision for changed-file listing.
+    /// Base git revision for policy, finding, and changed-file posture comparison.
     #[arg(long)]
     pub(super) base: String,
-    /// Optional head git revision.
+    /// Optional head git revision. Defaults to the current working tree.
     #[arg(long)]
     pub(super) head: Option<String>,
 }
