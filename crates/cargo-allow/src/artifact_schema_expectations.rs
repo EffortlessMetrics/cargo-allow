@@ -1,0 +1,447 @@
+pub(crate) fn selector_precision_fields() -> Vec<&'static str> {
+    vec![
+        "path",
+        "glob",
+        "family",
+        "ast_kind",
+        "container",
+        "callee",
+        "macro_name",
+        "lint",
+        "symbol",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+        "occurrence_limit",
+    ]
+}
+
+pub(crate) fn selector_identity_change_fields() -> Vec<&'static str> {
+    vec![
+        "ast_kind",
+        "container",
+        "callee",
+        "macro_name",
+        "lint",
+        "symbol",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+    ]
+}
+
+pub(crate) fn structural_identity_fields() -> Vec<&'static str> {
+    vec![
+        "language",
+        "crate_name",
+        "module",
+        "container",
+        "ast_kind",
+        "symbol",
+        "callee",
+        "macro_name",
+        "lint",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+        "line_hint",
+        "column_hint",
+    ]
+}
+
+pub(crate) fn evidence_change_fields() -> Vec<&'static str> {
+    allow_diff::EvidenceChangeField::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::EvidenceChangeField::as_str)
+        .collect()
+}
+
+pub(crate) fn exception_identity_change_fields() -> Vec<&'static str> {
+    allow_diff::ExceptionIdentityChangeField::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::ExceptionIdentityChangeField::as_str)
+        .collect()
+}
+
+pub(crate) fn metadata_change_fields() -> Vec<&'static str> {
+    allow_diff::MetadataChangeField::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::MetadataChangeField::as_str)
+        .collect()
+}
+
+pub(crate) fn requirement_change_fields() -> Vec<&'static str> {
+    allow_diff::RequirementChangeField::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::RequirementChangeField::as_str)
+        .collect()
+}
+
+pub(crate) fn finding_posture_kinds() -> Vec<&'static str> {
+    allow_diff::FindingPostureKind::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::FindingPostureKind::as_str)
+        .collect()
+}
+
+pub(crate) fn policy_change_severities() -> Vec<&'static str> {
+    allow_diff::PolicyChangeSeverity::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::PolicyChangeSeverity::as_str)
+        .collect()
+}
+
+pub(crate) fn policy_change_kinds() -> Vec<&'static str> {
+    allow_diff::PolicyChangeKind::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::PolicyChangeKind::as_str)
+        .collect()
+}
+
+pub(crate) fn scope_change_fields() -> Vec<&'static str> {
+    allow_diff::ScopeChangeField::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::ScopeChangeField::as_str)
+        .collect()
+}
+
+pub(crate) fn lifecycle_change_fields() -> Vec<&'static str> {
+    allow_diff::LifecycleChangeField::ALL
+        .iter()
+        .copied()
+        .map(allow_diff::LifecycleChangeField::as_str)
+        .collect()
+}
+
+pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static [&'static str]); 10]
+{
+    [
+        (
+            "add",
+            &[
+                "allow_entry",
+                "claim_boundary",
+                "command",
+                "inventory",
+                "options",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "selected_finding",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "doctor",
+            &[
+                "claim_boundary",
+                "command",
+                "config",
+                "inventory",
+                "root",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "tool",
+            ],
+        ),
+        (
+            "explain",
+            &[
+                "allow_entry",
+                "claim_boundary",
+                "command",
+                "current_findings",
+                "evidence_references",
+                "inventory",
+                "match_outcomes",
+                "next",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "list",
+            &[
+                "allow_entries",
+                "claim_boundary",
+                "command",
+                "filters",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "migrate",
+            &[
+                "claim_boundary",
+                "command",
+                "input",
+                "inventory",
+                "notes",
+                "output",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "propose",
+            &[
+                "claim_boundary",
+                "command",
+                "generated_entry_defaults",
+                "inventory",
+                "options",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "prune",
+            &[
+                "claim_boundary",
+                "command",
+                "inventory",
+                "mode",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "stale_entries",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "receipt",
+            &[
+                "claim_boundary",
+                "command",
+                "counts",
+                "failed",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "status",
+                "tool",
+            ],
+        ),
+        (
+            "report",
+            &[
+                "claim_boundary",
+                "command",
+                "diff",
+                "failed",
+                "findings",
+                "inventory",
+                "outcomes",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "status",
+                "summary",
+                "tool",
+                "trend",
+            ],
+        ),
+        (
+            "worklist",
+            &[
+                "claim_boundary",
+                "command",
+                "filters",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+                "work_items",
+            ],
+        ),
+    ]
+}
+
+pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [&'static str]); 10]
+{
+    [
+        (
+            "add",
+            &[
+                "allow_entry",
+                "claim_boundary",
+                "command",
+                "inventory",
+                "options",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "selected_finding",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "doctor",
+            &[
+                "claim_boundary",
+                "command",
+                "config",
+                "inventory",
+                "root",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "tool",
+            ],
+        ),
+        (
+            "explain",
+            &[
+                "allow_entry",
+                "claim_boundary",
+                "command",
+                "current_findings",
+                "evidence_references",
+                "inventory",
+                "match_outcomes",
+                "next",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "list",
+            &[
+                "allow_entries",
+                "claim_boundary",
+                "command",
+                "filters",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "migrate",
+            &[
+                "claim_boundary",
+                "command",
+                "input",
+                "inventory",
+                "notes",
+                "output",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "propose",
+            &[
+                "claim_boundary",
+                "command",
+                "generated_entry_defaults",
+                "inventory",
+                "options",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "prune",
+            &[
+                "claim_boundary",
+                "command",
+                "inventory",
+                "mode",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "stale_entries",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "receipt",
+            &[
+                "claim_boundary",
+                "command",
+                "counts",
+                "failed",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "status",
+                "tool",
+            ],
+        ),
+        (
+            "report",
+            &[
+                "claim_boundary",
+                "command",
+                "failed",
+                "findings",
+                "inventory",
+                "outcomes",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "status",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "worklist",
+            &[
+                "claim_boundary",
+                "command",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+                "work_items",
+            ],
+        ),
+    ]
+}
