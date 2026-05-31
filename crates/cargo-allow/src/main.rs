@@ -72,6 +72,8 @@ mod artifact_schema_prune_tests;
 #[cfg(test)]
 mod artifact_schema_receipt_tests;
 #[cfg(test)]
+mod artifact_schema_report_diff_tests;
+#[cfg(test)]
 mod artifact_schema_report_tests;
 #[cfg(test)]
 mod artifact_schema_selector_lifecycle_tests;
