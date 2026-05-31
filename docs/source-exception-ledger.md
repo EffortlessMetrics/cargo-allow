@@ -231,6 +231,9 @@ selector field such as `ast_kind`, `container`, `callee`, `macro_name`, `lint`,
 `symbol`, a fingerprint, or `normalized_snippet_hash`. File-policy entries such
 as `non_rust_file` and `generated_code` may remain scope-centric when the
 source-tree file itself is the governed surface.
+Line and column hints are one-based source positions for review. When a scanner
+can compute a column from source text, that column should be a character
+position in the source line rather than a byte offset.
 
 Diff mode reports precision loss as policy weakening and precision increases as
 policy improvements. The current precision score rewards exact paths and
