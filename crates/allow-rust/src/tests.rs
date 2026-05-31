@@ -870,6 +870,81 @@ fn index_target_fingerprint_truncates_on_character_boundaries() {
 }
 
 #[test]
+fn syntax_panic_columns_are_character_based_after_unicode_prefixes() {
+    let line = "    let café = 1; value.unwrap(); panic!(\"boom\");";
+    let src = format!("fn load(value: Result<(), ()>) {{\n{line}\n}}\n");
+    let findings = scan_rust_source("src/lib.rs", &src);
+    let unwrap = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Panic && f.family.as_deref() == Some("unwrap"))
+        .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
+    let panic_macro = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Panic && f.family.as_deref() == Some("panic_macro"))
+        .unwrap_or_else(|| std::panic::panic_any("expected panic macro finding"));
+
+    assert_eq!(
+        unwrap.span.as_ref().map(|span| (span.line, span.column)),
+        Some((2, char_column(line, "unwrap")))
+    );
+    assert_eq!(
+        unwrap.identity.column_hint,
+        Some(char_column(line, "unwrap"))
+    );
+    assert_eq!(
+        panic_macro
+            .span
+            .as_ref()
+            .map(|span| (span.line, span.column)),
+        Some((2, char_column(line, "panic")))
+    );
+    assert_eq!(
+        panic_macro.identity.column_hint,
+        Some(char_column(line, "panic"))
+    );
+}
+
+#[test]
+fn syntax_index_columns_are_character_based_after_unicode_prefixes() {
+    let line = "    let café = xs[0];";
+    let src = format!("fn load(xs: &[u8]) -> u8 {{\n{line}\n}}\n");
+    let findings = scan_rust_source("src/lib.rs", &src);
+    let indexing = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Panic && f.family.as_deref() == Some("indexing"))
+        .unwrap_or_else(|| std::panic::panic_any("expected indexing finding"));
+
+    assert_eq!(
+        indexing.span.as_ref().map(|span| (span.line, span.column)),
+        Some((2, char_column(line, "[")))
+    );
+    assert_eq!(indexing.identity.column_hint, Some(char_column(line, "[")));
+}
+
+#[test]
+fn syntax_unsafe_columns_are_character_based_after_unicode_prefixes() {
+    let line = "    let café = unsafe { core::ptr::read(ptr) };";
+    let src = format!("fn load(ptr: *const u8) -> u8 {{\n{line}\n}}\n");
+    let findings = scan_rust_source("src/lib.rs", &src);
+    let unsafe_block = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_block"))
+        .unwrap_or_else(|| std::panic::panic_any("expected unsafe block finding"));
+
+    assert_eq!(
+        unsafe_block
+            .span
+            .as_ref()
+            .map(|span| (span.line, span.column)),
+        Some((2, char_column(line, "unsafe")))
+    );
+    assert_eq!(
+        unsafe_block.identity.column_hint,
+        Some(char_column(line, "unsafe"))
+    );
+}
+
+#[test]
 fn parser_foundation_parses_valid_rust() {
     let tree = parse_rust_syntax("fn load() { let value = 1; }")
         .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
@@ -999,4 +1074,14 @@ fn temp_root(label: &str) -> PathBuf {
     fs::create_dir_all(&root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("temp root: {err}")));
     root
+}
+
+fn char_column(line: &str, needle: &str) -> u32 {
+    let byte_column = line
+        .find(needle)
+        .unwrap_or_else(|| std::panic::panic_any(format!("{needle} should exist in {line}")));
+    line.char_indices()
+        .take_while(|(idx, _)| *idx < byte_column)
+        .count() as u32
+        + 1
 }

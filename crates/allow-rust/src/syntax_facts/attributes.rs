@@ -2,7 +2,7 @@ use tree_sitter::Node;
 
 use crate::syntax_kinds::{LintAttribute, LintAttributeKind, RustSyntaxFacts};
 use crate::syntax_tree::node_text;
-use crate::text::detect_attr;
+use crate::text::{detect_attr, source_column};
 
 pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut RustSyntaxFacts) {
     if !matches!(node.kind(), "attribute_item" | "inner_attribute_item") {
@@ -13,7 +13,8 @@ pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut R
         return;
     };
 
-    let line = node.start_position().row as u32 + 1;
+    let start = node.start_position();
+    let line = start.row as u32 + 1;
     if let Some(kind) = lint_attribute_kind(text) {
         facts
             .lint_attributes
@@ -22,7 +23,7 @@ pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut R
             .push(LintAttribute {
                 kind,
                 text: text.to_string(),
-                column: node.start_position().column as u32 + 1,
+                column: source_column(source, start.row, start.column),
             });
     }
     if unsafe_attribute_text(text) {

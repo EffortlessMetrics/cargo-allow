@@ -5,7 +5,7 @@ use crate::syntax_kinds::RustSyntaxFacts;
 
 pub(super) fn collect_syntax_facts(node: Node<'_>, source: &str, facts: &mut RustSyntaxFacts) {
     index::record_index_expression(node, source, facts);
-    unsafe_constructs::record_node_unsafe_construct(node, facts);
+    unsafe_constructs::record_node_unsafe_construct(node, source, facts);
     panic::record_node_panic_constructs(node, source, facts);
     attributes::record_node_attributes(node, source, facts);
 

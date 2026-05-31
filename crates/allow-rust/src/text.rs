@@ -31,7 +31,24 @@ pub(crate) fn lint_policy_reference(text: &str) -> Option<String> {
 }
 
 pub(crate) fn column(line: &str, needle: &str) -> u32 {
-    line.find(needle).map(|idx| idx as u32 + 1).unwrap_or(1)
+    line.find(needle)
+        .map(|idx| byte_column_to_char_column(line, idx))
+        .unwrap_or(1)
+}
+
+pub(crate) fn source_column(source: &str, row: usize, byte_column: usize) -> u32 {
+    source
+        .lines()
+        .nth(row)
+        .map(|line| byte_column_to_char_column(line, byte_column))
+        .unwrap_or(1)
+}
+
+pub(crate) fn byte_column_to_char_column(line: &str, byte_column: usize) -> u32 {
+    line.char_indices()
+        .take_while(|(idx, _)| *idx < byte_column)
+        .count() as u32
+        + 1
 }
 
 pub(crate) fn index_symbol(line: &str) -> String {

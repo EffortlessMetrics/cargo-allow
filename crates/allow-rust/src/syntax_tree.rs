@@ -1,6 +1,8 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use tree_sitter::{Node, Parser, Tree};
 
+use crate::text::source_column;
+
 pub struct RustSyntaxTree {
     pub(crate) tree: Tree,
 }
@@ -144,9 +146,9 @@ fn collect_containers(
                 name,
                 module_path: module_path.clone(),
                 start_line: start.row as u32 + 1,
-                start_column: start.column as u32 + 1,
+                start_column: source_column(source, start.row, start.column),
                 end_line: end.row as u32 + 1,
-                end_column: end.column as u32 + 1,
+                end_column: source_column(source, end.row, end.column),
             });
         }
     }
