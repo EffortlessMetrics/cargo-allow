@@ -32,6 +32,7 @@ fn html_report_summarizes_audit_posture() {
     assert!(html.contains("<code>new</code>"));
     assert!(html.contains("<code>scripts/new.sh</code>"));
     assert!(html.contains("did not invoke Cargo metadata"));
+    assert!(html.contains("external evidence tools"));
 }
 
 #[test]

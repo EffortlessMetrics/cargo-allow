@@ -47,6 +47,7 @@ fn human_report_summarizes_non_rust_inventory() {
     assert!(text.contains("    matched      configuration            .gitignore"));
     assert!(text.contains("schemas/api.yaml"));
     assert!(text.contains("did not invoke Cargo metadata"));
+    assert!(text.contains("external evidence tools"));
     assert!(text.contains("repository code"));
 }
 
@@ -82,6 +83,7 @@ fn markdown_report_summarizes_non_rust_inventory() {
     assert!(text.contains("| `matched` | `ci_declarative` | `.github/workflows/ci.yml` |"));
     assert!(!text.contains("## Non-matched outcomes"));
     assert!(text.contains("did not invoke Cargo metadata"));
+    assert!(text.contains("external evidence tools"));
     assert!(text.contains("proc macros"));
 }
 

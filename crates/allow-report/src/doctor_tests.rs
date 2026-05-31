@@ -78,6 +78,7 @@ fn doctor_human_renderer_records_root_config_and_inventory() {
         "inventory: source_tree/source_syntax via filesystem_fallback; files scanned: 7"
     ));
     assert!(text.contains("did not invoke Cargo metadata"));
+    assert!(text.contains("external evidence tools"));
 }
 
 #[test]
