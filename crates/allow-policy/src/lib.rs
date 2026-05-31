@@ -8,6 +8,7 @@ mod evidence;
 mod evidence_diagnostics;
 mod evidence_path;
 mod evidence_reference;
+mod evidence_validation;
 mod lifecycle;
 mod policy_header;
 mod render;
