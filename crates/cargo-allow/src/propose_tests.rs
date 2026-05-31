@@ -42,8 +42,21 @@ fn propose_summary_reports_generated_baseline_boundary() {
         1,
         "2026-08-01",
         Some(Path::new("policy/allow.proposed.toml")),
+        ProposeContext {
+            inventory: allow_report::InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(51),
+            ),
+            kind_filter: Some("panic"),
+        },
     );
 
+    assert!(
+        text.contains("inventory: source_tree/source_syntax via git_tracked; files scanned: 51")
+    );
+    assert!(text.contains("source_tree_root: H:/Code/Rust/cargo-allow"));
+    assert!(text.contains("kind filter: panic"));
     assert!(text.contains("findings scanned: 12"));
     assert!(text.contains("baseline_debt entries proposed: 3"));
     assert!(text.contains("unsafe baseline_debt entries proposed: 1"));
@@ -51,6 +64,7 @@ fn propose_summary_reports_generated_baseline_boundary() {
     assert!(text.contains("classification: baseline_debt"));
     assert!(text.contains("output: policy/allow.proposed.toml"));
     assert!(text.contains("generated debt still requires human review"));
+    assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
 }
 
 #[test]
