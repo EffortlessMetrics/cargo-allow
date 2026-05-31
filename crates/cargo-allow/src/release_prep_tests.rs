@@ -2,11 +2,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+const RELEASE_VERSION: &str = "0.1.2";
+const CURRENT_PUBLISHED_VERSION: &str = "0.1.1";
+const RELEASE_DOC: &str = "docs/release/0.1.2.md";
+
 #[test]
-fn release_0_1_1_publish_order_matches_internal_dependency_graph() {
+fn release_0_1_2_publish_order_matches_internal_dependency_graph() {
     let root = workspace_root();
-    let release_doc = fs::read_to_string(root.join("docs/release/0.1.1.md"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read 0.1.1 release doc: {err}")));
+    let release_doc = fs::read_to_string(root.join(RELEASE_DOC))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read {RELEASE_DOC}: {err}")));
     let publish_order = parse_publish_order(&release_doc);
     let package_manifests = workspace_package_manifests(&root);
     let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
@@ -14,12 +18,12 @@ fn release_0_1_1_publish_order_matches_internal_dependency_graph() {
     assert_eq!(
         publish_order.iter().cloned().collect::<BTreeSet<_>>(),
         package_names,
-        "0.1.1 publish order should include every workspace package exactly once"
+        "{RELEASE_VERSION} publish order should include every workspace package exactly once"
     );
     assert_eq!(
         publish_order.len(),
         package_names.len(),
-        "0.1.1 publish order should not contain duplicate packages"
+        "{RELEASE_VERSION} publish order should not contain duplicate packages"
     );
 
     let order_index = publish_order
@@ -41,10 +45,10 @@ fn release_0_1_1_publish_order_matches_internal_dependency_graph() {
 }
 
 #[test]
-fn release_0_1_1_version_handoff_matches_workspace_versions() {
+fn release_0_1_2_version_handoff_matches_workspace_versions() {
     let root = workspace_root();
-    let release_doc = fs::read_to_string(root.join("docs/release/0.1.1.md"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read 0.1.1 release doc: {err}")));
+    let release_doc = fs::read_to_string(root.join(RELEASE_DOC))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read {RELEASE_DOC}: {err}")));
     let workspace_manifest = fs::read_to_string(root.join("Cargo.toml"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("read workspace manifest: {err}")));
     let lockfile = fs::read_to_string(root.join("Cargo.lock"))
@@ -53,20 +57,20 @@ fn release_0_1_1_version_handoff_matches_workspace_versions() {
     let workspace_version = workspace_package_version(&workspace_manifest);
 
     assert_eq!(
-        workspace_version, "0.1.1",
-        "0.1.1 release prep should keep the workspace package version at 0.1.1"
+        workspace_version, RELEASE_VERSION,
+        "{RELEASE_VERSION} release prep should keep the workspace package version at {RELEASE_VERSION}"
     );
     assert!(
-        release_doc.contains("# 0.1.1 Release Record"),
+        release_doc.contains("# 0.1.2 Release Prep"),
         "release handoff should name the target patch release"
     );
     assert!(
-        release_doc.contains("to `0.1.1`"),
+        release_doc.contains("to `0.1.2`"),
         "release handoff should document the intended version bump"
     );
     assert!(
-        release_doc.contains("--version 0.1.1"),
-        "release handoff should smoke-test the published 0.1.1 binary"
+        release_doc.contains("--version 0.1.2"),
+        "release handoff should smoke-test the published {RELEASE_VERSION} binary"
     );
 
     for (package, manifest) in &package_manifests {
@@ -111,24 +115,28 @@ fn release_0_1_1_version_handoff_matches_workspace_versions() {
 }
 
 #[test]
-fn release_0_1_1_install_examples_use_published_version() {
+fn release_0_1_2_install_examples_remain_on_published_version_until_release() {
     let root = workspace_root();
-    let release_doc = read_workspace_file(&root, "docs/release/0.1.1.md");
+    let release_doc = read_workspace_file(&root, RELEASE_DOC);
 
     assert!(
-        release_doc.contains("README, CI docs, and GitHub Actions examples now install"),
-        "release record should note that install examples were updated after crates.io visibility"
+        release_doc.contains("intentionally continue to\ninstall `cargo-allow --version 0.1.1`"),
+        "release prep should keep public install examples on the latest published crate"
     );
 
     for relative_path in release_install_surfaces() {
         let content = read_workspace_file(&root, relative_path);
         assert!(
-            content.contains("cargo install cargo-allow --version 0.1.1 --locked"),
-            "{relative_path} should install the published cargo-allow 0.1.1 release"
+            content.contains(&format!(
+                "cargo install cargo-allow --version {CURRENT_PUBLISHED_VERSION} --locked"
+            )),
+            "{relative_path} should install the currently published cargo-allow {CURRENT_PUBLISHED_VERSION} release"
         );
         assert!(
-            !content.contains("cargo install cargo-allow --version 0.1.0 --locked"),
-            "{relative_path} should not keep advertising the previous cargo-allow release"
+            !content.contains(&format!(
+                "cargo install cargo-allow --version {RELEASE_VERSION} --locked"
+            )),
+            "{relative_path} should not advertise {RELEASE_VERSION} before crates.io publication"
         );
     }
 }
@@ -187,7 +195,9 @@ fn workspace_package_manifests(root: &Path) -> BTreeMap<String, String> {
 
 fn parse_publish_order(release_doc: &str) -> Vec<String> {
     let Some(section) = release_doc.split("## Publish Order").nth(1) else {
-        std::panic::panic_any("0.1.1 release doc should contain Publish Order section");
+        std::panic::panic_any(format!(
+            "{RELEASE_VERSION} release doc should contain Publish Order section"
+        ));
     };
     let Some(block) = section.split("```text").nth(1) else {
         std::panic::panic_any("Publish Order section should contain text code block");
