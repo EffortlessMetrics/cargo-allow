@@ -45,7 +45,12 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         .map(|world| world.root.clone())
         .map(Ok)
         .unwrap_or_else(|| resolve_diff_root(args.root.root.as_deref()))?;
-    let policy_path = git_relative_config_path(&root, args.config.as_deref())?;
+    let policy_path = git_relative_config_path_for_diff(
+        &root,
+        args.config.as_deref(),
+        &args.base,
+        args.head.as_deref(),
+    )?;
     let base_cfg = allow_diff::policy_config_at_revision(&root, &args.base, &policy_path)?
         .unwrap_or_else(AllowConfig::empty);
     let head_cfg_for_diff = if let Some(head) = &args.head {
@@ -235,6 +240,35 @@ fn resolve_diff_root(explicit_root: Option<&Path>) -> CargoAllowResult<PathBuf> 
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     resolve_source_tree_root(explicit_root, cwd)
+}
+
+fn git_relative_config_path_for_diff(
+    root: &Path,
+    config: Option<&Path>,
+    base: &str,
+    head: Option<&str>,
+) -> CargoAllowResult<PathBuf> {
+    if head.is_none() || config.is_some() {
+        return git_relative_config_path(root, config);
+    }
+    if let Ok(path) = git_relative_config_path(root, None) {
+        return Ok(path);
+    }
+    for candidate in ["policy/allow.toml", ".cargo/allow.toml", "allow.toml"] {
+        let candidate = PathBuf::from(candidate);
+        if revision_has_config(root, head.unwrap_or(base), &candidate)?
+            || revision_has_config(root, base, &candidate)?
+        {
+            return Ok(candidate);
+        }
+    }
+    Err(CargoAllowError::new(
+        "no policy config found in working tree or compared revisions; pass --config",
+    ))
+}
+
+fn revision_has_config(root: &Path, revision: &str, path: &Path) -> CargoAllowResult<bool> {
+    allow_diff::read_file_at_revision(root, revision, path).map(|text| text.is_some())
 }
 
 fn policy_changes_for_diff(
