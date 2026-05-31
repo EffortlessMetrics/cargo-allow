@@ -1,8 +1,11 @@
-use allow_core::{AllowConfig, CargoAllowResult, MatchOutcome, normalize_path};
-use allow_inventory::InventorySource;
+use allow_core::{
+    AllowConfig, CargoAllowError, CargoAllowResult, Finding, MatchOutcome, normalize_path,
+};
+use allow_inventory::{InventorySource, resolve_source_tree_root};
 use allow_match::{CheckMode, evaluate};
 use std::collections::BTreeSet;
-use std::path::Path;
+use std::env;
+use std::path::{Path, PathBuf};
 use std::process;
 
 #[path = "diff_args.rs"]
@@ -24,15 +27,24 @@ use crate::{
     parse_kind_filter, policy_baseline_debt_entries, report_config,
 };
 
+struct CurrentWorld {
+    root: PathBuf,
+    cfg: AllowConfig,
+    findings: Vec<Finding>,
+    inventory_facts: InventoryFacts,
+}
+
 pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_mode(
-        args.root.root.as_deref(),
-        args.config.as_deref(),
-        true,
-        args.kind.as_deref(),
-        args.include_untracked,
-        EvidenceValidationMode::ReportOnly,
-    )?;
+    let current_world = if args.head.is_none() {
+        Some(load_current_world(args)?)
+    } else {
+        None
+    };
+    let root = current_world
+        .as_ref()
+        .map(|world| world.root.clone())
+        .map(Ok)
+        .unwrap_or_else(|| resolve_diff_root(args.root.root.as_deref()))?;
     let policy_path = git_relative_config_path(&root, args.config.as_deref())?;
     let base_cfg = allow_diff::policy_config_at_revision(&root, &args.base, &policy_path)?
         .unwrap_or_else(AllowConfig::empty);
@@ -40,7 +52,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         allow_diff::policy_config_at_revision(&root, head, &policy_path)?
             .unwrap_or_else(AllowConfig::empty)
     } else {
-        cfg.clone()
+        current_world_loaded(&current_world)?.cfg.clone()
     };
     let mut base_findings = allow_diff::findings_at_revision(&root, &args.base, &base_cfg)?;
     if let Some(kind) = &args.kind {
@@ -50,7 +62,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let mut head_findings_for_diff = if let Some(head) = &args.head {
         allow_diff::findings_at_revision(&root, head, &head_cfg_for_diff)?
     } else {
-        findings.clone()
+        current_world_loaded(&current_world)?.findings.clone()
     };
     if let Some(kind) = &args.kind {
         let parsed = parse_kind_filter(kind)?;
@@ -64,14 +76,17 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let report_cfg = if args.head.is_some() {
         report_config(&head_cfg_for_diff, args.kind.as_deref())?
     } else {
-        report_config(&cfg, args.kind.as_deref())?
+        report_config(
+            &current_world_loaded(&current_world)?.cfg,
+            args.kind.as_deref(),
+        )?
     };
     let findings_for_report = if args.head.is_some() {
-        &head_findings_for_diff
+        head_findings_for_diff.clone()
     } else {
-        &findings
+        current_world_loaded(&current_world)?.findings.clone()
     };
-    let outcomes = evaluate(&report_cfg, findings_for_report, CheckMode::NoNew);
+    let outcomes = evaluate(&report_cfg, &findings_for_report, CheckMode::NoNew);
     let finding_changes =
         allow_diff::finding_posture_changes(&base_findings, &head_findings_for_diff);
     let mut policy_changes = policy_changes_for_diff(
@@ -98,16 +113,17 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         .count()
         + evidence.broken_evidence_links;
     let failed = current_failures > 0 || policy_failed;
-    let report_inventory_facts = head_source_tree_files
-        .as_ref()
-        .map(|files| InventoryFacts::scanned(InventorySource::GitTracked, files.len()))
-        .unwrap_or(inventory_facts);
+    let report_inventory_facts = if let Some(files) = head_source_tree_files.as_ref() {
+        InventoryFacts::scanned(InventorySource::GitTracked, files.len())
+    } else {
+        current_world_loaded(&current_world)?.inventory_facts
+    };
     let source_context = SourceTreeReportContext::new(&root, report_inventory_facts);
     let mut report_context = source_context.report(Some(policy_baseline_debt_entries(&report_cfg)));
     evidence.apply_to(&mut report_context);
     let mut text = match args.format {
         OutputFormat::Json => render_diff_json_report(
-            findings_for_report,
+            &findings_for_report,
             &outcomes,
             failed,
             report_context,
@@ -117,28 +133,28 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         ),
         OutputFormat::Html => allow_report::render_html_with_context(
             "diff",
-            findings_for_report,
+            &findings_for_report,
             &outcomes,
             failed,
             report_context,
         ),
         OutputFormat::Sarif => allow_report::render_sarif_with_context(
             "diff",
-            findings_for_report,
+            &findings_for_report,
             &outcomes,
             failed,
             report_context,
         ),
         OutputFormat::Markdown => allow_report::render_markdown_with_context(
             "diff",
-            findings_for_report,
+            &findings_for_report,
             &outcomes,
             failed,
             report_context,
         ),
         OutputFormat::Human => allow_report::render_human_with_context(
             "diff",
-            findings_for_report,
+            &findings_for_report,
             &outcomes,
             failed,
             report_context,
@@ -190,6 +206,35 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         process::exit(1);
     }
     Ok(())
+}
+
+fn load_current_world(args: &DiffArgs) -> CargoAllowResult<CurrentWorld> {
+    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_mode(
+        args.root.root.as_deref(),
+        args.config.as_deref(),
+        true,
+        args.kind.as_deref(),
+        args.include_untracked,
+        EvidenceValidationMode::ReportOnly,
+    )?;
+    Ok(CurrentWorld {
+        root,
+        cfg,
+        findings,
+        inventory_facts,
+    })
+}
+
+fn current_world_loaded(current_world: &Option<CurrentWorld>) -> CargoAllowResult<&CurrentWorld> {
+    current_world
+        .as_ref()
+        .ok_or_else(|| CargoAllowError::new("internal error: current diff world was not loaded"))
+}
+
+fn resolve_diff_root(explicit_root: Option<&Path>) -> CargoAllowResult<PathBuf> {
+    let cwd =
+        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    resolve_source_tree_root(explicit_root, cwd)
 }
 
 fn policy_changes_for_diff(
