@@ -128,6 +128,66 @@ fn diagnostics_classify_empty_traceability_evidence_as_weak() {
 }
 
 #[test]
+fn diagnostics_classify_unknown_prefix_evidence_as_weak() {
+    let root = unique_test_dir("unknown-prefix-evidence");
+    let entry = AllowEntry {
+        id: "allow-unknown-prefix".to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: Some(PathBuf::from("src/lib.rs")),
+        glob: None,
+        owner: "core".to_string(),
+        classification: "reviewed".to_string(),
+        reason: "fixture".to_string(),
+        evidence: vec!["ticket:evidence/parser-123".to_string()],
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: None,
+            review_after: None,
+            expires: Some("2026-08-01".to_string()),
+        },
+        selector: Selector {
+            ast_kind: Some("method_call".to_string()),
+            callee: Some("unwrap".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    };
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry.clone());
+
+    let diagnostics = evidence_reference_diagnostics(&root, &entry);
+
+    assert_eq!(
+        diagnostics.first().map(|diagnostic| diagnostic.status),
+        Some(EvidenceReferenceStatus::Unstructured)
+    );
+    assert_eq!(
+        diagnostics
+            .first()
+            .and_then(|diagnostic| diagnostic.prefix.as_deref()),
+        Some("ticket")
+    );
+    assert_eq!(
+        diagnostics
+            .first()
+            .and_then(|diagnostic| diagnostic.target.as_ref()),
+        Some(&PathBuf::from("evidence/parser-123"))
+    );
+    assert!(
+        diagnostics.first().is_some_and(|diagnostic| {
+            diagnostic.message.contains("unrecognized evidence prefix")
+        })
+    );
+    assert_eq!(weak_evidence_reference_count(&root, &cfg), 1);
+    validate_local_evidence_references(&root, &cfg).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("unknown-prefix evidence remains advisory: {err}"))
+    });
+    remove_test_dir(root);
+}
+
+#[test]
 fn evidence_status_identifies_broken_local_links() {
     assert!(!EvidenceReferenceStatus::LocalFilePresent.is_broken_local_link());
     assert!(EvidenceReferenceStatus::LocalFileMissing.is_broken_local_link());
