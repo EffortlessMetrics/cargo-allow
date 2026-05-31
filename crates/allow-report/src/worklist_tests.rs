@@ -210,4 +210,20 @@ fn worklist_json_renderer_includes_optional_evidence_reference() {
     assert!(json.contains("\"target\": \"manual-review\""));
     assert!(json.contains("\"status\": \"unstructured\""));
     assert!(json.contains("\"source_package\": null"));
+
+    let text = render_worklist_human(
+        &items,
+        WorklistFilters::default(),
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(47)),
+    );
+
+    assert!(
+        text.contains("work-weak-evidence-reference-0001 (high, small) weak_evidence_reference")
+    );
+    assert!(text.contains(
+        "  evidence reference: spreadsheet:manual-review (status=unstructured, prefix=spreadsheet, target=manual-review)"
+    ));
+    assert!(
+        text.contains("  evidence message: unrecognized evidence prefix; not locally validated")
+    );
 }
