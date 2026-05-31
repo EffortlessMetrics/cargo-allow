@@ -433,7 +433,8 @@
       ],
       "properties": {
         "raw": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "prefix": {
           "type": [
@@ -448,18 +449,23 @@
           ]
         },
         "status": {
-          "enum": [
-            "local_file_present",
-            "local_file_missing",
-            "invalid_local_path",
-            "traceability_only",
-            "unstructured"
-          ]
+          "$ref": "#/$defs/evidence_reference_status"
         },
         "message": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         }
       }
+    },
+    "evidence_reference_status": {
+      "type": "string",
+      "enum": [
+        "local_file_present",
+        "local_file_missing",
+        "invalid_local_path",
+        "traceability_only",
+        "unstructured"
+      ]
     },
     "current_finding": {
       "type": "object",

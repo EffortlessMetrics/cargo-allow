@@ -422,19 +422,23 @@
           "description": "Normalized evidence reference target when present. This is evidence metadata, not the work item source-tree path."
         },
         "status": {
-          "enum": [
-            "local_file_present",
-            "local_file_missing",
-            "invalid_local_path",
-            "traceability_only",
-            "unstructured"
-          ]
+          "$ref": "#/$defs/evidence_reference_status"
         },
         "message": {
           "type": "string",
           "minLength": 1
         }
       }
+    },
+    "evidence_reference_status": {
+      "type": "string",
+      "enum": [
+        "local_file_present",
+        "local_file_missing",
+        "invalid_local_path",
+        "traceability_only",
+        "unstructured"
+      ]
     }
   }
 }

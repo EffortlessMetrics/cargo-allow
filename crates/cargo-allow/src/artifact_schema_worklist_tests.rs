@@ -263,10 +263,17 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         .iter()
         .map(|status| status.as_str())
         .collect::<Vec<_>>();
+    assert_eq!(
+        schema
+            .pointer("/$defs/evidence_reference/properties/status/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/evidence_reference_status"),
+        "worklist evidence reference status should use the shared status definition"
+    );
     assert_enum_equals(
         "worklist evidence reference status",
         &schema,
-        "/$defs/evidence_reference/properties/status/enum",
+        "/$defs/evidence_reference_status/enum",
         &evidence_statuses,
     );
     assert_eq!(
