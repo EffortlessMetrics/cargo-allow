@@ -22,7 +22,7 @@ ledger and the planned growth around it.
   and rollback limits.
 - [0.1.1 release record](release/0.1.1.md): completed patch release and
   publication evidence.
-- [0.1.2 release prep](release/0.1.2.md): patch-release handoff for the
+- [0.1.2 release record](release/0.1.2.md): completed patch release for the
   post-0.1.1 receipt inventory contract.
 - [Agent worklist prompt](agents/cargo-allow-worklist.md): bounded agent use of
   `cargo-allow worklist`.
