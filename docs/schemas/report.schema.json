@@ -10,7 +10,6 @@
         "required": ["diff"]
       },
       "then": {
-        "additionalProperties": false,
         "properties": {
           "command": {
             "const": "diff"

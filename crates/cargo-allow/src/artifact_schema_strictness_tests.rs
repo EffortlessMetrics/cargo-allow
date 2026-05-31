@@ -129,7 +129,12 @@ fn collect_object_nodes_missing_additional_properties(
         Value::Object(object) => {
             let has_properties = object.contains_key("properties");
             let is_object_type = object.get("type").and_then(Value::as_str) == Some("object");
+            let is_conditional_constraint = path.contains("/allOf/")
+                && has_properties
+                && !is_object_type
+                && object.get("additionalProperties").is_none();
             if (has_properties || is_object_type)
+                && !is_conditional_constraint
                 && object.get("additionalProperties").and_then(Value::as_bool) != Some(false)
             {
                 missing.push(if path.is_empty() {

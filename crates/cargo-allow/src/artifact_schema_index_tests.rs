@@ -147,6 +147,7 @@ fn schema_index_documents_api_contract_change_rules() {
         "tightening renderer tests so existing fields stay stable",
         "adding non-breaking examples or schema compatibility coverage",
         "`additionalProperties = false` at both the root and nested levels",
+        "Conditional constraint subschemas may use `properties` only to constrain a\nspecific existing field",
         "Breaking changes require a new schema ID",
         "removing, renaming, or changing the type of an existing field",
         "making an optional field required",
