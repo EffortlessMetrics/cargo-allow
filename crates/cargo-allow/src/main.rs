@@ -48,6 +48,8 @@ mod artifact_schema_expectations;
 #[cfg(test)]
 mod artifact_schema_explain_tests;
 #[cfg(test)]
+mod artifact_schema_index_tests;
+#[cfg(test)]
 mod artifact_schema_list_tests;
 #[cfg(test)]
 mod artifact_schema_migrate_tests;

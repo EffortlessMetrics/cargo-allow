@@ -11,7 +11,7 @@ use crate::artifact_schema_support::{
     parse_schema, required_schema_pointer, schema_contracts,
 };
 use serde_json::{Map, Value};
-use std::{collections::BTreeSet, fs, path::Path};
+use std::collections::BTreeSet;
 
 #[test]
 fn schema_files_require_common_v1_source_tree_contract() {
@@ -70,42 +70,6 @@ fn schema_files_require_common_v1_source_tree_contract() {
             allow_report::SCANNER_LIMITATIONS,
         );
     }
-}
-
-#[test]
-fn schema_contract_registry_covers_every_documented_artifact_schema() {
-    let schema_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/schemas");
-    let documented = fs::read_dir(&schema_dir)
-        .unwrap_or_else(|err| {
-            std::panic::panic_any(format!(
-                "read schema directory {}: {err}",
-                schema_dir.display()
-            ))
-        })
-        .map(|entry| {
-            entry.unwrap_or_else(|err| {
-                std::panic::panic_any(format!(
-                    "read schema directory entry {}: {err}",
-                    schema_dir.display()
-                ))
-            })
-        })
-        .filter_map(|entry| {
-            let name = entry.file_name();
-            let name = name.to_string_lossy();
-            name.strip_suffix(".schema.json")
-                .map(std::string::ToString::to_string)
-        })
-        .collect::<BTreeSet<_>>();
-    let registered = schema_contracts()
-        .into_iter()
-        .map(|contract| contract.name.to_string())
-        .collect::<BTreeSet<_>>();
-
-    assert_eq!(
-        registered, documented,
-        "every docs/schemas/*.schema.json file should be registered for shared contract tests"
-    );
 }
 
 #[test]
@@ -1536,144 +1500,6 @@ fn artifact_local_fragments_match_common_wire_shapes() {
 
     assert_common_fragment_matches("receipt", &receipt, &common, "counts");
     assert_common_fragment_matches_named("explain", &explain, "match_outcome", &common, "outcome");
-}
-
-#[test]
-fn schema_contract_registry_covers_schema_index_links() {
-    let index = include_str!("../../../docs/schemas/README.md");
-
-    for contract in schema_contracts() {
-        let schema_file = format!("{}.schema.json", contract.name);
-        assert!(
-            index.contains(&schema_file),
-            "schema index should link {schema_file}"
-        );
-        assert!(
-            index.contains(contract.schema_id),
-            "schema index should document {}",
-            contract.schema_id
-        );
-    }
-}
-
-#[test]
-fn schema_index_artifact_table_matches_registered_producers() {
-    let index = include_str!("../../../docs/schemas/README.md");
-
-    for contract in schema_contracts() {
-        let schema_id_text = format!("`{}`", contract.schema_id);
-        let Some(row) = index
-            .lines()
-            .find(|line| line.starts_with('|') && line.contains(&schema_id_text))
-        else {
-            std::panic::panic_any(format!(
-                "schema index artifact table should document {schema_id_text}"
-            ));
-        };
-
-        assert!(
-            row.contains("`cargo-allow "),
-            "{} schema index row should document standalone cargo-allow producer commands",
-            contract.name
-        );
-        assert!(
-            !row.contains("`cargo allow "),
-            "{} schema index row should not use Cargo compatibility syntax as the primary producer",
-            contract.name
-        );
-
-        if let Some(command) = contract.fixed_command {
-            let producer = format!("`cargo-allow {command}");
-            assert!(
-                row.contains(&producer),
-                "{} schema index row should document producer command {producer}`",
-                contract.name
-            );
-        } else {
-            for command in allow_report::REPORT_COMMANDS {
-                let producer = format!("`cargo-allow {command}");
-                assert!(
-                    row.contains(&producer),
-                    "{} schema index row should document report producer command {producer}`",
-                    contract.name
-                );
-            }
-        }
-    }
-}
-
-#[test]
-fn schema_index_documents_evidence_prefix_vocabulary() {
-    let index = include_str!("../../../docs/schemas/README.md");
-    assert!(
-        index.contains("## Evidence Prefix Vocabulary"),
-        "schema index should document the evidence prefix vocabulary"
-    );
-
-    let local_file_prefixes = allow_policy::local_file_evidence_prefixes().collect::<BTreeSet<_>>();
-    let traceability_prefixes =
-        allow_policy::traceability_evidence_prefixes().collect::<BTreeSet<_>>();
-    let recognized_prefixes = allow_policy::recognized_evidence_prefixes().collect::<Vec<_>>();
-
-    for prefix in recognized_prefixes {
-        let prefix_text = format!("`{prefix}:`");
-        let Some(row) = index.lines().find(|line| line.contains(&prefix_text)) else {
-            std::panic::panic_any(format!(
-                "schema index should document evidence prefix {prefix_text}"
-            ));
-        };
-        if local_file_prefixes.contains(prefix) {
-            assert!(
-                row.contains("Local source-tree file reference"),
-                "{prefix_text} should be documented as local source-tree evidence"
-            );
-        } else {
-            assert!(
-                traceability_prefixes.contains(prefix),
-                "{prefix_text} should be classified by allow-policy"
-            );
-            assert!(
-                row.contains("Traceability only"),
-                "{prefix_text} should be documented as traceability-only evidence"
-            );
-        }
-    }
-
-    assert!(
-        index.contains("Unknown prefixes and unstructured strings are reported as weak evidence"),
-        "schema index should distinguish weak evidence from broken local evidence links"
-    );
-}
-
-#[test]
-fn schema_files_keep_document_metadata_aligned_with_contracts() {
-    for contract in schema_contracts() {
-        let schema = parse_schema(contract.name, contract.schema);
-        let expected_id = format!(
-            "https://effortlessmetrics.dev/schemas/cargo-allow/{}.v{}.schema.json",
-            contract.name, contract.schema_version
-        );
-        let expected_title = format!("cargo-allow {} v{}", contract.name, contract.schema_version);
-
-        assert_eq!(
-            schema.get("$schema").and_then(Value::as_str),
-            Some("https://json-schema.org/draft/2020-12/schema"),
-            "{} schema draft",
-            contract.name
-        );
-        assert_eq!(
-            schema.get("$id").and_then(Value::as_str),
-            Some(expected_id.as_str()),
-            "{} schema id",
-            contract.name
-        );
-        assert_eq!(
-            schema.get("title").and_then(Value::as_str),
-            Some(expected_title.as_str()),
-            "{} schema title",
-            contract.name
-        );
-    }
 }
 
 #[test]
