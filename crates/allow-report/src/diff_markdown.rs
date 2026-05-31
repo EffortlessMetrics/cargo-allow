@@ -3,6 +3,8 @@ use crate::diff_posture::{diff_net_posture, diff_posture_summary};
 use crate::text::markdown_cell;
 use crate::{DiffFindingChange, DiffPolicyChange};
 
+const PR_SUMMARY_HIGHLIGHT_LIMIT: usize = 8;
+
 pub fn render_diff_pr_summary_markdown(
     current_failures: usize,
     finding_changes: &[DiffFindingChange<'_>],
@@ -48,32 +50,39 @@ pub fn render_diff_pr_summary_markdown(
 }
 
 fn append_finding_highlights(out: &mut String, finding_changes: &[DiffFindingChange<'_>]) {
-    if finding_changes.iter().any(|change| change.change == "new") {
+    let new_count = finding_changes
+        .iter()
+        .filter(|change| change.change == "new")
+        .count();
+    if new_count > 0 {
         out.push_str("### Finding Attention\n\n");
         out.push_str("| Change | Kind | Family | Path |\n|---|---|---|---|\n");
         for change in finding_changes
             .iter()
             .filter(|change| change.change == "new")
-            .take(8)
+            .take(PR_SUMMARY_HIGHLIGHT_LIMIT)
         {
             append_finding_highlight_row(out, change);
         }
+        append_omitted_summary_note(out, new_count, "new finding change");
         out.push('\n');
     }
 
-    if finding_changes
+    let removed_count = finding_changes
         .iter()
-        .any(|change| change.change == "removed")
-    {
+        .filter(|change| change.change == "removed")
+        .count();
+    if removed_count > 0 {
         out.push_str("### Finding Improvements\n\n");
         out.push_str("| Change | Kind | Family | Path |\n|---|---|---|---|\n");
         for change in finding_changes
             .iter()
             .filter(|change| change.change == "removed")
-            .take(8)
+            .take(PR_SUMMARY_HIGHLIGHT_LIMIT)
         {
             append_finding_highlight_row(out, change);
         }
+        append_omitted_summary_note(out, removed_count, "removed finding change");
         out.push('\n');
     }
 }
@@ -89,32 +98,35 @@ fn append_finding_highlight_row(out: &mut String, change: &DiffFindingChange<'_>
 }
 
 fn append_policy_highlights(out: &mut String, policy_changes: &[DiffPolicyChange<'_>]) {
-    if policy_changes
+    let attention_count = policy_changes
         .iter()
-        .any(|change| change.severity != "improvement")
-    {
+        .filter(|change| change.severity != "improvement")
+        .count();
+    if attention_count > 0 {
         out.push_str("### Policy Attention\n\n");
         out.push_str("| Severity | Allow ID | Kind | Detail | Message |\n|---|---|---|---|---|\n");
         for change in policy_changes
             .iter()
             .filter(|change| change.severity != "improvement")
-            .take(8)
+            .take(PR_SUMMARY_HIGHLIGHT_LIMIT)
         {
             append_policy_highlight_row(out, change);
         }
+        append_omitted_summary_note(out, attention_count, "policy attention change");
         out.push('\n');
     }
 
-    if policy_changes
+    let improvement_count = policy_changes
         .iter()
-        .any(|change| change.severity == "improvement")
-    {
+        .filter(|change| change.severity == "improvement")
+        .count();
+    if improvement_count > 0 {
         out.push_str("### Policy Improvements\n\n");
         out.push_str("| Allow ID | Kind | Detail | Message |\n|---|---|---|---|\n");
         for change in policy_changes
             .iter()
             .filter(|change| change.severity == "improvement")
-            .take(8)
+            .take(PR_SUMMARY_HIGHLIGHT_LIMIT)
         {
             let detail = policy_change_detail(change).unwrap_or_else(|| "none".to_string());
             out.push_str(&format!(
@@ -125,7 +137,18 @@ fn append_policy_highlights(out: &mut String, policy_changes: &[DiffPolicyChange
                 markdown_cell(change.message)
             ));
         }
+        append_omitted_summary_note(out, improvement_count, "policy improvement change");
         out.push('\n');
+    }
+}
+
+fn append_omitted_summary_note(out: &mut String, count: usize, singular_label: &str) {
+    if count > PR_SUMMARY_HIGHLIGHT_LIMIT {
+        let omitted = count - PR_SUMMARY_HIGHLIGHT_LIMIT;
+        let plural = if omitted == 1 { "" } else { "s" };
+        out.push_str(&format!(
+            "\n{omitted} additional {singular_label}{plural} omitted from this summary.\n"
+        ));
     }
 }
 
