@@ -118,6 +118,8 @@ pub(crate) use summary::{
 };
 
 #[cfg(test)]
+mod diff_json_detail_tests;
+#[cfg(test)]
 mod diff_json_tests;
 #[cfg(test)]
 mod diff_markdown_tests;
