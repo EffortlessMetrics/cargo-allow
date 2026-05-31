@@ -33,6 +33,8 @@ fn diff_pr_summary_markdown_reports_net_posture() {
     assert!(summary.contains("| Removed source findings | 1 |"));
     assert!(summary.contains("| Policy improvements | 1 |"));
     assert!(summary.contains("keep the narrower posture"));
+    assert!(summary.contains("> Claim boundary: scanned source-tree/source syntax only;"));
+    assert!(summary.contains("cargo-allow did not invoke Cargo metadata"));
     assert!(summary.contains("### Finding Improvements"));
     assert!(summary.contains("| `removed` | `panic` | `unwrap` | `src/lib.rs` |"));
     assert!(summary.contains("### Policy Improvements"));
