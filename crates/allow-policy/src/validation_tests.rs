@@ -1,6 +1,7 @@
 use super::*;
 
 mod entry;
+mod entry_evidence;
 mod lifecycle;
 mod policy_header;
 mod selector;
