@@ -1,6 +1,7 @@
 use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, Requirements, SimpleDate};
 
-const BASELINE_DEBT_MAX_DAYS: i64 = 120;
+/// Maximum lifetime, in days, for generated baseline debt policy entries.
+pub const BASELINE_DEBT_MAX_DAYS: i64 = 120;
 
 fn has_real_lifecycle_review(entry: &AllowEntry) -> bool {
     let has_review_after = entry
