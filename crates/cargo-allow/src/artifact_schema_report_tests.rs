@@ -161,6 +161,13 @@ fn report_schema_locks_diff_posture_extension_contract() {
     );
     assert_eq!(
         schema
+            .pointer("/allOf/0/then/additionalProperties")
+            .and_then(Value::as_bool),
+        None,
+        "report diff conditional should not reject normal report fields"
+    );
+    assert_eq!(
+        schema
             .pointer("/properties/diff/$ref")
             .and_then(Value::as_str),
         Some("#/$defs/diff"),

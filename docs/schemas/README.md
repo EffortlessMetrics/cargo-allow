@@ -141,6 +141,10 @@ Use extra care for any field additions because schemas enforce
 optional fields that are omitted when they have no signal, such as zero-count
 summary fields, so older strict consumers are less likely to see unexpected
 properties in ordinary outputs.
+Conditional constraint subschemas may use `properties` only to constrain a
+specific existing field, such as requiring `command = "diff"` when the report
+contains a `diff` extension. Those constraint subschemas are not full object
+shapes and must not reject the artifact's normal top-level fields.
 
 Breaking changes require a new schema ID or explicit migration note. Examples
 include:

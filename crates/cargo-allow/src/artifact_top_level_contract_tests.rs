@@ -64,6 +64,48 @@ fn artifact_samples_keep_nested_keys_covered_by_schemas() {
 }
 
 #[test]
+fn artifact_sample_validator_enforces_contains_constraints() {
+    let schema = json_value(r#"{"type":"array","contains":{"const":"source_tree_inventory"}}"#);
+    let valid = json_value(r#"["source_tree_inventory","source_syntax_only"]"#);
+    let invalid = json_value(r#"["source_syntax_only"]"#);
+
+    assert!(
+        schema_covers_sample_value(&schema, &schema, &valid, "$").is_ok(),
+        "sample validator should accept arrays that satisfy contains"
+    );
+    assert!(
+        schema_covers_sample_value(&schema, &schema, &invalid, "$").is_err(),
+        "sample validator should reject arrays that miss contains"
+    );
+}
+
+#[test]
+fn artifact_sample_validator_enforces_conditional_all_of_constraints() {
+    let schema = json_value(
+        r#"{
+            "type":"object",
+            "allOf":[
+                {
+                    "if":{"required":["diff"]},
+                    "then":{"properties":{"command":{"const":"diff"}}}
+                }
+            ]
+        }"#,
+    );
+    let valid = json_value(r#"{"command":"diff","diff":{}}"#);
+    let invalid = json_value(r#"{"command":"check","diff":{}}"#);
+
+    assert!(
+        schema_covers_sample_value(&schema, &schema, &valid, "$").is_ok(),
+        "sample validator should accept diff artifacts with diff command"
+    );
+    assert!(
+        schema_covers_sample_value(&schema, &schema, &invalid, "$").is_err(),
+        "sample validator should reject diff artifacts with non-diff command"
+    );
+}
+
+#[test]
 fn artifact_sample_validator_covers_every_schema_pattern() {
     let mut actual = BTreeSet::new();
     for contract in schema_contracts() {
@@ -366,6 +408,11 @@ fn core_artifact_samples() -> Vec<ArtifactSample> {
     ]
 }
 
+fn json_value(input: &str) -> Value {
+    serde_json::from_str(input)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("test JSON should parse: {err}")))
+}
+
 fn assert_sample_coverage_matches_fixed_command_contracts(samples: &[ArtifactSample]) {
     let expected = schema_contracts()
         .into_iter()
@@ -447,6 +494,19 @@ fn schema_covers_sample_value(
 ) -> Result<(), String> {
     let schema = resolve_local_schema_ref(root_schema, schema, path)?;
 
+    if let Some(branches) = schema.get("allOf").and_then(Value::as_array) {
+        for (index, branch) in branches.iter().enumerate() {
+            schema_covers_sample_value(
+                root_schema,
+                branch,
+                value,
+                &format!("{path}.allOf[{index}]"),
+            )?;
+        }
+    }
+
+    validate_conditional_schema(root_schema, schema, value, path)?;
+
     if let Some(branches) = schema.get("anyOf").and_then(Value::as_array) {
         let mut errors = Vec::new();
         for branch in branches {
@@ -465,29 +525,6 @@ fn schema_covers_sample_value(
 
     match value {
         Value::Object(object) => {
-            let Some(properties) = schema.get("properties").and_then(Value::as_object) else {
-                return if object.is_empty() {
-                    Ok(())
-                } else {
-                    Err(format!(
-                        "{path} has object keys but schema has no properties"
-                    ))
-                };
-            };
-
-            let actual = object.keys().map(String::as_str).collect::<BTreeSet<_>>();
-            let allowed = properties
-                .keys()
-                .map(String::as_str)
-                .collect::<BTreeSet<_>>();
-            let unknown = actual.difference(&allowed).copied().collect::<Vec<_>>();
-            if !unknown.is_empty() {
-                return Err(format!(
-                    "{path} has keys absent from schema properties: {}",
-                    unknown.join(", ")
-                ));
-            }
-
             if let Some(required) = schema.get("required").and_then(Value::as_array) {
                 let missing = required
                     .iter()
@@ -508,18 +545,54 @@ fn schema_covers_sample_value(
                 }
             }
 
-            for (key, child) in object {
-                if let Some(child_schema) = properties.get(key) {
-                    schema_covers_sample_value(
-                        root_schema,
-                        child_schema,
-                        child,
-                        &format!("{path}.{}", key),
-                    )?;
+            if let Some(properties) = schema.get("properties").and_then(Value::as_object) {
+                let actual = object.keys().map(String::as_str).collect::<BTreeSet<_>>();
+                let allowed = properties
+                    .keys()
+                    .map(String::as_str)
+                    .collect::<BTreeSet<_>>();
+                if schema.get("additionalProperties").and_then(Value::as_bool) == Some(false) {
+                    let unknown = actual.difference(&allowed).copied().collect::<Vec<_>>();
+                    if !unknown.is_empty() {
+                        return Err(format!(
+                            "{path} has keys absent from schema properties: {}",
+                            unknown.join(", ")
+                        ));
+                    }
                 }
+
+                for (key, child) in object {
+                    if let Some(child_schema) = properties.get(key) {
+                        schema_covers_sample_value(
+                            root_schema,
+                            child_schema,
+                            child,
+                            &format!("{path}.{}", key),
+                        )?;
+                    }
+                }
+            } else if schema.get("additionalProperties").and_then(Value::as_bool) == Some(false)
+                && !object.is_empty()
+            {
+                return Err(format!(
+                    "{path} has object keys but schema allows no properties"
+                ));
             }
         }
         Value::Array(items) => {
+            if let Some(contains_schema) = schema.get("contains") {
+                let mut matched = false;
+                for item in items {
+                    if schema_covers_sample_value(root_schema, contains_schema, item, path).is_ok()
+                    {
+                        matched = true;
+                        break;
+                    }
+                }
+                if !matched {
+                    return Err(format!("{path} did not contain a value matching contains"));
+                }
+            }
             if let Some(item_schema) = schema.get("items") {
                 for (index, item) in items.iter().enumerate() {
                     schema_covers_sample_value(
@@ -546,6 +619,26 @@ fn schema_covers_sample_value(
         _ => {}
     }
 
+    Ok(())
+}
+
+fn validate_conditional_schema(
+    root_schema: &Value,
+    schema: &Value,
+    value: &Value,
+    path: &str,
+) -> Result<(), String> {
+    let Some(if_schema) = schema.get("if") else {
+        return Ok(());
+    };
+
+    if schema_covers_sample_value(root_schema, if_schema, value, &format!("{path}.if")).is_ok() {
+        if let Some(then_schema) = schema.get("then") {
+            schema_covers_sample_value(root_schema, then_schema, value, &format!("{path}.then"))?;
+        }
+    } else if let Some(else_schema) = schema.get("else") {
+        schema_covers_sample_value(root_schema, else_schema, value, &format!("{path}.else"))?;
+    }
     Ok(())
 }
 
