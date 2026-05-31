@@ -8,7 +8,7 @@ pub(crate) use crate::kind_filter::{
     FamilyFilter, KindFilter, is_clippy_compat_kind, is_dependency_surface_compat_kind,
     is_executable_compat_kind, is_network_compat_kind, is_no_panic_allowlist_compat_kind,
     is_panic_compat_kind, is_process_compat_kind, is_unsafe_compat_kind, is_workflow_compat_kind,
-    parse_kind_filter,
+    parse_kind_filter, parse_kind_filter_arg,
 };
 pub(crate) use crate::policy_config::{
     EvidenceValidationMode, config_path, git_relative_config_path, load_config_optional,
