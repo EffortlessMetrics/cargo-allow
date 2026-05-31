@@ -52,6 +52,8 @@ fn forbidden_tool_literals_cover_windows_executable_names() {
     assert!(forbidden_tool_literals().contains(&"\"cargo.exe\""));
     assert!(forbidden_tool_literals().contains(&"\"rustc.exe\""));
     assert!(forbidden_tool_literals().contains(&"\"cargo-clippy.exe\""));
+    assert!(forbidden_tool_literals().contains(&"\"cargo-llvm-cov.exe\""));
+    assert!(forbidden_tool_literals().contains(&"\"tarpaulin.exe\""));
 }
 
 fn forbidden_tool_literals() -> &'static [&'static str] {
@@ -74,6 +76,16 @@ fn forbidden_tool_literals() -> &'static [&'static str] {
         "\"ripr.exe\"",
         "\"unsafe-review\"",
         "\"unsafe-review.exe\"",
+        "\"cargo-llvm-cov\"",
+        "\"cargo-llvm-cov.exe\"",
+        "\"llvm-cov\"",
+        "\"llvm-cov.exe\"",
+        "\"grcov\"",
+        "\"grcov.exe\"",
+        "\"tarpaulin\"",
+        "\"tarpaulin.exe\"",
+        "\"cargo-tarpaulin\"",
+        "\"cargo-tarpaulin.exe\"",
     ]
 }
 

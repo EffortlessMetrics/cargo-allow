@@ -390,4 +390,7 @@ syntax-visible inventory that cargo-allow scanned.
 ```
 
 cargo-allow does not invoke Cargo metadata, Cargo commands, rustc, Clippy,
-build scripts, proc macros, or repository code for these scans.
+build scripts, proc macros, external evidence tools, or repository code for
+these scans. External evidence tools include dependency policy, crate audit,
+test adequacy, unsafe review, and coverage tools whose outputs may be linked as
+evidence but are not executed by cargo-allow.
