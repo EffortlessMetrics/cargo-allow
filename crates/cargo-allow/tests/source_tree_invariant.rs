@@ -52,6 +52,7 @@ fn forbidden_tool_literals_cover_windows_executable_names() {
     assert!(forbidden_tool_literals().contains(&"\"cargo.exe\""));
     assert!(forbidden_tool_literals().contains(&"\"rustc.exe\""));
     assert!(forbidden_tool_literals().contains(&"\"cargo-clippy.exe\""));
+    assert!(forbidden_tool_literals().contains(&"\"cargo-geiger.exe\""));
     assert!(forbidden_tool_literals().contains(&"\"cargo-llvm-cov.exe\""));
     assert!(forbidden_tool_literals().contains(&"\"tarpaulin.exe\""));
 }
@@ -72,6 +73,8 @@ fn forbidden_tool_literals() -> &'static [&'static str] {
         "\"cargo-deny.exe\"",
         "\"cargo-vet\"",
         "\"cargo-vet.exe\"",
+        "\"cargo-geiger\"",
+        "\"cargo-geiger.exe\"",
         "\"ripr\"",
         "\"ripr.exe\"",
         "\"unsafe-review\"",
