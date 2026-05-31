@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowResult, normalize_path};
+use allow_core::{AllowConfig, CargoAllowResult, normalize_path};
 use allow_match::{CheckMode, evaluate};
 use std::process;
 
@@ -37,9 +37,9 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         .unwrap_or_else(|| report_cfg.clone());
     let head_cfg_for_diff = if let Some(head) = &args.head {
         allow_diff::policy_config_at_revision(&root, head, &policy_path)?
-            .unwrap_or_else(|| report_cfg.clone())
+            .unwrap_or_else(|| cfg.clone())
     } else {
-        report_cfg.clone()
+        cfg.clone()
     };
     let mut base_findings = allow_diff::findings_at_revision(&root, &args.base, &base_cfg)?;
     if let Some(kind) = &args.kind {
@@ -57,8 +57,11 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     }
     let finding_changes =
         allow_diff::finding_posture_changes(&base_findings, &head_findings_for_diff);
-    let policy_changes =
-        allow_diff::policy_changes_from_git(&root, &args.base, &policy_path, &head_cfg_for_diff)?;
+    let policy_changes = policy_changes_for_diff(
+        allow_diff::policy_config_at_revision(&root, &args.base, &policy_path)?,
+        &head_cfg_for_diff,
+        args.kind.as_deref(),
+    )?;
     let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
     let evidence = EvidenceReportSummary::from_policy(&root, &report_cfg, &outcomes);
     let current_failures = outcomes
@@ -157,9 +160,25 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     Ok(())
 }
 
+fn policy_changes_for_diff(
+    base_cfg: Option<AllowConfig>,
+    head_cfg: &AllowConfig,
+    kind_filter: Option<&str>,
+) -> CargoAllowResult<Vec<allow_diff::PolicyChange>> {
+    let Some(base_cfg) = base_cfg else {
+        return Ok(Vec::new());
+    };
+    let base_cfg = report_config(&base_cfg, kind_filter)?;
+    let head_cfg = report_config(head_cfg, kind_filter)?;
+    Ok(allow_diff::policy_changes(&base_cfg, &head_cfg))
+}
+
 #[cfg(test)]
 #[path = "diff_json_tests.rs"]
 mod json_tests;
 #[cfg(test)]
 #[path = "diff_markdown_tests.rs"]
 mod markdown_tests;
+#[cfg(test)]
+#[path = "diff_policy_filter_tests.rs"]
+mod policy_filter_tests;
