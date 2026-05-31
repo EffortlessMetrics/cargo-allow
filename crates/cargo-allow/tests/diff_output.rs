@@ -263,6 +263,59 @@ fn diff_json_with_explicit_head_does_not_parse_working_tree_policy() {
 }
 
 #[test]
+fn diff_json_with_explicit_head_finds_policy_path_in_revision_when_working_policy_missing() {
+    let root = temp_root("diff-head-missing-working-policy");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(Some("test:head_policy_path_is_revision_backed")),
+    );
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "add traceability evidence"]);
+    git(&root, &["tag", "head-with-policy"]);
+    fs::remove_file(root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove working policy: {err}")));
+    let output = root.join("diff.json");
+
+    let result = cargo_allow_command()
+        .arg("diff")
+        .arg("--root")
+        .arg(&root)
+        .arg("--base")
+        .arg("HEAD~1")
+        .arg("--head")
+        .arg("head-with-policy")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+
+    assert_status("diff", &result, true);
+    assert_stdout_empty(
+        "diff",
+        &result,
+        "--output should not emit report JSON to stdout",
+    );
+    assert_stderr_empty(
+        "diff",
+        &result,
+        "--output should not emit human posture rows to stderr",
+    );
+    let value = assert_saved_json_artifact(&output, "diff", "cargo-allow.report.v1", "diff");
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "improved",
+        "explicit head should find the default policy path in compared revisions",
+    );
+    assert_policy_change(&value, "evidence_added", "allow-unwrap", "improvement");
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_reports_weak_evidence_added_as_review_required() {
     let root = temp_root("diff-weak-evidence-added");
     write_diff_fixture(
