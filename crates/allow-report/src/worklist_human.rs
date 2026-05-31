@@ -75,6 +75,16 @@ pub fn render_worklist_human(
         if let Some(evidence_count) = item.evidence_count {
             out.push_str(&format!("  evidence: {evidence_count} reference(s)\n"));
         }
+        if let Some(reference) = item.evidence_reference.as_ref() {
+            out.push_str(&format!(
+                "  evidence reference: {} (status={}, prefix={}, target={})\n",
+                reference.raw,
+                reference.status,
+                reference.prefix.unwrap_or("-"),
+                reference.target.unwrap_or("-")
+            ));
+            out.push_str(&format!("  evidence message: {}\n", reference.message));
+        }
         if let Some(exception_kind) = item.exception_kind {
             out.push_str(&format!("  exception: {exception_kind}"));
             if let Some(family) = item.family {
