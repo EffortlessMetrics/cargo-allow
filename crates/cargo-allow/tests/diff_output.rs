@@ -1,16 +1,16 @@
+mod diff_support;
 mod json_assertions;
 mod support;
 
 use std::fs;
-use std::path::Path;
-use std::process::Command;
 
+use diff_support::{
+    assert_saved_json_diff_failure, assert_saved_json_diff_success, policy_with_evidence,
+    write_diff_fixture,
+};
 use json_assertions::{assert_json_str, assert_json_u64};
 use serde_json::Value;
-use support::{
-    assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
-    cargo_allow_command, remove_temp_root, temp_root,
-};
+use support::{remove_temp_root, temp_root};
 
 #[test]
 fn diff_json_with_output_file_does_not_emit_human_posture_to_stderr() {
@@ -220,168 +220,6 @@ fn diff_json_reports_policy_owner_removed_policy_failure() {
     remove_temp_root(root);
 }
 
-#[test]
-fn diff_json_reports_broken_evidence_as_current_failure() {
-    let root = temp_root("diff-broken-evidence");
-    let policy = policy_with_evidence(Some("doc:docs/missing-evidence.md"));
-    write_diff_fixture(&root, policy.clone(), policy);
-    let output = root.join("diff.json");
-
-    let value = assert_saved_json_diff_failure(&root, &output);
-    assert_json_u64(
-        &value,
-        "/summary/broken_evidence_links",
-        1,
-        "diff summary broken_evidence_links",
-    );
-    assert_json_u64(
-        &value,
-        "/trend/broken_evidence_links",
-        1,
-        "diff trend broken_evidence_links",
-    );
-    assert_json_u64(
-        &value,
-        "/diff/summary/current_failures",
-        1,
-        "diff posture current_failures",
-    );
-    assert_json_str(
-        &value,
-        "/diff/net_posture",
-        "worse",
-        "diff broken evidence net posture",
-    );
-
-    remove_temp_root(root);
-}
-
-#[test]
-fn diff_json_reports_policy_missing_evidence_counts() {
-    let root = temp_root("diff-policy-missing-evidence");
-    let policy = policy_with_evidence(None);
-    write_diff_fixture(&root, policy.clone(), policy);
-    let output = root.join("diff.json");
-
-    let value = assert_saved_json_diff_success(&root, &output);
-    assert_json_u64(
-        &value,
-        "/summary/policy_missing_evidence",
-        1,
-        "diff summary policy_missing_evidence",
-    );
-    assert_json_u64(
-        &value,
-        "/trend/policy_missing_evidence",
-        1,
-        "diff trend policy_missing_evidence",
-    );
-    assert_json_str(
-        &value,
-        "/diff/net_posture",
-        "unchanged",
-        "diff policy missing evidence net posture",
-    );
-
-    remove_temp_root(root);
-}
-
-#[test]
-fn diff_json_reports_policy_baseline_debt_counts() {
-    let root = temp_root("diff-policy-baseline-debt");
-    let policy = policy_with_baseline_debt();
-    write_diff_fixture(&root, policy.clone(), policy);
-    let output = root.join("diff.json");
-
-    let value = assert_saved_json_diff_success(&root, &output);
-    assert_json_u64(
-        &value,
-        "/summary/baseline_debt",
-        0,
-        "diff summary baseline_debt",
-    );
-    assert_json_u64(
-        &value,
-        "/summary/policy_baseline_debt",
-        1,
-        "diff summary policy_baseline_debt",
-    );
-    assert_json_u64(
-        &value,
-        "/trend/baseline_debt",
-        1,
-        "diff trend baseline_debt",
-    );
-    assert_json_str(
-        &value,
-        "/diff/net_posture",
-        "unchanged",
-        "diff policy baseline debt net posture",
-    );
-
-    remove_temp_root(root);
-}
-
-fn assert_saved_json_diff_failure(root: &Path, output: &Path) -> Value {
-    assert_saved_json_diff(root, output, false)
-}
-
-fn assert_saved_json_diff_success(root: &Path, output: &Path) -> Value {
-    assert_saved_json_diff(root, output, true)
-}
-
-fn assert_saved_json_diff(root: &Path, output: &Path, should_succeed: bool) -> Value {
-    let result = cargo_allow_command()
-        .arg("diff")
-        .arg("--root")
-        .arg(root)
-        .arg("--base")
-        .arg("HEAD")
-        .arg("--format")
-        .arg("json")
-        .arg("--output")
-        .arg(output)
-        .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
-
-    assert_status("diff", &result, should_succeed);
-    assert_stdout_empty(
-        "diff",
-        &result,
-        "--output should not emit report JSON to stdout",
-    );
-    assert_stderr_empty(
-        "diff",
-        &result,
-        "--output should not emit human posture rows to stderr",
-    );
-    assert_saved_json_artifact(output, "diff", "cargo-allow.report.v1", "diff")
-}
-
-fn write_diff_fixture(root: &Path, base_policy: String, head_policy: String) {
-    fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
-    fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
-    fs::write(
-        root.join("src/lib.rs"),
-        "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
-    )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
-    fs::write(root.join("policy/allow.toml"), base_policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write base policy: {err}")));
-    git(root, &["init"]);
-    git(
-        root,
-        &["config", "user.email", "cargo-allow@example.invalid"],
-    );
-    git(root, &["config", "user.name", "cargo-allow test"]);
-    git(root, &["add", "."]);
-    git(root, &["commit", "-m", "base"]);
-    fs::write(root.join("policy/allow.toml"), head_policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write head policy: {err}")));
-}
-
 fn policy_with_scope(scope: &str) -> String {
     format!(
         r#"policy = "cargo-allow"
@@ -398,35 +236,6 @@ owner = "core"
 classification = "reviewed_exception"
 reason = "fixture"
 created = "2026-05-29"
-review_after = "2026-08-01"
-
-[allow.selector]
-ast_kind = "method_call"
-container = "load"
-callee = "unwrap"
-"#
-    )
-}
-
-fn policy_with_evidence(evidence: Option<&str>) -> String {
-    let evidence = evidence
-        .map(|evidence| format!("evidence = [\"{evidence}\"]\n"))
-        .unwrap_or_default();
-    format!(
-        r#"policy = "cargo-allow"
-
-[workspace]
-ignored = ["policy/**"]
-
-[[allow]]
-id = "allow-unwrap"
-kind = "panic"
-family = "unwrap"
-path = "src/lib.rs"
-owner = "core"
-classification = "reviewed_exception"
-reason = "fixture"
-{evidence}created = "2026-05-29"
 review_after = "2026-08-01"
 
 [allow.selector]
@@ -583,47 +392,6 @@ container = "load"
 callee = "unwrap"
 "#
     )
-}
-
-fn policy_with_baseline_debt() -> String {
-    r#"policy = "cargo-allow"
-
-[workspace]
-ignored = ["policy/**"]
-
-[[allow]]
-id = "allow-unwrap"
-kind = "panic"
-family = "unwrap"
-path = "src/lib.rs"
-owner = "unowned"
-classification = "baseline_debt"
-reason = "Generated by cargo-allow propose; requires human review."
-created = "2026-05-29"
-expires = "2026-08-29"
-
-[allow.selector]
-ast_kind = "method_call"
-container = "load"
-callee = "unwrap"
-"#
-    .to_string()
-}
-
-fn git(root: &Path, args: &[&str]) {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(args)
-        .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
-    if !output.status.success() {
-        std::panic::panic_any(format!(
-            "git {args:?} failed: stdout=`{}` stderr=`{}`",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
 }
 
 fn assert_file_contains(path: &std::path::Path, needle: &str, message: &str) {
