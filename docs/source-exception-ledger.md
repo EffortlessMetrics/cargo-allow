@@ -502,14 +502,16 @@ data-flow analysis.
 When `--head <rev>` is supplied, diff treats the compared git trees as the
 posture source. The rendered current report, evidence-health summary, policy
 comparison, and source finding comparison come from the explicit head revision,
-not from the working tree. If no `--config` is supplied and the working tree no
-longer contains a policy file, cargo-allow falls back to the standard policy
-paths present in the compared revisions. If a relative `--config` is supplied,
-that source-tree path must exist in the base or head revision; missing explicit
-config paths fail closed instead of silently comparing empty policies. Absolute
-config paths still use the existing working-tree path validation. This remains
-source-tree git-object reading only; cargo-allow does not execute repository
-code or ask Cargo to resolve project metadata.
+not from the working tree. If no `--config` is supplied, cargo-allow searches
+the standard policy paths in the head revision first, then falls back to the
+base revision. This keeps current posture tied to the head revision when a PR
+moves the policy file, while still making base-only policy removals visible. If
+a relative `--config` is supplied, that source-tree path must exist in the base
+or head revision; missing explicit config paths fail closed instead of silently
+comparing empty policies. Absolute config paths still use the existing
+working-tree path validation. This remains source-tree git-object reading only;
+cargo-allow does not execute repository code or ask Cargo to resolve project
+metadata.
 
 Saved `check` receipts may include a `source_inventory` object with the same
 kind and kind.family breakdown as JSON reports. This keeps the durable CI

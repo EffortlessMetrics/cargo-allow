@@ -50,9 +50,10 @@ still preserving ledger-level policy contract signals.
 
 If CI passes an explicit `--head <rev>`, cargo-allow reads policy and source
 posture from the compared git revisions rather than from the working tree.
-Default policy paths can be discovered from those revisions. A relative
-`--config` is treated as a source-tree path in the compared revisions and fails
-closed if neither side contains it.
+Default policy paths are discovered from the head revision first, then from
+the base revision, so current PR posture stays tied to the head snapshot if the
+policy file moved. A relative `--config` is treated as a source-tree path in
+the compared revisions and fails closed if neither side contains it.
 
 The Markdown output starts with a PR Summary section. That section reports:
 
