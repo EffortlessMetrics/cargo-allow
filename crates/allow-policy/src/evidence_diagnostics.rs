@@ -2,6 +2,7 @@ use allow_core::AllowEntry;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::evidence_path::{first_symlink_component, normalize_local_evidence_path};
 use crate::evidence_reference::{EvidenceKind, EvidenceReference};
 use crate::source_tree_scope::validate_path_scope;
 
@@ -155,25 +156,4 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             message: "local evidence file is missing".to_string(),
         },
     }
-}
-
-fn normalize_local_evidence_path(path: &Path) -> PathBuf {
-    PathBuf::from(path.to_string_lossy().replace('\\', "/"))
-}
-
-fn first_symlink_component(root: &Path, relative: &Path) -> Option<PathBuf> {
-    let mut current = root.to_path_buf();
-    let mut source_tree_component = PathBuf::new();
-    for component in relative.components() {
-        current.push(component.as_os_str());
-        source_tree_component.push(component.as_os_str());
-        match fs::symlink_metadata(&current) {
-            Ok(metadata) if metadata.file_type().is_symlink() => {
-                return Some(source_tree_component);
-            }
-            Ok(_) => {}
-            Err(_) => return None,
-        }
-    }
-    None
 }
