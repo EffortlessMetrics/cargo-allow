@@ -10,6 +10,7 @@ mod diff;
 mod diff_human;
 mod diff_json;
 mod diff_markdown;
+mod diff_policy_detail;
 mod diff_posture;
 mod doctor;
 #[cfg(test)]
@@ -117,6 +118,8 @@ pub(crate) use summary::{
     render_count_fields_with_policy_context, weak_evidence_reference_count,
 };
 
+#[cfg(test)]
+mod diff_human_tests;
 #[cfg(test)]
 mod diff_json_detail_tests;
 #[cfg(test)]

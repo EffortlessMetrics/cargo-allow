@@ -1,3 +1,4 @@
+use crate::diff_policy_detail::policy_change_detail;
 use crate::diff_posture::{diff_net_posture, diff_posture_summary};
 use crate::text::markdown_cell;
 use crate::{DiffFindingChange, DiffPolicyChange};
@@ -93,7 +94,7 @@ fn append_policy_highlights(out: &mut String, policy_changes: &[DiffPolicyChange
         .any(|change| change.severity != "improvement")
     {
         out.push_str("### Policy Attention\n\n");
-        out.push_str("| Severity | Allow ID | Kind | Message |\n|---|---|---|---|\n");
+        out.push_str("| Severity | Allow ID | Kind | Detail | Message |\n|---|---|---|---|---|\n");
         for change in policy_changes
             .iter()
             .filter(|change| change.severity != "improvement")
@@ -109,16 +110,18 @@ fn append_policy_highlights(out: &mut String, policy_changes: &[DiffPolicyChange
         .any(|change| change.severity == "improvement")
     {
         out.push_str("### Policy Improvements\n\n");
-        out.push_str("| Allow ID | Kind | Message |\n|---|---|---|\n");
+        out.push_str("| Allow ID | Kind | Detail | Message |\n|---|---|---|---|\n");
         for change in policy_changes
             .iter()
             .filter(|change| change.severity == "improvement")
             .take(8)
         {
+            let detail = policy_change_detail(change).unwrap_or_else(|| "none".to_string());
             out.push_str(&format!(
-                "| `{}` | `{}` | {} |\n",
+                "| `{}` | `{}` | {} | {} |\n",
                 markdown_cell(change.allow_id),
                 markdown_cell(change.kind),
+                markdown_cell(&detail),
                 markdown_cell(change.message)
             ));
         }
@@ -127,11 +130,13 @@ fn append_policy_highlights(out: &mut String, policy_changes: &[DiffPolicyChange
 }
 
 fn append_policy_highlight_row(out: &mut String, change: &DiffPolicyChange<'_>) {
+    let detail = policy_change_detail(change).unwrap_or_else(|| "none".to_string());
     out.push_str(&format!(
-        "| `{}` | `{}` | `{}` | {} |\n",
+        "| `{}` | `{}` | `{}` | {} | {} |\n",
         markdown_cell(change.severity),
         markdown_cell(change.allow_id),
         markdown_cell(change.kind),
+        markdown_cell(&detail),
         markdown_cell(change.message)
     ));
 }
@@ -179,13 +184,15 @@ pub fn render_diff_policy_changes_markdown(changes: &[DiffPolicyChange<'_>]) -> 
         out.push_str("No policy weakening detected.\n");
         return out;
     }
-    out.push_str("| Severity | Allow ID | Kind | Message |\n|---|---|---|---|\n");
+    out.push_str("| Severity | Allow ID | Kind | Detail | Message |\n|---|---|---|---|---|\n");
     for change in changes {
+        let detail = policy_change_detail(change).unwrap_or_else(|| "none".to_string());
         out.push_str(&format!(
-            "| `{}` | `{}` | `{}` | {} |\n",
+            "| `{}` | `{}` | `{}` | {} | {} |\n",
             markdown_cell(change.severity),
             markdown_cell(change.allow_id),
             markdown_cell(change.kind),
+            markdown_cell(&detail),
             markdown_cell(change.message)
         ));
     }
