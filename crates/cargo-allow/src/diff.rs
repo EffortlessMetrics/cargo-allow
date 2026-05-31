@@ -267,10 +267,7 @@ fn git_relative_config_path_for_diff(
             normalize_path(&path)
         )));
     }
-    if let Ok(path) = git_relative_config_path(root, None) {
-        return Ok(path);
-    }
-    for candidate in ["policy/allow.toml", ".cargo/allow.toml", "allow.toml"] {
+    for candidate in default_diff_policy_paths() {
         let candidate = PathBuf::from(candidate);
         if revision_has_config(root, head.unwrap_or(base), &candidate)?
             || revision_has_config(root, base, &candidate)?
@@ -279,8 +276,12 @@ fn git_relative_config_path_for_diff(
         }
     }
     Err(CargoAllowError::new(
-        "no policy config found in working tree or compared revisions; pass --config",
+        "no policy config found in compared revisions; pass --config",
     ))
+}
+
+fn default_diff_policy_paths() -> [&'static str; 3] {
+    ["policy/allow.toml", ".cargo/allow.toml", "allow.toml"]
 }
 
 fn explicit_diff_config_path(root: &Path, config: &Path) -> CargoAllowResult<PathBuf> {
