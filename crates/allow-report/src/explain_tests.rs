@@ -227,10 +227,11 @@ fn explain_json_renderer_records_context_and_current_status() {
     assert!(text.contains("classification: ffi_boundary"));
     assert!(text.contains("selector_precision: 42"));
     assert!(text.contains("broad_scope: true"));
-    assert!(text.contains("evidence references:"));
-    assert!(text.contains(
-            "- doc:docs/safety/ffi.md prefix=doc target=docs/safety/ffi.md status=missing message=local evidence file is missing"
-        ));
+    assert!(text.contains("evidence diagnostics:"));
+    assert!(
+        text.contains("- missing: doc:docs/safety/ffi.md (prefix=doc, target=docs/safety/ffi.md)")
+    );
+    assert!(text.contains("  message: local evidence file is missing"));
     assert!(text.contains("current_status: evidence_missing"));
     assert!(text.contains("current_matches: 1"));
     assert!(

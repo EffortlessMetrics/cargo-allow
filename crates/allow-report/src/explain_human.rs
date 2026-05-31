@@ -1,5 +1,5 @@
 use crate::explain_common::{explain_report_status, finding_location_text};
-use crate::{CLAIM_BOUNDARY_TEXT, ExplainReport};
+use crate::{CLAIM_BOUNDARY_TEXT, EvidenceReference, ExplainReport};
 use allow_core::{AllowEntry, MatchOutcome, MatchStatus};
 
 pub fn render_explain_human(report: ExplainReport<'_>) -> String {
@@ -16,16 +16,10 @@ pub fn render_explain_human(report: ExplainReport<'_>) -> String {
     out.push_str(&format!("reason: {}\n", empty_as_none(&entry.reason)));
     out.push_str(&format!("evidence: {}\n", list_or_none(&entry.evidence)));
     if !report.evidence_references.is_empty() {
-        out.push_str("\nevidence references:\n");
+        out.push_str("\nevidence diagnostics:\n");
         for reference in report.evidence_references {
-            out.push_str(&format!(
-                "- {} prefix={} target={} status={} message={}\n",
-                reference.raw,
-                reference.prefix.unwrap_or("-"),
-                reference.target.unwrap_or("-"),
-                reference.status,
-                reference.message
-            ));
+            out.push_str(&format!("- {}\n", evidence_reference_summary(reference)));
+            out.push_str(&format!("  message: {}\n", reference.message));
         }
     }
     if !entry.links.is_empty() {
@@ -151,6 +145,16 @@ fn list_or_none(values: &[String]) -> String {
     } else {
         values.join(", ")
     }
+}
+
+fn evidence_reference_summary(reference: &EvidenceReference<'_>) -> String {
+    format!(
+        "{}: {} (prefix={}, target={})",
+        reference.status,
+        reference.raw,
+        reference.prefix.unwrap_or("-"),
+        reference.target.unwrap_or("-")
+    )
 }
 
 fn selector_summary(entry: &AllowEntry) -> String {
