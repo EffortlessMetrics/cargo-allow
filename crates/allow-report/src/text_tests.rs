@@ -181,6 +181,40 @@ fn markdown_audit_report_includes_review_summary() {
 }
 
 #[test]
+fn human_report_discloses_omitted_non_matched_outcomes() {
+    let outcomes = (0..81)
+        .map(|index| MatchOutcome {
+            status: MatchStatus::New,
+            allow_id: None,
+            finding_index: None,
+            message: format!("new source exception {index}"),
+            score: 0,
+        })
+        .collect::<Vec<_>>();
+
+    let text = render_human_with_context("check", &[], &outcomes, true, context("git_tracked"));
+
+    assert!(text.contains("... 1 additional non-matched outcome omitted from this listing"));
+}
+
+#[test]
+fn markdown_report_discloses_omitted_non_matched_outcomes() {
+    let outcomes = (0..101)
+        .map(|index| MatchOutcome {
+            status: MatchStatus::New,
+            allow_id: None,
+            finding_index: None,
+            message: format!("new source exception {index}"),
+            score: 0,
+        })
+        .collect::<Vec<_>>();
+
+    let text = render_markdown_with_context("check", &[], &outcomes, true, context("git_tracked"));
+
+    assert!(text.contains("1 additional non-matched outcome omitted from this listing."));
+}
+
+#[test]
 fn human_audit_report_includes_review_summary() {
     let findings = vec![
         file_finding(FindingKind::NonRustFile, "shell_script", "scripts/new.sh"),

@@ -7,6 +7,9 @@ use crate::{
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape};
 
+const HUMAN_NON_MATCHED_OUTCOME_LIMIT: usize = 80;
+const MARKDOWN_NON_MATCHED_OUTCOME_LIMIT: usize = 100;
+
 pub fn render_human(
     command: &str,
     findings: &[Finding],
@@ -81,17 +84,18 @@ pub fn render_human_with_context(
     }
     render_non_rust_human(findings, outcomes, &mut out);
     out.push('\n');
-    for outcome in outcomes
+    let non_matched = outcomes
         .iter()
         .filter(|o| o.status != MatchStatus::Matched)
-        .take(80)
-    {
+        .collect::<Vec<_>>();
+    for outcome in non_matched.iter().take(HUMAN_NON_MATCHED_OUTCOME_LIMIT) {
         out.push_str(&format!(
             "{}: {}\n",
             outcome.status.as_str(),
             outcome.message
         ));
     }
+    append_human_omitted_outcome_note(&mut out, non_matched.len());
     out.push('\n');
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out.push('\n');
@@ -245,22 +249,42 @@ pub fn render_markdown_with_context(
     let non_matched = outcomes
         .iter()
         .filter(|o| o.status != MatchStatus::Matched)
-        .take(100)
         .collect::<Vec<_>>();
     if !non_matched.is_empty() {
         out.push_str("\n## Non-matched outcomes\n\n");
-        for outcome in non_matched {
+        for outcome in non_matched.iter().take(MARKDOWN_NON_MATCHED_OUTCOME_LIMIT) {
             out.push_str(&format!(
                 "- `{}`: {}\n",
                 outcome.status.as_str(),
                 outcome.message
             ));
         }
+        append_markdown_omitted_outcome_note(&mut out, non_matched.len());
     }
     out.push_str("\n> ");
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out.push('\n');
     out
+}
+
+fn append_human_omitted_outcome_note(out: &mut String, outcome_count: usize) {
+    if outcome_count > HUMAN_NON_MATCHED_OUTCOME_LIMIT {
+        let omitted = outcome_count - HUMAN_NON_MATCHED_OUTCOME_LIMIT;
+        let plural = if omitted == 1 { "" } else { "s" };
+        out.push_str(&format!(
+            "... {omitted} additional non-matched outcome{plural} omitted from this listing\n"
+        ));
+    }
+}
+
+fn append_markdown_omitted_outcome_note(out: &mut String, outcome_count: usize) {
+    if outcome_count > MARKDOWN_NON_MATCHED_OUTCOME_LIMIT {
+        let omitted = outcome_count - MARKDOWN_NON_MATCHED_OUTCOME_LIMIT;
+        let plural = if omitted == 1 { "" } else { "s" };
+        out.push_str(&format!(
+            "\n{omitted} additional non-matched outcome{plural} omitted from this listing.\n"
+        ));
+    }
 }
 
 fn render_audit_summary_markdown(
