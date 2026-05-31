@@ -465,12 +465,14 @@ entries that use wildcard source-tree scopes. These do not mean the current
 policy failed; they route cleanup work toward narrower selectors or explicit
 review of the broad scope.
 
-`cargo-allow diff --base <rev>` compares the current policy ledger with the
-base revision's `policy/allow.toml` and reports policy weakening and
-review-required policy changes in human and Markdown output. Current detection
-covers scope broadening, selector precision loss, expiry/review extension,
-evidence removal, broken local evidence additions, top-level policy status
-weakening, top-level policy owner removal/unassignment,
+`cargo-allow diff --base <rev>` compares the selected policy ledger between
+the base revision and the current checkout or explicit `--head` revision, then
+reports policy weakening and review-required policy changes in human and
+Markdown output. The default policy path is discovered from standard
+source-tree locations, and `--config` can select a specific ledger path.
+Current detection covers scope broadening, selector precision loss,
+expiry/review extension, evidence removal, broken local evidence additions,
+top-level policy status weakening, top-level policy owner removal/unassignment,
 owner/reason/classification removal, owner unassignment, occurrence-limit
 loosening, added `baseline_debt`, reviewed entries reclassified as
 `baseline_debt`, existing `baseline_debt` entries reclassified as reviewed
