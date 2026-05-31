@@ -297,6 +297,8 @@ Completed:
   setup diagnostics.
 - Publish a versioned `cargo-allow.doctor.v1` JSON schema for saved setup
   diagnostics.
+- Report the loaded policy schema version in human and JSON `doctor`
+  diagnostics so setup checks show which policy contract was validated.
 - Make baseline proposal output safer by refusing accidental overwrites and
   emitting a proposal summary.
 - Add `propose --summary-format json --summary-output <path>` for
@@ -342,6 +344,8 @@ Completed:
   regression coverage so evidence classification remains explicit.
 - Explain evidence reference status from `cargo-allow explain`, including
   present, missing, invalid, traceability, and unstructured references.
+- Format human `explain` evidence diagnostics as status-first rows with
+  separate messages so local evidence state is readable without JSON parsing.
 - Add examples for ripr, unsafe-review, and coverage evidence references while
   keeping the no-execution claim boundary explicit.
 - Count broken local evidence links in audit/report artifacts so first-run
@@ -378,6 +382,8 @@ Completed:
   provides it, without inferring Cargo metadata or build facts.
 - Surface explicit governed exception kind and family in work items so agents
   can route work without parsing messages.
+- Show evidence reference status, prefix, target, and diagnostic message in
+  human worklist output for broken or weak evidence work items.
 - Summarize worklist difficulty counts and include source-tree inventory
   context, including `files_scanned`, in worklist JSON and human output.
 - Add a versioned JSON schema for `cargo-allow.worklist.v1`.
