@@ -64,6 +64,8 @@ mod artifact_schema_report_tests;
 #[cfg(test)]
 mod artifact_schema_shared_tests;
 #[cfg(test)]
+mod artifact_schema_source_location_tests;
+#[cfg(test)]
 mod artifact_schema_strictness_tests;
 #[cfg(test)]
 mod artifact_schema_support;
