@@ -12,8 +12,8 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
         config_status: Some("active"),
         config_valid: Some(true),
         config_diagnostic: None,
-        broken_evidence_links: None,
-        weak_evidence_references: None,
+        broken_evidence_links: Some(0),
+        weak_evidence_references: Some(0),
         inventory_source: "git_tracked",
         files_scanned: 50,
     });
@@ -32,6 +32,8 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
     assert!(json.contains("\"status\": \"active\""));
     assert!(json.contains("\"valid\": true"));
     assert!(json.contains("\"diagnostic\": null"));
+    assert!(json.contains("\"broken_evidence_links\": 0"));
+    assert!(json.contains("\"weak_evidence_references\": 0"));
     assert!(json.contains("\"scanner\": \"source_syntax\""));
     assert!(json.contains("\"source\": \"git_tracked\""));
     assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
@@ -63,7 +65,9 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
     "owner": "core/policy",
     "status": "active",
     "valid": true,
-    "diagnostic": null
+    "diagnostic": null,
+    "broken_evidence_links": 0,
+    "weak_evidence_references": 0
   }}
 }}
 "#,
