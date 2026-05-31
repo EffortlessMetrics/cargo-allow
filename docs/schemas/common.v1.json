@@ -1223,6 +1223,319 @@
         }
       }
     },
+    "worklist_filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --kind filter, or null when the worklist includes all governed kinds."
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --family filter, or null when all scanner or policy families are included."
+        },
+        "item_kind": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --item-kind filter, or null when all work item queue kinds are included."
+        },
+        "status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "matched",
+            "new",
+            "stale",
+            "expired",
+            "review_due",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "evidence_missing",
+            "baseline_debt",
+            null
+          ],
+          "description": "Applied --status filter, or null when all match statuses are included."
+        },
+        "allow_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --allow-id filter, or null when all allow entries are included."
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --path source-tree path or path-prefix filter, or null when all work item paths are included."
+        },
+        "source_package": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --source-package filter, or null when all scanner-provided source package contexts are included."
+        },
+        "owner": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --owner filter, or null when all policy owners are included."
+        },
+        "classification": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --classification filter, or null when all policy classifications are included."
+        },
+        "baseline_debt": {
+          "type": "boolean",
+          "description": "Applied --baseline-debt filter. True means only generated baseline debt work items are included."
+        },
+        "broad_scope": {
+          "type": "boolean",
+          "description": "Applied --broad-scope filter. True means only broad source-tree scope advisory work items are included."
+        },
+        "risk": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            null
+          ],
+          "description": "Applied --risk filter, or null when all risk levels are included."
+        },
+        "difficulty": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "small",
+            "medium",
+            null
+          ],
+          "description": "Applied --difficulty filter, or null when all difficulty levels are included."
+        },
+        "missing_evidence": {
+          "type": "boolean",
+          "description": "Applied --missing-evidence filter. True means only policy-backed work items with no evidence references are included."
+        }
+      }
+    },
+    "work_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "risk",
+        "difficulty",
+        "status",
+        "allow_id",
+        "finding_index",
+        "path",
+        "source_package",
+        "message",
+        "suggested_actions",
+        "proof_commands"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^work-[a-z0-9-]+-[0-9]{4}$"
+        },
+        "kind": {
+          "enum": [
+            "new_unreceipted_finding",
+            "occurrence_limit_exceeded",
+            "expired_allow",
+            "stale_allow",
+            "ambiguous_selector",
+            "unsafe_missing_evidence",
+            "missing_evidence",
+            "missing_required_field",
+            "invalid_selector",
+            "baseline_debt",
+            "review_due",
+            "matched",
+            "broad_scope",
+            "broken_evidence_link",
+            "weak_evidence_reference"
+          ],
+          "description": "Stable queue item kind emitted by cargo-allow worklist."
+        },
+        "exception_kind": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception",
+            null
+          ],
+          "description": "Governed source exception surface behind the work item, when known."
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "More specific scanner or policy family behind the work item, when known."
+        },
+        "owner": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy owner for the related allow entry, when the work item is tied to policy."
+        },
+        "classification": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy classification for the related allow entry, when available."
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy reason for the related allow entry, when available."
+        },
+        "created": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy creation date for the related allow entry, when available."
+        },
+        "review_after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy review-after date for the related allow entry, when available."
+        },
+        "expires": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy expiry date for the related allow entry, when available."
+        },
+        "evidence_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Number of evidence references on the related allow entry, when available."
+        },
+        "risk": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "difficulty": {
+          "enum": [
+            "small",
+            "medium"
+          ]
+        },
+        "status": {
+          "enum": [
+            "matched",
+            "new",
+            "stale",
+            "expired",
+            "review_due",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "evidence_missing",
+            "baseline_debt"
+          ]
+        },
+        "allow_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "finding_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Source-tree path for source-backed work items, or a local evidence path for broken_evidence_link items. Null means the item is not tied to a source-tree path, including weak_evidence_reference items whose evidence target is not locally validated."
+        },
+        "evidence_reference": {
+          "$ref": "#/$defs/evidence_reference",
+          "description": "Structured evidence diagnostic for broken_evidence_link and weak_evidence_reference work items. Absent for work items that are not tied to a specific evidence reference."
+        },
+        "source_package": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Explicit source-tree package context when provided by a scanner; not Cargo metadata or build proof."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suggested_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "proof_commands": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^cargo-allow ",
+            "description": "Suggested follow-up command. cargo-allow emits standalone cargo-allow commands here; it does not execute them."
+          }
+        }
+      }
+    },
     "evidence_change": {
       "type": "object",
       "additionalProperties": false,
