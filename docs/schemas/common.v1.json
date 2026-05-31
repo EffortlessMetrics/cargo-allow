@@ -1113,7 +1113,7 @@
         "unknown_prefix",
         "untyped"
       ],
-      "description": "Human-facing diagnostic category for evidence references. This preserves the stable status field while distinguishing weak evidence causes such as unknown prefixes and untyped strings."
+      "description": "Structured diagnostic category for evidence references. This preserves the stable status field while distinguishing weak evidence causes such as unknown prefixes and untyped strings. Human renderers may map these values to friendlier labels."
     },
     "evidence_reference": {
       "type": "object",
@@ -1150,7 +1150,7 @@
         },
         "category": {
           "$ref": "#/$defs/evidence_reference_category",
-          "description": "Optional human-facing diagnostic category. Current producers emit it; it remains optional for v1 compatibility with older artifacts."
+          "description": "Optional structured diagnostic category. Current producers emit it; it remains optional for v1 compatibility with older artifacts. Human renderers may map this machine vocabulary to friendlier labels."
         },
         "message": {
           "type": "string",
