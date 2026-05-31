@@ -76,6 +76,9 @@ pub fn render_worklist_human(
         if let Some(evidence_count) = item.evidence_count {
             out.push_str(&format!("  evidence: {evidence_count} reference(s)\n"));
         }
+        if let Some(selector_precision) = item.selector_precision {
+            out.push_str(&format!("  selector_precision: {selector_precision}\n"));
+        }
         if let Some(reference) = item.evidence_reference.as_ref() {
             let status = evidence_reference_human_status(reference);
             out.push_str(&format!(

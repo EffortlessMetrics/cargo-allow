@@ -7,6 +7,7 @@ use allow_core::{
     AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, allow_entry_broad_scope,
     normalize_path,
 };
+use allow_diff::selector_precision_score;
 
 pub(super) fn work_items_from_policy_advisories(
     cfg: &AllowConfig,
@@ -35,6 +36,7 @@ pub(super) fn work_items_from_policy_advisories(
                 review_after: entry.lifecycle.review_after.clone(),
                 expires: entry.lifecycle.expires.clone(),
                 evidence_count: Some(entry.evidence.len()),
+                selector_precision: Some(selector_precision_score(entry)),
                 risk: work_item_risk(&kind, MatchStatus::BaselineDebt, finding, Some(entry)),
                 difficulty: work_item_difficulty(&kind, finding, Some(entry)),
                 status: MatchStatus::BaselineDebt,
@@ -69,6 +71,7 @@ pub(super) fn work_items_from_policy_advisories(
                 review_after: entry.lifecycle.review_after.clone(),
                 expires: entry.lifecycle.expires.clone(),
                 evidence_count: Some(0),
+                selector_precision: Some(selector_precision_score(entry)),
                 risk: work_item_risk(&kind, MatchStatus::EvidenceMissing, finding, Some(entry)),
                 difficulty: work_item_difficulty(&kind, finding, Some(entry)),
                 status: MatchStatus::EvidenceMissing,
@@ -100,6 +103,7 @@ pub(super) fn work_items_from_policy_advisories(
                 review_after: entry.lifecycle.review_after.clone(),
                 expires: entry.lifecycle.expires.clone(),
                 evidence_count: Some(entry.evidence.len()),
+                selector_precision: Some(selector_precision_score(entry)),
                 risk: RISK_MEDIUM,
                 difficulty: DIFFICULTY_SMALL,
                 status: MatchStatus::Matched,

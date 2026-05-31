@@ -430,6 +430,9 @@ Policy-backed work items include owner, classification, and reason so the queue
 can route work without requiring an immediate `explain` lookup.
 They also include lifecycle dates and an evidence-reference count when tied to a
 policy entry, making expiry pressure and evidence gaps visible in the queue.
+When available, they also include selector precision so agents can distinguish
+narrow retained receipts from broad policy entries that may need review or
+narrowing.
 It is a routing surface, not an auto-fix plan: agents and humans should fix,
 prove, narrow, or remove the exception instead of adding suppressions just to
 silence cargo-allow.

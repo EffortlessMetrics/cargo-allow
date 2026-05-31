@@ -23,6 +23,7 @@ pub(super) struct WorkItem {
     pub(super) review_after: Option<String>,
     pub(super) expires: Option<String>,
     pub(super) evidence_count: Option<usize>,
+    pub(super) selector_precision: Option<u32>,
     pub(super) risk: &'static str,
     pub(super) difficulty: &'static str,
     pub(super) status: MatchStatus,

@@ -39,6 +39,7 @@ fn report_worklist_items(items: &[WorkItem]) -> Vec<allow_report::WorklistItem<'
             review_after: item.review_after.as_deref(),
             expires: item.expires.as_deref(),
             evidence_count: item.evidence_count,
+            selector_precision: item.selector_precision,
             risk: item.risk,
             difficulty: item.difficulty,
             status: item.status.as_str(),

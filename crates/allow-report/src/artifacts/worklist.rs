@@ -31,6 +31,7 @@ pub struct WorklistItem<'a> {
     pub review_after: Option<&'a str>,
     pub expires: Option<&'a str>,
     pub evidence_count: Option<usize>,
+    pub selector_precision: Option<u32>,
     pub risk: &'a str,
     pub difficulty: &'a str,
     pub status: &'a str,

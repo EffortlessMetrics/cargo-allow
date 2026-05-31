@@ -92,6 +92,10 @@ also includes optional `broken_evidence` and `weak_evidence` booleans for saved
 filtered evidence-health views.
 Worklist artifacts follow the same rule: current renderers emit all known
 filter keys, while the nested `filters` schema keeps those keys optional.
+Worklist item fields such as `selector_precision` are optional and emitted only
+for policy-backed work items where cargo-allow can score the related selector.
+The score is routing metadata for narrowing and review work, not proof that the
+exception is correct.
 Adoption summary artifacts such as `add` and `propose` also emit all known
 `options` keys today, while nested option fields remain optional in the schema
 for v1 compatibility.
