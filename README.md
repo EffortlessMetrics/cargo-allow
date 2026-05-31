@@ -55,7 +55,7 @@ exists outside the syntax-visible surface that was scanned.
 Install the published release from crates.io:
 
 ```bash
-cargo install cargo-allow --version 0.1.0 --locked
+cargo install cargo-allow --version 0.1.1 --locked
 ```
 
 This README tracks the current repository. Some newer flags and filters shown

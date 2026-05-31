@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-allow
-        run: cargo install cargo-allow --version 0.1.0 --locked
+        run: cargo install cargo-allow --version 0.1.1 --locked
       - name: Run cargo-allow PR posture diff
         shell: bash
         run: |
