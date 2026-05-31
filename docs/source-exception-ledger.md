@@ -467,6 +467,11 @@ does not claim macro expansion, macro token-tree expression parsing, type
 information, build awareness, proof adequacy, control-flow analysis, or
 data-flow analysis.
 
+Saved `check` receipts may include a `source_inventory` object with the same
+kind and kind.family breakdown as JSON reports. This keeps the durable CI
+receipt useful for both gate status and source-exception inventory without
+requiring consumers to archive or re-aggregate the full finding list.
+
 Markdown diff output starts with a PR summary. The summary reports net posture,
 reviewer action, current check failures, new and removed source findings,
 policy failures, policy review items, and policy improvements. `worse` means

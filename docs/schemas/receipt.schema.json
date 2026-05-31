@@ -89,6 +89,10 @@
     },
     "counts": {
       "$ref": "#/$defs/counts"
+    },
+    "source_inventory": {
+      "$ref": "#/$defs/source_inventory",
+      "description": "Optional source exception inventory grouped by governed exception kind and kind.family for check receipts that include scanned findings."
     }
   },
   "$defs": {
@@ -242,6 +246,110 @@
           "description": "Optional count of unstructured or unknown-prefix evidence references. These evidence strings are retained as traceability but are not recognized as typed evidence by cargo-allow."
         }
       }
+    },
+    "source_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["findings", "by_kind", "by_family"],
+      "properties": {
+        "findings": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of syntax-visible source exception findings included in this report."
+        },
+        "by_kind": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/source_inventory_kind_row"
+          }
+        },
+        "by_family": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/source_inventory_family_row"
+          }
+        }
+      }
+    },
+    "source_inventory_kind_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "total", "matched", "new", "review_items"],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/governed_source_exception_kind"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_items": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "source_inventory_family_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "family",
+        "label",
+        "total",
+        "matched",
+        "new",
+        "review_items"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/governed_source_exception_kind"
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-friendly kind.family label used by text and Markdown reports."
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_items": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "governed_source_exception_kind": {
+      "type": "string",
+      "enum": [
+        "panic",
+        "unsafe",
+        "lint_exception",
+        "non_rust_file",
+        "generated_code",
+        "policy_exception"
+      ]
     }
   }
 }

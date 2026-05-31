@@ -127,3 +127,42 @@ fn receipt_schema_allows_optional_policy_missing_evidence_count() {
         "receipt policy_missing_evidence count minimum"
     );
 }
+
+#[test]
+fn receipt_schema_allows_optional_source_inventory() {
+    let schema = parse_schema(
+        "receipt",
+        include_str!("../../../docs/schemas/receipt.schema.json"),
+    );
+
+    let source_inventory =
+        required_schema_pointer("receipt", &schema, "/properties/source_inventory/$ref");
+    assert_eq!(
+        source_inventory.as_str(),
+        Some("#/$defs/source_inventory"),
+        "receipt source_inventory should use the shared source inventory shape"
+    );
+    for pointer in [
+        "/$defs/source_inventory/properties/findings",
+        "/$defs/source_inventory_kind_row/properties/total",
+        "/$defs/source_inventory_kind_row/properties/matched",
+        "/$defs/source_inventory_kind_row/properties/new",
+        "/$defs/source_inventory_kind_row/properties/review_items",
+        "/$defs/source_inventory_family_row/properties/total",
+        "/$defs/source_inventory_family_row/properties/matched",
+        "/$defs/source_inventory_family_row/properties/new",
+        "/$defs/source_inventory_family_row/properties/review_items",
+    ] {
+        let value = required_schema_pointer("receipt", &schema, pointer);
+        assert_eq!(
+            value.get("type").and_then(Value::as_str),
+            Some("integer"),
+            "{pointer} should be an integer"
+        );
+        assert_eq!(
+            value.get("minimum").and_then(Value::as_u64),
+            Some(0),
+            "{pointer} minimum"
+        );
+    }
+}

@@ -57,11 +57,17 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
         let source_context = SourceTreeReportContext::new(&root, inventory_facts);
         write_file(
             path,
-            &allow_report::render_receipt_with_context("check", &outcomes, failed, {
-                let mut context = source_context.report(Some(baseline_debt_entries));
-                evidence.apply_to(&mut context);
-                context
-            }),
+            &allow_report::render_receipt_with_context_and_inventory(
+                "check",
+                &findings,
+                &outcomes,
+                failed,
+                {
+                    let mut context = source_context.report(Some(baseline_debt_entries));
+                    evidence.apply_to(&mut context);
+                    context
+                },
+            ),
         )?;
     }
     if failed {

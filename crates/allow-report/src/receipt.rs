@@ -4,9 +4,9 @@ use crate::json::{
 };
 use crate::{
     RECEIPT_COMMAND_CHECK, ReportContext, Summary, baseline_debt_count,
-    render_count_fields_with_policy_context,
+    render_count_fields_with_policy_context, render_source_inventory_json,
 };
-use allow_core::MatchOutcome;
+use allow_core::{Finding, MatchOutcome};
 
 pub fn render_receipt(command: &str, outcomes: &[MatchOutcome], failed: bool) -> String {
     render_receipt_with_context(command, outcomes, failed, ReportContext::default())
@@ -14,6 +14,26 @@ pub fn render_receipt(command: &str, outcomes: &[MatchOutcome], failed: bool) ->
 
 pub fn render_receipt_with_context(
     command: &str,
+    outcomes: &[MatchOutcome],
+    failed: bool,
+    context: ReportContext<'_>,
+) -> String {
+    render_receipt_json(command, None, outcomes, failed, context)
+}
+
+pub fn render_receipt_with_context_and_inventory(
+    command: &str,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    failed: bool,
+    context: ReportContext<'_>,
+) -> String {
+    render_receipt_json(command, Some(findings), outcomes, failed, context)
+}
+
+fn render_receipt_json(
+    command: &str,
+    findings: Option<&[Finding]>,
     outcomes: &[MatchOutcome],
     failed: bool,
     context: ReportContext<'_>,
@@ -37,6 +57,16 @@ pub fn render_receipt_with_context(
         context.weak_evidence_references,
         "    ",
     ));
-    out.push_str("  }\n}\n");
+    out.push_str("  }");
+    if let Some(source_inventory) =
+        findings.and_then(|findings| render_source_inventory_json(findings, outcomes, "  "))
+    {
+        out.push_str(",\n  \"source_inventory\": ");
+        out.push_str(&source_inventory);
+        out.push('\n');
+    } else {
+        out.push('\n');
+    }
+    out.push_str("}\n");
     out
 }

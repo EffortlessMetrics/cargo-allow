@@ -244,6 +244,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "scanner_limitations",
                 "schema_id",
                 "schema_version",
+                "source_inventory",
                 "status",
                 "tool",
             ],
