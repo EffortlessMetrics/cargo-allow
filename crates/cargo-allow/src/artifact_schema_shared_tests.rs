@@ -1400,6 +1400,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "scope_change",
         "scope_change_field",
         "span",
+        "stale_entry",
         "summary",
         "structural_identity",
         "source_syntax_inventory",
@@ -1458,6 +1459,10 @@ fn artifact_local_fragments_match_common_wire_shapes() {
     let receipt = parse_schema(
         "receipt",
         include_str!("../../../docs/schemas/receipt.schema.json"),
+    );
+    let prune = parse_schema(
+        "prune",
+        include_str!("../../../docs/schemas/prune.schema.json"),
     );
     let add = parse_schema("add", include_str!("../../../docs/schemas/add.schema.json"));
     let explain = parse_schema(
@@ -1525,6 +1530,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
     }
 
     assert_common_fragment_matches("receipt", &receipt, &common, "counts");
+    assert_common_fragment_matches("prune", &prune, &common, "stale_entry");
     assert_common_fragment_matches_named("explain", &explain, "match_outcome", &common, "outcome");
 }
 
