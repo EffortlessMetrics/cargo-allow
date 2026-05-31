@@ -80,6 +80,12 @@ fn change(
 }
 
 fn added_evidence_severity(added: &[String]) -> PolicyChangeSeverity {
+    if added
+        .iter()
+        .any(|item| evidence_reference_is_invalid_local(item))
+    {
+        return PolicyChangeSeverity::Fail;
+    }
     if added.iter().any(|item| evidence_reference_is_weak(item)) {
         PolicyChangeSeverity::Review
     } else {
@@ -91,8 +97,23 @@ fn added_evidence_message(severity: PolicyChangeSeverity) -> &'static str {
     match severity {
         PolicyChangeSeverity::Review => "weak evidence added",
         PolicyChangeSeverity::Improvement => "evidence added",
-        PolicyChangeSeverity::Fail => "evidence added",
+        PolicyChangeSeverity::Fail => "invalid local evidence added",
     }
+}
+
+fn evidence_reference_is_invalid_local(reference: &str) -> bool {
+    let Some((prefix, target)) = reference.split_once(':') else {
+        return false;
+    };
+    if !allow_policy::local_file_evidence_prefixes().any(|known| known == prefix.trim()) {
+        return false;
+    }
+    let target = target.trim().replace('\\', "/");
+    target.is_empty()
+        || target.starts_with('/')
+        || target.contains(':')
+        || target.split('/').any(|part| part == "..")
+        || target.chars().any(|ch| matches!(ch, '*' | '?'))
 }
 
 fn evidence_reference_is_weak(reference: &str) -> bool {
