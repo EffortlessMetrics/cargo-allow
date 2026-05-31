@@ -81,6 +81,17 @@ fn clap_parses_list_json_filters() {
 }
 
 #[test]
+fn clap_rejects_unknown_list_kind() {
+    let err = CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "list", "--kind", "unsfae"]))
+        .expect_err("unknown list kind should fail closed");
+
+    assert!(
+        err.to_string().contains("unknown kind"),
+        "unexpected parse error: {err}"
+    );
+}
+
+#[test]
 fn list_rows_report_lifecycle_stale_and_baseline_status() {
     let mut cfg = AllowConfig::empty();
     let mut expired = test_entry("allow-expired", FindingKind::Panic);

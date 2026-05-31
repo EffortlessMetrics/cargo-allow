@@ -14,7 +14,7 @@ pub(crate) struct ListArgs {
     #[arg(long)]
     pub(super) config: Option<PathBuf>,
     /// Filter allow entries by kind.
-    #[arg(long)]
+    #[arg(long, value_parser = parse_list_kind_filter)]
     pub(super) kind: Option<String>,
     /// Filter allow entries by scanner or policy family.
     #[arg(long)]
@@ -90,6 +90,12 @@ pub(crate) struct ListArgs {
 pub(super) enum ListFormat {
     Human,
     Json,
+}
+
+fn parse_list_kind_filter(value: &str) -> Result<String, String> {
+    parse_kind_filter(value)
+        .map(|_| value.to_string())
+        .map_err(|_| format!("unknown kind `{value}`"))
 }
 
 pub(super) fn list_filters(args: &ListArgs) -> CargoAllowResult<ListFilters<'_>> {
