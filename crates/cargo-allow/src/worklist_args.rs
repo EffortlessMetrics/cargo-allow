@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use crate::RootArgs;
 
+use super::worklist_item_kind::parse_work_item_kind_filter;
 use super::worklist_types::WorklistFilters;
 
 #[derive(Debug, Clone, Parser)]
@@ -19,7 +20,7 @@ pub(crate) struct WorklistArgs {
     #[arg(long)]
     pub(super) family: Option<String>,
     /// Filter work items by queue item kind, such as stale_allow or baseline_debt.
-    #[arg(long)]
+    #[arg(long, value_parser = parse_work_item_kind_filter)]
     pub(super) item_kind: Option<String>,
     /// Filter work items by match status.
     #[arg(
