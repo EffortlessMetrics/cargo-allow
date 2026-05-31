@@ -1,6 +1,6 @@
-use crate::MigrateReport;
 use crate::contracts::MIGRATE_ARTIFACT;
 use crate::json::{bool_json, push_json_fixed_artifact_preamble};
+use crate::{CLAIM_BOUNDARY_TEXT, MigrateReport};
 use allow_core::json_escape;
 
 pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
@@ -13,15 +13,30 @@ pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
     out.push_str(&format!("allow_entries: {}\n", report.allow_entries));
     out.push_str(&format!("baseline_debt: {}\n", report.baseline_debt));
     out.push_str(&format!("unsafe_entries: {}\n", report.unsafe_entries));
+    out.push_str(&format!(
+        "inventory: {}/{} via {}{}\n",
+        report.inventory.scope,
+        report.inventory.scanner,
+        report.inventory.source,
+        migrate_inventory_files_suffix(report.inventory)
+    ));
     if let Some(root) = report.inventory.root {
         out.push_str(&format!("source_tree_root: {root}\n"));
     }
-    out.push_str(&format!("inventory_source: {}\n", report.inventory.source));
-    if let Some(files) = report.inventory.files_scanned {
-        out.push_str(&format!("files_scanned: {files}\n"));
-    }
     out.push_str(report.notes);
+    if !report.notes.ends_with('\n') {
+        out.push('\n');
+    }
+    out.push_str(CLAIM_BOUNDARY_TEXT);
+    out.push('\n');
     out
+}
+
+fn migrate_inventory_files_suffix(inventory: crate::InventoryContext<'_>) -> String {
+    inventory
+        .files_scanned
+        .map(|files| format!("; files scanned: {files}"))
+        .unwrap_or_default()
 }
 
 pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
