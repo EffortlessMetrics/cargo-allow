@@ -9,6 +9,8 @@ mod command_support;
 mod companion;
 mod compat;
 mod diff;
+#[cfg(test)]
+mod diff_json_test_support;
 mod doctor;
 mod explain;
 mod init;
