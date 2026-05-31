@@ -145,6 +145,7 @@
         "build_output_not_analyzed",
         "control_flow_not_analyzed",
         "data_flow_not_analyzed",
+        "external_evidence_tools_not_invoked",
         "repository_code_not_executed"
       ]
     },
@@ -164,6 +165,7 @@
         "build_output_not_analyzed",
         "control_flow_not_analyzed",
         "data_flow_not_analyzed",
+        "external_evidence_tools_not_invoked",
         "repository_code_not_executed"
       ]
     },

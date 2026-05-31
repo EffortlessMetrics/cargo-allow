@@ -163,6 +163,7 @@ pub const CLAIM_BOUNDARY: &[&str] = &[
     "build_output_not_analyzed",
     "control_flow_not_analyzed",
     "data_flow_not_analyzed",
+    "external_evidence_tools_not_invoked",
     "repository_code_not_executed",
 ];
 
@@ -180,10 +181,11 @@ pub const SCANNER_LIMITATIONS: &[&str] = &[
     "build_output_not_analyzed",
     "control_flow_not_analyzed",
     "data_flow_not_analyzed",
+    "external_evidence_tools_not_invoked",
     "repository_code_not_executed",
 ];
 
-pub const CLAIM_BOUNDARY_TEXT: &str = "Claim boundary: scanned source-tree/source syntax only; cargo-allow did not invoke Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros, or repository code. Macro expansion, macro token-tree contents, type information, MIR, build output, control flow, and data flow were not analyzed.";
+pub const CLAIM_BOUNDARY_TEXT: &str = "Claim boundary: scanned source-tree/source syntax only; cargo-allow did not invoke Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros, external evidence tools, or repository code. Macro expansion, macro token-tree contents, type information, MIR, build output, control flow, and data flow were not analyzed.";
 
 #[derive(Debug, Clone, Copy)]
 pub struct InventoryContext<'a> {

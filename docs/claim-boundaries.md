@@ -128,7 +128,8 @@ cargo-allow does not replace:
 - coverage tools for execution-surface measurement.
 
 cargo-allow can reference those tools' outputs as evidence in the source
-exception ledger.
+exception ledger. JSON artifacts expose that boundary as
+`external_evidence_tools_not_invoked` in the scanner limitations.
 
 `cargo allow ...` is accepted only as Cargo external subcommand compatibility.
 The claim boundary and examples should prefer the standalone `cargo-allow ...`
