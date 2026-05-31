@@ -359,7 +359,9 @@ dates, and reason. It supports maintenance
 filters such as `--kind`, `--family`, `--owner`, `--classification`, `--path`,
 `--source-package`, `--allow-id`, `--status`, `--expired`, `--review-due`, `--stale`,
 `--baseline-debt`, `--missing-evidence`, `--broken-evidence`, and
-`--weak-evidence`. Path filtering uses normalized
+`--weak-evidence`. Governed kind filters are validated up front, so a mistyped
+`--kind` fails closed instead of producing a misleading empty list. Path
+filtering uses normalized
 source-tree paths and includes broad glob scopes that cover the selected path.
 Stale status is computed from current source-syntax findings; line and column
 hints are not identity. `--broad-scope` lists entries whose source-tree scope
