@@ -1,11 +1,24 @@
-use crate::ProposeReport;
 use crate::contracts::PROPOSE_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
+use crate::{CLAIM_BOUNDARY_TEXT, ProposeReport};
 use allow_core::json_escape;
 
 pub fn render_propose_human(report: ProposeReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("cargo-allow propose summary\n");
+    out.push_str(&format!(
+        "inventory: {}/{} via {}{}\n",
+        report.inventory.scope,
+        report.inventory.scanner,
+        report.inventory.source,
+        propose_inventory_files_suffix(report.inventory)
+    ));
+    if let Some(root) = report.inventory.root {
+        out.push_str(&format!("source_tree_root: {root}\n"));
+    }
+    if let Some(kind) = report.kind {
+        out.push_str(&format!("kind filter: {kind}\n"));
+    }
     out.push_str(&format!("findings scanned: {}\n", report.findings_scanned));
     out.push_str(&format!(
         "baseline_debt entries proposed: {}\n",
@@ -27,7 +40,16 @@ pub fn render_propose_human(report: ProposeReport<'_>) -> String {
     out.push_str(
         "claim boundary: proposal only; generated debt still requires human review and evidence.\n",
     );
+    out.push_str(CLAIM_BOUNDARY_TEXT);
+    out.push('\n');
     out
+}
+
+fn propose_inventory_files_suffix(inventory: crate::InventoryContext<'_>) -> String {
+    inventory
+        .files_scanned
+        .map(|files| format!("; files scanned: {files}"))
+        .unwrap_or_default()
 }
 
 pub fn render_propose_json(report: ProposeReport<'_>) -> String {

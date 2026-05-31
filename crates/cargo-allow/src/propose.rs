@@ -74,6 +74,7 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
             unsafe_proposed_entries,
             expires.as_str(),
             args.write.as_deref(),
+            context,
         ),
         ProposeSummaryFormat::Json => render_propose_summary_json(
             findings.len(),

@@ -74,6 +74,11 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
     let text = render_propose_human(report);
 
     assert!(text.contains("cargo-allow propose summary"));
+    assert!(
+        text.contains("inventory: source_tree/source_syntax via git_tracked; files scanned: 76")
+    );
+    assert!(text.contains("source_tree_root: H:/Code/Rust/cargo-allow"));
+    assert!(text.contains("kind filter: panic"));
     assert!(text.contains("findings scanned: 54"));
     assert!(text.contains("baseline_debt entries proposed: 2"));
     assert!(text.contains("unsafe baseline_debt entries proposed: 1"));
@@ -82,4 +87,5 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
     assert!(text.contains("expires: 2026-08-02"));
     assert!(text.contains("output: target/cargo-allow/proposed.toml"));
     assert!(text.contains("generated debt still requires human review"));
+    assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
 }

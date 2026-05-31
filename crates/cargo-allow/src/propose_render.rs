@@ -7,9 +7,9 @@ pub(super) fn render_propose_summary(
     unsafe_proposed_entries: usize,
     expires: &str,
     output: Option<&Path>,
+    context: ProposeContext<'_>,
 ) -> String {
     let output_text = output.map(|path| path.display().to_string());
-    let context = ProposeContext::default();
     allow_report::render_propose_human(allow_report::ProposeReport {
         inventory: context.inventory,
         kind: context.kind_filter,
