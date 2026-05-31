@@ -99,7 +99,7 @@ fn doctor_evidence_health(
         Some(Ok(cfg)) => {
             let broken = broken_evidence_link_count(root, cfg);
             let weak = weak_evidence_reference_count(root, cfg);
-            ((broken > 0).then_some(broken), (weak > 0).then_some(weak))
+            (Some(broken), Some(weak))
         }
         _ => (None, None),
     }
@@ -138,8 +138,8 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
         config_status: Some("active"),
         config_valid: Some(true),
         config_diagnostic: None,
-        broken_evidence_links: None,
-        weak_evidence_references: None,
+        broken_evidence_links: Some(0),
+        weak_evidence_references: Some(0),
         inventory_source: "git_tracked",
         files_scanned: 50,
     })

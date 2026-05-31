@@ -51,8 +51,8 @@ fn render_doctor_json_records_setup_context() {
         config_status: Some("active"),
         config_valid: Some(true),
         config_diagnostic: None,
-        broken_evidence_links: None,
-        weak_evidence_references: None,
+        broken_evidence_links: Some(0),
+        weak_evidence_references: Some(0),
         inventory_source: "git_tracked",
         files_scanned: 50,
     });
@@ -97,8 +97,18 @@ fn render_doctor_json_records_setup_context() {
         Some(true)
     );
     assert_eq!(value.pointer("/config/diagnostic"), Some(&Value::Null));
-    assert_eq!(value.pointer("/config/broken_evidence_links"), None);
-    assert_eq!(value.pointer("/config/weak_evidence_references"), None);
+    assert_eq!(
+        value
+            .pointer("/config/broken_evidence_links")
+            .and_then(Value::as_u64),
+        Some(0)
+    );
+    assert_eq!(
+        value
+            .pointer("/config/weak_evidence_references")
+            .and_then(Value::as_u64),
+        Some(0)
+    );
     assert_eq!(
         value.pointer("/inventory/scope").and_then(Value::as_str),
         Some("source_tree")
