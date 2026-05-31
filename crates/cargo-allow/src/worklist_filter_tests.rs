@@ -134,6 +134,87 @@ fn worklist_filters_by_exception_kind() {
 }
 
 #[test]
+fn worklist_filters_by_exception_kind_alias() {
+    let findings = vec![
+        test_finding(
+            FindingKind::Panic,
+            Some("unwrap"),
+            "src/lib.rs",
+            "method_call",
+        ),
+        test_finding(
+            FindingKind::NonRustFile,
+            Some("shell_script"),
+            "scripts/release.sh",
+            "tracked_file",
+        ),
+    ];
+    let outcomes = vec![
+        test_outcome(MatchStatus::New, None, Some(0), "unreceipted panic.unwrap"),
+        test_outcome(MatchStatus::New, None, Some(1), "unreceipted shell script"),
+    ];
+
+    let items = work_items_from_outcomes(&AllowConfig::empty(), &findings, &outcomes);
+    let filtered = filter_work_items(
+        items,
+        WorklistFilters {
+            kind: Some("non-rust"),
+            ..WorklistFilters::default()
+        },
+    );
+
+    assert_eq!(filtered.len(), 1);
+    let item = filtered
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
+    assert_eq!(item.exception_kind.as_deref(), Some("non_rust_file"));
+    assert_eq!(item.path.as_deref(), Some("scripts/release.sh"));
+}
+
+#[test]
+fn worklist_filters_by_policy_exception_family_alias() {
+    let findings = vec![
+        test_finding(
+            FindingKind::PolicyException,
+            Some("workflow_external_action"),
+            ".github/workflows/ci.yml",
+            "github_action_uses",
+        ),
+        test_finding(
+            FindingKind::PolicyException,
+            Some("process_spawn"),
+            ".github/workflows/ci.yml",
+            "process_spawn",
+        ),
+    ];
+    let outcomes = vec![
+        test_outcome(
+            MatchStatus::New,
+            None,
+            Some(0),
+            "unreceipted workflow action",
+        ),
+        test_outcome(MatchStatus::New, None, Some(1), "unreceipted process spawn"),
+    ];
+
+    let items = work_items_from_outcomes(&AllowConfig::empty(), &findings, &outcomes);
+    let filtered = filter_work_items(
+        items,
+        WorklistFilters {
+            kind: Some("workflow"),
+            ..WorklistFilters::default()
+        },
+    );
+
+    assert_eq!(filtered.len(), 1);
+    let item = filtered
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
+    assert_eq!(item.exception_kind.as_deref(), Some("policy_exception"));
+    assert_eq!(item.family.as_deref(), Some("workflow_external_action"));
+}
+
+#[test]
 fn worklist_filters_by_status() {
     let mut cfg = AllowConfig::empty();
     cfg.allow
