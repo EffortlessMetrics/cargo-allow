@@ -127,6 +127,39 @@ fn diff_json_reports_weak_evidence_added_as_review_required() {
 }
 
 #[test]
+fn diff_json_reports_valid_evidence_added_as_improvement() {
+    let root = temp_root("diff-valid-evidence-added");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(Some("test:parser_invariant")),
+    );
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_success(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "improved",
+        "diff valid evidence addition net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/policy_improvements",
+        1,
+        "diff valid evidence addition improvement count",
+    );
+    assert_policy_change(&value, "evidence_added", "allow-unwrap", "improvement");
+    assert_file_contains(
+        &output,
+        "evidence added",
+        "diff output should explain valid evidence addition posture",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_reports_lifecycle_extension_as_review_required() {
     let root = temp_root("diff-lifecycle-extended");
     write_diff_fixture(
