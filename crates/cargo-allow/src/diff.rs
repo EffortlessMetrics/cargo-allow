@@ -34,7 +34,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
     let policy_path = git_relative_config_path(&root, args.config.as_deref())?;
     let base_cfg = allow_diff::policy_config_at_revision(&root, &args.base, &policy_path)?
-        .unwrap_or_else(|| report_cfg.clone());
+        .unwrap_or_else(AllowConfig::empty);
     let head_cfg_for_diff = if let Some(head) = &args.head {
         allow_diff::policy_config_at_revision(&root, head, &policy_path)?
             .unwrap_or_else(AllowConfig::empty)

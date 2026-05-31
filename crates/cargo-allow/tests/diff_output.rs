@@ -292,6 +292,49 @@ fn diff_json_reports_removed_policy_when_explicit_head_has_no_policy() {
     remove_temp_root(root);
 }
 
+#[test]
+fn diff_json_scans_missing_base_policy_with_empty_policy_not_head_policy() {
+    let root = temp_root("diff-base-findings-empty-policy");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "base without policy"]);
+    let head_policy = policy_with_workspace_ignored(&["policy/**", "src/**"]);
+    fs::write(root.join("policy/allow.toml"), head_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write head policy: {err}")));
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_failure(&root, &output);
+
+    let finding_changes = value
+        .pointer("/diff/finding_changes")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff finding_changes should be an array"));
+    assert!(
+        finding_changes.iter().any(|change| {
+            change.get("change").and_then(Value::as_str) == Some("removed")
+                && change.get("kind").and_then(Value::as_str) == Some("panic")
+                && change.get("path").and_then(Value::as_str) == Some("src/lib.rs")
+        }),
+        "base scan should not use head workspace.ignored to hide source findings: {finding_changes:?}"
+    );
+
+    remove_temp_root(root);
+}
+
 fn policy_with_scope(scope: &str) -> String {
     format!(
         r#"policy = "cargo-allow"
