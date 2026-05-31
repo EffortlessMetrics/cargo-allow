@@ -33,6 +33,12 @@ fn diff_pr_summary_markdown_reports_net_posture() {
     assert!(summary.contains("| Removed source findings | 1 |"));
     assert!(summary.contains("| Policy improvements | 1 |"));
     assert!(summary.contains("keep the narrower posture"));
+    assert!(summary.contains("### Policy Improvements"));
+    assert!(summary.contains("| `allow-0001` | `selector_precision_increased` |"));
+    assert!(
+        !summary.contains("### Policy Attention"),
+        "improvement-only summaries should not create attention rows"
+    );
 }
 
 #[test]
@@ -68,4 +74,31 @@ fn diff_posture_tables_escape_markdown_cells() {
     assert!(findings.contains("unwrap\\`family"));
     assert!(policy.contains("allow\\|0001"));
     assert!(policy.contains("message with \\| pipe"));
+}
+
+#[test]
+fn diff_pr_summary_markdown_highlights_policy_attention() {
+    let policy_changes = vec![DiffPolicyChange {
+        severity: "review",
+        allow_id: "allow|0042",
+        kind: "evidence_removed",
+        message: "allow-0042 evidence removed from policy",
+        exception_identity: None,
+        selector_identity: None,
+        selector_precision: None,
+        scope: None,
+        occurrence_limit: None,
+        lifecycle: None,
+        evidence: None,
+        metadata: None,
+        requirement: None,
+        policy_status: None,
+    }];
+
+    let summary = render_diff_pr_summary_markdown(0, &[], &policy_changes);
+
+    assert!(summary.contains("**Net posture:** `review-required`"));
+    assert!(summary.contains("### Policy Attention"));
+    assert!(summary.contains("| `review` | `allow\\|0042` | `evidence_removed` |"));
+    assert!(summary.contains("allow-0042 evidence removed from policy"));
 }
