@@ -48,6 +48,12 @@ For focused review lanes, add `--kind <kind>`. That narrows source finding
 changes and allow-entry policy changes to the selected governed kind while
 still preserving ledger-level policy contract signals.
 
+If CI passes an explicit `--head <rev>`, cargo-allow reads policy and source
+posture from the compared git revisions rather than from the working tree.
+Default policy paths can be discovered from those revisions. A relative
+`--config` is treated as a source-tree path in the compared revisions and fails
+closed if neither side contains it.
+
 The Markdown output starts with a PR Summary section. That section reports:
 
 - net posture: `unchanged`, `improved`, `review-required`, or `worse`;
