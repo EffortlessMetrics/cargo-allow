@@ -72,6 +72,35 @@ fn diff_policy_changes_keep_ledger_level_posture_under_kind_filter() {
     );
 }
 
+#[test]
+fn diff_policy_changes_report_added_entries_when_base_policy_is_missing() {
+    let mut head = AllowConfig::empty();
+    head.allow.push(entry("allow-reviewed", FindingKind::Panic));
+    let mut baseline = entry("allow-baseline", FindingKind::Unsafe);
+    baseline.classification = "baseline_debt".to_string();
+    head.allow.push(baseline);
+
+    let changes = policy_changes_for_diff(None, &head, None)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy diff: {err}")));
+
+    assert!(
+        changes.iter().any(|change| {
+            change.allow_id == "allow-reviewed"
+                && change.kind == allow_diff::PolicyChangeKind::AddedAllow
+                && change.severity == allow_diff::PolicyChangeSeverity::Review
+        }),
+        "diff should report reviewed allow entries added with a new policy file: {changes:?}"
+    );
+    assert!(
+        changes.iter().any(|change| {
+            change.allow_id == "allow-baseline"
+                && change.kind == allow_diff::PolicyChangeKind::BaselineDebtAdded
+                && change.severity == allow_diff::PolicyChangeSeverity::Fail
+        }),
+        "diff should report added baseline_debt when a new policy file introduces it: {changes:?}"
+    );
+}
+
 fn entry(id: &str, kind: FindingKind) -> AllowEntry {
     AllowEntry {
         id: id.to_string(),
