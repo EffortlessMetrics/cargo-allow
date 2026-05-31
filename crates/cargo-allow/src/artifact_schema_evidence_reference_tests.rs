@@ -46,6 +46,7 @@ fn evidence_reference_status_vocabularies_match_policy() {
             "/$defs/evidence_reference/properties/category",
             &evidence_reference_categories,
         );
+        assert_evidence_category_descriptions_are_machine_contracts(schema_name, schema);
     }
 }
 
@@ -209,6 +210,29 @@ fn assert_schema_enum_or_ref_equals(name: &str, schema: &Value, pointer: &str, e
     let actual = schema_enum_or_ref_values(name, schema, pointer);
     let expected = expected.iter().map(|item| (*item).to_string()).collect();
     assert_eq!(actual, expected, "{name} {pointer} enum values");
+}
+
+fn assert_evidence_category_descriptions_are_machine_contracts(name: &str, schema: &Value) {
+    for pointer in [
+        "/$defs/evidence_reference_category/description",
+        "/$defs/evidence_reference/properties/category/description",
+    ] {
+        let description = schema
+            .pointer(pointer)
+            .and_then(Value::as_str)
+            .unwrap_or_else(|| {
+                std::panic::panic_any(format!("{name} {pointer} should describe category"))
+            });
+        assert!(
+            description.contains("structured diagnostic category")
+                || description.contains("Structured diagnostic category"),
+            "{name} {pointer} should describe category as a structured contract"
+        );
+        assert!(
+            description.contains("Human renderers may map"),
+            "{name} {pointer} should document human-renderer label mapping"
+        );
+    }
 }
 
 fn schema_enum_or_ref_values(name: &str, schema: &Value, pointer: &str) -> BTreeSet<String> {
