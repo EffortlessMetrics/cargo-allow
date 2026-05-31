@@ -207,8 +207,16 @@ fn render_list_filters_json(filters: ListFilters<'_>, indent: &str) -> String {
         bool_json(filters.broad_scope)
     ));
     out.push_str(&format!(
-        "{indent}  \"missing_evidence\": {}\n",
+        "{indent}  \"missing_evidence\": {},\n",
         bool_json(filters.missing_evidence)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"broken_evidence\": {},\n",
+        bool_json(filters.broken_evidence)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"weak_evidence\": {}\n",
+        bool_json(filters.weak_evidence)
     ));
     out.push_str(&format!("{indent}}}"));
     out

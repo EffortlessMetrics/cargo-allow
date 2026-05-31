@@ -37,6 +37,8 @@ fn clap_parses_list_json_filters() {
         "--baseline-debt",
         "--broad-scope",
         "--missing-evidence",
+        "--broken-evidence",
+        "--weak-evidence",
         "--format",
         "json",
         "--output",
@@ -61,6 +63,8 @@ fn clap_parses_list_json_filters() {
             baseline_debt: true,
             broad_scope: true,
             missing_evidence: true,
+            broken_evidence: true,
+            weak_evidence: true,
             format: ListFormat::Json,
             output: Some(path),
             ..
@@ -298,6 +302,18 @@ fn render_list_rows_json_records_context_filters_and_rows() {
             .pointer("/filters/missing_evidence")
             .and_then(Value::as_bool),
         Some(false)
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/broken_evidence")
+            .and_then(Value::as_bool),
+        Some(true)
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/weak_evidence")
+            .and_then(Value::as_bool),
+        Some(true)
     );
 }
 

@@ -148,6 +148,8 @@ fn assert_list_filter_properties(filters: &Value) {
         "baseline_debt",
         "broad_scope",
         "missing_evidence",
+        "broken_evidence",
+        "weak_evidence",
     ]
     .into_iter()
     .collect::<BTreeSet<_>>();

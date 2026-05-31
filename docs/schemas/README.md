@@ -87,7 +87,9 @@ artifacts and future additive filter fields can remain compatible.
 List row evidence-health fields such as `broken_evidence_references` and
 `weak_evidence_references` are also optional in the schema and emitted only when
 non-zero so older `cargo-allow.list.v1` artifacts remain valid while current
-renderers expose the per-entry evidence repair signal.
+renderers expose the per-entry evidence repair signal. The list filter object
+also includes optional `broken_evidence` and `weak_evidence` booleans for saved
+filtered evidence-health views.
 Worklist artifacts follow the same rule: current renderers emit all known
 filter keys, while the nested `filters` schema keeps those keys optional.
 Adoption summary artifacts such as `add` and `propose` also emit all known

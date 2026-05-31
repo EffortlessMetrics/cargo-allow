@@ -80,5 +80,7 @@ fn report_list_filters<'a>(
         baseline_debt: filters.baseline_debt,
         broad_scope: filters.broad_scope,
         missing_evidence: filters.missing_evidence,
+        broken_evidence: filters.broken_evidence,
+        weak_evidence: filters.weak_evidence,
     }
 }

@@ -14,6 +14,8 @@ pub struct ListFilters<'a> {
     pub baseline_debt: bool,
     pub broad_scope: bool,
     pub missing_evidence: bool,
+    pub broken_evidence: bool,
+    pub weak_evidence: bool,
 }
 
 #[derive(Debug, Clone, Copy)]

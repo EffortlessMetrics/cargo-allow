@@ -34,6 +34,8 @@ fn render_list_rows_filters_owner_kind_classification_and_baseline_debt() {
         baseline_debt: true,
         broad_scope: false,
         missing_evidence: false,
+        broken_evidence: false,
+        weak_evidence: false,
     };
 
     let text = render_list_rows(&rows, &filters);
@@ -74,6 +76,8 @@ fn render_list_rows_filters_classification_without_baseline_shortcut() {
         baseline_debt: false,
         broad_scope: false,
         missing_evidence: false,
+        broken_evidence: false,
+        weak_evidence: false,
     };
 
     let text = render_list_rows(&rows, &filters);
@@ -115,6 +119,8 @@ fn render_list_rows_filters_status() {
         baseline_debt: false,
         broad_scope: false,
         missing_evidence: false,
+        broken_evidence: false,
+        weak_evidence: false,
     };
 
     let text = render_list_rows(&rows, &filters);
@@ -154,6 +160,8 @@ fn render_list_rows_filters_allow_id() {
         baseline_debt: false,
         broad_scope: false,
         missing_evidence: false,
+        broken_evidence: false,
+        weak_evidence: false,
     };
 
     let text = render_list_rows(&rows, &filters);

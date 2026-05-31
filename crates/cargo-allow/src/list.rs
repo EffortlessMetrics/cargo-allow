@@ -94,6 +94,8 @@ pub(crate) fn sample_list_json_for_contract_test() -> String {
         baseline_debt: true,
         broad_scope: false,
         missing_evidence: false,
+        broken_evidence: true,
+        weak_evidence: true,
     };
     let context = ListContext {
         inventory: allow_report::InventoryContext::source_syntax(
