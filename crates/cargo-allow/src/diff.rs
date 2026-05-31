@@ -10,9 +10,9 @@ pub(crate) use diff_args::DiffArgs;
 #[cfg(test)]
 pub(crate) use diff_render::render_diff_json_with_posture;
 use diff_render::{
-    append_finding_posture_changes, append_policy_changes, insert_markdown_pr_summary,
-    render_diff_json_report, render_diff_pr_summary_markdown, render_finding_posture_changes_human,
-    render_policy_changes_human,
+    append_diff_posture_summary, append_finding_posture_changes, append_policy_changes,
+    insert_markdown_pr_summary, render_diff_json_report, render_diff_pr_summary_markdown,
+    render_finding_posture_changes_human, render_policy_changes_human,
 };
 
 use crate::{
@@ -118,6 +118,14 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         );
         insert_markdown_pr_summary(&mut text, &summary);
     }
+    append_diff_posture_summary(
+        &mut text,
+        args.format,
+        current_failures,
+        &outcomes,
+        &finding_changes,
+        &policy_changes,
+    );
     append_finding_posture_changes(&mut text, args.format, &finding_changes);
     append_policy_changes(&mut text, args.format, &policy_changes);
     match allow_diff::changed_files(&root, &args.base, args.head.as_deref()) {

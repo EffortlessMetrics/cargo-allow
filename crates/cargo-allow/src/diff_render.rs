@@ -22,6 +22,26 @@ pub(super) fn render_diff_pr_summary_markdown(
     )
 }
 
+pub(super) fn append_diff_posture_summary(
+    text: &mut String,
+    format: OutputFormat,
+    current_failures: usize,
+    outcomes: &[MatchOutcome],
+    finding_changes: &[allow_diff::FindingPostureChange],
+    policy_changes: &[allow_diff::PolicyChange],
+) {
+    if format != OutputFormat::Human {
+        return;
+    }
+    let finding_rows = finding_change_rows(finding_changes);
+    let policy_rows = policy_change_rows(policy_changes);
+    text.push_str(&allow_report::render_diff_posture_summary_human(
+        current_failures.max(current_no_new_failures(outcomes)),
+        &finding_rows,
+        &policy_rows,
+    ));
+}
+
 pub(super) fn append_finding_posture_changes(
     text: &mut String,
     format: OutputFormat,
