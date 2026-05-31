@@ -248,6 +248,9 @@ cargo-allow doctor
 cargo-allow doctor --format json --output target/cargo-allow/doctor.json
 ```
 
+`propose --expires` accepts a `YYYY-MM-DD` date only when it stays within the
+temporary `baseline_debt` window enforced by policy validation.
+
 ## Repository Layout
 
 `cargo-allow` is the product binary. First-party implementation libraries use

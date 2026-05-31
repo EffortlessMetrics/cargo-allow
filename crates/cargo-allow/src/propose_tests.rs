@@ -35,6 +35,55 @@ fn clap_parses_propose_force() {
 }
 
 #[test]
+fn clap_rejects_invalid_propose_expiry() {
+    let err = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "propose",
+        "--expires",
+        "not-a-date",
+    ]))
+    .expect_err("invalid generated baseline expiry should fail closed");
+
+    assert!(
+        err.to_string().contains("YYYY-MM-DD"),
+        "unexpected parse error: {err}"
+    );
+}
+
+#[test]
+fn clap_rejects_long_propose_expiry() {
+    let expires = SimpleDate::today_utc_approx().add_days(121).to_string();
+    let err =
+        CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "propose", "--expires", &expires]))
+            .expect_err("long generated baseline expiry should fail closed");
+
+    assert!(
+        err.to_string().contains("within 120 days"),
+        "unexpected parse error: {err}"
+    );
+}
+
+#[test]
+fn clap_accepts_maximum_propose_expiry_window() {
+    let expires = SimpleDate::today_utc_approx().add_days(120).to_string();
+    let parsed =
+        CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "propose", "--expires", &expires]))
+            .unwrap_or_else(|err| {
+                std::panic::panic_any(format!(
+                    "maximum generated baseline expiry should parse: {err}"
+                ))
+            });
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::Propose(ProposeArgs {
+            expires: Some(parsed_expires),
+            ..
+        })) if parsed_expires == expires
+    ));
+}
+
+#[test]
 fn propose_summary_reports_generated_baseline_boundary() {
     let text = render_propose_summary(
         12,

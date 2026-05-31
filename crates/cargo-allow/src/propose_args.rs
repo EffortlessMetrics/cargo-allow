@@ -1,7 +1,11 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
+use allow_core::SimpleDate;
+
 use crate::{RootArgs, parse_kind_filter_arg};
+
+const BASELINE_DEBT_MAX_DAYS: i64 = 120;
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ProposeArgs {
@@ -17,7 +21,7 @@ pub(crate) struct ProposeArgs {
     #[arg(long)]
     pub(super) include_untracked: bool,
     /// Expiry date for generated baseline_debt entries. Defaults to 67 days from today.
-    #[arg(long)]
+    #[arg(long, value_parser = parse_propose_expires_arg)]
     pub(super) expires: Option<String>,
     /// Write proposed policy to this path.
     #[arg(long)]
@@ -37,4 +41,22 @@ pub(crate) struct ProposeArgs {
 pub(super) enum ProposeSummaryFormat {
     Human,
     Json,
+}
+
+fn parse_propose_expires_arg(value: &str) -> Result<String, String> {
+    let expires = SimpleDate::parse(value).ok_or_else(|| {
+        format!("generated baseline expiry `{value}` must be a valid YYYY-MM-DD date")
+    })?;
+    let days = SimpleDate::today_utc_approx().days_until(expires);
+    if days < 0 {
+        return Err(format!(
+            "generated baseline expiry `{value}` must not be before today"
+        ));
+    }
+    if days > BASELINE_DEBT_MAX_DAYS {
+        return Err(format!(
+            "generated baseline expiry `{value}` must be within {BASELINE_DEBT_MAX_DAYS} days"
+        ));
+    }
+    Ok(value.to_string())
 }
