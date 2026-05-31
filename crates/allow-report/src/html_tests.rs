@@ -28,6 +28,10 @@ fn html_report_summarizes_audit_posture() {
     assert!(html.contains("<h1>cargo-allow audit</h1>"));
     assert!(html.contains("Result: failed"));
     assert!(html.contains("<h2>Audit Summary</h2>"));
+    assert!(html.contains("<h2>Source Exception Inventory</h2>"));
+    assert!(html.contains("Findings inventoried: <code>1</code>"));
+    assert!(html.contains("<code class=\"kind\">non_rust_file</code>"));
+    assert!(html.contains("<code class=\"family\">non_rust_file.shell_script</code>"));
     assert!(html.contains("<h2>Non-Rust File Inventory</h2>"));
     assert!(html.contains("<code>new</code>"));
     assert!(html.contains("<code>scripts/new.sh</code>"));

@@ -1,7 +1,7 @@
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape};
 use std::collections::BTreeMap;
 
-use crate::text::markdown_cell;
+use crate::text::{html_escape, markdown_cell};
 
 #[derive(Debug, Clone, Default)]
 struct SourceInventoryRow {
@@ -142,6 +142,44 @@ fn append_markdown_row(out: &mut String, label: &str, row: &SourceInventoryRow) 
     out.push_str(&format!(
         "| `{}` | {} | {} | {} | {} |\n",
         markdown_cell(label),
+        row.total,
+        row.matched,
+        row.new,
+        row.review_items
+    ));
+}
+
+pub(crate) fn render_source_inventory_html(
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    out: &mut String,
+) {
+    let inventory = SourceInventory::from_report(findings, outcomes);
+    if !inventory.has_findings() {
+        return;
+    }
+    out.push_str("<h2>Source Exception Inventory</h2>\n");
+    out.push_str(&format!(
+        "<p>Findings inventoried: <code>{}</code></p>\n",
+        inventory.total
+    ));
+    out.push_str("<table><thead><tr><th>Kind</th><th>Total</th><th>Matched</th><th>New</th><th>Review items</th></tr></thead><tbody>\n");
+    for (kind, row) in &inventory.by_kind {
+        append_html_row(out, "kind", kind, row);
+    }
+    out.push_str("</tbody></table>\n");
+    out.push_str("<table><thead><tr><th>Family</th><th>Total</th><th>Matched</th><th>New</th><th>Review items</th></tr></thead><tbody>\n");
+    for (family, row) in &inventory.by_family {
+        append_html_row(out, "family", &family.label(), row);
+    }
+    out.push_str("</tbody></table>\n");
+}
+
+fn append_html_row(out: &mut String, class: &str, label: &str, row: &SourceInventoryRow) {
+    out.push_str(&format!(
+        "<tr><td><code class=\"{}\">{}</code></td><td class=\"count\">{}</td><td class=\"count\">{}</td><td class=\"count\">{}</td><td class=\"count\">{}</td></tr>\n",
+        html_escape(class),
+        html_escape(label),
         row.total,
         row.matched,
         row.new,

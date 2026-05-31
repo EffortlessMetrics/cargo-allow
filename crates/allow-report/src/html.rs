@@ -3,7 +3,7 @@ use allow_core::{Finding, MatchOutcome, MatchStatus};
 use crate::text::html_escape;
 use crate::{
     CLAIM_BOUNDARY_TEXT, FilePosture, ReportContext, ReviewSignals, STATUS_COUNT_ORDER, Summary,
-    audit_review_queue, non_rust_file_rows,
+    audit_review_queue, non_rust_file_rows, render_source_inventory_html,
 };
 
 pub fn render_html(
@@ -62,6 +62,7 @@ pub fn render_html_with_context(
     out.push_str("<h2>Status Counts</h2>\n");
     render_status_count_table_html(&summary, &mut out);
     if command == "audit" {
+        render_source_inventory_html(findings, outcomes, &mut out);
         render_audit_summary_html(&summary, outcomes, context, &mut out);
     }
     render_non_rust_html(findings, outcomes, &mut out);
