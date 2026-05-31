@@ -364,6 +364,82 @@ fn diff_json_with_explicit_head_finds_policy_path_in_revision_when_working_polic
 }
 
 #[test]
+fn diff_json_with_explicit_head_prefers_revision_policy_path_over_working_tree_default() {
+    let root = temp_root("diff-head-revision-policy-path");
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(root.join("allow.toml"), root_policy_with_evidence(None))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write base root policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "base root policy"]);
+    git(&root, &["tag", "base-root-policy"]);
+    fs::write(
+        root.join("allow.toml"),
+        root_policy_with_evidence(Some("test:revision_policy_path")),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write head root policy: {err}")));
+    git(&root, &["add", "-A"]);
+    git(&root, &["commit", "-m", "add evidence to root policy"]);
+    git(&root, &["tag", "head-root-policy"]);
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create stale policy dir: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        policy_with_evidence(Some("test:working_tree_policy_should_not_be_used")),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write working policy: {err}")));
+    let output = root.join("diff.json");
+
+    let result = cargo_allow_command()
+        .arg("diff")
+        .arg("--root")
+        .arg(&root)
+        .arg("--base")
+        .arg("base-root-policy")
+        .arg("--head")
+        .arg("head-root-policy")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+
+    assert_status("diff", &result, true);
+    assert_stdout_empty(
+        "diff",
+        &result,
+        "--output should not emit report JSON to stdout",
+    );
+    assert_stderr_empty(
+        "diff",
+        &result,
+        "--output should not emit human posture rows to stderr",
+    );
+    let value = assert_saved_json_artifact(&output, "diff", "cargo-allow.report.v1", "diff");
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "improved",
+        "explicit head should use the policy path discovered in compared revisions",
+    );
+    assert_policy_change(&value, "evidence_added", "allow-unwrap", "improvement");
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_with_explicit_head_inventory_count_respects_head_ignored_scopes() {
     let root = temp_root("diff-head-inventory-ignored");
     fs::create_dir_all(root.join("policy"))
@@ -967,6 +1043,35 @@ classification = "reviewed_exception"
 reason = "fixture"
 evidence = ["test:diff_json_reports_workspace_ignored_added_policy_failure"]
 created = "2026-05-29"
+review_after = "2026-08-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    )
+}
+
+fn root_policy_with_evidence(evidence: Option<&str>) -> String {
+    let evidence = evidence
+        .map(|evidence| format!("evidence = [\"{evidence}\"]\n"))
+        .unwrap_or_default();
+    format!(
+        r#"policy = "cargo-allow"
+
+[workspace]
+ignored = ["allow.toml", "policy/**"]
+
+[[allow]]
+id = "allow-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "fixture"
+{evidence}created = "2026-05-29"
 review_after = "2026-08-01"
 
 [allow.selector]
