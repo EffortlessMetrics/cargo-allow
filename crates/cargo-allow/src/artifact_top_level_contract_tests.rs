@@ -63,6 +63,21 @@ fn artifact_samples_keep_nested_keys_covered_by_schemas() {
     }
 }
 
+#[test]
+fn artifact_sample_validator_covers_every_schema_pattern() {
+    let mut actual = BTreeSet::new();
+    for contract in schema_contracts() {
+        let schema = parse_schema(contract.name, contract.schema);
+        collect_schema_patterns(&schema, &mut actual);
+    }
+
+    let expected = supported_schema_patterns();
+    assert_eq!(
+        actual, expected,
+        "artifact sample validation should explicitly support every JSON Schema pattern"
+    );
+}
+
 fn command_artifact_samples() -> Vec<ArtifactSample> {
     vec![
         ArtifactSample {
@@ -645,7 +660,7 @@ fn sample_string_matches_supported_pattern(value: &str, pattern: &str) -> bool {
     match pattern {
         "^cargo-allow " => value.starts_with("cargo-allow "),
         "^work-[a-z0-9-]+-[0-9]{4}$" => sample_string_matches_work_item_id(value),
-        _ => true,
+        _ => std::panic::panic_any(format!("unsupported schema pattern {pattern:?}")),
     }
 }
 
@@ -662,6 +677,32 @@ fn sample_string_matches_work_item_id(value: &str) -> bool {
             .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '-')
         && number.len() == 4
         && number.chars().all(|ch| ch.is_ascii_digit())
+}
+
+fn supported_schema_patterns() -> BTreeSet<String> {
+    ["^cargo-allow ", "^work-[a-z0-9-]+-[0-9]{4}$"]
+        .into_iter()
+        .map(std::string::ToString::to_string)
+        .collect()
+}
+
+fn collect_schema_patterns(value: &Value, patterns: &mut BTreeSet<String>) {
+    match value {
+        Value::Object(object) => {
+            if let Some(pattern) = object.get("pattern").and_then(Value::as_str) {
+                patterns.insert(pattern.to_string());
+            }
+            for child in object.values() {
+                collect_schema_patterns(child, patterns);
+            }
+        }
+        Value::Array(items) => {
+            for child in items {
+                collect_schema_patterns(child, patterns);
+            }
+        }
+        _ => {}
+    }
 }
 
 fn resolve_local_schema_ref<'a>(
