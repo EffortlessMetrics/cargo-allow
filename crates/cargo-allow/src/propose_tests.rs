@@ -39,12 +39,14 @@ fn propose_summary_reports_generated_baseline_boundary() {
     let text = render_propose_summary(
         12,
         3,
+        1,
         "2026-08-01",
         Some(Path::new("policy/allow.proposed.toml")),
     );
 
     assert!(text.contains("findings scanned: 12"));
     assert!(text.contains("baseline_debt entries proposed: 3"));
+    assert!(text.contains("unsafe baseline_debt entries proposed: 1"));
     assert!(text.contains("owner: unowned"));
     assert!(text.contains("classification: baseline_debt"));
     assert!(text.contains("output: policy/allow.proposed.toml"));
@@ -113,6 +115,12 @@ fn render_propose_summary_json_records_generated_baseline_boundary() {
             .pointer("/summary/baseline_debt_entries_proposed")
             .and_then(Value::as_u64),
         Some(3)
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/unsafe_baseline_debt_entries_proposed")
+            .and_then(Value::as_u64),
+        Some(1)
     );
     assert_eq!(
         value

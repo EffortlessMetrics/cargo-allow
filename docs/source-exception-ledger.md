@@ -295,8 +295,11 @@ absent, the tool's deterministic fixture date.
 file, and emits its proposal summary to stderr so generated policy remains
 parseable. `--summary-format json --summary-output <path>` writes that summary
 as `cargo-allow.propose.v1`, including source-tree inventory context, proposal
-options, proposed `baseline_debt` count, and the generated-entry defaults that
-must remain visibly temporary until reviewed.
+options, proposed `baseline_debt` count, generated unsafe-baseline count, and
+the generated-entry defaults that must remain visibly temporary until reviewed.
+The unsafe count is a routing signal: generated unsafe baseline entries still
+need real evidence and human review before they should be treated as retained
+exceptions.
 
 `cargo-allow add --kind <kind> --path <path> --line <line>` generates a reviewed
 allow entry from the nearest current finding at that location. It copies the

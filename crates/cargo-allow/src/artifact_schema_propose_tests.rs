@@ -78,6 +78,13 @@ fn propose_schema_locks_generated_baseline_summary_contract() {
         Some("integer"),
         "propose baseline debt count should be an integer"
     );
+    assert_eq!(
+        schema
+            .pointer("/properties/summary/properties/unsafe_baseline_debt_entries_proposed/type")
+            .and_then(Value::as_str),
+        Some("integer"),
+        "propose unsafe baseline debt count should be an integer"
+    );
 
     let defaults =
         required_schema_pointer("propose", &schema, "/properties/generated_entry_defaults");

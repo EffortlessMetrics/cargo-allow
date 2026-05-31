@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowResult, MatchStatus};
+use allow_core::{CargoAllowResult, FindingKind, MatchStatus};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::render_policy;
 
@@ -22,7 +22,7 @@ use propose_render::{render_propose_summary, render_propose_summary_json};
 pub(super) use propose_types::ProposeContext;
 
 #[cfg(test)]
-use allow_core::{Finding, FindingKind, SimpleDate};
+use allow_core::{Finding, SimpleDate};
 #[cfg(test)]
 use propose_baseline::BASELINE_DEBT_DEFAULT_DAYS;
 
@@ -39,6 +39,7 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     let mut proposed = cfg.clone();
     let start = proposed.allow.len() + 1;
     let mut proposed_entries = 0;
+    let mut unsafe_proposed_entries = 0;
     let expires = args.expires.clone().unwrap_or_else(default_baseline_expiry);
     for (n, outcome) in outcomes
         .iter()
@@ -46,6 +47,9 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         .enumerate()
     {
         if let Some(finding) = outcome.finding_index.and_then(|idx| findings.get(idx)) {
+            if finding.kind == FindingKind::Unsafe {
+                unsafe_proposed_entries += 1;
+            }
             proposed
                 .allow
                 .push(entry_from_finding(finding, start + n, &expires));
@@ -67,12 +71,14 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         ProposeSummaryFormat::Human => render_propose_summary(
             findings.len(),
             proposed_entries,
+            unsafe_proposed_entries,
             expires.as_str(),
             args.write.as_deref(),
         ),
         ProposeSummaryFormat::Json => render_propose_summary_json(
             findings.len(),
             proposed_entries,
+            unsafe_proposed_entries,
             expires.as_str(),
             args.write.as_deref(),
             args.force,
@@ -90,6 +96,7 @@ pub(crate) fn sample_propose_json_for_contract_test() -> String {
     render_propose_summary_json(
         12,
         3,
+        1,
         "2026-08-01",
         Some(Path::new("policy/allow.proposed.toml")),
         true,

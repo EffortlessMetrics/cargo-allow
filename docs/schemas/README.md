@@ -89,6 +89,10 @@ filter keys, while the nested `filters` schema keeps those keys optional.
 Adoption summary artifacts such as `add` and `propose` also emit all known
 `options` keys today, while nested option fields remain optional in the schema
 for v1 compatibility.
+`propose` summary artifacts emit `unsafe_baseline_debt_entries_proposed` today,
+while that summary field remains optional in the schema so older
+`cargo-allow.propose.v1` artifacts without the unsafe-specific count remain
+valid.
 
 The shared report schema is emitted by `audit`, `check`, and `diff`, but the
 top-level `diff` posture extension is valid only on reports whose
