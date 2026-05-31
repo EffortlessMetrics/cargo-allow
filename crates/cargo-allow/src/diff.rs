@@ -364,8 +364,8 @@ fn added_evidence_has_broken_local_link(
     if let Some(head_files) = head_files {
         return added
             .iter()
-            .filter_map(|reference| local_evidence_target(reference))
-            .any(|target| !head_files.contains(&target));
+            .filter_map(|reference| local_evidence_reference(reference))
+            .any(|reference| reference.is_broken_in_revision(head_files));
     }
     let Some(entry) = head_cfg.allow.iter().find(|entry| entry.id == allow_id) else {
         return false;
@@ -395,8 +395,8 @@ fn broken_local_evidence_count_in_files(head_files: &BTreeSet<String>, cfg: &All
     cfg.allow
         .iter()
         .flat_map(|entry| &entry.evidence)
-        .filter_map(|reference| local_evidence_target(reference))
-        .filter(|target| !head_files.contains(target))
+        .filter_map(|reference| local_evidence_reference(reference))
+        .filter(|reference| reference.is_broken_in_revision(head_files))
         .count()
 }
 
@@ -421,13 +421,39 @@ fn source_tree_file_count_at_revision(
         .count())
 }
 
-fn local_evidence_target(reference: &str) -> Option<String> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum LocalEvidenceReference {
+    SourceTreePath(String),
+    InvalidLocalPath,
+}
+
+impl LocalEvidenceReference {
+    fn is_broken_in_revision(&self, head_files: &BTreeSet<String>) -> bool {
+        match self {
+            Self::SourceTreePath(target) => !head_files.contains(target),
+            Self::InvalidLocalPath => true,
+        }
+    }
+}
+
+fn local_evidence_reference(reference: &str) -> Option<LocalEvidenceReference> {
     let (prefix, target) = reference.split_once(':')?;
     let prefix = prefix.trim();
     if !allow_policy::local_file_evidence_prefixes().any(|known| known == prefix) {
         return None;
     }
-    Some(normalize_path(target.trim()))
+    let target = target.trim().replace('\\', "/");
+    if target.is_empty()
+        || target.starts_with('/')
+        || target.contains(':')
+        || target.split('/').any(|part| part == "..")
+        || target.chars().any(|ch| matches!(ch, '*' | '?'))
+    {
+        return Some(LocalEvidenceReference::InvalidLocalPath);
+    }
+    Some(LocalEvidenceReference::SourceTreePath(normalize_path(
+        target,
+    )))
 }
 
 #[cfg(test)]

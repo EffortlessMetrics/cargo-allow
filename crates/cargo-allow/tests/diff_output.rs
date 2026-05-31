@@ -208,6 +208,68 @@ fn diff_json_with_explicit_head_validates_added_evidence_at_head_revision() {
 }
 
 #[test]
+fn diff_json_with_explicit_head_counts_invalid_local_evidence_as_broken() {
+    let root = temp_root("diff-head-invalid-local-evidence-added");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(Some("doc:docs/../src/lib.rs")),
+    );
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "add invalid evidence reference"]);
+    git(&root, &["tag", "head-invalid-evidence"]);
+    let output = root.join("diff.json");
+
+    let result = cargo_allow_command()
+        .arg("diff")
+        .arg("--root")
+        .arg(&root)
+        .arg("--base")
+        .arg("HEAD~1")
+        .arg("--head")
+        .arg("head-invalid-evidence")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+
+    assert_status("diff", &result, false);
+    assert_stdout_empty(
+        "diff",
+        &result,
+        "--output should not emit report JSON to stdout",
+    );
+    assert_stderr_empty(
+        "diff",
+        &result,
+        "--output should not emit human posture rows to stderr",
+    );
+    let value = assert_saved_json_artifact(&output, "diff", "cargo-allow.report.v1", "diff");
+    assert_json_u64(
+        &value,
+        "/summary/broken_evidence_links",
+        1,
+        "explicit head invalid local evidence should count as broken evidence",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/current_failures",
+        1,
+        "explicit head invalid local evidence should affect current failures",
+    );
+    assert_policy_change(&value, "evidence_added", "allow-unwrap", "fail");
+    assert_file_contains(
+        &output,
+        "invalid local evidence added",
+        "explicit head invalid local evidence should preserve invalid-path posture detail",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_with_explicit_head_does_not_parse_working_tree_policy() {
     let root = temp_root("diff-head-invalid-working-policy");
     write_diff_fixture(
