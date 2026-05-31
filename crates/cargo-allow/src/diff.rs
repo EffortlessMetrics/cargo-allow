@@ -248,8 +248,11 @@ fn git_relative_config_path_for_diff(
     base: &str,
     head: Option<&str>,
 ) -> CargoAllowResult<PathBuf> {
-    if head.is_none() || config.is_some() {
+    if head.is_none() {
         return git_relative_config_path(root, config);
+    }
+    if let Some(config) = config {
+        return explicit_diff_config_path(root, config);
     }
     if let Ok(path) = git_relative_config_path(root, None) {
         return Ok(path);
@@ -265,6 +268,30 @@ fn git_relative_config_path_for_diff(
     Err(CargoAllowError::new(
         "no policy config found in working tree or compared revisions; pass --config",
     ))
+}
+
+fn explicit_diff_config_path(root: &Path, config: &Path) -> CargoAllowResult<PathBuf> {
+    if config.is_absolute() {
+        return git_relative_config_path(root, Some(config));
+    }
+    let text = config.to_string_lossy().replace('\\', "/");
+    if text.trim().is_empty() || text.trim() != text {
+        return Err(CargoAllowError::new(
+            "explicit --config path must be source-tree-relative",
+        ));
+    }
+    if text.starts_with('/') || text.contains(':') || text.split('/').any(|part| part == "..") {
+        return Err(CargoAllowError::new(
+            "explicit --config path must stay inside the source tree",
+        ));
+    }
+    let normalized = normalize_path(config);
+    if normalized.is_empty() {
+        return Err(CargoAllowError::new(
+            "explicit --config path must name a policy file",
+        ));
+    }
+    Ok(PathBuf::from(normalized))
 }
 
 fn revision_has_config(root: &Path, revision: &str, path: &Path) -> CargoAllowResult<bool> {
