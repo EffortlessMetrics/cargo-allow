@@ -297,8 +297,9 @@ Completed:
   setup diagnostics.
 - Publish a versioned `cargo-allow.doctor.v1` JSON schema for saved setup
   diagnostics.
-- Report the loaded policy schema version in human and JSON `doctor`
-  diagnostics so setup checks show which policy contract was validated.
+- Report the loaded policy schema version, policy name, owner, and status in
+  human and JSON `doctor` diagnostics so setup checks show which policy
+  contract and ledger state were validated.
 - Make baseline proposal output safer by refusing accidental overwrites and
   emitting a proposal summary.
 - Add `propose --summary-format json --summary-output <path>` for

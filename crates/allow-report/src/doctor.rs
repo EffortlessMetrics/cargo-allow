@@ -13,6 +13,15 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
             if let Some(schema_version) = facts.config_schema_version {
                 out.push_str(&format!("policy schema version: {schema_version}\n"));
             }
+            if let Some(policy) = facts.config_policy {
+                out.push_str(&format!("policy: {policy}\n"));
+            }
+            if let Some(owner) = facts.config_owner {
+                out.push_str(&format!("policy owner: {owner}\n"));
+            }
+            if let Some(status) = facts.config_status {
+                out.push_str(&format!("policy status: {status}\n"));
+            }
             out.push_str(&format!(
                 "config status: {}\n",
                 config_status_text(facts.config_valid, facts.config_diagnostic)
@@ -62,6 +71,18 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
     out.push_str(&format!(
         "    \"schema_version\": {},\n",
         option_json(facts.config_schema_version)
+    ));
+    out.push_str(&format!(
+        "    \"policy\": {},\n",
+        option_json(facts.config_policy)
+    ));
+    out.push_str(&format!(
+        "    \"owner\": {},\n",
+        option_json(facts.config_owner)
+    ));
+    out.push_str(&format!(
+        "    \"status\": {},\n",
+        option_json(facts.config_status)
     ));
     out.push_str(&format!(
         "    \"valid\": {},\n",

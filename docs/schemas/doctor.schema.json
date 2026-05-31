@@ -87,6 +87,27 @@
           ],
           "description": "Policy schema version loaded from the config when the policy parses successfully; null when no config is found or parsing fails before a policy model is available."
         },
+        "policy": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy name loaded from the config when the policy parses successfully; null when no config is found or parsing fails before a policy model is available."
+        },
+        "owner": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Top-level policy owner loaded from the config when available; null when unset, no config is found, or parsing fails before a policy model is available."
+        },
+        "status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Top-level policy status loaded from the config when available; null when unset, no config is found, or parsing fails before a policy model is available."
+        },
         "valid": {
           "type": [
             "boolean",
