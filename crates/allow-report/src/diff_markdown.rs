@@ -41,8 +41,50 @@ pub fn render_diff_pr_summary_markdown(
         "\n**Reviewer action:** {}\n\n",
         posture.reviewer_action()
     ));
+    append_finding_highlights(&mut out, finding_changes);
     append_policy_highlights(&mut out, policy_changes);
     out
+}
+
+fn append_finding_highlights(out: &mut String, finding_changes: &[DiffFindingChange<'_>]) {
+    if finding_changes.iter().any(|change| change.change == "new") {
+        out.push_str("### Finding Attention\n\n");
+        out.push_str("| Change | Kind | Family | Path |\n|---|---|---|---|\n");
+        for change in finding_changes
+            .iter()
+            .filter(|change| change.change == "new")
+            .take(8)
+        {
+            append_finding_highlight_row(out, change);
+        }
+        out.push('\n');
+    }
+
+    if finding_changes
+        .iter()
+        .any(|change| change.change == "removed")
+    {
+        out.push_str("### Finding Improvements\n\n");
+        out.push_str("| Change | Kind | Family | Path |\n|---|---|---|---|\n");
+        for change in finding_changes
+            .iter()
+            .filter(|change| change.change == "removed")
+            .take(8)
+        {
+            append_finding_highlight_row(out, change);
+        }
+        out.push('\n');
+    }
+}
+
+fn append_finding_highlight_row(out: &mut String, change: &DiffFindingChange<'_>) {
+    out.push_str(&format!(
+        "| `{}` | `{}` | `{}` | `{}` |\n",
+        markdown_cell(change.change),
+        markdown_cell(change.kind),
+        markdown_cell(change.family.unwrap_or("")),
+        markdown_cell(change.path)
+    ));
 }
 
 fn append_policy_highlights(out: &mut String, policy_changes: &[DiffPolicyChange<'_>]) {

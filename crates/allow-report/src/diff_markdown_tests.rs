@@ -33,6 +33,8 @@ fn diff_pr_summary_markdown_reports_net_posture() {
     assert!(summary.contains("| Removed source findings | 1 |"));
     assert!(summary.contains("| Policy improvements | 1 |"));
     assert!(summary.contains("keep the narrower posture"));
+    assert!(summary.contains("### Finding Improvements"));
+    assert!(summary.contains("| `removed` | `panic` | `unwrap` | `src/lib.rs` |"));
     assert!(summary.contains("### Policy Improvements"));
     assert!(summary.contains("| `allow-0001` | `selector_precision_increased` |"));
     assert!(
@@ -101,4 +103,25 @@ fn diff_pr_summary_markdown_highlights_policy_attention() {
     assert!(summary.contains("### Policy Attention"));
     assert!(summary.contains("| `review` | `allow\\|0042` | `evidence_removed` |"));
     assert!(summary.contains("allow-0042 evidence removed from policy"));
+}
+
+#[test]
+fn diff_pr_summary_markdown_highlights_new_findings() {
+    let finding_changes = vec![DiffFindingChange {
+        change: "new",
+        key: "panic|unwrap|src/lib.rs",
+        kind: "panic",
+        family: Some("unwrap"),
+        path: "src/lib.rs",
+    }];
+
+    let summary = render_diff_pr_summary_markdown(0, &finding_changes, &[]);
+
+    assert!(summary.contains("**Net posture:** `review-required`"));
+    assert!(summary.contains("### Finding Attention"));
+    assert!(summary.contains("| `new` | `panic` | `unwrap` | `src/lib.rs` |"));
+    assert!(
+        !summary.contains("### Finding Improvements"),
+        "new-only summaries should not create finding improvement rows"
+    );
 }
