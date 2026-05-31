@@ -1,5 +1,6 @@
 use super::*;
 use allow_core::{AllowConfig, AllowEntry, FindingKind, Lifecycle, Selector};
+use std::fs;
 use std::path::PathBuf;
 
 #[test]
@@ -101,6 +102,76 @@ fn diff_policy_changes_report_added_entries_when_base_policy_is_missing() {
     );
 }
 
+#[test]
+fn diff_policy_changes_promote_broken_added_evidence_to_failure() {
+    let root = diff_fixture_dir();
+    let mut base_entry = entry("allow-panic", FindingKind::Panic);
+    base_entry.evidence.clear();
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-panic", FindingKind::Panic);
+    head_entry.evidence = vec!["doc:docs/missing.md".to_string()];
+    let head = config_with(head_entry);
+    let mut changes = policy_changes_for_diff(Some(base), &head, None)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy diff: {err}")));
+
+    promote_broken_added_evidence_policy_changes(&root, &head, &mut changes);
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == allow_diff::PolicyChangeKind::EvidenceAdded)
+        .unwrap_or_else(|| std::panic::panic_any("evidence addition should be reported"));
+    assert_eq!(change.severity, allow_diff::PolicyChangeSeverity::Fail);
+    assert!(
+        change.message.contains("broken local evidence added"),
+        "message should explain source-tree evidence failure: {change:?}"
+    );
+    let evidence = change
+        .evidence
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("evidence change should include added values"));
+    assert_eq!(evidence.added, vec!["doc:docs/missing.md".to_string()]);
+    remove_diff_fixture_dir(root);
+}
+
+#[test]
+fn diff_policy_changes_keep_present_added_evidence_as_improvement() {
+    let root = diff_fixture_dir();
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+    fs::write(root.join("docs/present.md"), "review notes")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence: {err}")));
+    let mut base_entry = entry("allow-panic", FindingKind::Panic);
+    base_entry.evidence.clear();
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-panic", FindingKind::Panic);
+    head_entry.evidence = vec!["doc:docs/present.md".to_string()];
+    let head = config_with(head_entry);
+    let mut changes = policy_changes_for_diff(Some(base), &head, None)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy diff: {err}")));
+
+    promote_broken_added_evidence_policy_changes(&root, &head, &mut changes);
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == allow_diff::PolicyChangeKind::EvidenceAdded)
+        .unwrap_or_else(|| std::panic::panic_any("evidence addition should be reported"));
+    assert_eq!(
+        change.severity,
+        allow_diff::PolicyChangeSeverity::Improvement
+    );
+    assert!(
+        change.message.contains("evidence added"),
+        "present local evidence should stay improvement: {change:?}"
+    );
+    remove_diff_fixture_dir(root);
+}
+
+fn config_with(entry: AllowEntry) -> AllowConfig {
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry);
+    cfg
+}
+
 fn entry(id: &str, kind: FindingKind) -> AllowEntry {
     AllowEntry {
         id: id.to_string(),
@@ -124,6 +195,26 @@ fn entry(id: &str, kind: FindingKind) -> AllowEntry {
             ..Selector::default()
         },
         last_seen: None,
+    }
+}
+
+fn diff_fixture_dir() -> PathBuf {
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let dir = std::env::temp_dir().join(format!("cargo-allow-diff-{}-{stamp}", std::process::id()));
+    remove_diff_fixture_dir(dir.clone());
+    fs::create_dir_all(&dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create fixture dir: {err}")));
+    dir
+}
+
+fn remove_diff_fixture_dir(path: PathBuf) {
+    match fs::remove_dir_all(&path) {
+        Ok(()) => {}
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => std::panic::panic_any(format!("remove diff fixture {}: {err}", path.display())),
     }
 }
 
