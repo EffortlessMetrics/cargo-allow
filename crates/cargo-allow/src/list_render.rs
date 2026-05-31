@@ -46,6 +46,8 @@ fn report_list_rows<'a>(
             scope: &row.scope,
             source_package: row.source_package.as_deref(),
             evidence_count: row.evidence_count,
+            broken_evidence_references: row.broken_evidence_references,
+            weak_evidence_references: row.weak_evidence_references,
             selector_precision: row.selector_precision,
             broad_scope: row.broad_scope,
             review_after: dash_as_none(&row.review_after),

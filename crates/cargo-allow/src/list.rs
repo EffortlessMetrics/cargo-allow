@@ -40,7 +40,7 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         EvidenceValidationMode::ReportOnly,
     )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
-    let rows = list_rows(&cfg, &findings, &outcomes);
+    let rows = list_rows(&root, &cfg, &findings, &outcomes);
     let filters = list_filters(args)?;
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = ListContext {
@@ -68,6 +68,8 @@ pub(crate) fn sample_list_json_for_contract_test() -> String {
         scope: "src/lib.rs".to_string(),
         source_package: Some("allow-core".to_string()),
         evidence_count: 2,
+        broken_evidence_references: 1,
+        weak_evidence_references: 1,
         selector_precision: 7,
         broad_scope: false,
         review_after: "2026-09-01".to_string(),

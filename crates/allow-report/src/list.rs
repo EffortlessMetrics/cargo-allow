@@ -42,10 +42,10 @@ pub fn render_list_human(rows: &[ListRow<'_>], inventory: InventoryContext<'_>) 
     if let Some(root) = inventory.root {
         out.push_str(&format!("source_tree_root: {root}\n"));
     }
-    out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\tevidence_count\tselector_precision\tbroad_scope\treview_after\texpires\treason\n");
+    out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\tevidence_count\tbroken_evidence_references\tweak_evidence_references\tselector_precision\tbroad_scope\treview_after\texpires\treason\n");
     for row in rows {
         out.push_str(&format!(
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
             row.id,
             row.status,
             row.matches,
@@ -56,6 +56,8 @@ pub fn render_list_human(rows: &[ListRow<'_>], inventory: InventoryContext<'_>) 
             row.scope,
             row.source_package.unwrap_or("-"),
             row.evidence_count,
+            row.broken_evidence_references,
+            row.weak_evidence_references,
             row.selector_precision,
             row.broad_scope,
             row.review_after.unwrap_or("-"),
@@ -113,6 +115,18 @@ fn render_list_row_json(row: &ListRow<'_>) -> String {
         "      \"evidence_count\": {},\n",
         row.evidence_count
     ));
+    if row.broken_evidence_references > 0 {
+        out.push_str(&format!(
+            "      \"broken_evidence_references\": {},\n",
+            row.broken_evidence_references
+        ));
+    }
+    if row.weak_evidence_references > 0 {
+        out.push_str(&format!(
+            "      \"weak_evidence_references\": {},\n",
+            row.weak_evidence_references
+        ));
+    }
     out.push_str(&format!(
         "      \"selector_precision\": {},\n",
         row.selector_precision

@@ -4,8 +4,11 @@ use allow_core::{
     allow_entry_broad_scope,
 };
 use allow_diff::selector_precision_score;
+use allow_policy::evidence_reference_diagnostics;
+use std::path::Path;
 
 pub(super) fn list_rows(
+    root: &Path,
     cfg: &AllowConfig,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
@@ -14,6 +17,7 @@ pub(super) fn list_rows(
     cfg.allow
         .iter()
         .map(|entry| {
+            let evidence_diagnostics = evidence_reference_diagnostics(root, entry);
             let entry_outcomes = outcomes
                 .iter()
                 .filter(|outcome| outcome.allow_id.as_deref() == Some(entry.id.as_str()))
@@ -36,6 +40,14 @@ pub(super) fn list_rows(
                     .filter_map(|index| findings.get(index))
                     .find_map(|finding| finding.source_package_name().map(ToOwned::to_owned)),
                 evidence_count: entry.evidence.len(),
+                broken_evidence_references: evidence_diagnostics
+                    .iter()
+                    .filter(|diagnostic| diagnostic.status.is_broken_local_link())
+                    .count(),
+                weak_evidence_references: evidence_diagnostics
+                    .iter()
+                    .filter(|diagnostic| diagnostic.status.is_weak_reference())
+                    .count(),
                 selector_precision: selector_precision_score(entry),
                 broad_scope: allow_entry_broad_scope(entry).is_some(),
                 review_after: entry

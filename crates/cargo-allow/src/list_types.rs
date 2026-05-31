@@ -14,6 +14,8 @@ pub(super) struct ListRow {
     pub(super) scope: String,
     pub(super) source_package: Option<String>,
     pub(super) evidence_count: usize,
+    pub(super) broken_evidence_references: usize,
+    pub(super) weak_evidence_references: usize,
     pub(super) selector_precision: u32,
     pub(super) broad_scope: bool,
     pub(super) review_after: String,
