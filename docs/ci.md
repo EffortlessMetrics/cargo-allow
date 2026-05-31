@@ -28,6 +28,11 @@ cargo install --git https://github.com/EffortlessMetrics/cargo-allow cargo-allow
 
 `cargo allow ...` remains optional Cargo external subcommand compatibility.
 
+The scan itself is source-tree only. It does not invoke Cargo metadata, Cargo
+commands, rustc, Clippy, build scripts, proc macros, external evidence tools,
+or repository code. The install step fetches the `cargo-allow` tool; the policy
+scan should remain usable even when the checked-out repository does not build.
+
 ## Pull Requests
 
 Use the diff workflow for pull requests:
