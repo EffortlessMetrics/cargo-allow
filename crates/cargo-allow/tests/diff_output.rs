@@ -94,6 +94,45 @@ fn diff_json_reports_invalid_local_evidence_added_policy_failure() {
 }
 
 #[test]
+fn diff_json_reports_missing_local_evidence_added_policy_failure() {
+    let root = temp_root("diff-missing-local-evidence-added");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(Some("doc:docs/missing.md")),
+    );
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_failure(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "worse",
+        "diff missing local evidence addition net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/summary/broken_evidence_links",
+        1,
+        "diff missing local evidence addition broken evidence count",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/policy_failures",
+        1,
+        "diff missing local evidence addition policy failure count",
+    );
+    assert_policy_change(&value, "evidence_added", "allow-unwrap", "fail");
+    assert_file_contains(
+        &output,
+        "broken local evidence added",
+        "diff output should explain missing local evidence addition posture",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_reports_weak_evidence_added_as_review_required() {
     let root = temp_root("diff-weak-evidence-added");
     write_diff_fixture(
