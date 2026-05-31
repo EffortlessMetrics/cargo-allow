@@ -13,9 +13,13 @@ pub(super) fn filter_work_items(
         .into_iter()
         .filter(|item| {
             filters
-                .family
-                .map(|family| item.family.as_deref() == Some(family))
+                .kind
+                .map(|kind| item.exception_kind.as_deref() == Some(kind))
                 .unwrap_or(true)
+                && filters
+                    .family
+                    .map(|family| item.family.as_deref() == Some(family))
+                    .unwrap_or(true)
                 && filters
                     .item_kind
                     .map(|item_kind| item.kind == item_kind)

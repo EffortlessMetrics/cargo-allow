@@ -96,6 +96,44 @@ fn worklist_filters_by_item_kind() {
 }
 
 #[test]
+fn worklist_filters_by_exception_kind() {
+    let findings = vec![
+        test_finding(
+            FindingKind::Panic,
+            Some("unwrap"),
+            "src/lib.rs",
+            "method_call",
+        ),
+        test_finding(
+            FindingKind::Unsafe,
+            Some("block"),
+            "src/ffi.rs",
+            "unsafe_block",
+        ),
+    ];
+    let outcomes = vec![
+        test_outcome(MatchStatus::New, None, Some(0), "unreceipted panic.unwrap"),
+        test_outcome(MatchStatus::New, None, Some(1), "unreceipted unsafe block"),
+    ];
+
+    let items = work_items_from_outcomes(&AllowConfig::empty(), &findings, &outcomes);
+    let filtered = filter_work_items(
+        items,
+        WorklistFilters {
+            kind: Some("unsafe"),
+            ..WorklistFilters::default()
+        },
+    );
+
+    assert_eq!(filtered.len(), 1);
+    let item = filtered
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
+    assert_eq!(item.exception_kind.as_deref(), Some("unsafe"));
+    assert_eq!(item.path.as_deref(), Some("src/ffi.rs"));
+}
+
+#[test]
 fn worklist_filters_by_status() {
     let mut cfg = AllowConfig::empty();
     cfg.allow
