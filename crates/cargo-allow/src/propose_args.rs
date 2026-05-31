@@ -2,10 +2,9 @@ use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
 use allow_core::SimpleDate;
+use allow_policy::BASELINE_DEBT_MAX_DAYS;
 
 use crate::{RootArgs, parse_kind_filter_arg};
-
-const BASELINE_DEBT_MAX_DAYS: i64 = 120;
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ProposeArgs {

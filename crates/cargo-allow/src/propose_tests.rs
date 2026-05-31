@@ -2,6 +2,7 @@ use super::*;
 use crate::artifact_contract_support::parse_json_artifact;
 use crate::{CargoAllowCli, CargoAllowCommand};
 use allow_core::{Span, StructuralIdentity};
+use allow_policy::BASELINE_DEBT_MAX_DAYS;
 use clap::Parser;
 use serde_json::Value;
 use std::path::Path;
@@ -52,20 +53,25 @@ fn clap_rejects_invalid_propose_expiry() {
 
 #[test]
 fn clap_rejects_long_propose_expiry() {
-    let expires = SimpleDate::today_utc_approx().add_days(121).to_string();
+    let expires = SimpleDate::today_utc_approx()
+        .add_days(BASELINE_DEBT_MAX_DAYS + 1)
+        .to_string();
     let err =
         CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "propose", "--expires", &expires]))
             .expect_err("long generated baseline expiry should fail closed");
 
     assert!(
-        err.to_string().contains("within 120 days"),
+        err.to_string()
+            .contains(&format!("within {BASELINE_DEBT_MAX_DAYS} days")),
         "unexpected parse error: {err}"
     );
 }
 
 #[test]
 fn clap_accepts_maximum_propose_expiry_window() {
-    let expires = SimpleDate::today_utc_approx().add_days(120).to_string();
+    let expires = SimpleDate::today_utc_approx()
+        .add_days(BASELINE_DEBT_MAX_DAYS)
+        .to_string();
     let parsed =
         CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "propose", "--expires", &expires]))
             .unwrap_or_else(|err| {
