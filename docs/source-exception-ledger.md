@@ -418,6 +418,8 @@ Governed kind filters are validated up front, so a mistyped `--kind` fails
 closed instead of producing a misleading empty queue.
 Canonical work item queue kinds use underscores, and `--item-kind` also accepts
 hyphenated aliases such as `stale-allow` for artifact-local `work-*` queue IDs.
+Worklist artifacts record the canonical underscore kind in the applied filter
+context.
 Policy-backed slices can also be filtered by durable allow ID with `--allow-id`,
 and scanner-provided source-tree package context can be filtered with
 `--source-package`.

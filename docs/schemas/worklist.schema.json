@@ -152,7 +152,7 @@
         },
         "item_kind": {
           "type": ["string", "null"],
-          "description": "Applied --item-kind filter, or null when all work item queue kinds are included."
+          "description": "Applied --item-kind filter using the canonical underscore work item kind, or null when all work item queue kinds are included."
         },
         "status": {
           "type": ["string", "null"],
