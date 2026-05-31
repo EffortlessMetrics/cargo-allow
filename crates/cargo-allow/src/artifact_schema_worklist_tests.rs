@@ -263,6 +263,10 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         .iter()
         .map(|status| status.as_str())
         .collect::<Vec<_>>();
+    let evidence_categories = allow_policy::EvidenceReferenceCategory::ALL
+        .iter()
+        .map(|category| category.as_str())
+        .collect::<Vec<_>>();
     assert_eq!(
         schema
             .pointer("/$defs/evidence_reference/properties/status/$ref")
@@ -275,6 +279,19 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         &schema,
         "/$defs/evidence_reference_status/enum",
         &evidence_statuses,
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/evidence_reference/properties/category/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/evidence_reference_category"),
+        "worklist evidence reference category should use the shared category definition"
+    );
+    assert_enum_equals(
+        "worklist evidence reference category",
+        &schema,
+        "/$defs/evidence_reference_category/enum",
+        &evidence_categories,
     );
     assert_eq!(
         schema

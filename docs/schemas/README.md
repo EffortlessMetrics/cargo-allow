@@ -346,7 +346,12 @@ unstructured or unknown-prefix evidence cleanup, and
 that still need evidence references.
 Worklist JSON items for broken or weak evidence diagnostics may include an
 optional `evidence_reference` object with the original evidence string,
-normalized prefix/target metadata, diagnostic status, and diagnostic message.
+normalized prefix/target metadata, diagnostic status, optional diagnostic
+category, and diagnostic message. The stable `status` field preserves the
+machine compatibility vocabulary; the optional `category` field exposes the
+human-facing repair bucket (`present`, `missing`, `invalid_local_path`,
+`not_local`, `unknown_prefix`, or `untyped`) without requiring consumers to
+parse diagnostic text.
 This object is evidence metadata; `work_items[].path` remains the source-tree
 path for source-backed work or a local evidence path for broken local evidence
 links.
@@ -375,7 +380,7 @@ Schema compatibility tests also lock:
 - shared source-tree inventory source values, including `git_tracked`,
   `filesystem_fallback`, `filesystem_include_untracked`, and `unknown`
   renderer defaults;
-- shared evidence prefix and evidence-reference status vocabularies, including
+- shared evidence prefix, evidence-reference status, and diagnostic category vocabularies, including
   canonical prefixes, parser-recognized aliases, local-file evidence prefixes,
   traceability-only evidence prefixes, and evidence diagnostic statuses;
 - artifact-local fragments mirrored in `common.v1.json` keep the same wire

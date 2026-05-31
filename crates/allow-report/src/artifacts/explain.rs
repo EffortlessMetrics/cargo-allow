@@ -8,6 +8,7 @@ pub struct EvidenceReference<'a> {
     pub prefix: Option<&'a str>,
     pub target: Option<&'a str>,
     pub status: &'a str,
+    pub category: &'a str,
     pub message: &'a str,
 }
 

@@ -62,6 +62,7 @@ fn explain_json_renderer_records_context_and_current_status() {
         prefix: Some("doc"),
         target: Some("docs/safety/ffi.md"),
         status: "local_file_missing",
+        category: "missing",
         message: "local evidence file is missing",
     }];
     let suggested_actions = vec!["add missing evidence".to_string()];
@@ -167,6 +168,7 @@ fn explain_json_renderer_records_context_and_current_status() {
       "prefix": "doc",
       "target": "docs/safety/ffi.md",
       "status": "local_file_missing",
+      "category": "missing",
       "message": "local evidence file is missing"
     }}
   ],

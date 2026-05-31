@@ -49,6 +49,7 @@ fn work_item_from_evidence_diagnostic(
         prefix: diagnostic.prefix.clone(),
         target: diagnostic.target.as_ref().map(normalize_path),
         status: diagnostic.status.as_str().to_string(),
+        category: diagnostic.category.as_str().to_string(),
         message: diagnostic.message.clone(),
     };
     WorkItem {

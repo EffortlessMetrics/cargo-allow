@@ -43,12 +43,45 @@ impl EvidenceReferenceStatus {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EvidenceReferenceCategory {
+    Present,
+    Missing,
+    InvalidLocalPath,
+    NotLocal,
+    UnknownPrefix,
+    Untyped,
+}
+
+impl EvidenceReferenceCategory {
+    pub const ALL: &[Self] = &[
+        Self::Present,
+        Self::Missing,
+        Self::InvalidLocalPath,
+        Self::NotLocal,
+        Self::UnknownPrefix,
+        Self::Untyped,
+    ];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Present => "present",
+            Self::Missing => "missing",
+            Self::InvalidLocalPath => "invalid_local_path",
+            Self::NotLocal => "not_local",
+            Self::UnknownPrefix => "unknown_prefix",
+            Self::Untyped => "untyped",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvidenceReferenceDiagnostic {
     pub raw: String,
     pub prefix: Option<String>,
     pub target: Option<PathBuf>,
     pub status: EvidenceReferenceStatus,
+    pub category: EvidenceReferenceCategory,
     pub message: String,
 }
 
@@ -71,6 +104,7 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             prefix: None,
             target: None,
             status: EvidenceReferenceStatus::Unstructured,
+            category: EvidenceReferenceCategory::Untyped,
             message: "unstructured evidence string; not locally validated".to_string(),
         };
     };
@@ -81,6 +115,7 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             prefix,
             target: Some(reference.value.clone()),
             status: EvidenceReferenceStatus::Unstructured,
+            category: EvidenceReferenceCategory::UnknownPrefix,
             message: "unrecognized evidence prefix; not locally validated".to_string(),
         };
     }
@@ -90,6 +125,7 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             prefix,
             target: None,
             status: EvidenceReferenceStatus::Unstructured,
+            category: EvidenceReferenceCategory::Untyped,
             message: "empty evidence reference target; not locally validated".to_string(),
         };
     }
@@ -99,6 +135,7 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             prefix,
             target: Some(reference.value.clone()),
             status: EvidenceReferenceStatus::TraceabilityOnly,
+            category: EvidenceReferenceCategory::NotLocal,
             message: "traceability reference; not executed or resolved by cargo-allow".to_string(),
         };
     }
@@ -109,6 +146,7 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             prefix,
             target: Some(target),
             status: EvidenceReferenceStatus::InvalidLocalPath,
+            category: EvidenceReferenceCategory::InvalidLocalPath,
             message: err.to_string(),
         };
     }
@@ -119,6 +157,7 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             prefix,
             target: Some(target),
             status: EvidenceReferenceStatus::InvalidLocalPath,
+            category: EvidenceReferenceCategory::InvalidLocalPath,
             message: format!(
                 "local evidence path contains symlink component {}; reference regular source-tree files",
                 component.display()
@@ -131,6 +170,7 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             prefix,
             target: Some(target),
             status: EvidenceReferenceStatus::InvalidLocalPath,
+            category: EvidenceReferenceCategory::InvalidLocalPath,
             message: "local evidence path is a symlink; reference a regular source-tree file"
                 .to_string(),
         },
@@ -139,6 +179,7 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             prefix,
             target: Some(target),
             status: EvidenceReferenceStatus::LocalFilePresent,
+            category: EvidenceReferenceCategory::Present,
             message: "local evidence file exists".to_string(),
         },
         Ok(_) => EvidenceReferenceDiagnostic {
@@ -146,6 +187,7 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             prefix,
             target: Some(target),
             status: EvidenceReferenceStatus::InvalidLocalPath,
+            category: EvidenceReferenceCategory::InvalidLocalPath,
             message: "local evidence path exists but is not a file".to_string(),
         },
         Err(_) => EvidenceReferenceDiagnostic {
@@ -153,6 +195,7 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             prefix,
             target: Some(target),
             status: EvidenceReferenceStatus::LocalFileMissing,
+            category: EvidenceReferenceCategory::Missing,
             message: "local evidence file is missing".to_string(),
         },
     }

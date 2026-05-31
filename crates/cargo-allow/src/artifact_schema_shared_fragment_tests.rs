@@ -24,6 +24,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "evidence_change",
         "evidence_change_field",
         "evidence_reference",
+        "evidence_reference_category",
         "evidence_reference_status",
         "exception_identity_change",
         "exception_identity_change_field",
@@ -190,6 +191,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
 
     for (schema_name, schema) in [("explain", &explain), ("worklist", &worklist)] {
         assert_common_fragment_matches(schema_name, schema, &common, "evidence_reference");
+        assert_common_fragment_matches(schema_name, schema, &common, "evidence_reference_category");
         assert_common_fragment_matches(schema_name, schema, &common, "evidence_reference_status");
     }
 

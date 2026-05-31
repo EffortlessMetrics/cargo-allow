@@ -104,11 +104,12 @@ pub fn render_explain_json(report: ExplainReport<'_>) -> String {
 
 fn render_evidence_reference_json(reference: &EvidenceReference<'_>, indent: &str) -> String {
     format!(
-        "{indent}  {{\n{indent}    \"raw\": \"{}\",\n{indent}    \"prefix\": {},\n{indent}    \"target\": {},\n{indent}    \"status\": \"{}\",\n{indent}    \"message\": \"{}\"\n{indent}  }}",
+        "{indent}  {{\n{indent}    \"raw\": \"{}\",\n{indent}    \"prefix\": {},\n{indent}    \"target\": {},\n{indent}    \"status\": \"{}\",\n{indent}    \"category\": \"{}\",\n{indent}    \"message\": \"{}\"\n{indent}  }}",
         json_escape(reference.raw),
         option_json(reference.prefix),
         option_json(reference.target),
         json_escape(reference.status),
+        json_escape(reference.category),
         json_escape(reference.message)
     )
 }

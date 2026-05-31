@@ -71,6 +71,7 @@ fn render_explain_report<R>(
             prefix: diagnostic.prefix.as_deref(),
             target: target.as_deref(),
             status: diagnostic.status.as_str(),
+            category: diagnostic.category.as_str(),
             message: &diagnostic.message,
         })
         .collect::<Vec<_>>();

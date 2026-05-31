@@ -8,12 +8,12 @@ pub(crate) struct EvidenceReferenceHumanStatus {
 pub(crate) fn evidence_reference_human_status(
     reference: &EvidenceReference<'_>,
 ) -> EvidenceReferenceHumanStatus {
-    match reference.status {
-        "local_file_present" => EvidenceReferenceHumanStatus {
+    match reference.category {
+        "present" => EvidenceReferenceHumanStatus {
             marker: "ok",
             label: "present",
         },
-        "local_file_missing" => EvidenceReferenceHumanStatus {
+        "missing" => EvidenceReferenceHumanStatus {
             marker: "missing",
             label: "missing",
         },
@@ -21,21 +21,15 @@ pub(crate) fn evidence_reference_human_status(
             marker: "invalid",
             label: "invalid_local_path",
         },
-        "traceability_only" => EvidenceReferenceHumanStatus {
+        "not_local" => EvidenceReferenceHumanStatus {
             marker: "info",
             label: "not_local",
         },
-        "unstructured" if reference.message.contains("unrecognized evidence prefix") => {
-            EvidenceReferenceHumanStatus {
-                marker: "weak",
-                label: "unknown_prefix",
-            }
-        }
-        "unstructured" if reference.prefix.is_some() => EvidenceReferenceHumanStatus {
+        "unknown_prefix" => EvidenceReferenceHumanStatus {
             marker: "weak",
-            label: "untyped",
+            label: "unknown_prefix",
         },
-        "unstructured" => EvidenceReferenceHumanStatus {
+        "untyped" => EvidenceReferenceHumanStatus {
             marker: "weak",
             label: "untyped",
         },
