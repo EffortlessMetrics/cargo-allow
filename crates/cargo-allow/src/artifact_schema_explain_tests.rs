@@ -203,4 +203,18 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
         Some("^cargo-allow "),
         "explain proof commands should stay cargo-allow first"
     );
+    let proof_command_description = schema
+        .pointer("/properties/next/properties/proof_commands/items/description")
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("explain proof commands should document their boundary")
+        });
+    assert!(
+        proof_command_description.contains("standalone cargo-allow commands"),
+        "explain proof commands should document that they are standalone cargo-allow commands"
+    );
+    assert!(
+        proof_command_description.contains("does not execute"),
+        "explain proof commands should document that cargo-allow does not execute them"
+    );
 }

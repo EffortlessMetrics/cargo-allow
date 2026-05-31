@@ -276,6 +276,20 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         Some("^cargo-allow "),
         "worklist proof commands should stay cargo-allow first"
     );
+    let proof_command_description = schema
+        .pointer("/$defs/work_item/properties/proof_commands/items/description")
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("worklist proof commands should document their boundary")
+        });
+    assert!(
+        proof_command_description.contains("standalone cargo-allow commands"),
+        "worklist proof commands should document that they are standalone cargo-allow commands"
+    );
+    assert!(
+        proof_command_description.contains("does not execute"),
+        "worklist proof commands should document that cargo-allow does not execute them"
+    );
 }
 
 fn assert_nullable_string_enum_equals(
