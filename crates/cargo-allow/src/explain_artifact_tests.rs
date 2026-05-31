@@ -93,6 +93,13 @@ fn explain_entry_json_records_context_and_live_status() {
     );
     assert_eq!(
         value
+            .pointer("/evidence_references/0/category")
+            .and_then(Value::as_str),
+        Some("not_local"),
+        "explain evidence category"
+    );
+    assert_eq!(
+        value
             .pointer("/next/suggested_actions")
             .and_then(Value::as_array)
             .map(Vec::len),
@@ -190,6 +197,13 @@ fn explain_entry_json_routes_broken_evidence_to_repair_queue() {
             .and_then(Value::as_str),
         Some("local_file_missing"),
         "explain should surface the broken local evidence diagnostic"
+    );
+    assert_eq!(
+        value
+            .pointer("/evidence_references/0/category")
+            .and_then(Value::as_str),
+        Some("missing"),
+        "explain should surface the broken local evidence category"
     );
     let suggested_actions = value
         .pointer("/next/suggested_actions")
