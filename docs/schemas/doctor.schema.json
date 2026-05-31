@@ -80,6 +80,13 @@
             "null"
           ]
         },
+        "schema_version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy schema version loaded from the config when the policy parses successfully; null when no config is found or parsing fails before a policy model is available."
+        },
         "valid": {
           "type": [
             "boolean",

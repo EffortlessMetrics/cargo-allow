@@ -10,6 +10,9 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
     match facts.config_path {
         Some(path) => {
             out.push_str(&format!("config: {path}\n"));
+            if let Some(schema_version) = facts.config_schema_version {
+                out.push_str(&format!("policy schema version: {schema_version}\n"));
+            }
             out.push_str(&format!(
                 "config status: {}\n",
                 config_status_text(facts.config_valid, facts.config_diagnostic)
@@ -55,6 +58,10 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
     out.push_str(&format!(
         "    \"path\": {},\n",
         option_json(facts.config_path)
+    ));
+    out.push_str(&format!(
+        "    \"schema_version\": {},\n",
+        option_json(facts.config_schema_version)
     ));
     out.push_str(&format!(
         "    \"valid\": {},\n",
