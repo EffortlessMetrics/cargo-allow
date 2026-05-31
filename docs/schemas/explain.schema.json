@@ -451,11 +451,27 @@
         "status": {
           "$ref": "#/$defs/evidence_reference_status"
         },
+        "category": {
+          "$ref": "#/$defs/evidence_reference_category",
+          "description": "Optional human-facing diagnostic category. Current producers emit it; it remains optional for v1 compatibility with older artifacts."
+        },
         "message": {
           "type": "string",
           "minLength": 1
         }
       }
+    },
+    "evidence_reference_category": {
+      "type": "string",
+      "enum": [
+        "present",
+        "missing",
+        "invalid_local_path",
+        "not_local",
+        "unknown_prefix",
+        "untyped"
+      ],
+      "description": "Human-facing diagnostic category for evidence references. This preserves the stable status field while distinguishing weak evidence causes such as unknown prefixes and untyped strings."
     },
     "evidence_reference_status": {
       "type": "string",

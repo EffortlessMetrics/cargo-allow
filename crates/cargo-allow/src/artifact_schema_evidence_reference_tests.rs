@@ -24,6 +24,10 @@ fn evidence_reference_status_vocabularies_match_policy() {
         .iter()
         .map(|status| status.as_str())
         .collect::<Vec<_>>();
+    let evidence_reference_categories = allow_policy::EvidenceReferenceCategory::ALL
+        .iter()
+        .map(|category| category.as_str())
+        .collect::<Vec<_>>();
 
     for (schema_name, schema) in [
         ("common", &common),
@@ -35,6 +39,12 @@ fn evidence_reference_status_vocabularies_match_policy() {
             schema,
             "/$defs/evidence_reference/properties/status",
             &evidence_reference_statuses,
+        );
+        assert_schema_enum_or_ref_equals(
+            schema_name,
+            schema,
+            "/$defs/evidence_reference/properties/category",
+            &evidence_reference_categories,
         );
     }
 }
@@ -82,11 +92,21 @@ fn common_schema_evidence_fragments_keep_source_tree_contracts() {
         .iter()
         .map(|status| status.as_str())
         .collect::<Vec<_>>();
+    let evidence_reference_categories = allow_policy::EvidenceReferenceCategory::ALL
+        .iter()
+        .map(|category| category.as_str())
+        .collect::<Vec<_>>();
     assert_enum_equals(
         "common",
         &schema,
         "/$defs/evidence_reference_status/enum",
         &evidence_reference_statuses,
+    );
+    assert_enum_equals(
+        "common",
+        &schema,
+        "/$defs/evidence_reference_category/enum",
+        &evidence_reference_categories,
     );
 
     let evidence_reference =
@@ -121,6 +141,13 @@ fn common_schema_evidence_fragments_keep_source_tree_contracts() {
             .and_then(Value::as_str),
         Some("#/$defs/evidence_reference_status"),
         "common evidence_reference status should use the shared status vocabulary"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/evidence_reference/properties/category/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/evidence_reference_category"),
+        "common evidence_reference category should use the shared category vocabulary"
     );
 
     assert_enum_equals(

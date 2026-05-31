@@ -51,6 +51,7 @@ fn report_worklist_items(items: &[WorkItem]) -> Vec<allow_report::WorklistItem<'
                     prefix: reference.prefix.as_deref(),
                     target: reference.target.as_deref(),
                     status: &reference.status,
+                    category: &reference.category,
                     message: &reference.message,
                 }
             }),

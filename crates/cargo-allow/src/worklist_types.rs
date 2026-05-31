@@ -6,6 +6,7 @@ pub(super) struct WorkItemEvidenceReference {
     pub(super) prefix: Option<String>,
     pub(super) target: Option<String>,
     pub(super) status: String,
+    pub(super) category: String,
     pub(super) message: String,
 }
 

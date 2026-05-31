@@ -189,6 +189,7 @@ fn worklist_json_renderer_includes_optional_evidence_reference() {
             prefix: Some("spreadsheet"),
             target: Some("manual-review"),
             status: "unstructured",
+            category: "unknown_prefix",
             message: "unrecognized evidence prefix; not locally validated",
         }),
         source_package: None,
@@ -209,6 +210,7 @@ fn worklist_json_renderer_includes_optional_evidence_reference() {
     assert!(json.contains("\"prefix\": \"spreadsheet\""));
     assert!(json.contains("\"target\": \"manual-review\""));
     assert!(json.contains("\"status\": \"unstructured\""));
+    assert!(json.contains("\"category\": \"unknown_prefix\""));
     assert!(json.contains("\"source_package\": null"));
 
     let text = render_worklist_human(

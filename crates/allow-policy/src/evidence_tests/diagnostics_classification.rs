@@ -4,8 +4,8 @@ use allow_core::{AllowConfig, AllowEntry, FindingKind, Lifecycle, Selector};
 
 use super::{remove_test_dir, unique_test_dir};
 use crate::{
-    EvidenceReferenceStatus, evidence_reference_diagnostics, validate_local_evidence_references,
-    weak_evidence_reference_count,
+    EvidenceReferenceCategory, EvidenceReferenceStatus, evidence_reference_diagnostics,
+    validate_local_evidence_references, weak_evidence_reference_count,
 };
 
 #[test]
@@ -62,6 +62,11 @@ fn diagnostics_classify_traceability_evidence_without_local_validation() {
             .iter()
             .all(|diagnostic| diagnostic.message.contains("not executed"))
     );
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.category == EvidenceReferenceCategory::NotLocal)
+    );
     remove_test_dir(root);
 }
 
@@ -116,6 +121,11 @@ fn diagnostics_classify_empty_traceability_evidence_as_weak() {
         diagnostics
             .iter()
             .all(|diagnostic| diagnostic.target.is_none())
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.category == EvidenceReferenceCategory::Untyped)
     );
     assert_eq!(weak_evidence_reference_count(&root, &cfg), 2);
     validate_local_evidence_references(&root, &cfg).unwrap_or_else(|err| {
@@ -173,6 +183,10 @@ fn diagnostics_classify_unknown_prefix_evidence_as_weak() {
             .first()
             .and_then(|diagnostic| diagnostic.target.as_ref()),
         Some(&PathBuf::from("evidence/parser-123"))
+    );
+    assert_eq!(
+        diagnostics.first().map(|diagnostic| diagnostic.category),
+        Some(EvidenceReferenceCategory::UnknownPrefix)
     );
     assert!(
         diagnostics.first().is_some_and(|diagnostic| {

@@ -143,11 +143,12 @@ fn render_work_item_json(item: &WorklistItem<'_>) -> String {
 
 fn render_worklist_evidence_reference_json(reference: &crate::EvidenceReference<'_>) -> String {
     format!(
-        "{{\n        \"raw\": \"{}\",\n        \"prefix\": {},\n        \"target\": {},\n        \"status\": \"{}\",\n        \"message\": \"{}\"\n      }}",
+        "{{\n        \"raw\": \"{}\",\n        \"prefix\": {},\n        \"target\": {},\n        \"status\": \"{}\",\n        \"category\": \"{}\",\n        \"message\": \"{}\"\n      }}",
         json_escape(reference.raw),
         option_json(reference.prefix),
         option_json(reference.target),
         json_escape(reference.status),
+        json_escape(reference.category),
         json_escape(reference.message)
     )
 }
