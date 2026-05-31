@@ -61,7 +61,7 @@ fn explain_json_renderer_records_context_and_current_status() {
         raw: "doc:docs/safety/ffi.md",
         prefix: Some("doc"),
         target: Some("docs/safety/ffi.md"),
-        status: "missing",
+        status: "local_file_missing",
         message: "local evidence file is missing",
     }];
     let suggested_actions = vec!["add missing evidence".to_string()];
@@ -97,7 +97,7 @@ fn explain_json_renderer_records_context_and_current_status() {
     assert!(json.contains("\"broad_scope\": true"));
     assert!(json.contains("\"raw\": \"doc:docs/safety/ffi.md\""));
     assert!(json.contains("\"target\": \"docs/safety/ffi.md\""));
-    assert!(json.contains("\"status\": \"missing\""));
+    assert!(json.contains("\"status\": \"local_file_missing\""));
     assert!(json.contains("\"path\": \"src/ffi.rs\""));
     assert!(json.contains("\"source_package\": \"runtime\""));
     assert!(json.contains("\"score\": 9"));
@@ -166,7 +166,7 @@ fn explain_json_renderer_records_context_and_current_status() {
       "raw": "doc:docs/safety/ffi.md",
       "prefix": "doc",
       "target": "docs/safety/ffi.md",
-      "status": "missing",
+      "status": "local_file_missing",
       "message": "local evidence file is missing"
     }}
   ],
@@ -228,9 +228,9 @@ fn explain_json_renderer_records_context_and_current_status() {
     assert!(text.contains("selector_precision: 42"));
     assert!(text.contains("broad_scope: true"));
     assert!(text.contains("evidence diagnostics:"));
-    assert!(
-        text.contains("- missing: doc:docs/safety/ffi.md (prefix=doc, target=docs/safety/ffi.md)")
-    );
+    assert!(text.contains(
+        "- [missing] missing: doc:docs/safety/ffi.md (prefix=doc, target=docs/safety/ffi.md)"
+    ));
     assert!(text.contains("  message: local evidence file is missing"));
     assert!(text.contains("current_status: evidence_missing"));
     assert!(text.contains("current_matches: 1"));

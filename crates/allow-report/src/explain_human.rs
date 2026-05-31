@@ -148,13 +148,61 @@ fn list_or_none(values: &[String]) -> String {
 }
 
 fn evidence_reference_summary(reference: &EvidenceReference<'_>) -> String {
+    let status = evidence_reference_human_status(reference);
     format!(
-        "{}: {} (prefix={}, target={})",
-        reference.status,
+        "[{}] {}: {} (prefix={}, target={})",
+        status.marker,
+        status.label,
         reference.raw,
         reference.prefix.unwrap_or("-"),
         reference.target.unwrap_or("-")
     )
+}
+
+struct EvidenceReferenceHumanStatus {
+    marker: &'static str,
+    label: &'static str,
+}
+
+fn evidence_reference_human_status(
+    reference: &EvidenceReference<'_>,
+) -> EvidenceReferenceHumanStatus {
+    match reference.status {
+        "local_file_present" => EvidenceReferenceHumanStatus {
+            marker: "ok",
+            label: "present",
+        },
+        "local_file_missing" => EvidenceReferenceHumanStatus {
+            marker: "missing",
+            label: "missing",
+        },
+        "invalid_local_path" => EvidenceReferenceHumanStatus {
+            marker: "invalid",
+            label: "invalid_local_path",
+        },
+        "traceability_only" => EvidenceReferenceHumanStatus {
+            marker: "info",
+            label: "not_local",
+        },
+        "unstructured" if reference.message.contains("unrecognized evidence prefix") => {
+            EvidenceReferenceHumanStatus {
+                marker: "weak",
+                label: "unknown_prefix",
+            }
+        }
+        "unstructured" if reference.prefix.is_some() => EvidenceReferenceHumanStatus {
+            marker: "weak",
+            label: "untyped",
+        },
+        "unstructured" => EvidenceReferenceHumanStatus {
+            marker: "weak",
+            label: "untyped",
+        },
+        _ => EvidenceReferenceHumanStatus {
+            marker: "info",
+            label: "unknown_status",
+        },
+    }
 }
 
 fn selector_summary(entry: &AllowEntry) -> String {
