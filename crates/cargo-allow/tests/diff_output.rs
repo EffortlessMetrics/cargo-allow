@@ -94,6 +94,39 @@ fn diff_json_reports_invalid_local_evidence_added_policy_failure() {
 }
 
 #[test]
+fn diff_json_reports_weak_evidence_added_as_review_required() {
+    let root = temp_root("diff-weak-evidence-added");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(Some("spreadsheet:manual-review")),
+    );
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_success(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "review-required",
+        "diff weak evidence addition net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/policy_review_items",
+        1,
+        "diff weak evidence addition review item count",
+    );
+    assert_policy_change(&value, "evidence_added", "allow-unwrap", "review");
+    assert_file_contains(
+        &output,
+        "weak evidence added",
+        "diff output should explain weak evidence addition posture",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_reports_lifecycle_extension_as_review_required() {
     let root = temp_root("diff-lifecycle-extended");
     write_diff_fixture(
