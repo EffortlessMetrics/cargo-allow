@@ -221,8 +221,9 @@ Completed:
   different governed exception kind or family.
 - Report selector precision increases as policy improvements so narrowed or
   structurally strengthened receipts are visible in PR posture.
-- Report evidence additions as policy improvements so proof-link strengthening
-  is visible in PR posture.
+- Report valid evidence additions as policy improvements so proof-link
+  strengthening is visible in PR posture, while statically invalid local-file
+  evidence additions remain policy weakening.
 - Report occurrence-limit additions and reductions as policy improvements so
   counted-baseline tightening is visible in PR posture.
 - Report lifecycle additions and earlier review/expiry dates as policy

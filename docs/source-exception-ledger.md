@@ -115,8 +115,9 @@ evidence = [
 The presence of evidence is not proof that the exception is correct. It is a
 traceable claim that reviewers and tools can inspect. Diff mode reports removed
 evidence as policy weakening, typed evidence additions as policy improvements,
-and weak additions such as unstructured or unknown-prefix evidence as
-review-required posture changes.
+statically invalid local-file evidence additions as policy weakening, and weak
+additions such as unstructured or unknown-prefix evidence as review-required
+posture changes.
 
 General evidence can be required by setting `requirements.evidence_required =
 true`. It is opt-in so generated `baseline_debt` ledgers can remain adoption
