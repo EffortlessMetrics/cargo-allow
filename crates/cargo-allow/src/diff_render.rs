@@ -2,6 +2,7 @@ use allow_core::{Finding, MatchOutcome};
 use allow_match::CheckMode;
 
 use crate::OutputFormat;
+use crate::reporting::EvidenceReportSummary;
 
 pub(super) fn insert_markdown_pr_summary(text: &mut String, summary: &str) {
     allow_report::insert_markdown_pr_summary(text, summary);
@@ -9,14 +10,17 @@ pub(super) fn insert_markdown_pr_summary(text: &mut String, summary: &str) {
 
 pub(super) fn render_diff_pr_summary_markdown(
     current_failures: usize,
+    evidence: EvidenceReportSummary,
     outcomes: &[MatchOutcome],
     finding_changes: &[allow_diff::FindingPostureChange],
     policy_changes: &[allow_diff::PolicyChange],
 ) -> String {
     let finding_rows = finding_change_rows(finding_changes);
     let policy_rows = policy_change_rows(policy_changes);
-    allow_report::render_diff_pr_summary_markdown(
+    allow_report::render_diff_pr_summary_markdown_with_evidence_health(
         current_failures.max(current_no_new_failures(outcomes)),
+        evidence.broken_evidence_links,
+        evidence.weak_evidence_references,
         &finding_rows,
         &policy_rows,
     )

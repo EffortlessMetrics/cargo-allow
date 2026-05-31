@@ -112,6 +112,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     if args.format == OutputFormat::Markdown {
         let summary = render_diff_pr_summary_markdown(
             current_failures,
+            evidence,
             &outcomes,
             &finding_changes,
             &policy_changes,

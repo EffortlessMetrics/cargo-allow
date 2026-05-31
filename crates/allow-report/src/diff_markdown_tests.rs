@@ -46,6 +46,16 @@ fn diff_pr_summary_markdown_reports_net_posture() {
 }
 
 #[test]
+fn diff_pr_summary_markdown_reports_evidence_health_rows() {
+    let summary = render_diff_pr_summary_markdown_with_evidence_health(1, 1, 2, &[], &[]);
+
+    assert!(summary.contains("**Net posture:** `worse`"));
+    assert!(summary.contains("| Current check failures | 1 |"));
+    assert!(summary.contains("| Broken evidence links | 1 |"));
+    assert!(summary.contains("| Weak evidence references | 2 |"));
+}
+
+#[test]
 fn diff_posture_tables_escape_markdown_cells() {
     let finding_changes = vec![DiffFindingChange {
         change: "new",

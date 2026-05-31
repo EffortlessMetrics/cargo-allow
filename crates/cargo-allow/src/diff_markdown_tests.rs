@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn markdown_pr_summary_reports_unchanged_posture() {
-    let text = render_diff_pr_summary_markdown(0, &[], &[], &[]);
+    let text = render_diff_pr_summary_markdown(0, EvidenceReportSummary::default(), &[], &[], &[]);
 
     assert!(text.contains("**Net posture:** `unchanged`"));
     assert!(text.contains("| Current check failures | 0 |"));
@@ -18,7 +18,8 @@ fn markdown_pr_summary_reports_review_required_for_new_source_finding() {
         "src/lib.rs",
     )];
 
-    let text = render_diff_pr_summary_markdown(0, &[], &changes, &[]);
+    let text =
+        render_diff_pr_summary_markdown(0, EvidenceReportSummary::default(), &[], &changes, &[]);
 
     assert!(text.contains("**Net posture:** `review-required`"));
     assert!(text.contains("| New source findings | 1 |"));
@@ -32,7 +33,8 @@ fn markdown_pr_summary_reports_worse_for_policy_failure() {
         allow_diff::PolicyChangeKind::ScopeBroadened,
     )];
 
-    let text = render_diff_pr_summary_markdown(0, &[], &[], &changes);
+    let text =
+        render_diff_pr_summary_markdown(0, EvidenceReportSummary::default(), &[], &[], &changes);
 
     assert!(text.contains("**Net posture:** `worse`"));
     assert!(text.contains("| Policy failures | 1 |"));
@@ -48,7 +50,8 @@ fn markdown_pr_summary_reports_improved_for_removed_source_finding() {
         "src/lib.rs",
     )];
 
-    let text = render_diff_pr_summary_markdown(0, &[], &changes, &[]);
+    let text =
+        render_diff_pr_summary_markdown(0, EvidenceReportSummary::default(), &[], &changes, &[]);
 
     assert!(text.contains("**Net posture:** `improved`"));
     assert!(text.contains("| Removed source findings | 1 |"));
@@ -62,11 +65,32 @@ fn markdown_pr_summary_reports_improved_for_removed_policy_entry() {
         allow_diff::PolicyChangeKind::RemovedAllow,
     )];
 
-    let text = render_diff_pr_summary_markdown(0, &[], &[], &changes);
+    let text =
+        render_diff_pr_summary_markdown(0, EvidenceReportSummary::default(), &[], &[], &changes);
 
     assert!(text.contains("**Net posture:** `improved`"));
     assert!(text.contains("| Policy improvements | 1 |"));
     assert!(text.contains("keep the narrower posture"));
+}
+
+#[test]
+fn markdown_pr_summary_reports_evidence_health_counts() {
+    let text = render_diff_pr_summary_markdown(
+        1,
+        EvidenceReportSummary {
+            broken_evidence_links: 1,
+            weak_evidence_references: 2,
+            ..EvidenceReportSummary::default()
+        },
+        &[],
+        &[],
+        &[],
+    );
+
+    assert!(text.contains("**Net posture:** `worse`"));
+    assert!(text.contains("| Current check failures | 1 |"));
+    assert!(text.contains("| Broken evidence links | 1 |"));
+    assert!(text.contains("| Weak evidence references | 2 |"));
 }
 
 fn finding_posture_change(
