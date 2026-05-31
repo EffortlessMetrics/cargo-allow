@@ -137,6 +137,30 @@ fn schema_index_documents_claim_boundary_vocabulary() {
 }
 
 #[test]
+fn schema_index_documents_api_contract_change_rules() {
+    let index = include_str!("../../../docs/schemas/README.md");
+
+    for required_text in [
+        "## Contract Change Rules",
+        "Compatible `*.v1` changes include:",
+        "adding optional fields that are safe for consumers to ignore",
+        "tightening renderer tests so existing fields stay stable",
+        "adding non-breaking examples or schema compatibility coverage",
+        "`additionalProperties = false` at both the root and nested levels",
+        "Breaking changes require a new schema ID",
+        "removing, renaming, or changing the type of an existing field",
+        "making an optional field required",
+        "changing source-tree claim-boundary or scanner-limitation semantics",
+        "Enum additions are reviewed contract changes",
+    ] {
+        assert!(
+            index.contains(required_text),
+            "schema index should preserve API contract-change rule text: {required_text}"
+        );
+    }
+}
+
+#[test]
 fn schema_index_documents_evidence_prefix_vocabulary() {
     let index = include_str!("../../../docs/schemas/README.md");
     assert!(
