@@ -181,6 +181,52 @@ fn markdown_audit_report_includes_review_summary() {
 }
 
 #[test]
+fn human_audit_report_summarizes_source_exception_inventory() {
+    let findings = vec![
+        file_finding(FindingKind::Panic, "unwrap", "src/lib.rs"),
+        file_finding(FindingKind::Unsafe, "unsafe_block", "src/ffi.rs"),
+    ];
+    let outcomes = vec![
+        outcome(MatchStatus::Matched, Some(0)),
+        outcome(MatchStatus::New, Some(1)),
+    ];
+
+    let text =
+        render_human_with_context("audit", &findings, &outcomes, false, context("git_tracked"));
+
+    assert!(text.contains("Source exception inventory:"));
+    assert!(text.contains("findings                 2"));
+    assert!(text.contains("panic"));
+    assert!(text.contains("unsafe"));
+    assert!(text.contains("panic.unwrap"));
+    assert!(text.contains("unsafe.unsafe_block"));
+    assert!(text.contains("total=1 matched=1 new=0 review_items=0"));
+    assert!(text.contains("total=1 matched=0 new=1 review_items=1"));
+}
+
+#[test]
+fn markdown_audit_report_summarizes_source_exception_inventory() {
+    let findings = vec![
+        file_finding(FindingKind::Panic, "unwrap", "src/lib.rs"),
+        file_finding(FindingKind::Unsafe, "unsafe_block", "src/ffi.rs"),
+    ];
+    let outcomes = vec![
+        outcome(MatchStatus::Matched, Some(0)),
+        outcome(MatchStatus::New, Some(1)),
+    ];
+
+    let text =
+        render_markdown_with_context("audit", &findings, &outcomes, false, context("git_tracked"));
+
+    assert!(text.contains("## Source Exception Inventory"));
+    assert!(text.contains("Findings inventoried: `2`"));
+    assert!(text.contains("| `panic` | 1 | 1 | 0 | 0 |"));
+    assert!(text.contains("| `unsafe` | 1 | 0 | 1 | 1 |"));
+    assert!(text.contains("| `panic.unwrap` | 1 | 1 | 0 | 0 |"));
+    assert!(text.contains("| `unsafe.unsafe_block` | 1 | 0 | 1 | 1 |"));
+}
+
+#[test]
 fn human_audit_report_discloses_omitted_review_queue_items() {
     let outcomes = audit_review_queue_outcomes(21);
 

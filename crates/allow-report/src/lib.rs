@@ -52,6 +52,7 @@ mod report_text;
 mod sarif;
 #[cfg(test)]
 mod sarif_tests;
+mod source_inventory;
 mod summary;
 mod text;
 mod worklist;
@@ -114,6 +115,9 @@ pub use summary::{
 pub use worklist::{render_worklist_human, render_worklist_json};
 
 pub(crate) use non_rust::{FilePosture, non_rust_file_rows};
+pub(crate) use source_inventory::{
+    render_source_inventory_human, render_source_inventory_markdown,
+};
 pub(crate) use summary::{
     AUDIT_REVIEW_QUEUE_STATUSES, ReviewSignals, STATUS_COUNT_ORDER, audit_review_queue,
     baseline_debt_count, broken_evidence_link_count, policy_missing_evidence_count,

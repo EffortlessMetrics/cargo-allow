@@ -3,7 +3,8 @@ use crate::text::markdown_inline_code;
 use crate::{
     AUDIT_REVIEW_QUEUE_STATUSES, CLAIM_BOUNDARY_TEXT, ReportContext, ReviewSignals,
     STATUS_COUNT_ORDER, Summary, baseline_debt_count, broken_evidence_link_count,
-    policy_missing_evidence_count, weak_evidence_reference_count,
+    policy_missing_evidence_count, render_source_inventory_human, render_source_inventory_markdown,
+    weak_evidence_reference_count,
 };
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape};
 
@@ -81,6 +82,7 @@ pub fn render_human_with_context(
         out.push_str("  no outcomes\n");
     }
     if command == "audit" {
+        render_source_inventory_human(findings, outcomes, &mut out);
         render_audit_summary_human(&summary, outcomes, context, &mut out);
     }
     render_non_rust_human(findings, outcomes, &mut out);
@@ -244,6 +246,7 @@ pub fn render_markdown_with_context(
         ));
     }
     if command == "audit" {
+        render_source_inventory_markdown(findings, outcomes, &mut out);
         render_audit_summary_markdown(&summary, outcomes, context, &mut out);
     }
     render_non_rust_markdown(findings, outcomes, &mut out);
