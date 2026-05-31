@@ -1,7 +1,19 @@
 use super::{ListContext, ListFilters, ListRow, list_filter::list_row_matches};
 
+#[cfg(test)]
 pub(super) fn render_list_rows(rows: &[ListRow], filters: &ListFilters<'_>) -> String {
-    allow_report::render_list_human(&report_list_rows(rows, filters))
+    allow_report::render_list_human(
+        &report_list_rows(rows, filters),
+        allow_report::InventoryContext::unknown_source_syntax(),
+    )
+}
+
+pub(super) fn render_list_rows_with_context(
+    rows: &[ListRow],
+    filters: &ListFilters<'_>,
+    context: ListContext<'_>,
+) -> String {
+    allow_report::render_list_human(&report_list_rows(rows, filters), context.inventory)
 }
 
 pub(super) fn render_list_rows_json(
