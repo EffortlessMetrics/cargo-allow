@@ -84,10 +84,12 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(text.contains("allow_entries: 12"));
     assert!(text.contains("baseline_debt: 5"));
     assert!(text.contains("unsafe_entries: 2"));
+    assert!(
+        text.contains("inventory: source_tree/policy_migration via git_tracked; files scanned: 76")
+    );
     assert!(text.contains("source_tree_root: H:/Code/Rust/cargo-allow"));
-    assert!(text.contains("inventory_source: git_tracked"));
-    assert!(text.contains("files_scanned: 76"));
     assert!(text.contains("migration notes"));
+    assert!(text.contains(CLAIM_BOUNDARY_TEXT));
 }
 
 #[test]
