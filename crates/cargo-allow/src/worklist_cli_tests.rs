@@ -124,6 +124,6 @@ fn clap_accepts_hyphenated_worklist_item_kind_alias() {
         Some(CargoAllowCommand::Worklist(WorklistArgs {
             item_kind: Some(item_kind),
             ..
-        })) if item_kind == "stale-allow"
+        })) if item_kind == "stale_allow"
     ));
 }

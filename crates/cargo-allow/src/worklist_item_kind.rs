@@ -35,7 +35,7 @@ pub(crate) const WORK_ITEM_KINDS: &[&str] = &[
 pub(crate) fn parse_work_item_kind_filter(value: &str) -> Result<String, String> {
     let canonical = value.replace('-', "_");
     if WORK_ITEM_KINDS.iter().any(|kind| *kind == canonical) {
-        return Ok(value.to_string());
+        return Ok(canonical);
     }
     Err(format!("unknown work item kind `{value}`"))
 }
