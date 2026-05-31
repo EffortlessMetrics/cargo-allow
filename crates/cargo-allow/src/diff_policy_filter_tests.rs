@@ -34,6 +34,44 @@ fn diff_policy_changes_respect_kind_filter_for_base_and_head() {
     }));
 }
 
+#[test]
+fn diff_policy_changes_keep_ledger_level_posture_under_kind_filter() {
+    let mut base = AllowConfig::empty();
+    base.status = Some("active".to_string());
+    base.allow.push(entry("allow-panic", FindingKind::Panic));
+    base.allow.push(entry("allow-unsafe", FindingKind::Unsafe));
+
+    let mut head = AllowConfig::empty();
+    head.status = Some("advisory".to_string());
+    head.allow.push(entry("allow-panic", FindingKind::Panic));
+    head.allow
+        .push(entry("allow-non-rust", FindingKind::NonRustFile));
+
+    let changes = policy_changes_for_diff(Some(base), &head, Some("panic"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy diff: {err}")));
+
+    assert!(
+        changes.iter().any(|change| {
+            change.allow_id == "policy.status"
+                && change.kind == allow_diff::PolicyChangeKind::PolicyStatusWeakened
+                && change.severity == allow_diff::PolicyChangeSeverity::Fail
+        }),
+        "kind-filtered diff should keep ledger-level policy weakening: {changes:?}"
+    );
+    assert!(
+        !changes
+            .iter()
+            .any(|change| change.allow_id == "allow-unsafe"),
+        "kind-filtered diff should still suppress unrelated allow-entry removals: {changes:?}"
+    );
+    assert!(
+        !changes
+            .iter()
+            .any(|change| change.allow_id == "allow-non-rust"),
+        "kind-filtered diff should still suppress unrelated allow-entry additions: {changes:?}"
+    );
+}
+
 fn entry(id: &str, kind: FindingKind) -> AllowEntry {
     AllowEntry {
         id: id.to_string(),
