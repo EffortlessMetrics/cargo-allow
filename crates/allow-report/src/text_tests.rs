@@ -88,6 +88,58 @@ fn markdown_report_summarizes_non_rust_inventory() {
 }
 
 #[test]
+fn human_report_discloses_omitted_non_rust_inventory_rows() {
+    let findings = (0..41)
+        .map(|index| {
+            file_finding(
+                FindingKind::NonRustFile,
+                "documentation",
+                &format!("docs/{index}.md"),
+            )
+        })
+        .collect::<Vec<_>>();
+    let outcomes = (0..41)
+        .map(|index| outcome(MatchStatus::Matched, Some(index)))
+        .collect::<Vec<_>>();
+
+    let text = render_human_with_context(
+        "audit",
+        &findings,
+        &outcomes,
+        false,
+        ReportContext::source_syntax("git_tracked", None, Some(41), None),
+    );
+
+    assert!(text.contains("... 1 additional non-Rust file omitted from this listing"));
+}
+
+#[test]
+fn markdown_report_discloses_omitted_non_rust_inventory_rows() {
+    let findings = (0..61)
+        .map(|index| {
+            file_finding(
+                FindingKind::NonRustFile,
+                "documentation",
+                &format!("docs/{index}.md"),
+            )
+        })
+        .collect::<Vec<_>>();
+    let outcomes = (0..61)
+        .map(|index| outcome(MatchStatus::Matched, Some(index)))
+        .collect::<Vec<_>>();
+
+    let text = render_markdown_with_context(
+        "audit",
+        &findings,
+        &outcomes,
+        false,
+        ReportContext::source_syntax("git_tracked", None, Some(61), None),
+    );
+
+    assert!(text.contains("1 additional non-Rust file omitted from this listing."));
+}
+
+#[test]
 fn markdown_audit_report_includes_review_summary() {
     let findings = vec![
         file_finding(FindingKind::NonRustFile, "shell_script", "scripts/new.sh"),
