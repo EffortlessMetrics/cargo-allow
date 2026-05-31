@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const RELEASE_VERSION: &str = "0.1.2";
-const CURRENT_PUBLISHED_VERSION: &str = "0.1.1";
+const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.1";
 const RELEASE_DOC: &str = "docs/release/0.1.2.md";
 
 #[test]
@@ -58,19 +58,19 @@ fn release_0_1_2_version_handoff_matches_workspace_versions() {
 
     assert_eq!(
         workspace_version, RELEASE_VERSION,
-        "{RELEASE_VERSION} release prep should keep the workspace package version at {RELEASE_VERSION}"
+        "{RELEASE_VERSION} release record should keep the workspace package version at {RELEASE_VERSION}"
     );
     assert!(
-        release_doc.contains("# 0.1.2 Release Prep"),
-        "release handoff should name the target patch release"
+        release_doc.contains("# 0.1.2 Release Record"),
+        "release record should name the completed patch release"
     );
     assert!(
         release_doc.contains("to `0.1.2`"),
-        "release handoff should document the intended version bump"
+        "release record should document the completed version bump"
     );
     assert!(
         release_doc.contains("--version 0.1.2"),
-        "release handoff should smoke-test the published {RELEASE_VERSION} binary"
+        "release record should smoke-test the published {RELEASE_VERSION} binary"
     );
 
     for (package, manifest) in &package_manifests {
@@ -115,28 +115,28 @@ fn release_0_1_2_version_handoff_matches_workspace_versions() {
 }
 
 #[test]
-fn release_0_1_2_install_examples_remain_on_published_version_until_release() {
+fn release_0_1_2_install_examples_use_published_release() {
     let root = workspace_root();
     let release_doc = read_workspace_file(&root, RELEASE_DOC);
 
     assert!(
-        release_doc.contains("intentionally continue to\ninstall `cargo-allow --version 0.1.1`"),
-        "release prep should keep public install examples on the latest published crate"
+        release_doc.contains("Public install examples now pin the published `0.1.2` release"),
+        "release record should note that public install examples moved to the published release"
     );
 
     for relative_path in release_install_surfaces() {
         let content = read_workspace_file(&root, relative_path);
         assert!(
             content.contains(&format!(
-                "cargo install cargo-allow --version {CURRENT_PUBLISHED_VERSION} --locked"
+                "cargo install cargo-allow --version {RELEASE_VERSION} --locked"
             )),
-            "{relative_path} should install the currently published cargo-allow {CURRENT_PUBLISHED_VERSION} release"
+            "{relative_path} should install the published cargo-allow {RELEASE_VERSION} release"
         );
         assert!(
             !content.contains(&format!(
-                "cargo install cargo-allow --version {RELEASE_VERSION} --locked"
+                "cargo install cargo-allow --version {PREVIOUS_PUBLISHED_VERSION} --locked"
             )),
-            "{relative_path} should not advertise {RELEASE_VERSION} before crates.io publication"
+            "{relative_path} should not keep the previous {PREVIOUS_PUBLISHED_VERSION} install pin after publication"
         );
     }
 }
