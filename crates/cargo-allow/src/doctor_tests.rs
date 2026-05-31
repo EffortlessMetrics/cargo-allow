@@ -46,6 +46,9 @@ fn render_doctor_json_records_setup_context() {
         root_discovery: "nearest_git_root",
         config_path: Some("H:/Code/Rust/cargo-allow/policy/allow.toml"),
         config_schema_version: Some("0.1"),
+        config_policy: Some("cargo-allow"),
+        config_owner: Some("core/policy"),
+        config_status: Some("active"),
         config_valid: Some(true),
         config_diagnostic: None,
         inventory_source: "git_tracked",
@@ -74,6 +77,18 @@ fn render_doctor_json_records_setup_context() {
             .pointer("/config/schema_version")
             .and_then(Value::as_str),
         Some("0.1")
+    );
+    assert_eq!(
+        value.pointer("/config/policy").and_then(Value::as_str),
+        Some("cargo-allow")
+    );
+    assert_eq!(
+        value.pointer("/config/owner").and_then(Value::as_str),
+        Some("core/policy")
+    );
+    assert_eq!(
+        value.pointer("/config/status").and_then(Value::as_str),
+        Some("active")
     );
     assert_eq!(
         value.pointer("/config/valid").and_then(Value::as_bool),

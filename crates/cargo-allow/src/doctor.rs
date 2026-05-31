@@ -33,11 +33,26 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         .as_ref()
         .and_then(|result| result.as_ref().ok())
         .map(|cfg| cfg.schema_version.as_str());
+    let config_policy = policy
+        .as_ref()
+        .and_then(|result| result.as_ref().ok())
+        .map(|cfg| cfg.policy.as_str());
+    let config_owner = policy
+        .as_ref()
+        .and_then(|result| result.as_ref().ok())
+        .and_then(|cfg| cfg.owner.as_deref());
+    let config_status = policy
+        .as_ref()
+        .and_then(|result| result.as_ref().ok())
+        .and_then(|cfg| cfg.status.as_deref());
     let report = allow_report::DoctorReport {
         source_tree_root: source_context.source_tree_root(),
         root_discovery,
         config_path: config_text.as_deref(),
         config_schema_version,
+        config_policy,
+        config_owner,
+        config_status,
         config_valid,
         config_diagnostic: config_diagnostic.as_deref(),
         inventory_source: source_context.inventory_source(),
@@ -97,6 +112,9 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
         root_discovery: "nearest_git_root",
         config_path: Some("H:/Code/Rust/cargo-allow/policy/allow.toml"),
         config_schema_version: Some("0.1"),
+        config_policy: Some("cargo-allow"),
+        config_owner: Some("core/policy"),
+        config_status: Some("active"),
         config_valid: Some(true),
         config_diagnostic: None,
         inventory_source: "git_tracked",
