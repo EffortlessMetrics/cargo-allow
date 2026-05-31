@@ -15,6 +15,7 @@ mod diff_posture;
 mod doctor;
 #[cfg(test)]
 mod doctor_tests;
+mod evidence_reference_human;
 mod explain;
 mod explain_common;
 mod explain_human;
