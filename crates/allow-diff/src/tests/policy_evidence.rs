@@ -72,6 +72,43 @@ fn detects_evidence_added_as_improvement() {
 }
 
 #[test]
+fn detects_weak_evidence_added_as_review_required() {
+    let mut base_entry = entry("allow-1");
+    base_entry.evidence.clear();
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-1");
+    head_entry.evidence = vec![
+        "spreadsheet:manual-review".to_string(),
+        "test:".to_string(),
+        "untyped review note".to_string(),
+    ];
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::EvidenceAdded)
+        .unwrap_or_else(|| std::panic::panic_any("weak evidence addition should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Review);
+    assert!(change.message.contains("weak evidence added"));
+    let evidence = change
+        .evidence
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("weak evidence addition should include values"));
+    assert_eq!(evidence.field, EvidenceChangeField::Evidence);
+    assert!(evidence.removed.is_empty());
+    assert_eq!(
+        evidence.added,
+        vec![
+            "spreadsheet:manual-review".to_string(),
+            "test:".to_string(),
+            "untyped review note".to_string()
+        ]
+    );
+}
+
+#[test]
 fn detects_traceability_link_changes() {
     let mut base_entry = entry("allow-1");
     base_entry.links = vec!["adr:docs/adr/0001.md".to_string(), "issue:123".to_string()];
