@@ -159,6 +159,7 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
     assert!(text.contains("  exception: panic.unwrap"));
     assert!(text.contains("  action: review stale allow"));
     assert!(text.contains("  proof: cargo-allow check --mode no-new"));
+    assert!(text.contains("external evidence tools"));
 }
 
 #[test]

@@ -65,6 +65,7 @@ fn explain_entry_text_reports_live_match_status() {
     assert!(text.contains("source_package=fixture-package"));
     assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
     assert!(text.contains("did not invoke Cargo metadata"));
+    assert!(text.contains("external evidence tools"));
 }
 
 #[test]
