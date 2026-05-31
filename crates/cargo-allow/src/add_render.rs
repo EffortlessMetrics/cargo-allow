@@ -7,9 +7,9 @@ pub(super) fn render_add_summary(
     entry: &AllowEntry,
     finding: &Finding,
     output: Option<&Path>,
+    context: AddContext<'_>,
 ) -> String {
     let policy_output = output.map(|path| path.display().to_string());
-    let context = AddContext::default();
     allow_report::render_add_human(allow_report::AddReport::new(
         context.inventory,
         entry,

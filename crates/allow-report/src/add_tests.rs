@@ -170,7 +170,7 @@ fn add_json_renderer_records_entry_and_selected_finding() {
     assert_eq!(json, expected);
 
     let text = render_add_human(AddReport::new(
-        InventoryContext::source_syntax("git_tracked", None, None),
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(52)),
         &entry,
         &finding,
         Some("policy/allow.proposed.toml"),
@@ -178,10 +178,15 @@ fn add_json_renderer_records_entry_and_selected_finding() {
     ));
 
     assert!(text.contains("cargo-allow add summary"));
+    assert!(
+        text.contains("inventory: source_tree/source_syntax via git_tracked; files scanned: 52")
+    );
+    assert!(text.contains("source_tree_root: H:/Code/Rust/cargo-allow"));
     assert!(text.contains("id: allow-add-json"));
     assert!(text.contains("kind: panic"));
     assert!(text.contains("family: unwrap"));
     assert!(text.contains("matched finding: src/lib.rs:42:13"));
     assert!(text.contains("output: policy/allow.proposed.toml"));
     assert!(text.contains("requires human review"));
+    assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
 }

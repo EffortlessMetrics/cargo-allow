@@ -1,8 +1,8 @@
 use crate::contracts::ADD_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
 use crate::{
-    AddReport, finding_location_text, render_explain_finding_json, render_last_seen_json,
-    render_selector_json,
+    AddReport, CLAIM_BOUNDARY_TEXT, finding_location_text, render_explain_finding_json,
+    render_last_seen_json, render_selector_json,
 };
 use allow_core::{json_escape, normalize_path};
 
@@ -11,6 +11,16 @@ pub fn render_add_human(report: AddReport<'_>) -> String {
     let selected_finding = report.selected_finding;
     let mut out = String::new();
     out.push_str("cargo-allow add summary\n");
+    out.push_str(&format!(
+        "inventory: {}/{} via {}{}\n",
+        report.inventory.scope,
+        report.inventory.scanner,
+        report.inventory.source,
+        add_inventory_files_suffix(report.inventory)
+    ));
+    if let Some(root) = report.inventory.root {
+        out.push_str(&format!("source_tree_root: {root}\n"));
+    }
     out.push_str(&format!("id: {}\n", entry.id));
     out.push_str(&format!("kind: {}\n", entry.kind));
     if let Some(family) = &entry.family {
@@ -29,7 +39,16 @@ pub fn render_add_human(report: AddReport<'_>) -> String {
         out.push_str("output: stdout\n");
     }
     out.push_str("claim boundary: generated policy entry requires human review before merge.\n");
+    out.push_str(CLAIM_BOUNDARY_TEXT);
+    out.push('\n');
     out
+}
+
+fn add_inventory_files_suffix(inventory: crate::InventoryContext<'_>) -> String {
+    inventory
+        .files_scanned
+        .map(|files| format!("; files scanned: {files}"))
+        .unwrap_or_default()
 }
 
 pub fn render_add_json(report: AddReport<'_>) -> String {

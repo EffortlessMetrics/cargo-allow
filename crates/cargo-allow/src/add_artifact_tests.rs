@@ -93,3 +93,44 @@ fn render_add_summary_json_records_entry_and_selected_finding() {
         "add selected finding source package"
     );
 }
+
+#[test]
+fn render_add_summary_human_records_inventory_context() {
+    let finding = test_finding_at_line(
+        FindingKind::Panic,
+        Some("unwrap"),
+        "src/lib.rs",
+        "method_call",
+        42,
+    );
+    let entry = allow_entry_from_finding(AddEntryRequest {
+        finding: &finding,
+        id: "allow-0101".to_string(),
+        owner: "parser".to_string(),
+        classification: "validated_invariant".to_string(),
+        reason: "Parser validates the span before unwrapping.".to_string(),
+        evidence: vec!["test:parser_validates_span".to_string()],
+        review_after: "2026-11-01".to_string(),
+        expires: Some("2027-01-01".to_string()),
+    });
+
+    let text = render_add_summary(
+        &entry,
+        &finding,
+        Some(Path::new("policy/allow.proposed.toml")),
+        AddContext {
+            inventory: allow_report::InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(52),
+            ),
+        },
+    );
+
+    assert!(
+        text.contains("inventory: source_tree/source_syntax via git_tracked; files scanned: 52")
+    );
+    assert!(text.contains("source_tree_root: H:/Code/Rust/cargo-allow"));
+    assert!(text.contains("matched finding: src/lib.rs:42:1"));
+    assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
+}

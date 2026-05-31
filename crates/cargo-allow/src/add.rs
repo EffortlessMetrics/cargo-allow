@@ -77,7 +77,9 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         inventory: source_context.inventory(),
     };
     let summary = match args.summary_format {
-        AddSummaryFormat::Human => render_add_summary(&entry, finding, args.write.as_deref()),
+        AddSummaryFormat::Human => {
+            render_add_summary(&entry, finding, args.write.as_deref(), context)
+        }
         AddSummaryFormat::Json => {
             render_add_summary_json(&entry, finding, args.write.as_deref(), args.force, context)
         }
