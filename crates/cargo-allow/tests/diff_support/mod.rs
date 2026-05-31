@@ -98,7 +98,7 @@ callee = "unwrap"
     )
 }
 
-fn git(root: &Path, args: &[&str]) {
+pub fn git(root: &Path, args: &[&str]) {
     let output = Command::new("git")
         .arg("-C")
         .arg(root)

@@ -37,7 +37,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         .unwrap_or_else(|| report_cfg.clone());
     let head_cfg_for_diff = if let Some(head) = &args.head {
         allow_diff::policy_config_at_revision(&root, head, &policy_path)?
-            .unwrap_or_else(|| cfg.clone())
+            .unwrap_or_else(AllowConfig::empty)
     } else {
         cfg.clone()
     };
