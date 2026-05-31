@@ -156,6 +156,9 @@ mod filter_source_tests;
 #[path = "worklist_filter_tests.rs"]
 mod filter_tests;
 #[cfg(test)]
+#[path = "worklist_proof_command_tests.rs"]
+mod proof_command_tests;
+#[cfg(test)]
 #[path = "worklist_render_context_tests.rs"]
 mod render_context_tests;
 #[cfg(test)]
