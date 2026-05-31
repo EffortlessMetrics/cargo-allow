@@ -165,9 +165,7 @@ fn policy_changes_for_diff(
     head_cfg: &AllowConfig,
     kind_filter: Option<&str>,
 ) -> CargoAllowResult<Vec<allow_diff::PolicyChange>> {
-    let Some(base_cfg) = base_cfg else {
-        return Ok(Vec::new());
-    };
+    let base_cfg = base_cfg.unwrap_or_else(AllowConfig::empty);
     let base_cfg = report_config(&base_cfg, kind_filter)?;
     let head_cfg = report_config(head_cfg, kind_filter)?;
     Ok(allow_diff::policy_changes(&base_cfg, &head_cfg))
