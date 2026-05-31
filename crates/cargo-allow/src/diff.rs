@@ -1,5 +1,6 @@
 use allow_core::{
     AllowConfig, CargoAllowError, CargoAllowResult, Finding, MatchOutcome, normalize_path,
+    source_tree_path_is_ignored,
 };
 use allow_inventory::{InventorySource, resolve_source_tree_root};
 use allow_match::{CheckMode, evaluate};
@@ -118,8 +119,11 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         .count()
         + evidence.broken_evidence_links;
     let failed = current_failures > 0 || policy_failed;
-    let report_inventory_facts = if let Some(files) = head_source_tree_files.as_ref() {
-        InventoryFacts::scanned(InventorySource::GitTracked, files.len())
+    let report_inventory_facts = if let Some(head) = args.head.as_deref() {
+        InventoryFacts::scanned(
+            InventorySource::GitTracked,
+            source_tree_file_count_at_revision(&root, head, &report_cfg)?,
+        )
     } else {
         current_world_loaded(&current_world)?.inventory_facts
     };
@@ -400,6 +404,17 @@ fn source_tree_files_at_revision(
         .into_iter()
         .map(normalize_path)
         .collect())
+}
+
+fn source_tree_file_count_at_revision(
+    root: &Path,
+    revision: &str,
+    cfg: &AllowConfig,
+) -> CargoAllowResult<usize> {
+    Ok(allow_diff::git_tracked_files_at_revision(root, revision)?
+        .into_iter()
+        .filter(|path| !source_tree_path_is_ignored(path, &cfg.workspace.ignored))
+        .count())
 }
 
 fn local_evidence_target(reference: &str) -> Option<String> {
