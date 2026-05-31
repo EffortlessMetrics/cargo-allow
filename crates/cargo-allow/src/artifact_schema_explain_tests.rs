@@ -122,10 +122,17 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
         .iter()
         .map(|status| status.as_str())
         .collect::<Vec<_>>();
+    assert_eq!(
+        schema
+            .pointer("/$defs/evidence_reference/properties/status/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/evidence_reference_status"),
+        "explain evidence reference status should use the shared status definition"
+    );
     assert_enum_equals(
         "explain evidence reference status",
         &schema,
-        "/$defs/evidence_reference/properties/status/enum",
+        "/$defs/evidence_reference_status/enum",
         &evidence_statuses,
     );
 

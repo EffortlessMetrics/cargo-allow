@@ -1459,6 +1459,10 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         "explain",
         include_str!("../../../docs/schemas/explain.schema.json"),
     );
+    let worklist = parse_schema(
+        "worklist",
+        include_str!("../../../docs/schemas/worklist.schema.json"),
+    );
 
     for fragment in [
         "diff",
@@ -1495,6 +1499,11 @@ fn artifact_local_fragments_match_common_wire_shapes() {
     for (schema_name, schema) in [("add", &add), ("explain", &explain)] {
         assert_common_fragment_matches(schema_name, schema, &common, "structural_identity");
         assert_common_fragment_matches(schema_name, schema, &common, "selector");
+    }
+
+    for (schema_name, schema) in [("explain", &explain), ("worklist", &worklist)] {
+        assert_common_fragment_matches(schema_name, schema, &common, "evidence_reference");
+        assert_common_fragment_matches(schema_name, schema, &common, "evidence_reference_status");
     }
 
     assert_common_fragment_matches("receipt", &receipt, &common, "counts");
