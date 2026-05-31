@@ -110,12 +110,53 @@ fn release_0_1_1_version_handoff_matches_workspace_versions() {
     }
 }
 
+#[test]
+fn release_0_1_1_keeps_pre_publish_install_examples_on_published_version() {
+    let root = workspace_root();
+    let release_doc = read_workspace_file(&root, "docs/release/0.1.1.md");
+
+    assert!(
+        release_doc.contains("Do not update README or CI install examples to `0.1.1` until"),
+        "release handoff should keep README and CI install examples on the published version before crates.io visibility"
+    );
+    assert!(
+        release_doc.contains("Then update README and CI examples from `0.1.0` to `0.1.1`"),
+        "release handoff should make the post-publish install-example update explicit"
+    );
+
+    for relative_path in pre_publish_install_surfaces() {
+        let content = read_workspace_file(&root, relative_path);
+        assert!(
+            content.contains("cargo install cargo-allow --version 0.1.0 --locked"),
+            "{relative_path} should install the currently published cargo-allow release"
+        );
+        assert!(
+            !content.contains("cargo install cargo-allow --version 0.1.1"),
+            "{relative_path} should not advertise cargo-allow 0.1.1 until publication is verified"
+        );
+    }
+}
+
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(Path::parent)
         .unwrap_or_else(|| std::panic::panic_any("cargo-allow manifest should be under crates/"))
         .to_path_buf()
+}
+
+fn pre_publish_install_surfaces() -> &'static [&'static str] {
+    &[
+        "README.md",
+        "docs/ci.md",
+        "examples/github-actions/cargo-allow-check.yml",
+        "examples/github-actions/cargo-allow-diff.yml",
+    ]
+}
+
+fn read_workspace_file(root: &Path, relative_path: &str) -> String {
+    fs::read_to_string(root.join(relative_path))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read {relative_path}: {err}")))
 }
 
 fn workspace_package_manifests(root: &Path) -> BTreeMap<String, String> {
