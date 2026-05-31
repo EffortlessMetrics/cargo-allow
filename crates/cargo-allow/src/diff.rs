@@ -149,5 +149,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
 }
 
 #[cfg(test)]
-#[path = "diff_tests.rs"]
-mod tests;
+#[path = "diff_json_tests.rs"]
+mod json_tests;
+#[cfg(test)]
+#[path = "diff_markdown_tests.rs"]
+mod markdown_tests;
