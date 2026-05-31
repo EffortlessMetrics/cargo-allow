@@ -19,19 +19,19 @@ pub(crate) fn evidence_reference_human_status(
         },
         "invalid_local_path" => EvidenceReferenceHumanStatus {
             marker: "invalid",
-            label: "invalid_local_path",
+            label: "invalid-local-path",
         },
         "not_local" => EvidenceReferenceHumanStatus {
             marker: "info",
-            label: "not_local",
+            label: "not-local",
         },
         "unknown_prefix" => EvidenceReferenceHumanStatus {
             marker: "weak",
-            label: "unknown_prefix",
+            label: "weak",
         },
         "untyped" => EvidenceReferenceHumanStatus {
             marker: "weak",
-            label: "untyped",
+            label: "weak",
         },
         _ => EvidenceReferenceHumanStatus {
             marker: "info",

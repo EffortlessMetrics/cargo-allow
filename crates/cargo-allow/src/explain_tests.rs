@@ -116,7 +116,7 @@ fn explain_entry_text_reports_evidence_reference_status() {
     assert!(text.contains("spec:docs/missing.md"));
     assert!(text.contains("[missing] missing: spec:docs/missing.md"));
     assert!(text.contains("test:file_policy_fixture"));
-    assert!(text.contains("[info] not_local: test:file_policy_fixture"));
+    assert!(text.contains("[info] not-local: test:file_policy_fixture"));
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
@@ -141,9 +141,9 @@ fn explain_entry_text_reports_weak_evidence_next_actions() {
     let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
 
     assert!(text.contains("current_status: matched"));
-    assert!(text.contains("[weak] unknown_prefix: spreadsheet:manual-review"));
+    assert!(text.contains("[weak] weak: spreadsheet:manual-review"));
     assert!(text.contains("unrecognized evidence prefix"));
-    assert!(text.contains("[weak] untyped: TODO add reviewed evidence"));
+    assert!(text.contains("[weak] weak: TODO add reviewed evidence"));
     assert!(text.contains("unstructured evidence string"));
     assert!(text.contains("action: replace the weak evidence string"));
     assert!(
