@@ -29,10 +29,15 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         .as_ref()
         .map(|path| allow_report::source_tree_path_text(path));
     let (config_valid, config_diagnostic) = config_status(&root, policy.as_ref());
+    let config_schema_version = policy
+        .as_ref()
+        .and_then(|result| result.as_ref().ok())
+        .map(|cfg| cfg.schema_version.as_str());
     let report = allow_report::DoctorReport {
         source_tree_root: source_context.source_tree_root(),
         root_discovery,
         config_path: config_text.as_deref(),
+        config_schema_version,
         config_valid,
         config_diagnostic: config_diagnostic.as_deref(),
         inventory_source: source_context.inventory_source(),
@@ -91,6 +96,7 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
         source_tree_root: "H:/Code/Rust/cargo-allow",
         root_discovery: "nearest_git_root",
         config_path: Some("H:/Code/Rust/cargo-allow/policy/allow.toml"),
+        config_schema_version: Some("0.1"),
         config_valid: Some(true),
         config_diagnostic: None,
         inventory_source: "git_tracked",
