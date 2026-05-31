@@ -5,6 +5,7 @@ use crate::syntax_kinds::{
     PanicMacroInvocation, PanicMacroKind, PanicMethodCall, PanicMethodKind, RustSyntaxFacts,
 };
 use crate::syntax_tree::node_text;
+use crate::text::source_column;
 
 pub(super) fn record_node_panic_constructs(
     node: Node<'_>,
@@ -32,12 +33,12 @@ fn panic_macro_invocation(node: Node<'_>, source: &str) -> Option<(u32, PanicMac
     let base_name = macro_text.rsplit("::").next().unwrap_or(macro_text);
     let kind = PanicMacroKind::from_name(base_name)?;
     let start = macro_node.start_position();
-    let base_offset = macro_text.len().saturating_sub(base_name.len()) as u32;
+    let base_offset = macro_text.len().saturating_sub(base_name.len());
     Some((
         start.row as u32 + 1,
         PanicMacroInvocation {
             kind,
-            column: start.column as u32 + base_offset + 1,
+            column: source_column(source, start.row, start.column + base_offset),
         },
     ))
 }
@@ -62,7 +63,7 @@ fn panic_method_call(node: Node<'_>, source: &str) -> Option<(u32, PanicMethodCa
         start.row as u32 + 1,
         PanicMethodCall {
             kind,
-            column: start.column as u32 + 1,
+            column: source_column(source, start.row, start.column),
             receiver_fingerprint,
         },
     ))
