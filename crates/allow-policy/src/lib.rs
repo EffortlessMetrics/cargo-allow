@@ -6,6 +6,7 @@ mod entries_validation;
 mod entry_validation;
 mod evidence;
 mod evidence_diagnostics;
+mod evidence_path;
 mod evidence_reference;
 mod lifecycle;
 mod policy_header;
