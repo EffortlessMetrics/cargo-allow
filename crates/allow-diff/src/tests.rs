@@ -6,6 +6,7 @@ use support::*;
 
 mod finding_posture;
 mod policy_entry;
+mod policy_evidence;
 mod policy_header;
 mod policy_lifecycle;
 mod policy_metadata;
