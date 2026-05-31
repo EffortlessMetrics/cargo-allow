@@ -88,7 +88,7 @@ pub use diff::{
     render_diff_finding_changes_human, render_diff_finding_changes_markdown,
     render_diff_json_with_posture, render_diff_policy_changes_human,
     render_diff_policy_changes_markdown, render_diff_posture_summary_human,
-    render_diff_pr_summary_markdown,
+    render_diff_pr_summary_markdown, render_diff_pr_summary_markdown_with_evidence_health,
 };
 pub use doctor::{render_doctor_human, render_doctor_json};
 pub(crate) use explain::finding_location_text;

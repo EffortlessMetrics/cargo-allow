@@ -10,6 +10,22 @@ pub fn render_diff_pr_summary_markdown(
     finding_changes: &[DiffFindingChange<'_>],
     policy_changes: &[DiffPolicyChange<'_>],
 ) -> String {
+    render_diff_pr_summary_markdown_with_evidence_health(
+        current_failures,
+        0,
+        0,
+        finding_changes,
+        policy_changes,
+    )
+}
+
+pub fn render_diff_pr_summary_markdown_with_evidence_health(
+    current_failures: usize,
+    broken_evidence_links: usize,
+    weak_evidence_references: usize,
+    finding_changes: &[DiffFindingChange<'_>],
+    policy_changes: &[DiffPolicyChange<'_>],
+) -> String {
     let summary = diff_posture_summary(current_failures, finding_changes, policy_changes);
     let posture = diff_net_posture(summary);
     let mut out = String::new();
@@ -20,6 +36,16 @@ pub fn render_diff_pr_summary_markdown(
         "| Current check failures | {} |\n",
         summary.current_failures
     ));
+    if broken_evidence_links > 0 {
+        out.push_str(&format!(
+            "| Broken evidence links | {broken_evidence_links} |\n"
+        ));
+    }
+    if weak_evidence_references > 0 {
+        out.push_str(&format!(
+            "| Weak evidence references | {weak_evidence_references} |\n"
+        ));
+    }
     out.push_str(&format!(
         "| New source findings | {} |\n",
         summary.new_findings
