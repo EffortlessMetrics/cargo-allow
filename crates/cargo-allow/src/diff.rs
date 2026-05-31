@@ -255,11 +255,10 @@ fn git_relative_config_path_for_diff(
     if head.is_none() {
         return git_relative_config_path(root, config);
     }
+    let head = head.unwrap_or(base);
     if let Some(config) = config {
         let path = explicit_diff_config_path(root, config)?;
-        if revision_has_config(root, head.unwrap_or(base), &path)?
-            || revision_has_config(root, base, &path)?
-        {
+        if revision_has_config(root, head, &path)? || revision_has_config(root, base, &path)? {
             return Ok(path);
         }
         return Err(CargoAllowError::new(format!(
@@ -269,9 +268,13 @@ fn git_relative_config_path_for_diff(
     }
     for candidate in default_diff_policy_paths() {
         let candidate = PathBuf::from(candidate);
-        if revision_has_config(root, head.unwrap_or(base), &candidate)?
-            || revision_has_config(root, base, &candidate)?
-        {
+        if revision_has_config(root, head, &candidate)? {
+            return Ok(candidate);
+        }
+    }
+    for candidate in default_diff_policy_paths() {
+        let candidate = PathBuf::from(candidate);
+        if revision_has_config(root, base, &candidate)? {
             return Ok(candidate);
         }
     }
