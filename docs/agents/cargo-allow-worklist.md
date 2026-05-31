@@ -44,7 +44,9 @@ references yet.
 Saved worklist artifacts record the applied filters; preserve that context in
 handoffs.
 The default order already puts high-risk work first, then lower estimated
-difficulty.
+difficulty. Within the same queue kind, policy-backed items with lower
+`selector_precision` appear earlier so broad or weak receipts are easier to
+pick up for narrowing work.
 Treat `work-*` IDs as queue-local handles; cite `allow_id` when you need a
 durable policy reference, and use `--allow-id <id>` to reopen that policy-backed
 slice.

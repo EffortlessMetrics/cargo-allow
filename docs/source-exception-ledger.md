@@ -423,7 +423,8 @@ doctor, report, receipt, explain, list, prune, propose, and worklist schemas
 enumerate scanner limitation values rather than treating claim-boundary facts
 as open-ended prose.
 Work items are ordered for routing: high risk first, then lower estimated
-difficulty, then stable source and allow identifiers.
+difficulty, then queue kind, then lower selector precision when a policy entry
+is tied to the item, then stable source and allow identifiers.
 `work-*` IDs are artifact-local queue handles assigned after filtering and
 sorting; use `allow_id` for durable policy references.
 Policy-backed work items include owner, classification, and reason so the queue

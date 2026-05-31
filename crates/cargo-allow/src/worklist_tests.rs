@@ -250,3 +250,40 @@ fn worklist_sort_prioritizes_risk_then_difficulty() {
     assert_eq!(items[3].kind, "stale_allow");
     assert_eq!(items[3].id, "work-stale-allow-0004");
 }
+
+#[test]
+fn worklist_sort_orders_same_kind_by_lower_selector_precision() {
+    let mut cfg = AllowConfig::empty();
+    let mut strong = test_entry("allow-strong", FindingKind::Panic);
+    strong.path = Some("a.rs".into());
+    strong.selector.container = Some("checked".to_string());
+    strong.selector.normalized_snippet_hash = Some("fnv1a64:strong".to_string());
+    let mut weak = test_entry("allow-weak", FindingKind::Panic);
+    weak.path = Some("z.rs".into());
+    cfg.allow.push(strong);
+    cfg.allow.push(weak);
+    let outcomes = vec![
+        test_outcome(
+            MatchStatus::Stale,
+            Some("allow-strong"),
+            None,
+            "allow-strong is stale",
+        ),
+        test_outcome(
+            MatchStatus::Stale,
+            Some("allow-weak"),
+            None,
+            "allow-weak is stale",
+        ),
+    ];
+
+    let mut items = work_items_from_outcomes(&cfg, &[], &outcomes);
+    sort_work_items(&mut items);
+    renumber_work_items(&mut items);
+
+    assert_eq!(items[0].allow_id.as_deref(), Some("allow-weak"));
+    assert!(items[0].selector_precision < items[1].selector_precision);
+    assert_eq!(items[0].id, "work-stale-allow-0001");
+    assert_eq!(items[1].allow_id.as_deref(), Some("allow-strong"));
+    assert_eq!(items[1].id, "work-stale-allow-0002");
+}
