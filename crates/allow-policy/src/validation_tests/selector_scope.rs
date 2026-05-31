@@ -87,6 +87,48 @@ fn rejects_wildcard_tokens_in_exact_path_scope() {
 }
 
 #[test]
+fn rejects_path_scope_with_surrounding_whitespace() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "padded-path"
+                kind = "non_rust_file"
+                path = " docs/policy.md "
+                owner = "core"
+                classification = "documentation"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = " docs/policy.md "
+            "#,
+    );
+
+    assert!(err.contains("padded-path path must not have leading or trailing whitespace"));
+}
+
+#[test]
+fn rejects_glob_scope_with_surrounding_whitespace() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "padded-glob"
+                kind = "non_rust_file"
+                glob = " docs/** "
+                owner = "core"
+                classification = "documentation"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = " docs/** "
+            "#,
+    );
+
+    assert!(err.contains("padded-glob glob must not have leading or trailing whitespace"));
+}
+
+#[test]
 fn accepts_path_with_matching_selector_glob() {
     let cfg = parse_policy(
         r#"

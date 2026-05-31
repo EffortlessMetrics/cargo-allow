@@ -28,6 +28,11 @@ fn validate_source_tree_scope(
     if text.trim().is_empty() {
         return Err(CargoAllowError::new(diagnostic.empty_message(label)));
     }
+    if text.trim() != text {
+        return Err(CargoAllowError::new(
+            diagnostic.surrounding_whitespace_message(label),
+        ));
+    }
     if text.starts_with('/') || text.contains(':') {
         return Err(CargoAllowError::new(
             diagnostic.source_tree_relative_message(label),
@@ -83,6 +88,13 @@ impl SourceTreeScopeDiagnostic {
         match self {
             Self::Path => format!("{label} path must be source-tree-relative"),
             Self::Glob => format!("{label} must be source-tree-relative"),
+        }
+    }
+
+    fn surrounding_whitespace_message(self, label: &str) -> String {
+        match self {
+            Self::Path => format!("{label} path must not have leading or trailing whitespace"),
+            Self::Glob => format!("{label} must not have leading or trailing whitespace"),
         }
     }
 
