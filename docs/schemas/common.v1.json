@@ -159,6 +159,142 @@
         }
       }
     },
+    "selected_finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "kind",
+        "family",
+        "path",
+        "line",
+        "column",
+        "source_package",
+        "identity",
+        "message"
+      ],
+      "properties": {
+        "status": {
+          "const": "selected"
+        },
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "One-based source line for review/navigation when available."
+        },
+        "column": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "One-based source character column for review/navigation when available."
+        },
+        "source_package": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Scanner-provided source package context; not Cargo metadata or build proof."
+        },
+        "identity": {
+          "$ref": "#/$defs/structural_identity"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "current_finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "kind",
+        "family",
+        "path",
+        "line",
+        "column",
+        "source_package",
+        "identity",
+        "message"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "One-based source line for review/navigation when available."
+        },
+        "column": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "One-based source character column for review/navigation when available."
+        },
+        "source_package": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Scanner-provided source package context; not Cargo metadata or build proof."
+        },
+        "identity": {
+          "$ref": "#/$defs/structural_identity"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
     "match_status": {
       "type": "string",
       "enum": [
