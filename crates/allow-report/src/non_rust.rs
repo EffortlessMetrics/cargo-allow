@@ -3,6 +3,9 @@ use std::collections::BTreeMap;
 
 use crate::text::markdown_cell;
 
+const HUMAN_FILE_ROW_LIMIT: usize = 40;
+const MARKDOWN_FILE_ROW_LIMIT: usize = 60;
+
 #[derive(Debug, Default)]
 pub(crate) struct FilePosture {
     pub(crate) total: usize,
@@ -80,12 +83,14 @@ pub(crate) fn render_non_rust_human(
     let rows = non_rust_file_rows(findings, outcomes);
     if !rows.is_empty() {
         out.push_str("  files:\n");
-        for row in rows.into_iter().take(40) {
+        let row_count = rows.len();
+        for row in rows.into_iter().take(HUMAN_FILE_ROW_LIMIT) {
             out.push_str(&format!(
                 "    {:12} {:24} {}\n",
                 row.status, row.family, row.path
             ));
         }
+        append_human_omitted_file_note(out, row_count);
     }
 }
 
@@ -113,7 +118,8 @@ pub(crate) fn render_non_rust_markdown(
     let rows = non_rust_file_rows(findings, outcomes);
     if !rows.is_empty() {
         out.push_str("\n| Status | Family | Path |\n|---|---|---|\n");
-        for row in rows.into_iter().take(60) {
+        let row_count = rows.len();
+        for row in rows.into_iter().take(MARKDOWN_FILE_ROW_LIMIT) {
             out.push_str(&format!(
                 "| `{}` | `{}` | `{}` |\n",
                 markdown_cell(row.status),
@@ -121,6 +127,27 @@ pub(crate) fn render_non_rust_markdown(
                 markdown_cell(&row.path)
             ));
         }
+        append_markdown_omitted_file_note(out, row_count);
+    }
+}
+
+fn append_human_omitted_file_note(out: &mut String, row_count: usize) {
+    if row_count > HUMAN_FILE_ROW_LIMIT {
+        let omitted = row_count - HUMAN_FILE_ROW_LIMIT;
+        let plural = if omitted == 1 { "" } else { "s" };
+        out.push_str(&format!(
+            "    ... {omitted} additional non-Rust file{plural} omitted from this listing\n"
+        ));
+    }
+}
+
+fn append_markdown_omitted_file_note(out: &mut String, row_count: usize) {
+    if row_count > MARKDOWN_FILE_ROW_LIMIT {
+        let omitted = row_count - MARKDOWN_FILE_ROW_LIMIT;
+        let plural = if omitted == 1 { "" } else { "s" };
+        out.push_str(&format!(
+            "\n{omitted} additional non-Rust file{plural} omitted from this listing.\n"
+        ));
     }
 }
 
