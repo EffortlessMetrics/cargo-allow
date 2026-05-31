@@ -118,6 +118,17 @@ mod tests {
         assert!(!help.contains("workspace.default_mode"));
     }
 
+    #[test]
+    fn diff_help_describes_kind_filter_as_source_and_policy_posture() {
+        let mut command = CargoAllowCli::command();
+        let Some(diff) = command.find_subcommand_mut("diff") else {
+            std::panic::panic_any("diff subcommand should exist");
+        };
+        let help = diff.render_help().to_string();
+
+        assert!(help.contains("Filter source findings and allow-entry policy changes by kind"));
+    }
+
     fn argv(items: Vec<&str>) -> Vec<String> {
         items.into_iter().map(String::from).collect()
     }
