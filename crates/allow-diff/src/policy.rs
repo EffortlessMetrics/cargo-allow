@@ -15,9 +15,8 @@ pub fn policy_changes_from_git(
     policy_path: impl AsRef<Path>,
     head_cfg: &AllowConfig,
 ) -> CargoAllowResult<Vec<PolicyChange>> {
-    let Some(base_cfg) = policy_config_at_revision(root, base, policy_path)? else {
-        return Ok(Vec::new());
-    };
+    let base_cfg =
+        policy_config_at_revision(root, base, policy_path)?.unwrap_or_else(AllowConfig::empty);
     Ok(policy_changes(&base_cfg, head_cfg))
 }
 
