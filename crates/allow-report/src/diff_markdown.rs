@@ -1,7 +1,7 @@
 use crate::diff_policy_detail::policy_change_detail;
 use crate::diff_posture::{diff_net_posture, diff_posture_summary};
 use crate::text::markdown_cell;
-use crate::{DiffFindingChange, DiffPolicyChange};
+use crate::{CLAIM_BOUNDARY_TEXT, DiffFindingChange, DiffPolicyChange};
 
 const PR_SUMMARY_HIGHLIGHT_LIMIT: usize = 8;
 
@@ -44,6 +44,9 @@ pub fn render_diff_pr_summary_markdown(
         "\n**Reviewer action:** {}\n\n",
         posture.reviewer_action()
     ));
+    out.push_str("> ");
+    out.push_str(CLAIM_BOUNDARY_TEXT);
+    out.push_str("\n\n");
     append_finding_highlights(&mut out, finding_changes);
     append_policy_highlights(&mut out, policy_changes);
     out
