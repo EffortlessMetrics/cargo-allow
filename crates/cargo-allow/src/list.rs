@@ -17,7 +17,9 @@ mod list_rows;
 mod list_types;
 pub(crate) use list_args::ListArgs;
 use list_args::{ListFormat, list_filters};
-use list_render::{render_list_rows, render_list_rows_json};
+#[cfg(test)]
+use list_render::render_list_rows;
+use list_render::{render_list_rows_json, render_list_rows_with_context};
 use list_rows::list_rows;
 use list_types::{ListContext, ListFilters, ListRow};
 
@@ -46,7 +48,7 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         kind_arg: args.kind.as_deref(),
     };
     let text = match args.format {
-        ListFormat::Human => render_list_rows(&rows, &filters),
+        ListFormat::Human => render_list_rows_with_context(&rows, &filters, context),
         ListFormat::Json => render_list_rows_json(&rows, &filters, context),
     };
     emit_text(args.output.as_deref(), &text)?;

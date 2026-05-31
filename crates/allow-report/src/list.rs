@@ -1,6 +1,6 @@
 use crate::contracts::LIST_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
-use crate::{InventoryContext, ListFilters, ListRow};
+use crate::{CLAIM_BOUNDARY_TEXT, InventoryContext, ListFilters, ListRow};
 use allow_core::json_escape;
 
 pub fn render_list_json(
@@ -30,8 +30,18 @@ pub fn render_list_json(
     out
 }
 
-pub fn render_list_human(rows: &[ListRow<'_>]) -> String {
+pub fn render_list_human(rows: &[ListRow<'_>], inventory: InventoryContext<'_>) -> String {
     let mut out = String::new();
+    out.push_str(&format!(
+        "inventory: {}/{} via {}{}\n",
+        inventory.scope,
+        inventory.scanner,
+        inventory.source,
+        list_inventory_files_suffix(inventory)
+    ));
+    if let Some(root) = inventory.root {
+        out.push_str(&format!("source_tree_root: {root}\n"));
+    }
     out.push_str("id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\tevidence_count\tselector_precision\tbroad_scope\treview_after\texpires\treason\n");
     for row in rows {
         out.push_str(&format!(
@@ -56,7 +66,16 @@ pub fn render_list_human(rows: &[ListRow<'_>]) -> String {
     if rows.is_empty() {
         out.push_str("(no allow entries matched filters)\n");
     }
+    out.push_str(CLAIM_BOUNDARY_TEXT);
+    out.push('\n');
     out
+}
+
+fn list_inventory_files_suffix(inventory: InventoryContext<'_>) -> String {
+    inventory
+        .files_scanned
+        .map(|files| format!("; files scanned: {files}"))
+        .unwrap_or_default()
 }
 
 fn empty_as_dash(value: &str) -> &str {

@@ -110,10 +110,18 @@ fn list_json_renderer_records_filters_context_and_rows() {
     );
     assert_eq!(json, expected);
 
-    let text = render_list_human(&rows);
+    let text = render_list_human(
+        &rows,
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(46)),
+    );
 
-    assert!(text.starts_with("id\tstatus\tmatches\tkind\tfamily"));
+    assert!(
+        text.contains("inventory: source_tree/source_syntax via git_tracked; files scanned: 46")
+    );
+    assert!(text.contains("source_tree_root: H:/Code/Rust/cargo-allow"));
+    assert!(text.contains("id\tstatus\tmatches\tkind\tfamily"));
     assert!(text.contains(
             "allow-json\tbaseline_debt\t1\tpanic\tunwrap\tparser\tbaseline_debt\tcrates/parser/src/lib.rs\tparser\t2\t42\ttrue\t2026-07-01\t-\tgenerated baseline"
         ));
+    assert!(text.contains(CLAIM_BOUNDARY_TEXT));
 }
