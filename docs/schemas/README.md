@@ -212,6 +212,10 @@ failures, changed `created` dates emit `created_changed` review items, and
 added `created` dates emit `created_added` improvements. These are posture
 signals for the exception ledger only; they do not imply build-aware or
 proof-level validation.
+Added local evidence references that are missing or invalid in the scanned
+source tree remain `evidence_added` rows, but their severity is `fail` and their
+message identifies broken local evidence. cargo-allow validates only the local
+source-tree path; it does not execute or prove the referenced evidence.
 
 Diff report `policy_changes` use `kind_changed` and `family_changed` when an
 existing entry changes the governed exception identity it receipts. These are

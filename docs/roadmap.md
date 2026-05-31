@@ -224,6 +224,9 @@ Completed:
 - Report valid evidence additions as policy improvements so proof-link
   strengthening is visible in PR posture, while statically invalid local-file
   evidence additions remain policy weakening.
+- Fail diff posture when added local evidence references point at missing or
+  otherwise broken source-tree files, without executing or proving the evidence
+  content.
 - Report occurrence-limit additions and reductions as policy improvements so
   counted-baseline tightening is visible in PR posture.
 - Report lifecycle additions and earlier review/expiry dates as policy
