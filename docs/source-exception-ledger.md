@@ -45,16 +45,17 @@ not include leading or trailing whitespace. Those values are policy identifiers,
 not display strings, and exact matching keeps baseline-debt, routing, and diff
 signals deterministic.
 
-`path` scopes are exact source-tree paths. Source-tree glob syntax is
-intentionally small and build-independent; canonical policy globs support `*`,
-`?`, and whole-segment `**`. Bracket classes such as `[ab]` and brace
-alternation such as `{a,b}` are not supported; use exact `path` entries or
-explicit separate globs instead. A `**` token is recursive only as its own path
-segment; patterns such as `scripts/**.sh` are rejected instead of being treated
-as a different wildcard shape. Diff mode reports non-directional source-tree
-scope retargets as review-required `scope_changed` policy changes. That covers
-exact path changes or sibling glob replacements that are neither broadening nor
-narrowing.
+`path` scopes are exact source-tree paths. Source-tree scopes must not include
+leading or trailing whitespace because cargo-allow treats them as selectors,
+not display strings. Source-tree glob syntax is intentionally small and
+build-independent; canonical policy globs support `*`, `?`, and whole-segment
+`**`. Bracket classes such as `[ab]` and brace alternation such as `{a,b}` are
+not supported; use exact `path` entries or explicit separate globs instead. A
+`**` token is recursive only as its own path segment; patterns such as
+`scripts/**.sh` are rejected instead of being treated as a different wildcard
+shape. Diff mode reports non-directional source-tree scope retargets as
+review-required `scope_changed` policy changes. That covers exact path changes
+or sibling glob replacements that are neither broadening nor narrowing.
 
 Diff mode reports owner, reason, or classification removals as policy
 weakening, additions of those required metadata fields as policy improvements,

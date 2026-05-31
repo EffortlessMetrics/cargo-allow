@@ -106,6 +106,19 @@ fn rejects_invalid_workspace_ignored_glob() {
 }
 
 #[test]
+fn rejects_workspace_glob_with_surrounding_whitespace() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                ignored = [" scripts/** "]
+            "#,
+    );
+
+    assert!(err.contains("source-tree ignored glob must not have leading or trailing whitespace"));
+}
+
+#[test]
 fn rejects_invalid_workspace_generated_glob() {
     let err = parse_err(
         r#"
