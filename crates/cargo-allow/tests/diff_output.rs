@@ -133,6 +133,69 @@ fn diff_json_reports_missing_local_evidence_added_policy_failure() {
 }
 
 #[test]
+fn diff_json_with_explicit_head_validates_added_evidence_at_head_revision() {
+    let root = temp_root("diff-head-missing-local-evidence-added");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(Some("doc:docs/head-only-missing.md")),
+    );
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "add missing evidence reference"]);
+    git(&root, &["tag", "head-missing-evidence"]);
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+    fs::write(
+        root.join("docs/head-only-missing.md"),
+        "working tree only evidence",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write working-tree evidence: {err}")));
+    let output = root.join("diff.json");
+
+    let result = cargo_allow_command()
+        .arg("diff")
+        .arg("--root")
+        .arg(&root)
+        .arg("--base")
+        .arg("HEAD~1")
+        .arg("--head")
+        .arg("head-missing-evidence")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+
+    assert_status("diff", &result, false);
+    assert_stdout_empty(
+        "diff",
+        &result,
+        "--output should not emit report JSON to stdout",
+    );
+    assert_stderr_empty(
+        "diff",
+        &result,
+        "--output should not emit human posture rows to stderr",
+    );
+    let value = assert_saved_json_artifact(&output, "diff", "cargo-allow.report.v1", "diff");
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "worse",
+        "explicit head missing evidence net posture",
+    );
+    assert_policy_change(&value, "evidence_added", "allow-unwrap", "fail");
+    assert_file_contains(
+        &output,
+        "broken local evidence added",
+        "diff output should validate added local evidence against explicit head revision",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_reports_weak_evidence_added_as_review_required() {
     let root = temp_root("diff-weak-evidence-added");
     write_diff_fixture(

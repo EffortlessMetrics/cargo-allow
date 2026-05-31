@@ -1,5 +1,6 @@
 use allow_core::{AllowConfig, CargoAllowResult, normalize_path};
 use allow_match::{CheckMode, evaluate};
+use std::collections::BTreeSet;
 use std::path::Path;
 use std::process;
 
@@ -63,7 +64,12 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         &head_cfg_for_diff,
         args.kind.as_deref(),
     )?;
-    promote_broken_added_evidence_policy_changes(&root, &head_cfg_for_diff, &mut policy_changes);
+    promote_broken_added_evidence_policy_changes(
+        &root,
+        args.head.as_deref(),
+        &head_cfg_for_diff,
+        &mut policy_changes,
+    )?;
     let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
     let evidence = EvidenceReportSummary::from_policy(&root, &report_cfg, &outcomes);
     let current_failures = outcomes
@@ -175,9 +181,13 @@ fn policy_changes_for_diff(
 
 fn promote_broken_added_evidence_policy_changes(
     root: &Path,
+    head_revision: Option<&str>,
     head_cfg: &AllowConfig,
     changes: &mut [allow_diff::PolicyChange],
-) {
+) -> CargoAllowResult<()> {
+    let head_files = head_revision
+        .map(|revision| source_tree_files_at_revision(root, revision))
+        .transpose()?;
     for change in changes {
         if change.kind != allow_diff::PolicyChangeKind::EvidenceAdded || change.severity.fails() {
             continue;
@@ -185,21 +195,34 @@ fn promote_broken_added_evidence_policy_changes(
         let Some(evidence) = change.evidence.as_ref() else {
             continue;
         };
-        if !added_evidence_has_broken_local_link(root, head_cfg, &change.allow_id, &evidence.added)
-        {
+        if !added_evidence_has_broken_local_link(
+            root,
+            head_files.as_ref(),
+            head_cfg,
+            &change.allow_id,
+            &evidence.added,
+        ) {
             continue;
         }
         change.severity = allow_diff::PolicyChangeSeverity::Fail;
         change.message = format!("{} broken local evidence added", change.allow_id);
     }
+    Ok(())
 }
 
 fn added_evidence_has_broken_local_link(
     root: &Path,
+    head_files: Option<&BTreeSet<String>>,
     head_cfg: &AllowConfig,
     allow_id: &str,
     added: &[String],
 ) -> bool {
+    if let Some(head_files) = head_files {
+        return added
+            .iter()
+            .filter_map(|reference| local_evidence_target(reference))
+            .any(|target| !head_files.contains(&target));
+    }
     let Some(entry) = head_cfg.allow.iter().find(|entry| entry.id == allow_id) else {
         return false;
     };
@@ -209,6 +232,25 @@ fn added_evidence_has_broken_local_link(
             added.iter().any(|item| item == &diagnostic.raw)
                 && diagnostic.status.is_broken_local_link()
         })
+}
+
+fn source_tree_files_at_revision(
+    root: &Path,
+    revision: &str,
+) -> CargoAllowResult<BTreeSet<String>> {
+    Ok(allow_diff::git_tracked_files_at_revision(root, revision)?
+        .into_iter()
+        .map(normalize_path)
+        .collect())
+}
+
+fn local_evidence_target(reference: &str) -> Option<String> {
+    let (prefix, target) = reference.split_once(':')?;
+    let prefix = prefix.trim();
+    if !allow_policy::local_file_evidence_prefixes().any(|known| known == prefix) {
+        return None;
+    }
+    Some(target.trim().replace('\\', "/"))
 }
 
 #[cfg(test)]
