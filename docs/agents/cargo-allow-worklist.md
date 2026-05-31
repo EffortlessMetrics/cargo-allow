@@ -22,7 +22,9 @@ Use `--family <family>` for scanner-family slices such as `unwrap`, `indexing`,
 `unsafe_fn`, or `ci_declarative`.
 Use `--item-kind <kind>` for queue-type slices such as `stale_allow`,
 `baseline_debt`, `broad_scope`, `broken_evidence_link`, or
-`weak_evidence_reference`.
+`weak_evidence_reference`. The canonical values use underscores, and the CLI
+also accepts hyphenated aliases such as `stale-allow` for artifact-local
+`work-*` queue IDs.
 Use `--baseline-debt` or `--broad-scope` for the common generated-debt and
 wildcard-scope advisory queues without needing the underlying item-kind names.
 Use `--status <status>` for match-status slices such as `new`, `stale`,

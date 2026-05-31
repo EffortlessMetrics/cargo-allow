@@ -14,7 +14,6 @@ pub(crate) const BROAD_SCOPE: &str = "broad_scope";
 pub(crate) const BROKEN_EVIDENCE_LINK: &str = "broken_evidence_link";
 pub(crate) const WEAK_EVIDENCE_REFERENCE: &str = "weak_evidence_reference";
 
-#[cfg(test)]
 pub(crate) const WORK_ITEM_KINDS: &[&str] = &[
     NEW_UNRECEIPTED_FINDING,
     OCCURRENCE_LIMIT_EXCEEDED,
@@ -32,3 +31,11 @@ pub(crate) const WORK_ITEM_KINDS: &[&str] = &[
     BROKEN_EVIDENCE_LINK,
     WEAK_EVIDENCE_REFERENCE,
 ];
+
+pub(crate) fn parse_work_item_kind_filter(value: &str) -> Result<String, String> {
+    let canonical = value.replace('-', "_");
+    if WORK_ITEM_KINDS.iter().any(|kind| *kind == canonical) {
+        return Ok(value.to_string());
+    }
+    Err(format!("unknown work item kind `{value}`"))
+}

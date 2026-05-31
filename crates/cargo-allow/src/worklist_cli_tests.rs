@@ -78,3 +78,40 @@ fn clap_parses_worklist_json_output() {
             && path == Path::new("target/worklist.json")
     ));
 }
+
+#[test]
+fn clap_rejects_unknown_worklist_item_kind() {
+    let err = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "worklist",
+        "--item-kind",
+        "stale_allow_typo",
+    ]))
+    .expect_err("unknown worklist item-kind should fail closed");
+
+    assert!(
+        err.to_string().contains("unknown work item kind"),
+        "unexpected parse error: {err}"
+    );
+}
+
+#[test]
+fn clap_accepts_hyphenated_worklist_item_kind_alias() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "worklist",
+        "--item-kind",
+        "stale-allow",
+    ]))
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("hyphenated item-kind alias should parse: {err}"))
+    });
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::Worklist(WorklistArgs {
+            item_kind: Some(item_kind),
+            ..
+        })) if item_kind == "stale-allow"
+    ));
+}

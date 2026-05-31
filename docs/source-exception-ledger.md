@@ -409,6 +409,8 @@ Worklist output can be filtered by governed kind, scanner family, policy owner,
 policy classification, work item queue kind, match status, source-tree path,
 baseline debt, broad source-tree scopes, missing evidence, risk, and
 difficulty; filtered artifacts record all applied filters.
+Canonical work item queue kinds use underscores, and `--item-kind` also accepts
+hyphenated aliases such as `stale-allow` for artifact-local `work-*` queue IDs.
 Policy-backed slices can also be filtered by durable allow ID with `--allow-id`,
 and scanner-provided source-tree package context can be filtered with
 `--source-package`.
