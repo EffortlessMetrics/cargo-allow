@@ -44,6 +44,10 @@ cargo-allow diff \
   --output target/cargo-allow/pr-summary.md
 ```
 
+For focused review lanes, add `--kind <kind>`. That narrows source finding
+changes and allow-entry policy changes to the selected governed kind while
+still preserving ledger-level policy contract signals.
+
 The Markdown output starts with a PR Summary section. That section reports:
 
 - net posture: `unchanged`, `improved`, `review-required`, or `worse`;

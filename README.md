@@ -105,6 +105,10 @@ cargo-allow diff --base origin/main \
   --output target/cargo-allow/pr-summary.md
 ```
 
+Use `--kind <kind>` when a reviewer needs a kind-specific posture view. The
+filter limits both source finding changes and allow-entry policy changes for
+that governed kind; ledger-level policy contract changes remain visible.
+
 Explain one retained exception:
 
 ```bash

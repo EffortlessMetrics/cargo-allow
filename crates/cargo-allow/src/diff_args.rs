@@ -10,7 +10,7 @@ pub(crate) struct DiffArgs {
     /// Policy config path.
     #[arg(long)]
     pub(super) config: Option<PathBuf>,
-    /// Filter findings by kind.
+    /// Filter source findings and allow-entry policy changes by kind.
     #[arg(long)]
     pub(super) kind: Option<String>,
     /// Include untracked files in addition to git-tracked files.

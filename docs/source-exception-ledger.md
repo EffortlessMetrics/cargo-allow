@@ -465,6 +465,12 @@ policy, and policy requirement loosening. It also reports source-tree inventory
 carveout changes for `workspace.ignored` and `workspace.generated`. This is
 policy ledger comparison only.
 
+When `--kind <kind>` is supplied, diff output filters source finding posture
+and allow-entry policy posture to that governed kind before comparing base and
+head. Top-level policy contract changes, such as `[requirements]`,
+`workspace.ignored`, `workspace.generated`, or policy status changes, remain
+ledger-level posture signals because they are not owned by one allow entry.
+
 The same command also compares source finding posture between the base git tree
 and the current checkout, or the optional `--head` git tree when provided. It
 uses source-syntax finding keys built from kind, family, path, AST kind,
