@@ -73,6 +73,7 @@ pub(super) fn sort_work_items(items: &mut [WorkItem]) {
                     .cmp(&work_item_difficulty_rank(right.difficulty))
             })
             .then_with(|| left.kind.cmp(&right.kind))
+            .then_with(|| selector_precision_rank(left).cmp(&selector_precision_rank(right)))
             .then_with(|| left.path.cmp(&right.path))
             .then_with(|| left.allow_id.cmp(&right.allow_id))
             .then_with(|| left.id.cmp(&right.id))
@@ -94,6 +95,10 @@ fn work_item_difficulty_rank(difficulty: &str) -> u8 {
         DIFFICULTY_MEDIUM => 1,
         _ => 2,
     }
+}
+
+fn selector_precision_rank(item: &WorkItem) -> u32 {
+    item.selector_precision.unwrap_or(u32::MAX)
 }
 
 pub(super) fn renumber_work_items(items: &mut [WorkItem]) {
