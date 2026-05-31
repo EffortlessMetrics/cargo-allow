@@ -42,6 +42,7 @@ fn saved_explain_output_allows_broken_evidence_diagnostics() {
         Some("docs/missing-evidence.md"),
         "explain should preserve the source-tree evidence target"
     );
+    assert_proof_commands_stay_cargo_allow(&value, "/next/proof_commands");
 }
 
 #[test]

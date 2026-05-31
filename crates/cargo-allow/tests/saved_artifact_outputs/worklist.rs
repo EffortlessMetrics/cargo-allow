@@ -55,6 +55,7 @@ fn saved_worklist_output_includes_broken_evidence_items() {
         Some("cargo-allow worklist --allow-id allow-broken-evidence --format json"),
         "worklist worklist allow-id proof command"
     );
+    assert_proof_commands_stay_cargo_allow(&value, "/work_items/0/proof_commands");
 }
 
 #[test]
@@ -135,6 +136,7 @@ fn saved_worklist_output_includes_policy_missing_evidence_items() {
         Some("cargo-allow worklist --allow-id allow-missing-evidence --format json"),
         "worklist worklist allow-id proof command"
     );
+    assert_proof_commands_stay_cargo_allow(&value, "/work_items/0/proof_commands");
 }
 
 #[test]
@@ -222,6 +224,7 @@ fn saved_worklist_output_includes_weak_evidence_items() {
         Some("unstructured"),
         "worklist evidence reference status"
     );
+    assert_proof_commands_stay_cargo_allow(&value, "/work_items/0/proof_commands");
 }
 
 #[test]
@@ -309,6 +312,7 @@ fn saved_worklist_output_includes_policy_baseline_debt_items() {
         Some("cargo-allow worklist --allow-id allow-baseline-debt --format json"),
         "worklist worklist allow-id proof command"
     );
+    assert_proof_commands_stay_cargo_allow(&value, "/work_items/0/proof_commands");
 }
 
 #[test]
@@ -353,6 +357,7 @@ fn saved_worklist_output_includes_invalid_evidence_scope_items() {
         message.contains("parent directory segments"),
         "worklist should explain why the local evidence scope is invalid: {message}"
     );
+    assert_proof_commands_stay_cargo_allow(&value, "/work_items/0/proof_commands");
 }
 
 fn run_broken_evidence_worklist(fixture: &SourceTreeFixture) -> serde_json::Value {
