@@ -153,6 +153,20 @@ mod tests {
         assert!(help.contains("Filter source findings and allow-entry policy changes by kind"));
     }
 
+    #[test]
+    fn diff_help_describes_base_and_head_as_posture_revisions() {
+        let mut command = CargoAllowCli::command();
+        let Some(diff) = command.find_subcommand_mut("diff") else {
+            std::panic::panic_any("diff subcommand should exist");
+        };
+        let help = diff.render_help().to_string();
+
+        assert!(help.contains(
+            "Base git revision for policy, finding, and changed-file posture comparison"
+        ));
+        assert!(help.contains("Optional head git revision. Defaults to the current working tree"));
+    }
+
     fn argv(items: Vec<&str>) -> Vec<String> {
         items.into_iter().map(String::from).collect()
     }
