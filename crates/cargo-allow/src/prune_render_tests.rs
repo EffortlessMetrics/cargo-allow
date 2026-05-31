@@ -13,8 +13,12 @@ fn render_prune_stale_preview_is_dry_run_first() {
         reason: "The old exception is gone.".to_string(),
     }];
 
-    let text = render_prune_stale_result(&candidates, true, false, None);
+    let text = render_prune_stale_result(&candidates, true, false, None, test_prune_context());
 
+    assert!(
+        text.contains("Inventory: source_tree/source_syntax via git_tracked; files scanned: 49")
+    );
+    assert!(text.contains("Source tree root: H:/Code/Rust/cargo-allow"));
     assert!(text.contains("mode: dry-run"));
     assert!(text.contains("requested: --dry-run"));
     assert!(text.contains("stale entries: 1"));
@@ -86,6 +90,7 @@ fn render_prune_stale_result_reports_written_policy() {
         false,
         true,
         Some(Path::new("policy/allow.toml")),
+        test_prune_context(),
     );
 
     assert!(text.contains("mode: write"));
@@ -95,8 +100,18 @@ fn render_prune_stale_result_reports_written_policy() {
 
 #[test]
 fn render_prune_stale_result_reports_write_mode_with_no_candidates() {
-    let text = render_prune_stale_result(&[], false, true, None);
+    let text = render_prune_stale_result(&[], false, true, None, test_prune_context());
 
     assert!(text.contains("mode: write"));
     assert!(text.contains("No stale allow entries found."));
+}
+
+fn test_prune_context() -> PruneContext<'static> {
+    PruneContext {
+        inventory: allow_report::InventoryContext::source_syntax(
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(49),
+        ),
+    }
 }

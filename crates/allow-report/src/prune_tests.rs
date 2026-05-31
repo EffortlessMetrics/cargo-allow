@@ -105,4 +105,25 @@ fn prune_human_renderer_records_mode_and_candidates() {
     assert!(text.contains("allow\\|stale"));
     assert!(text.contains("old \\| baseline entry"));
     assert!(text.contains("No files were changed"));
+    assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
+}
+
+#[test]
+fn prune_human_renderer_records_inventory_context() {
+    let text = render_prune_human_with_context(
+        &[],
+        PruneModeContext {
+            explicit_dry_run: false,
+            write_requested: false,
+            written_path: None,
+        },
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(49)),
+    );
+
+    assert!(
+        text.contains("Inventory: source_tree/source_syntax via git_tracked; files scanned: 49")
+    );
+    assert!(text.contains("Source tree root: H:/Code/Rust/cargo-allow"));
+    assert!(text.contains("No stale allow entries found."));
+    assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
 }

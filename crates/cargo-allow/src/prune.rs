@@ -71,6 +71,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             args.dry_run,
             args.write,
             written_path.as_deref(),
+            context,
         ),
         PruneFormat::Json => render_prune_stale_json(
             &candidates,

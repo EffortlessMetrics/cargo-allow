@@ -1,12 +1,30 @@
 use crate::contracts::PRUNE_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
 use crate::text::markdown_cell;
-use crate::{InventoryContext, PruneCandidate, PruneModeContext};
+use crate::{CLAIM_BOUNDARY_TEXT, InventoryContext, PruneCandidate, PruneModeContext};
 use allow_core::json_escape;
 
 pub fn render_prune_human(candidates: &[PruneCandidate<'_>], mode: PruneModeContext<'_>) -> String {
+    render_prune_human_with_context(candidates, mode, InventoryContext::unknown_source_syntax())
+}
+
+pub fn render_prune_human_with_context(
+    candidates: &[PruneCandidate<'_>],
+    mode: PruneModeContext<'_>,
+    inventory: InventoryContext<'_>,
+) -> String {
     let mut out = String::new();
     out.push_str("cargo-allow prune\n\n");
+    out.push_str(&format!(
+        "Inventory: {}/{} via {}{}\n",
+        inventory.scope,
+        inventory.scanner,
+        inventory.source,
+        prune_inventory_files_suffix(inventory)
+    ));
+    if let Some(root) = inventory.root {
+        out.push_str(&format!("Source tree root: {root}\n"));
+    }
     if mode.write_requested {
         out.push_str("mode: write\n");
     } else {
@@ -18,6 +36,9 @@ pub fn render_prune_human(candidates: &[PruneCandidate<'_>], mode: PruneModeCont
     out.push_str(&format!("stale entries: {}\n\n", candidates.len()));
     if candidates.is_empty() {
         out.push_str("No stale allow entries found.\n");
+        out.push('\n');
+        out.push_str(CLAIM_BOUNDARY_TEXT);
+        out.push('\n');
         return out;
     }
     out.push_str("| Allow ID | Kind | Family | Owner | Classification | Scope | Reason |\n");
@@ -44,7 +65,17 @@ pub fn render_prune_human(candidates: &[PruneCandidate<'_>], mode: PruneModeCont
             "\nNo files were changed. Remove these entries only after confirming the exception is gone.\n",
         );
     }
+    out.push('\n');
+    out.push_str(CLAIM_BOUNDARY_TEXT);
+    out.push('\n');
     out
+}
+
+fn prune_inventory_files_suffix(inventory: InventoryContext<'_>) -> String {
+    inventory
+        .files_scanned
+        .map(|files| format!("; files scanned: {files}"))
+        .unwrap_or_default()
 }
 
 pub fn render_prune_json(
