@@ -114,7 +114,8 @@ fn diff_policy_changes_promote_broken_added_evidence_to_failure() {
     let mut changes = policy_changes_for_diff(Some(base), &head, None)
         .unwrap_or_else(|err| std::panic::panic_any(format!("policy diff: {err}")));
 
-    promote_broken_added_evidence_policy_changes(&root, &head, &mut changes);
+    promote_broken_added_evidence_policy_changes(&root, None, &head, &mut changes)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("promote evidence changes: {err}")));
 
     let change = changes
         .iter()
@@ -149,7 +150,8 @@ fn diff_policy_changes_keep_present_added_evidence_as_improvement() {
     let mut changes = policy_changes_for_diff(Some(base), &head, None)
         .unwrap_or_else(|err| std::panic::panic_any(format!("policy diff: {err}")));
 
-    promote_broken_added_evidence_policy_changes(&root, &head, &mut changes);
+    promote_broken_added_evidence_policy_changes(&root, None, &head, &mut changes)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("promote evidence changes: {err}")));
 
     let change = changes
         .iter()
