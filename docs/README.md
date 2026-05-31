@@ -20,8 +20,10 @@ ledger and the planned growth around it.
   checks.
 - [0.1.0 release runbook](release/0.1.0.md): publish order, dry-run sequencing,
   and rollback limits.
-- [0.1.1 release prep](release/0.1.1.md): patch-release handoff for the current
-  post-0.1.0 product hardening.
+- [0.1.1 release record](release/0.1.1.md): completed patch release and
+  publication evidence.
+- [0.1.2 release prep](release/0.1.2.md): patch-release handoff for the
+  post-0.1.1 receipt inventory contract.
 - [Agent worklist prompt](agents/cargo-allow-worklist.md): bounded agent use of
   `cargo-allow worklist`.
 - [Schemas](schemas/README.md): JSON schemas for doctor, report, receipt,
