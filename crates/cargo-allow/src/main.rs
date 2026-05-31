@@ -84,6 +84,8 @@ mod compat_panic_integration_tests;
 #[cfg(test)]
 mod compat_test_support;
 #[cfg(test)]
+mod readme_tests;
+#[cfg(test)]
 mod release_prep_tests;
 #[cfg(test)]
 mod report_config_tests;
