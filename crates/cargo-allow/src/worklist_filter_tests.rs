@@ -96,6 +96,44 @@ fn worklist_filters_by_item_kind() {
 }
 
 #[test]
+fn worklist_filters_by_hyphenated_item_kind_alias() {
+    let mut cfg = AllowConfig::empty();
+    cfg.allow
+        .push(test_entry("allow-stale", FindingKind::NonRustFile));
+    let findings = vec![test_finding(
+        FindingKind::Panic,
+        Some("unwrap"),
+        "src/lib.rs",
+        "method_call",
+    )];
+    let outcomes = vec![
+        test_outcome(MatchStatus::New, None, Some(0), "unreceipted panic.unwrap"),
+        test_outcome(
+            MatchStatus::Stale,
+            Some("allow-stale"),
+            None,
+            "allow-stale is stale",
+        ),
+    ];
+
+    let items = work_items_from_outcomes(&cfg, &findings, &outcomes);
+    let filtered = filter_work_items(
+        items,
+        WorklistFilters {
+            item_kind: Some("stale-allow"),
+            ..WorklistFilters::default()
+        },
+    );
+
+    assert_eq!(filtered.len(), 1);
+    let item = filtered
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected filtered work item"));
+    assert_eq!(item.kind, "stale_allow");
+    assert_eq!(item.allow_id.as_deref(), Some("allow-stale"));
+}
+
+#[test]
 fn worklist_filters_by_exception_kind() {
     let findings = vec![
         test_finding(

@@ -20,7 +20,7 @@ pub(super) fn filter_work_items(
                     .unwrap_or(true)
                 && filters
                     .item_kind
-                    .map(|item_kind| item.kind == item_kind)
+                    .map(|item_kind| item_kind_matches(item.kind.as_str(), item_kind))
                     .unwrap_or(true)
                 && filters
                     .status
@@ -64,6 +64,10 @@ pub(super) fn filter_work_items(
                 && (!filters.missing_evidence || item.evidence_count == Some(0))
         })
         .collect()
+}
+
+fn item_kind_matches(item_kind: &str, filter: &str) -> bool {
+    item_kind == filter || item_kind == filter.replace('-', "_")
 }
 
 fn kind_matches(item: &WorkItem, kind: Option<&str>) -> bool {
