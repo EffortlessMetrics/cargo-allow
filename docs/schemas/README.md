@@ -33,13 +33,13 @@ macro-expansion, or proof-level coverage.
   tested vocabulary source for future schema consolidation. Artifact schemas
   remain self-contained for consumer portability. The shared catalog includes
   source-tree inventory, governed source-exception kind and match-status
-  vocabularies, structural identity, selector, evidence-prefix vocabularies, and
-  evidence diagnostic row shapes used by `explain` and `worklist`, plus report
-  inventory, summary, trend, finding, and outcome rows, receipt count rows,
-  the diff posture
-  object, diff-summary, finding-change, policy-change,
-  selector-identity, selector-precision, exception-identity, scope-change,
-  occurrence-limit, lifecycle, evidence-change, metadata-change,
+  vocabularies, structural identity, selector, allow-entry shapes, source
+  finding rows, stale-prune rows, evidence-prefix vocabularies, evidence
+  diagnostic row shapes used by `explain` and `worklist`, worklist filters and
+  work-item rows, report inventory, summary, trend, finding, and outcome rows,
+  receipt count rows, the diff posture object, diff-summary, finding-change,
+  policy-change, selector-identity, selector-precision, exception-identity,
+  scope-change, occurrence-limit, lifecycle, evidence-change, metadata-change,
   requirement-change, and policy-status fragments used by `diff`.
 
 ## Contract Status
