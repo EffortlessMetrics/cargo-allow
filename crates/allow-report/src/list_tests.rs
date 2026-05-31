@@ -30,6 +30,8 @@ fn list_json_renderer_records_filters_context_and_rows() {
             owner: Some("parser"),
             allow_id: Some("allow-json"),
             baseline_debt: true,
+            broken_evidence: true,
+            weak_evidence: true,
             ..ListFilters::default()
         },
         InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(46)),
@@ -45,6 +47,8 @@ fn list_json_renderer_records_filters_context_and_rows() {
     assert!(json.contains("\"owner\": \"parser\""));
     assert!(json.contains("\"allow_id\": \"allow-json\""));
     assert!(json.contains("\"baseline_debt\": true"));
+    assert!(json.contains("\"broken_evidence\": true"));
+    assert!(json.contains("\"weak_evidence\": true"));
     assert!(json.contains("\"allow_entries\": 1"));
     assert!(json.contains("\"id\": \"allow-json\""));
     assert!(json.contains("\"source_package\": \"parser\""));
@@ -83,7 +87,9 @@ fn list_json_renderer_records_filters_context_and_rows() {
     "stale": false,
     "baseline_debt": true,
     "broad_scope": false,
-    "missing_evidence": false
+    "missing_evidence": false,
+    "broken_evidence": true,
+    "weak_evidence": true
   }},
   "summary": {{
     "allow_entries": 1

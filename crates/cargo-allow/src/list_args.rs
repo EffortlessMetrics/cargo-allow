@@ -69,6 +69,12 @@ pub(crate) struct ListArgs {
     /// Include only entries with no evidence references.
     #[arg(long)]
     pub(super) missing_evidence: bool,
+    /// Include only entries with broken local evidence references.
+    #[arg(long)]
+    pub(super) broken_evidence: bool,
+    /// Include only entries with weak evidence references.
+    #[arg(long)]
+    pub(super) weak_evidence: bool,
     /// Output format.
     #[arg(long, value_enum, default_value_t = ListFormat::Human)]
     pub(super) format: ListFormat,
@@ -102,5 +108,7 @@ pub(super) fn list_filters(args: &ListArgs) -> CargoAllowResult<ListFilters<'_>>
         baseline_debt: args.baseline_debt,
         broad_scope: args.broad_scope,
         missing_evidence: args.missing_evidence,
+        broken_evidence: args.broken_evidence,
+        weak_evidence: args.weak_evidence,
     })
 }

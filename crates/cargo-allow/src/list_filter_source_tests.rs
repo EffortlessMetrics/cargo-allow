@@ -23,6 +23,8 @@ fn render_list_rows_filters_source_package() {
         baseline_debt: false,
         broad_scope: false,
         missing_evidence: false,
+        broken_evidence: false,
+        weak_evidence: false,
     };
 
     let text = render_list_rows(&rows, &filters);
@@ -58,6 +60,8 @@ fn render_list_rows_filters_family() {
         baseline_debt: false,
         broad_scope: false,
         missing_evidence: false,
+        broken_evidence: false,
+        weak_evidence: false,
     };
 
     let text = render_list_rows(&rows, &filters);
@@ -95,6 +99,8 @@ fn render_list_rows_filters_path_prefix_and_covering_glob() {
         baseline_debt: false,
         broad_scope: false,
         missing_evidence: false,
+        broken_evidence: false,
+        weak_evidence: false,
     };
 
     let text = render_list_rows(&rows, &filters);

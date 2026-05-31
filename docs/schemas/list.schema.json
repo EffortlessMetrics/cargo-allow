@@ -195,6 +195,14 @@
         "missing_evidence": {
           "type": "boolean",
           "description": "Applied --missing-evidence shortcut filter."
+        },
+        "broken_evidence": {
+          "type": "boolean",
+          "description": "Applied --broken-evidence shortcut filter."
+        },
+        "weak_evidence": {
+          "type": "boolean",
+          "description": "Applied --weak-evidence shortcut filter."
         }
       }
     },

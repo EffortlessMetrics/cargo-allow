@@ -39,6 +39,8 @@ pub(super) struct ListFilters<'a> {
     pub(super) baseline_debt: bool,
     pub(super) broad_scope: bool,
     pub(super) missing_evidence: bool,
+    pub(super) broken_evidence: bool,
+    pub(super) weak_evidence: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default)]

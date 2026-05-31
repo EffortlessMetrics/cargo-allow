@@ -61,5 +61,11 @@ pub(super) fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool
     if filters.missing_evidence && row.evidence_count != 0 {
         return false;
     }
+    if filters.broken_evidence && row.broken_evidence_references == 0 {
+        return false;
+    }
+    if filters.weak_evidence && row.weak_evidence_references == 0 {
+        return false;
+    }
     true
 }

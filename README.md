@@ -214,6 +214,8 @@ cargo-allow list --path crates/allow-core
 cargo-allow list --status baseline_debt
 cargo-allow list --broad-scope
 cargo-allow list --missing-evidence
+cargo-allow list --broken-evidence
+cargo-allow list --weak-evidence
 cargo-allow list --source-package allow-core
 cargo-allow list --format json --output target/cargo-allow/list.json
 cargo-allow worklist --baseline-debt --format human
