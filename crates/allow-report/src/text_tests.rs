@@ -129,6 +129,60 @@ fn markdown_audit_report_includes_review_summary() {
 }
 
 #[test]
+fn human_audit_report_includes_review_summary() {
+    let findings = vec![
+        file_finding(FindingKind::NonRustFile, "shell_script", "scripts/new.sh"),
+        file_finding(FindingKind::Unsafe, "unsafe_block", "src/ffi.rs"),
+    ];
+    let outcomes = vec![
+        MatchOutcome {
+            status: MatchStatus::New,
+            allow_id: None,
+            finding_index: Some(0),
+            message: "unreceipted shell script at scripts/new.sh".to_string(),
+            score: 0,
+        },
+        MatchOutcome {
+            status: MatchStatus::EvidenceMissing,
+            allow_id: Some("allow-unsafe-ffi".to_string()),
+            finding_index: Some(1),
+            message: "allow-unsafe-ffi matched unsafe finding but has no evidence".to_string(),
+            score: 0,
+        },
+    ];
+
+    let text =
+        render_human_with_context("audit", &findings, &outcomes, false, context("git_tracked"));
+
+    assert!(text.contains("Audit summary:"));
+    assert!(text.contains("match_outcomes"));
+    assert!(text.contains("review_items"));
+    assert!(text.contains("new_unreceipted"));
+    assert!(text.contains("evidence_gaps"));
+    assert!(
+        text.contains("Recommended next step: review the queue below before tightening policy.")
+    );
+    assert!(text.contains("Audit review queue:"));
+    assert!(text.contains("new: unreceipted shell script at scripts/new.sh"));
+    assert!(
+        text.contains(
+            "evidence_missing: allow-unsafe-ffi matched unsafe finding but has no evidence"
+        )
+    );
+}
+
+#[test]
+fn human_audit_report_routes_clean_policy_to_no_new_ci() {
+    let text = render_human_with_context("audit", &[], &[], false, context("git_tracked"));
+
+    assert!(text.contains("Audit summary:"));
+    assert!(text.contains("review_items"));
+    assert!(text.contains(" 0\n"));
+    assert!(text.contains("Recommended next step: keep `cargo-allow check --mode no-new` in CI."));
+    assert!(!text.contains("Audit review queue:"));
+}
+
+#[test]
 fn markdown_audit_report_counts_policy_baseline_debt_context() {
     let text = render_markdown_with_context(
         "audit",
