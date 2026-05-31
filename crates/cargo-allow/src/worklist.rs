@@ -144,6 +144,9 @@ mod advisory_tests;
 #[path = "worklist_cli_tests.rs"]
 mod cli_tests;
 #[cfg(test)]
+#[path = "worklist_evidence_advisory_tests.rs"]
+mod evidence_advisory_tests;
+#[cfg(test)]
 #[path = "worklist_filter_policy_tests.rs"]
 mod filter_policy_tests;
 #[cfg(test)]
