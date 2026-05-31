@@ -5,6 +5,7 @@ use std::{
 };
 
 mod diagnostics;
+mod diagnostics_classification;
 mod local_rejections;
 mod local_validation;
 
