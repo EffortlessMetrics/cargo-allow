@@ -397,7 +397,8 @@
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^cargo-allow "
+            "pattern": "^cargo-allow ",
+            "description": "Suggested follow-up command. cargo-allow emits standalone cargo-allow commands here; it does not execute them."
           }
         }
       }
