@@ -5,6 +5,7 @@ use std::{
 };
 
 mod diagnostics;
+mod local_rejections;
 mod local_validation;
 
 struct TestRoot {
