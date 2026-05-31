@@ -1,3 +1,4 @@
+use crate::evidence_reference_human::evidence_reference_human_status;
 use crate::worklist_summary::{worklist_difficulty_count, worklist_risk_count};
 use crate::{CLAIM_BOUNDARY_TEXT, InventoryContext, WorklistFilters, WorklistItem};
 
@@ -76,8 +77,11 @@ pub fn render_worklist_human(
             out.push_str(&format!("  evidence: {evidence_count} reference(s)\n"));
         }
         if let Some(reference) = item.evidence_reference.as_ref() {
+            let status = evidence_reference_human_status(reference);
             out.push_str(&format!(
-                "  evidence reference: {} (status={}, prefix={}, target={})\n",
+                "  evidence reference: [{}] {}: {} (status={}, prefix={}, target={})\n",
+                status.marker,
+                status.label,
                 reference.raw,
                 reference.status,
                 reference.prefix.unwrap_or("-"),

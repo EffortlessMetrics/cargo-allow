@@ -1,3 +1,4 @@
+use crate::evidence_reference_human::evidence_reference_human_status;
 use crate::explain_common::{explain_report_status, finding_location_text};
 use crate::{CLAIM_BOUNDARY_TEXT, EvidenceReference, ExplainReport};
 use allow_core::{AllowEntry, MatchOutcome, MatchStatus};
@@ -157,52 +158,6 @@ fn evidence_reference_summary(reference: &EvidenceReference<'_>) -> String {
         reference.prefix.unwrap_or("-"),
         reference.target.unwrap_or("-")
     )
-}
-
-struct EvidenceReferenceHumanStatus {
-    marker: &'static str,
-    label: &'static str,
-}
-
-fn evidence_reference_human_status(
-    reference: &EvidenceReference<'_>,
-) -> EvidenceReferenceHumanStatus {
-    match reference.status {
-        "local_file_present" => EvidenceReferenceHumanStatus {
-            marker: "ok",
-            label: "present",
-        },
-        "local_file_missing" => EvidenceReferenceHumanStatus {
-            marker: "missing",
-            label: "missing",
-        },
-        "invalid_local_path" => EvidenceReferenceHumanStatus {
-            marker: "invalid",
-            label: "invalid_local_path",
-        },
-        "traceability_only" => EvidenceReferenceHumanStatus {
-            marker: "info",
-            label: "not_local",
-        },
-        "unstructured" if reference.message.contains("unrecognized evidence prefix") => {
-            EvidenceReferenceHumanStatus {
-                marker: "weak",
-                label: "unknown_prefix",
-            }
-        }
-        "unstructured" if reference.prefix.is_some() => EvidenceReferenceHumanStatus {
-            marker: "weak",
-            label: "untyped",
-        },
-        "unstructured" => EvidenceReferenceHumanStatus {
-            marker: "weak",
-            label: "untyped",
-        },
-        _ => EvidenceReferenceHumanStatus {
-            marker: "info",
-            label: "unknown_status",
-        },
-    }
 }
 
 fn selector_summary(entry: &AllowEntry) -> String {
