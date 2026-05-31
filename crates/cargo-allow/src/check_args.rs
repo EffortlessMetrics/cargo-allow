@@ -1,7 +1,7 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-use crate::{OutputFormat, RootArgs};
+use crate::{OutputFormat, RootArgs, parse_kind_filter_arg};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct CheckArgs {
@@ -14,7 +14,7 @@ pub(crate) struct CheckArgs {
     #[arg(long)]
     pub(crate) compat: bool,
     /// Filter findings by kind.
-    #[arg(long)]
+    #[arg(long, value_parser = parse_kind_filter_arg)]
     pub(crate) kind: Option<String>,
     /// Include untracked files in addition to git-tracked files.
     #[arg(long)]

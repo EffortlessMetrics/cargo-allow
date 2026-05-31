@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::RootArgs;
+use crate::{RootArgs, parse_kind_filter_arg};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ProposeArgs {
@@ -11,7 +11,7 @@ pub(crate) struct ProposeArgs {
     #[arg(long)]
     pub(super) config: Option<PathBuf>,
     /// Filter findings by kind.
-    #[arg(long)]
+    #[arg(long, value_parser = parse_kind_filter_arg)]
     pub(super) kind: Option<String>,
     /// Include untracked files in addition to git-tracked files.
     #[arg(long)]

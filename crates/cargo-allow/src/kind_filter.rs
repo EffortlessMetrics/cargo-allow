@@ -97,6 +97,12 @@ pub(crate) fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
     })
 }
 
+pub(crate) fn parse_kind_filter_arg(kind: &str) -> Result<String, String> {
+    parse_kind_filter(kind)
+        .map(|_| kind.to_string())
+        .map_err(|_| format!("unknown kind `{kind}`"))
+}
+
 pub(crate) fn is_panic_compat_kind(kind: &str) -> bool {
     matches!(
         kind.trim(),

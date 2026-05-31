@@ -103,6 +103,30 @@ mod tests {
     }
 
     #[test]
+    fn clap_rejects_unknown_kind_filters_for_report_commands() {
+        for args in [
+            vec!["cargo-allow", "audit", "--kind", "unsfae"],
+            vec!["cargo-allow", "check", "--kind", "unsfae"],
+            vec![
+                "cargo-allow",
+                "diff",
+                "--base",
+                "origin/main",
+                "--kind",
+                "unsfae",
+            ],
+            vec!["cargo-allow", "propose", "--kind", "unsfae"],
+        ] {
+            let err = CargoAllowCli::try_parse_from(argv(args.clone()))
+                .expect_err("unknown kind should fail closed");
+            assert!(
+                err.to_string().contains("unknown kind"),
+                "unexpected parse error for {args:?}: {err}"
+            );
+        }
+    }
+
+    #[test]
     fn check_help_describes_policy_default_as_source_tree_gate_mode() {
         let mut command = CargoAllowCli::command();
         let help = command.render_help().to_string();

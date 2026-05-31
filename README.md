@@ -108,6 +108,7 @@ cargo-allow diff --base origin/main \
 Use `--kind <kind>` when a reviewer needs a kind-specific posture view. The
 filter limits both source finding changes and allow-entry policy changes for
 that governed kind; ledger-level policy contract changes remain visible.
+Unknown kind names fail closed before the command scans the source tree.
 
 Explain one retained exception:
 
