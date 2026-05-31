@@ -76,6 +76,9 @@ pub fn render_human_with_context(
     if outcomes.is_empty() {
         out.push_str("  no outcomes\n");
     }
+    if command == "audit" {
+        render_audit_summary_human(&summary, outcomes, context, &mut out);
+    }
     render_non_rust_human(findings, outcomes, &mut out);
     out.push('\n');
     for outcome in outcomes
@@ -98,6 +101,72 @@ pub fn render_human_with_context(
         "Result: passed/advisory\n"
     });
     out
+}
+
+fn render_audit_summary_human(
+    summary: &Summary,
+    outcomes: &[MatchOutcome],
+    context: ReportContext<'_>,
+    out: &mut String,
+) {
+    let signals = ReviewSignals::from_summary(summary, context);
+    let queue = outcomes
+        .iter()
+        .filter(|outcome| AUDIT_REVIEW_QUEUE_STATUSES.contains(&outcome.status))
+        .take(20)
+        .collect::<Vec<_>>();
+    out.push_str("\nAudit summary:\n");
+    out.push_str(&format!("  {:24} {}\n", "match_outcomes", summary.total));
+    out.push_str(&format!(
+        "  {:24} {}\n",
+        "review_items", signals.review_items
+    ));
+    out.push_str(&format!(
+        "  {:24} {}\n",
+        "new_unreceipted",
+        summary.count(MatchStatus::New)
+    ));
+    out.push_str(&format!(
+        "  {:24} {}\n",
+        "expired",
+        summary.count(MatchStatus::Expired)
+    ));
+    out.push_str(&format!(
+        "  {:24} {}\n",
+        "evidence_gaps",
+        summary.count(MatchStatus::EvidenceMissing)
+    ));
+    out.push_str(&format!(
+        "  {:24} {}\n",
+        "policy_missing_evidence", signals.policy_missing_evidence
+    ));
+    out.push_str(&format!(
+        "  {:24} {}\n",
+        "broken_evidence_links", signals.broken_evidence_links
+    ));
+    out.push_str(&format!(
+        "  {:24} {}\n",
+        "weak_evidence_references", signals.weak_evidence_references
+    ));
+    out.push_str(&format!(
+        "  {:24} {}\n",
+        "baseline_debt", signals.baseline_debt
+    ));
+    out.push_str(audit_recommended_next_step(
+        summary,
+        signals,
+        queue.is_empty(),
+    ));
+    if !queue.is_empty() {
+        out.push_str("\nAudit review queue:\n");
+        for outcome in queue {
+            out.push_str(&format!(
+                "  {}: {}\n",
+                outcome.status.as_str(),
+                outcome.message
+            ));
+        }
+    }
 }
 
 pub fn render_markdown(
@@ -235,21 +304,11 @@ fn render_audit_summary_markdown(
         signals.weak_evidence_references
     ));
     out.push_str(&format!("| Baseline debt | {} |\n", signals.baseline_debt));
-    if signals.review_items == 0 {
-        out.push_str("\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n");
-    } else if queue.is_empty() && signals.broken_evidence_links > 0 {
-        out.push_str("\nRecommended next step: run `cargo-allow worklist --item-kind broken_evidence_link --format json` to repair broken local evidence references.\n");
-    } else if queue.is_empty()
-        && signals.policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing)
-    {
-        out.push_str("\nRecommended next step: run `cargo-allow worklist --missing-evidence --format json` to route retained entries with no evidence references.\n");
-    } else if queue.is_empty() && signals.weak_evidence_references > 0 {
-        out.push_str("\nRecommended next step: replace unstructured or unknown-prefix evidence with known evidence prefixes before tightening policy.\n");
-    } else if queue.is_empty() && signals.baseline_debt > 0 {
-        out.push_str("\nRecommended next step: run `cargo-allow worklist --format json` to review generated baseline debt.\n");
-    } else {
-        out.push_str("\nRecommended next step: review the queue below before tightening policy.\n");
-    }
+    out.push_str(audit_recommended_next_step(
+        summary,
+        signals,
+        queue.is_empty(),
+    ));
 
     if !queue.is_empty() {
         out.push_str("\n## Audit Review Queue\n\n");
@@ -260,6 +319,28 @@ fn render_audit_summary_markdown(
                 outcome.message
             ));
         }
+    }
+}
+
+fn audit_recommended_next_step(
+    summary: &Summary,
+    signals: ReviewSignals,
+    queue_empty: bool,
+) -> &'static str {
+    if signals.review_items == 0 {
+        "\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n"
+    } else if queue_empty && signals.broken_evidence_links > 0 {
+        "\nRecommended next step: run `cargo-allow worklist --item-kind broken_evidence_link --format json` to repair broken local evidence references.\n"
+    } else if queue_empty
+        && signals.policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing)
+    {
+        "\nRecommended next step: run `cargo-allow worklist --missing-evidence --format json` to route retained entries with no evidence references.\n"
+    } else if queue_empty && signals.weak_evidence_references > 0 {
+        "\nRecommended next step: replace unstructured or unknown-prefix evidence with known evidence prefixes before tightening policy.\n"
+    } else if queue_empty && signals.baseline_debt > 0 {
+        "\nRecommended next step: run `cargo-allow worklist --format json` to review generated baseline debt.\n"
+    } else {
+        "\nRecommended next step: review the queue below before tightening policy.\n"
     }
 }
 
