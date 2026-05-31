@@ -1354,6 +1354,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
     };
     let actual = defs.keys().map(String::as_str).collect::<BTreeSet<_>>();
     let expected = [
+        "allow_entry",
         "canonical_evidence_prefix",
         "claim_boundary_flag",
         "counts",
@@ -1371,6 +1372,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "governed_source_exception_kind",
         "inventory",
         "inventory_source",
+        "lifecycle",
         "local_file_evidence_prefix",
         "lifecycle_change",
         "lifecycle_change_field",
@@ -1395,6 +1397,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "selector_precision_field",
         "scope_change",
         "scope_change_field",
+        "span",
         "summary",
         "structural_identity",
         "source_syntax_inventory",
@@ -1504,6 +1507,10 @@ fn artifact_local_fragments_match_common_wire_shapes() {
     for (schema_name, schema) in [("explain", &explain), ("worklist", &worklist)] {
         assert_common_fragment_matches(schema_name, schema, &common, "evidence_reference");
         assert_common_fragment_matches(schema_name, schema, &common, "evidence_reference_status");
+    }
+
+    for fragment in ["allow_entry", "lifecycle", "span"] {
+        assert_common_fragment_matches("explain", &explain, &common, fragment);
     }
 
     assert_common_fragment_matches("receipt", &receipt, &common, "counts");
