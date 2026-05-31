@@ -6,10 +6,15 @@ pub(super) fn render_prune_stale_result(
     explicit_dry_run: bool,
     write_requested: bool,
     written_path: Option<&Path>,
+    context: PruneContext<'_>,
 ) -> String {
     let mode = PruneRenderMode::new(explicit_dry_run, write_requested, written_path);
     let report_candidates = report_prune_candidates(candidates);
-    allow_report::render_prune_human(&report_candidates, mode.context())
+    allow_report::render_prune_human_with_context(
+        &report_candidates,
+        mode.context(),
+        context.inventory,
+    )
 }
 
 pub(super) fn render_prune_stale_json(
