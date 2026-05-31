@@ -3,7 +3,8 @@ use super::worklist_priority::{
     DIFFICULTY_MEDIUM, DIFFICULTY_SMALL, RISK_HIGH, RISK_LOW, RISK_MEDIUM,
 };
 use super::{WorkItem, WorklistFilters};
-use allow_core::{MatchStatus, source_tree_path_matches_filter};
+use crate::parse_kind_filter;
+use allow_core::{FindingKind, MatchStatus, source_tree_path_matches_filter};
 
 pub(super) fn filter_work_items(
     items: Vec<WorkItem>,
@@ -12,10 +13,7 @@ pub(super) fn filter_work_items(
     items
         .into_iter()
         .filter(|item| {
-            filters
-                .kind
-                .map(|kind| item.exception_kind.as_deref() == Some(kind))
-                .unwrap_or(true)
+            kind_matches(item, filters.kind)
                 && filters
                     .family
                     .map(|family| item.family.as_deref() == Some(family))
@@ -66,6 +64,20 @@ pub(super) fn filter_work_items(
                 && (!filters.missing_evidence || item.evidence_count == Some(0))
         })
         .collect()
+}
+
+fn kind_matches(item: &WorkItem, kind: Option<&str>) -> bool {
+    let Some(kind) = kind else {
+        return true;
+    };
+    let Ok(parsed) = parse_kind_filter(kind) else {
+        return false;
+    };
+    item.exception_kind
+        .as_deref()
+        .and_then(|kind| kind.parse::<FindingKind>().ok())
+        .is_some_and(|item_kind| item_kind == parsed.kind)
+        && parsed.family.matches(item.family.as_deref())
 }
 
 pub(super) fn sort_work_items(items: &mut [WorkItem]) {
