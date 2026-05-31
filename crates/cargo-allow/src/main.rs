@@ -72,6 +72,10 @@ mod artifact_schema_prune_tests;
 #[cfg(test)]
 mod artifact_schema_receipt_tests;
 #[cfg(test)]
+mod artifact_schema_report_diff_identity_tests;
+#[cfg(test)]
+mod artifact_schema_report_diff_policy_detail_tests;
+#[cfg(test)]
 mod artifact_schema_report_diff_tests;
 #[cfg(test)]
 mod artifact_schema_report_tests;

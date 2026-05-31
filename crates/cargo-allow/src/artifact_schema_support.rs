@@ -23,6 +23,13 @@ pub(crate) fn inventory_source_enum() -> Vec<&'static str> {
         .collect()
 }
 
+pub(crate) fn enum_strings<T: Copy>(
+    values: &[T],
+    as_str: impl Fn(T) -> &'static str,
+) -> Vec<&'static str> {
+    values.iter().copied().map(as_str).collect()
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SchemaContract {
     pub(crate) name: &'static str,
