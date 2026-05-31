@@ -112,11 +112,11 @@ fn explain_entry_text_reports_evidence_reference_status() {
 
     assert!(text.contains("evidence diagnostics:"));
     assert!(text.contains("doc:docs/safety.md"));
-    assert!(text.contains("local_file_present: doc:docs/safety.md"));
+    assert!(text.contains("[ok] present: doc:docs/safety.md"));
     assert!(text.contains("spec:docs/missing.md"));
-    assert!(text.contains("local_file_missing: spec:docs/missing.md"));
+    assert!(text.contains("[missing] missing: spec:docs/missing.md"));
     assert!(text.contains("test:file_policy_fixture"));
-    assert!(text.contains("traceability_only: test:file_policy_fixture"));
+    assert!(text.contains("[info] not_local: test:file_policy_fixture"));
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
@@ -126,7 +126,10 @@ fn explain_entry_text_reports_weak_evidence_next_actions() {
     let root = migrate_fixture_dir();
     let mut cfg = AllowConfig::empty();
     let mut entry = test_entry("allow-weak-evidence", FindingKind::NonRustFile);
-    entry.evidence = vec!["test:".to_string()];
+    entry.evidence = vec![
+        "spreadsheet:manual-review".to_string(),
+        "TODO add reviewed evidence".to_string(),
+    ];
     cfg.allow.push(entry.clone());
     let finding = test_finding(
         FindingKind::NonRustFile,
@@ -138,8 +141,10 @@ fn explain_entry_text_reports_weak_evidence_next_actions() {
     let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
 
     assert!(text.contains("current_status: matched"));
-    assert!(text.contains("unstructured: test:"));
-    assert!(text.contains("empty evidence reference target"));
+    assert!(text.contains("[weak] unknown_prefix: spreadsheet:manual-review"));
+    assert!(text.contains("unrecognized evidence prefix"));
+    assert!(text.contains("[weak] untyped: TODO add reviewed evidence"));
+    assert!(text.contains("unstructured evidence string"));
     assert!(text.contains("action: replace the weak evidence string"));
     assert!(
         text.contains("proof: cargo-allow worklist --allow-id allow-weak-evidence --format json")

@@ -346,7 +346,8 @@ Completed:
 - Explain evidence reference status from `cargo-allow explain`, including
   present, missing, invalid, traceability, and unstructured references.
 - Format human `explain` evidence diagnostics as status-first rows with
-  separate messages so local evidence state is readable without JSON parsing.
+  friendly present/missing/not-local/weak labels and separate messages so local
+  evidence state is readable without JSON parsing.
 - Add examples for ripr, unsafe-review, and coverage evidence references while
   keeping the no-execution claim boundary explicit.
 - Count broken local evidence links in audit/report artifacts so first-run
