@@ -213,10 +213,10 @@ Goal: make PR review the primary source-tree exception review experience.
 
 Completed:
 
-- Detect policy weakening in `cargo-allow diff` for current `policy/allow.toml`
-  versus `--base`, including scope broadening, selector precision loss, expiry
-  extension, evidence removal, metadata removal, occurrence-limit loosening, and
-  added baseline debt.
+- Detect policy weakening in `cargo-allow diff` for the selected policy ledger
+  path versus `--base`, including scope broadening, selector precision loss,
+  expiry extension, evidence removal, metadata removal, occurrence-limit
+  loosening, and added baseline debt.
 - Fail PR-posture diffs when an existing durable allow ID is retargeted to a
   different governed exception kind or family.
 - Report selector precision increases as policy improvements so narrowed or
