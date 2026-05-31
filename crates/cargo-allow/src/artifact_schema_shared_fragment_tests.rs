@@ -206,7 +206,14 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         assert_common_fragment_matches("explain", &explain, &common, fragment);
     }
 
-    assert_common_fragment_matches("receipt", &receipt, &common, "counts");
+    for fragment in [
+        "counts",
+        "source_inventory",
+        "source_inventory_kind_row",
+        "source_inventory_family_row",
+    ] {
+        assert_common_fragment_matches("receipt", &receipt, &common, fragment);
+    }
     assert_common_fragment_matches("prune", &prune, &common, "stale_entry");
     assert_common_fragment_matches_named("explain", &explain, "match_outcome", &common, "outcome");
 }
