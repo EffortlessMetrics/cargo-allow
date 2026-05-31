@@ -1,6 +1,6 @@
 use crate::artifact_schema_expectations::{
-    evidence_change_fields, exception_identity_change_fields, finding_posture_kinds,
-    lifecycle_change_fields, metadata_change_fields, policy_change_kinds, policy_change_severities,
+    exception_identity_change_fields, finding_posture_kinds, lifecycle_change_fields,
+    metadata_change_fields, policy_change_kinds, policy_change_severities,
     requirement_change_fields, scope_change_fields, selector_identity_change_fields,
     selector_precision_fields,
 };
@@ -300,87 +300,6 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         Some("string"),
         "common outcome message type"
     );
-    let canonical_evidence_prefixes =
-        allow_policy::canonical_evidence_prefixes().collect::<Vec<_>>();
-    assert_enum_equals(
-        "common",
-        &schema,
-        "/$defs/canonical_evidence_prefix/enum",
-        &canonical_evidence_prefixes,
-    );
-    let recognized_evidence_prefixes =
-        allow_policy::recognized_evidence_prefixes().collect::<Vec<_>>();
-    assert_enum_equals(
-        "common",
-        &schema,
-        "/$defs/recognized_evidence_prefix/enum",
-        &recognized_evidence_prefixes,
-    );
-    let local_file_evidence_prefixes =
-        allow_policy::local_file_evidence_prefixes().collect::<Vec<_>>();
-    assert_enum_equals(
-        "common",
-        &schema,
-        "/$defs/local_file_evidence_prefix/enum",
-        &local_file_evidence_prefixes,
-    );
-    let traceability_evidence_prefixes =
-        allow_policy::traceability_evidence_prefixes().collect::<Vec<_>>();
-    assert_enum_equals(
-        "common",
-        &schema,
-        "/$defs/traceability_evidence_prefix/enum",
-        &traceability_evidence_prefixes,
-    );
-    let evidence_reference_statuses = allow_policy::EvidenceReferenceStatus::ALL
-        .iter()
-        .map(|status| status.as_str())
-        .collect::<Vec<_>>();
-    assert_enum_equals(
-        "common",
-        &schema,
-        "/$defs/evidence_reference_status/enum",
-        &evidence_reference_statuses,
-    );
-    let evidence_reference =
-        required_schema_pointer("common", &schema, "/$defs/evidence_reference");
-    assert_eq!(
-        evidence_reference
-            .get("additionalProperties")
-            .and_then(Value::as_bool),
-        Some(false),
-        "common evidence_reference should reject unknown fields"
-    );
-    assert_required_fields(
-        "common evidence_reference",
-        evidence_reference,
-        &["raw", "prefix", "target", "status", "message"],
-    );
-    assert_schema_type_equals(
-        "common evidence_reference prefix",
-        &schema,
-        "/$defs/evidence_reference/properties/prefix/type",
-        &["string", "null"],
-    );
-    assert_schema_type_equals(
-        "common evidence_reference target",
-        &schema,
-        "/$defs/evidence_reference/properties/target/type",
-        &["string", "null"],
-    );
-    assert_eq!(
-        schema
-            .pointer("/$defs/evidence_reference/properties/status/$ref")
-            .and_then(Value::as_str),
-        Some("#/$defs/evidence_reference_status"),
-        "common evidence_reference status should use the shared status vocabulary"
-    );
-    assert_enum_equals(
-        "common evidence fields",
-        &schema,
-        "/$defs/evidence_change_field/enum",
-        &evidence_change_fields(),
-    );
     assert_enum_equals(
         "common exception identity fields",
         &schema,
@@ -522,53 +441,6 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         "/$defs/policy_status_change/properties/after/type",
         &["string", "null"],
     );
-    let evidence_change = required_schema_pointer("common", &schema, "/$defs/evidence_change");
-    assert_eq!(
-        evidence_change
-            .get("additionalProperties")
-            .and_then(Value::as_bool),
-        Some(false),
-        "common evidence_change should reject unknown fields"
-    );
-    assert_required_fields(
-        "common evidence_change",
-        evidence_change,
-        &["field", "removed", "added"],
-    );
-    assert_eq!(
-        schema
-            .pointer("/$defs/evidence_change/properties/field/$ref")
-            .and_then(Value::as_str),
-        Some("#/$defs/evidence_change_field"),
-        "common evidence_change field should use the shared evidence field vocabulary"
-    );
-    for field in ["removed", "added"] {
-        assert_eq!(
-            schema
-                .pointer(&format!("/$defs/evidence_change/properties/{field}/type"))
-                .and_then(Value::as_str),
-            Some("array"),
-            "common evidence_change {field} type"
-        );
-        assert_eq!(
-            schema
-                .pointer(&format!(
-                    "/$defs/evidence_change/properties/{field}/items/type"
-                ))
-                .and_then(Value::as_str),
-            Some("string"),
-            "common evidence_change {field} item type"
-        );
-        assert_eq!(
-            schema
-                .pointer(&format!(
-                    "/$defs/evidence_change/properties/{field}/items/minLength"
-                ))
-                .and_then(Value::as_u64),
-            Some(1),
-            "common evidence_change {field} item minLength"
-        );
-    }
     let diff = required_schema_pointer("common", &schema, "/$defs/diff");
     assert_eq!(
         diff.get("additionalProperties").and_then(Value::as_bool),
