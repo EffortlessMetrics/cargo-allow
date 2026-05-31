@@ -40,6 +40,76 @@ fn release_0_1_1_publish_order_matches_internal_dependency_graph() {
     }
 }
 
+#[test]
+fn release_0_1_1_version_handoff_matches_workspace_versions() {
+    let root = workspace_root();
+    let release_doc = fs::read_to_string(root.join("docs/release/0.1.1.md"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read 0.1.1 release doc: {err}")));
+    let workspace_manifest = fs::read_to_string(root.join("Cargo.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read workspace manifest: {err}")));
+    let lockfile = fs::read_to_string(root.join("Cargo.lock"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read lockfile: {err}")));
+    let package_manifests = workspace_package_manifests(&root);
+    let workspace_version = workspace_package_version(&workspace_manifest);
+
+    assert_eq!(
+        workspace_version, "0.1.1",
+        "0.1.1 release prep should keep the workspace package version at 0.1.1"
+    );
+    assert!(
+        release_doc.contains("# 0.1.1 Release Prep"),
+        "release handoff should name the target patch release"
+    );
+    assert!(
+        release_doc.contains("to `0.1.1`"),
+        "release handoff should document the intended version bump"
+    );
+    assert!(
+        release_doc.contains("--version 0.1.1"),
+        "release handoff should smoke-test the published 0.1.1 binary"
+    );
+
+    for (package, manifest) in &package_manifests {
+        assert!(
+            manifest.contains("version.workspace = true"),
+            "{package} should inherit the workspace release version"
+        );
+    }
+
+    let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
+    let workspace_dependency_versions =
+        workspace_internal_dependency_versions(&workspace_manifest, &package_names);
+    let mut expected_workspace_dependency_names = package_names.clone();
+    expected_workspace_dependency_names.remove("cargo-allow");
+    assert_eq!(
+        workspace_dependency_versions
+            .keys()
+            .cloned()
+            .collect::<BTreeSet<_>>(),
+        expected_workspace_dependency_names,
+        "workspace dependencies should version every internal library crate"
+    );
+    for (dependency, version) in workspace_dependency_versions {
+        assert_eq!(
+            version, workspace_version,
+            "{dependency} workspace dependency should require the release version"
+        );
+    }
+
+    let lock_versions = lockfile_package_versions(&lockfile, &package_names);
+    assert_eq!(
+        lock_versions.keys().cloned().collect::<BTreeSet<_>>(),
+        package_names,
+        "Cargo.lock should contain every workspace package"
+    );
+    for (package, version) in lock_versions {
+        assert_eq!(
+            version, workspace_version,
+            "{package} lockfile entry should carry the release version"
+        );
+    }
+}
+
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -113,6 +183,96 @@ fn internal_workspace_dependencies(
             }
         })
         .collect()
+}
+
+fn workspace_package_version(workspace_manifest: &str) -> String {
+    let mut in_workspace_package = false;
+    for line in workspace_manifest.lines() {
+        let line = line.trim();
+        if line.starts_with('[') {
+            in_workspace_package = line == "[workspace.package]";
+            continue;
+        }
+        if in_workspace_package {
+            if let Some(version) = manifest_value(line, "version") {
+                return version;
+            }
+        }
+    }
+    std::panic::panic_any("workspace manifest should declare workspace.package.version");
+}
+
+fn workspace_internal_dependency_versions(
+    workspace_manifest: &str,
+    package_names: &BTreeSet<String>,
+) -> BTreeMap<String, String> {
+    workspace_manifest
+        .lines()
+        .filter_map(|line| {
+            let (name, value) = line.split_once('=')?;
+            let name = name.trim();
+            if package_names.contains(name) {
+                Some((name.to_string(), inline_table_version(value)))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn inline_table_version(value: &str) -> String {
+    value
+        .split(',')
+        .find_map(|field| manifest_value(field.trim().trim_end_matches('}').trim(), "version"))
+        .unwrap_or_else(|| std::panic::panic_any(format!("dependency {value} should set version")))
+}
+
+fn lockfile_package_versions(
+    lockfile: &str,
+    package_names: &BTreeSet<String>,
+) -> BTreeMap<String, String> {
+    let mut versions = BTreeMap::new();
+    let mut current_name = None::<String>;
+    let mut current_version = None::<String>;
+
+    for line in lockfile.lines() {
+        let line = line.trim();
+        if line == "[[package]]" {
+            record_lockfile_package(
+                &mut versions,
+                package_names,
+                current_name.take(),
+                current_version.take(),
+            );
+            continue;
+        }
+        if current_name.is_none() {
+            current_name = manifest_value(line, "name");
+        }
+        if current_version.is_none() {
+            current_version = manifest_value(line, "version");
+        }
+    }
+    record_lockfile_package(&mut versions, package_names, current_name, current_version);
+    versions
+}
+
+fn record_lockfile_package(
+    versions: &mut BTreeMap<String, String>,
+    package_names: &BTreeSet<String>,
+    name: Option<String>,
+    version: Option<String>,
+) {
+    let Some(name) = name else {
+        return;
+    };
+    if !package_names.contains(&name) {
+        return;
+    }
+    let Some(version) = version else {
+        std::panic::panic_any(format!("lockfile package {name} should include version"));
+    };
+    versions.insert(name, version);
 }
 
 fn release_order_index(order_index: &BTreeMap<&str, usize>, package: &str) -> usize {
