@@ -96,6 +96,18 @@ fn clap_rejects_unknown_worklist_item_kind() {
 }
 
 #[test]
+fn clap_rejects_unknown_worklist_kind() {
+    let err =
+        CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "worklist", "--kind", "unsfae"]))
+            .expect_err("unknown worklist kind should fail closed");
+
+    assert!(
+        err.to_string().contains("unknown worklist kind"),
+        "unexpected parse error: {err}"
+    );
+}
+
+#[test]
 fn clap_accepts_hyphenated_worklist_item_kind_alias() {
     let parsed = CargoAllowCli::try_parse_from(argv(vec![
         "cargo-allow",
