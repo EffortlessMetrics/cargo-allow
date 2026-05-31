@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::RootArgs;
+use crate::{RootArgs, parse_kind_filter};
 
 use super::worklist_item_kind::parse_work_item_kind_filter;
 use super::worklist_types::WorklistFilters;
@@ -14,7 +14,7 @@ pub(crate) struct WorklistArgs {
     #[arg(long)]
     pub(super) config: Option<PathBuf>,
     /// Filter findings by kind.
-    #[arg(long)]
+    #[arg(long, value_parser = parse_worklist_kind_filter)]
     pub(super) kind: Option<String>,
     /// Filter work items by scanner or policy family.
     #[arg(long)]
@@ -84,6 +84,12 @@ pub(crate) struct WorklistArgs {
 pub(super) enum WorklistFormat {
     Human,
     Json,
+}
+
+fn parse_worklist_kind_filter(value: &str) -> Result<String, String> {
+    parse_kind_filter(value)
+        .map(|_| value.to_string())
+        .map_err(|_| format!("unknown worklist kind `{value}`"))
 }
 
 pub(super) fn worklist_filters(args: &WorklistArgs) -> WorklistFilters<'_> {

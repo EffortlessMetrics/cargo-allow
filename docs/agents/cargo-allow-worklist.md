@@ -20,6 +20,9 @@ Use `--risk low`, `--risk medium`, `--risk high`, `--difficulty small`, or
 mistake a filter for approval to ignore the rest of the ledger.
 Use `--family <family>` for scanner-family slices such as `unwrap`, `indexing`,
 `unsafe_fn`, or `ci_declarative`.
+Use `--kind <kind>` for governed source-exception slices such as `unsafe`,
+`panic`, `lint-exception`, `non-rust`, `generated`, `process`, `network`, or
+`workflow`; unknown kind names fail closed instead of producing an empty queue.
 Use `--item-kind <kind>` for queue-type slices such as `stale_allow`,
 `baseline_debt`, `broad_scope`, `broken_evidence_link`, or
 `weak_evidence_reference`. The canonical values use underscores, and the CLI
