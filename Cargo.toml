@@ -16,7 +16,7 @@ members = [
 [workspace.package]
 edition = "2024"
 license = "MIT OR Apache-2.0"
-version = "0.1.0"
+version = "0.1.1"
 rust-version = "1.85"
 repository = "https://github.com/EffortlessMetrics/cargo-allow"
 homepage = "https://github.com/EffortlessMetrics/cargo-allow"
@@ -24,15 +24,15 @@ keywords = ["rust", "policy", "audit", "governance", "scanner"]
 categories = ["development-tools"]
 
 [workspace.dependencies]
-allow-core = { path = "crates/allow-core", version = "0.1.0" }
-allow-policy = { path = "crates/allow-policy", version = "0.1.0" }
-allow-policy-legacy = { path = "crates/allow-policy-legacy", version = "0.1.0" }
-allow-inventory = { path = "crates/allow-inventory", version = "0.1.0" }
-allow-files = { path = "crates/allow-files", version = "0.1.0" }
-allow-rust = { path = "crates/allow-rust", version = "0.1.0" }
-allow-match = { path = "crates/allow-match", version = "0.1.0" }
-allow-report = { path = "crates/allow-report", version = "0.1.0" }
-allow-diff = { path = "crates/allow-diff", version = "0.1.0" }
+allow-core = { path = "crates/allow-core", version = "0.1.1" }
+allow-policy = { path = "crates/allow-policy", version = "0.1.1" }
+allow-policy-legacy = { path = "crates/allow-policy-legacy", version = "0.1.1" }
+allow-inventory = { path = "crates/allow-inventory", version = "0.1.1" }
+allow-files = { path = "crates/allow-files", version = "0.1.1" }
+allow-rust = { path = "crates/allow-rust", version = "0.1.1" }
+allow-match = { path = "crates/allow-match", version = "0.1.1" }
+allow-report = { path = "crates/allow-report", version = "0.1.1" }
+allow-diff = { path = "crates/allow-diff", version = "0.1.1" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 toml = "1.1.2"
