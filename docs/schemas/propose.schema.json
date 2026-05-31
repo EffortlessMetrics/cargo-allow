@@ -84,6 +84,11 @@
         "baseline_debt_entries_proposed": {
           "type": "integer",
           "minimum": 0
+        },
+        "unsafe_baseline_debt_entries_proposed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of proposed baseline_debt entries for unsafe findings. Generated unsafe baseline entries still require real evidence and human review."
         }
       }
     },

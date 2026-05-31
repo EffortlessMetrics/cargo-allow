@@ -2,15 +2,20 @@ use super::*;
 
 #[test]
 fn propose_json_renderer_records_options_summary_and_defaults() {
-    let report = ProposeReport::new(
-        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(76)),
-        Some("panic"),
-        "2026-08-02",
-        Some("target/cargo-allow/proposed.toml"),
-        true,
-        54,
-        2,
-    );
+    let report = ProposeReport {
+        inventory: InventoryContext::source_syntax(
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(76),
+        ),
+        kind: Some("panic"),
+        expires: "2026-08-02",
+        policy_output: Some("target/cargo-allow/proposed.toml"),
+        force: true,
+        findings_scanned: 54,
+        baseline_debt_entries_proposed: 2,
+        unsafe_baseline_debt_entries_proposed: 1,
+    };
 
     let json = render_propose_json(report);
 
@@ -24,6 +29,7 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
     assert!(json.contains("\"force\": true"));
     assert!(json.contains("\"findings_scanned\": 54"));
     assert!(json.contains("\"baseline_debt_entries_proposed\": 2"));
+    assert!(json.contains("\"unsafe_baseline_debt_entries_proposed\": 1"));
     assert!(json.contains("\"owner\": \"unowned\""));
     assert!(json.contains("\"classification\": \"baseline_debt\""));
     let expected = format!(
@@ -49,7 +55,8 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
   }},
   "summary": {{
     "findings_scanned": 54,
-    "baseline_debt_entries_proposed": 2
+    "baseline_debt_entries_proposed": 2,
+    "unsafe_baseline_debt_entries_proposed": 1
   }},
   "generated_entry_defaults": {{
     "owner": "unowned",
@@ -69,6 +76,7 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
     assert!(text.contains("cargo-allow propose summary"));
     assert!(text.contains("findings scanned: 54"));
     assert!(text.contains("baseline_debt entries proposed: 2"));
+    assert!(text.contains("unsafe baseline_debt entries proposed: 1"));
     assert!(text.contains("owner: unowned"));
     assert!(text.contains("classification: baseline_debt"));
     assert!(text.contains("expires: 2026-08-02"));
