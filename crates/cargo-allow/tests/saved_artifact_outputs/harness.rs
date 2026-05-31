@@ -6,6 +6,24 @@ use super::support::{
     cargo_allow_command,
 };
 
+const FORBIDDEN_PROOF_COMMAND_TOOL_TOKENS: &[&str] = &[
+    "cargo",
+    "rustc",
+    "clippy",
+    "clippy-driver",
+    "cargo-clippy",
+    "cargo-deny",
+    "cargo-vet",
+    "cargo-geiger",
+    "ripr",
+    "unsafe-review",
+    "cargo-llvm-cov",
+    "llvm-cov",
+    "grcov",
+    "tarpaulin",
+    "cargo-tarpaulin",
+];
+
 pub(crate) fn run_cargo_allow(args: &[&str]) -> std::process::Output {
     let output = cargo_allow_command()
         .args(args)
@@ -115,6 +133,41 @@ pub(crate) fn assert_policy_output(path: &Path) {
         "{} should not contain summary JSON",
         path.display()
     );
+}
+
+pub(crate) fn assert_proof_commands_stay_cargo_allow(value: &serde_json::Value, pointer: &str) {
+    let commands = value
+        .pointer(pointer)
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!("{pointer} should point to proof_commands array"))
+        });
+    assert!(
+        !commands.is_empty(),
+        "{pointer} should include proof commands for the saved artifact fixture"
+    );
+
+    for command in commands {
+        let command = command.as_str().unwrap_or_else(|| {
+            std::panic::panic_any(format!("{pointer} proof command should be a string"))
+        });
+        assert!(
+            command.starts_with("cargo-allow "),
+            "{pointer} proof command should stay within cargo-allow: {command}"
+        );
+        for token in command.split_ascii_whitespace() {
+            assert!(
+                !FORBIDDEN_PROOF_COMMAND_TOOL_TOKENS
+                    .iter()
+                    .any(|forbidden| forbidden_tool_token_matches(token, forbidden)),
+                "{pointer} proof command should not invoke adjacent build/evidence tooling: {command}"
+            );
+        }
+    }
+}
+
+fn forbidden_tool_token_matches(token: &str, forbidden: &str) -> bool {
+    token == forbidden || token.strip_suffix(".exe") == Some(forbidden)
 }
 
 pub(crate) fn path_arg(path: &Path) -> &str {
