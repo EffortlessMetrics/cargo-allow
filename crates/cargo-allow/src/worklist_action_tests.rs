@@ -4,6 +4,24 @@ use std::collections::BTreeSet;
 use super::test_support::{test_entry, test_finding};
 use super::{WORK_ITEM_KINDS, proof_commands, suggested_actions};
 
+const FORBIDDEN_PROOF_COMMAND_TOOL_TOKENS: &[&str] = &[
+    "cargo",
+    "rustc",
+    "clippy",
+    "clippy-driver",
+    "cargo-clippy",
+    "cargo-deny",
+    "cargo-vet",
+    "cargo-geiger",
+    "ripr",
+    "unsafe-review",
+    "cargo-llvm-cov",
+    "llvm-cov",
+    "grcov",
+    "tarpaulin",
+    "cargo-tarpaulin",
+];
+
 #[test]
 fn suggested_actions_cover_known_worklist_kinds_and_default() {
     let cases = [
@@ -130,6 +148,77 @@ fn proof_commands_cover_known_worklist_kinds() {
 }
 
 #[test]
+fn proof_commands_do_not_route_agents_to_external_tools() {
+    let finding_cases = [
+        test_finding(
+            FindingKind::Panic,
+            Some("unwrap"),
+            "src/lib.rs",
+            "call_expr",
+        ),
+        test_finding(
+            FindingKind::Unsafe,
+            Some("unsafe_block"),
+            "src/lib.rs",
+            "unsafe_block",
+        ),
+        test_finding(
+            FindingKind::LintException,
+            Some("clippy"),
+            "src/lib.rs",
+            "attribute_item",
+        ),
+        test_finding(
+            FindingKind::NonRustFile,
+            Some("script"),
+            "scripts/release.sh",
+            "tracked_file",
+        ),
+        test_finding(
+            FindingKind::GeneratedCode,
+            Some("generated"),
+            "src/generated.rs",
+            "generated_file",
+        ),
+    ];
+    let entry_cases = [
+        test_entry("allow-panic", FindingKind::Panic),
+        test_entry("allow-unsafe", FindingKind::Unsafe),
+        test_entry("allow-lint", FindingKind::LintException),
+        test_entry("allow-non-rust", FindingKind::NonRustFile),
+        test_entry("allow-generated", FindingKind::GeneratedCode),
+        {
+            let mut entry = test_entry("allow-workflow", FindingKind::PolicyException);
+            entry.family = Some("workflow_external_action".to_string());
+            entry
+        },
+        {
+            let mut entry = test_entry("allow-policy", FindingKind::PolicyException);
+            entry.family = Some("unknown_policy_family".to_string());
+            entry
+        },
+    ];
+
+    for kind in WORK_ITEM_KINDS {
+        assert_source_tree_proof_command_boundary(kind, &proof_commands(kind, None, None));
+
+        for finding in &finding_cases {
+            assert_source_tree_proof_command_boundary(
+                kind,
+                &proof_commands(kind, Some(finding), None),
+            );
+        }
+
+        for entry in &entry_cases {
+            assert_source_tree_proof_command_boundary(
+                kind,
+                &proof_commands(kind, None, Some(entry)),
+            );
+        }
+    }
+}
+
+#[test]
 fn proof_commands_use_finding_kind_when_present() {
     let finding = test_finding(
         FindingKind::LintException,
@@ -151,6 +240,28 @@ fn proof_commands_use_finding_kind_when_present() {
             "cargo-allow worklist --kind lint-exception --format json",
         ]
     );
+}
+
+fn assert_source_tree_proof_command_boundary(kind: &str, commands: &[String]) {
+    for command in commands {
+        assert!(
+            command.starts_with("cargo-allow "),
+            "{kind} proof command should stay within cargo-allow: {command}"
+        );
+
+        for token in command.split_ascii_whitespace() {
+            assert!(
+                !FORBIDDEN_PROOF_COMMAND_TOOL_TOKENS
+                    .iter()
+                    .any(|forbidden| forbidden_tool_token_matches(token, forbidden)),
+                "{kind} proof command should not invoke adjacent build/evidence tooling: {command}"
+            );
+        }
+    }
+}
+
+fn forbidden_tool_token_matches(token: &str, forbidden: &str) -> bool {
+    token == forbidden || token.strip_suffix(".exe") == Some(forbidden)
 }
 
 #[test]
