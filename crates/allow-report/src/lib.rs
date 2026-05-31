@@ -118,7 +118,9 @@ pub(crate) use summary::{
 };
 
 #[cfg(test)]
-mod diff_tests;
+mod diff_json_tests;
+#[cfg(test)]
+mod diff_markdown_tests;
 #[cfg(test)]
 mod schema_tests;
 #[cfg(test)]
