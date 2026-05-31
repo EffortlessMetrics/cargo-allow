@@ -161,6 +161,20 @@ fn allow_entry_from_finding_uses_structural_selector_and_review_metadata() {
     assert_eq!(entry.last_seen.as_ref().map(|last| last.line), Some(42));
 }
 
+#[test]
+fn default_add_review_after_is_relative_to_current_date() {
+    let before = allow_core::SimpleDate::today_utc_approx().add_days(ADD_REVIEW_AFTER_DEFAULT_DAYS);
+    let review_after = default_add_review_after();
+    let after = allow_core::SimpleDate::today_utc_approx().add_days(ADD_REVIEW_AFTER_DEFAULT_DAYS);
+    let parsed = allow_core::SimpleDate::parse(&review_after)
+        .unwrap_or_else(|| std::panic::panic_any("default review_after should be a valid date"));
+
+    assert!(
+        before <= parsed && parsed <= after,
+        "default add review_after should stay relative to the current UTC date"
+    );
+}
+
 fn argv(items: Vec<&str>) -> Vec<String> {
     items.into_iter().map(String::from).collect()
 }

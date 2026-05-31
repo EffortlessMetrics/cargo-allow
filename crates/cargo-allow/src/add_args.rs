@@ -28,9 +28,9 @@ pub(crate) struct AddArgs {
     /// Classification for the retained exception.
     #[arg(long, default_value = "reviewed_exception")]
     pub(super) classification: String,
-    /// Review date for the retained exception.
-    #[arg(long, default_value = "2026-11-01")]
-    pub(super) review_after: String,
+    /// Review date for the retained exception. Defaults to roughly 90 days from today.
+    #[arg(long)]
+    pub(super) review_after: Option<String>,
     /// Optional expiry date for the retained exception.
     #[arg(long)]
     pub(super) expires: Option<String>,
