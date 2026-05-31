@@ -44,6 +44,8 @@ mod artifact_schema_add_tests;
 #[cfg(test)]
 mod artifact_schema_doctor_tests;
 #[cfg(test)]
+mod artifact_schema_evidence_reference_tests;
+#[cfg(test)]
 mod artifact_schema_expectations;
 #[cfg(test)]
 mod artifact_schema_explain_tests;
