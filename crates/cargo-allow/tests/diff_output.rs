@@ -185,6 +185,18 @@ fn diff_json_with_explicit_head_validates_added_evidence_at_head_revision() {
         "worse",
         "explicit head missing evidence net posture",
     );
+    assert_json_u64(
+        &value,
+        "/summary/broken_evidence_links",
+        1,
+        "explicit head missing evidence should report broken evidence from the head revision",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/current_failures",
+        1,
+        "explicit head current failures should use the head revision, not working-tree evidence",
+    );
     assert_policy_change(&value, "evidence_added", "allow-unwrap", "fail");
     assert_file_contains(
         &output,

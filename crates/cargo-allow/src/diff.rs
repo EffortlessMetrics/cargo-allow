@@ -1,4 +1,5 @@
-use allow_core::{AllowConfig, CargoAllowResult, normalize_path};
+use allow_core::{AllowConfig, CargoAllowResult, MatchOutcome, normalize_path};
+use allow_inventory::InventorySource;
 use allow_match::{CheckMode, evaluate};
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -18,9 +19,9 @@ use diff_render::{
 };
 
 use crate::{
-    EvidenceReportSummary, EvidenceValidationMode, OutputFormat, SourceTreeReportContext,
-    emit_text, git_relative_config_path, load_world_with_evidence_mode, parse_kind_filter,
-    policy_baseline_debt_entries, report_config,
+    EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, OutputFormat,
+    SourceTreeReportContext, emit_text, git_relative_config_path, load_world_with_evidence_mode,
+    parse_kind_filter, policy_baseline_debt_entries, report_config,
 };
 
 pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
@@ -32,8 +33,6 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         args.include_untracked,
         EvidenceValidationMode::ReportOnly,
     )?;
-    let report_cfg = report_config(&cfg, args.kind.as_deref())?;
-    let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
     let policy_path = git_relative_config_path(&root, args.config.as_deref())?;
     let base_cfg = allow_diff::policy_config_at_revision(&root, &args.base, &policy_path)?
         .unwrap_or_else(AllowConfig::empty);
@@ -57,6 +56,22 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         let parsed = parse_kind_filter(kind)?;
         head_findings_for_diff.retain(|finding| parsed.matches_finding(finding));
     }
+    let head_source_tree_files = args
+        .head
+        .as_deref()
+        .map(|revision| source_tree_files_at_revision(&root, revision))
+        .transpose()?;
+    let report_cfg = if args.head.is_some() {
+        report_config(&head_cfg_for_diff, args.kind.as_deref())?
+    } else {
+        report_config(&cfg, args.kind.as_deref())?
+    };
+    let findings_for_report = if args.head.is_some() {
+        &head_findings_for_diff
+    } else {
+        &findings
+    };
+    let outcomes = evaluate(&report_cfg, findings_for_report, CheckMode::NoNew);
     let finding_changes =
         allow_diff::finding_posture_changes(&base_findings, &head_findings_for_diff);
     let mut policy_changes = policy_changes_for_diff(
@@ -66,24 +81,33 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     )?;
     promote_broken_added_evidence_policy_changes(
         &root,
-        args.head.as_deref(),
+        head_source_tree_files.as_ref(),
         &head_cfg_for_diff,
         &mut policy_changes,
     )?;
     let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
-    let evidence = EvidenceReportSummary::from_policy(&root, &report_cfg, &outcomes);
+    let evidence = evidence_summary_for_diff(
+        &root,
+        head_source_tree_files.as_ref(),
+        &report_cfg,
+        &outcomes,
+    );
     let current_failures = outcomes
         .iter()
         .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
         .count()
         + evidence.broken_evidence_links;
     let failed = current_failures > 0 || policy_failed;
-    let source_context = SourceTreeReportContext::new(&root, inventory_facts);
+    let report_inventory_facts = head_source_tree_files
+        .as_ref()
+        .map(|files| InventoryFacts::scanned(InventorySource::GitTracked, files.len()))
+        .unwrap_or(inventory_facts);
+    let source_context = SourceTreeReportContext::new(&root, report_inventory_facts);
     let mut report_context = source_context.report(Some(policy_baseline_debt_entries(&report_cfg)));
     evidence.apply_to(&mut report_context);
     let mut text = match args.format {
         OutputFormat::Json => render_diff_json_report(
-            &findings,
+            findings_for_report,
             &outcomes,
             failed,
             report_context,
@@ -93,28 +117,28 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         ),
         OutputFormat::Html => allow_report::render_html_with_context(
             "diff",
-            &findings,
+            findings_for_report,
             &outcomes,
             failed,
             report_context,
         ),
         OutputFormat::Sarif => allow_report::render_sarif_with_context(
             "diff",
-            &findings,
+            findings_for_report,
             &outcomes,
             failed,
             report_context,
         ),
         OutputFormat::Markdown => allow_report::render_markdown_with_context(
             "diff",
-            &findings,
+            findings_for_report,
             &outcomes,
             failed,
             report_context,
         ),
         OutputFormat::Human => allow_report::render_human_with_context(
             "diff",
-            &findings,
+            findings_for_report,
             &outcomes,
             failed,
             report_context,
@@ -181,13 +205,10 @@ fn policy_changes_for_diff(
 
 fn promote_broken_added_evidence_policy_changes(
     root: &Path,
-    head_revision: Option<&str>,
+    head_files: Option<&BTreeSet<String>>,
     head_cfg: &AllowConfig,
     changes: &mut [allow_diff::PolicyChange],
 ) -> CargoAllowResult<()> {
-    let head_files = head_revision
-        .map(|revision| source_tree_files_at_revision(root, revision))
-        .transpose()?;
     for change in changes {
         if change.kind != allow_diff::PolicyChangeKind::EvidenceAdded || change.severity.fails() {
             continue;
@@ -197,7 +218,7 @@ fn promote_broken_added_evidence_policy_changes(
         };
         if !added_evidence_has_broken_local_link(
             root,
-            head_files.as_ref(),
+            head_files,
             head_cfg,
             &change.allow_id,
             &evidence.added,
@@ -234,6 +255,28 @@ fn added_evidence_has_broken_local_link(
         })
 }
 
+fn evidence_summary_for_diff(
+    root: &Path,
+    head_files: Option<&BTreeSet<String>>,
+    cfg: &AllowConfig,
+    outcomes: &[MatchOutcome],
+) -> EvidenceReportSummary {
+    let mut evidence = EvidenceReportSummary::from_policy(root, cfg, outcomes);
+    if let Some(head_files) = head_files {
+        evidence.broken_evidence_links = broken_local_evidence_count_in_files(head_files, cfg);
+    }
+    evidence
+}
+
+fn broken_local_evidence_count_in_files(head_files: &BTreeSet<String>, cfg: &AllowConfig) -> usize {
+    cfg.allow
+        .iter()
+        .flat_map(|entry| &entry.evidence)
+        .filter_map(|reference| local_evidence_target(reference))
+        .filter(|target| !head_files.contains(target))
+        .count()
+}
+
 fn source_tree_files_at_revision(
     root: &Path,
     revision: &str,
@@ -250,7 +293,7 @@ fn local_evidence_target(reference: &str) -> Option<String> {
     if !allow_policy::local_file_evidence_prefixes().any(|known| known == prefix) {
         return None;
     }
-    Some(target.trim().replace('\\', "/"))
+    Some(normalize_path(target.trim()))
 }
 
 #[cfg(test)]
