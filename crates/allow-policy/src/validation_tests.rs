@@ -4,6 +4,7 @@ mod entry;
 mod lifecycle;
 mod policy_header;
 mod selector;
+mod selector_scope;
 mod workspace;
 
 fn parse_err(input: &str) -> String {
