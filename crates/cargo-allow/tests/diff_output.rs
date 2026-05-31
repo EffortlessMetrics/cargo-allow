@@ -364,6 +364,55 @@ fn diff_json_with_explicit_head_finds_policy_path_in_revision_when_working_polic
 }
 
 #[test]
+fn diff_json_with_explicit_head_rejects_missing_explicit_config_path() {
+    let root = temp_root("diff-head-missing-explicit-config");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(Some("test:head_policy_path_is_revision_backed")),
+    );
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "add traceability evidence"]);
+    git(&root, &["tag", "head-with-policy"]);
+    let output = root.join("diff.json");
+
+    let result = cargo_allow_command()
+        .arg("diff")
+        .arg("--root")
+        .arg(&root)
+        .arg("--config")
+        .arg("missing-policy.toml")
+        .arg("--base")
+        .arg("HEAD~1")
+        .arg("--head")
+        .arg("head-with-policy")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+
+    assert_status("diff", &result, false);
+    assert_stdout_empty(
+        "diff",
+        &result,
+        "--output should not emit report JSON to stdout",
+    );
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    assert!(
+        stderr.contains("policy config missing-policy.toml not found in compared revisions"),
+        "diff should fail closed on a missing explicit --config path: {stderr}"
+    );
+    assert!(
+        !output.exists(),
+        "diff should not write a misleading empty-policy report for a missing explicit config"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_reports_weak_evidence_added_as_review_required() {
     let root = temp_root("diff-weak-evidence-added");
     write_diff_fixture(

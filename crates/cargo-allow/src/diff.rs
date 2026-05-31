@@ -252,7 +252,16 @@ fn git_relative_config_path_for_diff(
         return git_relative_config_path(root, config);
     }
     if let Some(config) = config {
-        return explicit_diff_config_path(root, config);
+        let path = explicit_diff_config_path(root, config)?;
+        if revision_has_config(root, head.unwrap_or(base), &path)?
+            || revision_has_config(root, base, &path)?
+        {
+            return Ok(path);
+        }
+        return Err(CargoAllowError::new(format!(
+            "policy config {} not found in compared revisions",
+            normalize_path(&path)
+        )));
     }
     if let Ok(path) = git_relative_config_path(root, None) {
         return Ok(path);
