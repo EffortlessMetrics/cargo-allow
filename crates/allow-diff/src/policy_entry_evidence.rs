@@ -8,10 +8,11 @@ use crate::policy_compare::{added_values, removed_values};
 pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> Vec<PolicyChange> {
     let mut changes = Vec::new();
     if removed_values(&base.evidence, &head.evidence) {
+        let removed = removed_items(&base.evidence, &head.evidence);
         changes.push(change(
             head,
             EvidenceChangeField::Evidence,
-            removed_items(&base.evidence, &head.evidence),
+            removed,
             Vec::new(),
             PolicyChangeKind::EvidenceRemoved,
             PolicyChangeSeverity::Fail,
@@ -19,14 +20,16 @@ pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
         ));
     }
     if added_values(&base.evidence, &head.evidence) {
+        let added = added_items(&base.evidence, &head.evidence);
+        let severity = added_evidence_severity(&added);
         changes.push(change(
             head,
             EvidenceChangeField::Evidence,
             Vec::new(),
-            added_items(&base.evidence, &head.evidence),
+            added,
             PolicyChangeKind::EvidenceAdded,
-            PolicyChangeSeverity::Improvement,
-            "evidence added",
+            severity,
+            added_evidence_message(severity),
         ));
     }
     if removed_values(&base.links, &head.links) {
@@ -74,6 +77,31 @@ fn change(
         removed,
         added,
     })
+}
+
+fn added_evidence_severity(added: &[String]) -> PolicyChangeSeverity {
+    if added.iter().any(|item| evidence_reference_is_weak(item)) {
+        PolicyChangeSeverity::Review
+    } else {
+        PolicyChangeSeverity::Improvement
+    }
+}
+
+fn added_evidence_message(severity: PolicyChangeSeverity) -> &'static str {
+    match severity {
+        PolicyChangeSeverity::Review => "weak evidence added",
+        PolicyChangeSeverity::Improvement => "evidence added",
+        PolicyChangeSeverity::Fail => "evidence added",
+    }
+}
+
+fn evidence_reference_is_weak(reference: &str) -> bool {
+    let Some((prefix, target)) = reference.split_once(':') else {
+        return true;
+    };
+    let prefix = prefix.trim();
+    let target = target.trim();
+    target.is_empty() || !allow_policy::recognized_evidence_prefixes().any(|known| known == prefix)
 }
 
 fn removed_items(base: &[String], head: &[String]) -> Vec<String> {
