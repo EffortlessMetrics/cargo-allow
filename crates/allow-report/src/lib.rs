@@ -116,7 +116,8 @@ pub use worklist::{render_worklist_human, render_worklist_json};
 
 pub(crate) use non_rust::{FilePosture, non_rust_file_rows};
 pub(crate) use source_inventory::{
-    render_source_inventory_human, render_source_inventory_json, render_source_inventory_markdown,
+    render_source_inventory_html, render_source_inventory_human, render_source_inventory_json,
+    render_source_inventory_markdown,
 };
 pub(crate) use summary::{
     AUDIT_REVIEW_QUEUE_STATUSES, ReviewSignals, STATUS_COUNT_ORDER, audit_review_queue,
