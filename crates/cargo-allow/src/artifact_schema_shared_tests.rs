@@ -1406,6 +1406,8 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "source_syntax_inventory",
         "trend",
         "traceability_evidence_prefix",
+        "work_item",
+        "worklist_filters",
     ]
     .into_iter()
     .collect::<BTreeSet<_>>();
@@ -1524,6 +1526,15 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         assert_common_fragment_matches(schema_name, schema, &common, "evidence_reference");
         assert_common_fragment_matches(schema_name, schema, &common, "evidence_reference_status");
     }
+
+    assert_common_fragment_matches_named(
+        "worklist",
+        &worklist,
+        "filters",
+        &common,
+        "worklist_filters",
+    );
+    assert_common_fragment_matches("worklist", &worklist, &common, "work_item");
 
     for fragment in ["allow_entry", "lifecycle", "span"] {
         assert_common_fragment_matches("explain", &explain, &common, fragment);
