@@ -331,6 +331,76 @@ fn audit_scans_rust_when_package_manifest_is_invalid_toml() {
     remove_temp_root(root);
 }
 
+#[test]
+fn audit_scans_invalid_rust_without_package_manifest() {
+    let root = temp_root("audit-invalid-rust-no-manifest");
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap()",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write invalid rust source: {err}")));
+    let output = root.join("audit.json");
+
+    let result = cargo_allow_command()
+        .arg("audit")
+        .arg("--root")
+        .arg(&root)
+        .arg("--kind")
+        .arg("panic")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow audit: {err}")));
+
+    assert_status("audit", &result, true);
+    assert_stdout_empty(
+        "audit",
+        &result,
+        "--output should not emit report JSON to stdout",
+    );
+    assert_stderr_empty(
+        "audit",
+        &result,
+        "--output should not emit human status to stderr",
+    );
+    let report = assert_saved_json_artifact(&output, "audit", "cargo-allow.report.v1", "audit");
+    assert_json_str(
+        &report,
+        "/inventory/source",
+        "filesystem_fallback",
+        "audit should not require git or Cargo metadata",
+    );
+    assert_json_u64(
+        &report,
+        "/summary/findings",
+        1,
+        "audit should scan the visible panic finding in invalid Rust",
+    );
+    assert_json_str(
+        &report,
+        "/findings/0/path",
+        "src/lib.rs",
+        "audit finding path",
+    );
+    assert_json_str(
+        &report,
+        "/findings/0/family",
+        "unwrap",
+        "audit should classify the visible panic-family call",
+    );
+    assert_eq!(
+        report.pointer("/findings/0/source_package"),
+        Some(&Value::Null),
+        "source package should remain absent without Cargo.toml"
+    );
+
+    remove_temp_root(root);
+}
+
 fn policy_with_broken_evidence() -> &'static str {
     r#"policy = "cargo-allow"
 
