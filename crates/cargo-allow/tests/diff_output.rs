@@ -364,6 +364,86 @@ fn diff_json_with_explicit_head_finds_policy_path_in_revision_when_working_polic
 }
 
 #[test]
+fn diff_json_with_explicit_head_inventory_count_respects_head_ignored_scopes() {
+    let root = temp_root("diff-head-inventory-ignored");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::create_dir_all(root.join("ignored"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create ignored dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("ignored/panic.rs"),
+        "fn ignored(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write ignored source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        policy_with_workspace_ignored(&["policy/**"]),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write base policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "base inventory"]);
+    git(&root, &["tag", "base-inventory"]);
+    fs::write(
+        root.join("policy/allow.toml"),
+        policy_with_workspace_ignored(&["policy/**", "ignored/**"]),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write head policy: {err}")));
+    git(&root, &["add", "-A"]);
+    git(&root, &["commit", "-m", "ignore fixture source"]);
+    git(&root, &["tag", "head-inventory"]);
+    let output = root.join("diff.json");
+
+    let result = cargo_allow_command()
+        .arg("diff")
+        .arg("--root")
+        .arg(&root)
+        .arg("--base")
+        .arg("base-inventory")
+        .arg("--head")
+        .arg("head-inventory")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+
+    assert_status("diff", &result, false);
+    assert_stdout_empty(
+        "diff",
+        &result,
+        "--output should not emit report JSON to stdout",
+    );
+    assert_stderr_empty(
+        "diff",
+        &result,
+        "--output should not emit human posture rows to stderr",
+    );
+    let value = assert_saved_json_artifact(&output, "diff", "cargo-allow.report.v1", "diff");
+    assert_json_u64(
+        &value,
+        "/inventory/files_scanned",
+        1,
+        "explicit head inventory count should apply head workspace.ignored scopes",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_with_explicit_head_rejects_missing_explicit_config_path() {
     let root = temp_root("diff-head-missing-explicit-config");
     write_diff_fixture(
