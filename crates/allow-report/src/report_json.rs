@@ -82,6 +82,11 @@ fn render_json_report(
     out.push_str("  \"trend\": {\n");
     out.push_str(&render_trend_fields(&summary, context, "    "));
     out.push_str("  },\n");
+    if let Some(source_inventory) = crate::render_source_inventory_json(findings, outcomes, "  ") {
+        out.push_str("  \"source_inventory\": ");
+        out.push_str(&source_inventory);
+        out.push_str(",\n");
+    }
     out.push_str("  \"outcomes\": [\n");
     for (i, outcome) in outcomes.iter().enumerate() {
         if i > 0 {
