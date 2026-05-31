@@ -16,7 +16,7 @@ The examples install and run the standalone `cargo-allow` binary before
 scanning. They pin the published crates.io release by default:
 
 ```bash
-cargo install cargo-allow --version 0.1.0 --locked
+cargo install cargo-allow --version 0.1.1 --locked
 ```
 
 If you are testing an unreleased branch, replace only the install step with a

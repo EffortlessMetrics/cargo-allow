@@ -57,7 +57,7 @@ fn release_0_1_1_version_handoff_matches_workspace_versions() {
         "0.1.1 release prep should keep the workspace package version at 0.1.1"
     );
     assert!(
-        release_doc.contains("# 0.1.1 Release Prep"),
+        release_doc.contains("# 0.1.1 Release Record"),
         "release handoff should name the target patch release"
     );
     assert!(
@@ -111,28 +111,24 @@ fn release_0_1_1_version_handoff_matches_workspace_versions() {
 }
 
 #[test]
-fn release_0_1_1_keeps_pre_publish_install_examples_on_published_version() {
+fn release_0_1_1_install_examples_use_published_version() {
     let root = workspace_root();
     let release_doc = read_workspace_file(&root, "docs/release/0.1.1.md");
 
     assert!(
-        release_doc.contains("Do not update README or CI install examples to `0.1.1` until"),
-        "release handoff should keep README and CI install examples on the published version before crates.io visibility"
-    );
-    assert!(
-        release_doc.contains("Then update README and CI examples from `0.1.0` to `0.1.1`"),
-        "release handoff should make the post-publish install-example update explicit"
+        release_doc.contains("README, CI docs, and GitHub Actions examples now install"),
+        "release record should note that install examples were updated after crates.io visibility"
     );
 
-    for relative_path in pre_publish_install_surfaces() {
+    for relative_path in release_install_surfaces() {
         let content = read_workspace_file(&root, relative_path);
         assert!(
-            content.contains("cargo install cargo-allow --version 0.1.0 --locked"),
-            "{relative_path} should install the currently published cargo-allow release"
+            content.contains("cargo install cargo-allow --version 0.1.1 --locked"),
+            "{relative_path} should install the published cargo-allow 0.1.1 release"
         );
         assert!(
-            !content.contains("cargo install cargo-allow --version 0.1.1"),
-            "{relative_path} should not advertise cargo-allow 0.1.1 until publication is verified"
+            !content.contains("cargo install cargo-allow --version 0.1.0 --locked"),
+            "{relative_path} should not keep advertising the previous cargo-allow release"
         );
     }
 }
@@ -145,7 +141,7 @@ fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
-fn pre_publish_install_surfaces() -> &'static [&'static str] {
+fn release_install_surfaces() -> &'static [&'static str] {
     &[
         "README.md",
         "docs/ci.md",
@@ -217,8 +213,14 @@ fn internal_workspace_dependencies(
         .filter_map(|line| {
             let (name, value) = line.split_once('=')?;
             let name = name.trim();
-            if package_names.contains(name) && value.contains("workspace = true") {
-                Some(name.to_string())
+            let dependency = name
+                .strip_suffix(".workspace")
+                .filter(|_| value.trim() == "true")
+                .unwrap_or(name);
+            if package_names.contains(dependency)
+                && (value.contains("workspace = true") || name.ends_with(".workspace"))
+            {
+                Some(dependency.to_string())
             } else {
                 None
             }
