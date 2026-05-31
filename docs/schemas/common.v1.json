@@ -643,6 +643,156 @@
         }
       }
     },
+    "allow_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "family",
+        "scope",
+        "path",
+        "glob",
+        "owner",
+        "classification",
+        "reason",
+        "evidence",
+        "links",
+        "occurrence_limit",
+        "lifecycle",
+        "selector",
+        "last_seen"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scope": {
+          "type": "string"
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "glob": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "owner": {
+          "type": "string"
+        },
+        "classification": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "occurrence_limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/lifecycle"
+        },
+        "selector": {
+          "$ref": "#/$defs/selector"
+        },
+        "last_seen": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/span"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "created",
+        "review_after",
+        "expires"
+      ],
+      "properties": {
+        "created": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "review_after": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "expires": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "line",
+        "column"
+      ],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "One-based source line for review/navigation."
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "One-based source character column for review/navigation."
+        }
+      }
+    },
     "canonical_evidence_prefix": {
       "type": "string",
       "enum": [
