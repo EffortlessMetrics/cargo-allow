@@ -312,6 +312,54 @@ fn diff_json_with_explicit_head_finds_policy_path_in_revision_when_working_polic
     );
     assert_policy_change(&value, "evidence_added", "allow-unwrap", "improvement");
 
+    let explicit_config_output = root.join("diff-explicit-config.json");
+    let explicit_config_result = cargo_allow_command()
+        .arg("diff")
+        .arg("--root")
+        .arg(&root)
+        .arg("--config")
+        .arg("policy/allow.toml")
+        .arg("--base")
+        .arg("HEAD~1")
+        .arg("--head")
+        .arg("head-with-policy")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&explicit_config_output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+
+    assert_status("diff", &explicit_config_result, true);
+    assert_stdout_empty(
+        "diff",
+        &explicit_config_result,
+        "--output should not emit report JSON to stdout",
+    );
+    assert_stderr_empty(
+        "diff",
+        &explicit_config_result,
+        "--output should not emit human posture rows to stderr",
+    );
+    let explicit_config_value = assert_saved_json_artifact(
+        &explicit_config_output,
+        "diff",
+        "cargo-allow.report.v1",
+        "diff",
+    );
+    assert_json_str(
+        &explicit_config_value,
+        "/diff/net_posture",
+        "improved",
+        "explicit relative --config should be read from compared revisions",
+    );
+    assert_policy_change(
+        &explicit_config_value,
+        "evidence_added",
+        "allow-unwrap",
+        "improvement",
+    );
+
     remove_temp_root(root);
 }
 
