@@ -255,6 +255,35 @@ fn json_report_exposes_source_package_context_on_findings() {
     assert!(json.contains("\"path\": \"crates/parser/src/lib.rs\""));
 }
 
+#[test]
+fn json_report_exposes_source_exception_inventory() {
+    let findings = vec![
+        file_finding(FindingKind::Panic, "unwrap", "src/lib.rs"),
+        file_finding(FindingKind::Unsafe, "unsafe_block", "src/ffi.rs"),
+    ];
+    let outcomes = vec![
+        outcome(MatchStatus::Matched, Some(0)),
+        outcome(MatchStatus::New, Some(1)),
+    ];
+
+    let json = render_json("audit", &findings, &outcomes, false);
+
+    assert!(json.contains("\"source_inventory\""));
+    assert!(json.contains("\"findings\": 2"));
+    assert!(json.contains(
+        "{\"kind\": \"panic\", \"total\": 1, \"matched\": 1, \"new\": 0, \"review_items\": 0}"
+    ));
+    assert!(json.contains(
+        "{\"kind\": \"unsafe\", \"total\": 1, \"matched\": 0, \"new\": 1, \"review_items\": 1}"
+    ));
+    assert!(json.contains(
+        "{\"kind\": \"panic\", \"family\": \"unwrap\", \"label\": \"panic.unwrap\", \"total\": 1, \"matched\": 1, \"new\": 0, \"review_items\": 0}"
+    ));
+    assert!(json.contains(
+        "{\"kind\": \"unsafe\", \"family\": \"unsafe_block\", \"label\": \"unsafe.unsafe_block\", \"total\": 1, \"matched\": 0, \"new\": 1, \"review_items\": 1}"
+    ));
+}
+
 fn outcome(status: MatchStatus, finding_index: Option<usize>) -> MatchOutcome {
     MatchOutcome {
         status,
@@ -299,5 +328,16 @@ fn test_entry(id: &str, classification: &str, evidence: &[&str]) -> AllowEntry {
             ..Selector::default()
         },
         last_seen: None,
+    }
+}
+
+fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
+    Finding {
+        kind,
+        family: Some(family.to_string()),
+        path: PathBuf::from(path),
+        span: Some(Span { line: 1, column: 1 }),
+        identity: StructuralIdentity::new("rust", "method_call"),
+        message: "test finding".to_string(),
     }
 }

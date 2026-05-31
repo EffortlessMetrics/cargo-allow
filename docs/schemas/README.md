@@ -98,6 +98,11 @@ The shared report schema is emitted by `audit`, `check`, and `diff`, but the
 top-level `diff` posture extension is valid only on reports whose
 `command = "diff"`. Audit and check reports use the same base schema without
 the PR-posture extension.
+Report JSON may also include an optional `source_inventory` object when source
+findings are present. This is the machine-readable counterpart to the audit
+source-exception inventory, grouped by governed exception kind and
+`kind.family`, so consumers do not need to re-aggregate the full `findings`
+array to answer first-run inventory questions.
 
 ## Claim Boundary Vocabulary
 

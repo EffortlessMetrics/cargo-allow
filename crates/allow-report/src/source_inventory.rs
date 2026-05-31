@@ -1,4 +1,4 @@
-use allow_core::{Finding, MatchOutcome, MatchStatus};
+use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape};
 use std::collections::BTreeMap;
 
 use crate::text::markdown_cell;
@@ -36,7 +36,19 @@ impl SourceInventoryRow {
 struct SourceInventory {
     total: usize,
     by_kind: BTreeMap<String, SourceInventoryRow>,
-    by_family: BTreeMap<String, SourceInventoryRow>,
+    by_family: BTreeMap<SourceInventoryFamilyKey, SourceInventoryRow>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct SourceInventoryFamilyKey {
+    kind: String,
+    family: String,
+}
+
+impl SourceInventoryFamilyKey {
+    fn label(&self) -> String {
+        format!("{}.{}", self.kind, self.family)
+    }
 }
 
 impl SourceInventory {
@@ -92,7 +104,7 @@ pub(crate) fn render_source_inventory_human(
     }
     out.push_str("  by family:\n");
     for (family, row) in &inventory.by_family {
-        append_human_row(out, family, row);
+        append_human_row(out, &family.label(), row);
     }
 }
 
@@ -122,7 +134,7 @@ pub(crate) fn render_source_inventory_markdown(
         "\n| Family | Total | Matched | New | Review items |\n|---|---:|---:|---:|---:|\n",
     );
     for (family, row) in &inventory.by_family {
-        append_markdown_row(out, family, row);
+        append_markdown_row(out, &family.label(), row);
     }
 }
 
@@ -137,11 +149,64 @@ fn append_markdown_row(out: &mut String, label: &str, row: &SourceInventoryRow) 
     ));
 }
 
-fn finding_family_key(finding: &Finding) -> String {
-    match finding.family.as_deref() {
-        Some(family) if !family.trim().is_empty() => {
-            format!("{}.{}", finding.kind.as_str(), family.trim())
+pub(crate) fn render_source_inventory_json(
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    indent: &str,
+) -> Option<String> {
+    let inventory = SourceInventory::from_report(findings, outcomes);
+    if !inventory.has_findings() {
+        return None;
+    }
+
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!("{indent}  \"findings\": {},\n", inventory.total));
+    out.push_str(&format!("{indent}  \"by_kind\": [\n"));
+    for (index, (kind, row)) in inventory.by_kind.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
         }
-        _ => format!("{}.unknown", finding.kind.as_str()),
+        out.push_str(&format!(
+            "{indent}    {{\"kind\": \"{}\", \"total\": {}, \"matched\": {}, \"new\": {}, \"review_items\": {}}}",
+            json_escape(kind),
+            row.total,
+            row.matched,
+            row.new,
+            row.review_items
+        ));
+    }
+    out.push_str(&format!("\n{indent}  ],\n"));
+    out.push_str(&format!("{indent}  \"by_family\": [\n"));
+    for (index, (family, row)) in inventory.by_family.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&format!(
+            "{indent}    {{\"kind\": \"{}\", \"family\": \"{}\", \"label\": \"{}\", \"total\": {}, \"matched\": {}, \"new\": {}, \"review_items\": {}}}",
+            json_escape(&family.kind),
+            json_escape(&family.family),
+            json_escape(&family.label()),
+            row.total,
+            row.matched,
+            row.new,
+            row.review_items
+        ));
+    }
+    out.push_str(&format!("\n{indent}  ]\n"));
+    out.push_str(&format!("{indent}}}"));
+    Some(out)
+}
+
+fn finding_family_key(finding: &Finding) -> SourceInventoryFamilyKey {
+    SourceInventoryFamilyKey {
+        kind: finding.kind.as_str().to_string(),
+        family: finding
+            .family
+            .as_deref()
+            .map(str::trim)
+            .filter(|family| !family.is_empty())
+            .unwrap_or("unknown")
+            .to_string(),
     }
 }

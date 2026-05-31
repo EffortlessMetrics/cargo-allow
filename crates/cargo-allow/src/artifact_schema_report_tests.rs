@@ -129,3 +129,54 @@ fn report_schema_allows_optional_policy_missing_evidence_counts() {
         );
     }
 }
+
+#[test]
+fn report_schema_allows_optional_source_inventory() {
+    let schema = parse_schema(
+        "report",
+        include_str!("../../../docs/schemas/report.schema.json"),
+    );
+
+    let source_inventory =
+        required_schema_pointer("report", &schema, "/properties/source_inventory/$ref");
+    assert_eq!(
+        source_inventory.as_str(),
+        Some("#/$defs/source_inventory"),
+        "report source_inventory should use the shared source inventory fragment"
+    );
+
+    for pointer in [
+        "/$defs/source_inventory/properties/findings",
+        "/$defs/source_inventory_kind_row/properties/total",
+        "/$defs/source_inventory_kind_row/properties/matched",
+        "/$defs/source_inventory_kind_row/properties/new",
+        "/$defs/source_inventory_kind_row/properties/review_items",
+        "/$defs/source_inventory_family_row/properties/total",
+        "/$defs/source_inventory_family_row/properties/matched",
+        "/$defs/source_inventory_family_row/properties/new",
+        "/$defs/source_inventory_family_row/properties/review_items",
+    ] {
+        let count = required_schema_pointer("report", &schema, pointer);
+        assert_eq!(
+            count.get("type").and_then(Value::as_str),
+            Some("integer"),
+            "report {pointer} count type"
+        );
+        assert_eq!(
+            count.get("minimum").and_then(Value::as_u64),
+            Some(0),
+            "report {pointer} count minimum"
+        );
+    }
+
+    for pointer in [
+        "/$defs/source_inventory_kind_row/properties/kind/$ref",
+        "/$defs/source_inventory_family_row/properties/kind/$ref",
+    ] {
+        assert_eq!(
+            required_schema_pointer("report", &schema, pointer).as_str(),
+            Some("#/$defs/governed_source_exception_kind"),
+            "report {pointer} kind vocabulary"
+        );
+    }
+}
