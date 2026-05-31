@@ -328,3 +328,71 @@ fn resolve_local_schema_ref<'a>(
         .pointer(pointer)
         .ok_or_else(|| format!("{path} schema ref {reference} did not resolve"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::artifact_schema_support::{parse_schema, schema_contracts};
+
+    #[test]
+    fn artifact_sample_validator_enforces_contains_constraints() {
+        let schema = json_value(r#"{"type":"array","contains":{"const":"source_tree_inventory"}}"#);
+        let valid = json_value(r#"["source_tree_inventory","source_syntax_only"]"#);
+        let invalid = json_value(r#"["source_syntax_only"]"#);
+
+        assert!(
+            schema_covers_sample_value(&schema, &schema, &valid, "$").is_ok(),
+            "sample validator should accept arrays that satisfy contains"
+        );
+        assert!(
+            schema_covers_sample_value(&schema, &schema, &invalid, "$").is_err(),
+            "sample validator should reject arrays that miss contains"
+        );
+    }
+
+    #[test]
+    fn artifact_sample_validator_enforces_conditional_all_of_constraints() {
+        let schema = json_value(
+            r#"{
+                "type":"object",
+                "allOf":[
+                    {
+                        "if":{"required":["diff"]},
+                        "then":{"properties":{"command":{"const":"diff"}}}
+                    }
+                ]
+            }"#,
+        );
+        let valid = json_value(r#"{"command":"diff","diff":{}}"#);
+        let invalid = json_value(r#"{"command":"check","diff":{}}"#);
+
+        assert!(
+            schema_covers_sample_value(&schema, &schema, &valid, "$").is_ok(),
+            "sample validator should accept diff artifacts with diff command"
+        );
+        assert!(
+            schema_covers_sample_value(&schema, &schema, &invalid, "$").is_err(),
+            "sample validator should reject diff artifacts with non-diff command"
+        );
+    }
+
+    #[test]
+    fn artifact_sample_validator_covers_every_schema_pattern() {
+        let mut actual = BTreeSet::new();
+        for contract in schema_contracts() {
+            let schema = parse_schema(contract.name, contract.schema);
+            collect_schema_patterns(&schema, &mut actual);
+        }
+
+        let expected = supported_schema_patterns();
+        assert_eq!(
+            actual, expected,
+            "artifact sample validation should explicitly support every JSON Schema pattern"
+        );
+    }
+
+    fn json_value(input: &str) -> Value {
+        serde_json::from_str(input)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("test JSON should parse: {err}")))
+    }
+}
