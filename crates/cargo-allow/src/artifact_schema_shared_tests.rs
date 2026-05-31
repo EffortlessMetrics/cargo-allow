@@ -541,7 +541,7 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
                     "/$defs/structural_identity/properties/{field}/minimum"
                 ))
                 .and_then(Value::as_u64),
-            Some(0),
+            Some(1),
             "common structural_identity {field} minimum"
         );
     }
@@ -599,7 +599,7 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         schema
             .pointer("/$defs/selector/properties/line_hint/minimum")
             .and_then(Value::as_u64),
-        Some(0),
+        Some(1),
         "common selector line_hint minimum"
     );
     let canonical_evidence_prefixes =

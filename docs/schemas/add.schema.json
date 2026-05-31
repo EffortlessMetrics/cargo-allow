@@ -327,7 +327,8 @@
             "integer",
             "null"
           ],
-          "minimum": 0
+          "minimum": 1,
+          "description": "Optional one-based source line hint for review only; structural selector fields remain the durable identity."
         },
         "glob": {
           "type": [
@@ -397,14 +398,16 @@
             "integer",
             "null"
           ],
-          "minimum": 1
+          "minimum": 1,
+          "description": "One-based source line for review/navigation when available."
         },
         "column": {
           "type": [
             "integer",
             "null"
           ],
-          "minimum": 1
+          "minimum": 1,
+          "description": "One-based source character column for review/navigation when available."
         },
         "source_package": {
           "type": [
@@ -512,14 +515,16 @@
             "integer",
             "null"
           ],
-          "minimum": 0
+          "minimum": 1,
+          "description": "Optional one-based source line hint for review/navigation only; excluded from stable identity."
         },
         "column_hint": {
           "type": [
             "integer",
             "null"
           ],
-          "minimum": 0
+          "minimum": 1,
+          "description": "Optional one-based source character-column hint for review/navigation only; excluded from stable identity."
         }
       }
     }
