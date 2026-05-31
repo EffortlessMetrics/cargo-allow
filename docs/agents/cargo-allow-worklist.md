@@ -53,6 +53,10 @@ verify details with `cargo-allow explain <allow_id>` and
 `cargo-allow list --allow-id <allow_id> --format json` before changing policy.
 Use lifecycle dates and evidence counts to prioritize expiring or weakly
 evidenced policy debt.
+Use `selector_precision` when present as a routing hint: low scores are better
+targets for narrowing work, while high scores still require the normal evidence
+and lifecycle review. Do not treat precision as proof that an exception is
+correct.
 If a work item includes `source_package`, use it only as source-tree context for
 where to focus review; do not infer Cargo metadata, build success, or package
 test coverage from that field. If it is absent, use the path, allow ID, owner,

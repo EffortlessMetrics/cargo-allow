@@ -182,6 +182,23 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         !work_item_required.contains("evidence_reference"),
         "worklist evidence_reference should stay optional for worklist.v1 compatibility"
     );
+    assert!(
+        !work_item_required.contains("selector_precision"),
+        "worklist selector_precision should stay optional for worklist.v1 compatibility"
+    );
+    assert_schema_type_equals(
+        "worklist item selector_precision",
+        &schema,
+        "/$defs/work_item/properties/selector_precision/type",
+        &["integer", "null"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/work_item/properties/selector_precision/minimum")
+            .and_then(Value::as_u64),
+        Some(0),
+        "worklist selector_precision minimum"
+    );
     assert_enum_equals(
         "worklist item risk",
         &schema,

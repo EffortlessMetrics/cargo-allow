@@ -4,6 +4,7 @@ use super::worklist_scoring::{
     exception_family, work_item_difficulty, work_item_kind, work_item_risk,
 };
 use allow_core::{AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path};
+use allow_diff::selector_precision_score;
 
 pub(super) fn work_items_from_outcomes(
     cfg: &AllowConfig,
@@ -54,6 +55,7 @@ fn work_item_from_outcome(
         review_after: entry.and_then(|entry| entry.lifecycle.review_after.clone()),
         expires: entry.and_then(|entry| entry.lifecycle.expires.clone()),
         evidence_count: entry.map(|entry| entry.evidence.len()),
+        selector_precision: entry.map(selector_precision_score),
         risk: work_item_risk(&kind, outcome.status, finding, entry),
         difficulty: work_item_difficulty(&kind, finding, entry),
         status: outcome.status,

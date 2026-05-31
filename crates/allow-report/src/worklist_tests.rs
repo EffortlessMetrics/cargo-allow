@@ -16,6 +16,7 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
         review_after: Some("2026-07-01"),
         expires: Some("2026-08-02"),
         evidence_count: Some(1),
+        selector_precision: Some(42),
         risk: "high",
         difficulty: "small",
         status: "stale",
@@ -56,6 +57,7 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
     assert!(json.contains("\"id\": \"work-0001\""));
     assert!(json.contains("\"exception_kind\": \"panic\""));
     assert!(json.contains("\"evidence_count\": 1"));
+    assert!(json.contains("\"selector_precision\": 42"));
     assert!(json.contains("\"finding_index\": null"));
     assert!(json.contains("\"source_package\": \"parser\""));
     assert!(json.contains("\"suggested_actions\": [\"review stale allow\"]"));
@@ -112,6 +114,7 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
       "review_after": "2026-07-01",
       "expires": "2026-08-02",
       "evidence_count": 1,
+      "selector_precision": 42,
       "risk": "high",
       "difficulty": "small",
       "status": "stale",
@@ -157,6 +160,7 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
     assert!(text.contains("  path: crates/parser/src/lib.rs"));
     assert!(text.contains("  source package: parser"));
     assert!(text.contains("  exception: panic.unwrap"));
+    assert!(text.contains("  selector_precision: 42"));
     assert!(text.contains("  action: review stale allow"));
     assert!(text.contains("  proof: cargo-allow check --mode no-new"));
     assert!(text.contains("external evidence tools"));
@@ -178,6 +182,7 @@ fn worklist_json_renderer_includes_optional_evidence_reference() {
         review_after: None,
         expires: None,
         evidence_count: Some(1),
+        selector_precision: Some(17),
         risk: "high",
         difficulty: "small",
         status: "evidence_missing",
@@ -211,6 +216,7 @@ fn worklist_json_renderer_includes_optional_evidence_reference() {
     assert!(json.contains("\"target\": \"manual-review\""));
     assert!(json.contains("\"status\": \"unstructured\""));
     assert!(json.contains("\"category\": \"unknown_prefix\""));
+    assert!(json.contains("\"selector_precision\": 17"));
     assert!(json.contains("\"source_package\": null"));
 
     let text = render_worklist_human(
@@ -228,4 +234,5 @@ fn worklist_json_renderer_includes_optional_evidence_reference() {
     assert!(
         text.contains("  evidence message: unrecognized evidence prefix; not locally validated")
     );
+    assert!(text.contains("  selector_precision: 17"));
 }

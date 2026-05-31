@@ -2,6 +2,7 @@ use super::worklist_item_kind::{BROKEN_EVIDENCE_LINK, WEAK_EVIDENCE_REFERENCE};
 use super::worklist_priority::{DIFFICULTY_SMALL, RISK_HIGH, RISK_MEDIUM};
 use super::{WorkItem, WorkItemEvidenceReference, proof_commands};
 use allow_core::{AllowConfig, AllowEntry, FindingKind, MatchStatus, normalize_path};
+use allow_diff::selector_precision_score;
 use allow_policy::{EvidenceReferenceDiagnostic, evidence_reference_diagnostics};
 use std::path::Path;
 
@@ -64,6 +65,7 @@ fn work_item_from_evidence_diagnostic(
         review_after: entry.lifecycle.review_after.clone(),
         expires: entry.lifecycle.expires.clone(),
         evidence_count: Some(entry.evidence.len()),
+        selector_precision: Some(selector_precision_score(entry)),
         risk: if entry.kind == FindingKind::Unsafe {
             RISK_HIGH
         } else {

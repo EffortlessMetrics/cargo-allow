@@ -1576,6 +1576,14 @@
           "minimum": 0,
           "description": "Number of evidence references on the related allow entry, when available."
         },
+        "selector_precision": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Selector precision score for the related allow entry, when available. Higher scores indicate narrower policy selectors; this is routing metadata, not proof of correctness."
+        },
         "risk": {
           "enum": [
             "high",

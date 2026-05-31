@@ -101,6 +101,7 @@ pub(crate) fn sample_worklist_json_for_contract_test() -> String {
         review_after: Some("2026-06-29".to_string()),
         expires: Some("2026-08-29".to_string()),
         evidence_count: Some(1),
+        selector_precision: Some(7),
         risk: worklist_priority::RISK_MEDIUM,
         difficulty: worklist_priority::DIFFICULTY_MEDIUM,
         status: allow_core::MatchStatus::BaselineDebt,

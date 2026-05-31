@@ -93,6 +93,11 @@ fn render_work_item_json(item: &WorklistItem<'_>) -> String {
             .map(|count| count.to_string())
             .unwrap_or_else(|| "null".to_string())
     ));
+    if let Some(selector_precision) = item.selector_precision {
+        out.push_str(&format!(
+            "      \"selector_precision\": {selector_precision},\n"
+        ));
+    }
     out.push_str(&format!(
         "      \"risk\": \"{}\",\n",
         json_escape(item.risk)
