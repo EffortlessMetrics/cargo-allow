@@ -61,6 +61,39 @@ fn diff_json_reports_evidence_removed_policy_weakening() {
 }
 
 #[test]
+fn diff_json_reports_invalid_local_evidence_added_policy_failure() {
+    let root = temp_root("diff-invalid-local-evidence-added");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(Some("doc:../outside.md")),
+    );
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_failure(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "worse",
+        "diff invalid local evidence addition net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/policy_failures",
+        1,
+        "diff invalid local evidence addition failure count",
+    );
+    assert_policy_change(&value, "evidence_added", "allow-unwrap", "fail");
+    assert_file_contains(
+        &output,
+        "invalid local evidence added",
+        "diff output should explain invalid local evidence addition posture",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_reports_lifecycle_extension_as_review_required() {
     let root = temp_root("diff-lifecycle-extended");
     write_diff_fixture(
