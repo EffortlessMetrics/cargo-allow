@@ -1,6 +1,8 @@
 mod finding;
 mod policy;
 mod policy_change;
+mod policy_change_details;
+mod policy_change_kind;
 mod policy_compare;
 mod policy_entry;
 mod policy_entry_evidence;
