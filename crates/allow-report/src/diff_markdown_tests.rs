@@ -80,6 +80,7 @@ fn diff_posture_tables_escape_markdown_cells() {
 
 #[test]
 fn diff_pr_summary_markdown_highlights_policy_attention() {
+    let removed = vec!["test:old-proof".to_string()];
     let policy_changes = vec![DiffPolicyChange {
         severity: "review",
         allow_id: "allow|0042",
@@ -91,7 +92,11 @@ fn diff_pr_summary_markdown_highlights_policy_attention() {
         scope: None,
         occurrence_limit: None,
         lifecycle: None,
-        evidence: None,
+        evidence: Some(DiffEvidenceChange {
+            field: "evidence",
+            removed: &removed,
+            added: &[],
+        }),
         metadata: None,
         requirement: None,
         policy_status: None,
@@ -101,7 +106,12 @@ fn diff_pr_summary_markdown_highlights_policy_attention() {
 
     assert!(summary.contains("**Net posture:** `review-required`"));
     assert!(summary.contains("### Policy Attention"));
+    assert!(
+        summary.contains("| Severity | Allow ID | Kind | Detail | Message |"),
+        "policy attention should include structured details"
+    );
     assert!(summary.contains("| `review` | `allow\\|0042` | `evidence_removed` |"));
+    assert!(summary.contains("evidence.evidence: removed: test:old-proof; added: none"));
     assert!(summary.contains("allow-0042 evidence removed from policy"));
 }
 

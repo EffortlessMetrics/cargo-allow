@@ -1,3 +1,4 @@
+use crate::diff_policy_detail::policy_change_detail;
 use crate::{DiffFindingChange, DiffPolicyChange};
 
 pub fn render_diff_finding_changes_human(changes: &[DiffFindingChange<'_>]) -> String {
@@ -37,6 +38,9 @@ pub fn render_diff_policy_changes_human(changes: &[DiffPolicyChange<'_>]) -> Str
             "  {} {} {}: {}\n",
             change.severity, change.allow_id, change.kind, change.message
         ));
+        if let Some(detail) = policy_change_detail(change) {
+            out.push_str(&format!("    detail: {detail}\n"));
+        }
     }
     out
 }
