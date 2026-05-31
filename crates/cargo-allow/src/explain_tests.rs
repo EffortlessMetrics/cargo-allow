@@ -110,13 +110,13 @@ fn explain_entry_text_reports_evidence_reference_status() {
 
     let text = explain_entry_text(&root, &cfg, &entry, &[]);
 
-    assert!(text.contains("evidence references:"));
+    assert!(text.contains("evidence diagnostics:"));
     assert!(text.contains("doc:docs/safety.md"));
-    assert!(text.contains("status=local_file_present"));
+    assert!(text.contains("local_file_present: doc:docs/safety.md"));
     assert!(text.contains("spec:docs/missing.md"));
-    assert!(text.contains("status=local_file_missing"));
+    assert!(text.contains("local_file_missing: spec:docs/missing.md"));
     assert!(text.contains("test:file_policy_fixture"));
-    assert!(text.contains("status=traceability_only"));
+    assert!(text.contains("traceability_only: test:file_policy_fixture"));
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
@@ -138,7 +138,7 @@ fn explain_entry_text_reports_weak_evidence_next_actions() {
     let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
 
     assert!(text.contains("current_status: matched"));
-    assert!(text.contains("status=unstructured"));
+    assert!(text.contains("unstructured: test:"));
     assert!(text.contains("empty evidence reference target"));
     assert!(text.contains("action: replace the weak evidence string"));
     assert!(
