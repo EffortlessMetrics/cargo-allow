@@ -1177,6 +1177,52 @@
         }
       }
     },
+    "stale_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "family",
+        "owner",
+        "classification",
+        "scope",
+        "reason"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "owner": {
+          "type": "string"
+        },
+        "classification": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
     "evidence_change": {
       "type": "object",
       "additionalProperties": false,
