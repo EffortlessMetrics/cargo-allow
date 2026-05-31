@@ -229,7 +229,7 @@ fn worklist_json_renderer_includes_optional_evidence_reference() {
         text.contains("work-weak-evidence-reference-0001 (high, small) weak_evidence_reference")
     );
     assert!(text.contains(
-        "  evidence reference: [weak] unknown_prefix: spreadsheet:manual-review (status=unstructured, prefix=spreadsheet, target=manual-review)"
+        "  evidence reference: [weak] weak: spreadsheet:manual-review (status=unstructured, prefix=spreadsheet, target=manual-review)"
     ));
     assert!(
         text.contains("  evidence message: unrecognized evidence prefix; not locally validated")
