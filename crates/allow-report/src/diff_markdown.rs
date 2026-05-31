@@ -41,7 +41,57 @@ pub fn render_diff_pr_summary_markdown(
         "\n**Reviewer action:** {}\n\n",
         posture.reviewer_action()
     ));
+    append_policy_highlights(&mut out, policy_changes);
     out
+}
+
+fn append_policy_highlights(out: &mut String, policy_changes: &[DiffPolicyChange<'_>]) {
+    if policy_changes
+        .iter()
+        .any(|change| change.severity != "improvement")
+    {
+        out.push_str("### Policy Attention\n\n");
+        out.push_str("| Severity | Allow ID | Kind | Message |\n|---|---|---|---|\n");
+        for change in policy_changes
+            .iter()
+            .filter(|change| change.severity != "improvement")
+            .take(8)
+        {
+            append_policy_highlight_row(out, change);
+        }
+        out.push('\n');
+    }
+
+    if policy_changes
+        .iter()
+        .any(|change| change.severity == "improvement")
+    {
+        out.push_str("### Policy Improvements\n\n");
+        out.push_str("| Allow ID | Kind | Message |\n|---|---|---|\n");
+        for change in policy_changes
+            .iter()
+            .filter(|change| change.severity == "improvement")
+            .take(8)
+        {
+            out.push_str(&format!(
+                "| `{}` | `{}` | {} |\n",
+                markdown_cell(change.allow_id),
+                markdown_cell(change.kind),
+                markdown_cell(change.message)
+            ));
+        }
+        out.push('\n');
+    }
+}
+
+fn append_policy_highlight_row(out: &mut String, change: &DiffPolicyChange<'_>) {
+    out.push_str(&format!(
+        "| `{}` | `{}` | `{}` | {} |\n",
+        markdown_cell(change.severity),
+        markdown_cell(change.allow_id),
+        markdown_cell(change.kind),
+        markdown_cell(change.message)
+    ));
 }
 
 pub fn insert_markdown_pr_summary(text: &mut String, summary: &str) {
