@@ -3,6 +3,7 @@ use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand};
 use clap::Parser;
 use serde_json::Value;
+use std::fs;
 use std::path::Path;
 
 fn argv(items: Vec<&str>) -> Vec<String> {
@@ -128,7 +129,7 @@ fn list_rows_report_lifecycle_stale_and_baseline_status() {
     );
     let findings = vec![expired_finding, review_finding, stale_finding];
 
-    let rows = list_rows(&cfg, &findings, &outcomes);
+    let rows = list_rows(Path::new("."), &cfg, &findings, &outcomes);
 
     assert_eq!(row_status(&rows, "allow-expired"), MatchStatus::Expired);
     assert_eq!(row_status(&rows, "allow-review"), MatchStatus::ReviewDue);
@@ -164,13 +165,43 @@ fn list_rows_report_broad_scope_from_selector_glob() {
         "matched",
     )];
 
-    let rows = list_rows(&cfg, &findings, &outcomes);
+    let rows = list_rows(Path::new("."), &cfg, &findings, &outcomes);
 
     assert!(
         rows.iter()
             .find(|row| row.id == "allow-broad")
             .is_some_and(|row| row.broad_scope)
     );
+}
+
+#[test]
+fn list_rows_report_evidence_health_counts() {
+    let root = list_fixture_dir();
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("fixture docs dir: {err}")));
+    fs::write(root.join("docs/present.md"), "evidence")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("fixture evidence file: {err}")));
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-evidence-health", FindingKind::Unsafe);
+    entry.evidence = vec![
+        "doc:docs/present.md".to_string(),
+        "doc:docs/missing.md".to_string(),
+        "spreadsheet:manual-review".to_string(),
+        "unstructured evidence note".to_string(),
+    ];
+    cfg.allow.push(entry);
+
+    let rows = list_rows(&root, &cfg, &[], &[]);
+    let row = rows
+        .iter()
+        .find(|row| row.id == "allow-evidence-health")
+        .unwrap_or_else(|| std::panic::panic_any("expected evidence health row"));
+
+    assert_eq!(row.evidence_count, 4);
+    assert_eq!(row.broken_evidence_references, 1);
+    assert_eq!(row.weak_evidence_references, 2);
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
 
 #[test]
@@ -196,6 +227,8 @@ fn render_list_rows_json_records_context_filters_and_rows() {
     assert!(json.contains("\"id\": \"allow-json\""));
     assert!(json.contains("\"source_package\": \"allow-core\""));
     assert!(json.contains("\"evidence_count\": 2"));
+    assert!(json.contains("\"broken_evidence_references\": 1"));
+    assert!(json.contains("\"weak_evidence_references\": 1"));
     assert!(json.contains("\"selector_precision\": 7"));
     assert!(json.contains("\"broad_scope\": false"));
     assert_eq!(
@@ -266,6 +299,17 @@ fn render_list_rows_json_records_context_filters_and_rows() {
             .and_then(Value::as_bool),
         Some(false)
     );
+}
+
+fn list_fixture_dir() -> std::path::PathBuf {
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    std::env::temp_dir().join(format!(
+        "cargo-allow-list-evidence-health-{}-{stamp}",
+        std::process::id()
+    ))
 }
 
 fn parse_json(name: &str, json: &str) -> Value {

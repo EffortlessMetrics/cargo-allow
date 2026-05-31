@@ -164,6 +164,8 @@ or agent can find the repair target. Gating and reviewed-write paths still fail
 closed: `check` fails on broken local evidence, `doctor` reports invalid policy
 state, `add` validates evidence before writing a reviewed entry, and
 `prune --stale --write` validates the remaining policy before writing.
+`cargo-allow list` includes per-entry broken and weak evidence-reference counts
+so maintainers can browse evidence health without opening every receipt.
 
 ## Policy Model
 

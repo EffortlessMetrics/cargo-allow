@@ -13,6 +13,8 @@ fn list_json_renderer_records_filters_context_and_rows() {
         scope: "crates/parser/src/lib.rs",
         source_package: Some("parser"),
         evidence_count: 2,
+        broken_evidence_references: 1,
+        weak_evidence_references: 1,
         selector_precision: 42,
         broad_scope: true,
         review_after: Some("2026-07-01"),
@@ -46,6 +48,8 @@ fn list_json_renderer_records_filters_context_and_rows() {
     assert!(json.contains("\"allow_entries\": 1"));
     assert!(json.contains("\"id\": \"allow-json\""));
     assert!(json.contains("\"source_package\": \"parser\""));
+    assert!(json.contains("\"broken_evidence_references\": 1"));
+    assert!(json.contains("\"weak_evidence_references\": 1"));
     assert!(json.contains("\"selector_precision\": 42"));
     assert!(json.contains("\"broad_scope\": true"));
     assert!(json.contains("\"review_after\": \"2026-07-01\""));
@@ -96,6 +100,8 @@ fn list_json_renderer_records_filters_context_and_rows() {
       "scope": "crates/parser/src/lib.rs",
       "source_package": "parser",
       "evidence_count": 2,
+      "broken_evidence_references": 1,
+      "weak_evidence_references": 1,
       "selector_precision": 42,
       "broad_scope": true,
       "review_after": "2026-07-01",
@@ -121,7 +127,7 @@ fn list_json_renderer_records_filters_context_and_rows() {
     assert!(text.contains("source_tree_root: H:/Code/Rust/cargo-allow"));
     assert!(text.contains("id\tstatus\tmatches\tkind\tfamily"));
     assert!(text.contains(
-            "allow-json\tbaseline_debt\t1\tpanic\tunwrap\tparser\tbaseline_debt\tcrates/parser/src/lib.rs\tparser\t2\t42\ttrue\t2026-07-01\t-\tgenerated baseline"
+            "allow-json\tbaseline_debt\t1\tpanic\tunwrap\tparser\tbaseline_debt\tcrates/parser/src/lib.rs\tparser\t2\t1\t1\t42\ttrue\t2026-07-01\t-\tgenerated baseline"
         ));
     assert!(text.contains(CLAIM_BOUNDARY_TEXT));
 }

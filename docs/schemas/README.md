@@ -84,6 +84,10 @@ consumers do not lose the shared contract catalog.
 List artifacts currently emit a `filters` object with every known filter key,
 but nested filter fields are optional in the schema so older `cargo-allow.list.v1`
 artifacts and future additive filter fields can remain compatible.
+List row evidence-health fields such as `broken_evidence_references` and
+`weak_evidence_references` are also optional in the schema and emitted only when
+non-zero so older `cargo-allow.list.v1` artifacts remain valid while current
+renderers expose the per-entry evidence repair signal.
 Worklist artifacts follow the same rule: current renderers emit all known
 filter keys, while the nested `filters` schema keeps those keys optional.
 Adoption summary artifacts such as `add` and `propose` also emit all known

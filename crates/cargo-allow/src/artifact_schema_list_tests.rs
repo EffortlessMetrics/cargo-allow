@@ -54,6 +54,23 @@ fn list_schema_locks_allow_entry_kind_contract() {
         allow_entry,
         "/properties/selector_precision",
     );
+    for field in ["broken_evidence_references", "weak_evidence_references"] {
+        let evidence_count = required_schema_pointer(
+            "list allow entry",
+            allow_entry,
+            &format!("/properties/{field}"),
+        );
+        assert_eq!(
+            evidence_count.get("type").and_then(Value::as_str),
+            Some("integer"),
+            "list {field} type"
+        );
+        assert_eq!(
+            evidence_count.get("minimum").and_then(Value::as_u64),
+            Some(0),
+            "list {field} minimum"
+        );
+    }
     assert_eq!(
         selector_precision.get("type").and_then(Value::as_str),
         Some("integer"),
