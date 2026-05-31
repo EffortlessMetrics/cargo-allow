@@ -5,12 +5,15 @@ mod support;
 use std::fs;
 
 use diff_support::{
-    assert_saved_json_diff_failure, assert_saved_json_diff_success, policy_with_evidence,
+    assert_saved_json_diff_failure, assert_saved_json_diff_success, git, policy_with_evidence,
     write_diff_fixture,
 };
 use json_assertions::{assert_json_str, assert_json_u64};
 use serde_json::Value;
-use support::{remove_temp_root, temp_root};
+use support::{
+    assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
+    cargo_allow_command, remove_temp_root, temp_root,
+};
 
 #[test]
 fn diff_json_with_output_file_does_not_emit_human_posture_to_stderr() {
@@ -216,6 +219,75 @@ fn diff_json_reports_policy_owner_removed_policy_failure() {
         "diff policy owner removal failure count",
     );
     assert_policy_change(&value, "policy_owner_removed", "policy.owner", "fail");
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn diff_json_reports_removed_policy_when_explicit_head_has_no_policy() {
+    let root = temp_root("diff-head-missing-policy");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        policy_with_evidence(Some("test:diff_head_missing_policy")),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "base policy"]);
+    git(&root, &["tag", "base-policy"]);
+    fs::remove_file(root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove policy: {err}")));
+    git(&root, &["add", "-A"]);
+    git(&root, &["commit", "-m", "remove policy"]);
+    git(&root, &["tag", "head-no-policy"]);
+    git(
+        &root,
+        &["checkout", "base-policy", "--", "policy/allow.toml"],
+    );
+    let output = root.join("diff.json");
+
+    let result = cargo_allow_command()
+        .arg("diff")
+        .arg("--root")
+        .arg(&root)
+        .arg("--base")
+        .arg("base-policy")
+        .arg("--head")
+        .arg("head-no-policy")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+
+    assert_status("diff", &result, false);
+    assert_stdout_empty(
+        "diff",
+        &result,
+        "--output should not emit report JSON to stdout",
+    );
+    assert_stderr_empty(
+        "diff",
+        &result,
+        "--output should not emit human posture rows to stderr",
+    );
+    let value = assert_saved_json_artifact(&output, "diff", "cargo-allow.report.v1", "diff");
+    assert_policy_change(&value, "removed_allow", "allow-unwrap", "improvement");
 
     remove_temp_root(root);
 }
