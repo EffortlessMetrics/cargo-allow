@@ -26,6 +26,12 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
                 "config status: {}\n",
                 config_status_text(facts.config_valid, facts.config_diagnostic)
             ));
+            if let Some(count) = facts.broken_evidence_links {
+                out.push_str(&format!("broken evidence links: {count}\n"));
+            }
+            if let Some(count) = facts.weak_evidence_references {
+                out.push_str(&format!("weak evidence references: {count}\n"));
+            }
         }
         None => out.push_str("config: not found; run `cargo-allow init`\n"),
     }
@@ -89,9 +95,16 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
         option_bool_json(facts.config_valid)
     ));
     out.push_str(&format!(
-        "    \"diagnostic\": {}\n",
+        "    \"diagnostic\": {}",
         option_json(facts.config_diagnostic)
     ));
+    if let Some(count) = facts.broken_evidence_links {
+        out.push_str(&format!(",\n    \"broken_evidence_links\": {count}"));
+    }
+    if let Some(count) = facts.weak_evidence_references {
+        out.push_str(&format!(",\n    \"weak_evidence_references\": {count}"));
+    }
+    out.push('\n');
     out.push_str("  }\n");
     out.push_str("}\n");
     out

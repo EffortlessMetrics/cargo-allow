@@ -9,6 +9,8 @@ pub struct DoctorReport<'a> {
     pub config_status: Option<&'a str>,
     pub config_valid: Option<bool>,
     pub config_diagnostic: Option<&'a str>,
+    pub broken_evidence_links: Option<usize>,
+    pub weak_evidence_references: Option<usize>,
     pub inventory_source: &'a str,
     pub files_scanned: usize,
 }

@@ -1,6 +1,9 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
-use allow_policy::{load_policy, validate_local_evidence_references};
+use allow_policy::{
+    broken_evidence_link_count, load_policy, validate_local_evidence_references,
+    weak_evidence_reference_count,
+};
 use std::env;
 use std::path::Path;
 
@@ -29,6 +32,8 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         .as_ref()
         .map(|path| allow_report::source_tree_path_text(path));
     let (config_valid, config_diagnostic) = config_status(&root, policy.as_ref());
+    let (broken_evidence_links, weak_evidence_references) =
+        doctor_evidence_health(&root, policy.as_ref());
     let config_schema_version = policy
         .as_ref()
         .and_then(|result| result.as_ref().ok())
@@ -55,6 +60,8 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         config_status,
         config_valid,
         config_diagnostic: config_diagnostic.as_deref(),
+        broken_evidence_links,
+        weak_evidence_references,
         inventory_source: source_context.inventory_source(),
         files_scanned,
     };
@@ -81,6 +88,20 @@ fn config_status(
             Err(err) => (Some(false), Some(err.to_string())),
         },
         Some(Err(err)) => (Some(false), Some(err.to_string())),
+    }
+}
+
+fn doctor_evidence_health(
+    root: &Path,
+    policy: Option<&CargoAllowResult<AllowConfig>>,
+) -> (Option<usize>, Option<usize>) {
+    match policy {
+        Some(Ok(cfg)) => {
+            let broken = broken_evidence_link_count(root, cfg);
+            let weak = weak_evidence_reference_count(root, cfg);
+            ((broken > 0).then_some(broken), (weak > 0).then_some(weak))
+        }
+        _ => (None, None),
     }
 }
 
@@ -117,6 +138,8 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
         config_status: Some("active"),
         config_valid: Some(true),
         config_diagnostic: None,
+        broken_evidence_links: None,
+        weak_evidence_references: None,
         inventory_source: "git_tracked",
         files_scanned: 50,
     })
