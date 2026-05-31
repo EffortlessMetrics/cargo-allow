@@ -135,3 +135,44 @@ fn diff_pr_summary_markdown_highlights_new_findings() {
         "new-only summaries should not create finding improvement rows"
     );
 }
+
+#[test]
+fn diff_pr_summary_markdown_reports_omitted_finding_highlights() {
+    let finding = DiffFindingChange {
+        change: "new",
+        key: "panic|unwrap|src/lib.rs",
+        kind: "panic",
+        family: Some("unwrap"),
+        path: "src/lib.rs",
+    };
+    let finding_changes = vec![finding; 9];
+
+    let summary = render_diff_pr_summary_markdown(0, &finding_changes, &[]);
+
+    assert!(summary.contains("1 additional new finding change omitted from this summary."));
+}
+
+#[test]
+fn diff_pr_summary_markdown_reports_omitted_policy_highlights() {
+    let policy = DiffPolicyChange {
+        severity: "fail",
+        allow_id: "allow-0001",
+        kind: "scope_broadened",
+        message: "allow-0001 scope broadened",
+        exception_identity: None,
+        selector_identity: None,
+        selector_precision: None,
+        scope: None,
+        occurrence_limit: None,
+        lifecycle: None,
+        evidence: None,
+        metadata: None,
+        requirement: None,
+        policy_status: None,
+    };
+    let policy_changes = vec![policy; 10];
+
+    let summary = render_diff_pr_summary_markdown(0, &[], &policy_changes);
+
+    assert!(summary.contains("2 additional policy attention changes omitted from this summary."));
+}
