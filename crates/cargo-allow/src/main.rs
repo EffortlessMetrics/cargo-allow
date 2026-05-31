@@ -62,6 +62,8 @@ mod artifact_schema_list_tests;
 #[cfg(test)]
 mod artifact_schema_migrate_tests;
 #[cfg(test)]
+mod artifact_schema_policy_metadata_tests;
+#[cfg(test)]
 mod artifact_schema_propose_tests;
 #[cfg(test)]
 mod artifact_schema_prune_tests;
