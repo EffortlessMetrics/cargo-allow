@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 const RELEASE_VERSION: &str = "0.1.2";
 const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.1";
 const RELEASE_DOC: &str = "docs/release/0.1.2.md";
+const NEXT_PREP_VERSION: &str = "0.1.3";
+const NEXT_PREP_DOC: &str = "docs/release/0.1.3.md";
 
 #[test]
 fn release_0_1_2_publish_order_matches_internal_dependency_graph() {
@@ -137,6 +139,70 @@ fn release_0_1_2_install_examples_use_published_release() {
                 "cargo install cargo-allow --version {PREVIOUS_PUBLISHED_VERSION} --locked"
             )),
             "{relative_path} should not keep the previous {PREVIOUS_PUBLISHED_VERSION} install pin after publication"
+        );
+    }
+}
+
+#[test]
+fn release_0_1_3_prep_does_not_claim_publication() {
+    let root = workspace_root();
+    let prep_doc = read_workspace_file(&root, NEXT_PREP_DOC);
+    let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
+    let lockfile = read_workspace_file(&root, "Cargo.lock");
+    let package_manifests = workspace_package_manifests(&root);
+
+    assert!(
+        prep_doc.contains("# 0.1.3 Release Prep"),
+        "0.1.3 prep note should name itself as prep, not a completed release record"
+    );
+    assert!(
+        prep_doc.contains("it is not a publication record"),
+        "0.1.3 prep note should say it is not a publication record"
+    );
+    assert!(
+        prep_doc.contains("has been versioned, tagged, packaged, or published"),
+        "0.1.3 prep note should deny completed release actions"
+    );
+    assert!(
+        prep_doc.contains("Before publication"),
+        "0.1.3 prep note should leave publication as future work"
+    );
+    assert!(
+        prep_doc.contains("Bump the workspace package version"),
+        "0.1.3 prep note should require a future version bump"
+    );
+
+    assert_eq!(
+        workspace_package_version(&workspace_manifest),
+        RELEASE_VERSION,
+        "0.1.3 prep must not bump the workspace version before the release PR"
+    );
+    assert!(
+        !workspace_manifest.contains(&format!("version = \"{NEXT_PREP_VERSION}\"")),
+        "0.1.3 prep must not update workspace dependency requirements"
+    );
+    let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
+    let lock_versions = lockfile_package_versions(&lockfile, &package_names);
+    assert!(
+        lock_versions
+            .values()
+            .all(|version| version == RELEASE_VERSION),
+        "0.1.3 prep must not update lockfile package versions"
+    );
+
+    for relative_path in release_install_surfaces() {
+        let content = read_workspace_file(&root, relative_path);
+        assert!(
+            content.contains(&format!(
+                "cargo install cargo-allow --version {RELEASE_VERSION} --locked"
+            )),
+            "{relative_path} should keep the published {RELEASE_VERSION} install pin until 0.1.3 is published"
+        );
+        assert!(
+            !content.contains(&format!(
+                "cargo install cargo-allow --version {NEXT_PREP_VERSION} --locked"
+            )),
+            "{relative_path} should not advertise unpublished {NEXT_PREP_VERSION}"
         );
     }
 }
