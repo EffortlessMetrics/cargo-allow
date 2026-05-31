@@ -16,6 +16,21 @@ mod tests {
     }
 
     #[test]
+    fn clap_exposes_package_version() {
+        let mut command = CargoAllowCli::command();
+
+        assert_eq!(
+            command.get_version(),
+            Some(env!("CARGO_PKG_VERSION")),
+            "root CLI should expose the package version"
+        );
+        assert!(
+            command.render_help().to_string().contains("-V, --version"),
+            "root help should include the standard version flag"
+        );
+    }
+
+    #[test]
     fn clap_parses_markdown_alias() {
         let parsed =
             CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "check", "--format", "md"]))

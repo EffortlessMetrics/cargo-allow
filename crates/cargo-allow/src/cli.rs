@@ -10,7 +10,7 @@ use crate::{
 #[command(
     name = "cargo-allow",
     about = "Source exception ledger for source trees",
-    disable_version_flag = true
+    version
 )]
 pub(crate) struct CargoAllowCli {
     #[command(subcommand)]
