@@ -103,6 +103,40 @@ fn schema_index_artifact_table_matches_registered_producers() {
 }
 
 #[test]
+fn schema_index_documents_claim_boundary_vocabulary() {
+    let index = include_str!("../../../docs/schemas/README.md");
+    assert!(
+        index.contains("## Claim Boundary Vocabulary"),
+        "schema index should document the claim-boundary vocabulary"
+    );
+
+    for flag in allow_report::CLAIM_BOUNDARY {
+        let flag_text = format!("`{flag}`");
+        let expected_row_prefix = format!("| {flag_text} |");
+        let Some(row) = index
+            .lines()
+            .find(|line| line.starts_with(&expected_row_prefix))
+        else {
+            std::panic::panic_any(format!(
+                "schema index should document claim-boundary flag {flag_text}"
+            ));
+        };
+
+        if allow_report::SCANNER_LIMITATIONS.contains(flag) {
+            assert!(
+                row.contains("| Yes |"),
+                "{flag_text} should be documented as a scanner limitation"
+            );
+        } else {
+            assert!(
+                row.contains("| No |"),
+                "{flag_text} should be documented as a broader claim boundary, not a scanner limitation"
+            );
+        }
+    }
+}
+
+#[test]
 fn schema_index_documents_evidence_prefix_vocabulary() {
     let index = include_str!("../../../docs/schemas/README.md");
     assert!(

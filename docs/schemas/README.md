@@ -95,6 +95,34 @@ top-level `diff` posture extension is valid only on reports whose
 `command = "diff"`. Audit and check reports use the same base schema without
 the PR-posture extension.
 
+## Claim Boundary Vocabulary
+
+Every JSON artifact includes `claim_boundary`. Every source-syntax and
+policy-migration artifact also includes `scanner_limitations`. The scanner
+limitation vocabulary is the execution/analyzer subset of the broader claim
+boundary; `source_tree_inventory` and `source_syntax_only` are claims about the
+artifact's scan surface, not limitations.
+
+| Value | Scanner limitation? | Meaning |
+|---|---:|---|
+| `source_tree_inventory` | No | Artifact is scoped to the scanned source-tree inventory. |
+| `source_syntax_only` | No | Findings and policy posture are based on source syntax, not compiled output. |
+| `cargo_metadata_not_invoked` | Yes | Cargo metadata was not invoked to produce the scan. |
+| `cargo_commands_not_invoked` | Yes | Cargo commands were not invoked to produce the scan. |
+| `rustc_not_invoked` | Yes | rustc was not invoked to produce the scan. |
+| `clippy_not_invoked` | Yes | Clippy was not invoked to produce the scan. |
+| `build_scripts_not_executed` | Yes | build scripts were not executed. |
+| `proc_macros_not_executed` | Yes | proc macros were not executed. |
+| `macro_expansion_not_analyzed` | Yes | macro-expanded Rust was not analyzed. |
+| `macro_token_tree_contents_not_analyzed` | Yes | macro token-tree contents were not parsed as Rust expressions. |
+| `type_information_not_analyzed` | Yes | type information and trait resolution were not analyzed. |
+| `mir_not_analyzed` | Yes | MIR was not analyzed. |
+| `build_output_not_analyzed` | Yes | build output and compiler output were not analyzed. |
+| `control_flow_not_analyzed` | Yes | control-flow analysis was not performed. |
+| `data_flow_not_analyzed` | Yes | data-flow analysis was not performed. |
+| `external_evidence_tools_not_invoked` | Yes | External evidence tools can be referenced by policy but were not executed by the scan. |
+| `repository_code_not_executed` | Yes | Repository code was not executed by cargo-allow. |
+
 ## Contract Change Rules
 
 Treat the JSON artifacts as producer-consumer contracts. A PR that changes an
