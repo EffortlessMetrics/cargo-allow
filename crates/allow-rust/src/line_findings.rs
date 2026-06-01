@@ -44,5 +44,5 @@ pub(crate) fn scan_line(
 
     scan_panic_calls(context, syntax.panic_methods, syntax.panic_macros, findings);
 
-    scan_index_expr(context, syntax.index_columns, findings);
+    scan_index_expr(context, syntax.index_expressions, findings);
 }

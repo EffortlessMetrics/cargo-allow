@@ -137,6 +137,12 @@ pub(crate) struct PanicMethodCall {
     pub(crate) receiver_fingerprint: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct IndexExpression {
+    pub(crate) column: u32,
+    pub(crate) receiver_fingerprint: Option<String>,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct RustLineScope {
     pub(crate) container: Option<String>,
@@ -146,7 +152,7 @@ pub(crate) struct RustLineScope {
 
 #[derive(Default)]
 pub(crate) struct RustSyntaxFacts {
-    pub(crate) index_columns: BTreeMap<u32, Vec<u32>>,
+    pub(crate) index_expressions: BTreeMap<u32, Vec<IndexExpression>>,
     pub(crate) lint_attributes: BTreeMap<u32, Vec<LintAttribute>>,
     pub(crate) panic_macros: BTreeMap<u32, Vec<PanicMacroInvocation>>,
     pub(crate) panic_methods: BTreeMap<u32, Vec<PanicMethodCall>>,

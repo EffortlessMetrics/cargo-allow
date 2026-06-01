@@ -41,8 +41,8 @@ pub(crate) fn scan_source_lines(
                     .get(&line_no)
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),
-                index_columns: syntax
-                    .index_columns
+                index_expressions: syntax
+                    .index_expressions
                     .get(&line_no)
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),
