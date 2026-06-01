@@ -125,7 +125,7 @@ fn render_audit_summary_html(
     {
         out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --missing-evidence --format json</code> to route retained entries with no evidence references.</p>\n");
     } else if queue.is_empty() && signals.weak_evidence_references > 0 {
-        out.push_str("<p>Recommended next step: replace unstructured or unknown-prefix evidence with known evidence prefixes before tightening policy.</p>\n");
+        out.push_str("<p>Recommended next step: replace unstructured or unknown-prefix evidence/link references with recognized prefixes before tightening policy.</p>\n");
     } else if queue.is_empty() && signals.baseline_debt > 0 {
         out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --format json</code> to review generated baseline debt.</p>\n");
     } else {

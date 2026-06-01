@@ -191,8 +191,9 @@ Recognized traceability prefixes with an empty value, such as `test:` or
 `issue:`, are also treated as weak evidence because they do not identify an
 artifact or review target.
 Audit, check, diff, and receipt artifacts may report these under
-`weak_evidence_references` so weak evidence quality is visible even when the
-entry has some evidence and otherwise matches current source findings.
+`weak_evidence_references` so weak evidence/link quality is visible even when
+the entry has some evidence or links and otherwise matches current source
+findings.
 
 Illustrative local evidence references:
 
@@ -479,8 +480,8 @@ and scanner-provided source-tree package context can be filtered with
 
 The human worklist output includes the same first-step suggested actions and
 proof commands so a maintainer can triage the queue without switching to JSON.
-For broken or weak evidence work items, it also shows the exact evidence
-reference, status, prefix, target, and diagnostic message.
+For broken or weak evidence/link work items, it also shows the exact evidence or
+link reference, status, prefix, target, and diagnostic message.
 Generated proof commands include `explain`, `list --allow-id`, and the durable
 allow-ID worklist queue for policy-backed items; broad-scope and baseline-debt
 advisory items also point back to the matching shortcut queues.

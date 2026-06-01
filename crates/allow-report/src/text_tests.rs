@@ -370,7 +370,7 @@ fn markdown_audit_report_counts_weak_evidence_references_context() {
 
     assert!(text.contains("| Review items | 2 |"));
     assert!(text.contains("| Weak evidence references | 2 |"));
-    assert!(text.contains("replace unstructured or unknown-prefix evidence"));
+    assert!(text.contains("replace unstructured or unknown-prefix evidence/link references"));
     assert!(!text.contains("## Audit Review Queue"));
 }
 

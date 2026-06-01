@@ -342,7 +342,7 @@ Report JSON may include `summary.weak_evidence_references` and
 unstructured or use unknown prefixes. Receipts may use the same optional count
 under `counts.weak_evidence_references`. These references are not broken local
 links and do not, by themselves, fail `check`; they remain visible so teams can
-replace weak traceability with typed evidence prefixes.
+replace weak evidence or traceability references with recognized prefixes.
 
 Report JSON may also include `summary.policy_missing_evidence` and
 `trend.policy_missing_evidence` when retained non-baseline policy entries have
@@ -362,10 +362,10 @@ revalidates the remaining policy before writing. Use
 `cargo-allow worklist --item-kind broken_evidence_link --format json` for the
 broken-link repair queue,
 `cargo-allow worklist --item-kind weak_evidence_reference --format json` for
-unstructured or unknown-prefix evidence cleanup, and
+unstructured or unknown-prefix evidence/link cleanup, and
 `cargo-allow worklist --missing-evidence --format json` for retained entries
 that still need evidence references.
-Worklist JSON items for broken or weak evidence diagnostics may include an
+Worklist JSON items for broken or weak evidence/link diagnostics may include an
 optional `evidence_reference` object with the original evidence string,
 normalized prefix/target metadata, diagnostic status, optional diagnostic
 category, and diagnostic message. The stable `status` field preserves the
