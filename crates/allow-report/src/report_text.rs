@@ -384,7 +384,7 @@ fn audit_recommended_next_step(
     {
         "\nRecommended next step: run `cargo-allow worklist --missing-evidence --format json` to route retained entries with no evidence references.\n"
     } else if queue_empty && signals.weak_evidence_references > 0 {
-        "\nRecommended next step: replace unstructured or unknown-prefix evidence with known evidence prefixes before tightening policy.\n"
+        "\nRecommended next step: replace unstructured or unknown-prefix evidence/link references with recognized prefixes before tightening policy.\n"
     } else if queue_empty && signals.baseline_debt > 0 {
         "\nRecommended next step: run `cargo-allow worklist --format json` to review generated baseline debt.\n"
     } else {
