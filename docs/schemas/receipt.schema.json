@@ -238,12 +238,12 @@
         "broken_evidence_links": {
           "type": "integer",
           "minimum": 0,
-          "description": "Optional count of missing or invalid local evidence references found while auditing policy evidence."
+          "description": "Optional count of missing or invalid local evidence or link references found while auditing policy evidence."
         },
         "weak_evidence_references": {
           "type": "integer",
           "minimum": 0,
-          "description": "Optional count of unstructured or unknown-prefix evidence references. These evidence strings are retained as traceability but are not recognized as typed evidence by cargo-allow."
+          "description": "Optional count of unstructured or unknown-prefix evidence or link references. These strings are retained as traceability but are not recognized as typed evidence by cargo-allow."
         }
       }
     },

@@ -57,7 +57,7 @@ fn html_audit_report_counts_weak_evidence_references_context() {
 
     let html = render_html_with_context("audit", &[], &[], false, context);
 
-    assert!(html.contains("<td>Weak evidence references</td><td class=\"count\">2</td>"));
+    assert!(html.contains("<td>Weak evidence/link references</td><td class=\"count\">2</td>"));
     assert!(html.contains("replace unstructured or unknown-prefix evidence/link references"));
 }
 

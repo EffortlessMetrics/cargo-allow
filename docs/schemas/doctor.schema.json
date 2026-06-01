@@ -125,12 +125,12 @@
         "broken_evidence_links": {
           "type": "integer",
           "minimum": 0,
-          "description": "Optional count of missing or invalid local evidence references found in the policy. Emitted, including zero, when a policy model is available; omitted when no policy model is available."
+          "description": "Optional count of missing or invalid local evidence or link references found in the policy. Emitted, including zero, when a policy model is available; omitted when no policy model is available."
         },
         "weak_evidence_references": {
           "type": "integer",
           "minimum": 0,
-          "description": "Optional count of unstructured or unknown-prefix evidence references found in the policy. Emitted, including zero, when a policy model is available; omitted when no policy model is available."
+          "description": "Optional count of unstructured or unknown-prefix evidence or link references found in the policy. Emitted, including zero, when a policy model is available; omitted when no policy model is available."
         }
       }
     },

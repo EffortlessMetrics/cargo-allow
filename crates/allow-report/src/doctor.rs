@@ -30,7 +30,7 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
                 out.push_str(&format!("broken evidence links: {count}\n"));
             }
             if let Some(count) = facts.weak_evidence_references {
-                out.push_str(&format!("weak evidence references: {count}\n"));
+                out.push_str(&format!("weak evidence/link references: {count}\n"));
             }
         }
         None => out.push_str("config: not found; run `cargo-allow init`\n"),

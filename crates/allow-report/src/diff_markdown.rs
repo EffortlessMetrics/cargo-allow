@@ -43,7 +43,7 @@ pub fn render_diff_pr_summary_markdown_with_evidence_health(
     }
     if weak_evidence_references > 0 {
         out.push_str(&format!(
-            "| Weak evidence references | {weak_evidence_references} |\n"
+            "| Weak evidence/link references | {weak_evidence_references} |\n"
         ));
     }
     out.push_str(&format!(

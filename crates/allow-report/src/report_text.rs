@@ -327,7 +327,7 @@ fn render_audit_summary_markdown(
         signals.broken_evidence_links
     ));
     out.push_str(&format!(
-        "| Weak evidence references | {} |\n",
+        "| Weak evidence/link references | {} |\n",
         signals.weak_evidence_references
     ));
     out.push_str(&format!("| Baseline debt | {} |\n", signals.baseline_debt));
@@ -378,7 +378,7 @@ fn audit_recommended_next_step(
     if signals.review_items == 0 {
         "\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n"
     } else if queue_empty && signals.broken_evidence_links > 0 {
-        "\nRecommended next step: run `cargo-allow worklist --item-kind broken_evidence_link --format json` to repair broken local evidence references.\n"
+        "\nRecommended next step: run `cargo-allow worklist --item-kind broken_evidence_link --format json` to repair broken local evidence/link references.\n"
     } else if queue_empty
         && signals.policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing)
     {

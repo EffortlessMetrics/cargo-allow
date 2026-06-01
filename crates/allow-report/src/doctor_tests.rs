@@ -130,7 +130,7 @@ fn doctor_human_renderer_reports_invalid_config_status() {
     assert!(text.contains("policy status: active"));
     assert!(text.contains("config status: invalid: policy schema_version must not be empty"));
     assert!(text.contains("broken evidence links: 2"));
-    assert!(text.contains("weak evidence references: 1"));
+    assert!(text.contains("weak evidence/link references: 1"));
 }
 
 #[test]

@@ -90,7 +90,7 @@ fn markdown_pr_summary_reports_evidence_health_counts() {
     assert!(text.contains("**Net posture:** `worse`"));
     assert!(text.contains("| Current check failures | 1 |"));
     assert!(text.contains("| Broken evidence links | 1 |"));
-    assert!(text.contains("| Weak evidence references | 2 |"));
+    assert!(text.contains("| Weak evidence/link references | 2 |"));
 }
 
 fn finding_posture_change(

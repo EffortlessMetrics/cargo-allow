@@ -331,14 +331,14 @@ broken local links. Empty traceability targets are also weak evidence.
 ## Broken Evidence Links
 
 Report JSON may include `summary.broken_evidence_links` and
-`trend.broken_evidence_links` when local evidence references such as `doc:`,
-`spec:`, `adr:`, `ripr:`, `unsafe-review:`, or `coverage:` point outside the
-source tree, point to a directory or symlinked path component, or point to a
-missing file.
+`trend.broken_evidence_links` when local evidence or link references such as
+`doc:`, `spec:`, `adr:`, `ripr:`, `unsafe-review:`, or `coverage:` point
+outside the source tree, point to a directory or symlinked path component, or
+point to a missing file.
 Receipts may use the same optional count under `counts.broken_evidence_links`.
 
 Report JSON may include `summary.weak_evidence_references` and
-`trend.weak_evidence_references` when retained evidence strings are
+`trend.weak_evidence_references` when retained evidence or link strings are
 unstructured or use unknown prefixes. Receipts may use the same optional count
 under `counts.weak_evidence_references`. These references are not broken local
 links and do not, by themselves, fail `check`; they remain visible so teams can
