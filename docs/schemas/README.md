@@ -34,8 +34,8 @@ macro-expansion, or proof-level coverage.
   remain self-contained for consumer portability. The shared catalog includes
   source-tree inventory, governed source-exception kind and match-status
   vocabularies, structural identity, selector, allow-entry shapes, source
-  finding rows, stale-prune rows, evidence-prefix vocabularies, evidence
-  diagnostic row shapes used by `explain` and `worklist`, worklist filters and
+  finding rows, stale-prune rows, evidence-prefix vocabularies, evidence and
+  link diagnostic row shapes used by `explain` and `worklist`, worklist filters and
   work-item rows, report inventory, summary, trend, finding, and outcome rows,
   receipt count rows, the diff posture object, diff-summary, finding-change,
   policy-change, selector-identity, selector-precision, exception-identity,

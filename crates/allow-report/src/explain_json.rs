@@ -66,6 +66,16 @@ pub fn render_explain_json(report: ExplainReport<'_>) -> String {
         out.push_str(&render_evidence_reference_json(diagnostic, "  "));
     }
     out.push_str("\n  ],\n");
+    if !report.link_references.is_empty() {
+        out.push_str("  \"link_references\": [\n");
+        for (index, diagnostic) in report.link_references.iter().enumerate() {
+            if index > 0 {
+                out.push_str(",\n");
+            }
+            out.push_str(&render_evidence_reference_json(diagnostic, "  "));
+        }
+        out.push_str("\n  ],\n");
+    }
     out.push_str("  \"current_findings\": [\n");
     for (index, finding) in report.current_findings.iter().enumerate() {
         if index > 0 {

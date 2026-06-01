@@ -104,6 +104,24 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
         Some("#/$defs/evidence_reference"),
         "explain evidence references should use evidence reference rows"
     );
+    assert_eq!(
+        schema
+            .pointer("/properties/link_references/items/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/evidence_reference"),
+        "explain link references should use evidence reference diagnostic rows"
+    );
+    assert!(
+        !schema
+            .pointer("/required")
+            .and_then(Value::as_array)
+            .is_some_and(|required| {
+                required
+                    .iter()
+                    .any(|field| field.as_str() == Some("link_references"))
+            }),
+        "explain link references should be optional for v1 compatibility"
+    );
     let evidence_reference =
         required_schema_pointer("explain", &schema, "/$defs/evidence_reference");
     assert_eq!(

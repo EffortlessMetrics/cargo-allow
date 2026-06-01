@@ -359,12 +359,15 @@ explicit retained-exception review.
 `cargo-allow explain <id>` reports this live posture for a single entry. It
 shows the policy metadata, selector, current match status, matched finding
 count, outcome counts, selector precision, broad-scope status, stale state,
-occurrence-limit overruns, and evidence reference diagnostics. When the entry
+occurrence-limit overruns, evidence reference diagnostics, and local
+traceability-link diagnostics. When the entry
 needs attention, it also includes
 suggested next actions and proof commands. Matched `baseline_debt` entries also
 show next actions because generated debt still needs human review. Local
 evidence references are shown as present, missing, or invalid; traceability
-strings are identified as not executed or resolved. Current findings include
+strings are identified as not executed or resolved. Local-file `links` entries
+use the same source-tree diagnostics in `explain` so missing specs, ADRs, or
+other linked rationale files are visible during review. Current findings include
 scanner-provided `source_package` context when available; that field is not
 Cargo metadata or build-membership proof. It is derived only from readable
 source-tree `Cargo.toml` text with a visible `[package].name`; workspace-only,
@@ -374,7 +377,7 @@ syntax only, with no macro expansion, macro token-tree expression parsing, type
 analysis, build output, control-flow analysis, or data-flow analysis.
 `--format json` emits the same single-entry explanation as
 `cargo-allow.explain.v1`, including source-tree inventory context, scanner
-limitations, evidence diagnostics, current findings, match outcomes, and the
+limitations, evidence/link diagnostics, current findings, match outcomes, and the
 same suggested actions/proof commands shown in the human view.
 
 `cargo-allow list` shows allow entries with current status, match count, kind,

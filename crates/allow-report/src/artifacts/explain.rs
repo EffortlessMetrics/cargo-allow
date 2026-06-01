@@ -21,6 +21,7 @@ pub struct ExplainReport<'a> {
     pub current_findings: &'a [Finding],
     pub match_outcomes: &'a [MatchOutcome],
     pub evidence_references: &'a [EvidenceReference<'a>],
+    pub link_references: &'a [EvidenceReference<'a>],
     pub suggested_actions: &'a [String],
     pub proof_commands: &'a [String],
 }

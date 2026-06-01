@@ -163,6 +163,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "current_findings",
                 "evidence_references",
                 "inventory",
+                "link_references",
                 "match_outcomes",
                 "next",
                 "scanner_limitations",

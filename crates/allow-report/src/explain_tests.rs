@@ -65,6 +65,7 @@ fn explain_json_renderer_records_context_and_current_status() {
         category: "missing",
         message: "local evidence file is missing",
     }];
+    let link_references = Vec::new();
     let suggested_actions = vec!["add missing evidence".to_string()];
     let proof_commands = vec!["cargo-allow check --kind unsafe".to_string()];
 
@@ -80,6 +81,7 @@ fn explain_json_renderer_records_context_and_current_status() {
         current_findings: &[finding],
         match_outcomes: &outcomes,
         evidence_references: &evidence_references,
+        link_references: &link_references,
         suggested_actions: &suggested_actions,
         proof_commands: &proof_commands,
     };

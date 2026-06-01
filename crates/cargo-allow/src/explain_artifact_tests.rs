@@ -117,6 +117,78 @@ fn explain_entry_json_records_context_and_live_status() {
 }
 
 #[test]
+fn explain_entry_json_records_link_reference_diagnostics() {
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-link-diagnostics", FindingKind::NonRustFile);
+    entry.family = Some("documentation".to_string());
+    entry.links = vec![
+        "doc:docs/missing-link.md".to_string(),
+        "issue:123".to_string(),
+    ];
+    cfg.allow.push(entry.clone());
+    let finding = test_finding(
+        FindingKind::NonRustFile,
+        Some("documentation"),
+        "tracked.file",
+        "tracked_file",
+    );
+
+    let json = explain_entry_json(
+        Path::new("target/cargo-allow-test-missing-link-root"),
+        &cfg,
+        &entry,
+        std::slice::from_ref(&finding),
+        ExplainContext {
+            inventory: allow_report::InventoryContext::source_syntax(
+                "filesystem_fallback",
+                Some("fixtures/source-snapshot"),
+                Some(1),
+            ),
+        },
+    );
+    let value = parse_json_artifact("explain", &json, allow_report::EXPLAIN_SCHEMA_ID, "explain");
+
+    assert_eq!(
+        value
+            .pointer("/link_references/0/status")
+            .and_then(Value::as_str),
+        Some("local_file_missing"),
+        "explain should surface broken local link status"
+    );
+    assert_eq!(
+        value
+            .pointer("/link_references/0/category")
+            .and_then(Value::as_str),
+        Some("missing"),
+        "explain should surface broken local link category"
+    );
+    assert_eq!(
+        value
+            .pointer("/link_references/0/message")
+            .and_then(Value::as_str),
+        Some("local link file is missing"),
+        "explain should label link diagnostics as links"
+    );
+    assert_eq!(
+        value
+            .pointer("/link_references/1/status")
+            .and_then(Value::as_str),
+        Some("traceability_only"),
+        "explain should preserve non-local link diagnostics"
+    );
+
+    let text = explain_entry_text(
+        Path::new("target/cargo-allow-test-missing-link-root"),
+        &cfg,
+        &entry,
+        &[finding],
+    );
+    assert!(text.contains("link diagnostics:"));
+    assert!(text.contains("doc:docs/missing-link.md"));
+    assert!(text.contains("message: local link file is missing"));
+}
+
+#[test]
 fn explain_entry_json_records_allow_id_proof_command_for_attention_items() {
     let mut cfg = AllowConfig::empty();
     let mut entry = test_entry("allow-baseline", FindingKind::Panic);
