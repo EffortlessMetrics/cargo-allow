@@ -70,6 +70,35 @@ fn detects_unsafe_function_signatures_from_syntax() {
 }
 
 #[test]
+fn unsafe_function_findings_record_function_symbol() {
+    let src = r#"
+        unsafe fn read(ptr: *const u8) -> u8 {
+            unsafe { core::ptr::read(ptr) }
+        }
+
+        trait Reader {
+            unsafe fn read_trait();
+        }
+
+        extern "C" {
+            pub unsafe fn read_handle();
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    let symbols = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_fn"))
+        .map(|f| f.identity.symbol.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        symbols,
+        vec![Some("read"), Some("read_trait"), Some("read_handle")]
+    );
+}
+
+#[test]
 fn detects_multiple_unsafe_constructs_on_one_line() {
     let src = r#"
         unsafe fn read(ptr: *const u8) -> u8 { unsafe { core::ptr::read(ptr) } }
