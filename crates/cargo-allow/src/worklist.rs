@@ -72,7 +72,6 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         &findings,
         &outcomes,
         items.len() + 1,
-        filters.missing_evidence,
     ));
     items.extend(work_items_from_evidence_diagnostics_with_source_tree_files(
         &root,

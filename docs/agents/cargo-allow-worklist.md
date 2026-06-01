@@ -44,8 +44,9 @@ Cargo package.
 Use `--owner <owner>` and `--classification <classification>` to take a bounded
 policy-owner or debt-class slice, such as `--owner unowned --classification
 baseline_debt`.
-Use `--missing-evidence` to focus policy-backed entries that have no evidence
-references yet.
+The default worklist includes policy-backed entries that have no evidence
+references yet. Use `--missing-evidence` to focus only that evidence-cleanup
+queue.
 For evidence-quality work, use the proof commands embedded in each item. Broken
 local evidence/link work should usually start with
 `cargo-allow list --broken-evidence --format json`; weak or untyped

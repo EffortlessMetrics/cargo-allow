@@ -167,10 +167,11 @@ evidence references still remain visible as policy-health debt. JSON reports
 may include `summary.policy_missing_evidence` and
 `trend.policy_missing_evidence`, and check receipts may include
 `counts.policy_missing_evidence`. This is distinct from outcome-level
-`evidence_missing`, which is used when evidence requirements are enforced. Use
-`cargo-allow worklist --missing-evidence --format json` to route those retained
-entries for evidence cleanup without pretending the current no-new check
-failed. `cargo-allow explain <id>` also points matched non-baseline entries with
+`evidence_missing`, which is used when evidence requirements are enforced. The
+default `cargo-allow worklist --format json` includes those retained entries as
+evidence-cleanup work without pretending the current no-new check failed. Use
+`cargo-allow worklist --missing-evidence --format json` to focus only that
+queue. `cargo-allow explain <id>` also points matched non-baseline entries with
 empty evidence toward the same evidence-cleanup queue.
 
 Known local evidence prefixes are parsed when a policy is loaded from a source
@@ -464,10 +465,11 @@ Worklist output can be filtered by governed kind, scanner family, policy owner,
 policy classification, work item queue kind, match status, source-tree path,
 baseline debt, broad source-tree scopes, missing evidence, risk, and
 difficulty; filtered artifacts record all applied filters.
-When `--missing-evidence` surfaces matched policy entries with empty evidence,
+The default worklist includes matched policy entries with empty evidence, and
 unsafe entries are queued as `unsafe_missing_evidence` so they keep the stronger
 unsafe evidence actions while still appearing in the missing-evidence shortcut
-queue.
+queue. Use `--missing-evidence` when a run should include only policy-backed
+items with no evidence references.
 Governed kind filters are validated up front, so a mistyped `--kind` fails
 closed instead of producing a misleading empty queue.
 Canonical work item queue kinds use underscores, and `--item-kind` also accepts
@@ -651,5 +653,6 @@ closed on broken local evidence references.
 Audit, check, and diff artifacts can also report policy-level missing evidence
 when retained non-baseline allow entries have no evidence references but
 otherwise match the current source tree. That advisory count routes to
-`cargo-allow worklist --missing-evidence` and does not, by itself, claim the
+the default `cargo-allow worklist` queue, can be focused with
+`cargo-allow worklist --missing-evidence`, and does not, by itself, claim the
 source-tree check failed.
