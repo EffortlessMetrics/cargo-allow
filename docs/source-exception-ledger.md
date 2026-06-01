@@ -122,6 +122,9 @@ values such as `workspace.ignored` and `workspace.generated`.
 ## Reason And Evidence
 
 `reason` is the human rationale.
+It must not include leading or trailing whitespace; cargo-allow keeps rationale
+text exact so rendered policies, reviews, and policy diffs do not hide padded
+receipt text.
 
 `evidence` is the support for that rationale.
 Evidence and link list entries must not include leading or trailing whitespace.
