@@ -135,11 +135,11 @@ fn explain_entry_text_reports_evidence_reference_status() {
 
     assert!(text.contains("evidence diagnostics:"));
     assert!(text.contains("doc:docs/safety.md"));
-    assert!(text.contains("[ok] present: doc:docs/safety.md"));
+    assert!(text.contains("present: doc:docs/safety.md (status=local_file_present"));
     assert!(text.contains("spec:docs/missing.md"));
-    assert!(text.contains("[missing] missing: spec:docs/missing.md"));
+    assert!(text.contains("missing: spec:docs/missing.md (status=local_file_missing"));
     assert!(text.contains("test:file_policy_fixture"));
-    assert!(text.contains("[info] not-local: test:file_policy_fixture"));
+    assert!(text.contains("not-local: test:file_policy_fixture (status=traceability_only"));
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
@@ -172,7 +172,7 @@ fn explain_entry_text_reports_local_evidence_outside_source_tree_inventory_as_mi
         Some(&source_tree_files),
     );
 
-    assert!(text.contains("[missing] missing: doc:docs/untracked.md"));
+    assert!(text.contains("missing: doc:docs/untracked.md (status=local_file_missing"));
     assert!(text.contains("not in the default source-tree inventory"));
     assert!(text.contains("action: commit the referenced evidence file"));
     assert!(text.contains("action: or rerun with --include-untracked"));
@@ -202,9 +202,9 @@ fn explain_entry_text_reports_weak_evidence_next_actions() {
     let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
 
     assert!(text.contains("current_status: matched"));
-    assert!(text.contains("[weak] weak: spreadsheet:manual-review"));
+    assert!(text.contains("weak: spreadsheet:manual-review (status=unstructured"));
     assert!(text.contains("unrecognized evidence prefix"));
-    assert!(text.contains("[weak] weak: TODO add reviewed evidence"));
+    assert!(text.contains("weak: TODO add reviewed evidence (status=unstructured"));
     assert!(text.contains("unstructured evidence string"));
     assert!(text.contains("action: replace the weak evidence string"));
     assert!(
@@ -237,7 +237,7 @@ fn explain_entry_text_specializes_high_risk_policy_weak_evidence_actions() {
     let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
 
     assert!(text.contains("current_status: matched"));
-    assert!(text.contains("[weak] weak: binary:cargo"));
+    assert!(text.contains("weak: binary:cargo (status=unstructured"));
     assert!(text.contains(
         "action: replace weak evidence with typed evidence for policy_exception.process_spawn"
     ));
@@ -263,7 +263,7 @@ fn explain_entry_text_reports_weak_link_next_actions() {
     let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
 
     assert!(text.contains("link diagnostics:"));
-    assert!(text.contains("[weak] weak: spreadsheet:manual-review"));
+    assert!(text.contains("weak: spreadsheet:manual-review (status=unstructured"));
     assert!(text.contains("message: unrecognized link prefix"));
     assert!(text.contains("action: replace the weak link string"));
     assert!(text.contains("proof: cargo-allow worklist --allow-id allow-weak-link --format json"));
@@ -291,7 +291,7 @@ fn explain_entry_text_specializes_high_risk_policy_weak_link_actions() {
     let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
 
     assert!(text.contains("current_status: matched"));
-    assert!(text.contains("[weak] weak: spreadsheet:manual-review"));
+    assert!(text.contains("weak: spreadsheet:manual-review (status=unstructured"));
     assert!(text.contains(
         "action: replace weak traceability with typed traceability for policy_exception.network_destination"
     ));
