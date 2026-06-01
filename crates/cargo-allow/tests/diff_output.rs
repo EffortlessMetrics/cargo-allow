@@ -209,6 +209,62 @@ fn diff_json_reports_missing_local_link_added_policy_failure() {
 }
 
 #[test]
+fn diff_json_reports_missing_retained_local_link_current_failure() {
+    let root = temp_root("diff-missing-retained-local-link");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(root.join("docs/rationale.md"), "linked rationale")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write rationale: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        policy_with_links(Some("doc:docs/rationale.md")),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "base"]);
+    fs::remove_file(root.join("docs/rationale.md"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove rationale: {err}")));
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_failure(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "worse",
+        "diff missing retained local link net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/summary/broken_evidence_links",
+        1,
+        "diff should count missing retained local links as broken local references",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/current_failures",
+        1,
+        "missing retained local links should affect current diff failures",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_include_untracked_accepts_untracked_local_evidence_added() {
     let root = temp_root("diff-include-untracked-local-evidence-added");
     write_diff_fixture(

@@ -401,15 +401,18 @@ fn evidence_summary_for_diff(
 ) -> EvidenceReportSummary {
     let mut evidence = EvidenceReportSummary::from_policy(root, cfg, outcomes);
     if let Some(head_files) = head_files {
-        evidence.broken_evidence_links = broken_local_evidence_count_in_files(head_files, cfg);
+        evidence.broken_evidence_links = broken_local_reference_count_in_files(head_files, cfg);
     }
     evidence
 }
 
-fn broken_local_evidence_count_in_files(head_files: &BTreeSet<String>, cfg: &AllowConfig) -> usize {
+fn broken_local_reference_count_in_files(
+    head_files: &BTreeSet<String>,
+    cfg: &AllowConfig,
+) -> usize {
     cfg.allow
         .iter()
-        .flat_map(|entry| &entry.evidence)
+        .flat_map(|entry| entry.evidence.iter().chain(entry.links.iter()))
         .filter_map(|reference| local_evidence_reference(reference))
         .filter(|reference| reference.is_broken_in_revision(head_files))
         .count()
