@@ -36,6 +36,56 @@ fn migrates_legacy_policy_directory_to_one_config() {
 }
 
 #[test]
+fn policy_directory_includes_lint_and_unsafe_legacy_policies() {
+    let dir = fixture_dir();
+    fs::write(
+        dir.join("clippy-exceptions.toml"),
+        clippy_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("clippy fixture write: {err}")));
+    fs::write(
+        dir.join("unsafe-allowlist.toml"),
+        unsafe_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("unsafe fixture write: {err}")));
+
+    let cfg = load_legacy_policy_dir(&dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy directory migrates: {err}")));
+
+    assert_eq!(cfg.policy, "cargo-allow");
+    assert!(
+        cfg.allow
+            .iter()
+            .any(|entry| entry.kind == allow_core::FindingKind::LintException
+                && entry.selector.lint.as_deref() == Some("clippy::unwrap_used")),
+        "repo-policy migration should include legacy lint exceptions"
+    );
+    assert!(
+        cfg.allow
+            .iter()
+            .any(|entry| entry.kind == allow_core::FindingKind::Unsafe
+                && entry.family.as_deref() == Some("unsafe_block")
+                && entry
+                    .evidence
+                    .iter()
+                    .any(|item| item.starts_with("unsafe-review:"))),
+        "repo-policy migration should preserve reviewed unsafe evidence"
+    );
+    assert!(
+        cfg.allow
+            .iter()
+            .any(|entry| entry.kind == allow_core::FindingKind::Unsafe
+                && entry.family.as_deref() == Some("unsafe_fn")
+                && entry.classification == "baseline_debt"
+                && entry
+                    .evidence
+                    .iter()
+                    .any(|item| item.contains("TODO: add unsafe-review"))),
+        "repo-policy migration should keep unsafe entries without evidence visibly temporary"
+    );
+}
+
+#[test]
 fn policy_directory_can_expand_non_rust_globs_with_findings() {
     let dir = fixture_dir();
     fs::write(dir.join("non-rust-allowlist.toml"), policy_fixture_text())

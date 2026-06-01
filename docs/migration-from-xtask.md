@@ -218,9 +218,9 @@ cargo-allow check --mode no-new
 
 `--repo-policy` combines the supported legacy files in a policy directory into
 one canonical cargo-allow policy. It currently includes the shiplog-style
-non-Rust, generated, no-panic baseline, executable, workflow,
-dependency-surface, process, and network allowlists. For non-Rust file policy,
-directory migration expands
+non-Rust, generated, no-panic allowlist, no-panic baseline, Clippy exception,
+unsafe allowlist, executable, workflow, dependency-surface, process, and
+network allowlists. For non-Rust file policy, directory migration expands
 matching legacy globs against the current inventory so the canonical output does
 not inherit overlapping-glob ambiguity. Single-file migration remains available:
 
