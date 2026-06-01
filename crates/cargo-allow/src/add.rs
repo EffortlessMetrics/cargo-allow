@@ -1,6 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, SimpleDate};
 use allow_match::{CheckMode, evaluate};
-use allow_policy::{render_policy, validate_local_evidence_references, validate_policy};
+use allow_policy::{render_policy, validate_policy};
 
 #[path = "add_args.rs"]
 mod add_args;
@@ -20,8 +20,11 @@ use add_render::{render_add_summary, render_add_summary_json};
 pub(super) use add_types::AddContext;
 
 use crate::{
-    SourceTreeReportContext, emit_stderr_text, load_world, parse_kind_filter,
-    write_file_no_overwrite,
+    SourceTreeReportContext, emit_stderr_text,
+    evidence_inventory::{
+        current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
+    },
+    load_world, parse_kind_filter, write_file_no_overwrite,
 };
 
 const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
@@ -86,7 +89,9 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     };
     cfg.allow.push(entry);
     validate_policy(&cfg)?;
-    validate_local_evidence_references(&root, &cfg)?;
+    let evidence_source_tree_files =
+        current_evidence_source_tree_files(&root, args.include_untracked);
+    validate_evidence_references_for_source_tree(&root, &cfg, evidence_source_tree_files.as_ref())?;
     let rendered = render_policy(&cfg);
     if let Some(path) = &args.write {
         write_file_no_overwrite(path, &rendered, args.force)?;

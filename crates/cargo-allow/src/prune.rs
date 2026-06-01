@@ -1,9 +1,12 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
-use allow_policy::{render_policy, validate_local_evidence_references, validate_policy};
+use allow_policy::{render_policy, validate_policy};
 
 use crate::{
     EvidenceValidationMode, SourceTreeReportContext, config_path, emit_text,
+    evidence_inventory::{
+        current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
+    },
     load_world_with_evidence_mode, write_file,
 };
 
@@ -55,7 +58,13 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         })?;
         let pruned = config_without_prune_candidates(&cfg, &candidates);
         validate_policy(&pruned)?;
-        validate_local_evidence_references(&root, &pruned)?;
+        let evidence_source_tree_files =
+            current_evidence_source_tree_files(&root, args.include_untracked);
+        validate_evidence_references_for_source_tree(
+            &root,
+            &pruned,
+            evidence_source_tree_files.as_ref(),
+        )?;
         write_file(&path, &render_policy(&pruned))?;
         Some(path)
     } else {
