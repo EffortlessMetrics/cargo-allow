@@ -82,6 +82,10 @@ surface.
 Local-file traceability link additions that are absent from the compared
 source-tree inventory also fail, so PR summaries do not treat untracked or
 missing local rationale as proof-quality cleanup.
+Diff evidence-health counts also include retained local-file traceability links
+whose targets are no longer present in the compared source-tree inventory, so
+removing a linked rationale file without updating policy is not treated as a
+neutral source-tree change.
 `created` date removal fails, changes require review, and adding a missing
 `created` date is reported as an improvement so exception provenance cannot
 drift silently.
