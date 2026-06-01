@@ -284,6 +284,22 @@ fn missing_evidence_keeps_shortcut_when_kind_is_unknown() {
 }
 
 #[test]
+fn evidence_reference_work_items_include_list_shortcuts() {
+    let entry = test_entry("allow-evidence", FindingKind::Unsafe);
+
+    assert!(
+        proof_commands("broken_evidence_link", None, Some(&entry))
+            .iter()
+            .any(|command| command == "cargo-allow list --broken-evidence --format json")
+    );
+    assert!(
+        proof_commands("weak_evidence_reference", None, Some(&entry))
+            .iter()
+            .any(|command| command == "cargo-allow list --weak-evidence --format json")
+    );
+}
+
+#[test]
 fn unsafe_missing_evidence_adds_unsafe_check_when_kind_is_unknown() {
     let mut entry = test_entry("allow-policy", FindingKind::PolicyException);
     entry.family = Some("unknown_policy_family".to_string());

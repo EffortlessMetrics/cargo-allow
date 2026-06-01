@@ -44,6 +44,7 @@ fn worklist_items_report_broken_evidence_links() {
     assert!(json.contains("\"exception_kind\": \"unsafe\""));
     assert!(json.contains("\"cargo-allow explain allow-unsafe\""));
     assert!(json.contains("\"cargo-allow worklist --allow-id allow-unsafe --format json\""));
+    assert!(json.contains("\"cargo-allow list --broken-evidence --format json\""));
     assert!(json.contains("\"cargo-allow check --kind unsafe --mode no-new\""));
     assert!(json.contains("\"cargo-allow worklist --kind unsafe --format json\""));
     fs::remove_dir_all(root)
@@ -363,6 +364,7 @@ fn worklist_items_report_weak_evidence_references() {
     assert!(
         json.contains("\"cargo-allow worklist --item-kind weak_evidence_reference --format json\"")
     );
+    assert!(json.contains("\"cargo-allow list --weak-evidence --format json\""));
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
