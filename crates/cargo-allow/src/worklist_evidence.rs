@@ -2,7 +2,8 @@ use super::worklist_item_kind::{BROKEN_EVIDENCE_LINK, WEAK_EVIDENCE_REFERENCE};
 use super::worklist_priority::{DIFFICULTY_SMALL, RISK_HIGH, RISK_MEDIUM};
 use super::{WorkItem, WorkItemEvidenceReference, proof_commands};
 use crate::evidence_inventory::{
-    DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE, evidence_reference_diagnostics_for_source_tree,
+    DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE, ReferenceSource,
+    policy_reference_diagnostics_for_source_tree,
 };
 use crate::evidence_render::evidence_reference_target_text;
 use allow_core::{AllowConfig, AllowEntry, FindingKind, MatchStatus};
@@ -28,40 +29,22 @@ pub(super) fn work_items_from_evidence_diagnostics_with_source_tree_files(
 ) -> Vec<WorkItem> {
     let mut items = Vec::new();
     for entry in &cfg.allow {
-        for diagnostic in
-            evidence_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files)
+        for reference in
+            policy_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files)
                 .into_iter()
-                .filter(|diagnostic| {
-                    diagnostic.status.is_broken_local_link()
-                        || diagnostic.status.is_weak_reference()
+                .filter(|reference| {
+                    reference.diagnostic.status.is_broken_local_link()
+                        || reference.diagnostic.status.is_weak_reference()
                 })
         {
+            let mut diagnostic = reference.diagnostic;
+            diagnostic.message = reference.source.message(&diagnostic.message);
             let item_index = start_index + items.len();
             items.push(work_item_from_evidence_diagnostic(
                 entry,
                 diagnostic,
                 item_index,
-                ReferenceSource::Evidence,
-            ));
-        }
-        let mut link_entry = entry.clone();
-        link_entry.evidence = entry.links.clone();
-        for mut diagnostic in evidence_reference_diagnostics_for_source_tree(
-            root,
-            &link_entry,
-            evidence_source_tree_files,
-        )
-        .into_iter()
-        .filter(|diagnostic| {
-            diagnostic.status.is_broken_local_link() || diagnostic.status.is_weak_reference()
-        }) {
-            diagnostic.message = link_reference_message(&diagnostic.message);
-            let item_index = start_index + items.len();
-            items.push(work_item_from_evidence_diagnostic(
-                entry,
-                diagnostic,
-                item_index,
-                ReferenceSource::Link,
+                reference.source,
             ));
         }
     }
@@ -138,10 +121,10 @@ fn evidence_suggested_actions(
     source: ReferenceSource,
 ) -> Vec<String> {
     if evidence_exists_outside_default_inventory(diagnostic) {
-        return source.outside_inventory_actions();
+        return outside_inventory_actions(source);
     }
     if source == ReferenceSource::Link {
-        return source.link_actions(kind);
+        return link_actions(kind);
     }
     super::suggested_actions(kind)
 }
@@ -172,59 +155,39 @@ fn evidence_proof_commands(
 fn evidence_exists_outside_default_inventory(diagnostic: &EvidenceReferenceDiagnostic) -> bool {
     diagnostic.message == DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE
         || diagnostic.message
-            == link_reference_message(DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE)
+            == ReferenceSource::Link.message(DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ReferenceSource {
-    Evidence,
-    Link,
-}
-
-impl ReferenceSource {
-    fn label(self) -> &'static str {
-        match self {
-            Self::Evidence => "evidence",
-            Self::Link => "link",
-        }
-    }
-
-    fn outside_inventory_actions(self) -> Vec<String> {
-        match self {
-            Self::Evidence => vec![
-                "commit the referenced evidence file if it should support repository policy"
-                    .to_string(),
-                "or rerun with --include-untracked when intentionally reviewing local receipt artifacts"
-                    .to_string(),
-            ],
-            Self::Link => vec![
-                "commit the referenced traceability file if it should support repository policy"
-                    .to_string(),
-                "or rerun with --include-untracked when intentionally reviewing local traceability files"
-                    .to_string(),
-            ],
-        }
-    }
-
-    fn link_actions(self, kind: &str) -> Vec<String> {
-        debug_assert_eq!(self, Self::Link);
-        match kind {
-            BROKEN_EVIDENCE_LINK => vec![
-                "restore or commit the referenced local traceability file".to_string(),
-                "or update the link reference to a valid source-tree-relative path".to_string(),
-            ],
-            WEAK_EVIDENCE_REFERENCE => vec![
-                "replace the weak link string with a typed traceability reference".to_string(),
-                format!(
-                    "use a recognized prefix such as {}",
-                    super::worklist_actions::evidence_prefix_examples()
-                ),
-            ],
-            _ => super::suggested_actions(kind),
-        }
+fn outside_inventory_actions(source: ReferenceSource) -> Vec<String> {
+    match source {
+        ReferenceSource::Evidence => vec![
+            "commit the referenced evidence file if it should support repository policy"
+                .to_string(),
+            "or rerun with --include-untracked when intentionally reviewing local receipt artifacts"
+                .to_string(),
+        ],
+        ReferenceSource::Link => vec![
+            "commit the referenced traceability file if it should support repository policy"
+                .to_string(),
+            "or rerun with --include-untracked when intentionally reviewing local traceability files"
+                .to_string(),
+        ],
     }
 }
 
-fn link_reference_message(message: &str) -> String {
-    message.replace("evidence", "link")
+fn link_actions(kind: &str) -> Vec<String> {
+    match kind {
+        BROKEN_EVIDENCE_LINK => vec![
+            "restore or commit the referenced local traceability file".to_string(),
+            "or update the link reference to a valid source-tree-relative path".to_string(),
+        ],
+        WEAK_EVIDENCE_REFERENCE => vec![
+            "replace the weak link string with a typed traceability reference".to_string(),
+            format!(
+                "use a recognized prefix such as {}",
+                super::worklist_actions::evidence_prefix_examples()
+            ),
+        ],
+        _ => super::suggested_actions(kind),
+    }
 }

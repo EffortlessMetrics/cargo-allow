@@ -1,6 +1,7 @@
 use super::{ExplainContext, explain_steps::explain_next_steps};
 use crate::evidence_inventory::{
     DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE, evidence_reference_diagnostics_for_source_tree,
+    policy_reference_diagnostics_for_source_tree,
 };
 use crate::evidence_render::evidence_reference_target_text;
 use allow_core::{AllowEntry, Finding, MatchOutcome, allow_entry_broad_scope};
@@ -134,9 +135,11 @@ fn link_reference_diagnostics_for_source_tree(
     entry: &AllowEntry,
     evidence_source_tree_files: Option<&BTreeSet<String>>,
 ) -> Vec<allow_policy::EvidenceReferenceDiagnostic> {
-    let mut link_entry = entry.clone();
-    link_entry.evidence = entry.links.clone();
-    evidence_reference_diagnostics_for_source_tree(root, &link_entry, evidence_source_tree_files)
+    policy_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files)
+        .into_iter()
+        .filter(|reference| reference.source == crate::evidence_inventory::ReferenceSource::Link)
+        .map(|reference| reference.diagnostic)
+        .collect()
 }
 
 fn link_reference_message(message: &str) -> String {
