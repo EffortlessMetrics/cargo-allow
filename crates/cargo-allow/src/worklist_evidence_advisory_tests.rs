@@ -156,6 +156,39 @@ fn worklist_items_report_weak_traceability_links() {
 }
 
 #[test]
+fn worklist_items_specialize_high_risk_policy_weak_link_actions() {
+    let root = migrate_fixture_dir();
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-network-weak-link", FindingKind::PolicyException);
+    entry.family = Some("network_destination".to_string());
+    entry.links = vec!["spreadsheet:manual-review".to_string()];
+    cfg.allow.push(entry);
+
+    let items = work_items_from_evidence_diagnostics(&root, &cfg, 1);
+
+    let item = items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one weak link work item"));
+    assert_eq!(item.kind, "weak_evidence_reference");
+    assert_eq!(item.exception_kind.as_deref(), Some("policy_exception"));
+    assert_eq!(item.family.as_deref(), Some("network_destination"));
+    assert_eq!(item.risk, "high");
+    assert_eq!(item.allow_id.as_deref(), Some("allow-network-weak-link"));
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("policy_exception.network_destination"))
+    );
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("removed or narrowed"))
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn worklist_items_report_local_evidence_outside_source_tree_inventory() {
     let root = migrate_fixture_dir();
     fs::create_dir_all(root.join("docs"))

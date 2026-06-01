@@ -272,6 +272,35 @@ fn explain_entry_text_reports_weak_link_next_actions() {
 }
 
 #[test]
+fn explain_entry_text_specializes_high_risk_policy_weak_link_actions() {
+    let root = migrate_fixture_dir();
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-network-weak-link", FindingKind::PolicyException);
+    entry.family = Some("network_destination".to_string());
+    entry.path = Some(PathBuf::from("policy/network-allowlist.toml"));
+    entry.selector.ast_kind = Some("network_destination".to_string());
+    entry.links = vec!["spreadsheet:manual-review".to_string()];
+    cfg.allow.push(entry.clone());
+    let finding = test_finding(
+        FindingKind::PolicyException,
+        Some("network_destination"),
+        "policy/network-allowlist.toml",
+        "network_destination",
+    );
+
+    let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
+
+    assert!(text.contains("current_status: matched"));
+    assert!(text.contains("[weak] weak: spreadsheet:manual-review"));
+    assert!(text.contains(
+        "action: replace weak traceability with typed traceability for policy_exception.network_destination"
+    ));
+    assert!(text.contains("action: keep custom legacy notes only as supporting context"));
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn explain_entry_text_reports_stale_entry() {
     let mut cfg = AllowConfig::empty();
     let entry = test_entry("allow-file", FindingKind::NonRustFile);

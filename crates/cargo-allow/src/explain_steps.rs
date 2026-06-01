@@ -80,10 +80,10 @@ pub(super) fn explain_next_steps(
         let finding = findings.first();
         let kind = "broken_evidence_link";
         return (
-            vec![
-                "restore or commit the referenced local traceability file".to_string(),
-                "or update the link reference to a valid source-tree-relative path".to_string(),
-            ],
+            worklist::suggested_link_actions_for_context(kind, finding, Some(entry))
+                .into_iter()
+                .take(2)
+                .collect(),
             worklist::proof_commands(kind, finding, Some(entry))
                 .into_iter()
                 .take(5)
@@ -108,11 +108,10 @@ pub(super) fn explain_next_steps(
         let finding = findings.first();
         let kind = "weak_evidence_reference";
         return (
-            vec![
-                "replace the weak link string with a typed traceability reference".to_string(),
-                "use a recognized prefix such as doc:, spec:, adr:, issue:, pr:, or legacy-policy:"
-                    .to_string(),
-            ],
+            worklist::suggested_link_actions_for_context(kind, finding, Some(entry))
+                .into_iter()
+                .take(2)
+                .collect(),
             worklist::proof_commands(kind, finding, Some(entry))
                 .into_iter()
                 .take(5)
