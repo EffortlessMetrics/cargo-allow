@@ -3,9 +3,12 @@ use allow_core::normalize_snippet;
 pub(crate) fn detect_attr<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     let outer = format!("#[{name}(");
     let inner = format!("#![{name}(");
+    let bare = format!("{name}(");
     if let Some(rest) = line.strip_prefix(&outer) {
         Some(rest)
     } else if let Some(rest) = line.strip_prefix(&inner) {
+        Some(rest)
+    } else if let Some(rest) = line.strip_prefix(&bare) {
         Some(rest)
     } else {
         None
