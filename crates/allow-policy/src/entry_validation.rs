@@ -56,6 +56,8 @@ pub(crate) fn validate_allow_entry_requirements(
     }
     validate_non_empty_values(&entry.id, "evidence", &entry.evidence)?;
     validate_non_empty_values(&entry.id, "link", &entry.links)?;
+    validate_unique_values(&entry.id, "evidence", &entry.evidence)?;
+    validate_unique_values(&entry.id, "link", &entry.links)?;
     Ok(())
 }
 
@@ -110,6 +112,22 @@ fn validate_allow_id(id: &str) -> CargoAllowResult<()> {
 fn validate_non_empty_values(id: &str, label: &str, values: &[String]) -> CargoAllowResult<()> {
     for (index, value) in values.iter().enumerate() {
         validate_required_text(&format!("{id} {label} entry {}", index + 1), value)?;
+    }
+    Ok(())
+}
+
+fn validate_unique_values(id: &str, label: &str, values: &[String]) -> CargoAllowResult<()> {
+    let mut seen = BTreeSet::new();
+    for (index, value) in values.iter().enumerate() {
+        if !seen.insert(value.as_str()) {
+            return Err(CargoAllowError::new(format!(
+                "{} duplicate {} entry `{}` at position {}",
+                id,
+                label,
+                value,
+                index + 1
+            )));
+        }
     }
     Ok(())
 }
