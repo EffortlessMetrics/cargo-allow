@@ -44,6 +44,7 @@ pub(crate) fn entry_from_process_rule(rule: &LegacyProcessRule) -> AllowEntry {
 
 fn process_evidence(rule: &LegacyProcessRule) -> Vec<String> {
     let mut evidence = vec![
+        format!("legacy-policy:{}", rule.id),
         format!("binary:{}", rule.binary),
         format!("argv_shape:{}", rule.argv_shape.join(" ")),
         format!("network_reach:{}", rule.network_reach),

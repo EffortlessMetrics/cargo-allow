@@ -40,6 +40,12 @@ fn migrates_process_allowlist_to_policy_exception_entries() {
         install
             .evidence
             .iter()
+            .any(|item| item == "legacy-policy:proc-cargo-install-cargo-deny")
+    );
+    assert!(
+        install
+            .evidence
+            .iter()
             .any(|item| item == "network_reach:true")
     );
 
@@ -136,6 +142,12 @@ fn migrates_network_allowlist_to_policy_exception_entries() {
     );
     assert_eq!(public.lifecycle.expires.as_deref(), Some("never"));
     assert_eq!(public.lifecycle.review_after.as_deref(), Some("2026-05-09"));
+    assert!(
+        public
+            .evidence
+            .iter()
+            .any(|item| item == "legacy-policy:net-crates-io-fetch")
+    );
 
     let authenticated = cfg
         .allow
