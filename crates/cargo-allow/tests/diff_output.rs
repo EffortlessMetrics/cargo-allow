@@ -125,7 +125,7 @@ fn diff_json_reports_missing_local_evidence_added_policy_failure() {
     assert_policy_change(&value, "evidence_added", "allow-unwrap", "fail");
     assert_file_contains(
         &output,
-        "broken local evidence added",
+        "local evidence added outside compared source-tree inventory",
         "diff output should explain missing local evidence addition posture",
     );
 
@@ -168,7 +168,7 @@ fn diff_json_reports_untracked_local_evidence_added_policy_failure_by_default() 
     assert_policy_change(&value, "evidence_added", "allow-unwrap", "fail");
     assert_file_contains(
         &output,
-        "broken local evidence added",
+        "local evidence added outside compared source-tree inventory",
         "diff output should explain untracked local evidence addition posture",
     );
 
@@ -295,7 +295,7 @@ fn diff_json_with_explicit_head_validates_added_evidence_at_head_revision() {
     assert_policy_change(&value, "evidence_added", "allow-unwrap", "fail");
     assert_file_contains(
         &output,
-        "broken local evidence added",
+        "local evidence added outside compared source-tree inventory",
         "diff output should validate added local evidence against explicit head revision",
     );
 
