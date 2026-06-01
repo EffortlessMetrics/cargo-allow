@@ -56,14 +56,7 @@ fn work_item_from_evidence_diagnostic(
         debug_assert!(diagnostic.status.is_broken_local_link());
         BROKEN_EVIDENCE_LINK
     };
-    let mut proof_commands = proof_commands(kind, None, Some(entry));
-    if evidence_exists_outside_default_inventory(&diagnostic) {
-        proof_commands.push(format!(
-            "cargo-allow explain {} --include-untracked",
-            entry.id
-        ));
-        proof_commands.push("cargo-allow check --include-untracked --mode no-new".to_string());
-    }
+    let proof_commands = evidence_proof_commands(kind, entry, &diagnostic);
     let target = evidence_reference_target_text(&diagnostic);
     let path = if kind == BROKEN_EVIDENCE_LINK {
         target.clone()
@@ -122,6 +115,29 @@ fn evidence_suggested_actions(kind: &str, diagnostic: &EvidenceReferenceDiagnost
         ];
     }
     super::suggested_actions(kind)
+}
+
+fn evidence_proof_commands(
+    kind: &str,
+    entry: &AllowEntry,
+    diagnostic: &EvidenceReferenceDiagnostic,
+) -> Vec<String> {
+    if !evidence_exists_outside_default_inventory(diagnostic) {
+        return proof_commands(kind, None, Some(entry));
+    }
+
+    let mut commands = vec![
+        format!("cargo-allow explain {}", entry.id),
+        format!("cargo-allow explain {} --include-untracked", entry.id),
+        format!("cargo-allow worklist --allow-id {} --format json", entry.id),
+        "cargo-allow check --include-untracked --mode no-new".to_string(),
+    ];
+    for command in proof_commands(kind, None, Some(entry)) {
+        if !commands.iter().any(|existing| existing == &command) {
+            commands.push(command);
+        }
+    }
+    commands
 }
 
 fn evidence_exists_outside_default_inventory(diagnostic: &EvidenceReferenceDiagnostic) -> bool {
