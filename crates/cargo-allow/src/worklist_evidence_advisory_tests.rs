@@ -69,6 +69,7 @@ fn worklist_items_report_local_evidence_outside_source_tree_inventory() {
         1,
         Some(&source_tree_files),
     );
+    let human = render_worklist_human_with_context(&items, WorklistContext::default());
 
     let item = items
         .first()
@@ -104,6 +105,8 @@ fn worklist_items_report_local_evidence_outside_source_tree_inventory() {
             .iter()
             .any(|command| command == "cargo-allow check --include-untracked --mode no-new")
     );
+    assert!(human.contains("proof: cargo-allow explain allow-unsafe --include-untracked"));
+    assert!(human.contains("proof: cargo-allow check --include-untracked --mode no-new"));
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
