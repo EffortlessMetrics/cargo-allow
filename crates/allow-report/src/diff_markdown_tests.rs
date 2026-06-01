@@ -52,7 +52,7 @@ fn diff_pr_summary_markdown_reports_evidence_health_rows() {
     assert!(summary.contains("**Net posture:** `worse`"));
     assert!(summary.contains("| Current check failures | 1 |"));
     assert!(summary.contains("| Broken evidence links | 1 |"));
-    assert!(summary.contains("| Weak evidence references | 2 |"));
+    assert!(summary.contains("| Weak evidence/link references | 2 |"));
 }
 
 #[test]

@@ -344,12 +344,12 @@
         "broken_evidence_references": {
           "type": "integer",
           "minimum": 0,
-          "description": "Number of local evidence references on this allow entry that are missing or invalid. Optional for list.v1 compatibility."
+          "description": "Number of local evidence or link references on this allow entry that are missing or invalid. Optional for list.v1 compatibility."
         },
         "weak_evidence_references": {
           "type": "integer",
           "minimum": 0,
-          "description": "Number of evidence references on this allow entry that are unstructured or use an unknown prefix. Optional for list.v1 compatibility."
+          "description": "Number of evidence or link references on this allow entry that are unstructured or use an unknown prefix. Optional for list.v1 compatibility."
         },
         "selector_precision": {
           "type": "integer",

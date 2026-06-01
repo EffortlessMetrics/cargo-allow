@@ -106,7 +106,10 @@ fn render_audit_summary_html(
         ("Evidence gaps", summary.count(MatchStatus::EvidenceMissing)),
         ("Policy missing evidence", signals.policy_missing_evidence),
         ("Broken evidence links", signals.broken_evidence_links),
-        ("Weak evidence references", signals.weak_evidence_references),
+        (
+            "Weak evidence/link references",
+            signals.weak_evidence_references,
+        ),
         ("Baseline debt", signals.baseline_debt),
     ] {
         out.push_str(&format!(
@@ -119,7 +122,7 @@ fn render_audit_summary_html(
     if signals.review_items == 0 {
         out.push_str("<p>Recommended next step: keep <code>cargo-allow check --mode no-new</code> in CI.</p>\n");
     } else if queue.is_empty() && signals.broken_evidence_links > 0 {
-        out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --item-kind broken_evidence_link --format json</code> to repair broken local evidence references.</p>\n");
+        out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --item-kind broken_evidence_link --format json</code> to repair broken local evidence/link references.</p>\n");
     } else if queue.is_empty()
         && signals.policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing)
     {

@@ -359,6 +359,7 @@ fn markdown_audit_report_counts_broken_evidence_links_context() {
     assert!(text.contains("| Review items | 2 |"));
     assert!(text.contains("| Broken evidence links | 2 |"));
     assert!(text.contains("worklist --item-kind broken_evidence_link --format json"));
+    assert!(text.contains("repair broken local evidence/link references"));
     assert!(!text.contains("## Audit Review Queue"));
 }
 
@@ -369,7 +370,7 @@ fn markdown_audit_report_counts_weak_evidence_references_context() {
     let text = render_markdown_with_context("audit", &[], &[], false, context);
 
     assert!(text.contains("| Review items | 2 |"));
-    assert!(text.contains("| Weak evidence references | 2 |"));
+    assert!(text.contains("| Weak evidence/link references | 2 |"));
     assert!(text.contains("replace unstructured or unknown-prefix evidence/link references"));
     assert!(!text.contains("## Audit Review Queue"));
 }
