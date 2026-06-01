@@ -1,7 +1,7 @@
 use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, Requirements};
 use std::collections::BTreeSet;
 
-use crate::evidence_reference::EvidenceReference;
+use crate::evidence_reference::{EvidenceReference, recognized_evidence_prefixes};
 use crate::source_tree_scope::validate_path_scope;
 use crate::text_validation::{validate_no_surrounding_whitespace, validate_required_text};
 
@@ -77,6 +77,18 @@ pub(crate) fn validate_allow_entry_evidence_and_limit(
             entry.id
         )));
     }
+    if entry.kind == FindingKind::Unsafe
+        && entry.classification != "baseline_debt"
+        && !entry
+            .evidence
+            .iter()
+            .any(|evidence| evidence_is_typed(evidence))
+    {
+        return Err(CargoAllowError::new(format!(
+            "{} unsafe entry requires at least one typed evidence reference",
+            entry.id
+        )));
+    }
     if requirements.evidence_required && entry.evidence.is_empty() {
         return Err(CargoAllowError::new(format!(
             "{} missing evidence",
@@ -90,6 +102,15 @@ pub(crate) fn validate_allow_entry_evidence_and_limit(
         )));
     }
     Ok(())
+}
+
+fn evidence_is_typed(evidence: &str) -> bool {
+    let Some((prefix, target)) = evidence.split_once(':') else {
+        return false;
+    };
+    let prefix = prefix.trim();
+    let target = target.trim();
+    !target.is_empty() && recognized_evidence_prefixes().any(|known| known == prefix)
 }
 
 fn validate_allow_id(id: &str) -> CargoAllowResult<()> {
