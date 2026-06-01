@@ -382,7 +382,7 @@ fn audit_recommended_next_step(
     } else if queue_empty
         && signals.policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing)
     {
-        "\nRecommended next step: run `cargo-allow worklist --missing-evidence --format json` to route retained entries with no evidence references.\n"
+        "\nRecommended next step: run `cargo-allow worklist --format json` to route retained entries with no evidence references; add `--missing-evidence` to focus that queue.\n"
     } else if queue_empty && signals.weak_evidence_references > 0 {
         "\nRecommended next step: replace unstructured or unknown-prefix evidence/link references with recognized prefixes before tightening policy.\n"
     } else if queue_empty && signals.baseline_debt > 0 {

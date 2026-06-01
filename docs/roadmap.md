@@ -358,7 +358,8 @@ Completed:
   inventory can complete while routing evidence repair through the worklist.
 - Count policy-level missing evidence in report, receipt, diff, Markdown, and
   HTML artifacts so matched retained non-baseline entries with no evidence
-  references remain visible and route to `worklist --missing-evidence`.
+  references remain visible in the default worklist and remain focusable with
+  `worklist --missing-evidence`.
 - Include source exception inventory breakdowns in check receipts so durable
   no-new evidence can show both the gate counts and the scanned kind/family
   surface without archiving the full report.

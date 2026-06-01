@@ -47,7 +47,8 @@ fn html_audit_report_counts_policy_missing_evidence_context() {
     let html = render_html_with_context("audit", &[], &[], false, context);
 
     assert!(html.contains("<td>Policy missing evidence</td><td class=\"count\">4</td>"));
-    assert!(html.contains("cargo-allow worklist --missing-evidence --format json"));
+    assert!(html.contains("cargo-allow worklist --format json"));
+    assert!(html.contains("add <code>--missing-evidence</code> to focus that queue"));
 }
 
 #[test]
