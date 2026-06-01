@@ -1,8 +1,12 @@
 use clap::Parser;
 use std::path::PathBuf;
 
+use crate::RootArgs;
+
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct InitArgs {
+    #[command(flatten)]
+    pub(super) root: RootArgs,
     /// Write strict-mode defaults.
     #[arg(long)]
     pub(crate) strict: bool,
