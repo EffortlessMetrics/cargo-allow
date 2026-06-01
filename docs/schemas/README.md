@@ -107,6 +107,10 @@ for v1 compatibility.
 while that summary field remains optional in the schema so older
 `cargo-allow.propose.v1` artifacts without the unsafe-specific count remain
 valid.
+`migrate` summary artifacts may include `summary.lint_exception_entries` and
+`summary.weak_evidence_references` as optional migration-health counts. The
+current renderer emits the lint count and emits weak evidence references only
+when legacy conversion preserved unstructured or unknown-prefix evidence.
 
 The shared report schema is emitted by `audit`, `check`, and `diff`, but the
 top-level `diff` posture extension is valid only on reports whose

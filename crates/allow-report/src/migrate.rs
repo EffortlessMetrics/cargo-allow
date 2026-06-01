@@ -21,6 +21,9 @@ pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
         "entries_with_evidence: {}\n",
         report.entries_with_evidence
     ));
+    if let Some(count) = report.weak_evidence_references.filter(|count| *count > 0) {
+        out.push_str(&format!("weak_evidence_references: {count}\n"));
+    }
     out.push_str(&format!(
         "inventory: {}/{} via {}{}\n",
         report.inventory.scope,
@@ -85,10 +88,18 @@ pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
         "    \"lint_exception_entries\": {},\n",
         report.lint_exception_entries
     ));
-    out.push_str(&format!(
-        "    \"entries_with_evidence\": {}\n",
-        report.entries_with_evidence
-    ));
+    if let Some(count) = report.weak_evidence_references.filter(|count| *count > 0) {
+        out.push_str(&format!(
+            "    \"entries_with_evidence\": {},\n",
+            report.entries_with_evidence
+        ));
+        out.push_str(&format!("    \"weak_evidence_references\": {count}\n"));
+    } else {
+        out.push_str(&format!(
+            "    \"entries_with_evidence\": {}\n",
+            report.entries_with_evidence
+        ));
+    }
     out.push_str("  },\n");
     out.push_str(&format!("  \"notes\": \"{}\"\n", json_escape(report.notes)));
     out.push_str("}\n");
