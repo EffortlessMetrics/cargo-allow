@@ -335,6 +335,42 @@ fn worklist_items_report_weak_evidence_references() {
 }
 
 #[test]
+fn worklist_items_specialize_high_risk_policy_weak_evidence_actions() {
+    let root = migrate_fixture_dir();
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-process-weak", FindingKind::PolicyException);
+    entry.family = Some("process_spawn".to_string());
+    entry.evidence = vec![
+        "legacy-policy:proc-cargo-install-cargo-deny".to_string(),
+        "binary:cargo".to_string(),
+    ];
+    cfg.allow.push(entry);
+
+    let items = work_items_from_evidence_diagnostics(&root, &cfg, 1);
+
+    let item = items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one weak evidence work item"));
+    assert_eq!(item.kind, "weak_evidence_reference");
+    assert_eq!(item.exception_kind.as_deref(), Some("policy_exception"));
+    assert_eq!(item.family.as_deref(), Some("process_spawn"));
+    assert_eq!(item.risk, "high");
+    assert_eq!(item.allow_id.as_deref(), Some("allow-process-weak"));
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("policy_exception.process_spawn"))
+    );
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("removed or narrowed"))
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn worklist_items_report_empty_typed_evidence_references() {
     let root = migrate_fixture_dir();
     let mut cfg = AllowConfig::empty();

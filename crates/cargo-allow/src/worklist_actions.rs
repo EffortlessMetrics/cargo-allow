@@ -83,6 +83,11 @@ pub(crate) fn suggested_actions_for_context(
             return high_risk_policy_missing_evidence_actions(family);
         }
     }
+    if kind == WEAK_EVIDENCE_REFERENCE {
+        if let Some(family) = high_risk_policy_exception_family(finding, entry) {
+            return high_risk_policy_weak_evidence_actions(family);
+        }
+    }
     suggested_actions(kind)
 }
 
@@ -134,6 +139,16 @@ fn high_risk_policy_exception_family<'a>(
 fn high_risk_policy_missing_evidence_actions(family: &str) -> Vec<String> {
     vec![
         format!("add typed evidence for the policy_exception.{family} exception"),
+        "review whether the policy exception can be removed or narrowed before retaining it"
+            .to_string(),
+    ]
+}
+
+fn high_risk_policy_weak_evidence_actions(family: &str) -> Vec<String> {
+    vec![
+        format!("replace weak evidence with typed evidence for policy_exception.{family}"),
+        "keep custom legacy facts only as supporting context after a typed receipt exists"
+            .to_string(),
         "review whether the policy exception can be removed or narrowed before retaining it"
             .to_string(),
     ]
