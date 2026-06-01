@@ -458,7 +458,11 @@ Use JSON artifacts for automation:
 
 Do not parse human, Markdown, SARIF, or HTML output as the primary contract when
 a JSON artifact exists for the same workflow. Markdown and HTML are review
-surfaces; JSON is the machine surface.
+surfaces; JSON is the machine surface. SARIF is for code-scanning ingestion.
+Its run properties may include advisory policy/evidence-health counts such as
+`policy_baseline_debt`, `policy_missing_evidence`, `broken_evidence_links`, and
+`weak_evidence_references`, but SARIF results remain limited to non-matched
+source-tree outcomes rather than synthetic policy-health rows.
 
 ## Boundary
 

@@ -96,7 +96,11 @@ The JSON audit is useful for machines and future trend reporting. The HTML
 audit is a static human-readable artifact for maintainers and auditors. The
 receipt is the durable CI claim for the current source exception ledger. SARIF
 output contains non-matched source-tree outcomes for code-scanning surfaces; it
-does not include proof-tool results or build-derived findings.
+does not include proof-tool results or build-derived findings. SARIF run
+properties may include advisory policy/evidence-health counts such as
+`policy_missing_evidence`, `broken_evidence_links`, and
+`weak_evidence_references`, but those counts are run context rather than
+synthetic code-scanning results.
 
 ## Artifacts
 
