@@ -33,12 +33,12 @@ pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut R
                 column: source_column(source, start.row, start.column + offset),
             });
     }
-    if let Some(offset) = unsafe_attribute_offset(text) {
-        facts
-            .unsafe_attribute_columns
-            .entry(line)
-            .or_default()
-            .push(source_column(source, start.row, start.column + offset));
+    let unsafe_attribute_offsets = unsafe_attribute_offsets(text);
+    if !unsafe_attribute_offsets.is_empty() {
+        let columns = facts.unsafe_attribute_columns.entry(line).or_default();
+        for offset in unsafe_attribute_offsets {
+            columns.push(source_column(source, start.row, start.column + offset));
+        }
     }
 }
 
@@ -55,15 +55,15 @@ fn lint_attribute_kind(text: &str) -> Option<(LintAttributeKind, usize)> {
     }
 }
 
-fn unsafe_attribute_offset(text: &str) -> Option<usize> {
+fn unsafe_attribute_offsets(text: &str) -> Vec<usize> {
     let trimmed = text.trim_start();
     if trimmed.starts_with("#[unsafe(") || trimmed.starts_with("#![unsafe(") {
-        return Some(text.len() - trimmed.len());
+        return vec![text.len() - trimmed.len()];
     }
     if !(trimmed.starts_with("#[cfg_attr(") || trimmed.starts_with("#![cfg_attr(")) {
-        return None;
+        return Vec::new();
     }
-    find_token_outside_rust_strings(text, "unsafe(")
+    find_tokens_outside_rust_strings(text, "unsafe(")
 }
 
 fn cfg_attr_lint_kind(text: &str) -> Option<(LintAttributeKind, usize)> {
@@ -79,6 +79,13 @@ fn cfg_attr_lint_kind(text: &str) -> Option<(LintAttributeKind, usize)> {
 }
 
 fn find_token_outside_rust_strings(text: &str, token: &str) -> Option<usize> {
+    find_tokens_outside_rust_strings(text, token)
+        .into_iter()
+        .next()
+}
+
+fn find_tokens_outside_rust_strings(text: &str, token: &str) -> Vec<usize> {
+    let mut matches = Vec::new();
     let mut cursor = 0;
     while cursor < text.len() {
         if text
@@ -86,7 +93,9 @@ fn find_token_outside_rust_strings(text: &str, token: &str) -> Option<usize> {
             .is_some_and(|rest| rest.starts_with(token))
             && token_starts_at_attribute_boundary(text, cursor)
         {
-            return Some(cursor);
+            matches.push(cursor);
+            cursor += token.len();
+            continue;
         }
         if let Some(end) = raw_string_end(text, cursor) {
             cursor = end;
@@ -101,7 +110,7 @@ fn find_token_outside_rust_strings(text: &str, token: &str) -> Option<usize> {
         }
         cursor += ch.len_utf8();
     }
-    None
+    matches
 }
 
 fn token_starts_at_attribute_boundary(text: &str, cursor: usize) -> bool {
