@@ -1,7 +1,8 @@
 use allow_core::{AllowConfig, CargoAllowResult, Finding, MatchOutcome};
-use allow_policy::{broken_evidence_link_count, weak_evidence_reference_count};
+use std::collections::BTreeSet;
 use std::path::Path;
 
+use crate::evidence_inventory::evidence_reference_diagnostics_for_source_tree;
 use crate::{InventoryFacts, OutputFormat, emit_text, parse_kind_filter};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -13,12 +14,34 @@ pub(crate) struct EvidenceReportSummary {
 
 impl EvidenceReportSummary {
     pub(crate) fn from_policy(root: &Path, cfg: &AllowConfig, outcomes: &[MatchOutcome]) -> Self {
+        Self::from_policy_with_source_tree_files(root, cfg, outcomes, None)
+    }
+
+    pub(crate) fn from_policy_with_source_tree_files(
+        root: &Path,
+        cfg: &AllowConfig,
+        outcomes: &[MatchOutcome],
+        source_tree_files: Option<&BTreeSet<String>>,
+    ) -> Self {
+        let diagnostics = cfg
+            .allow
+            .iter()
+            .flat_map(|entry| {
+                evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
+            })
+            .collect::<Vec<_>>();
         Self {
             policy_missing_evidence_entries: allow_report::matched_policy_missing_evidence_entries(
                 cfg, outcomes,
             ),
-            broken_evidence_links: broken_evidence_link_count(root, cfg),
-            weak_evidence_references: weak_evidence_reference_count(root, cfg),
+            broken_evidence_links: diagnostics
+                .iter()
+                .filter(|diagnostic| diagnostic.status.is_broken_local_link())
+                .count(),
+            weak_evidence_references: diagnostics
+                .iter()
+                .filter(|diagnostic| diagnostic.status.is_weak_reference())
+                .count(),
         }
     }
 

@@ -1,8 +1,9 @@
 use super::{ExplainContext, explain_steps::explain_next_steps};
+use crate::evidence_inventory::evidence_reference_diagnostics_for_source_tree;
 use crate::evidence_render::evidence_reference_target_text;
 use allow_core::{AllowEntry, Finding, MatchOutcome, allow_entry_broad_scope};
 use allow_diff::selector_precision_score;
-use allow_policy::evidence_reference_diagnostics;
+use std::collections::BTreeSet;
 use std::path::Path;
 
 pub(super) fn render_explain_entry(
@@ -10,12 +11,14 @@ pub(super) fn render_explain_entry(
     entry: &AllowEntry,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
+    evidence_source_tree_files: Option<&BTreeSet<String>>,
 ) -> String {
     render_explain_report(
         root,
         entry,
         findings,
         outcomes,
+        evidence_source_tree_files,
         ExplainContext::default(),
         allow_report::render_explain_human,
     )
@@ -26,6 +29,7 @@ pub(super) fn render_explain_entry_json(
     entry: &AllowEntry,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
+    evidence_source_tree_files: Option<&BTreeSet<String>>,
     context: ExplainContext<'_>,
 ) -> String {
     render_explain_report(
@@ -33,6 +37,7 @@ pub(super) fn render_explain_entry_json(
         entry,
         findings,
         outcomes,
+        evidence_source_tree_files,
         context,
         allow_report::render_explain_json,
     )
@@ -43,10 +48,12 @@ fn render_explain_report<R>(
     entry: &AllowEntry,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
+    evidence_source_tree_files: Option<&BTreeSet<String>>,
     context: ExplainContext<'_>,
     render: impl FnOnce(allow_report::ExplainReport<'_>) -> R,
 ) -> R {
-    let evidence_diagnostics = evidence_reference_diagnostics(root, entry);
+    let evidence_diagnostics =
+        evidence_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files);
     let has_broken_evidence = evidence_diagnostics
         .iter()
         .any(|diagnostic| diagnostic.status.is_broken_local_link());

@@ -1,6 +1,7 @@
 use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
 
+use crate::evidence_inventory::current_evidence_source_tree_files;
 use crate::{
     EvidenceValidationMode, SourceTreeReportContext, emit_text, load_world_with_evidence_mode,
     report_config,
@@ -32,7 +33,9 @@ pub(crate) use worklist_actions::{proof_commands, suggested_actions};
 use worklist_advisories::work_items_from_policy_advisories;
 pub(crate) use worklist_args::WorklistArgs;
 use worklist_args::{WorklistFormat, worklist_filters};
+#[cfg(test)]
 use worklist_evidence::work_items_from_evidence_diagnostics;
+use worklist_evidence::work_items_from_evidence_diagnostics_with_source_tree_files;
 #[cfg(test)]
 pub(crate) use worklist_item_kind::WORK_ITEM_KINDS;
 use worklist_items::work_items_from_outcomes;
@@ -58,6 +61,8 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
     let filters = worklist_filters(args);
+    let evidence_source_tree_files =
+        current_evidence_source_tree_files(&root, args.include_untracked);
     let mut items = work_items_from_outcomes(&report_cfg, &findings, &outcomes);
     items.extend(work_items_from_policy_advisories(
         &report_cfg,
@@ -66,10 +71,11 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         items.len() + 1,
         filters.missing_evidence,
     ));
-    items.extend(work_items_from_evidence_diagnostics(
+    items.extend(work_items_from_evidence_diagnostics_with_source_tree_files(
         &root,
         &report_cfg,
         items.len() + 1,
+        evidence_source_tree_files.as_ref(),
     ));
     let mut items = filter_work_items(items, filters);
     sort_work_items(&mut items);

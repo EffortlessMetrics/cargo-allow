@@ -6,7 +6,6 @@ use allow_inventory::{InventorySource, resolve_source_tree_root};
 use allow_match::{CheckMode, evaluate};
 use std::collections::BTreeSet;
 use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -78,7 +77,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let evidence_source_tree_files = if let Some(revision) = args.head.as_deref() {
         Some(source_tree_files_at_revision(&root, revision)?)
     } else {
-        source_tree_files_for_current_evidence(&root, args.include_untracked)
+        crate::evidence_inventory::current_evidence_source_tree_files(&root, args.include_untracked)
     };
     let report_cfg = if args.head.is_some() {
         report_config(&head_cfg_for_diff, args.kind.as_deref())?
@@ -409,29 +408,6 @@ fn source_tree_files_at_revision(
         .into_iter()
         .map(normalize_path)
         .collect())
-}
-
-fn source_tree_files_for_current_evidence(
-    root: &Path,
-    include_untracked: bool,
-) -> Option<BTreeSet<String>> {
-    if include_untracked {
-        return None;
-    }
-    let Ok(files) = allow_inventory::git_ls_files(root) else {
-        return None;
-    };
-    Some(
-        files
-            .into_iter()
-            .filter(|path| {
-                fs::symlink_metadata(root.join(path))
-                    .map(|metadata| metadata.file_type().is_file())
-                    .unwrap_or(false)
-            })
-            .map(normalize_path)
-            .collect(),
-    )
 }
 
 fn source_tree_file_count_at_revision(

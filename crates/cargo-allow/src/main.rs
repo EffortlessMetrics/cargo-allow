@@ -12,6 +12,7 @@ mod diff;
 #[cfg(test)]
 mod diff_json_test_support;
 mod doctor;
+mod evidence_inventory;
 mod evidence_render;
 mod explain;
 mod init;

@@ -3,6 +3,7 @@ use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand};
 use clap::Parser;
 use serde_json::Value;
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
@@ -215,6 +216,32 @@ fn list_rows_report_evidence_health_counts() {
     assert_eq!(row.evidence_count, 4);
     assert_eq!(row.broken_evidence_references, 1);
     assert_eq!(row.weak_evidence_references, 2);
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn list_rows_count_local_evidence_outside_source_tree_inventory_as_broken() {
+    let root = list_fixture_dir();
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("fixture docs dir: {err}")));
+    fs::write(root.join("docs/untracked.md"), "evidence")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("fixture evidence file: {err}")));
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-evidence-health", FindingKind::Unsafe);
+    entry.evidence = vec!["doc:docs/untracked.md".to_string()];
+    cfg.allow.push(entry);
+    let source_tree_files = BTreeSet::new();
+
+    let rows = list_rows_with_source_tree_files(&root, &cfg, &[], &[], Some(&source_tree_files));
+    let row = rows
+        .iter()
+        .find(|row| row.id == "allow-evidence-health")
+        .unwrap_or_else(|| std::panic::panic_any("expected evidence health row"));
+
+    assert_eq!(row.evidence_count, 1);
+    assert_eq!(row.broken_evidence_references, 1);
+    assert_eq!(row.weak_evidence_references, 0);
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }

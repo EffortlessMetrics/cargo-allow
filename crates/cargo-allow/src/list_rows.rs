@@ -1,23 +1,39 @@
 use super::ListRow;
+use crate::evidence_inventory::evidence_reference_diagnostics_for_source_tree;
 use allow_core::{
     AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, SimpleDate,
     allow_entry_broad_scope,
 };
 use allow_diff::selector_precision_score;
-use allow_policy::evidence_reference_diagnostics;
+use std::collections::BTreeSet;
 use std::path::Path;
 
+#[cfg(test)]
 pub(super) fn list_rows(
     root: &Path,
     cfg: &AllowConfig,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
 ) -> Vec<ListRow> {
+    list_rows_with_source_tree_files(root, cfg, findings, outcomes, None)
+}
+
+pub(super) fn list_rows_with_source_tree_files(
+    root: &Path,
+    cfg: &AllowConfig,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    evidence_source_tree_files: Option<&BTreeSet<String>>,
+) -> Vec<ListRow> {
     let today = SimpleDate::today_utc_approx();
     cfg.allow
         .iter()
         .map(|entry| {
-            let evidence_diagnostics = evidence_reference_diagnostics(root, entry);
+            let evidence_diagnostics = evidence_reference_diagnostics_for_source_tree(
+                root,
+                entry,
+                evidence_source_tree_files,
+            );
             let entry_outcomes = outcomes
                 .iter()
                 .filter(|outcome| outcome.allow_id.as_deref() == Some(entry.id.as_str()))
