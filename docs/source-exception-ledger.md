@@ -140,10 +140,10 @@ evidence = [
 
 The presence of evidence is not proof that the exception is correct. It is a
 traceable claim that reviewers and tools can inspect. Diff mode reports removed
-evidence as policy weakening, typed evidence additions as policy improvements,
-statically invalid or missing local-file evidence additions as policy
-weakening, and weak additions such as unstructured or unknown-prefix evidence as
-review-required posture changes.
+evidence as policy weakening, names local-file evidence removal explicitly,
+typed evidence additions as policy improvements, statically invalid or missing
+local-file evidence additions as policy weakening, and weak additions such as
+unstructured or unknown-prefix evidence as review-required posture changes.
 
 General evidence can be required by setting `requirements.evidence_required =
 true`. It is opt-in so generated `baseline_debt` ledgers can remain adoption
@@ -514,8 +514,8 @@ reports policy weakening and review-required policy changes in human and
 Markdown output. The default policy path is discovered from standard
 source-tree locations, and `--config` can select a specific ledger path.
 Current detection covers scope broadening, selector precision loss,
-expiry/review extension, evidence removal, broken local evidence additions,
-local-file traceability link removal,
+expiry/review extension, evidence removal with local-file removals named
+explicitly, broken local evidence additions, local-file traceability link removal,
 top-level policy status weakening, top-level policy owner removal/unassignment,
 owner/reason/classification removal, owner unassignment, occurrence-limit
 loosening, added `baseline_debt`, reviewed entries reclassified as
