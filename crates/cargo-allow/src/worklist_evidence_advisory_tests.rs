@@ -356,7 +356,17 @@ fn worklist_items_report_weak_evidence_references() {
     assert!(
         item.suggested_actions
             .iter()
-            .any(|action| action.contains("typed evidence reference"))
+            .any(|action| action.contains("unsafe-review"))
+    );
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("boundary evidence"))
+    );
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("reviewed unsafe boundary"))
     );
     assert!(json.contains("\"kind\": \"weak_evidence_reference\""));
     assert!(json.contains("\"evidence_reference\""));
