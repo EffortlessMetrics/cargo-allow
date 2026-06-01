@@ -68,7 +68,9 @@ weakening, additions of those required metadata fields as policy improvements,
 and non-empty replacements as review-required policy changes. Changing a
 concrete owner to `owner = "unowned"` is also policy weakening, because retained
 exceptions must not silently lose ownership. Removed traceability links are also
-review-required, while added links are reported as policy improvements.
+review-required. Typed traceability link additions are reported as policy
+improvements, while unstructured or unknown-prefix link additions are
+review-required so vague traceability does not look like proof-quality cleanup.
 `created` date removal fails, changes require review, and adding a missing
 `created` date is reported as an improvement so exception provenance cannot
 drift silently.
