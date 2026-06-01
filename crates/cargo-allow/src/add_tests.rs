@@ -197,18 +197,18 @@ fn add_evidence_requirement_covers_high_risk_policy_exceptions() {
     );
 
     let unsafe_err =
-        require_add_evidence(&unsafe_finding).expect_err("unsafe add should require evidence");
+        require_add_evidence(&unsafe_finding, &[]).expect_err("unsafe add should require evidence");
     assert!(
         unsafe_err
             .to_string()
             .contains("unsafe allow entries require at least one --evidence reference")
     );
-    let process_err = require_add_evidence(&process_finding)
+    let process_err = require_add_evidence(&process_finding, &[])
         .expect_err("process policy add should require evidence");
     assert!(process_err.to_string().contains(
         "policy_exception.process_spawn allow entries require at least one --evidence reference"
     ));
-    let network_err = require_add_evidence(&network_finding)
+    let network_err = require_add_evidence(&network_finding, &[])
         .expect_err("network policy add should require evidence");
     assert!(
         network_err.to_string().contains(
@@ -216,8 +216,52 @@ fn add_evidence_requirement_covers_high_risk_policy_exceptions() {
         )
     );
     assert!(
-        require_add_evidence(&workflow_finding).is_ok(),
+        require_add_evidence(&workflow_finding, &[]).is_ok(),
         "lower-risk policy exceptions can still be added without immediate evidence"
+    );
+}
+
+#[test]
+fn add_required_evidence_must_be_typed() {
+    let process_finding = test_finding_at_line(
+        FindingKind::PolicyException,
+        Some("process_spawn"),
+        "src/lib.rs",
+        "policy_exception",
+        42,
+    );
+    let weak_references = vec![
+        "manual review note".to_string(),
+        "spreadsheet:manual-review".to_string(),
+        "test:".to_string(),
+    ];
+
+    let err = require_add_evidence(&process_finding, &weak_references)
+        .expect_err("weak evidence should not satisfy high-risk add evidence gate");
+
+    assert!(
+        err.to_string()
+            .contains("require at least one typed --evidence reference"),
+        "diagnostic should explain typed evidence requirement: {err}"
+    );
+    assert!(
+        require_add_evidence(
+            &process_finding,
+            &["test:process_spawn_is_guarded".to_string()]
+        )
+        .is_ok(),
+        "recognized non-empty evidence references should satisfy the gate"
+    );
+    assert!(
+        require_add_evidence(
+            &process_finding,
+            &[
+                "manual review note".to_string(),
+                "doc:docs/policy/process-spawn.md".to_string()
+            ]
+        )
+        .is_ok(),
+        "one typed reference should satisfy the gate even if another retained reference is weak"
     );
 }
 

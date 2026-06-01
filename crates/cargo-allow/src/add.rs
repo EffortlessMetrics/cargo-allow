@@ -51,9 +51,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         .find(|outcome| outcome.finding_index == Some(finding_index))
         .ok_or_else(|| CargoAllowError::new("selected finding did not produce a match outcome"))?;
     ensure_addable_outcome(selected_outcome.status)?;
-    if args.evidence.is_empty() {
-        require_add_evidence(finding)?;
-    }
+    require_add_evidence(finding, &args.evidence)?;
     let id = args.id.clone().unwrap_or_else(|| next_allow_id(&cfg));
     if cfg.allow.iter().any(|entry| entry.id == id) {
         return Err(CargoAllowError::new(format!(
@@ -100,12 +98,23 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     Ok(())
 }
 
-fn require_add_evidence(finding: &Finding) -> CargoAllowResult<()> {
+fn require_add_evidence(finding: &Finding, evidence: &[String]) -> CargoAllowResult<()> {
     let Some(label) = add_evidence_required_label(finding) else {
         return Ok(());
     };
+    if evidence.is_empty() {
+        return Err(CargoAllowError::new(format!(
+            "{label} allow entries require at least one --evidence reference"
+        )));
+    }
+    if evidence
+        .iter()
+        .any(|reference| evidence_reference_is_typed(reference))
+    {
+        return Ok(());
+    }
     Err(CargoAllowError::new(format!(
-        "{label} allow entries require at least one --evidence reference"
+        "{label} allow entries require at least one typed --evidence reference with a recognized non-empty prefix:value target"
     )))
 }
 
@@ -118,6 +127,15 @@ fn add_evidence_required_label(finding: &Finding) -> Option<String> {
             .map(|family| format!("policy_exception.{family}")),
         _ => None,
     }
+}
+
+fn evidence_reference_is_typed(reference: &str) -> bool {
+    let Some((prefix, target)) = reference.split_once(':') else {
+        return false;
+    };
+    let prefix = prefix.trim();
+    let target = target.trim();
+    !target.is_empty() && allow_policy::recognized_evidence_prefixes().any(|known| known == prefix)
 }
 
 fn default_add_review_after() -> String {
