@@ -6,17 +6,17 @@ use crate::text::{index_symbol, index_target_fingerprint};
 
 pub(crate) fn scan_index_expr(
     context: LineContext<'_>,
-    index_column: Option<u32>,
+    index_columns: &[u32],
     findings: &mut Vec<Finding>,
 ) {
-    if let Some(index_column) = index_column {
+    for index_column in index_columns {
         let family = if context.line.contains("&") && context.line.contains("[") {
             "string_slice"
         } else {
             "indexing"
         };
         push_finding(
-            context.site(index_column),
+            context.site(*index_column),
             FindingKind::Panic,
             family,
             "index_expr",
