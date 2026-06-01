@@ -1,6 +1,7 @@
+use allow_core::normalize_snippet;
 use tree_sitter::{Node, Point};
 
-use crate::syntax_kinds::RustSyntaxFacts;
+use crate::syntax_kinds::{IndexExpression, RustSyntaxFacts};
 use crate::syntax_tree::node_text;
 use crate::text::source_column;
 
@@ -25,10 +26,14 @@ pub(super) fn record_index_expression(node: Node<'_>, source: &str, facts: &mut 
     });
     let line = bracket_point.row as u32 + 1;
     let column = source_column(source, bracket_point.row, bracket_point.column);
-    let columns = facts.index_columns.entry(line).or_default();
-    if !columns.contains(&column) {
-        columns.push(column);
-        columns.sort_unstable();
+    let expression = IndexExpression {
+        column,
+        receiver_fingerprint: index_receiver_fingerprint(node, source),
+    };
+    let expressions = facts.index_expressions.entry(line).or_default();
+    if !expressions.contains(&expression) {
+        expressions.push(expression);
+        expressions.sort_by_key(|expression| expression.column);
     }
 }
 
@@ -37,6 +42,37 @@ fn direct_index_bracket_point(node: Node<'_>) -> Option<Point> {
     node.children(&mut cursor)
         .find(|child| child.kind() == "[")
         .map(|child| child.start_position())
+}
+
+fn index_receiver_fingerprint(node: Node<'_>, source: &str) -> Option<String> {
+    node.child_by_field_name("value")
+        .or_else(|| direct_index_receiver_node(node))
+        .and_then(|receiver| node_text(source, receiver))
+        .and_then(receiver_fingerprint)
+}
+
+fn direct_index_receiver_node(node: Node<'_>) -> Option<Node<'_>> {
+    let mut cursor = node.walk();
+    node.children(&mut cursor)
+        .take_while(|child| child.kind() != "[")
+        .find(|child| child.is_named())
+}
+
+fn receiver_fingerprint(text: &str) -> Option<String> {
+    let fingerprint = normalize_snippet(text);
+    if fingerprint.is_empty() {
+        return None;
+    }
+    Some(
+        fingerprint
+            .chars()
+            .rev()
+            .take(80)
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect(),
+    )
 }
 
 fn offset_position(text: &str, offset: usize) -> (usize, usize) {

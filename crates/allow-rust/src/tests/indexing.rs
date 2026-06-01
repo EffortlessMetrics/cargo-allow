@@ -65,6 +65,40 @@ fn syntax_indexing_detects_multiple_expressions_on_one_line() {
 }
 
 #[test]
+fn syntax_indexing_records_receiver_identity_per_expression() {
+    let src = r#"
+        fn load(left: &[u8], right: &[u8]) -> u8 {
+            left[0] + right[1]
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let receivers = findings
+        .iter()
+        .filter(|f| f.family.as_deref() == Some("indexing"))
+        .map(|f| f.identity.receiver_fingerprint.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(receivers, vec![Some("left"), Some("right")]);
+}
+
+#[test]
+fn syntax_indexing_records_nested_receiver_identity() {
+    let src = r#"
+        fn load(matrix: &[&[u8]]) -> u8 {
+            matrix[0][1]
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let receivers = findings
+        .iter()
+        .filter(|f| f.family.as_deref() == Some("indexing"))
+        .map(|f| f.identity.receiver_fingerprint.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(receivers, vec![Some("matrix"), Some("matrix[0]")]);
+}
+
+#[test]
 fn syntax_indexing_records_multiline_bracket_span() {
     let src = ["fn load(xs: &[u8]) -> u8 {", "    xs", "        [0]", "}"].join("\n");
     let findings = scan_rust_source("src/lib.rs", &src);
