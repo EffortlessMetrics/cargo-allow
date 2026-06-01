@@ -59,6 +59,44 @@ fn load() {}
 }
 
 #[test]
+fn detects_spaced_lint_attribute_tokens_from_source_syntax() {
+    let outer = r#"  # [ allow(dead_code) ]"#;
+    let inner = r#"# ! [ expect(clippy::unwrap_used, reason = "policy:allow-lint") ]"#;
+    let src = format!(
+        r#"
+{inner}
+{outer}
+fn load() {{}}
+        "#
+    );
+    let findings = scan_rust_source("src/lib.rs", &src);
+
+    let allow = findings
+        .iter()
+        .find(|f| {
+            f.kind == FindingKind::LintException && f.family.as_deref() == Some("allow_attribute")
+        })
+        .unwrap_or_else(|| std::panic::panic_any("spaced allow attribute should be found"));
+    assert_eq!(allow.identity.lint.as_deref(), Some("dead_code"));
+    assert_eq!(
+        allow.span.as_ref().map(|span| span.column),
+        Some(crate::text::column(outer, "allow"))
+    );
+
+    let expect = findings
+        .iter()
+        .find(|f| {
+            f.kind == FindingKind::LintException && f.family.as_deref() == Some("expect_attribute")
+        })
+        .unwrap_or_else(|| std::panic::panic_any("spaced expect attribute should be found"));
+    assert_eq!(expect.identity.lint.as_deref(), Some("clippy::unwrap_used"));
+    assert_eq!(
+        expect.identity.target_fingerprint.as_deref(),
+        Some("policy:allow-lint")
+    );
+}
+
+#[test]
 fn detects_multiline_lint_attribute_policy_reference_from_syntax() {
     let src = r#"
 #[expect(
