@@ -125,6 +125,10 @@ values such as `workspace.ignored` and `workspace.generated`.
 Evidence and link list entries must not include leading or trailing whitespace.
 They are saved as exact ledger references, even when the current implementation
 classifies some prefixes as traceability-only instead of resolving them.
+Reviewed unsafe entries must include at least one typed evidence reference using
+a recognized non-empty `prefix:value` shape. Generated `baseline_debt` unsafe
+entries may retain uncomfortable placeholder evidence until a human replaces
+the baseline with a reviewed receipt.
 
 Example:
 

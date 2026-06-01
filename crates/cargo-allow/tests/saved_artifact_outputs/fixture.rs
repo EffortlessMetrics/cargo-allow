@@ -224,11 +224,31 @@ callee = "unwrap"
     }
 
     pub(crate) fn write_policy_with_weak_evidence(&self) {
-        self.write_policy_with_evidence(
-            "allow-weak-evidence",
-            "Fixture exercises weak evidence worklist output.",
-            "spreadsheet:manual-review",
+        self.write_minimal_policy();
+        let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        policy.push_str(
+            r#"
+
+[[allow]]
+id = "allow-weak-evidence"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core/tests"
+classification = "reviewed_fixture"
+reason = "Fixture exercises weak evidence worklist output."
+evidence = ["spreadsheet:manual-review"]
+created = "2026-05-29"
+expires = "2026-08-29"
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"
+"#,
         );
+        fs::write(self.root.join("policy/allow.toml"), policy)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
 
     pub(crate) fn write_policy_with_present_and_traceability_evidence(&self) {
