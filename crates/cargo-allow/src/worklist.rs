@@ -29,7 +29,9 @@ mod worklist_render;
 mod worklist_scoring;
 #[path = "worklist_types.rs"]
 mod worklist_types;
-pub(crate) use worklist_actions::{proof_commands, suggested_actions};
+pub(crate) use worklist_actions::{
+    proof_commands, suggested_actions, suggested_actions_for_context,
+};
 use worklist_advisories::work_items_from_policy_advisories;
 pub(crate) use worklist_args::WorklistArgs;
 use worklist_args::{WorklistFormat, worklist_filters};

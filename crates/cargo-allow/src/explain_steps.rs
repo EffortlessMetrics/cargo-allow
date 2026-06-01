@@ -26,7 +26,7 @@ pub(super) fn explain_next_steps(
         let finding = outcome.finding_index.and_then(|index| findings.get(index));
         let kind = worklist::work_item_kind(outcome, finding, Some(entry));
         return (
-            worklist::suggested_actions(&kind)
+            worklist::suggested_actions_for_context(&kind, finding, Some(entry))
                 .into_iter()
                 .take(2)
                 .collect(),
@@ -94,7 +94,7 @@ pub(super) fn explain_next_steps(
         let finding = findings.first();
         let kind = "weak_evidence_reference";
         return (
-            worklist::suggested_actions(kind)
+            worklist::suggested_actions_for_context(kind, finding, Some(entry))
                 .into_iter()
                 .take(2)
                 .collect(),
@@ -123,7 +123,7 @@ pub(super) fn explain_next_steps(
         let finding = findings.first();
         let kind = "baseline_debt";
         return (
-            worklist::suggested_actions(kind)
+            worklist::suggested_actions_for_context(kind, finding, Some(entry))
                 .into_iter()
                 .take(2)
                 .collect(),
@@ -141,7 +141,7 @@ pub(super) fn explain_next_steps(
             "missing_evidence"
         };
         return (
-            worklist::suggested_actions(kind)
+            worklist::suggested_actions_for_context(kind, finding, Some(entry))
                 .into_iter()
                 .take(2)
                 .collect(),

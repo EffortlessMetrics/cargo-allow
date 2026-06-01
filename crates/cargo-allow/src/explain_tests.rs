@@ -215,6 +215,38 @@ fn explain_entry_text_reports_weak_evidence_next_actions() {
 }
 
 #[test]
+fn explain_entry_text_specializes_high_risk_policy_weak_evidence_actions() {
+    let root = migrate_fixture_dir();
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-process-weak", FindingKind::PolicyException);
+    entry.family = Some("process_spawn".to_string());
+    entry.path = Some(PathBuf::from(".github/workflows/ci.yml"));
+    entry.selector.ast_kind = Some("process_spawn".to_string());
+    entry.evidence = vec![
+        "legacy-policy:proc-cargo-install-cargo-deny".to_string(),
+        "binary:cargo".to_string(),
+    ];
+    cfg.allow.push(entry.clone());
+    let finding = test_finding(
+        FindingKind::PolicyException,
+        Some("process_spawn"),
+        ".github/workflows/ci.yml",
+        "process_spawn",
+    );
+
+    let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
+
+    assert!(text.contains("current_status: matched"));
+    assert!(text.contains("[weak] weak: binary:cargo"));
+    assert!(text.contains(
+        "action: replace weak evidence with typed evidence for policy_exception.process_spawn"
+    ));
+    assert!(text.contains("action: keep custom legacy facts only as supporting context"));
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn explain_entry_text_reports_weak_link_next_actions() {
     let root = migrate_fixture_dir();
     let mut cfg = AllowConfig::empty();
