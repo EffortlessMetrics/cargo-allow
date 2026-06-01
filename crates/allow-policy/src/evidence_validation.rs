@@ -1,11 +1,23 @@
 use allow_core::{AllowEntry, CargoAllowError};
 
-use crate::evidence_diagnostics::{EvidenceReferenceDiagnostic, EvidenceReferenceStatus};
+use crate::evidence_diagnostics::{
+    EvidenceReferenceDiagnostic, EvidenceReferenceSource, EvidenceReferenceStatus,
+    PolicyReferenceDiagnostic,
+};
 
-pub(crate) fn evidence_reference_validation_error(
+pub(crate) fn policy_reference_validation_error(
     entry: &AllowEntry,
+    reference: &PolicyReferenceDiagnostic,
+) -> Option<CargoAllowError> {
+    reference_validation_error(entry, reference.source, &reference.diagnostic)
+}
+
+fn reference_validation_error(
+    entry: &AllowEntry,
+    source: EvidenceReferenceSource,
     diagnostic: &EvidenceReferenceDiagnostic,
 ) -> Option<CargoAllowError> {
+    let label = source.label();
     match diagnostic.status {
         EvidenceReferenceStatus::LocalFilePresent
         | EvidenceReferenceStatus::TraceabilityOnly
@@ -13,7 +25,7 @@ pub(crate) fn evidence_reference_validation_error(
         EvidenceReferenceStatus::LocalFileMissing => {
             let target = diagnostic.target.as_ref()?;
             Some(CargoAllowError::new(format!(
-                "{} evidence `{}` references missing local file {}",
+                "{} {label} `{}` references missing local file {}",
                 entry.id,
                 diagnostic.raw,
                 target.display()
@@ -22,20 +34,21 @@ pub(crate) fn evidence_reference_validation_error(
         EvidenceReferenceStatus::InvalidLocalPath if diagnostic.message.contains("not a file") => {
             let target = diagnostic.target.as_ref()?;
             Some(CargoAllowError::new(format!(
-                "{} evidence `{}` must reference a local file, not a directory: {}",
+                "{} {label} `{}` must reference a local file, not a directory: {}",
                 entry.id,
                 diagnostic.raw,
                 target.display()
             )))
         }
         EvidenceReferenceStatus::InvalidLocalPath => Some(CargoAllowError::new(format!(
-            "{} evidence `{}` {}",
+            "{} {label} `{}` {}",
             entry.id,
             diagnostic.raw,
-            diagnostic
-                .message
-                .strip_prefix("evidence ")
-                .unwrap_or(&diagnostic.message)
+            source
+                .message(&diagnostic.message)
+                .strip_prefix(&format!("{label} "))
+                .map(str::to_string)
+                .unwrap_or_else(|| source.message(&diagnostic.message))
         ))),
     }
 }

@@ -85,13 +85,66 @@ pub struct EvidenceReferenceDiagnostic {
     pub message: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EvidenceReferenceSource {
+    Evidence,
+    Link,
+}
+
+impl EvidenceReferenceSource {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Evidence => "evidence",
+            Self::Link => "link",
+        }
+    }
+
+    pub fn message(self, message: &str) -> String {
+        match self {
+            Self::Evidence => message.to_string(),
+            Self::Link => message.replace("evidence", "link"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReferenceDiagnostic {
+    pub source: EvidenceReferenceSource,
+    pub diagnostic: EvidenceReferenceDiagnostic,
+}
+
 pub fn evidence_reference_diagnostics(
     root: impl AsRef<Path>,
     entry: &AllowEntry,
 ) -> Vec<EvidenceReferenceDiagnostic> {
+    reference_diagnostics(root.as_ref(), &entry.evidence)
+}
+
+pub fn policy_reference_diagnostics(
+    root: impl AsRef<Path>,
+    entry: &AllowEntry,
+) -> Vec<PolicyReferenceDiagnostic> {
     let root = root.as_ref();
-    entry
-        .evidence
+    let mut diagnostics = reference_diagnostics(root, &entry.evidence)
+        .into_iter()
+        .map(|diagnostic| PolicyReferenceDiagnostic {
+            source: EvidenceReferenceSource::Evidence,
+            diagnostic,
+        })
+        .collect::<Vec<_>>();
+    diagnostics.extend(
+        reference_diagnostics(root, &entry.links)
+            .into_iter()
+            .map(|diagnostic| PolicyReferenceDiagnostic {
+                source: EvidenceReferenceSource::Link,
+                diagnostic,
+            }),
+    );
+    diagnostics
+}
+
+fn reference_diagnostics(root: &Path, references: &[String]) -> Vec<EvidenceReferenceDiagnostic> {
+    references
         .iter()
         .map(|evidence| evidence_reference_diagnostic(root, evidence))
         .collect()
