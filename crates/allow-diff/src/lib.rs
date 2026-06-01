@@ -1,3 +1,10 @@
+//! PR-posture and policy-diff helpers for cargo-allow.
+//!
+//! This crate compares source-tree findings and policy ledger entries so callers
+//! can report new, removed, broadened, weakened, or improved exceptions. It
+//! works from repository text and Git object contents; it does not invoke Cargo
+//! metadata, rustc, Clippy, build scripts, proc macros, or evidence tools.
+
 mod finding;
 mod policy;
 mod policy_change;

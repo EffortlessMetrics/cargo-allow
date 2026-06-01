@@ -1,3 +1,10 @@
+//! Legacy policy adapters for cargo-allow migrations.
+//!
+//! This crate converts supported bespoke allowlist shapes into canonical
+//! cargo-allow policy entries while preserving legacy identifiers, owners,
+//! reasons, lifecycle hints, evidence strings, and count limits where available.
+//! Migration output remains policy data; it does not execute legacy xtasks.
+
 use allow_core::SimpleDate;
 
 mod converter_clippy_entries;

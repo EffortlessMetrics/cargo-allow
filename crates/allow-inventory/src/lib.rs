@@ -1,3 +1,10 @@
+//! Source-tree root discovery and file inventory for cargo-allow.
+//!
+//! Inventory prefers explicit roots, Git-tracked files when available, and a
+//! filesystem fallback otherwise. The crate does not call `cargo metadata` or
+//! require a compilable project; Cargo manifests are just files in the scanned
+//! source tree.
+
 use allow_core::{CargoAllowResult, source_tree_path_is_ignored};
 use std::path::{Path, PathBuf};
 

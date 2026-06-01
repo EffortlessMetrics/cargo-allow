@@ -1,3 +1,10 @@
+//! Canonical policy loading, validation, evidence diagnostics, and rendering.
+//!
+//! This crate owns the `policy/allow.toml` model for cargo-allow source
+//! exception receipts. It validates owner, reason, lifecycle, selector, baseline
+//! debt, and local evidence-reference constraints without executing linked
+//! evidence tools or repository code.
+
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use std::fs;
 use std::path::{Path, PathBuf};

@@ -1,3 +1,10 @@
+//! Human and machine artifact rendering for cargo-allow.
+//!
+//! This crate renders reports, receipts, PR summaries, explanations, lists,
+//! worklists, migration summaries, SARIF, and HTML while preserving the
+//! source-tree claim boundary. Renderers describe what cargo-allow scanned and
+//! what it did not execute; they do not perform scanning or validation.
+
 mod add;
 #[cfg(test)]
 mod add_tests;
