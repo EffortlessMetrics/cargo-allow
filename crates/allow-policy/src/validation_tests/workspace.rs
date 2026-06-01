@@ -119,6 +119,20 @@ fn rejects_workspace_glob_with_surrounding_whitespace() {
 }
 
 #[test]
+fn rejects_duplicate_workspace_ignored_globs() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                ignored = ["target/**", "target/**"]
+            "#,
+    );
+
+    assert!(err.contains("duplicate source-tree ignored glob `target/**`"));
+    assert!(err.contains("position 2"));
+}
+
+#[test]
 fn rejects_invalid_workspace_generated_glob() {
     let err = parse_err(
         r#"
@@ -129,6 +143,20 @@ fn rejects_invalid_workspace_generated_glob() {
     );
 
     assert!(err.contains("source-tree generated glob must be source-tree-relative"));
+}
+
+#[test]
+fn rejects_duplicate_workspace_generated_globs_after_slash_normalization() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                generated = ["vendor/**", "vendor\\**"]
+            "#,
+    );
+
+    assert!(err.contains("duplicate source-tree generated glob `vendor/**`"));
+    assert!(err.contains("position 2"));
 }
 
 #[test]

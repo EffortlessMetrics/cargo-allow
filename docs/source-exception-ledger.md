@@ -573,6 +573,9 @@ when `--mode` is omitted. Passing `--mode audit`, `--mode no-new`,
 invocation.
 `workspace.inventory` and `workspace.default_mode` are exact policy tokens and
 must not include leading or trailing whitespace.
+`workspace.ignored` and `workspace.generated` globs must be unique after slash
+normalization so inventory and generated-code posture cannot be inflated by
+repeating the same carveout.
 
 The current non-Rust family vocabulary is intentionally explicit:
 `ci_declarative`, `documentation`, `release_script`, `test_fixture`,
