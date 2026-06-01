@@ -47,7 +47,11 @@ pub(crate) fn scan_source_lines(
                     .get(&line_no)
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),
-                unsafe_attribute: syntax.unsafe_attribute_lines.contains(&line_no),
+                unsafe_attribute_columns: syntax
+                    .unsafe_attribute_columns
+                    .get(&line_no)
+                    .map(Vec::as_slice)
+                    .unwrap_or(&[]),
                 safety_comment_nearby: has_nearby_safety_comment(&safety_comments, line_no),
             },
             &mut findings,

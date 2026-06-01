@@ -33,6 +33,7 @@ pub(crate) fn lint_policy_reference(text: &str) -> Option<String> {
     if id.is_empty() { None } else { Some(id) }
 }
 
+#[cfg(test)]
 pub(crate) fn column(line: &str, needle: &str) -> u32 {
     line.find(needle)
         .map(|idx| byte_column_to_char_column(line, idx))

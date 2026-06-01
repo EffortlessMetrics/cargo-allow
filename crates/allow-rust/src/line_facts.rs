@@ -8,6 +8,6 @@ pub(crate) struct SyntaxLineFacts<'a> {
     pub(crate) panic_methods: &'a [PanicMethodCall],
     pub(crate) index_column: Option<u32>,
     pub(crate) unsafe_constructs: &'a [UnsafeSyntaxConstruct],
-    pub(crate) unsafe_attribute: bool,
+    pub(crate) unsafe_attribute_columns: &'a [u32],
     pub(crate) safety_comment_nearby: bool,
 }
