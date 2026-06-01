@@ -44,8 +44,8 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
             }
         }
         None => out.push_str(&format!(
-            "config: not found; run `cargo-allow init --root \"{}\"`\n",
-            facts.source_tree_root
+            "config: not found; run `{}`\n",
+            suggested_init_command(facts.source_tree_root)
         )),
     }
     out.push_str(&format!(
@@ -111,6 +111,12 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
         "    \"diagnostic\": {}",
         option_json(facts.config_diagnostic)
     ));
+    if facts.config_path.is_none() {
+        out.push_str(&format!(
+            ",\n    \"suggested_init_command\": \"{}\"",
+            json_escape(&suggested_init_command(facts.source_tree_root))
+        ));
+    }
     if let Some(count) = facts.broken_evidence_links {
         out.push_str(&format!(",\n    \"broken_evidence_links\": {count}"));
     }
@@ -138,4 +144,8 @@ fn option_bool_json(value: Option<bool>) -> &'static str {
         Some(false) => "false",
         None => "null",
     }
+}
+
+fn suggested_init_command(source_tree_root: &str) -> String {
+    format!("cargo-allow init --root \"{source_tree_root}\"")
 }

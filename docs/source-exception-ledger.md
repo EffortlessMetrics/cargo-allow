@@ -449,6 +449,9 @@ When a policy model can be loaded, doctor JSON also reports non-zero broken
 local evidence-link and weak evidence-reference counts under `config`,
 including typed local-file traceability links, so setup diagnostics can route
 evidence repair before wider scans.
+When no policy config is found, doctor JSON may include
+`config.suggested_init_command` with the root-aware standalone initialization
+command for the diagnosed source tree.
 `--format json` emits the same setup diagnostics as `cargo-allow.doctor.v1` so
 CI or agent runners can verify which source tree, policy contract, policy owner,
 policy state, and inventory mode a command would use before running wider policy

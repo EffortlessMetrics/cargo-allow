@@ -399,6 +399,10 @@ Doctor artifacts may include optional `config.broken_evidence_links` and
 policy model. When a policy model is available, current doctor artifacts emit
 these counts even when they are zero so healthy evidence setup is explicit. The
 fields are omitted when no policy model is available.
+When no policy config is found, doctor JSON may include
+`config.suggested_init_command` with the standalone `cargo-allow init --root`
+command for the diagnosed source tree. This field is additive and is omitted
+when a config is found.
 
 Black-box integration tests also parse saved JSON artifacts written by the
 `cargo-allow` binary itself, including `--output` report-style artifacts,
