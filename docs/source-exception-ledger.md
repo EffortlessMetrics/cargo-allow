@@ -371,7 +371,8 @@ entries with no evidence references show evidence-cleanup actions. Local
 evidence references are shown as present, missing, or invalid; traceability
 strings are identified as not executed or resolved. Local-file `links` entries
 use the same source-tree diagnostics in `explain` so missing specs, ADRs, or
-other linked rationale files are visible during review. Current findings include
+other linked rationale files are visible during review, and broken or weak links
+route to traceability-repair next actions. Current findings include
 scanner-provided `source_package` context when available; that field is not
 Cargo metadata or build-membership proof. It is derived only from readable
 source-tree `Cargo.toml` text with a visible `[package].name`; workspace-only,

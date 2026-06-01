@@ -2,13 +2,21 @@ use allow_core::{AllowEntry, Finding, FindingKind, MatchOutcome, MatchStatus};
 
 use crate::worklist;
 
+#[derive(Debug, Clone, Copy, Default)]
+pub(super) struct ExplainReferenceAttention {
+    pub(super) has_broken_evidence: bool,
+    pub(super) has_weak_evidence: bool,
+    pub(super) has_evidence_outside_default_inventory: bool,
+    pub(super) has_broken_link: bool,
+    pub(super) has_weak_link: bool,
+    pub(super) has_link_outside_default_inventory: bool,
+}
+
 pub(super) fn explain_next_steps(
     entry: &AllowEntry,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
-    has_broken_evidence: bool,
-    has_weak_evidence: bool,
-    has_evidence_outside_default_inventory: bool,
+    references: ExplainReferenceAttention,
 ) -> (Vec<String>, Vec<String>) {
     let attention = outcomes
         .iter()
@@ -28,7 +36,7 @@ pub(super) fn explain_next_steps(
                 .collect(),
         );
     }
-    if has_evidence_outside_default_inventory {
+    if references.has_evidence_outside_default_inventory {
         let finding = findings.first();
         let kind = "broken_evidence_link";
         return (
@@ -38,10 +46,23 @@ pub(super) fn explain_next_steps(
                 "or rerun with --include-untracked when intentionally reviewing local receipt artifacts"
                     .to_string(),
             ],
-            untracked_evidence_proof_commands(entry, finding, kind),
+            untracked_proof_commands(entry, finding, kind),
         );
     }
-    if has_broken_evidence {
+    if references.has_link_outside_default_inventory {
+        let finding = findings.first();
+        let kind = "broken_evidence_link";
+        return (
+            vec![
+                "commit the referenced traceability file if it should support repository policy"
+                    .to_string(),
+                "or rerun with --include-untracked when intentionally reviewing local traceability files"
+                    .to_string(),
+            ],
+            untracked_proof_commands(entry, finding, kind),
+        );
+    }
+    if references.has_broken_evidence {
         let finding = findings.first();
         let kind = "broken_evidence_link";
         return (
@@ -55,7 +76,21 @@ pub(super) fn explain_next_steps(
                 .collect(),
         );
     }
-    if has_weak_evidence {
+    if references.has_broken_link {
+        let finding = findings.first();
+        let kind = "broken_evidence_link";
+        return (
+            vec![
+                "restore or commit the referenced local traceability file".to_string(),
+                "or update the link reference to a valid source-tree-relative path".to_string(),
+            ],
+            worklist::proof_commands(kind, finding, Some(entry))
+                .into_iter()
+                .take(5)
+                .collect(),
+        );
+    }
+    if references.has_weak_evidence {
         let finding = findings.first();
         let kind = "weak_evidence_reference";
         return (
@@ -63,6 +98,21 @@ pub(super) fn explain_next_steps(
                 .into_iter()
                 .take(2)
                 .collect(),
+            worklist::proof_commands(kind, finding, Some(entry))
+                .into_iter()
+                .take(5)
+                .collect(),
+        );
+    }
+    if references.has_weak_link {
+        let finding = findings.first();
+        let kind = "weak_evidence_reference";
+        return (
+            vec![
+                "replace the weak link string with a typed traceability reference".to_string(),
+                "use a recognized prefix such as doc:, spec:, adr:, issue:, pr:, or legacy-policy:"
+                    .to_string(),
+            ],
             worklist::proof_commands(kind, finding, Some(entry))
                 .into_iter()
                 .take(5)
@@ -104,7 +154,7 @@ pub(super) fn explain_next_steps(
     (Vec::new(), Vec::new())
 }
 
-fn untracked_evidence_proof_commands(
+fn untracked_proof_commands(
     entry: &AllowEntry,
     finding: Option<&Finding>,
     kind: &str,

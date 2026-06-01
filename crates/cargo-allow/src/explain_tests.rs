@@ -215,6 +215,31 @@ fn explain_entry_text_reports_weak_evidence_next_actions() {
 }
 
 #[test]
+fn explain_entry_text_reports_weak_link_next_actions() {
+    let root = migrate_fixture_dir();
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-weak-link", FindingKind::NonRustFile);
+    entry.links = vec!["spreadsheet:manual-review".to_string()];
+    cfg.allow.push(entry.clone());
+    let finding = test_finding(
+        FindingKind::NonRustFile,
+        None,
+        "tracked.file",
+        "tracked_file",
+    );
+
+    let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
+
+    assert!(text.contains("link diagnostics:"));
+    assert!(text.contains("[weak] weak: spreadsheet:manual-review"));
+    assert!(text.contains("message: unrecognized link prefix"));
+    assert!(text.contains("action: replace the weak link string"));
+    assert!(text.contains("proof: cargo-allow worklist --allow-id allow-weak-link --format json"));
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn explain_entry_text_reports_stale_entry() {
     let mut cfg = AllowConfig::empty();
     let entry = test_entry("allow-file", FindingKind::NonRustFile);
