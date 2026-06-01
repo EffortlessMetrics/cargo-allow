@@ -198,3 +198,104 @@ fn rejects_duplicate_link_entries() {
     assert!(err.contains("duplicate-link duplicate link entry"));
     assert!(err.contains("position 2"));
 }
+
+#[test]
+fn accepts_source_tree_relative_local_link() {
+    let policy = parse_policy(
+        r#"
+                policy = "cargo-allow"
+
+                [[allow]]
+                id = "relative-local-link"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                links = ["doc:docs/safety.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(
+        policy.is_ok(),
+        "source-tree-relative local links should parse"
+    );
+}
+
+#[test]
+fn rejects_local_link_with_parent_directory_segment() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+
+                [[allow]]
+                id = "parent-local-link"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                links = ["doc:../outside.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains(
+        "parent-local-link link entry 1 path must not contain parent directory segments"
+    ));
+}
+
+#[test]
+fn rejects_local_link_with_absolute_path() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+
+                [[allow]]
+                id = "absolute-local-link"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                links = ["spec:/docs/safety.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains("absolute-local-link link entry 1 path must be source-tree-relative"));
+}
+
+#[test]
+fn rejects_local_link_with_wildcard_path() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+
+                [[allow]]
+                id = "wildcard-local-link"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                links = ["adr:docs/*.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains("wildcard-local-link link entry 1 path uses wildcard token `*`"));
+}

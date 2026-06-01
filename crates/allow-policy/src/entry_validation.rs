@@ -1,6 +1,8 @@
 use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, Requirements};
 use std::collections::BTreeSet;
 
+use crate::evidence_reference::EvidenceReference;
+use crate::source_tree_scope::validate_path_scope;
 use crate::text_validation::{validate_no_surrounding_whitespace, validate_required_text};
 
 pub(crate) fn validate_allow_entry_identity(
@@ -58,6 +60,7 @@ pub(crate) fn validate_allow_entry_requirements(
     validate_non_empty_values(&entry.id, "link", &entry.links)?;
     validate_unique_values(&entry.id, "evidence", &entry.evidence)?;
     validate_unique_values(&entry.id, "link", &entry.links)?;
+    validate_local_link_scopes(entry)?;
     Ok(())
 }
 
@@ -128,6 +131,22 @@ fn validate_unique_values(id: &str, label: &str, values: &[String]) -> CargoAllo
                 index + 1
             )));
         }
+    }
+    Ok(())
+}
+
+fn validate_local_link_scopes(entry: &AllowEntry) -> CargoAllowResult<()> {
+    for (index, link) in entry.links.iter().enumerate() {
+        let Some(reference) = EvidenceReference::parse(link) else {
+            continue;
+        };
+        if !reference.kind.is_local_file() {
+            continue;
+        }
+        validate_path_scope(
+            &format!("{} link entry {}", entry.id, index + 1),
+            &reference.value,
+        )?;
     }
     Ok(())
 }

@@ -47,6 +47,11 @@ signals deterministic.
 `evidence` and `links` entries must also be non-empty, whitespace-normal, and
 unique inside an allow entry so receipts do not inflate proof or traceability
 signals by repeating the same reference.
+Local-file traceability links such as `doc:`, `spec:`, `adr:`, `ripr:`,
+`unsafe-review:`, `unsafe_review:`, and `coverage:` must use source-tree-relative
+exact paths. Policy loading rejects parent-directory segments, absolute paths,
+and wildcard tokens in those link targets; existence checks remain a separate
+source-tree inventory diagnostic.
 
 `path` scopes are exact source-tree paths. Source-tree scopes must not include
 leading or trailing whitespace because cargo-allow treats them as selectors,
