@@ -179,17 +179,70 @@ fn detects_unsafe_attribute_from_syntax() {
 
 #[test]
 fn detects_cfg_attr_unsafe_attribute_from_source_syntax() {
+    let line = r#"        #[cfg_attr(feature = "ffi", unsafe(no_mangle))]"#;
+    let src = format!(
+        r#"
+{line}
+        fn exported() {{}}
+        "#
+    );
+    let findings = scan_rust_source("src/lib.rs", &src);
+    let unsafe_attr = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr"))
+        .unwrap_or_else(|| std::panic::panic_any("expected cfg_attr unsafe attribute finding"));
+
+    assert_eq!(
+        unsafe_attr.span.as_ref().map(|span| span.column),
+        Some(crate::text::column(line, "unsafe"))
+    );
+}
+
+#[test]
+fn cfg_attr_unsafe_attribute_column_ignores_quoted_unsafe_text() {
+    let line =
+        r#"        #[cfg_attr(feature = "ffi", doc = "unsafe(no_mangle)", unsafe(no_mangle))]"#;
+    let src = format!(
+        r#"
+{line}
+        fn exported() {{}}
+        "#
+    );
+    let findings = scan_rust_source("src/lib.rs", &src);
+    let unsafe_attr = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr"))
+        .unwrap_or_else(|| std::panic::panic_any("expected cfg_attr unsafe attribute finding"));
+
+    assert_eq!(
+        unsafe_attr.span.as_ref().map(|span| span.column),
+        Some(last_column(line, "unsafe"))
+    );
+}
+
+#[test]
+fn detects_multiple_unsafe_attributes_on_one_line() {
     let src = r#"
-        #[cfg_attr(feature = "ffi", unsafe(no_mangle))]
+        #[unsafe(no_mangle)] #[unsafe(export_name = "fixture")]
         fn exported() {}
         "#;
     let findings = scan_rust_source("src/lib.rs", src);
+    let unsafe_attrs = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr"))
+        .count();
 
-    assert!(
-        findings.iter().any(|f| {
-            f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr")
-        })
-    );
+    assert_eq!(unsafe_attrs, 2);
+}
+
+fn last_column(line: &str, needle: &str) -> u32 {
+    let index = line
+        .rfind(needle)
+        .unwrap_or_else(|| std::panic::panic_any(format!("missing `{needle}` in `{line}`")));
+    line.char_indices()
+        .take_while(|(byte, _)| *byte < index)
+        .count() as u32
+        + 1
 }
 
 #[test]

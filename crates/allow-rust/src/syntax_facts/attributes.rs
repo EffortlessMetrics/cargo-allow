@@ -33,8 +33,12 @@ pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut R
                 column: source_column(source, start.row, start.column + offset),
             });
     }
-    if unsafe_attribute_text(text) {
-        facts.unsafe_attribute_lines.insert(line);
+    if let Some(offset) = unsafe_attribute_offset(text) {
+        facts
+            .unsafe_attribute_columns
+            .entry(line)
+            .or_default()
+            .push(source_column(source, start.row, start.column + offset));
     }
 }
 
@@ -51,15 +55,15 @@ fn lint_attribute_kind(text: &str) -> Option<(LintAttributeKind, usize)> {
     }
 }
 
-fn unsafe_attribute_text(text: &str) -> bool {
+fn unsafe_attribute_offset(text: &str) -> Option<usize> {
     let trimmed = text.trim_start();
     if trimmed.starts_with("#[unsafe(") || trimmed.starts_with("#![unsafe(") {
-        return true;
+        return Some(text.len() - trimmed.len());
     }
     if !(trimmed.starts_with("#[cfg_attr(") || trimmed.starts_with("#![cfg_attr(")) {
-        return false;
+        return None;
     }
-    find_token_outside_rust_strings(trimmed, "unsafe(").is_some()
+    find_token_outside_rust_strings(text, "unsafe(")
 }
 
 fn cfg_attr_lint_kind(text: &str) -> Option<(LintAttributeKind, usize)> {

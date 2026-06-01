@@ -3,12 +3,11 @@ use allow_core::{Finding, FindingKind};
 use crate::finding_builder::push_finding;
 use crate::line_context::LineContext;
 use crate::syntax_kinds::UnsafeSyntaxConstruct;
-use crate::text::column;
 
 pub(crate) fn scan_unsafe_constructs(
     context: UnsafeLineContext<'_>,
     unsafe_constructs: &[UnsafeSyntaxConstruct],
-    unsafe_attribute: bool,
+    unsafe_attribute_columns: &[u32],
     findings: &mut Vec<Finding>,
 ) {
     for unsafe_construct in unsafe_constructs {
@@ -25,9 +24,9 @@ pub(crate) fn scan_unsafe_constructs(
             findings,
         );
     }
-    if unsafe_attribute {
+    for column in unsafe_attribute_columns {
         push_finding(
-            context.line.site(column(context.line.line, "unsafe")),
+            context.line.site(*column),
             FindingKind::Unsafe,
             "unsafe_attr",
             "unsafe_attr",
