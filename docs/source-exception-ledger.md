@@ -74,7 +74,9 @@ and non-empty replacements as review-required policy changes. Changing a
 concrete owner to `owner = "unowned"` is also policy weakening, because retained
 exceptions must not silently lose ownership. Removed traceability links are also
 review-required unless they are local-file traceability links, which fail the
-diff because source-tree rationale should not disappear silently. Typed
+diff because source-tree rationale should not disappear silently. Removing only
+weak traceability links is reported as an improvement when typed traceability
+remains, and as review-required when no typed traceability remains. Typed
 traceability link additions are reported as policy improvements, while
 unstructured or unknown-prefix link additions are review-required so vague
 traceability does not look like proof-quality cleanup.

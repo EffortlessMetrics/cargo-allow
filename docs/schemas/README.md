@@ -296,7 +296,9 @@ references, but review-required when the added value is weak evidence such as an
 unstructured string, unknown prefix, or empty typed reference. `evidence_removed`
 fails when typed evidence is removed, improves posture when only weak evidence
 is removed and typed evidence remains, and requires review when weak evidence is
-removed without any remaining typed evidence.
+removed without any remaining typed evidence. `link_removed` fails for local
+traceability-link removal, improves posture when only weak traceability links
+are removed and typed traceability remains, and otherwise requires review.
 Rows with `owner_added`, `owner_changed`, `owner_removed`, `owner_unassigned`,
 `reason_added`, `reason_changed`, `reason_removed`, `classification_added`,
 `classification_changed`, `classification_removed`,

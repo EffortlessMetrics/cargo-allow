@@ -36,7 +36,7 @@ pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
     }
     if removed_values(&base.links, &head.links) {
         let removed = removed_items(&base.links, &head.links);
-        let severity = removed_link_severity(&removed);
+        let severity = removed_link_severity(&removed, &head.links);
         changes.push(change(
             head,
             EvidenceChangeField::Links,
@@ -113,9 +113,13 @@ fn added_link_severity(added: &[String]) -> PolicyChangeSeverity {
     }
 }
 
-fn removed_link_severity(removed: &[String]) -> PolicyChangeSeverity {
+fn removed_link_severity(removed: &[String], remaining: &[String]) -> PolicyChangeSeverity {
     if removed.iter().any(|item| reference_is_local_file(item)) {
         PolicyChangeSeverity::Fail
+    } else if removed.iter().all(|item| reference_is_weak(item))
+        && remaining.iter().any(|item| !reference_is_weak(item))
+    {
+        PolicyChangeSeverity::Improvement
     } else {
         PolicyChangeSeverity::Review
     }
@@ -165,8 +169,8 @@ fn removed_evidence_message(removed: &[String], severity: PolicyChangeSeverity) 
 fn removed_link_message(severity: PolicyChangeSeverity) -> &'static str {
     match severity {
         PolicyChangeSeverity::Fail => "local traceability link removed",
+        PolicyChangeSeverity::Improvement => "weak traceability link removed",
         PolicyChangeSeverity::Review => "traceability link removed",
-        PolicyChangeSeverity::Improvement => "traceability link removed",
     }
 }
 

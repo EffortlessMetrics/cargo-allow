@@ -297,6 +297,57 @@ fn detects_non_local_traceability_link_removed_as_review_required() {
 }
 
 #[test]
+fn detects_weak_traceability_link_removed_as_improvement_when_typed_link_remains() {
+    let mut base_entry = entry("allow-1");
+    base_entry.links = vec![
+        "issue:123".to_string(),
+        "spreadsheet:manual-review".to_string(),
+    ];
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-1");
+    head_entry.links = vec!["issue:123".to_string()];
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::LinkRemoved)
+        .unwrap_or_else(|| std::panic::panic_any("weak link removal should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Improvement);
+    assert!(change.message.contains("weak traceability link removed"));
+    let evidence = change
+        .evidence
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("link removal should include values"));
+    assert_eq!(evidence.field, EvidenceChangeField::Links);
+    assert_eq!(
+        evidence.removed,
+        vec!["spreadsheet:manual-review".to_string()]
+    );
+    assert!(evidence.added.is_empty());
+}
+
+#[test]
+fn detects_weak_traceability_link_removed_without_typed_replacement_as_review_required() {
+    let mut base_entry = entry("allow-1");
+    base_entry.links = vec!["spreadsheet:manual-review".to_string()];
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-1");
+    head_entry.links.clear();
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::LinkRemoved)
+        .unwrap_or_else(|| std::panic::panic_any("weak link removal should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Review);
+    assert!(change.message.contains("traceability link removed"));
+}
+
+#[test]
 fn detects_weak_traceability_link_added_as_review_required() {
     let mut base_entry = entry("allow-1");
     base_entry.links = Vec::new();
