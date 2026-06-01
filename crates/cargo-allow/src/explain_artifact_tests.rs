@@ -176,6 +176,23 @@ fn explain_entry_json_records_link_reference_diagnostics() {
         Some("traceability_only"),
         "explain should preserve non-local link diagnostics"
     );
+    assert_eq!(
+        value
+            .pointer("/next/suggested_actions/0")
+            .and_then(Value::as_str),
+        Some("restore or commit the referenced local traceability file"),
+        "broken local links should route explain next steps to traceability repair"
+    );
+    assert!(
+        value
+            .pointer("/next/proof_commands")
+            .and_then(Value::as_array)
+            .unwrap_or_else(|| std::panic::panic_any("next proof commands should be an array"))
+            .iter()
+            .any(|command| command.as_str()
+                == Some("cargo-allow worklist --allow-id allow-link-diagnostics --format json")),
+        "explain should point broken local links at the allow-ID worklist queue"
+    );
 
     let text = explain_entry_text(
         Path::new("target/cargo-allow-test-missing-link-root"),
@@ -186,6 +203,7 @@ fn explain_entry_json_records_link_reference_diagnostics() {
     assert!(text.contains("link diagnostics:"));
     assert!(text.contains("doc:docs/missing-link.md"));
     assert!(text.contains("message: local link file is missing"));
+    assert!(text.contains("action: restore or commit the referenced local traceability file"));
 }
 
 #[test]
