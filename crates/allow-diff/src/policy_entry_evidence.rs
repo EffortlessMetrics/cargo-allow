@@ -9,6 +9,7 @@ pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
     let mut changes = Vec::new();
     if removed_values(&base.evidence, &head.evidence) {
         let removed = removed_items(&base.evidence, &head.evidence);
+        let message = removed_evidence_message(&removed);
         changes.push(change(
             head,
             EvidenceChangeField::Evidence,
@@ -16,7 +17,7 @@ pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
             Vec::new(),
             PolicyChangeKind::EvidenceRemoved,
             PolicyChangeSeverity::Fail,
-            "evidence removed",
+            message,
         ));
     }
     if added_values(&base.evidence, &head.evidence) {
@@ -132,6 +133,14 @@ fn added_link_message(severity: PolicyChangeSeverity) -> &'static str {
         PolicyChangeSeverity::Review => "weak traceability link added",
         PolicyChangeSeverity::Improvement => "traceability link added",
         PolicyChangeSeverity::Fail => "invalid traceability link added",
+    }
+}
+
+fn removed_evidence_message(removed: &[String]) -> &'static str {
+    if removed.iter().any(|item| reference_is_local_file(item)) {
+        "local evidence removed"
+    } else {
+        "evidence removed"
     }
 }
 

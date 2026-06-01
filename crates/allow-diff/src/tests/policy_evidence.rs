@@ -72,6 +72,33 @@ fn detects_evidence_added_as_improvement() {
 }
 
 #[test]
+fn detects_local_evidence_removed_with_specific_message() {
+    let mut base_entry = entry("allow-1");
+    base_entry.evidence = vec!["doc:docs/safety/parser-spans.md".to_string()];
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-1");
+    head_entry.evidence.clear();
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::EvidenceRemoved)
+        .unwrap_or_else(|| std::panic::panic_any("local evidence removal should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Fail);
+    assert!(change.message.contains("local evidence removed"));
+    let evidence = change
+        .evidence
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("evidence removal should include values"));
+    assert_eq!(
+        evidence.removed,
+        vec!["doc:docs/safety/parser-spans.md".to_string()]
+    );
+}
+
+#[test]
 fn detects_local_evidence_added_as_improvement_when_source_tree_relative() {
     let mut base_entry = entry("allow-1");
     base_entry.evidence.clear();

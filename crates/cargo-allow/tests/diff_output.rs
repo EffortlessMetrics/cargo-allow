@@ -61,6 +61,33 @@ fn diff_json_reports_evidence_removed_policy_weakening() {
 }
 
 #[test]
+fn diff_json_reports_local_evidence_removed_policy_weakening() {
+    let root = temp_root("diff-local-evidence-removed");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(Some("doc:docs/safety/parser-spans.md")),
+        policy_with_evidence(None),
+    );
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_failure(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "worse",
+        "diff local evidence removal net posture",
+    );
+    assert_policy_change(&value, "evidence_removed", "allow-unwrap", "fail");
+    assert_file_contains(
+        &output,
+        "local evidence removed",
+        "diff output should identify local evidence removal posture",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_reports_invalid_local_evidence_added_policy_failure() {
     let root = temp_root("diff-invalid-local-evidence-added");
     write_diff_fixture(
