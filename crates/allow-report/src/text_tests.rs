@@ -521,6 +521,27 @@ fn check_text_reports_policy_missing_evidence_context() {
     assert!(markdown.contains("| `policy_missing_evidence` | 4 |"));
 }
 
+#[test]
+fn check_text_reports_evidence_repair_queues_without_audit_queue() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
+    context.policy_missing_evidence_entries = Some(2);
+    context.broken_evidence_links = Some(1);
+    context.weak_evidence_references = Some(1);
+    let human = render_human_with_context("check", &[], &[], true, context);
+    let markdown = render_markdown_with_context("check", &[], &[], true, context);
+
+    assert!(human.contains("Evidence repair queues:"));
+    assert!(human.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
+    assert!(human.contains("cargo-allow worklist --missing-evidence --format json"));
+    assert!(
+        human.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
+    );
+    assert!(!human.contains("Audit review queue:"));
+    assert!(markdown.contains("### Evidence Repair Queues"));
+    assert!(markdown.contains("`cargo-allow worklist --missing-evidence --format json`"));
+    assert!(!markdown.contains("## Audit Review Queue"));
+}
+
 fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
     Finding {
         kind,

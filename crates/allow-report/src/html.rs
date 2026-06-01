@@ -62,6 +62,10 @@ pub fn render_html_with_context(
     }
     out.push_str("<h2>Status Counts</h2>\n");
     render_status_count_table_html(&summary, context, &mut out);
+    if command != "audit" {
+        let signals = ReviewSignals::from_summary(&summary, context);
+        render_evidence_repair_queues_html(&summary, signals, &mut out);
+    }
     if command == "audit" {
         render_source_inventory_html(findings, outcomes, &mut out);
         render_audit_summary_html(&summary, outcomes, context, &mut out);
