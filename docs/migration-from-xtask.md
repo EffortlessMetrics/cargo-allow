@@ -244,8 +244,9 @@ The migration writer:
 `cargo-allow.migrate.v1` receipt for the conversion. The summary records the
 input mode, output path, source-tree inventory context when repo-policy
 migration collected one, allow-entry counts, baseline-debt counts, unsafe-entry
-counts, evidence-bearing entry counts, and the same migration notes shown by
-the human summary. The canonical policy output remains TOML.
+counts, lint-exception counts, evidence-bearing entry counts, weak-evidence
+reference counts when present, and the same migration notes shown by the human
+summary. The canonical policy output remains TOML.
 
 Migration is still a bridge. The combined policy carries retained legacy
 receipts forward; it does not prove that stale legacy entries are removable and
