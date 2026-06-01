@@ -54,13 +54,17 @@ pub(super) fn removed_toml_blocks(
 fn allow_blocks(rendered_policy: &str) -> Vec<&str> {
     let mut blocks = Vec::new();
     let mut start = None;
-    for (offset, line) in rendered_policy.match_indices("[[allow]]") {
-        debug_assert_eq!(line, "[[allow]]");
-        if let Some(previous) = start.replace(offset) {
-            if let Some(block) = rendered_policy.get(previous..offset) {
-                blocks.push(block.trim_end());
+    let mut offset = 0;
+    for line in rendered_policy.split_inclusive('\n') {
+        let line_text = line.trim_end_matches('\n').trim_end_matches('\r');
+        if line_text == "[[allow]]" {
+            if let Some(previous) = start.replace(offset) {
+                if let Some(block) = rendered_policy.get(previous..offset) {
+                    blocks.push(block.trim_end());
+                }
             }
         }
+        offset += line.len();
     }
     if let Some(previous) = start {
         if let Some(block) = rendered_policy.get(previous..) {
