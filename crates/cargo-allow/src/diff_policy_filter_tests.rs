@@ -114,7 +114,7 @@ fn diff_policy_changes_promote_broken_added_evidence_to_failure() {
     let mut changes = policy_changes_for_diff(Some(base), &head, None)
         .unwrap_or_else(|err| std::panic::panic_any(format!("policy diff: {err}")));
 
-    promote_broken_added_evidence_policy_changes(&root, None, &head, &mut changes)
+    promote_broken_added_local_reference_policy_changes(&root, None, &head, &mut changes)
         .unwrap_or_else(|err| std::panic::panic_any(format!("promote evidence changes: {err}")));
 
     let change = changes
@@ -147,8 +147,13 @@ fn diff_policy_changes_explain_added_evidence_outside_compared_inventory() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("policy diff: {err}")));
     let compared_files = std::collections::BTreeSet::new();
 
-    promote_broken_added_evidence_policy_changes(&root, Some(&compared_files), &head, &mut changes)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("promote evidence changes: {err}")));
+    promote_broken_added_local_reference_policy_changes(
+        &root,
+        Some(&compared_files),
+        &head,
+        &mut changes,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("promote evidence changes: {err}")));
 
     let change = changes
         .iter()
@@ -180,7 +185,7 @@ fn diff_policy_changes_keep_present_added_evidence_as_improvement() {
     let mut changes = policy_changes_for_diff(Some(base), &head, None)
         .unwrap_or_else(|err| std::panic::panic_any(format!("policy diff: {err}")));
 
-    promote_broken_added_evidence_policy_changes(&root, None, &head, &mut changes)
+    promote_broken_added_local_reference_policy_changes(&root, None, &head, &mut changes)
         .unwrap_or_else(|err| std::panic::panic_any(format!("promote evidence changes: {err}")));
 
     let change = changes
@@ -194,6 +199,41 @@ fn diff_policy_changes_keep_present_added_evidence_as_improvement() {
     assert!(
         change.message.contains("evidence added"),
         "present local evidence should stay improvement: {change:?}"
+    );
+    remove_diff_fixture_dir(root);
+}
+
+#[test]
+fn diff_policy_changes_explain_added_link_outside_compared_inventory() {
+    let root = diff_fixture_dir();
+    let mut base_entry = entry("allow-panic", FindingKind::Panic);
+    base_entry.links.clear();
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-panic", FindingKind::Panic);
+    head_entry.links = vec!["doc:docs/untracked-link.md".to_string()];
+    let head = config_with(head_entry);
+    let mut changes = policy_changes_for_diff(Some(base), &head, None)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy diff: {err}")));
+    let compared_files = std::collections::BTreeSet::new();
+
+    promote_broken_added_local_reference_policy_changes(
+        &root,
+        Some(&compared_files),
+        &head,
+        &mut changes,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("promote link changes: {err}")));
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == allow_diff::PolicyChangeKind::LinkAdded)
+        .unwrap_or_else(|| std::panic::panic_any("link addition should be reported"));
+    assert_eq!(change.severity, allow_diff::PolicyChangeSeverity::Fail);
+    assert!(
+        change
+            .message
+            .contains("local link added outside compared source-tree inventory"),
+        "message should explain source-tree inventory failure: {change:?}"
     );
     remove_diff_fixture_dir(root);
 }
