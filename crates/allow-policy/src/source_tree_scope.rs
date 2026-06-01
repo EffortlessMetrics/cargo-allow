@@ -60,6 +60,11 @@ fn validate_exact_path_syntax(label: &str, path: &str) -> CargoAllowResult<()> {
 }
 
 fn validate_supported_glob_syntax(label: &str, glob: &str) -> CargoAllowResult<()> {
+    if matches!(glob, "**" | "**/*") {
+        return Err(CargoAllowError::new(format!(
+            "{label} covers the entire source tree; use a narrower path or glob scope"
+        )));
+    }
     if let Some(ch) = glob.chars().find(|ch| matches!(ch, '[' | ']' | '{' | '}')) {
         return Err(CargoAllowError::new(format!(
             "{label} uses unsupported glob token `{ch}`; supported source-tree glob tokens are `*`, `?`, and whole-segment `**`"
