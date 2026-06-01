@@ -92,6 +92,10 @@ also includes optional `broken_evidence` and `weak_evidence` booleans for saved
 filtered evidence-health views.
 Worklist artifacts follow the same rule: current renderers emit all known
 filter keys, while the nested `filters` schema keeps those keys optional.
+Non-empty worklist artifacts may also include `summary.item_kinds`, an optional
+object that counts emitted work items by queue item kind so consumers can route
+the queue without parsing every row. Its keys are limited to the stable
+worklist item-kind vocabulary.
 Worklist item fields such as `selector_precision` are optional and emitted only
 for policy-backed work items where cargo-allow can score the related selector.
 The score is routing metadata for narrowing and review work, not proof that the

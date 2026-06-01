@@ -102,6 +102,13 @@ fn saved_worklist_default_output_includes_policy_missing_evidence_items() {
     );
     assert_eq!(
         value
+            .pointer("/summary/item_kinds/missing_evidence")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "default worklist summary should count missing-evidence queue items"
+    );
+    assert_eq!(
+        value
             .pointer("/work_items/0/allow_id")
             .and_then(serde_json::Value::as_str),
         Some("allow-missing-evidence"),

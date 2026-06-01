@@ -252,6 +252,76 @@
           "type": "integer",
           "minimum": 0,
           "description": "Count of work items estimated as medium difficulty."
+        },
+        "item_kinds": {
+          "$ref": "#/$defs/item_kind_counts",
+          "description": "Optional count of emitted work items by queue item kind. Omitted when the queue is empty."
+        }
+      }
+    },
+    "item_kind_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "new_unreceipted_finding": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "occurrence_limit_exceeded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expired_allow": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale_allow": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ambiguous_selector": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unsafe_missing_evidence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_evidence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_required_field": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid_selector": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "baseline_debt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_due": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "broad_scope": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "broken_evidence_link": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "weak_evidence_reference": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },

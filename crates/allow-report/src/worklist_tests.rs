@@ -54,6 +54,8 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
     assert!(json.contains("\"work_items\": 1"));
     assert!(json.contains("\"high\": 1"));
     assert!(json.contains("\"small_difficulty\": 1"));
+    assert!(json.contains("\"item_kinds\": {"));
+    assert!(json.contains("\"stale_allow\": 1"));
     assert!(json.contains("\"id\": \"work-0001\""));
     assert!(json.contains("\"exception_kind\": \"panic\""));
     assert!(json.contains("\"evidence_count\": 1"));
@@ -99,7 +101,10 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
     "medium": 0,
     "low": 0,
     "small_difficulty": 1,
-    "medium_difficulty": 0
+    "medium_difficulty": 0,
+    "item_kinds": {{
+      "stale_allow": 1
+    }}
   }},
   "work_items": [
     {{
@@ -156,6 +161,8 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
             "Filters: kind=panic, item_kind=stale_allow, baseline_debt=true, risk=high, missing_evidence=true"
         ));
     assert!(text.contains("Work items: 1"));
+    assert!(text.contains("Queue kinds:"));
+    assert!(text.contains("  stale_allow"));
     assert!(text.contains("work-0001 (high, small) stale_allow"));
     assert!(text.contains("  path: crates/parser/src/lib.rs"));
     assert!(text.contains("  source package: parser"));
