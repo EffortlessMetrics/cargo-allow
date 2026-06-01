@@ -183,6 +183,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         &mut text,
         args.format,
         current_failures,
+        evidence,
         &outcomes,
         &finding_changes,
         &policy_changes,
