@@ -25,11 +25,11 @@ pub(super) fn record_index_expression(node: Node<'_>, source: &str, facts: &mut 
     });
     let line = bracket_point.row as u32 + 1;
     let column = source_column(source, bracket_point.row, bracket_point.column);
-    facts
-        .index_columns
-        .entry(line)
-        .and_modify(|existing| *existing = (*existing).min(column))
-        .or_insert(column);
+    let columns = facts.index_columns.entry(line).or_default();
+    if !columns.contains(&column) {
+        columns.push(column);
+        columns.sort_unstable();
+    }
 }
 
 fn direct_index_bracket_point(node: Node<'_>) -> Option<Point> {

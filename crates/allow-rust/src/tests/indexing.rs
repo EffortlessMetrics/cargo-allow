@@ -45,7 +45,23 @@ fn syntax_indexing_detects_true_positive_shapes() {
         .filter(|f| f.family.as_deref() == Some("indexing"))
         .count();
 
-    assert_eq!(indexing, 3);
+    assert_eq!(indexing, 4);
+}
+
+#[test]
+fn syntax_indexing_detects_multiple_expressions_on_one_line() {
+    let src = r#"
+        fn load(left: &[u8], right: &[u8]) -> u8 {
+            left[0] + right[1]
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let indexing = findings
+        .iter()
+        .filter(|f| f.family.as_deref() == Some("indexing"))
+        .count();
+
+    assert_eq!(indexing, 2);
 }
 
 #[test]
