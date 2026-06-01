@@ -2,6 +2,8 @@ use allow_core::{AllowEntry, Finding, FindingKind, MatchOutcome, MatchStatus};
 
 use crate::worklist;
 
+const EXPLAIN_PROOF_COMMAND_LIMIT: usize = 8;
+
 #[derive(Debug, Clone, Copy, Default)]
 pub(super) struct ExplainReferenceAttention {
     pub(super) has_broken_evidence: bool,
@@ -32,7 +34,7 @@ pub(super) fn explain_next_steps(
                 .collect(),
             worklist::proof_commands(&kind, finding, Some(entry))
                 .into_iter()
-                .take(5)
+                .take(EXPLAIN_PROOF_COMMAND_LIMIT)
                 .collect(),
         );
     }
@@ -72,7 +74,7 @@ pub(super) fn explain_next_steps(
                 .collect(),
             worklist::proof_commands(kind, finding, Some(entry))
                 .into_iter()
-                .take(5)
+                .take(EXPLAIN_PROOF_COMMAND_LIMIT)
                 .collect(),
         );
     }
@@ -86,7 +88,7 @@ pub(super) fn explain_next_steps(
                 .collect(),
             worklist::proof_commands(kind, finding, Some(entry))
                 .into_iter()
-                .take(5)
+                .take(EXPLAIN_PROOF_COMMAND_LIMIT)
                 .collect(),
         );
     }
@@ -100,7 +102,7 @@ pub(super) fn explain_next_steps(
                 .collect(),
             worklist::proof_commands(kind, finding, Some(entry))
                 .into_iter()
-                .take(5)
+                .take(EXPLAIN_PROOF_COMMAND_LIMIT)
                 .collect(),
         );
     }
@@ -114,7 +116,7 @@ pub(super) fn explain_next_steps(
                 .collect(),
             worklist::proof_commands(kind, finding, Some(entry))
                 .into_iter()
-                .take(5)
+                .take(EXPLAIN_PROOF_COMMAND_LIMIT)
                 .collect(),
         );
     }
@@ -128,7 +130,7 @@ pub(super) fn explain_next_steps(
                 .collect(),
             worklist::proof_commands(kind, finding, Some(entry))
                 .into_iter()
-                .take(5)
+                .take(EXPLAIN_PROOF_COMMAND_LIMIT)
                 .collect(),
         );
     }
@@ -146,7 +148,7 @@ pub(super) fn explain_next_steps(
                 .collect(),
             worklist::proof_commands(kind, finding, Some(entry))
                 .into_iter()
-                .take(5)
+                .take(EXPLAIN_PROOF_COMMAND_LIMIT)
                 .collect(),
         );
     }
