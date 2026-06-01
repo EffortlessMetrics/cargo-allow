@@ -51,6 +51,21 @@ fn detects_unsafe_item_kinds_from_syntax() {
 }
 
 #[test]
+fn unsafe_trait_findings_record_trait_symbol() {
+    let src = r#"
+        unsafe trait Marker {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    let unsafe_trait = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_trait"))
+        .unwrap_or_else(|| std::panic::panic_any("unsafe trait should be found"));
+
+    assert_eq!(unsafe_trait.identity.symbol.as_deref(), Some("Marker"));
+}
+
+#[test]
 fn detects_unsafe_function_signatures_from_syntax() {
     let src = r#"
         trait Reader {
