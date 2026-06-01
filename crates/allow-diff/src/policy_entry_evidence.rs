@@ -33,14 +33,16 @@ pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
         ));
     }
     if removed_values(&base.links, &head.links) {
+        let removed = removed_items(&base.links, &head.links);
+        let severity = removed_link_severity(&removed);
         changes.push(change(
             head,
             EvidenceChangeField::Links,
-            removed_items(&base.links, &head.links),
+            removed,
             Vec::new(),
             PolicyChangeKind::LinkRemoved,
-            PolicyChangeSeverity::Review,
-            "traceability link removed",
+            severity,
+            removed_link_message(severity),
         ));
     }
     if added_values(&base.links, &head.links) {
@@ -109,6 +111,14 @@ fn added_link_severity(added: &[String]) -> PolicyChangeSeverity {
     }
 }
 
+fn removed_link_severity(removed: &[String]) -> PolicyChangeSeverity {
+    if removed.iter().any(|item| reference_is_local_file(item)) {
+        PolicyChangeSeverity::Fail
+    } else {
+        PolicyChangeSeverity::Review
+    }
+}
+
 fn added_evidence_message(severity: PolicyChangeSeverity) -> &'static str {
     match severity {
         PolicyChangeSeverity::Review => "weak evidence added",
@@ -125,11 +135,19 @@ fn added_link_message(severity: PolicyChangeSeverity) -> &'static str {
     }
 }
 
+fn removed_link_message(severity: PolicyChangeSeverity) -> &'static str {
+    match severity {
+        PolicyChangeSeverity::Fail => "local traceability link removed",
+        PolicyChangeSeverity::Review => "traceability link removed",
+        PolicyChangeSeverity::Improvement => "traceability link removed",
+    }
+}
+
 fn evidence_reference_is_invalid_local(reference: &str) -> bool {
     let Some((prefix, target)) = reference.split_once(':') else {
         return false;
     };
-    if !allow_policy::local_file_evidence_prefixes().any(|known| known == prefix.trim()) {
+    if !reference_prefix_is_local_file(prefix) {
         return false;
     }
     let target = target.trim().replace('\\', "/");
@@ -142,6 +160,17 @@ fn evidence_reference_is_invalid_local(reference: &str) -> bool {
 
 fn evidence_reference_is_weak(reference: &str) -> bool {
     reference_is_weak(reference)
+}
+
+fn reference_is_local_file(reference: &str) -> bool {
+    reference
+        .split_once(':')
+        .map(|(prefix, _)| reference_prefix_is_local_file(prefix))
+        .unwrap_or(false)
+}
+
+fn reference_prefix_is_local_file(prefix: &str) -> bool {
+    allow_policy::local_file_evidence_prefixes().any(|known| known == prefix.trim())
 }
 
 fn reference_is_weak(reference: &str) -> bool {

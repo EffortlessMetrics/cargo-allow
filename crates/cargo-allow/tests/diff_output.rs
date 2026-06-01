@@ -209,6 +209,39 @@ fn diff_json_reports_missing_local_link_added_policy_failure() {
 }
 
 #[test]
+fn diff_json_reports_local_link_removed_policy_failure() {
+    let root = temp_root("diff-local-link-removed");
+    write_diff_fixture(
+        &root,
+        policy_with_links(Some("doc:docs/rationale.md")),
+        policy_with_links(None),
+    );
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_failure(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "worse",
+        "diff local link removal net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/policy_failures",
+        1,
+        "diff local link removal policy failure count",
+    );
+    assert_policy_change(&value, "link_removed", "allow-unwrap", "fail");
+    assert_file_contains(
+        &output,
+        "local traceability link removed",
+        "diff output should explain local link removal posture",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_reports_missing_retained_local_link_current_failure() {
     let root = temp_root("diff-missing-retained-local-link");
     fs::create_dir_all(root.join("policy"))

@@ -170,8 +170,12 @@ fn detects_traceability_link_changes() {
         .iter()
         .find(|change| change.kind == PolicyChangeKind::LinkRemoved)
         .unwrap_or_else(|| std::panic::panic_any("link removal should be reported"));
-    assert_eq!(link_removed.severity, PolicyChangeSeverity::Review);
-    assert!(link_removed.message.contains("traceability link removed"));
+    assert_eq!(link_removed.severity, PolicyChangeSeverity::Fail);
+    assert!(
+        link_removed
+            .message
+            .contains("local traceability link removed")
+    );
     let evidence = link_removed
         .evidence
         .as_ref()
@@ -184,6 +188,37 @@ fn detects_traceability_link_changes() {
             && change.severity == PolicyChangeSeverity::Improvement
             && change.message.contains("traceability link added")
     }));
+}
+
+#[test]
+fn detects_non_local_traceability_link_removed_as_review_required() {
+    let mut base_entry = entry("allow-1");
+    base_entry.links = vec!["issue:123".to_string(), "pr:456".to_string()];
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-1");
+    head_entry.links = vec!["pr:456".to_string()];
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    let link_removed = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::LinkRemoved)
+        .unwrap_or_else(|| std::panic::panic_any("link removal should be reported"));
+    assert_eq!(link_removed.severity, PolicyChangeSeverity::Review);
+    assert!(link_removed.message.contains("traceability link removed"));
+    assert!(
+        !link_removed
+            .message
+            .contains("local traceability link removed")
+    );
+    let evidence = link_removed
+        .evidence
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("link removal should include values"));
+    assert_eq!(evidence.field, EvidenceChangeField::Links);
+    assert_eq!(evidence.removed, vec!["issue:123".to_string()]);
+    assert!(evidence.added.is_empty());
 }
 
 #[test]
