@@ -1,9 +1,7 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
-use allow_policy::{
-    broken_evidence_link_count, load_policy, validate_local_evidence_references,
-    weak_evidence_reference_count,
-};
+use allow_policy::{EvidenceReferenceDiagnostic, load_policy};
+use std::collections::BTreeSet;
 use std::env;
 use std::path::Path;
 
@@ -12,7 +10,12 @@ mod doctor_args;
 pub(crate) use doctor_args::DoctorArgs;
 use doctor_args::DoctorFormat;
 
-use crate::{InventoryFacts, SourceTreeReportContext, config_path, emit_text};
+use crate::{
+    InventoryFacts, SourceTreeReportContext, config_path, emit_text,
+    evidence_inventory::{
+        current_evidence_source_tree_files, evidence_reference_diagnostics_for_source_tree,
+    },
+};
 
 pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let cwd =
@@ -24,6 +27,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let opts = doctor_inventory_options(policy.as_ref());
     let inventory = inventory(&root, &opts)?;
     let files_scanned = inventory.files.len();
+    let evidence_source_tree_files = current_evidence_source_tree_files(&root, false);
     let source_context = SourceTreeReportContext::new(
         &root,
         InventoryFacts::scanned(inventory.source, files_scanned),
@@ -31,9 +35,10 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let config_text = config
         .as_ref()
         .map(|path| allow_report::source_tree_path_text(path));
-    let (config_valid, config_diagnostic) = config_status(&root, policy.as_ref());
+    let (config_valid, config_diagnostic) =
+        config_status(&root, policy.as_ref(), evidence_source_tree_files.as_ref());
     let (broken_evidence_links, weak_evidence_references) =
-        doctor_evidence_health(&root, policy.as_ref());
+        doctor_evidence_health(&root, policy.as_ref(), evidence_source_tree_files.as_ref());
     let config_schema_version = policy
         .as_ref()
         .and_then(|result| result.as_ref().ok())
@@ -80,12 +85,19 @@ fn load_doctor_policy(config: Option<&Path>) -> Option<CargoAllowResult<AllowCon
 fn config_status(
     root: &Path,
     policy: Option<&CargoAllowResult<AllowConfig>>,
+    source_tree_files: Option<&BTreeSet<String>>,
 ) -> (Option<bool>, Option<String>) {
     match policy {
         None => (None, None),
-        Some(Ok(cfg)) => match validate_local_evidence_references(root, cfg) {
-            Ok(()) => (Some(true), None),
-            Err(err) => (Some(false), Some(err.to_string())),
+        Some(Ok(cfg)) => match first_broken_evidence_diagnostic(root, cfg, source_tree_files) {
+            Some((entry_id, diagnostic)) => (
+                Some(false),
+                Some(format!(
+                    "{} evidence `{}`: {}",
+                    entry_id, diagnostic.raw, diagnostic.message
+                )),
+            ),
+            None => (Some(true), None),
         },
         Some(Err(err)) => (Some(false), Some(err.to_string())),
     }
@@ -94,15 +106,49 @@ fn config_status(
 fn doctor_evidence_health(
     root: &Path,
     policy: Option<&CargoAllowResult<AllowConfig>>,
+    source_tree_files: Option<&BTreeSet<String>>,
 ) -> (Option<usize>, Option<usize>) {
     match policy {
         Some(Ok(cfg)) => {
-            let broken = broken_evidence_link_count(root, cfg);
-            let weak = weak_evidence_reference_count(root, cfg);
+            let diagnostics = evidence_diagnostics(root, cfg, source_tree_files);
+            let broken = diagnostics
+                .iter()
+                .filter(|diagnostic| diagnostic.status.is_broken_local_link())
+                .count();
+            let weak = diagnostics
+                .iter()
+                .filter(|diagnostic| diagnostic.status.is_weak_reference())
+                .count();
             (Some(broken), Some(weak))
         }
         _ => (None, None),
     }
+}
+
+fn first_broken_evidence_diagnostic(
+    root: &Path,
+    cfg: &AllowConfig,
+    source_tree_files: Option<&BTreeSet<String>>,
+) -> Option<(String, EvidenceReferenceDiagnostic)> {
+    cfg.allow.iter().find_map(|entry| {
+        evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
+            .into_iter()
+            .find(|diagnostic| diagnostic.status.is_broken_local_link())
+            .map(|diagnostic| (entry.id.clone(), diagnostic))
+    })
+}
+
+fn evidence_diagnostics(
+    root: &Path,
+    cfg: &AllowConfig,
+    source_tree_files: Option<&BTreeSet<String>>,
+) -> Vec<EvidenceReferenceDiagnostic> {
+    cfg.allow
+        .iter()
+        .flat_map(|entry| {
+            evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
+        })
+        .collect()
 }
 
 fn doctor_inventory_options(policy: Option<&CargoAllowResult<AllowConfig>>) -> InventoryOptions {

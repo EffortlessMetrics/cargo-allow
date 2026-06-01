@@ -5,6 +5,7 @@ use clap::Parser;
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 fn argv(items: Vec<&str>) -> Vec<String> {
     items.into_iter().map(String::from).collect()
@@ -149,7 +150,7 @@ status = "active"
     .unwrap_or_else(|err| std::panic::panic_any(format!("write invalid policy: {err}")));
 
     let policy = load_doctor_policy(Some(&policy));
-    let (valid, diagnostic) = config_status(&root, policy.as_ref());
+    let (valid, diagnostic) = config_status(&root, policy.as_ref(), None);
 
     assert_eq!(valid, Some(false));
     assert!(
@@ -272,6 +273,61 @@ ast_kind = "tracked_file"
     remove_doctor_fixture_dir(root);
 }
 
+#[test]
+fn doctor_reports_untracked_local_evidence_as_broken_by_default() {
+    let root = doctor_fixture_dir();
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    let policy = root.join("policy/allow.toml");
+    fs::write(&policy, policy_with_untracked_local_evidence())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "policy/allow.toml"]);
+    git(&root, &["commit", "-m", "base policy"]);
+    fs::write(root.join("policy/evidence.md"), "untracked evidence")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence: {err}")));
+    let output = root.join("doctor.json");
+
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy),
+        format: DoctorFormat::Json,
+        output: Some(output.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
+
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    let value = parse_json_artifact("doctor", &json, allow_report::DOCTOR_SCHEMA_ID, "doctor");
+    assert_eq!(
+        value.pointer("/config/valid").and_then(Value::as_bool),
+        Some(false),
+        "untracked local evidence should make doctor config invalid by default"
+    );
+    assert_eq!(
+        value
+            .pointer("/config/broken_evidence_links")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
+    let diagnostic = value
+        .pointer("/config/diagnostic")
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| std::panic::panic_any("doctor diagnostic should be a string"));
+    assert!(
+        diagnostic.contains("not in the default source-tree inventory"),
+        "doctor diagnostic should explain the source-tree inventory boundary: {diagnostic}"
+    );
+    remove_doctor_fixture_dir(root);
+}
+
 fn doctor_fixture_dir() -> std::path::PathBuf {
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -283,6 +339,44 @@ fn doctor_fixture_dir() -> std::path::PathBuf {
     fs::create_dir_all(&dir)
         .unwrap_or_else(|err| std::panic::panic_any(format!("create doctor fixture: {err}")));
     dir
+}
+
+fn git(root: &std::path::Path, args: &[&str]) {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+    if !output.status.success() {
+        std::panic::panic_any(format!(
+            "git {args:?} failed: stdout=`{}` stderr=`{}`",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+}
+
+fn policy_with_untracked_local_evidence() -> &'static str {
+    r#"policy = "cargo-allow"
+
+[workspace]
+ignored = ["policy/evidence.md"]
+
+[[allow]]
+id = "allow-policy"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/allow.toml"
+owner = "core"
+classification = "fixture"
+reason = "fixture policy file"
+evidence = ["doc:policy/evidence.md"]
+review_after = "2026-08-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+"#
 }
 
 fn remove_doctor_fixture_dir(path: std::path::PathBuf) {
