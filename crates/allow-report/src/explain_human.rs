@@ -26,6 +26,13 @@ pub fn render_explain_human(report: ExplainReport<'_>) -> String {
     if !entry.links.is_empty() {
         out.push_str(&format!("links: {}\n", entry.links.join(", ")));
     }
+    if !report.link_references.is_empty() {
+        out.push_str("\nlink diagnostics:\n");
+        for reference in report.link_references {
+            out.push_str(&format!("- {}\n", evidence_reference_summary(reference)));
+            out.push_str(&format!("  message: {}\n", reference.message));
+        }
+    }
     if let Some(limit) = entry.occurrence_limit {
         out.push_str(&format!("occurrence_limit: {limit}\n"));
     }

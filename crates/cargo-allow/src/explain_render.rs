@@ -56,6 +56,8 @@ fn render_explain_report<R>(
 ) -> R {
     let evidence_diagnostics =
         evidence_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files);
+    let link_diagnostics =
+        link_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files);
     let has_broken_evidence = evidence_diagnostics
         .iter()
         .any(|diagnostic| diagnostic.status.is_broken_local_link());
@@ -89,6 +91,29 @@ fn render_explain_report<R>(
             message: &diagnostic.message,
         })
         .collect::<Vec<_>>();
+    let link_normalized_targets = link_diagnostics
+        .iter()
+        .map(evidence_reference_target_text)
+        .collect::<Vec<_>>();
+    let link_messages = link_diagnostics
+        .iter()
+        .map(|diagnostic| link_reference_message(&diagnostic.message))
+        .collect::<Vec<_>>();
+    let link_references = link_diagnostics
+        .iter()
+        .zip(link_normalized_targets.iter())
+        .zip(link_messages.iter())
+        .map(
+            |((diagnostic, target), message)| allow_report::EvidenceReference {
+                raw: &diagnostic.raw,
+                prefix: diagnostic.prefix.as_deref(),
+                target: target.as_deref(),
+                status: diagnostic.status.as_str(),
+                category: diagnostic.category.as_str(),
+                message,
+            },
+        )
+        .collect::<Vec<_>>();
 
     render(allow_report::ExplainReport {
         inventory: context.inventory,
@@ -98,7 +123,22 @@ fn render_explain_report<R>(
         current_findings: findings,
         match_outcomes: outcomes,
         evidence_references: &evidence_references,
+        link_references: &link_references,
         suggested_actions: &suggested_actions,
         proof_commands: &proof_commands,
     })
+}
+
+fn link_reference_diagnostics_for_source_tree(
+    root: &Path,
+    entry: &AllowEntry,
+    evidence_source_tree_files: Option<&BTreeSet<String>>,
+) -> Vec<allow_policy::EvidenceReferenceDiagnostic> {
+    let mut link_entry = entry.clone();
+    link_entry.evidence = entry.links.clone();
+    evidence_reference_diagnostics_for_source_tree(root, &link_entry, evidence_source_tree_files)
+}
+
+fn link_reference_message(message: &str) -> String {
+    message.replace("evidence", "link")
 }

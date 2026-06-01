@@ -89,6 +89,13 @@
         "$ref": "#/$defs/evidence_reference"
       }
     },
+    "link_references": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidence_reference"
+      },
+      "description": "Optional diagnostics for policy links that use evidence-style typed references. Local-file links are checked against the source-tree inventory; traceability-only links are not executed or resolved."
+    },
     "current_findings": {
       "type": "array",
       "items": {
