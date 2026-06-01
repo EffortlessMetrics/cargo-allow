@@ -207,6 +207,7 @@ pub(crate) fn proof_commands(
             "cargo-allow worklist --allow-id {allow_id} --format json"
         ));
     }
+    append_closeout_commands(kind, &mut commands);
     let kind_arg = worklist_kind_arg(finding, entry);
     let has_unsafe_kind_check = kind_arg == Some("unsafe");
     let shortcut_arg = worklist_shortcut_arg(kind);
@@ -249,6 +250,13 @@ pub(crate) fn proof_commands(
         commands.push("cargo-allow check --kind unsafe --mode no-new".to_string());
     }
     commands
+}
+
+fn append_closeout_commands(kind: &str, commands: &mut Vec<String>) {
+    if kind == STALE_ALLOW {
+        commands.push("cargo-allow prune --stale --dry-run".to_string());
+        commands.push("cargo-allow prune --stale --format json".to_string());
+    }
 }
 
 fn list_shortcut_arg(kind: &str) -> Option<&'static str> {

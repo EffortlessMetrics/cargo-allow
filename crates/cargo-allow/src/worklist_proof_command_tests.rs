@@ -300,6 +300,26 @@ fn evidence_reference_work_items_include_list_shortcuts() {
 }
 
 #[test]
+fn stale_allow_proof_commands_include_prune_closeout() {
+    let entry = test_entry("allow-stale", FindingKind::NonRustFile);
+
+    let commands = proof_commands("stale_allow", None, Some(&entry));
+
+    assert!(
+        commands
+            .iter()
+            .any(|command| command == "cargo-allow prune --stale --dry-run"),
+        "stale work items should point humans at dry-run cleanup"
+    );
+    assert!(
+        commands
+            .iter()
+            .any(|command| command == "cargo-allow prune --stale --format json"),
+        "stale work items should produce an artifact-ready prune preview"
+    );
+}
+
+#[test]
 fn unsafe_missing_evidence_adds_unsafe_check_when_kind_is_unknown() {
     let mut entry = test_entry("allow-policy", FindingKind::PolicyException);
     entry.family = Some("unknown_policy_family".to_string());
