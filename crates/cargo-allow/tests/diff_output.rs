@@ -133,6 +133,101 @@ fn diff_json_reports_missing_local_evidence_added_policy_failure() {
 }
 
 #[test]
+fn diff_json_reports_untracked_local_evidence_added_policy_failure_by_default() {
+    let root = temp_root("diff-untracked-local-evidence-added");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(Some("doc:docs/untracked.md")),
+    );
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+    fs::write(root.join("docs/untracked.md"), "untracked evidence")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write untracked evidence: {err}")));
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_failure(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "worse",
+        "diff untracked local evidence addition net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/summary/broken_evidence_links",
+        1,
+        "default diff inventory should not treat untracked local evidence as present",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/policy_failures",
+        1,
+        "untracked local evidence addition should fail by default",
+    );
+    assert_policy_change(&value, "evidence_added", "allow-unwrap", "fail");
+    assert_file_contains(
+        &output,
+        "broken local evidence added",
+        "diff output should explain untracked local evidence addition posture",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn diff_json_include_untracked_accepts_untracked_local_evidence_added() {
+    let root = temp_root("diff-include-untracked-local-evidence-added");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(Some("doc:policy/untracked-evidence.md")),
+    );
+    fs::write(
+        root.join("policy/untracked-evidence.md"),
+        "untracked evidence",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write untracked evidence: {err}")));
+    let output = root.join("diff.json");
+
+    let result = cargo_allow_command()
+        .arg("diff")
+        .arg("--root")
+        .arg(&root)
+        .arg("--base")
+        .arg("HEAD")
+        .arg("--include-untracked")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+
+    assert_status("diff", &result, true);
+    assert_stdout_empty(
+        "diff",
+        &result,
+        "--output should not emit report JSON to stdout",
+    );
+    assert_stderr_empty(
+        "diff",
+        &result,
+        "--output should not emit human posture rows to stderr",
+    );
+    let value = assert_saved_json_artifact(&output, "diff", "cargo-allow.report.v1", "diff");
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "improved",
+        "include-untracked diff should accept existing untracked local evidence",
+    );
+    assert_policy_change(&value, "evidence_added", "allow-unwrap", "improvement");
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_with_explicit_head_validates_added_evidence_at_head_revision() {
     let root = temp_root("diff-head-missing-local-evidence-added");
     write_diff_fixture(
