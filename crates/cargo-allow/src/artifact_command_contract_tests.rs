@@ -123,6 +123,13 @@ fn command_json_artifact_renderers_emit_parseable_v1_contracts() {
         Some(1),
         "migrate allow_entries"
     );
+    assert_eq!(
+        migrate
+            .pointer("/summary/lint_exception_entries")
+            .and_then(Value::as_u64),
+        Some(0),
+        "migrate lint_exception_entries"
+    );
 
     let doctor_json = doctor::sample_doctor_json_for_contract_test();
     let doctor = parse_json_artifact(

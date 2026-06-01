@@ -10,8 +10,10 @@ fn render_migrate_summary_json_records_policy_migration_context() {
     baseline.classification = "baseline_debt".to_string();
     let mut unsafe_entry = test_entry("allow-unsafe", FindingKind::Unsafe);
     unsafe_entry.evidence = vec!["unsafe-review:docs/evidence/unsafe.json".to_string()];
+    let lint_entry = test_entry("allow-lint", FindingKind::LintException);
     cfg.allow.push(baseline);
     cfg.allow.push(unsafe_entry);
+    cfg.allow.push(lint_entry);
     let context = MigrateContext {
         inventory_source: "git_tracked".to_string(),
         source_tree_root: Some("H:/Code/Rust/cargo-allow".to_string()),
@@ -54,7 +56,7 @@ fn render_migrate_summary_json_records_policy_migration_context() {
         value
             .pointer("/summary/allow_entries")
             .and_then(Value::as_u64),
-        Some(2),
+        Some(3),
         "migrate allow entries"
     );
     assert_eq!(
@@ -70,6 +72,13 @@ fn render_migrate_summary_json_records_policy_migration_context() {
             .and_then(Value::as_u64),
         Some(1),
         "migrate unsafe entries"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/lint_exception_entries")
+            .and_then(Value::as_u64),
+        Some(1),
+        "migrate lint exception entries"
     );
     assert_eq!(
         value
