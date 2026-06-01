@@ -65,6 +65,49 @@ fn rejects_non_whole_segment_double_star_glob_syntax() {
 }
 
 #[test]
+fn rejects_repository_wide_entry_glob_scope() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "wide-glob"
+                kind = "non_rust_file"
+                glob = "**"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = "**"
+            "#,
+    );
+
+    assert!(err.contains("wide-glob glob covers the entire source tree"));
+    assert!(err.contains("narrower path or glob scope"));
+}
+
+#[test]
+fn rejects_repository_wide_selector_glob_scope() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "wide-selector-glob"
+                kind = "non_rust_file"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = "**/*"
+            "#,
+    );
+
+    assert!(err.contains("wide-selector-glob selector glob covers the entire source tree"));
+    assert!(err.contains("narrower path or glob scope"));
+}
+
+#[test]
 fn rejects_wildcard_tokens_in_exact_path_scope() {
     let err = parse_err(
         r#"
