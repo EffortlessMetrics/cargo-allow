@@ -101,10 +101,11 @@ impl PanicMacroKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PanicMacroInvocation {
     pub(crate) kind: PanicMacroKind,
     pub(crate) column: u32,
+    pub(crate) macro_path: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
