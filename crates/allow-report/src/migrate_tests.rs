@@ -84,6 +84,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(text.contains("allow_entries: 12"));
     assert!(text.contains("baseline_debt: 5"));
     assert!(text.contains("unsafe_entries: 2"));
+    assert!(text.contains("entries_with_evidence: 3"));
     assert!(
         text.contains("inventory: source_tree/policy_migration via git_tracked; files scanned: 76")
     );
