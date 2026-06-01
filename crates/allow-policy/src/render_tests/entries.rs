@@ -47,7 +47,7 @@ fn renders_and_parses_occurrence_limit() {
 #[test]
 fn renders_and_parses_escaped_basic_strings() {
     let mut cfg = AllowConfig::empty();
-    let reason = "Quoted \"reason\"\nwith backslash \\ and tab\t";
+    let reason = "Quoted \"reason\"\nwith backslash \\ and tab\tinside";
     let evidence = "test:line\nbreak";
     cfg.allow.push(AllowEntry {
         id: "allow-escaped".to_string(),
@@ -77,7 +77,8 @@ fn renders_and_parses_escaped_basic_strings() {
 
     let rendered = render_policy(&cfg);
     assert!(
-        rendered.contains("reason = \"Quoted \\\"reason\\\"\\nwith backslash \\\\ and tab\\t\"")
+        rendered
+            .contains("reason = \"Quoted \\\"reason\\\"\\nwith backslash \\\\ and tab\\tinside\"")
     );
     assert!(rendered.contains("evidence = [\"test:line\\nbreak\"]"));
     assert!(rendered.contains("links = [\"doc:docs/quoted\\\"path.md\"]"));

@@ -70,6 +70,28 @@ fn rejects_classification_with_surrounding_whitespace() {
 }
 
 #[test]
+fn rejects_reason_with_surrounding_whitespace() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "padded-reason"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = " fixture "
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains("padded-reason reason must not have leading or trailing whitespace"));
+}
+
+#[test]
 fn allows_unowned_owner_for_baseline_debt() {
     let cfg = parse_policy(
         r#"

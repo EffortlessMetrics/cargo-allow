@@ -35,6 +35,9 @@ pub(crate) fn validate_allow_entry_requirements(
             &entry.classification,
         )?;
     }
+    if !entry.reason.is_empty() {
+        validate_no_surrounding_whitespace(&format!("{} reason", entry.id), &entry.reason)?;
+    }
     if requirements.owner_required && entry.owner.trim().is_empty() {
         return Err(CargoAllowError::new(format!("{} missing owner", entry.id)));
     }
