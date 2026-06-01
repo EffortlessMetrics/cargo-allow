@@ -382,6 +382,66 @@ fn worklist_items_report_weak_evidence_references() {
 }
 
 #[test]
+fn worklist_items_route_migrated_unsafe_todo_evidence() {
+    let root = migrate_fixture_dir();
+    let policy = root.join("unsafe-allowlist.toml");
+    fs::write(
+        &policy,
+        r#"schema_version = 1
+policy = "unsafe-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+path = "src/lib.rs"
+family = "unsafe_fn"
+
+[allow.selector]
+kind = "unsafe-fn"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write unsafe policy: {err}")));
+    let cfg = allow_policy_legacy::load_legacy_or_canonical(&policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("legacy unsafe policy should migrate: {err}"))
+    });
+
+    let items = work_items_from_evidence_diagnostics(&root, &cfg, 1);
+
+    let item = items
+        .iter()
+        .find(|item| item.kind == "weak_evidence_reference")
+        .unwrap_or_else(|| {
+            std::panic::panic_any("migrated unsafe TODO evidence should route as weak evidence")
+        });
+    assert_eq!(item.exception_kind.as_deref(), Some("unsafe"));
+    assert_eq!(item.family.as_deref(), Some("unsafe_fn"));
+    assert_eq!(item.risk, "high");
+    assert_eq!(item.allow_id.as_deref(), Some("legacy-unsafe-0000"));
+    let reference = item.evidence_reference.as_ref().unwrap_or_else(|| {
+        std::panic::panic_any("migrated weak evidence item should carry reference details")
+    });
+    assert!(reference.raw.contains("TODO: add unsafe-review"));
+    assert_eq!(reference.category, "unknown_prefix");
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("unsafe-review"))
+    );
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("boundary evidence"))
+    );
+    assert!(
+        item.proof_commands
+            .iter()
+            .any(|command| command == "cargo-allow check --kind unsafe --mode no-new")
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn worklist_items_specialize_high_risk_policy_weak_evidence_actions() {
     let root = migrate_fixture_dir();
     let mut cfg = AllowConfig::empty();
