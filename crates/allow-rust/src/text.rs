@@ -9,13 +9,24 @@ pub(crate) fn detect_attr<'a>(line: &'a str, name: &str) -> Option<&'a str> {
         .and_then(|rest| rest.trim_start().strip_prefix('('))
 }
 
-pub(crate) fn extract_first_lint(text: &str) -> Option<String> {
-    let until = text.split([',', ')']).next()?.trim();
-    if until.is_empty() {
-        None
-    } else {
-        Some(until.to_string())
-    }
+pub(crate) fn extract_lints(text: &str) -> Vec<String> {
+    let until_close = text.split(')').next().unwrap_or(text);
+    until_close
+        .split(',')
+        .filter_map(|part| {
+            let lint = part.trim();
+            if lint.is_empty()
+                || lint
+                    .split('=')
+                    .next()
+                    .is_some_and(|name| name.trim() == "reason")
+            {
+                None
+            } else {
+                Some(lint.to_string())
+            }
+        })
+        .collect()
 }
 
 pub(crate) fn lint_policy_reference(text: &str) -> Option<String> {
