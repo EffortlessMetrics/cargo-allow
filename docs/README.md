@@ -24,7 +24,7 @@ ledger and the planned growth around it.
   publication evidence.
 - [0.1.2 release record](release/0.1.2.md): completed patch release for the
   post-0.1.1 receipt inventory contract.
-- [0.1.3 release prep](release/0.1.3.md): candidate patch-release scope for
+- [0.1.3 release candidate](release/0.1.3.md): candidate patch-release scope for
   post-0.1.2 evidence, diff posture, and source-snapshot hardening.
 - [Agent worklist prompt](agents/cargo-allow-worklist.md): bounded agent use of
   `cargo-allow worklist`.
