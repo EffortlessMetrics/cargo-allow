@@ -1,12 +1,13 @@
 use super::worklist_item_kind::{BROKEN_EVIDENCE_LINK, WEAK_EVIDENCE_REFERENCE};
-use super::worklist_priority::{DIFFICULTY_SMALL, RISK_HIGH, RISK_MEDIUM};
+use super::worklist_priority::DIFFICULTY_SMALL;
+use super::worklist_scoring::work_item_risk;
 use super::{WorkItem, WorkItemEvidenceReference, proof_commands};
 use crate::evidence_inventory::{
     DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE, ReferenceSource,
     policy_reference_diagnostics_for_source_tree,
 };
 use crate::evidence_render::evidence_reference_target_text;
-use allow_core::{AllowConfig, AllowEntry, FindingKind, MatchStatus};
+use allow_core::{AllowConfig, AllowEntry, MatchStatus};
 use allow_diff::selector_precision_score;
 use allow_policy::EvidenceReferenceDiagnostic;
 use std::collections::BTreeSet;
@@ -91,11 +92,7 @@ fn work_item_from_evidence_diagnostic(
         expires: entry.lifecycle.expires.clone(),
         evidence_count: Some(entry.evidence.len()),
         selector_precision: Some(selector_precision_score(entry)),
-        risk: if entry.kind == FindingKind::Unsafe {
-            RISK_HIGH
-        } else {
-            RISK_MEDIUM
-        },
+        risk: work_item_risk(kind, MatchStatus::EvidenceMissing, None, Some(entry)),
         difficulty: DIFFICULTY_SMALL,
         status: MatchStatus::EvidenceMissing,
         allow_id: Some(entry.id.clone()),

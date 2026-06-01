@@ -492,7 +492,9 @@ links, or references with unknown prefixes become `weak_evidence_reference`
 items. This mode loads the policy even when local evidence or linked rationale
 is missing so humans or agents can get a repair target; normal
 `cargo-allow check` still fails closed on broken local evidence references and
-broken local-file traceability links.
+broken local-file traceability links. Evidence repair risk follows the governed
+exception kind and family, so missing evidence for unsafe or high-risk policy
+exceptions is routed ahead of lower-risk repair work.
 
 The worklist may also include advisory `broad_scope` items for matched allow
 entries that use wildcard source-tree scopes. These do not mean the current
