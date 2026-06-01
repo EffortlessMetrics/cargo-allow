@@ -1,6 +1,8 @@
 use super::WorkItem;
 use super::worklist_actions::{proof_commands, suggested_actions};
-use super::worklist_item_kind::{BASELINE_DEBT, BROAD_SCOPE, MISSING_EVIDENCE};
+use super::worklist_item_kind::{
+    BASELINE_DEBT, BROAD_SCOPE, MISSING_EVIDENCE, UNSAFE_MISSING_EVIDENCE,
+};
 use super::worklist_priority::DIFFICULTY_SMALL;
 use super::worklist_scoring::{exception_family, work_item_difficulty, work_item_risk};
 use allow_core::{
@@ -59,9 +61,9 @@ pub(super) fn work_items_from_policy_advisories(
         }
         if include_missing_evidence && entry.evidence.is_empty() {
             let item_index = start_index + items.len();
-            let kind = MISSING_EVIDENCE.to_string();
+            let kind = missing_evidence_kind(entry).to_string();
             items.push(WorkItem {
-                id: format!("work-missing-evidence-{item_index:04}"),
+                id: format!("work-{}-{item_index:04}", kind.replace('_', "-")),
                 exception_kind: Some(entry.kind.as_str().to_string()),
                 family: exception_family(finding, Some(entry)).map(ToOwned::to_owned),
                 owner: Some(entry.owner.clone()),
@@ -129,6 +131,14 @@ fn matched_outcome_for_entry<'a>(
         outcome.status == MatchStatus::Matched
             && outcome.allow_id.as_deref() == Some(entry.id.as_str())
     })
+}
+
+fn missing_evidence_kind(entry: &AllowEntry) -> &'static str {
+    if entry.kind == allow_core::FindingKind::Unsafe {
+        UNSAFE_MISSING_EVIDENCE
+    } else {
+        MISSING_EVIDENCE
+    }
 }
 
 fn source_package_name(finding: Option<&Finding>) -> Option<String> {
