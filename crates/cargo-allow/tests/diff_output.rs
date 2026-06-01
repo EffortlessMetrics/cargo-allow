@@ -176,6 +176,39 @@ fn diff_json_reports_untracked_local_evidence_added_policy_failure_by_default() 
 }
 
 #[test]
+fn diff_json_reports_missing_local_link_added_policy_failure() {
+    let root = temp_root("diff-missing-local-link-added");
+    write_diff_fixture(
+        &root,
+        policy_with_links(None),
+        policy_with_links(Some("doc:docs/missing-link.md")),
+    );
+    let output = root.join("diff.json");
+
+    let value = assert_saved_json_diff_failure(&root, &output);
+    assert_json_str(
+        &value,
+        "/diff/net_posture",
+        "worse",
+        "diff missing local link addition net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/policy_failures",
+        1,
+        "diff missing local link addition policy failure count",
+    );
+    assert_policy_change(&value, "link_added", "allow-unwrap", "fail");
+    assert_file_contains(
+        &output,
+        "local link added outside compared source-tree inventory",
+        "diff output should explain missing local link addition posture",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_include_untracked_accepts_untracked_local_evidence_added() {
     let root = temp_root("diff-include-untracked-local-evidence-added");
     write_diff_fixture(
@@ -871,6 +904,36 @@ fn diff_json_reports_valid_evidence_added_as_improvement() {
     );
 
     remove_temp_root(root);
+}
+
+fn policy_with_links(link: Option<&str>) -> String {
+    let links = link
+        .map(|link| format!("links = [\"{link}\"]\n"))
+        .unwrap_or_default();
+    format!(
+        r#"policy = "cargo-allow"
+
+[workspace]
+ignored = ["policy/**"]
+
+[[allow]]
+id = "allow-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "fixture"
+evidence = ["test:parser_invariant"]
+{links}created = "2026-05-29"
+review_after = "2026-08-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    )
 }
 
 #[test]
