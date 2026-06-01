@@ -6,7 +6,8 @@ mod audit_args;
 pub(crate) use audit_args::ReportArgs;
 
 use crate::{
-    EvidenceReportSummary, EvidenceValidationMode, ReportRenderArgs, load_compat_world,
+    EvidenceReportSummary, EvidenceValidationMode, ReportRenderArgs,
+    evidence_inventory::current_evidence_source_tree_files, load_compat_world,
     load_world_with_evidence_mode, policy_baseline_debt_entries, print_report, report_config,
 };
 
@@ -30,7 +31,14 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
     };
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::Audit);
-    let evidence = EvidenceReportSummary::from_policy(&root, &report_cfg, &outcomes);
+    let evidence_source_tree_files =
+        current_evidence_source_tree_files(&root, args.include_untracked);
+    let evidence = EvidenceReportSummary::from_policy_with_source_tree_files(
+        &root,
+        &report_cfg,
+        &outcomes,
+        evidence_source_tree_files.as_ref(),
+    );
     print_report(ReportRenderArgs {
         command: "audit",
         format: args.format,

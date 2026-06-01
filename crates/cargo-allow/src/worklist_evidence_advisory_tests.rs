@@ -1,5 +1,6 @@
 use super::test_support::test_entry;
 use super::*;
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -45,6 +46,42 @@ fn worklist_items_report_broken_evidence_links() {
     assert!(json.contains("\"cargo-allow worklist --allow-id allow-unsafe --format json\""));
     assert!(json.contains("\"cargo-allow check --kind unsafe --mode no-new\""));
     assert!(json.contains("\"cargo-allow worklist --kind unsafe --format json\""));
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn worklist_items_report_local_evidence_outside_source_tree_inventory() {
+    let root = migrate_fixture_dir();
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+    fs::write(root.join("docs/untracked.md"), "evidence")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence: {err}")));
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-unsafe", FindingKind::Unsafe);
+    entry.evidence = vec!["doc:docs/untracked.md".to_string()];
+    cfg.allow.push(entry);
+    let source_tree_files = BTreeSet::new();
+
+    let items = work_items_from_evidence_diagnostics_with_source_tree_files(
+        &root,
+        &cfg,
+        1,
+        Some(&source_tree_files),
+    );
+
+    let item = items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+    assert_eq!(item.kind, "broken_evidence_link");
+    assert_eq!(item.path.as_deref(), Some("docs/untracked.md"));
+    let reference = item
+        .evidence_reference
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("broken evidence item should carry reference"));
+    assert_eq!(reference.status, "local_file_missing");
+    assert_eq!(reference.category, "missing");
+    assert!(reference.message.contains("default source-tree inventory"));
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }

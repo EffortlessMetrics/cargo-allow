@@ -1,24 +1,38 @@
 use super::worklist_item_kind::{BROKEN_EVIDENCE_LINK, WEAK_EVIDENCE_REFERENCE};
 use super::worklist_priority::{DIFFICULTY_SMALL, RISK_HIGH, RISK_MEDIUM};
 use super::{WorkItem, WorkItemEvidenceReference, proof_commands};
+use crate::evidence_inventory::evidence_reference_diagnostics_for_source_tree;
 use crate::evidence_render::evidence_reference_target_text;
 use allow_core::{AllowConfig, AllowEntry, FindingKind, MatchStatus};
 use allow_diff::selector_precision_score;
-use allow_policy::{EvidenceReferenceDiagnostic, evidence_reference_diagnostics};
+use allow_policy::EvidenceReferenceDiagnostic;
+use std::collections::BTreeSet;
 use std::path::Path;
 
+#[cfg(test)]
 pub(super) fn work_items_from_evidence_diagnostics(
     root: &Path,
     cfg: &AllowConfig,
     start_index: usize,
 ) -> Vec<WorkItem> {
+    work_items_from_evidence_diagnostics_with_source_tree_files(root, cfg, start_index, None)
+}
+
+pub(super) fn work_items_from_evidence_diagnostics_with_source_tree_files(
+    root: &Path,
+    cfg: &AllowConfig,
+    start_index: usize,
+    evidence_source_tree_files: Option<&BTreeSet<String>>,
+) -> Vec<WorkItem> {
     let mut items = Vec::new();
     for entry in &cfg.allow {
-        for diagnostic in evidence_reference_diagnostics(root, entry)
-            .into_iter()
-            .filter(|diagnostic| {
-                diagnostic.status.is_broken_local_link() || diagnostic.status.is_weak_reference()
-            })
+        for diagnostic in
+            evidence_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files)
+                .into_iter()
+                .filter(|diagnostic| {
+                    diagnostic.status.is_broken_local_link()
+                        || diagnostic.status.is_weak_reference()
+                })
         {
             let item_index = start_index + items.len();
             items.push(work_item_from_evidence_diagnostic(

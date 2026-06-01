@@ -5,7 +5,8 @@ use allow_match::{CheckMode, evaluate, score_match};
 use std::path::Path;
 
 use crate::{
-    EvidenceValidationMode, SourceTreeReportContext, emit_text, load_world_with_evidence_mode,
+    EvidenceValidationMode, SourceTreeReportContext, emit_text,
+    evidence_inventory::current_evidence_source_tree_files, load_world_with_evidence_mode,
 };
 
 #[path = "explain_args.rs"]
@@ -39,24 +40,57 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
     let context = ExplainContext {
         inventory: source_context.inventory(),
     };
+    let evidence_source_tree_files =
+        current_evidence_source_tree_files(&root, args.include_untracked);
     let text = match args.format {
-        ExplainFormat::Human => explain_entry_text(&root, &cfg, entry, &findings),
-        ExplainFormat::Json => explain_entry_json(&root, &cfg, entry, &findings, context),
+        ExplainFormat::Human => explain_entry_text_with_source_tree_files(
+            &root,
+            &cfg,
+            entry,
+            &findings,
+            evidence_source_tree_files.as_ref(),
+        ),
+        ExplainFormat::Json => explain_entry_json_with_source_tree_files(
+            &root,
+            &cfg,
+            entry,
+            &findings,
+            evidence_source_tree_files.as_ref(),
+            context,
+        ),
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
 }
 
+#[cfg(test)]
 fn explain_entry_text(
     root: &Path,
     cfg: &AllowConfig,
     entry: &AllowEntry,
     findings: &[Finding],
 ) -> String {
-    let (matching_findings, outcomes) = explain_entry_state(cfg, entry, findings);
-    render_explain_entry(root, entry, &matching_findings, &outcomes)
+    explain_entry_text_with_source_tree_files(root, cfg, entry, findings, None)
 }
 
+fn explain_entry_text_with_source_tree_files(
+    root: &Path,
+    cfg: &AllowConfig,
+    entry: &AllowEntry,
+    findings: &[Finding],
+    evidence_source_tree_files: Option<&std::collections::BTreeSet<String>>,
+) -> String {
+    let (matching_findings, outcomes) = explain_entry_state(cfg, entry, findings);
+    render_explain_entry(
+        root,
+        entry,
+        &matching_findings,
+        &outcomes,
+        evidence_source_tree_files,
+    )
+}
+
+#[cfg(test)]
 fn explain_entry_json(
     root: &Path,
     cfg: &AllowConfig,
@@ -64,8 +98,26 @@ fn explain_entry_json(
     findings: &[Finding],
     context: ExplainContext<'_>,
 ) -> String {
+    explain_entry_json_with_source_tree_files(root, cfg, entry, findings, None, context)
+}
+
+fn explain_entry_json_with_source_tree_files(
+    root: &Path,
+    cfg: &AllowConfig,
+    entry: &AllowEntry,
+    findings: &[Finding],
+    evidence_source_tree_files: Option<&std::collections::BTreeSet<String>>,
+    context: ExplainContext<'_>,
+) -> String {
     let (matching_findings, outcomes) = explain_entry_state(cfg, entry, findings);
-    render_explain_entry_json(root, entry, &matching_findings, &outcomes, context)
+    render_explain_entry_json(
+        root,
+        entry,
+        &matching_findings,
+        &outcomes,
+        evidence_source_tree_files,
+        context,
+    )
 }
 
 fn explain_entry_state(
@@ -118,11 +170,12 @@ pub(crate) fn sample_explain_json_for_contract_test() -> String {
         identity: StructuralIdentity::new("file", "tracked_file"),
         message: "test finding".to_string(),
     };
-    explain_entry_json(
+    explain_entry_json_with_source_tree_files(
         Path::new("."),
         &cfg,
         &entry,
         &[finding],
+        None,
         ExplainContext {
             inventory: allow_report::InventoryContext::source_syntax(
                 "git_tracked",

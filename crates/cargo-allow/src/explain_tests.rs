@@ -3,6 +3,7 @@ use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand};
 use allow_core::FindingKind;
 use clap::Parser;
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -117,6 +118,33 @@ fn explain_entry_text_reports_evidence_reference_status() {
     assert!(text.contains("[missing] missing: spec:docs/missing.md"));
     assert!(text.contains("test:file_policy_fixture"));
     assert!(text.contains("[info] not-local: test:file_policy_fixture"));
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn explain_entry_text_reports_local_evidence_outside_source_tree_inventory_as_missing() {
+    let root = migrate_fixture_dir();
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+    fs::write(root.join("docs/untracked.md"), "review notes")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence: {err}")));
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-file", FindingKind::NonRustFile);
+    entry.evidence = vec!["doc:docs/untracked.md".to_string()];
+    cfg.allow.push(entry.clone());
+    let source_tree_files = BTreeSet::new();
+
+    let text = explain_entry_text_with_source_tree_files(
+        &root,
+        &cfg,
+        &entry,
+        &[],
+        Some(&source_tree_files),
+    );
+
+    assert!(text.contains("[missing] missing: doc:docs/untracked.md"));
+    assert!(text.contains("not in the default source-tree inventory"));
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }

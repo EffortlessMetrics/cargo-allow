@@ -2,7 +2,8 @@ use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
 
 use crate::{
-    EvidenceValidationMode, SourceTreeReportContext, emit_text, load_world_with_evidence_mode,
+    EvidenceValidationMode, SourceTreeReportContext, emit_text,
+    evidence_inventory::current_evidence_source_tree_files, load_world_with_evidence_mode,
 };
 
 #[path = "list_args.rs"]
@@ -20,7 +21,9 @@ use list_args::{ListFormat, list_filters};
 #[cfg(test)]
 use list_render::render_list_rows;
 use list_render::{render_list_rows_json, render_list_rows_with_context};
+#[cfg(test)]
 use list_rows::list_rows;
+use list_rows::list_rows_with_source_tree_files;
 use list_types::{ListContext, ListFilters, ListRow};
 
 #[cfg(test)]
@@ -40,7 +43,15 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         EvidenceValidationMode::ReportOnly,
     )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
-    let rows = list_rows(&root, &cfg, &findings, &outcomes);
+    let evidence_source_tree_files =
+        current_evidence_source_tree_files(&root, args.include_untracked);
+    let rows = list_rows_with_source_tree_files(
+        &root,
+        &cfg,
+        &findings,
+        &outcomes,
+        evidence_source_tree_files.as_ref(),
+    );
     let filters = list_filters(args)?;
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = ListContext {

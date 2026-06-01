@@ -8,8 +8,9 @@ pub(crate) use check_args::CheckArgs;
 
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, ReportRenderArgs, SourceTreeReportContext,
-    load_compat_world, load_world_with_evidence_mode, policy_baseline_debt_entries, print_report,
-    report_config, write_file,
+    evidence_inventory::current_evidence_source_tree_files, load_compat_world,
+    load_world_with_evidence_mode, policy_baseline_debt_entries, print_report, report_config,
+    write_file,
 };
 
 pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
@@ -37,7 +38,14 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
             .unwrap_or(report_cfg.workspace.default_mode.as_str()),
     );
     let outcomes = evaluate(&report_cfg, &findings, mode);
-    let evidence = EvidenceReportSummary::from_policy(&root, &report_cfg, &outcomes);
+    let evidence_source_tree_files =
+        current_evidence_source_tree_files(&root, args.include_untracked);
+    let evidence = EvidenceReportSummary::from_policy_with_source_tree_files(
+        &root,
+        &report_cfg,
+        &outcomes,
+        evidence_source_tree_files.as_ref(),
+    );
     let failed =
         outcomes.iter().any(|o| mode.fails(o.status)) || evidence.has_broken_evidence_links();
     let baseline_debt_entries = policy_baseline_debt_entries(&report_cfg);
