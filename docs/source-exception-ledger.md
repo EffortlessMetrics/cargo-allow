@@ -218,7 +218,7 @@ differently by discovery commands and gating commands:
 | `audit`, `diff`, `explain`, `list`, `worklist`, and `propose` | Emit source-tree artifacts and surface the broken-link count or diagnostics so repair work can be routed. |
 | `prune --stale` dry-run | Emits a stale-cleanup preview even when the stale entry itself has broken evidence. |
 | `check` | Fails closed on broken local evidence links and broken local-file traceability links. |
-| `doctor` | Reports invalid policy state for broken local evidence links. |
+| `doctor` | Reports invalid policy state for broken local evidence links and broken local-file traceability links. |
 | `add` | Validates local evidence references before writing a reviewed policy entry. |
 | `prune --stale --write` | Revalidates the remaining policy before writing; stale broken-evidence entries can be removed, but broken references that remain still block the write. |
 
@@ -416,11 +416,13 @@ It reports source-tree root discovery, whether a policy config was found,
 the loaded policy schema version, policy name, top-level owner, and policy
 status when available, whether that policy parses and passes local validation,
 any validation diagnostic, and the source-tree inventory source and file count.
-Local policy validation includes locally referenced evidence file existence, but
-it still does not execute external evidence tools or repository code.
+Local policy validation includes locally referenced evidence and traceability
+file existence, but it still does not execute external evidence tools or
+repository code.
 When a policy model can be loaded, doctor JSON also reports non-zero broken
-local evidence-link and weak evidence-reference counts under `config` so setup
-diagnostics can route evidence repair before wider scans.
+local evidence-link and weak evidence-reference counts under `config`,
+including typed local-file traceability links, so setup diagnostics can route
+evidence repair before wider scans.
 `--format json` emits the same setup diagnostics as `cargo-allow.doctor.v1` so
 CI or agent runners can verify which source tree, policy contract, policy owner,
 policy state, and inventory mode a command would use before running wider policy
