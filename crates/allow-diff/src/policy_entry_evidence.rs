@@ -44,14 +44,16 @@ pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
         ));
     }
     if added_values(&base.links, &head.links) {
+        let added = added_items(&base.links, &head.links);
+        let severity = added_link_severity(&added);
         changes.push(change(
             head,
             EvidenceChangeField::Links,
             Vec::new(),
-            added_items(&base.links, &head.links),
+            added,
             PolicyChangeKind::LinkAdded,
-            PolicyChangeSeverity::Improvement,
-            "traceability link added",
+            severity,
+            added_link_message(severity),
         ));
     }
     changes
@@ -93,11 +95,27 @@ fn added_evidence_severity(added: &[String]) -> PolicyChangeSeverity {
     }
 }
 
+fn added_link_severity(added: &[String]) -> PolicyChangeSeverity {
+    if added.iter().any(|item| reference_is_weak(item)) {
+        PolicyChangeSeverity::Review
+    } else {
+        PolicyChangeSeverity::Improvement
+    }
+}
+
 fn added_evidence_message(severity: PolicyChangeSeverity) -> &'static str {
     match severity {
         PolicyChangeSeverity::Review => "weak evidence added",
         PolicyChangeSeverity::Improvement => "evidence added",
         PolicyChangeSeverity::Fail => "invalid local evidence added",
+    }
+}
+
+fn added_link_message(severity: PolicyChangeSeverity) -> &'static str {
+    match severity {
+        PolicyChangeSeverity::Review => "weak traceability link added",
+        PolicyChangeSeverity::Improvement => "traceability link added",
+        PolicyChangeSeverity::Fail => "invalid traceability link added",
     }
 }
 
@@ -117,6 +135,10 @@ fn evidence_reference_is_invalid_local(reference: &str) -> bool {
 }
 
 fn evidence_reference_is_weak(reference: &str) -> bool {
+    reference_is_weak(reference)
+}
+
+fn reference_is_weak(reference: &str) -> bool {
     let Some((prefix, target)) = reference.split_once(':') else {
         return true;
     };
