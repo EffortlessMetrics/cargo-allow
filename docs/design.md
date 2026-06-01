@@ -35,8 +35,9 @@ The governed surfaces are:
 - unsafe syntax and unsafe declarations.
 - panic-family calls and macros, including unwrap, expect, panic, todo,
   unimplemented, unreachable, indexing, and slicing.
-- lint suppressions such as `#[allow]`, `#![allow]`, `#[expect]`, and
-  `#![expect]`.
+- lint suppressions such as `#[allow]`, `#![allow]`, `#[expect]`,
+  `#![expect]`, and source-visible `cfg_attr(..., allow(...))` /
+  `cfg_attr(..., expect(...))` conditionals.
 - non-Rust tracked files in source trees.
 - generated-code and ignored-surface carveouts.
 - legacy policy exceptions from bespoke xtasks.

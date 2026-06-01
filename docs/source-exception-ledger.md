@@ -404,6 +404,20 @@ analysis, build output, control-flow analysis, or data-flow analysis.
 limitations, evidence/link diagnostics, current findings, match outcomes, and the
 same suggested actions/proof commands shown in the human view.
 
+Lint suppression scanning includes direct `#[allow(...)]`, `#![allow(...)]`,
+`#[expect(...)]`, and `#![expect(...)]` attributes, plus source-visible
+`cfg_attr(..., allow(...))` and `cfg_attr(..., expect(...))` conditionals.
+Conditional attributes are treated as repository text: cargo-allow records that
+the suppression surface exists, but it does not evaluate cfg predicates,
+compile the crate, or ask Clippy which condition is active.
+
+Unsafe scanning includes direct unsafe source constructs such as unsafe blocks,
+unsafe functions, unsafe impls, unsafe traits, unsafe extern blocks, direct
+`#[unsafe(...)]` / `#![unsafe(...)]` attributes, and source-visible
+`cfg_attr(..., unsafe(...))` conditionals. Conditional unsafe attributes are
+also treated as repository text; cargo-allow does not evaluate whether the cfg
+condition is active.
+
 `cargo-allow list` shows allow entries with current status, match count, kind,
 family, owner, classification, scope, scanner-provided source package context,
 evidence-reference count, broken local evidence-reference count, weak
