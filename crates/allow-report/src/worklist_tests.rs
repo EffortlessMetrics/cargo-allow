@@ -243,3 +243,57 @@ fn worklist_json_renderer_includes_optional_evidence_reference() {
     );
     assert!(text.contains("  selector_precision: 17"));
 }
+
+#[test]
+fn worklist_human_renderer_shows_ledger_inspection_proof_commands() {
+    let suggested_actions = vec!["review broad scope".to_string()];
+    let proof_commands = vec![
+        "cargo-allow explain allow-broad".to_string(),
+        "cargo-allow list --allow-id allow-broad --format json".to_string(),
+        "cargo-allow worklist --allow-id allow-broad --format json".to_string(),
+        "cargo-allow worklist --broad-scope --format json".to_string(),
+        "cargo-allow check --kind non-rust --mode no-new".to_string(),
+        "cargo-allow worklist --item-kind broad_scope --format json".to_string(),
+        "cargo-allow list --broad-scope --format json".to_string(),
+        "cargo-allow worklist --kind non-rust --format json".to_string(),
+        "cargo-allow worklist --format json".to_string(),
+    ];
+    let items = vec![WorklistItem {
+        id: "work-broad-scope-0001",
+        kind: "broad_scope",
+        exception_kind: Some("non_rust_file"),
+        family: Some("documentation"),
+        owner: Some("docs"),
+        classification: Some("reviewed_exception"),
+        reason: Some("fixture"),
+        created: None,
+        review_after: None,
+        expires: None,
+        evidence_count: Some(1),
+        selector_precision: Some(12),
+        risk: "medium",
+        difficulty: "small",
+        status: "matched",
+        allow_id: Some("allow-broad"),
+        finding_index: None,
+        path: Some("docs/**"),
+        evidence_reference: None,
+        source_package: None,
+        message: "broad scope",
+        suggested_actions: &suggested_actions,
+        proof_commands: &proof_commands,
+    }];
+
+    let text = render_worklist_human(
+        &items,
+        WorklistFilters::default(),
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(47)),
+    );
+
+    assert!(text.contains("  proof: cargo-allow list --broad-scope --format json"));
+    assert!(text.contains("  proof: cargo-allow worklist --kind non-rust --format json"));
+    assert!(
+        !text.contains("  proof: cargo-allow worklist --format json"),
+        "human output should still avoid dumping every long-tail proof command"
+    );
+}

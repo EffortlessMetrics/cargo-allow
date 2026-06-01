@@ -112,7 +112,7 @@ pub fn render_worklist_human(
         for action in item.suggested_actions.iter().take(2) {
             out.push_str(&format!("  action: {action}\n"));
         }
-        for command in item.proof_commands.iter().take(6) {
+        for command in item.proof_commands.iter().take(8) {
             out.push_str(&format!("  proof: {command}\n"));
         }
     }
