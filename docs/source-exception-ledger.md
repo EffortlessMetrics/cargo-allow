@@ -71,6 +71,9 @@ exceptions must not silently lose ownership. Removed traceability links are also
 review-required. Typed traceability link additions are reported as policy
 improvements, while unstructured or unknown-prefix link additions are
 review-required so vague traceability does not look like proof-quality cleanup.
+Local-file traceability link additions with invalid source-tree paths fail the
+diff because retained exception links must not point outside the repository
+surface.
 `created` date removal fails, changes require review, and adding a missing
 `created` date is reported as an improvement so exception provenance cannot
 drift silently.

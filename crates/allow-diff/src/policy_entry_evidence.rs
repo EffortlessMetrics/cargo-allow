@@ -96,6 +96,12 @@ fn added_evidence_severity(added: &[String]) -> PolicyChangeSeverity {
 }
 
 fn added_link_severity(added: &[String]) -> PolicyChangeSeverity {
+    if added
+        .iter()
+        .any(|item| evidence_reference_is_invalid_local(item))
+    {
+        return PolicyChangeSeverity::Fail;
+    }
     if added.iter().any(|item| reference_is_weak(item)) {
         PolicyChangeSeverity::Review
     } else {
