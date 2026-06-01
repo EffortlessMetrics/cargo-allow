@@ -263,6 +263,61 @@ fn cmd_prune_write_rejects_broken_evidence_that_would_remain() {
 }
 
 #[test]
+fn cmd_prune_write_rejects_broken_link_that_would_remain() {
+    let root = prune_fixture_dir();
+    let policy_dir = root.join("policy");
+    let docs_dir = root.join("docs");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::create_dir_all(&docs_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("docs dir: {err}")));
+    fs::write(docs_dir.join("live.md"), "# live\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("live doc: {err}")));
+
+    let mut cfg = AllowConfig::empty();
+    let mut live = non_rust_prune_fixture_entry("allow-live", "docs/live.md");
+    live.links = vec!["doc:docs/missing-live-rationale.md".to_string()];
+    cfg.allow.push(live);
+    cfg.allow
+        .push(non_rust_prune_fixture_entry("allow-stale", "docs/stale.md"));
+    let policy_path = policy_dir.join("allow.toml");
+    fs::write(&policy_path, render_policy(&cfg))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+
+    let err = cmd_prune(&PruneArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy_path.clone()),
+        stale: true,
+        dry_run: false,
+        write: true,
+        include_untracked: false,
+        format: PruneFormat::Human,
+        output: None,
+    })
+    .expect_err("prune write should reject broken links that remain");
+
+    assert!(
+        err.to_string().contains("allow-live link"),
+        "diagnostic should identify the remaining allow entry link: {err}"
+    );
+    assert!(
+        err.to_string().contains("docs/missing-live-rationale.md"),
+        "diagnostic should identify the missing link path: {err}"
+    );
+    let rendered = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy read: {err}")));
+    assert!(
+        rendered.contains("allow-stale"),
+        "policy should not be rewritten when remaining links are broken"
+    );
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn cmd_prune_write_rejects_untracked_evidence_that_would_remain_by_default() {
     let root = prune_fixture_dir();
     let policy_dir = root.join("policy");
