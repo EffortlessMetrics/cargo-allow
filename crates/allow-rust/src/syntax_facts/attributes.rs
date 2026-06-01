@@ -44,5 +44,80 @@ fn lint_attribute_kind(text: &str) -> Option<LintAttributeKind> {
 
 fn unsafe_attribute_text(text: &str) -> bool {
     let trimmed = text.trim_start();
-    trimmed.starts_with("#[unsafe(") || trimmed.starts_with("#![unsafe(")
+    if trimmed.starts_with("#[unsafe(") || trimmed.starts_with("#![unsafe(") {
+        return true;
+    }
+    if !(trimmed.starts_with("#[cfg_attr(") || trimmed.starts_with("#![cfg_attr(")) {
+        return false;
+    }
+    contains_token_outside_rust_strings(trimmed, "unsafe(")
+}
+
+fn contains_token_outside_rust_strings(text: &str, token: &str) -> bool {
+    let mut cursor = 0;
+    while cursor < text.len() {
+        if text
+            .get(cursor..)
+            .is_some_and(|rest| rest.starts_with(token))
+        {
+            return true;
+        }
+        if let Some(end) = raw_string_end(text, cursor) {
+            cursor = end;
+            continue;
+        }
+        let Some(ch) = text.get(cursor..).and_then(|rest| rest.chars().next()) else {
+            break;
+        };
+        if matches!(ch, '"' | '\'') {
+            cursor = quoted_literal_end(text, cursor, ch);
+            continue;
+        }
+        cursor += ch.len_utf8();
+    }
+    false
+}
+
+fn raw_string_end(text: &str, start: usize) -> Option<usize> {
+    let bytes = text.as_bytes();
+    if bytes.get(start).copied() != Some(b'r') {
+        return None;
+    }
+    let mut cursor = start + 1;
+    while bytes.get(cursor).copied() == Some(b'#') {
+        cursor += 1;
+    }
+    if bytes.get(cursor).copied() != Some(b'"') {
+        return None;
+    }
+    let hashes = cursor.saturating_sub(start + 1);
+    let close = format!("\"{}", "#".repeat(hashes));
+    let content_start = cursor + 1;
+    text.get(content_start..)
+        .and_then(|rest| rest.find(&close))
+        .map(|offset| content_start + offset + close.len())
+        .or(Some(text.len()))
+}
+
+fn quoted_literal_end(text: &str, start: usize, quote: char) -> usize {
+    let mut cursor = start + quote.len_utf8();
+    let mut escaped = false;
+    while cursor < text.len() {
+        let Some(ch) = text.get(cursor..).and_then(|rest| rest.chars().next()) else {
+            return text.len();
+        };
+        cursor += ch.len_utf8();
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        if ch == '\\' {
+            escaped = true;
+            continue;
+        }
+        if ch == quote {
+            return cursor;
+        }
+    }
+    text.len()
 }
