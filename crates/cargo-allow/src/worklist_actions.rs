@@ -238,7 +238,20 @@ pub(crate) fn proof_commands(
     if kind == UNSAFE_MISSING_EVIDENCE && !has_unsafe_kind_check {
         commands.push("cargo-allow check --kind unsafe --mode no-new".to_string());
     }
+    if let Some(list_shortcut_arg) = list_shortcut_arg(kind) {
+        commands.push(format!(
+            "cargo-allow list --{list_shortcut_arg} --format json"
+        ));
+    }
     commands
+}
+
+fn list_shortcut_arg(kind: &str) -> Option<&'static str> {
+    match kind {
+        BROKEN_EVIDENCE_LINK => Some("broken-evidence"),
+        WEAK_EVIDENCE_REFERENCE => Some("weak-evidence"),
+        _ => None,
+    }
 }
 
 fn worklist_shortcut_arg(kind: &str) -> Option<&'static str> {
