@@ -48,7 +48,11 @@ fn lint_attribute_kinds(text: &str) -> Vec<(LintAttributeKind, usize)> {
         vec![(LintAttributeKind::Allow, text.len() - trimmed.len())]
     } else if detect_attr(trimmed, "expect").is_some() {
         vec![(LintAttributeKind::Expect, text.len() - trimmed.len())]
-    } else if trimmed.starts_with("#[cfg_attr(") || trimmed.starts_with("#![cfg_attr(") {
+    } else if let Some(offset) = attribute_name_offset(text, "allow") {
+        vec![(LintAttributeKind::Allow, offset)]
+    } else if let Some(offset) = attribute_name_offset(text, "expect") {
+        vec![(LintAttributeKind::Expect, offset)]
+    } else if attribute_name_offset(text, "cfg_attr").is_some() {
         cfg_attr_lint_kinds(text)
     } else {
         Vec::new()
@@ -60,18 +64,21 @@ fn unsafe_attribute_offsets(text: &str) -> Vec<usize> {
     if trimmed.starts_with("#[unsafe(") || trimmed.starts_with("#![unsafe(") {
         return vec![text.len() - trimmed.len()];
     }
-    if !(trimmed.starts_with("#[cfg_attr(") || trimmed.starts_with("#![cfg_attr(")) {
+    if let Some(offset) = attribute_name_offset(text, "unsafe") {
+        return vec![offset];
+    }
+    if attribute_name_offset(text, "cfg_attr").is_none() {
         return Vec::new();
     }
-    find_tokens_outside_rust_strings(text, "unsafe(")
+    find_attribute_invocations_outside_rust_strings(text, "unsafe")
 }
 
 fn cfg_attr_lint_kinds(text: &str) -> Vec<(LintAttributeKind, usize)> {
-    let mut attributes = find_tokens_outside_rust_strings(text, "allow(")
+    let mut attributes = find_attribute_invocations_outside_rust_strings(text, "allow")
         .into_iter()
         .map(|offset| (LintAttributeKind::Allow, offset))
         .chain(
-            find_tokens_outside_rust_strings(text, "expect(")
+            find_attribute_invocations_outside_rust_strings(text, "expect")
                 .into_iter()
                 .map(|offset| (LintAttributeKind::Expect, offset)),
         )
@@ -80,17 +87,45 @@ fn cfg_attr_lint_kinds(text: &str) -> Vec<(LintAttributeKind, usize)> {
     attributes
 }
 
-fn find_tokens_outside_rust_strings(text: &str, token: &str) -> Vec<usize> {
+fn attribute_name_offset(text: &str, name: &str) -> Option<usize> {
+    let mut cursor = skip_rust_whitespace(text, 0);
+    if !text.get(cursor..).is_some_and(|rest| rest.starts_with('#')) {
+        return None;
+    }
+    cursor += '#'.len_utf8();
+    cursor = skip_rust_whitespace(text, cursor);
+    if text.get(cursor..).is_some_and(|rest| rest.starts_with('!')) {
+        cursor += '!'.len_utf8();
+        cursor = skip_rust_whitespace(text, cursor);
+    }
+    if !text.get(cursor..).is_some_and(|rest| rest.starts_with('[')) {
+        return None;
+    }
+    cursor += '['.len_utf8();
+    cursor = skip_rust_whitespace(text, cursor);
+    if text
+        .get(cursor..)
+        .is_some_and(|rest| rest.starts_with(name))
+        && invocation_name_followed_by_parens(text, cursor + name.len())
+    {
+        Some(cursor)
+    } else {
+        None
+    }
+}
+
+fn find_attribute_invocations_outside_rust_strings(text: &str, name: &str) -> Vec<usize> {
     let mut matches = Vec::new();
     let mut cursor = 0;
     while cursor < text.len() {
         if text
             .get(cursor..)
-            .is_some_and(|rest| rest.starts_with(token))
+            .is_some_and(|rest| rest.starts_with(name))
             && token_starts_at_attribute_boundary(text, cursor)
+            && invocation_name_followed_by_parens(text, cursor + name.len())
         {
             matches.push(cursor);
-            cursor += token.len();
+            cursor += name.len();
             continue;
         }
         if let Some(end) = raw_string_end(text, cursor) {
@@ -107,6 +142,21 @@ fn find_tokens_outside_rust_strings(text: &str, token: &str) -> Vec<usize> {
         cursor += ch.len_utf8();
     }
     matches
+}
+
+fn invocation_name_followed_by_parens(text: &str, cursor: usize) -> bool {
+    text.get(skip_rust_whitespace(text, cursor)..)
+        .is_some_and(|rest| rest.starts_with('('))
+}
+
+fn skip_rust_whitespace(text: &str, mut cursor: usize) -> usize {
+    while let Some(ch) = text.get(cursor..).and_then(|rest| rest.chars().next()) {
+        if !ch.is_whitespace() {
+            break;
+        }
+        cursor += ch.len_utf8();
+    }
+    cursor
 }
 
 fn token_starts_at_attribute_boundary(text: &str, cursor: usize) -> bool {

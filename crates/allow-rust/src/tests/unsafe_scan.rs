@@ -178,6 +178,27 @@ fn detects_unsafe_attribute_from_syntax() {
 }
 
 #[test]
+fn detects_spaced_unsafe_attribute_tokens_from_source_syntax() {
+    let line = r#"        # [ unsafe(no_mangle) ]"#;
+    let src = format!(
+        r#"
+{line}
+        fn exported() {{}}
+        "#
+    );
+    let findings = scan_rust_source("src/lib.rs", &src);
+    let unsafe_attr = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr"))
+        .unwrap_or_else(|| std::panic::panic_any("spaced unsafe attribute should be found"));
+
+    assert_eq!(
+        unsafe_attr.span.as_ref().map(|span| span.column),
+        Some(crate::text::column(line, "unsafe"))
+    );
+}
+
+#[test]
 fn detects_cfg_attr_unsafe_attribute_from_source_syntax() {
     let line = r#"        #[cfg_attr(feature = "ffi", unsafe(no_mangle))]"#;
     let src = format!(
