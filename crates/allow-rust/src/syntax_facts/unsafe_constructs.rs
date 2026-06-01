@@ -36,9 +36,13 @@ fn unsafe_syntax_construct(node: Node<'_>, source: &str) -> Option<(u32, UnsafeS
         "impl_item" => {
             unsafe_modifier_construct(node, "impl", UnsafeSyntaxKind::Impl, None, source)
         }
-        "trait_item" => {
-            unsafe_modifier_construct(node, "trait", UnsafeSyntaxKind::Trait, None, source)
-        }
+        "trait_item" => unsafe_modifier_construct(
+            node,
+            "trait",
+            UnsafeSyntaxKind::Trait,
+            item_name(node, source),
+            source,
+        ),
         "foreign_mod_item" => unsafe_modifier_construct(
             node,
             "extern_modifier",
