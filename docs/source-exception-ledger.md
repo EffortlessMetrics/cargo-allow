@@ -53,11 +53,12 @@ build-independent; canonical policy globs support `*`, `?`, and whole-segment
 not supported; use exact `path` entries or explicit separate globs instead. A
 `**` token is recursive only as its own path segment; patterns such as
 `scripts/**.sh` are rejected instead of being treated as a different wildcard
-shape. Repository-wide globs such as `**` and `**/*` are rejected because a
-retained exception must not silently cover the entire source tree. Diff mode
-reports non-directional source-tree scope retargets as review-required
-`scope_changed` policy changes. That covers exact path changes or sibling glob
-replacements that are neither broadening nor narrowing.
+shape. Repository-wide globs such as `**`, `**/*`, and equivalent whole-tree
+wildcard shapes are rejected because a retained exception must not silently
+cover the entire source tree. Diff mode reports non-directional source-tree
+scope retargets as review-required `scope_changed` policy changes. That covers
+exact path changes or sibling glob replacements that are neither broadening nor
+narrowing.
 
 Diff mode reports owner, reason, or classification removals as policy
 weakening, additions of those required metadata fields as policy improvements,

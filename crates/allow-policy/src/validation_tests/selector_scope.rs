@@ -108,6 +108,71 @@ fn rejects_repository_wide_selector_glob_scope() {
 }
 
 #[test]
+fn rejects_repository_wide_entry_glob_equivalent_scope() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "wide-equivalent-glob"
+                kind = "non_rust_file"
+                glob = "*/**"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = "*/**"
+            "#,
+    );
+
+    assert!(err.contains("wide-equivalent-glob glob covers the entire source tree"));
+}
+
+#[test]
+fn rejects_repository_wide_selector_glob_equivalent_scope() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "wide-equivalent-selector-glob"
+                kind = "non_rust_file"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = "**/*/**"
+            "#,
+    );
+
+    assert!(
+        err.contains("wide-equivalent-selector-glob selector glob covers the entire source tree")
+    );
+}
+
+#[test]
+fn accepts_recursive_glob_with_literal_scope() {
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "recursive-rust-files"
+                kind = "non_rust_file"
+                glob = "**/*.rs"
+                owner = "core"
+                classification = "test"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = "**/*.rs"
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy should parse: {err}")));
+
+    assert_eq!(cfg.allow[0].path_or_glob(), "**/*.rs");
+}
+
+#[test]
 fn rejects_wildcard_tokens_in_exact_path_scope() {
     let err = parse_err(
         r#"

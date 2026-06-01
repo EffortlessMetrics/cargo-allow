@@ -60,7 +60,7 @@ fn validate_exact_path_syntax(label: &str, path: &str) -> CargoAllowResult<()> {
 }
 
 fn validate_supported_glob_syntax(label: &str, glob: &str) -> CargoAllowResult<()> {
-    if matches!(glob, "**" | "**/*") {
+    if glob_covers_entire_source_tree(glob) {
         return Err(CargoAllowError::new(format!(
             "{label} covers the entire source tree; use a narrower path or glob scope"
         )));
@@ -79,6 +79,21 @@ fn validate_supported_glob_syntax(label: &str, glob: &str) -> CargoAllowResult<(
         )));
     }
     Ok(())
+}
+
+fn glob_covers_entire_source_tree(glob: &str) -> bool {
+    let mut has_segment = false;
+    let mut globstar_segments = 0;
+    let mut wildcard_segments = 0;
+    for segment in glob.split('/').filter(|segment| !segment.is_empty()) {
+        has_segment = true;
+        match segment {
+            "**" => globstar_segments += 1,
+            "*" => wildcard_segments += 1,
+            _ => return false,
+        }
+    }
+    has_segment && globstar_segments > 0 && wildcard_segments <= 1
 }
 
 impl SourceTreeScopeDiagnostic {
