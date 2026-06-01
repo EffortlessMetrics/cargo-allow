@@ -65,16 +65,61 @@ pub(crate) fn validate_evidence_references_for_source_tree(
     source_tree_files: Option<&BTreeSet<String>>,
 ) -> CargoAllowResult<()> {
     for entry in &cfg.allow {
-        for diagnostic in
-            evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
+        for (source, diagnostic) in
+            entry_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
         {
             if diagnostic.status.is_broken_local_link() {
                 return Err(CargoAllowError::new(format!(
-                    "{} evidence `{}`: {}",
-                    entry.id, diagnostic.raw, diagnostic.message
+                    "{} {} `{}`: {}",
+                    entry.id,
+                    source.label(),
+                    diagnostic.raw,
+                    source.message(&diagnostic.message)
                 )));
             }
         }
     }
     Ok(())
+}
+
+fn entry_reference_diagnostics_for_source_tree(
+    root: &Path,
+    entry: &AllowEntry,
+    source_tree_files: Option<&BTreeSet<String>>,
+) -> Vec<(ReferenceSource, EvidenceReferenceDiagnostic)> {
+    let mut diagnostics =
+        evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
+            .into_iter()
+            .map(|diagnostic| (ReferenceSource::Evidence, diagnostic))
+            .collect::<Vec<_>>();
+    let mut link_entry = entry.clone();
+    link_entry.evidence = entry.links.clone();
+    diagnostics.extend(
+        evidence_reference_diagnostics_for_source_tree(root, &link_entry, source_tree_files)
+            .into_iter()
+            .map(|diagnostic| (ReferenceSource::Link, diagnostic)),
+    );
+    diagnostics
+}
+
+#[derive(Clone, Copy)]
+enum ReferenceSource {
+    Evidence,
+    Link,
+}
+
+impl ReferenceSource {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Evidence => "evidence",
+            Self::Link => "link",
+        }
+    }
+
+    fn message(self, message: &str) -> String {
+        match self {
+            Self::Evidence => message.to_string(),
+            Self::Link => message.replace("evidence", "link"),
+        }
+    }
 }

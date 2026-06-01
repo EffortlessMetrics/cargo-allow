@@ -132,6 +132,55 @@ mod tests {
             .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
     }
 
+    #[test]
+    fn load_world_abort_rejects_untracked_local_link_by_default() {
+        let root = fixture_dir();
+        write_policy_with_untracked_link(&root);
+
+        let err = load_world(
+            Some(&root),
+            Some(Path::new("policy/allow.toml")),
+            true,
+            None,
+            false,
+        )
+        .expect_err("default source-tree inventory should reject untracked local links");
+
+        assert!(
+            err.to_string()
+                .contains("not in the default source-tree inventory"),
+            "diagnostic should explain source-tree link boundary: {err}"
+        );
+        assert!(
+            err.to_string().contains("allow-0001 link"),
+            "diagnostic should identify the broken traceability link: {err}"
+        );
+        fs::remove_dir_all(root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    }
+
+    #[test]
+    fn load_world_abort_include_untracked_accepts_untracked_local_link() {
+        let root = fixture_dir();
+        write_policy_with_untracked_link(&root);
+
+        let result = load_world(
+            Some(&root),
+            Some(Path::new("policy/allow.toml")),
+            true,
+            None,
+            true,
+        );
+
+        result.unwrap_or_else(|err| {
+            std::panic::panic_any(format!(
+                "include-untracked inventory should accept untracked local links: {err}"
+            ))
+        });
+        fs::remove_dir_all(root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    }
+
     fn write_policy_with_untracked_evidence(root: &Path) {
         fs::create_dir_all(root.join("policy"))
             .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
@@ -153,6 +202,29 @@ mod tests {
 
         fs::write(root.join("docs/evidence.md"), "review notes")
             .unwrap_or_else(|err| std::panic::panic_any(format!("evidence write: {err}")));
+    }
+
+    fn write_policy_with_untracked_link(root: &Path) {
+        fs::create_dir_all(root.join("policy"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::create_dir_all(root.join("docs"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("docs dir: {err}")));
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(allow_entry_with_untracked_link());
+        fs::write(root.join("policy/allow.toml"), render_policy(&cfg))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+
+        git(root, &["init"]);
+        git(
+            root,
+            &["config", "user.email", "cargo-allow@example.invalid"],
+        );
+        git(root, &["config", "user.name", "cargo-allow test"]);
+        git(root, &["add", "policy/allow.toml"]);
+        git(root, &["commit", "-m", "base policy"]);
+
+        fs::write(root.join("docs/rationale.md"), "review notes")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("link write: {err}")));
     }
 
     fn allow_entry_with_untracked_evidence() -> AllowEntry {
@@ -179,6 +251,13 @@ mod tests {
             },
             last_seen: None,
         }
+    }
+
+    fn allow_entry_with_untracked_link() -> AllowEntry {
+        let mut entry = allow_entry_with_untracked_evidence();
+        entry.evidence = vec!["test:allow_entry_with_untracked_link".to_string()];
+        entry.links = vec!["doc:docs/rationale.md".to_string()];
+        entry
     }
 
     fn git(root: &Path, args: &[&str]) {
