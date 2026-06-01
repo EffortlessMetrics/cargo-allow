@@ -27,7 +27,16 @@ impl EvidenceReportSummary {
             .allow
             .iter()
             .flat_map(|entry| {
-                evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
+                let mut diagnostics =
+                    evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files);
+                let mut link_entry = entry.clone();
+                link_entry.evidence = entry.links.clone();
+                diagnostics.extend(evidence_reference_diagnostics_for_source_tree(
+                    root,
+                    &link_entry,
+                    source_tree_files,
+                ));
+                diagnostics
             })
             .collect::<Vec<_>>();
         Self {

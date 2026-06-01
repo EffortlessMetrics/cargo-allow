@@ -210,14 +210,14 @@ path existence only; it does not execute ripr, unsafe-review, coverage tools,
 Cargo commands, tests, or repository code, and it does not interpret those
 receipt formats as proof.
 
-Broken local evidence links are handled differently by discovery commands and
-gating commands:
+Broken local evidence links and local-file traceability links are handled
+differently by discovery commands and gating commands:
 
-| Command path | Broken local evidence behavior |
+| Command path | Broken local reference behavior |
 |---|---|
 | `audit`, `diff`, `explain`, `list`, `worklist`, and `propose` | Emit source-tree artifacts and surface the broken-link count or diagnostics so repair work can be routed. |
 | `prune --stale` dry-run | Emits a stale-cleanup preview even when the stale entry itself has broken evidence. |
-| `check` | Fails closed on broken local evidence links. |
+| `check` | Fails closed on broken local evidence links and broken local-file traceability links. |
 | `doctor` | Reports invalid policy state for broken local evidence links. |
 | `add` | Validates local evidence references before writing a reviewed policy entry. |
 | `prune --stale --write` | Revalidates the remaining policy before writing; stale broken-evidence entries can be removed, but broken references that remain still block the write. |
@@ -485,7 +485,8 @@ local evidence links and broken local-file traceability links become
 links, or references with unknown prefixes become `weak_evidence_reference`
 items. This mode loads the policy even when local evidence or linked rationale
 is missing so humans or agents can get a repair target; normal
-`cargo-allow check` still fails closed on broken local evidence references.
+`cargo-allow check` still fails closed on broken local evidence references and
+broken local-file traceability links.
 
 The worklist may also include advisory `broad_scope` items for matched allow
 entries that use wildcard source-tree scopes. These do not mean the current

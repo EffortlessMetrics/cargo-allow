@@ -225,6 +225,11 @@ fn check_failure_with_broken_evidence_still_writes_report_and_receipt() {
 }
 
 #[test]
+fn check_failure_with_broken_traceability_link_still_writes_report_and_receipt() {
+    assert_check_failure_reports_broken_evidence("receipt-broken-link", policy_with_broken_link());
+}
+
+#[test]
 fn check_failure_with_invalid_evidence_scope_still_writes_report_and_receipt() {
     assert_check_failure_reports_broken_evidence(
         "receipt-invalid-evidence-scope",
@@ -586,6 +591,29 @@ owner = "core"
 classification = "fixture"
 reason = "fixture policy file"
 evidence = ["doc:docs/missing-evidence.md"]
+review_after = "2026-08-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/allow.toml"
+target_fingerprint = "toml"
+glob = "policy/allow.toml"
+"#
+}
+
+fn policy_with_broken_link() -> &'static str {
+    r#"policy = "cargo-allow"
+
+[[allow]]
+id = "allow-policy"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/allow.toml"
+owner = "core"
+classification = "fixture"
+reason = "fixture policy file"
+evidence = ["test:policy_with_broken_link"]
+links = ["doc:docs/missing-rationale.md"]
 review_after = "2026-08-01"
 
 [allow.selector]
