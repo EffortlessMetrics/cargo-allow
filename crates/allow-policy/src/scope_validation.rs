@@ -1,4 +1,5 @@
 use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, WorkspaceConfig, normalize_path};
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use crate::source_tree_scope::{normalize_source_tree_scope, validate_glob, validate_path_scope};
@@ -29,6 +30,8 @@ pub(crate) fn validate_workspace(workspace: &WorkspaceConfig) -> CargoAllowResul
     for pattern in &workspace.generated {
         validate_glob("source-tree generated glob", pattern)?;
     }
+    validate_unique_workspace_globs("source-tree ignored glob", &workspace.ignored)?;
+    validate_unique_workspace_globs("source-tree generated glob", &workspace.generated)?;
     Ok(())
 }
 
@@ -75,6 +78,20 @@ pub(crate) fn validate_scope_consistency(entry: &AllowEntry) -> CargoAllowResult
             return Err(CargoAllowError::new(format!(
                 "{} selector glob `{selector_glob}` must match glob `{glob}` or omit one scope",
                 entry.id
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn validate_unique_workspace_globs(label: &str, patterns: &[String]) -> CargoAllowResult<()> {
+    let mut seen = BTreeSet::new();
+    for (index, pattern) in patterns.iter().enumerate() {
+        let normalized = normalize_source_tree_scope(pattern);
+        if !seen.insert(normalized.clone()) {
+            return Err(CargoAllowError::new(format!(
+                "duplicate {label} `{normalized}` at position {}",
+                index + 1
             )));
         }
     }
