@@ -1,5 +1,5 @@
 use super::WorkItem;
-use super::worklist_actions::{proof_commands, suggested_actions};
+use super::worklist_actions::{proof_commands, suggested_actions, suggested_actions_for_context};
 use super::worklist_item_kind::{
     BASELINE_DEBT, BROAD_SCOPE, MISSING_EVIDENCE, UNSAFE_MISSING_EVIDENCE,
 };
@@ -53,7 +53,7 @@ pub(super) fn work_items_from_policy_advisories(
                     "{} is generated baseline_debt and still needs human review",
                     entry.id
                 ),
-                suggested_actions: suggested_actions(&kind),
+                suggested_actions: suggested_actions_for_context(&kind, finding, Some(entry)),
                 proof_commands: proof_commands(&kind, finding, Some(entry)),
                 kind,
             });
@@ -85,7 +85,7 @@ pub(super) fn work_items_from_policy_advisories(
                 evidence_reference: None,
                 source_package: source_package_name(finding),
                 message: format!("{} has no evidence references", entry.id),
-                suggested_actions: suggested_actions(&kind),
+                suggested_actions: suggested_actions_for_context(&kind, finding, Some(entry)),
                 proof_commands: proof_commands(&kind, finding, Some(entry)),
                 kind,
             });

@@ -251,6 +251,58 @@ fn worklist_policy_advisories_report_missing_evidence_when_requested() {
 }
 
 #[test]
+fn worklist_policy_advisories_specialize_high_risk_policy_missing_evidence_actions() {
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-process", FindingKind::PolicyException);
+    entry.path = Some(PathBuf::from(".github/workflows/ci.yml"));
+    entry.family = Some("process_spawn".to_string());
+    cfg.allow.push(entry);
+    let finding = test_finding(
+        FindingKind::PolicyException,
+        Some("process_spawn"),
+        ".github/workflows/ci.yml",
+        "process_spawn",
+    );
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Matched,
+        allow_id: Some("allow-process".to_string()),
+        finding_index: Some(0),
+        message: "matched".to_string(),
+        score: 100,
+    }];
+
+    let items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 1, true);
+
+    let item = items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected policy missing evidence advisory"));
+    assert_eq!(item.kind, "missing_evidence");
+    assert_eq!(item.exception_kind.as_deref(), Some("policy_exception"));
+    assert_eq!(item.family.as_deref(), Some("process_spawn"));
+    assert_eq!(item.risk, "high");
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("typed evidence"))
+    );
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("policy_exception.process_spawn"))
+    );
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("removed or narrowed"))
+    );
+    assert!(
+        item.proof_commands
+            .iter()
+            .any(|command| command == "cargo-allow check --kind process --mode no-new")
+    );
+}
+
+#[test]
 fn worklist_policy_advisories_report_unsafe_missing_evidence_when_requested() {
     let mut cfg = AllowConfig::empty();
     let mut entry = test_entry("allow-unsafe", FindingKind::Unsafe);

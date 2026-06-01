@@ -1,5 +1,5 @@
 use super::WorkItem;
-use super::worklist_actions::{proof_commands, suggested_actions};
+use super::worklist_actions::{proof_commands, suggested_actions_for_context};
 use super::worklist_scoring::{
     exception_family, work_item_difficulty, work_item_kind, work_item_risk,
 };
@@ -38,7 +38,7 @@ fn work_item_from_outcome(
         finding.and_then(|finding| finding.source_package_name().map(ToOwned::to_owned));
     let exception_kind = work_item_exception_kind(finding, entry);
     let family = exception_family(finding, entry).map(ToOwned::to_owned);
-    let mut suggested_actions = suggested_actions(&kind);
+    let mut suggested_actions = suggested_actions_for_context(&kind, finding, entry);
     if let Some(package) = &source_package {
         suggested_actions.push(format!(
             "focus source-tree review on package `{package}` without assuming Cargo metadata"
