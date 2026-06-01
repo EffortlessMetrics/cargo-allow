@@ -73,9 +73,11 @@ weakening, additions of those required metadata fields as policy improvements,
 and non-empty replacements as review-required policy changes. Changing a
 concrete owner to `owner = "unowned"` is also policy weakening, because retained
 exceptions must not silently lose ownership. Removed traceability links are also
-review-required. Typed traceability link additions are reported as policy
-improvements, while unstructured or unknown-prefix link additions are
-review-required so vague traceability does not look like proof-quality cleanup.
+review-required unless they are local-file traceability links, which fail the
+diff because source-tree rationale should not disappear silently. Typed
+traceability link additions are reported as policy improvements, while
+unstructured or unknown-prefix link additions are review-required so vague
+traceability does not look like proof-quality cleanup.
 Local-file traceability link additions with invalid source-tree paths fail the
 diff because retained exception links must not point outside the repository
 surface.
@@ -504,6 +506,7 @@ Markdown output. The default policy path is discovered from standard
 source-tree locations, and `--config` can select a specific ledger path.
 Current detection covers scope broadening, selector precision loss,
 expiry/review extension, evidence removal, broken local evidence additions,
+local-file traceability link removal,
 top-level policy status weakening, top-level policy owner removal/unassignment,
 owner/reason/classification removal, owner unassignment, occurrence-limit
 loosening, added `baseline_debt`, reviewed entries reclassified as
