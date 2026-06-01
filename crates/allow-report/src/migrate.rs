@@ -14,6 +14,10 @@ pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
     out.push_str(&format!("baseline_debt: {}\n", report.baseline_debt));
     out.push_str(&format!("unsafe_entries: {}\n", report.unsafe_entries));
     out.push_str(&format!(
+        "lint_exception_entries: {}\n",
+        report.lint_exception_entries
+    ));
+    out.push_str(&format!(
         "entries_with_evidence: {}\n",
         report.entries_with_evidence
     ));
@@ -76,6 +80,10 @@ pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
     out.push_str(&format!(
         "    \"unsafe_entries\": {},\n",
         report.unsafe_entries
+    ));
+    out.push_str(&format!(
+        "    \"lint_exception_entries\": {},\n",
+        report.lint_exception_entries
     ));
     out.push_str(&format!(
         "    \"entries_with_evidence\": {}\n",

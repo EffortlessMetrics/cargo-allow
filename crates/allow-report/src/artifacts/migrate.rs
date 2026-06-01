@@ -12,6 +12,7 @@ pub struct MigrateReport<'a> {
     pub allow_entries: usize,
     pub baseline_debt: usize,
     pub unsafe_entries: usize,
+    pub lint_exception_entries: usize,
     pub entries_with_evidence: usize,
     pub notes: &'a str,
 }
@@ -36,6 +37,7 @@ impl<'a> MigrateReport<'a> {
             allow_entries: counts.allow_entries,
             baseline_debt: counts.baseline_debt,
             unsafe_entries: counts.unsafe_entries,
+            lint_exception_entries: counts.lint_exception_entries,
             entries_with_evidence: counts.entries_with_evidence,
             notes,
         }
@@ -47,6 +49,7 @@ struct MigrateSummaryCounts {
     allow_entries: usize,
     baseline_debt: usize,
     unsafe_entries: usize,
+    lint_exception_entries: usize,
     entries_with_evidence: usize,
 }
 
@@ -63,6 +66,11 @@ impl MigrateSummaryCounts {
                 .allow
                 .iter()
                 .filter(|entry| entry.kind == FindingKind::Unsafe)
+                .count(),
+            lint_exception_entries: cfg
+                .allow
+                .iter()
+                .filter(|entry| entry.kind == FindingKind::LintException)
                 .count(),
             entries_with_evidence: cfg
                 .allow

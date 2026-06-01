@@ -17,6 +17,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
         allow_entries: 12,
         baseline_debt: 5,
         unsafe_entries: 2,
+        lint_exception_entries: 4,
         entries_with_evidence: 3,
         notes: "migration notes",
     };
@@ -35,6 +36,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(json.contains("\"allow_entries\": 12"));
     assert!(json.contains("\"baseline_debt\": 5"));
     assert!(json.contains("\"unsafe_entries\": 2"));
+    assert!(json.contains("\"lint_exception_entries\": 4"));
     assert!(json.contains("\"entries_with_evidence\": 3"));
     assert!(json.contains("\"notes\": \"migration notes\""));
     let expected = format!(
@@ -64,6 +66,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     "allow_entries": 12,
     "baseline_debt": 5,
     "unsafe_entries": 2,
+    "lint_exception_entries": 4,
     "entries_with_evidence": 3
   }},
   "notes": "migration notes"
@@ -84,6 +87,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(text.contains("allow_entries: 12"));
     assert!(text.contains("baseline_debt: 5"));
     assert!(text.contains("unsafe_entries: 2"));
+    assert!(text.contains("lint_exception_entries: 4"));
     assert!(text.contains("entries_with_evidence: 3"));
     assert!(
         text.contains("inventory: source_tree/policy_migration via git_tracked; files scanned: 76")
@@ -115,6 +119,12 @@ fn migrate_report_from_config_counts_summary_fields() {
             "release_script",
             &["issue:123"],
         ),
+        allow_entry(
+            "allow-lint",
+            allow_core::FindingKind::LintException,
+            "lint_exception",
+            &[],
+        ),
     ];
 
     let report = MigrateReport::from_config(
@@ -133,9 +143,10 @@ fn migrate_report_from_config_counts_summary_fields() {
         "migration notes",
     );
 
-    assert_eq!(report.allow_entries, 3);
+    assert_eq!(report.allow_entries, 4);
     assert_eq!(report.baseline_debt, 1);
     assert_eq!(report.unsafe_entries, 1);
+    assert_eq!(report.lint_exception_entries, 1);
     assert_eq!(report.entries_with_evidence, 2);
     assert_eq!(report.inventory.scanner, "policy_migration");
 }

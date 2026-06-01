@@ -103,6 +103,10 @@
           "type": "integer",
           "minimum": 0
         },
+        "lint_exception_entries": {
+          "type": "integer",
+          "minimum": 0
+        },
         "entries_with_evidence": {
           "type": "integer",
           "minimum": 0
