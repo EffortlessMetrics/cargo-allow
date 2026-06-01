@@ -224,3 +224,19 @@ fn syntax_unsafe_attributes_ignore_unsafe_text_inside_attribute_strings() {
         })
     );
 }
+
+#[test]
+fn cfg_attr_unsafe_detection_ignores_custom_attribute_suffixes() {
+    let src = r#"
+        #[cfg_attr(feature = "custom", my_unsafe(no_mangle))]
+        #[cfg_attr(feature = "custom", custom::unsafe(no_mangle))]
+        fn exported() {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    assert!(
+        !findings.iter().any(|f| {
+            f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr")
+        })
+    );
+}

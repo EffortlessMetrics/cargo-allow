@@ -15,15 +15,22 @@ pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut R
 
     let start = node.start_position();
     let line = start.row as u32 + 1;
-    if let Some(kind) = lint_attribute_kind(text) {
+    if let Some((kind, offset)) = lint_attribute_kind(text) {
+        let attr_text = if offset == 0 {
+            text.to_string()
+        } else {
+            text.get(offset..)
+                .map(ToString::to_string)
+                .unwrap_or_else(|| text.to_string())
+        };
         facts
             .lint_attributes
             .entry(line)
             .or_default()
             .push(LintAttribute {
                 kind,
-                text: text.to_string(),
-                column: source_column(source, start.row, start.column),
+                text: attr_text,
+                column: source_column(source, start.row, start.column + offset),
             });
     }
     if unsafe_attribute_text(text) {
@@ -31,12 +38,14 @@ pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut R
     }
 }
 
-fn lint_attribute_kind(text: &str) -> Option<LintAttributeKind> {
+fn lint_attribute_kind(text: &str) -> Option<(LintAttributeKind, usize)> {
     let trimmed = text.trim_start();
     if detect_attr(trimmed, "allow").is_some() {
-        Some(LintAttributeKind::Allow)
+        Some((LintAttributeKind::Allow, text.len() - trimmed.len()))
     } else if detect_attr(trimmed, "expect").is_some() {
-        Some(LintAttributeKind::Expect)
+        Some((LintAttributeKind::Expect, text.len() - trimmed.len()))
+    } else if trimmed.starts_with("#[cfg_attr(") || trimmed.starts_with("#![cfg_attr(") {
+        cfg_attr_lint_kind(text)
     } else {
         None
     }
@@ -50,17 +59,30 @@ fn unsafe_attribute_text(text: &str) -> bool {
     if !(trimmed.starts_with("#[cfg_attr(") || trimmed.starts_with("#![cfg_attr(")) {
         return false;
     }
-    contains_token_outside_rust_strings(trimmed, "unsafe(")
+    find_token_outside_rust_strings(trimmed, "unsafe(").is_some()
 }
 
-fn contains_token_outside_rust_strings(text: &str, token: &str) -> bool {
+fn cfg_attr_lint_kind(text: &str) -> Option<(LintAttributeKind, usize)> {
+    let allow = find_token_outside_rust_strings(text, "allow(");
+    let expect = find_token_outside_rust_strings(text, "expect(");
+    match (allow, expect) {
+        (Some(allow), Some(expect)) if allow <= expect => Some((LintAttributeKind::Allow, allow)),
+        (Some(_), Some(expect)) => Some((LintAttributeKind::Expect, expect)),
+        (Some(allow), None) => Some((LintAttributeKind::Allow, allow)),
+        (None, Some(expect)) => Some((LintAttributeKind::Expect, expect)),
+        (None, None) => None,
+    }
+}
+
+fn find_token_outside_rust_strings(text: &str, token: &str) -> Option<usize> {
     let mut cursor = 0;
     while cursor < text.len() {
         if text
             .get(cursor..)
             .is_some_and(|rest| rest.starts_with(token))
+            && token_starts_at_attribute_boundary(text, cursor)
         {
-            return true;
+            return Some(cursor);
         }
         if let Some(end) = raw_string_end(text, cursor) {
             cursor = end;
@@ -75,7 +97,13 @@ fn contains_token_outside_rust_strings(text: &str, token: &str) -> bool {
         }
         cursor += ch.len_utf8();
     }
-    false
+    None
+}
+
+fn token_starts_at_attribute_boundary(text: &str, cursor: usize) -> bool {
+    text.get(..cursor)
+        .and_then(|prefix| prefix.chars().next_back())
+        .is_none_or(|ch| !(ch == '_' || ch == ':' || ch.is_alphanumeric()))
 }
 
 fn raw_string_end(text: &str, start: usize) -> Option<usize> {
