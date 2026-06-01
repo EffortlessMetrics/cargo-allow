@@ -221,6 +221,31 @@ fn cfg_attr_unsafe_attribute_column_ignores_quoted_unsafe_text() {
 }
 
 #[test]
+fn detects_multiple_cfg_attr_unsafe_attributes() {
+    let line = r#"        #[cfg_attr(feature = "ffi", unsafe(no_mangle), unsafe(export_name = "fixture"))]"#;
+    let src = format!(
+        r#"
+{line}
+        fn exported() {{}}
+        "#
+    );
+    let findings = scan_rust_source("src/lib.rs", &src);
+    let columns = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr"))
+        .map(|f| f.span.as_ref().map(|span| span.column))
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        columns,
+        vec![
+            Some(crate::text::column(line, "unsafe")),
+            Some(last_column(line, "unsafe"))
+        ]
+    );
+}
+
+#[test]
 fn detects_multiple_unsafe_attributes_on_one_line() {
     let src = r#"
         #[unsafe(no_mangle)] #[unsafe(export_name = "fixture")]
