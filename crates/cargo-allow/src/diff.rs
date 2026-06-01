@@ -6,6 +6,7 @@ use allow_inventory::{InventorySource, resolve_source_tree_root};
 use allow_match::{CheckMode, evaluate};
 use std::collections::BTreeSet;
 use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -74,11 +75,11 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         let parsed = parse_kind_filter(kind)?;
         head_findings_for_diff.retain(|finding| parsed.matches_finding(finding));
     }
-    let head_source_tree_files = args
-        .head
-        .as_deref()
-        .map(|revision| source_tree_files_at_revision(&root, revision))
-        .transpose()?;
+    let evidence_source_tree_files = if let Some(revision) = args.head.as_deref() {
+        Some(source_tree_files_at_revision(&root, revision)?)
+    } else {
+        source_tree_files_for_current_evidence(&root, args.include_untracked)
+    };
     let report_cfg = if args.head.is_some() {
         report_config(&head_cfg_for_diff, args.kind.as_deref())?
     } else {
@@ -102,14 +103,14 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     )?;
     promote_broken_added_evidence_policy_changes(
         &root,
-        head_source_tree_files.as_ref(),
+        evidence_source_tree_files.as_ref(),
         &head_cfg_for_diff,
         &mut policy_changes,
     )?;
     let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
     let evidence = evidence_summary_for_diff(
         &root,
-        head_source_tree_files.as_ref(),
+        evidence_source_tree_files.as_ref(),
         &report_cfg,
         &outcomes,
     );
@@ -408,6 +409,29 @@ fn source_tree_files_at_revision(
         .into_iter()
         .map(normalize_path)
         .collect())
+}
+
+fn source_tree_files_for_current_evidence(
+    root: &Path,
+    include_untracked: bool,
+) -> Option<BTreeSet<String>> {
+    if include_untracked {
+        return None;
+    }
+    let Ok(files) = allow_inventory::git_ls_files(root) else {
+        return None;
+    };
+    Some(
+        files
+            .into_iter()
+            .filter(|path| {
+                fs::symlink_metadata(root.join(path))
+                    .map(|metadata| metadata.file_type().is_file())
+                    .unwrap_or(false)
+            })
+            .map(normalize_path)
+            .collect(),
+    )
 }
 
 fn source_tree_file_count_at_revision(
