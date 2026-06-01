@@ -65,16 +65,16 @@ pub(crate) fn validate_evidence_references_for_source_tree(
     source_tree_files: Option<&BTreeSet<String>>,
 ) -> CargoAllowResult<()> {
     for entry in &cfg.allow {
-        for (source, diagnostic) in
-            entry_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
+        for reference in
+            policy_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
         {
-            if diagnostic.status.is_broken_local_link() {
+            if reference.diagnostic.status.is_broken_local_link() {
                 return Err(CargoAllowError::new(format!(
                     "{} {} `{}`: {}",
                     entry.id,
-                    source.label(),
-                    diagnostic.raw,
-                    source.message(&diagnostic.message)
+                    reference.source.label(),
+                    reference.diagnostic.raw,
+                    reference.source.message(&reference.diagnostic.message)
                 )));
             }
         }
@@ -82,41 +82,53 @@ pub(crate) fn validate_evidence_references_for_source_tree(
     Ok(())
 }
 
-fn entry_reference_diagnostics_for_source_tree(
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct PolicyReferenceDiagnostic {
+    pub(crate) source: ReferenceSource,
+    pub(crate) diagnostic: EvidenceReferenceDiagnostic,
+}
+
+pub(crate) fn policy_reference_diagnostics_for_source_tree(
     root: &Path,
     entry: &AllowEntry,
     source_tree_files: Option<&BTreeSet<String>>,
-) -> Vec<(ReferenceSource, EvidenceReferenceDiagnostic)> {
+) -> Vec<PolicyReferenceDiagnostic> {
     let mut diagnostics =
         evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
             .into_iter()
-            .map(|diagnostic| (ReferenceSource::Evidence, diagnostic))
+            .map(|diagnostic| PolicyReferenceDiagnostic {
+                source: ReferenceSource::Evidence,
+                diagnostic,
+            })
             .collect::<Vec<_>>();
     let mut link_entry = entry.clone();
     link_entry.evidence = entry.links.clone();
     diagnostics.extend(
         evidence_reference_diagnostics_for_source_tree(root, &link_entry, source_tree_files)
             .into_iter()
-            .map(|diagnostic| (ReferenceSource::Link, diagnostic)),
+            .map(|diagnostic| PolicyReferenceDiagnostic {
+                source: ReferenceSource::Link,
+                diagnostic,
+            }),
     );
     diagnostics
 }
 
-#[derive(Clone, Copy)]
-enum ReferenceSource {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ReferenceSource {
     Evidence,
     Link,
 }
 
 impl ReferenceSource {
-    fn label(self) -> &'static str {
+    pub(crate) fn label(self) -> &'static str {
         match self {
             Self::Evidence => "evidence",
             Self::Link => "link",
         }
     }
 
-    fn message(self, message: &str) -> String {
+    pub(crate) fn message(self, message: &str) -> String {
         match self {
             Self::Evidence => message.to_string(),
             Self::Link => message.replace("evidence", "link"),

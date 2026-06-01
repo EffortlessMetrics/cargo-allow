@@ -1,6 +1,6 @@
-use allow_core::{AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult};
+use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
-use allow_policy::{EvidenceReferenceDiagnostic, load_policy};
+use allow_policy::load_policy;
 use std::collections::BTreeSet;
 use std::env;
 use std::path::Path;
@@ -13,7 +13,8 @@ use doctor_args::DoctorFormat;
 use crate::{
     InventoryFacts, SourceTreeReportContext, config_path, emit_text,
     evidence_inventory::{
-        current_evidence_source_tree_files, evidence_reference_diagnostics_for_source_tree,
+        PolicyReferenceDiagnostic, current_evidence_source_tree_files,
+        policy_reference_diagnostics_for_source_tree,
     },
 };
 
@@ -90,14 +91,14 @@ fn config_status(
     match policy {
         None => (None, None),
         Some(Ok(cfg)) => match first_broken_evidence_diagnostic(root, cfg, source_tree_files) {
-            Some((entry_id, source, diagnostic)) => (
+            Some((entry_id, reference)) => (
                 Some(false),
                 Some(format!(
                     "{} {} `{}`: {}",
                     entry_id,
-                    source.label(),
-                    diagnostic.raw,
-                    source.message(&diagnostic.message)
+                    reference.source.label(),
+                    reference.diagnostic.raw,
+                    reference.source.message(&reference.diagnostic.message)
                 )),
             ),
             None => (Some(true), None),
@@ -116,11 +117,11 @@ fn doctor_evidence_health(
             let diagnostics = evidence_diagnostics(root, cfg, source_tree_files);
             let broken = diagnostics
                 .iter()
-                .filter(|(_, diagnostic)| diagnostic.status.is_broken_local_link())
+                .filter(|reference| reference.diagnostic.status.is_broken_local_link())
                 .count();
             let weak = diagnostics
                 .iter()
-                .filter(|(_, diagnostic)| diagnostic.status.is_weak_reference())
+                .filter(|reference| reference.diagnostic.status.is_weak_reference())
                 .count();
             (Some(broken), Some(weak))
         }
@@ -132,12 +133,12 @@ fn first_broken_evidence_diagnostic(
     root: &Path,
     cfg: &AllowConfig,
     source_tree_files: Option<&BTreeSet<String>>,
-) -> Option<(String, ReferenceSource, EvidenceReferenceDiagnostic)> {
+) -> Option<(String, PolicyReferenceDiagnostic)> {
     cfg.allow.iter().find_map(|entry| {
-        entry_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
+        policy_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
             .into_iter()
-            .find(|(_, diagnostic)| diagnostic.status.is_broken_local_link())
-            .map(|(source, diagnostic)| (entry.id.clone(), source, diagnostic))
+            .find(|reference| reference.diagnostic.status.is_broken_local_link())
+            .map(|reference| (entry.id.clone(), reference))
     })
 }
 
@@ -145,55 +146,13 @@ fn evidence_diagnostics(
     root: &Path,
     cfg: &AllowConfig,
     source_tree_files: Option<&BTreeSet<String>>,
-) -> Vec<(ReferenceSource, EvidenceReferenceDiagnostic)> {
+) -> Vec<PolicyReferenceDiagnostic> {
     cfg.allow
         .iter()
         .flat_map(|entry| {
-            entry_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
+            policy_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
         })
         .collect()
-}
-
-fn entry_reference_diagnostics_for_source_tree(
-    root: &Path,
-    entry: &AllowEntry,
-    source_tree_files: Option<&BTreeSet<String>>,
-) -> Vec<(ReferenceSource, EvidenceReferenceDiagnostic)> {
-    let mut diagnostics =
-        evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
-            .into_iter()
-            .map(|diagnostic| (ReferenceSource::Evidence, diagnostic))
-            .collect::<Vec<_>>();
-    let mut link_entry = entry.clone();
-    link_entry.evidence = entry.links.clone();
-    diagnostics.extend(
-        evidence_reference_diagnostics_for_source_tree(root, &link_entry, source_tree_files)
-            .into_iter()
-            .map(|diagnostic| (ReferenceSource::Link, diagnostic)),
-    );
-    diagnostics
-}
-
-#[derive(Clone, Copy)]
-enum ReferenceSource {
-    Evidence,
-    Link,
-}
-
-impl ReferenceSource {
-    fn label(self) -> &'static str {
-        match self {
-            Self::Evidence => "evidence",
-            Self::Link => "link",
-        }
-    }
-
-    fn message(self, message: &str) -> String {
-        match self {
-            Self::Evidence => message.to_string(),
-            Self::Link => message.replace("evidence", "link"),
-        }
-    }
 }
 
 fn doctor_inventory_options(policy: Option<&CargoAllowResult<AllowConfig>>) -> InventoryOptions {

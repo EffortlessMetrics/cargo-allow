@@ -2,7 +2,7 @@ use allow_core::{AllowConfig, CargoAllowResult, Finding, MatchOutcome};
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use crate::evidence_inventory::evidence_reference_diagnostics_for_source_tree;
+use crate::evidence_inventory::policy_reference_diagnostics_for_source_tree;
 use crate::{InventoryFacts, OutputFormat, emit_text, parse_kind_filter};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -27,16 +27,7 @@ impl EvidenceReportSummary {
             .allow
             .iter()
             .flat_map(|entry| {
-                let mut diagnostics =
-                    evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files);
-                let mut link_entry = entry.clone();
-                link_entry.evidence = entry.links.clone();
-                diagnostics.extend(evidence_reference_diagnostics_for_source_tree(
-                    root,
-                    &link_entry,
-                    source_tree_files,
-                ));
-                diagnostics
+                policy_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
             })
             .collect::<Vec<_>>();
         Self {
@@ -45,11 +36,11 @@ impl EvidenceReportSummary {
             ),
             broken_evidence_links: diagnostics
                 .iter()
-                .filter(|diagnostic| diagnostic.status.is_broken_local_link())
+                .filter(|reference| reference.diagnostic.status.is_broken_local_link())
                 .count(),
             weak_evidence_references: diagnostics
                 .iter()
-                .filter(|diagnostic| diagnostic.status.is_weak_reference())
+                .filter(|reference| reference.diagnostic.status.is_weak_reference())
                 .count(),
         }
     }

@@ -1,5 +1,5 @@
 use super::ListRow;
-use crate::evidence_inventory::evidence_reference_diagnostics_for_source_tree;
+use crate::evidence_inventory::policy_reference_diagnostics_for_source_tree;
 use allow_core::{
     AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, SimpleDate,
     allow_entry_broad_scope,
@@ -87,16 +87,10 @@ fn entry_reference_diagnostics_for_source_tree(
     entry: &AllowEntry,
     evidence_source_tree_files: Option<&BTreeSet<String>>,
 ) -> Vec<allow_policy::EvidenceReferenceDiagnostic> {
-    let mut diagnostics =
-        evidence_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files);
-    let mut link_entry = entry.clone();
-    link_entry.evidence = entry.links.clone();
-    diagnostics.extend(evidence_reference_diagnostics_for_source_tree(
-        root,
-        &link_entry,
-        evidence_source_tree_files,
-    ));
-    diagnostics
+    policy_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files)
+        .into_iter()
+        .map(|reference| reference.diagnostic)
+        .collect()
 }
 
 fn list_entry_status(
