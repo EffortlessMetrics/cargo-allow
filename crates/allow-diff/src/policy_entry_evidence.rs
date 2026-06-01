@@ -9,14 +9,15 @@ pub(crate) fn evidence_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
     let mut changes = Vec::new();
     if removed_values(&base.evidence, &head.evidence) {
         let removed = removed_items(&base.evidence, &head.evidence);
-        let message = removed_evidence_message(&removed);
+        let severity = removed_evidence_severity(&removed, &head.evidence);
+        let message = removed_evidence_message(&removed, severity);
         changes.push(change(
             head,
             EvidenceChangeField::Evidence,
             removed,
             Vec::new(),
             PolicyChangeKind::EvidenceRemoved,
-            PolicyChangeSeverity::Fail,
+            severity,
             message,
         ));
     }
@@ -120,6 +121,20 @@ fn removed_link_severity(removed: &[String]) -> PolicyChangeSeverity {
     }
 }
 
+fn removed_evidence_severity(removed: &[String], remaining: &[String]) -> PolicyChangeSeverity {
+    if removed.iter().any(|item| !evidence_reference_is_weak(item)) {
+        return PolicyChangeSeverity::Fail;
+    }
+    if remaining
+        .iter()
+        .any(|item| !evidence_reference_is_weak(item))
+    {
+        PolicyChangeSeverity::Improvement
+    } else {
+        PolicyChangeSeverity::Review
+    }
+}
+
 fn added_evidence_message(severity: PolicyChangeSeverity) -> &'static str {
     match severity {
         PolicyChangeSeverity::Review => "weak evidence added",
@@ -136,7 +151,10 @@ fn added_link_message(severity: PolicyChangeSeverity) -> &'static str {
     }
 }
 
-fn removed_evidence_message(removed: &[String]) -> &'static str {
+fn removed_evidence_message(removed: &[String], severity: PolicyChangeSeverity) -> &'static str {
+    if severity != PolicyChangeSeverity::Fail {
+        return "weak evidence removed";
+    }
     if removed.iter().any(|item| reference_is_local_file(item)) {
         "local evidence removed"
     } else {

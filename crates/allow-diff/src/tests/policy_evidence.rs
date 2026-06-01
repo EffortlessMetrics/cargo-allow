@@ -99,6 +99,54 @@ fn detects_local_evidence_removed_with_specific_message() {
 }
 
 #[test]
+fn detects_weak_evidence_removed_as_improvement_when_typed_evidence_remains() {
+    let mut base_entry = entry("allow-1");
+    base_entry.evidence = vec![
+        "legacy-policy:proc-cargo-install-cargo-deny".to_string(),
+        "binary:cargo".to_string(),
+    ];
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-1");
+    head_entry.evidence = vec!["legacy-policy:proc-cargo-install-cargo-deny".to_string()];
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::EvidenceRemoved)
+        .unwrap_or_else(|| std::panic::panic_any("weak evidence removal should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Improvement);
+    assert!(change.message.contains("weak evidence removed"));
+    let evidence = change
+        .evidence
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("evidence removal should include values"));
+    assert_eq!(evidence.field, EvidenceChangeField::Evidence);
+    assert_eq!(evidence.removed, vec!["binary:cargo".to_string()]);
+    assert!(evidence.added.is_empty());
+}
+
+#[test]
+fn detects_weak_evidence_removed_without_typed_replacement_as_review_required() {
+    let mut base_entry = entry("allow-1");
+    base_entry.evidence = vec!["binary:cargo".to_string()];
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-1");
+    head_entry.evidence.clear();
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::EvidenceRemoved)
+        .unwrap_or_else(|| std::panic::panic_any("weak evidence removal should be reported"));
+    assert_eq!(change.severity, PolicyChangeSeverity::Review);
+    assert!(change.message.contains("weak evidence removed"));
+}
+
+#[test]
 fn detects_local_evidence_added_as_improvement_when_source_tree_relative() {
     let mut base_entry = entry("allow-1");
     base_entry.evidence.clear();

@@ -293,7 +293,10 @@ Rows with `evidence_added`, `evidence_removed`, `link_added`, or `link_removed`
 may also include an optional `evidence` object with the changed collection and
 added/removed values. `evidence_added` is an improvement for typed evidence
 references, but review-required when the added value is weak evidence such as an
-unstructured string, unknown prefix, or empty typed reference.
+unstructured string, unknown prefix, or empty typed reference. `evidence_removed`
+fails when typed evidence is removed, improves posture when only weak evidence
+is removed and typed evidence remains, and requires review when weak evidence is
+removed without any remaining typed evidence.
 Rows with `owner_added`, `owner_changed`, `owner_removed`, `owner_unassigned`,
 `reason_added`, `reason_changed`, `reason_removed`, `classification_added`,
 `classification_changed`, `classification_removed`,
