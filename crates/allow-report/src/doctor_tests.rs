@@ -97,7 +97,11 @@ fn doctor_human_renderer_records_root_config_and_inventory() {
 
     assert!(text.contains("source tree root: H:/Code/Rust/cargo-allow"));
     assert!(text.contains("root discovery: nearest_git_root"));
-    assert!(text.contains("config: not found; run `cargo-allow init`"));
+    assert!(
+        text.contains(
+            "config: not found; run `cargo-allow init --root \"H:/Code/Rust/cargo-allow\"`"
+        )
+    );
     assert!(text.contains(
         "inventory: source_tree/source_syntax via filesystem_fallback; files scanned: 7"
     ));
