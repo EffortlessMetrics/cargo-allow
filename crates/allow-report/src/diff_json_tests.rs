@@ -162,6 +162,28 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
 }
 
 #[test]
+fn diff_json_report_summary_includes_nonzero_evidence_health() {
+    let report = DiffReport {
+        net_posture: "worse",
+        reviewer_action: "repair evidence links",
+        summary: DiffPostureSummary {
+            current_failures: 2,
+            new_findings: 0,
+            removed_findings: 0,
+            policy_failures: 0,
+            policy_review_items: 0,
+            policy_improvements: 0,
+        },
+        finding_changes: &[],
+        policy_changes: &[],
+    };
+    let rendered = crate::diff_json::render_diff_posture_json_with_evidence_health(report, 1, 2);
+
+    assert!(rendered.contains("\"broken_evidence_links\": 1"));
+    assert!(rendered.contains("\"weak_evidence_references\": 2"));
+}
+
+#[test]
 fn diff_json_report_matches_posture_golden_contract() {
     let finding_changes = vec![DiffFindingChange {
         change: "removed",

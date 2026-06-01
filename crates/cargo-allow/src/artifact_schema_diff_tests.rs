@@ -107,6 +107,22 @@ fn common_schema_diff_fragments_keep_source_tree_contracts() {
             "common diff_summary {field} minimum"
         );
     }
+    for field in ["broken_evidence_links", "weak_evidence_references"] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/diff_summary/properties/{field}/type"))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "common diff_summary optional {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/diff_summary/properties/{field}/minimum"))
+                .and_then(Value::as_u64),
+            Some(0),
+            "common diff_summary optional {field} minimum"
+        );
+    }
 
     assert_enum_equals(
         "common finding posture kinds",

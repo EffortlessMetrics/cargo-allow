@@ -137,7 +137,13 @@ fn render_json_report(
         Some(diff) => {
             out.push_str("\n  ],\n");
             out.push_str("  \"diff\": ");
-            out.push_str(&crate::diff_json::render_diff_posture_json(diff));
+            out.push_str(
+                &crate::diff_json::render_diff_posture_json_with_evidence_health(
+                    diff,
+                    context.broken_evidence_links.unwrap_or(0),
+                    context.weak_evidence_references.unwrap_or(0),
+                ),
+            );
             out.push_str("\n}\n");
         }
         None => out.push_str("\n  ]\n}"),
