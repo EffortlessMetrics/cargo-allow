@@ -125,10 +125,13 @@ values such as `workspace.ignored` and `workspace.generated`.
 Evidence and link list entries must not include leading or trailing whitespace.
 They are saved as exact ledger references, even when the current implementation
 classifies some prefixes as traceability-only instead of resolving them.
-Reviewed unsafe entries must include at least one typed evidence reference using
-a recognized non-empty `prefix:value` shape. Generated `baseline_debt` unsafe
-entries may retain uncomfortable placeholder evidence until a human replaces
-the baseline with a reviewed receipt.
+Reviewed unsafe entries and reviewed high-risk process/network policy
+exceptions must include at least one typed evidence reference using a recognized
+non-empty `prefix:value` shape. The current high-risk policy exception families
+are `policy_exception.process_spawn` and
+`policy_exception.network_destination`. Generated `baseline_debt` entries for
+these surfaces may retain uncomfortable placeholder evidence until a human
+replaces the baseline with a reviewed receipt.
 
 Example:
 
@@ -151,8 +154,8 @@ unstructured or unknown-prefix evidence as review-required posture changes.
 
 General evidence can be required by setting `requirements.evidence_required =
 true`. It is opt-in so generated `baseline_debt` ledgers can remain adoption
-scaffolding until reviewed. Unsafe entries keep their separate
-`requirements.unsafe.evidence_required` guard.
+scaffolding until reviewed. Unsafe entries and high-risk process/network policy
+exceptions keep their separate typed-evidence guard for reviewed receipts.
 
 When general evidence is not required, matched non-baseline entries with no
 evidence references still remain visible as policy-health debt. JSON reports
@@ -340,9 +343,9 @@ exceptions.
 allow entry from the nearest current finding at that location. It copies the
 finding's structural selector fields, sets owner/reason/classification and
 lifecycle metadata from CLI flags, fails closed on ambiguous nearest findings,
-requires at least one typed `--evidence prefix:value` reference for unsafe and
-high-risk process/network policy exceptions, and refuses to overwrite an output
-policy without `--force`.
+requires at least one typed `--evidence prefix:value` reference for reviewed
+unsafe and high-risk process/network policy exceptions, and refuses to overwrite
+an output policy without `--force`.
 `--summary-format json --summary-output <path>` writes the add summary as
 `cargo-allow.add.v1`, including source-tree inventory context, selected finding
 details, generated allow-entry metadata, and the human-review-required boundary

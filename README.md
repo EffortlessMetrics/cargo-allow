@@ -158,6 +158,13 @@ Every retained exception should carry owner, reason, classification, lifecycle,
 scope, and evidence. Generated baselines are temporary `baseline_debt`, not a
 claim of cleanliness.
 
+Reviewed unsafe entries and reviewed high-risk process/network policy
+exceptions (`policy_exception.process_spawn` and
+`policy_exception.network_destination`) must include at least one typed evidence
+reference with a recognized non-empty `prefix:value` shape. Generated
+`baseline_debt` entries may retain uncomfortable placeholder evidence until
+reviewed.
+
 Matched non-baseline entries with empty `evidence` are not hidden: report and
 receipt artifacts may include `policy_missing_evidence`, and the matching work
 queue is available through `cargo-allow worklist --missing-evidence`.

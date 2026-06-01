@@ -12,8 +12,9 @@ may claim:
 - Each finding was matched to the current policy ledger, or no failing new
   finding was found for the selected mode.
 - Required policy fields were present according to the current validator.
-- Unsafe entries had at least one evidence string when unsafe evidence was
-  required.
+- Reviewed unsafe entries and reviewed high-risk process/network policy
+  exceptions had at least one typed evidence reference recognized by
+  cargo-allow policy parsing.
 - Unsafe findings had a nearby visible `SAFETY:` comment when
   `requirements.unsafe.safety_comment_required` was enabled.
 - Expired, review-due, stale, ambiguous, invalid, and missing-field statuses were
