@@ -84,11 +84,21 @@ pub(crate) fn suggested_actions_for_context(
         }
     }
     if kind == WEAK_EVIDENCE_REFERENCE {
+        if unsafe_exception(finding, entry) {
+            return unsafe_weak_evidence_actions();
+        }
         if let Some(family) = high_risk_policy_exception_family(finding, entry) {
             return high_risk_policy_weak_evidence_actions(family);
         }
     }
     suggested_actions(kind)
+}
+
+fn unsafe_exception(finding: Option<&Finding>, entry: Option<&AllowEntry>) -> bool {
+    finding
+        .map(|finding| finding.kind)
+        .or_else(|| entry.map(|entry| entry.kind))
+        == Some(FindingKind::Unsafe)
 }
 
 pub(crate) fn suggested_link_actions_for_context(
@@ -177,6 +187,15 @@ fn high_risk_policy_weak_evidence_actions(family: &str) -> Vec<String> {
             .to_string(),
         "review whether the policy exception can be removed or narrowed before retaining it"
             .to_string(),
+    ]
+}
+
+fn unsafe_weak_evidence_actions() -> Vec<String> {
+    vec![
+        "replace weak evidence with unsafe-review, test, spec, or boundary evidence for the unsafe exception".to_string(),
+        "keep weak legacy notes only as supporting context after typed unsafe evidence exists"
+            .to_string(),
+        "keep the selector scoped to the reviewed unsafe boundary".to_string(),
     ]
 }
 
