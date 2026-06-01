@@ -72,6 +72,17 @@ Create a policy file:
 cargo-allow init --strict
 ```
 
+When initializing a source snapshot, partial checkout, or repository from
+outside its root, pass the source-tree root explicitly:
+
+```bash
+cargo-allow init --root path/to/source-tree --strict
+```
+
+Relative `--config` paths are resolved under the source-tree root. Without
+`--root`, `init` uses the nearest git root and then the current directory, like
+the scanning commands.
+
 Inventory the current source-tree exception posture:
 
 ```bash
@@ -215,6 +226,8 @@ are hints only. Ambiguous matches fail closed.
 ## Common Commands
 
 ```bash
+cargo-allow init --strict
+cargo-allow init --root path/to/source-tree --strict
 cargo-allow audit
 cargo-allow check --mode no-new
 cargo-allow diff --base origin/main
