@@ -31,11 +31,12 @@ pub fn selector_precision_score(entry: &AllowEntry) -> u32 {
 
 pub(crate) fn selector_precision_fields(entry: &AllowEntry) -> [SelectorPrecisionField; 13] {
     let selector = &entry.selector;
+    let glob_is_primary_scope = entry.path.is_none();
     [
         field("path", entry.path.is_some(), EXACT_PATH_SCOPE_WEIGHT),
         field(
             "glob",
-            entry.glob.is_some() || selector.glob.is_some(),
+            glob_is_primary_scope && (entry.glob.is_some() || selector.glob.is_some()),
             GLOB_SCOPE_WEIGHT,
         ),
         field("family", entry.family.is_some(), FAMILY_WEIGHT),
@@ -93,6 +94,9 @@ fn present(value: Option<&str>) -> bool {
 }
 
 pub(crate) fn scope_broadened(base: &AllowEntry, head: &AllowEntry) -> bool {
+    if alternate_glob_added(base, head) {
+        return true;
+    }
     if glob_scope_broadened(base.glob.as_deref(), head.glob.as_deref())
         || glob_scope_broadened(base.selector.glob.as_deref(), head.selector.glob.as_deref())
     {
@@ -106,6 +110,39 @@ pub(crate) fn scope_broadened(base: &AllowEntry, head: &AllowEntry) -> bool {
         }
         _ => false,
     }
+}
+
+fn alternate_glob_added(base: &AllowEntry, head: &AllowEntry) -> bool {
+    let base_scope = entry_scope_text(base);
+    if base_scope != entry_scope_text(head) {
+        return false;
+    }
+    added_glob_broadens(
+        base.glob.as_deref(),
+        head.glob.as_deref(),
+        base_scope.as_deref(),
+    ) || added_glob_broadens(
+        base.selector.glob.as_deref(),
+        head.selector.glob.as_deref(),
+        base_scope.as_deref(),
+    )
+}
+
+fn added_glob_broadens(
+    base_glob: Option<&str>,
+    head_glob: Option<&str>,
+    base_scope: Option<&str>,
+) -> bool {
+    let (None, Some(head_glob)) = (base_glob, head_glob) else {
+        return false;
+    };
+    let head_glob = normalize_scope_text(head_glob);
+    if head_glob.trim().is_empty() {
+        return false;
+    }
+    base_scope
+        .map(|scope| normalize_scope_text(scope) != head_glob)
+        .unwrap_or(true)
 }
 
 pub(crate) fn scope_narrowed(base: &AllowEntry, head: &AllowEntry) -> bool {

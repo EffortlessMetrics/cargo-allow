@@ -185,6 +185,24 @@ fn selector_precision_scores_structural_selectors_above_glob_only_scope() {
 }
 
 #[test]
+fn selector_precision_does_not_reward_alternate_glob_when_path_remains() {
+    let base = entry("allow-1");
+    let mut with_entry_glob = entry("allow-1");
+    with_entry_glob.glob = Some("src/**".to_string());
+    let mut with_selector_glob = entry("allow-1");
+    with_selector_glob.selector.glob = Some("tests/**".to_string());
+
+    assert_eq!(
+        selector_precision_score(&base),
+        selector_precision_score(&with_entry_glob)
+    );
+    assert_eq!(
+        selector_precision_score(&base),
+        selector_precision_score(&with_selector_glob)
+    );
+}
+
+#[test]
 fn selector_precision_ignores_line_hints() {
     let mut with_hint = entry("allow-1");
     with_hint.selector.line_hint = Some(900);
