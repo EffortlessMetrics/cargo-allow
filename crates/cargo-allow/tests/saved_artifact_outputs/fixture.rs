@@ -154,7 +154,7 @@ glob = "docs/missing.md"
         self.write_policy_with_evidence(
             "allow-invalid-evidence-scope",
             "Fixture exercises invalid evidence scope worklist output.",
-            "doc:../outside.md",
+            "doc:docs/../src/lib.rs",
         );
     }
 

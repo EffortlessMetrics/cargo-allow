@@ -339,8 +339,15 @@ fn saved_worklist_output_includes_invalid_evidence_scope_items() {
         value
             .pointer("/work_items/0/path")
             .and_then(serde_json::Value::as_str),
-        Some("../outside.md"),
+        Some("docs/../src/lib.rs"),
         "worklist should expose the invalid source-tree-relative evidence target"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/target")
+            .and_then(serde_json::Value::as_str),
+        Some("docs/../src/lib.rs"),
+        "worklist evidence diagnostic should not normalize away invalid parent segments"
     );
     assert_eq!(
         value

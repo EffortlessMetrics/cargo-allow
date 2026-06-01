@@ -1,5 +1,6 @@
 use super::{ExplainContext, explain_steps::explain_next_steps};
-use allow_core::{AllowEntry, Finding, MatchOutcome, allow_entry_broad_scope, normalize_path};
+use crate::evidence_render::evidence_reference_target_text;
+use allow_core::{AllowEntry, Finding, MatchOutcome, allow_entry_broad_scope};
 use allow_diff::selector_precision_score;
 use allow_policy::evidence_reference_diagnostics;
 use std::path::Path;
@@ -61,7 +62,7 @@ fn render_explain_report<R>(
     );
     let normalized_targets = evidence_diagnostics
         .iter()
-        .map(|diagnostic| diagnostic.target.as_ref().map(normalize_path))
+        .map(evidence_reference_target_text)
         .collect::<Vec<_>>();
     let evidence_references = evidence_diagnostics
         .iter()
