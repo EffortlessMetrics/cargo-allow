@@ -7,6 +7,9 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
+pub(crate) const DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE: &str =
+    "local evidence file exists but is not in the default source-tree inventory";
+
 pub(crate) fn current_evidence_source_tree_files(
     root: &Path,
     include_untracked: bool,
@@ -51,9 +54,7 @@ pub(crate) fn evidence_reference_diagnostics_for_source_tree(
         }
         diagnostic.status = EvidenceReferenceStatus::LocalFileMissing;
         diagnostic.category = EvidenceReferenceCategory::Missing;
-        diagnostic.message =
-            "local evidence file exists but is not in the default source-tree inventory"
-                .to_string();
+        diagnostic.message = DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE.to_string();
     }
     diagnostics
 }

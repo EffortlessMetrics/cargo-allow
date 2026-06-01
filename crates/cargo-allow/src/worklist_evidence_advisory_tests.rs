@@ -82,6 +82,28 @@ fn worklist_items_report_local_evidence_outside_source_tree_inventory() {
     assert_eq!(reference.status, "local_file_missing");
     assert_eq!(reference.category, "missing");
     assert!(reference.message.contains("default source-tree inventory"));
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("commit the referenced evidence file")),
+        "worklist should explain how to make evidence part of repository policy"
+    );
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("--include-untracked")),
+        "worklist should explain the local receipt review opt-in"
+    );
+    assert!(
+        item.proof_commands
+            .iter()
+            .any(|command| command == "cargo-allow explain allow-unsafe --include-untracked")
+    );
+    assert!(
+        item.proof_commands
+            .iter()
+            .any(|command| command == "cargo-allow check --include-untracked --mode no-new")
+    );
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
