@@ -123,7 +123,11 @@ fn evidence_suggested_actions(
         return outside_inventory_actions(source);
     }
     if source == ReferenceSource::Link {
-        return link_actions(kind);
+        return super::worklist_actions::suggested_link_actions_for_context(
+            kind,
+            None,
+            Some(entry),
+        );
     }
     suggested_actions_for_context(kind, None, Some(entry))
 }
@@ -171,22 +175,5 @@ fn outside_inventory_actions(source: ReferenceSource) -> Vec<String> {
             "or rerun with --include-untracked when intentionally reviewing local traceability files"
                 .to_string(),
         ],
-    }
-}
-
-fn link_actions(kind: &str) -> Vec<String> {
-    match kind {
-        BROKEN_EVIDENCE_LINK => vec![
-            "restore or commit the referenced local traceability file".to_string(),
-            "or update the link reference to a valid source-tree-relative path".to_string(),
-        ],
-        WEAK_EVIDENCE_REFERENCE => vec![
-            "replace the weak link string with a typed traceability reference".to_string(),
-            format!(
-                "use a recognized prefix such as {}",
-                super::worklist_actions::evidence_prefix_examples()
-            ),
-        ],
-        _ => super::suggested_actions(kind),
     }
 }

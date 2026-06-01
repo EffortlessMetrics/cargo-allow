@@ -31,6 +31,7 @@ mod worklist_scoring;
 mod worklist_types;
 pub(crate) use worklist_actions::{
     proof_commands, suggested_actions, suggested_actions_for_context,
+    suggested_link_actions_for_context,
 };
 use worklist_advisories::work_items_from_policy_advisories;
 pub(crate) use worklist_args::WorklistArgs;

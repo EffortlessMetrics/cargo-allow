@@ -91,6 +91,32 @@ pub(crate) fn suggested_actions_for_context(
     suggested_actions(kind)
 }
 
+pub(crate) fn suggested_link_actions_for_context(
+    kind: &str,
+    finding: Option<&Finding>,
+    entry: Option<&AllowEntry>,
+) -> Vec<String> {
+    match kind {
+        BROKEN_EVIDENCE_LINK => vec![
+            "restore or commit the referenced local traceability file".to_string(),
+            "or update the link reference to a valid source-tree-relative path".to_string(),
+        ],
+        WEAK_EVIDENCE_REFERENCE => {
+            if let Some(family) = high_risk_policy_exception_family(finding, entry) {
+                return high_risk_policy_weak_link_actions(family);
+            }
+            vec![
+                "replace the weak link string with a typed traceability reference".to_string(),
+                format!(
+                    "use a recognized prefix such as {}",
+                    evidence_prefix_examples()
+                ),
+            ]
+        }
+        _ => suggested_actions(kind),
+    }
+}
+
 pub(super) fn evidence_prefix_examples() -> String {
     let prefixes = allow_policy::canonical_evidence_prefixes()
         .map(|prefix| format!("{prefix}:"))
@@ -148,6 +174,18 @@ fn high_risk_policy_weak_evidence_actions(family: &str) -> Vec<String> {
     vec![
         format!("replace weak evidence with typed evidence for policy_exception.{family}"),
         "keep custom legacy facts only as supporting context after a typed receipt exists"
+            .to_string(),
+        "review whether the policy exception can be removed or narrowed before retaining it"
+            .to_string(),
+    ]
+}
+
+fn high_risk_policy_weak_link_actions(family: &str) -> Vec<String> {
+    vec![
+        format!(
+            "replace weak traceability with typed traceability for policy_exception.{family}"
+        ),
+        "keep custom legacy notes only as supporting context after a typed traceability reference exists"
             .to_string(),
         "review whether the policy exception can be removed or narrowed before retaining it"
             .to_string(),
