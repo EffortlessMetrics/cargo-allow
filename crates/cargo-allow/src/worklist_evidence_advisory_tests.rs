@@ -15,6 +15,7 @@ fn worklist_items_report_broken_evidence_links() {
 
     let items = work_items_from_evidence_diagnostics(&root, &cfg, 1);
     let json = render_worklist_json_with_context(&items, WorklistContext::default());
+    let human = render_worklist_human_with_context(&items, WorklistContext::default());
 
     let item = items
         .first()
@@ -47,6 +48,7 @@ fn worklist_items_report_broken_evidence_links() {
     assert!(json.contains("\"cargo-allow list --broken-evidence --format json\""));
     assert!(json.contains("\"cargo-allow check --kind unsafe --mode no-new\""));
     assert!(json.contains("\"cargo-allow worklist --kind unsafe --format json\""));
+    assert!(human.contains("proof: cargo-allow list --broken-evidence --format json"));
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }

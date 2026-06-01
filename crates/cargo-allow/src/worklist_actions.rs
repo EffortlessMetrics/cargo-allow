@@ -220,6 +220,11 @@ pub(crate) fn proof_commands(
         commands.push(format!(
             "cargo-allow worklist --item-kind {kind} --format json"
         ));
+        if let Some(list_shortcut_arg) = list_shortcut_arg(kind) {
+            commands.push(format!(
+                "cargo-allow list --{list_shortcut_arg} --format json"
+            ));
+        }
         commands.push(format!(
             "cargo-allow worklist --kind {kind_arg} --format json"
         ));
@@ -233,15 +238,15 @@ pub(crate) fn proof_commands(
         commands.push(format!(
             "cargo-allow worklist --item-kind {kind} --format json"
         ));
+        if let Some(list_shortcut_arg) = list_shortcut_arg(kind) {
+            commands.push(format!(
+                "cargo-allow list --{list_shortcut_arg} --format json"
+            ));
+        }
         commands.push("cargo-allow worklist --format json".to_string());
     }
     if kind == UNSAFE_MISSING_EVIDENCE && !has_unsafe_kind_check {
         commands.push("cargo-allow check --kind unsafe --mode no-new".to_string());
-    }
-    if let Some(list_shortcut_arg) = list_shortcut_arg(kind) {
-        commands.push(format!(
-            "cargo-allow list --{list_shortcut_arg} --format json"
-        ));
     }
     commands
 }
