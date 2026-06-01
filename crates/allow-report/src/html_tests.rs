@@ -66,6 +66,22 @@ fn html_audit_report_counts_weak_evidence_references_context() {
 }
 
 #[test]
+fn html_check_report_includes_policy_context_status_counts() {
+    let mut context = context("git_tracked");
+    context.baseline_debt_entries = Some(3);
+    context.policy_missing_evidence_entries = Some(4);
+    context.broken_evidence_links = Some(2);
+    context.weak_evidence_references = Some(1);
+
+    let html = render_html_with_context("check", &[], &[], true, context);
+
+    assert!(html.contains("<code>policy_baseline_debt</code></td><td class=\"count\">3</td>"));
+    assert!(html.contains("<code>policy_missing_evidence</code></td><td class=\"count\">4</td>"));
+    assert!(html.contains("<code>broken_evidence_links</code></td><td class=\"count\">2</td>"));
+    assert!(html.contains("<code>weak_evidence_references</code></td><td class=\"count\">1</td>"));
+}
+
+#[test]
 fn html_audit_report_routes_evidence_repairs_even_with_review_queue() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::New,

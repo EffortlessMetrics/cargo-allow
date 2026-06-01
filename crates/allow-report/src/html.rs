@@ -3,7 +3,8 @@ use allow_core::{Finding, MatchOutcome, MatchStatus};
 use crate::text::html_escape;
 use crate::{
     CLAIM_BOUNDARY_TEXT, FilePosture, ReportContext, ReviewSignals, STATUS_COUNT_ORDER, Summary,
-    audit_review_queue, non_rust_file_rows, render_source_inventory_html,
+    audit_review_queue, baseline_debt_count, broken_evidence_link_count, non_rust_file_rows,
+    policy_missing_evidence_count, render_source_inventory_html, weak_evidence_reference_count,
 };
 
 pub fn render_html(
@@ -60,7 +61,7 @@ pub fn render_html_with_context(
         ));
     }
     out.push_str("<h2>Status Counts</h2>\n");
-    render_status_count_table_html(&summary, &mut out);
+    render_status_count_table_html(&summary, context, &mut out);
     if command == "audit" {
         render_source_inventory_html(findings, outcomes, &mut out);
         render_audit_summary_html(&summary, outcomes, context, &mut out);
@@ -76,7 +77,7 @@ pub fn render_html_with_context(
     out
 }
 
-fn render_status_count_table_html(summary: &Summary, out: &mut String) {
+fn render_status_count_table_html(summary: &Summary, context: ReportContext<'_>, out: &mut String) {
     out.push_str("<table><thead><tr><th>Status</th><th>Count</th></tr></thead><tbody>\n");
     for status in STATUS_COUNT_ORDER {
         out.push_str(&format!(
@@ -85,7 +86,38 @@ fn render_status_count_table_html(summary: &Summary, out: &mut String) {
             summary.count(status)
         ));
     }
+    for (name, count) in policy_context_count_rows(summary, context) {
+        out.push_str(&format!(
+            "<tr><td><code>{}</code></td><td class=\"count\">{}</td></tr>\n",
+            html_escape(name),
+            count
+        ));
+    }
     out.push_str("</tbody></table>\n");
+}
+
+fn policy_context_count_rows(
+    summary: &Summary,
+    context: ReportContext<'_>,
+) -> Vec<(&'static str, usize)> {
+    let mut rows = Vec::new();
+    let baseline_debt = baseline_debt_count(summary, context);
+    if baseline_debt > summary.count(MatchStatus::BaselineDebt) {
+        rows.push(("policy_baseline_debt", baseline_debt));
+    }
+    let policy_missing_evidence = policy_missing_evidence_count(summary, context);
+    if policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing) {
+        rows.push(("policy_missing_evidence", policy_missing_evidence));
+    }
+    let broken_evidence_links = broken_evidence_link_count(context);
+    if broken_evidence_links > 0 {
+        rows.push(("broken_evidence_links", broken_evidence_links));
+    }
+    let weak_evidence_references = weak_evidence_reference_count(context);
+    if weak_evidence_references > 0 {
+        rows.push(("weak_evidence_references", weak_evidence_references));
+    }
+    rows
 }
 
 fn render_audit_summary_html(
