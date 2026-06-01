@@ -274,6 +274,80 @@ ast_kind = "tracked_file"
 }
 
 #[test]
+fn doctor_reports_policy_link_health_counts() {
+    let root = doctor_fixture_dir();
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    let policy = root.join("policy/allow.toml");
+    fs::write(
+        &policy,
+        r#"
+policy = "cargo-allow"
+
+[[allow]]
+id = "allow-doc-link"
+kind = "non_rust_file"
+path = "docs/policy.md"
+owner = "docs"
+classification = "reviewed"
+reason = "Tracked documentation policy."
+evidence = ["test:doctor_reports_policy_link_health_counts"]
+links = ["doc:docs/missing-rationale.md", "spreadsheet:manual-review"]
+review_after = "2026-06-30"
+
+[allow.selector]
+ast_kind = "tracked_file"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    let output = root.join("doctor.json");
+
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy),
+        format: DoctorFormat::Json,
+        output: Some(output.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
+
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    let value = parse_json_artifact("doctor", &json, allow_report::DOCTOR_SCHEMA_ID, "doctor");
+    assert_eq!(
+        value.pointer("/config/valid").and_then(Value::as_bool),
+        Some(false),
+        "broken local links should make doctor config invalid"
+    );
+    assert_eq!(
+        value
+            .pointer("/config/broken_evidence_links")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        value
+            .pointer("/config/weak_evidence_references")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
+    let diagnostic = value
+        .pointer("/config/diagnostic")
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| std::panic::panic_any("doctor diagnostic should be a string"));
+    assert!(
+        diagnostic.contains("allow-doc-link link `doc:docs/missing-rationale.md`"),
+        "doctor diagnostic should identify the broken traceability link: {diagnostic}"
+    );
+    assert!(
+        diagnostic.contains("local link file is missing"),
+        "doctor diagnostic should use link-specific wording: {diagnostic}"
+    );
+    remove_doctor_fixture_dir(root);
+}
+
+#[test]
 fn doctor_reports_untracked_local_evidence_as_broken_by_default() {
     let root = doctor_fixture_dir();
     fs::create_dir_all(root.join("policy"))

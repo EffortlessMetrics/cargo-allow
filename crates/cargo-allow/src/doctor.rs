@@ -1,4 +1,4 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
+use allow_core::{AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use allow_policy::{EvidenceReferenceDiagnostic, load_policy};
 use std::collections::BTreeSet;
@@ -90,11 +90,14 @@ fn config_status(
     match policy {
         None => (None, None),
         Some(Ok(cfg)) => match first_broken_evidence_diagnostic(root, cfg, source_tree_files) {
-            Some((entry_id, diagnostic)) => (
+            Some((entry_id, source, diagnostic)) => (
                 Some(false),
                 Some(format!(
-                    "{} evidence `{}`: {}",
-                    entry_id, diagnostic.raw, diagnostic.message
+                    "{} {} `{}`: {}",
+                    entry_id,
+                    source.label(),
+                    diagnostic.raw,
+                    source.message(&diagnostic.message)
                 )),
             ),
             None => (Some(true), None),
@@ -113,11 +116,11 @@ fn doctor_evidence_health(
             let diagnostics = evidence_diagnostics(root, cfg, source_tree_files);
             let broken = diagnostics
                 .iter()
-                .filter(|diagnostic| diagnostic.status.is_broken_local_link())
+                .filter(|(_, diagnostic)| diagnostic.status.is_broken_local_link())
                 .count();
             let weak = diagnostics
                 .iter()
-                .filter(|diagnostic| diagnostic.status.is_weak_reference())
+                .filter(|(_, diagnostic)| diagnostic.status.is_weak_reference())
                 .count();
             (Some(broken), Some(weak))
         }
@@ -129,12 +132,12 @@ fn first_broken_evidence_diagnostic(
     root: &Path,
     cfg: &AllowConfig,
     source_tree_files: Option<&BTreeSet<String>>,
-) -> Option<(String, EvidenceReferenceDiagnostic)> {
+) -> Option<(String, ReferenceSource, EvidenceReferenceDiagnostic)> {
     cfg.allow.iter().find_map(|entry| {
-        evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
+        entry_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
             .into_iter()
-            .find(|diagnostic| diagnostic.status.is_broken_local_link())
-            .map(|diagnostic| (entry.id.clone(), diagnostic))
+            .find(|(_, diagnostic)| diagnostic.status.is_broken_local_link())
+            .map(|(source, diagnostic)| (entry.id.clone(), source, diagnostic))
     })
 }
 
@@ -142,13 +145,55 @@ fn evidence_diagnostics(
     root: &Path,
     cfg: &AllowConfig,
     source_tree_files: Option<&BTreeSet<String>>,
-) -> Vec<EvidenceReferenceDiagnostic> {
+) -> Vec<(ReferenceSource, EvidenceReferenceDiagnostic)> {
     cfg.allow
         .iter()
         .flat_map(|entry| {
-            evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
+            entry_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
         })
         .collect()
+}
+
+fn entry_reference_diagnostics_for_source_tree(
+    root: &Path,
+    entry: &AllowEntry,
+    source_tree_files: Option<&BTreeSet<String>>,
+) -> Vec<(ReferenceSource, EvidenceReferenceDiagnostic)> {
+    let mut diagnostics =
+        evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
+            .into_iter()
+            .map(|diagnostic| (ReferenceSource::Evidence, diagnostic))
+            .collect::<Vec<_>>();
+    let mut link_entry = entry.clone();
+    link_entry.evidence = entry.links.clone();
+    diagnostics.extend(
+        evidence_reference_diagnostics_for_source_tree(root, &link_entry, source_tree_files)
+            .into_iter()
+            .map(|diagnostic| (ReferenceSource::Link, diagnostic)),
+    );
+    diagnostics
+}
+
+#[derive(Clone, Copy)]
+enum ReferenceSource {
+    Evidence,
+    Link,
+}
+
+impl ReferenceSource {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Evidence => "evidence",
+            Self::Link => "link",
+        }
+    }
+
+    fn message(self, message: &str) -> String {
+        match self {
+            Self::Evidence => message.to_string(),
+            Self::Link => message.replace("evidence", "link"),
+        }
+    }
 }
 
 fn doctor_inventory_options(policy: Option<&CargoAllowResult<AllowConfig>>) -> InventoryOptions {
