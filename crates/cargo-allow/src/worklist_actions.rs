@@ -73,7 +73,7 @@ pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
     }
 }
 
-fn evidence_prefix_examples() -> String {
+pub(super) fn evidence_prefix_examples() -> String {
     let prefixes = allow_policy::canonical_evidence_prefixes()
         .map(|prefix| format!("{prefix}:"))
         .collect::<Vec<_>>();
