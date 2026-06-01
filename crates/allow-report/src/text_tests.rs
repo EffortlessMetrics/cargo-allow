@@ -383,7 +383,8 @@ fn markdown_audit_report_counts_policy_missing_evidence_context() {
 
     assert!(text.contains("| Review items | 4 |"));
     assert!(text.contains("| Policy missing evidence | 4 |"));
-    assert!(text.contains("worklist --missing-evidence --format json"));
+    assert!(text.contains("worklist --format json"));
+    assert!(text.contains("add `--missing-evidence` to focus that queue"));
     assert!(!text.contains("## Audit Review Queue"));
 }
 
