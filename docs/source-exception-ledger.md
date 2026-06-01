@@ -336,11 +336,12 @@ exceptions.
 allow entry from the nearest current finding at that location. It copies the
 finding's structural selector fields, sets owner/reason/classification and
 lifecycle metadata from CLI flags, fails closed on ambiguous nearest findings,
-and refuses to overwrite an output policy without `--force`. `--summary-format
-json --summary-output <path>` writes the add summary as `cargo-allow.add.v1`,
-including source-tree inventory context, selected finding details, generated
-allow-entry metadata, and the human-review-required boundary for the proposed
-receipt.
+requires `--evidence` for unsafe and high-risk process/network policy
+exceptions, and refuses to overwrite an output policy without `--force`.
+`--summary-format json --summary-output <path>` writes the add summary as
+`cargo-allow.add.v1`, including source-tree inventory context, selected finding
+details, generated allow-entry metadata, and the human-review-required boundary
+for the proposed receipt.
 
 Counted legacy baselines should also carry an `occurrence_limit`:
 
