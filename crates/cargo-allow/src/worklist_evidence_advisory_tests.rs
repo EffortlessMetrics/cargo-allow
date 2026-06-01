@@ -51,6 +51,85 @@ fn worklist_items_report_broken_evidence_links() {
 }
 
 #[test]
+fn worklist_items_report_broken_local_traceability_links() {
+    let root = migrate_fixture_dir();
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-linked-doc", FindingKind::NonRustFile);
+    entry.links = vec!["doc:docs/missing-link.md".to_string()];
+    cfg.allow.push(entry);
+
+    let items = work_items_from_evidence_diagnostics(&root, &cfg, 1);
+
+    let item = items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+    assert_eq!(item.kind, "broken_evidence_link");
+    assert_eq!(item.exception_kind.as_deref(), Some("non_rust_file"));
+    assert_eq!(item.risk, "medium");
+    assert_eq!(item.difficulty, "small");
+    assert_eq!(item.status, MatchStatus::EvidenceMissing);
+    assert_eq!(item.allow_id.as_deref(), Some("allow-linked-doc"));
+    assert_eq!(item.path.as_deref(), Some("docs/missing-link.md"));
+    assert!(item.message.contains("allow-linked-doc link"));
+    assert!(item.message.contains("local link file is missing"));
+    let reference = item
+        .evidence_reference
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("broken link item should carry reference"));
+    assert_eq!(reference.raw, "doc:docs/missing-link.md");
+    assert_eq!(reference.status, "local_file_missing");
+    assert_eq!(reference.category, "missing");
+    assert!(reference.message.contains("local link file is missing"));
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("local traceability file"))
+    );
+    assert!(
+        item.proof_commands
+            .iter()
+            .any(|command| command == "cargo-allow explain allow-linked-doc")
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn worklist_items_report_weak_traceability_links() {
+    let root = migrate_fixture_dir();
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-weak-link", FindingKind::Panic);
+    entry.links = vec!["spreadsheet:manual-review".to_string()];
+    cfg.allow.push(entry);
+
+    let items = work_items_from_evidence_diagnostics(&root, &cfg, 1);
+
+    let item = items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+    assert_eq!(item.kind, "weak_evidence_reference");
+    assert_eq!(item.exception_kind.as_deref(), Some("panic"));
+    assert_eq!(item.risk, "medium");
+    assert_eq!(item.allow_id.as_deref(), Some("allow-weak-link"));
+    assert!(item.message.contains("allow-weak-link link"));
+    assert!(item.message.contains("unrecognized link prefix"));
+    let reference = item
+        .evidence_reference
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("weak link item should carry reference"));
+    assert_eq!(reference.raw, "spreadsheet:manual-review");
+    assert_eq!(reference.category, "unknown_prefix");
+    assert!(reference.message.contains("unrecognized link prefix"));
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("typed traceability reference"))
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn worklist_items_report_local_evidence_outside_source_tree_inventory() {
     let root = migrate_fixture_dir();
     fs::create_dir_all(root.join("docs"))

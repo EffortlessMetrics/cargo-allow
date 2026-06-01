@@ -480,11 +480,12 @@ prove, narrow, or remove the exception instead of adding suppressions just to
 silence cargo-allow.
 
 The worklist command also reports evidence-health cleanup as work items. Broken
-local evidence links become `broken_evidence_link` items. Unstructured evidence
-strings or references with unknown prefixes become `weak_evidence_reference`
-items. This mode loads the policy even when local evidence is missing so humans
-or agents can get a repair target; normal `cargo-allow check` still fails
-closed on broken local evidence references.
+local evidence links and broken local-file traceability links become
+`broken_evidence_link` items. Unstructured evidence strings, weak traceability
+links, or references with unknown prefixes become `weak_evidence_reference`
+items. This mode loads the policy even when local evidence or linked rationale
+is missing so humans or agents can get a repair target; normal
+`cargo-allow check` still fails closed on broken local evidence references.
 
 The worklist may also include advisory `broad_scope` items for matched allow
 entries that use wildcard source-tree scopes. These do not mean the current

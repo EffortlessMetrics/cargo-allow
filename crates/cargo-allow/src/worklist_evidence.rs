@@ -38,7 +38,30 @@ pub(super) fn work_items_from_evidence_diagnostics_with_source_tree_files(
         {
             let item_index = start_index + items.len();
             items.push(work_item_from_evidence_diagnostic(
-                entry, diagnostic, item_index,
+                entry,
+                diagnostic,
+                item_index,
+                ReferenceSource::Evidence,
+            ));
+        }
+        let mut link_entry = entry.clone();
+        link_entry.evidence = entry.links.clone();
+        for mut diagnostic in evidence_reference_diagnostics_for_source_tree(
+            root,
+            &link_entry,
+            evidence_source_tree_files,
+        )
+        .into_iter()
+        .filter(|diagnostic| {
+            diagnostic.status.is_broken_local_link() || diagnostic.status.is_weak_reference()
+        }) {
+            diagnostic.message = link_reference_message(&diagnostic.message);
+            let item_index = start_index + items.len();
+            items.push(work_item_from_evidence_diagnostic(
+                entry,
+                diagnostic,
+                item_index,
+                ReferenceSource::Link,
             ));
         }
     }
@@ -49,6 +72,7 @@ fn work_item_from_evidence_diagnostic(
     entry: &AllowEntry,
     diagnostic: EvidenceReferenceDiagnostic,
     item_index: usize,
+    source: ReferenceSource,
 ) -> WorkItem {
     let kind = if diagnostic.status.is_weak_reference() {
         WEAK_EVIDENCE_REFERENCE
@@ -97,22 +121,27 @@ fn work_item_from_evidence_diagnostic(
         evidence_reference: Some(evidence_reference),
         source_package: None,
         message: format!(
-            "{} evidence `{}`: {}",
-            entry.id, diagnostic.raw, diagnostic.message
+            "{} {} `{}`: {}",
+            entry.id,
+            source.label(),
+            diagnostic.raw,
+            diagnostic.message
         ),
-        suggested_actions: evidence_suggested_actions(kind, &diagnostic),
+        suggested_actions: evidence_suggested_actions(kind, &diagnostic, source),
         proof_commands,
     }
 }
 
-fn evidence_suggested_actions(kind: &str, diagnostic: &EvidenceReferenceDiagnostic) -> Vec<String> {
+fn evidence_suggested_actions(
+    kind: &str,
+    diagnostic: &EvidenceReferenceDiagnostic,
+    source: ReferenceSource,
+) -> Vec<String> {
     if evidence_exists_outside_default_inventory(diagnostic) {
-        return vec![
-            "commit the referenced evidence file if it should support repository policy"
-                .to_string(),
-            "or rerun with --include-untracked when intentionally reviewing local receipt artifacts"
-                .to_string(),
-        ];
+        return source.outside_inventory_actions();
+    }
+    if source == ReferenceSource::Link {
+        return source.link_actions(kind);
     }
     super::suggested_actions(kind)
 }
@@ -142,4 +171,60 @@ fn evidence_proof_commands(
 
 fn evidence_exists_outside_default_inventory(diagnostic: &EvidenceReferenceDiagnostic) -> bool {
     diagnostic.message == DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE
+        || diagnostic.message
+            == link_reference_message(DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ReferenceSource {
+    Evidence,
+    Link,
+}
+
+impl ReferenceSource {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Evidence => "evidence",
+            Self::Link => "link",
+        }
+    }
+
+    fn outside_inventory_actions(self) -> Vec<String> {
+        match self {
+            Self::Evidence => vec![
+                "commit the referenced evidence file if it should support repository policy"
+                    .to_string(),
+                "or rerun with --include-untracked when intentionally reviewing local receipt artifacts"
+                    .to_string(),
+            ],
+            Self::Link => vec![
+                "commit the referenced traceability file if it should support repository policy"
+                    .to_string(),
+                "or rerun with --include-untracked when intentionally reviewing local traceability files"
+                    .to_string(),
+            ],
+        }
+    }
+
+    fn link_actions(self, kind: &str) -> Vec<String> {
+        debug_assert_eq!(self, Self::Link);
+        match kind {
+            BROKEN_EVIDENCE_LINK => vec![
+                "restore or commit the referenced local traceability file".to_string(),
+                "or update the link reference to a valid source-tree-relative path".to_string(),
+            ],
+            WEAK_EVIDENCE_REFERENCE => vec![
+                "replace the weak link string with a typed traceability reference".to_string(),
+                format!(
+                    "use a recognized prefix such as {}",
+                    super::worklist_actions::evidence_prefix_examples()
+                ),
+            ],
+            _ => super::suggested_actions(kind),
+        }
+    }
+}
+
+fn link_reference_message(message: &str) -> String {
+    message.replace("evidence", "link")
 }
