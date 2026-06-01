@@ -1,7 +1,7 @@
 use super::WorkItem;
 use super::worklist_actions::{proof_commands, suggested_actions};
 use super::worklist_item_kind::{BASELINE_DEBT, BROAD_SCOPE, MISSING_EVIDENCE};
-use super::worklist_priority::{DIFFICULTY_SMALL, RISK_MEDIUM};
+use super::worklist_priority::DIFFICULTY_SMALL;
 use super::worklist_scoring::{exception_family, work_item_difficulty, work_item_risk};
 use allow_core::{
     AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, allow_entry_broad_scope,
@@ -93,7 +93,7 @@ pub(super) fn work_items_from_policy_advisories(
             let kind = BROAD_SCOPE.to_string();
             items.push(WorkItem {
                 id: format!("work-broad-scope-{item_index:04}"),
-                kind,
+                kind: kind.clone(),
                 exception_kind: Some(entry.kind.as_str().to_string()),
                 family: entry.family.clone(),
                 owner: Some(entry.owner.clone()),
@@ -104,7 +104,7 @@ pub(super) fn work_items_from_policy_advisories(
                 expires: entry.lifecycle.expires.clone(),
                 evidence_count: Some(entry.evidence.len()),
                 selector_precision: Some(selector_precision_score(entry)),
-                risk: RISK_MEDIUM,
+                risk: work_item_risk(&kind, MatchStatus::Matched, finding, Some(entry)),
                 difficulty: DIFFICULTY_SMALL,
                 status: MatchStatus::Matched,
                 allow_id: Some(entry.id.clone()),

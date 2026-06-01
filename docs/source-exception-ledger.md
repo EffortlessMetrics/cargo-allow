@@ -497,7 +497,8 @@ broken local-file traceability links.
 The worklist may also include advisory `broad_scope` items for matched allow
 entries that use wildcard source-tree scopes. These do not mean the current
 policy failed; they route cleanup work toward narrower selectors or explicit
-review of the broad scope.
+review of the broad scope. Their risk follows the governed exception kind, so a
+broad unsafe selector is routed ahead of a broad low-risk documentation scope.
 
 `cargo-allow diff --base <rev>` compares the selected policy ledger between
 the base revision and the current checkout or explicit `--head` revision, then

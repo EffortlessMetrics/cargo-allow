@@ -90,6 +90,35 @@ fn worklist_items_report_broad_scope_advisories() {
 }
 
 #[test]
+fn worklist_broad_scope_advisories_use_exception_risk() {
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-unsafe-glob", FindingKind::Unsafe);
+    entry.path = None;
+    entry.glob = Some("crates/runtime/**".to_string());
+    entry.selector.glob = Some("crates/runtime/**".to_string());
+    entry.family = Some("unsafe_block".to_string());
+    cfg.allow.push(entry);
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Matched,
+        allow_id: Some("allow-unsafe-glob".to_string()),
+        finding_index: Some(0),
+        message: "matched".to_string(),
+        score: 100,
+    }];
+
+    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1, false);
+
+    let item = items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected broad-scope work item"));
+    assert_eq!(item.kind, "broad_scope");
+    assert_eq!(item.exception_kind.as_deref(), Some("unsafe"));
+    assert_eq!(item.family.as_deref(), Some("unsafe_block"));
+    assert_eq!(item.risk, "high");
+    assert_eq!(item.difficulty, "small");
+}
+
+#[test]
 fn worklist_items_report_matched_baseline_debt_advisories() {
     let mut cfg = AllowConfig::empty();
     let mut entry = test_entry("allow-baseline", FindingKind::Panic);
