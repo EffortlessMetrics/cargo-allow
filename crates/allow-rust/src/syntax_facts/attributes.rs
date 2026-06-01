@@ -15,7 +15,7 @@ pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut R
 
     let start = node.start_position();
     let line = start.row as u32 + 1;
-    if let Some((kind, offset)) = lint_attribute_kind(text) {
+    for (kind, offset) in lint_attribute_kinds(text) {
         let attr_text = if offset == 0 {
             text.to_string()
         } else {
@@ -42,16 +42,16 @@ pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut R
     }
 }
 
-fn lint_attribute_kind(text: &str) -> Option<(LintAttributeKind, usize)> {
+fn lint_attribute_kinds(text: &str) -> Vec<(LintAttributeKind, usize)> {
     let trimmed = text.trim_start();
     if detect_attr(trimmed, "allow").is_some() {
-        Some((LintAttributeKind::Allow, text.len() - trimmed.len()))
+        vec![(LintAttributeKind::Allow, text.len() - trimmed.len())]
     } else if detect_attr(trimmed, "expect").is_some() {
-        Some((LintAttributeKind::Expect, text.len() - trimmed.len()))
+        vec![(LintAttributeKind::Expect, text.len() - trimmed.len())]
     } else if trimmed.starts_with("#[cfg_attr(") || trimmed.starts_with("#![cfg_attr(") {
-        cfg_attr_lint_kind(text)
+        cfg_attr_lint_kinds(text)
     } else {
-        None
+        Vec::new()
     }
 }
 
@@ -66,22 +66,18 @@ fn unsafe_attribute_offsets(text: &str) -> Vec<usize> {
     find_tokens_outside_rust_strings(text, "unsafe(")
 }
 
-fn cfg_attr_lint_kind(text: &str) -> Option<(LintAttributeKind, usize)> {
-    let allow = find_token_outside_rust_strings(text, "allow(");
-    let expect = find_token_outside_rust_strings(text, "expect(");
-    match (allow, expect) {
-        (Some(allow), Some(expect)) if allow <= expect => Some((LintAttributeKind::Allow, allow)),
-        (Some(_), Some(expect)) => Some((LintAttributeKind::Expect, expect)),
-        (Some(allow), None) => Some((LintAttributeKind::Allow, allow)),
-        (None, Some(expect)) => Some((LintAttributeKind::Expect, expect)),
-        (None, None) => None,
-    }
-}
-
-fn find_token_outside_rust_strings(text: &str, token: &str) -> Option<usize> {
-    find_tokens_outside_rust_strings(text, token)
+fn cfg_attr_lint_kinds(text: &str) -> Vec<(LintAttributeKind, usize)> {
+    let mut attributes = find_tokens_outside_rust_strings(text, "allow(")
         .into_iter()
-        .next()
+        .map(|offset| (LintAttributeKind::Allow, offset))
+        .chain(
+            find_tokens_outside_rust_strings(text, "expect(")
+                .into_iter()
+                .map(|offset| (LintAttributeKind::Expect, offset)),
+        )
+        .collect::<Vec<_>>();
+    attributes.sort_by_key(|(_, offset)| *offset);
+    attributes
 }
 
 fn find_tokens_outside_rust_strings(text: &str, token: &str) -> Vec<usize> {
