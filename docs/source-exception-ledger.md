@@ -158,7 +158,8 @@ may include `summary.policy_missing_evidence` and
 `evidence_missing`, which is used when evidence requirements are enforced. Use
 `cargo-allow worklist --missing-evidence --format json` to route those retained
 entries for evidence cleanup without pretending the current no-new check
-failed.
+failed. `cargo-allow explain <id>` also points matched non-baseline entries with
+empty evidence toward the same evidence-cleanup queue.
 
 Known local evidence prefixes are parsed when a policy is loaded from a source
 tree. `doc:`, `spec:`, `adr:`, `ripr:`, `unsafe-review:`, and `coverage:`
@@ -365,7 +366,8 @@ occurrence-limit overruns, evidence reference diagnostics, and local
 traceability-link diagnostics. When the entry
 needs attention, it also includes
 suggested next actions and proof commands. Matched `baseline_debt` entries also
-show next actions because generated debt still needs human review. Local
+show next actions because generated debt still needs human review, and matched
+entries with no evidence references show evidence-cleanup actions. Local
 evidence references are shown as present, missing, or invalid; traceability
 strings are identified as not executed or resolved. Local-file `links` entries
 use the same source-tree diagnostics in `explain` so missing specs, ADRs, or

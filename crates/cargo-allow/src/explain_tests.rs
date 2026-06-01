@@ -70,6 +70,28 @@ fn explain_entry_text_reports_live_match_status() {
 }
 
 #[test]
+fn explain_entry_text_reports_empty_evidence_next_actions() {
+    let mut cfg = AllowConfig::empty();
+    let entry = test_entry("allow-file", FindingKind::NonRustFile);
+    cfg.allow.push(entry.clone());
+    let finding = test_finding(
+        FindingKind::NonRustFile,
+        None,
+        "tracked.file",
+        "tracked_file",
+    );
+
+    let text = explain_entry_text(Path::new("."), &cfg, &entry, &[finding]);
+
+    assert!(text.contains("current_status: matched"));
+    assert!(text.contains("evidence: none"));
+    assert!(text.contains("next:"));
+    assert!(text.contains("action: add evidence that supports the exception reason"));
+    assert!(text.contains("proof: cargo-allow worklist --missing-evidence --format json"));
+    assert!(text.contains("proof: cargo-allow check --kind non-rust --mode no-new"));
+}
+
+#[test]
 fn explain_entry_text_reports_baseline_debt_next_actions() {
     let mut cfg = AllowConfig::empty();
     let mut entry = test_entry("allow-baseline", FindingKind::Panic);
