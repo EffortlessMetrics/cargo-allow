@@ -158,10 +158,10 @@ fn list_or_none(values: &[String]) -> String {
 fn evidence_reference_summary(reference: &EvidenceReference<'_>) -> String {
     let status = evidence_reference_human_status(reference);
     format!(
-        "[{}] {}: {} (prefix={}, target={})",
-        status.marker,
+        "{}: {} (status={}, prefix={}, target={})",
         status.label,
         reference.raw,
+        reference.status,
         reference.prefix.unwrap_or("-"),
         reference.target.unwrap_or("-")
     )
