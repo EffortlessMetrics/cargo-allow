@@ -128,6 +128,45 @@ fn load() {{}}
 }
 
 #[test]
+fn detects_multiple_cfg_attr_lint_attributes() {
+    let line = r#"#[cfg_attr(feature = "lint", allow(dead_code), expect(clippy::unwrap_used, reason = "policy:allow-lint"))]"#;
+    let src = format!(
+        r#"
+{line}
+fn load() {{}}
+        "#
+    );
+    let findings = scan_rust_source("src/lib.rs", &src);
+    let lint_findings = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::LintException)
+        .map(|f| {
+            (
+                f.family.as_deref(),
+                f.identity.lint.as_deref(),
+                f.span.as_ref().map(|span| span.column),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        lint_findings,
+        vec![
+            (
+                Some("allow_attribute"),
+                Some("dead_code"),
+                Some(crate::text::column(line, "allow"))
+            ),
+            (
+                Some("expect_attribute"),
+                Some("clippy::unwrap_used"),
+                Some(last_column(line, "expect"))
+            )
+        ]
+    );
+}
+
+#[test]
 fn cfg_attr_lint_detection_ignores_attribute_strings() {
     let src = r##"
 #[doc = "example #[allow(dead_code)] text"]
@@ -171,4 +210,14 @@ fn detect_attr_returns_text_after_outer_and_inner_prefixes() {
         Some("clippy::unwrap_used)]")
     );
     assert_eq!(detect_attr("allow(dead_code)", "allow"), Some("dead_code)"));
+}
+
+fn last_column(line: &str, needle: &str) -> u32 {
+    let index = line
+        .rfind(needle)
+        .unwrap_or_else(|| std::panic::panic_any(format!("missing `{needle}` in `{line}`")));
+    line.char_indices()
+        .take_while(|(byte, _)| *byte < index)
+        .count() as u32
+        + 1
 }
