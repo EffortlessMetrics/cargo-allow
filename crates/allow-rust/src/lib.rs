@@ -1,3 +1,10 @@
+//! Source-syntax Rust scanners for cargo-allow exception findings.
+//!
+//! This crate scans `.rs` file text for syntax-visible unsafe, panic-family,
+//! indexing/slicing, and lint-suppression surfaces. It parses source directly
+//! without invoking Cargo, rustc, Clippy, build scripts, proc macros, macro
+//! expansion, type analysis, or MIR.
+
 use allow_core::{CargoAllowError, CargoAllowResult, Finding};
 use std::fs;
 use std::path::{Path, PathBuf};

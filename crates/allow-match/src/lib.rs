@@ -1,3 +1,10 @@
+//! Structural finding-to-policy matching for cargo-allow.
+//!
+//! This crate evaluates source-tree findings against policy receipts, classifies
+//! lifecycle and evidence outcomes, and fails closed on ambiguous or invalid
+//! selectors. It only reasons over source-syntax findings and policy data
+//! supplied by callers.
+
 mod classification;
 mod evaluation;
 mod messages;

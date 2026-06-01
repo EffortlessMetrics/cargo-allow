@@ -1,3 +1,10 @@
+//! Core data model for cargo-allow source-tree exception governance.
+//!
+//! This crate defines the shared finding, policy-entry, selector, lifecycle,
+//! match-outcome, path-normalization, and stable fingerprint primitives used by
+//! the cargo-allow crate family. It does not scan source files, invoke Cargo,
+//! compile code, or execute repository artifacts.
+
 mod date;
 mod error;
 mod finding;
