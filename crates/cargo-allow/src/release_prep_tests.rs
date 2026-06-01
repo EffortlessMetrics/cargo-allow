@@ -159,6 +159,28 @@ fn release_0_1_3_install_examples_use_published_release() {
     }
 }
 
+#[test]
+fn release_0_1_3_packages_inherit_workspace_readme() {
+    let root = workspace_root();
+    let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
+    let package_manifests = workspace_package_manifests(&root);
+
+    assert!(
+        workspace_manifest_contains(
+            &workspace_manifest,
+            "[workspace.package]",
+            r#"readme = "README.md""#
+        ),
+        "workspace package metadata should point published crates at the public README"
+    );
+    for (package, manifest) in package_manifests {
+        assert!(
+            manifest.contains("readme.workspace = true"),
+            "{package} should inherit the workspace README for crates.io packaging"
+        );
+    }
+}
+
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -174,6 +196,20 @@ fn release_install_surfaces() -> &'static [&'static str] {
         "examples/github-actions/cargo-allow-check.yml",
         "examples/github-actions/cargo-allow-diff.yml",
     ]
+}
+
+fn workspace_manifest_contains(manifest: &str, section: &str, expected: &str) -> bool {
+    let mut in_section = false;
+    for line in manifest.lines().map(str::trim) {
+        if line.starts_with('[') {
+            in_section = line == section;
+            continue;
+        }
+        if in_section && line == expected {
+            return true;
+        }
+    }
+    false
 }
 
 fn read_workspace_file(root: &Path, relative_path: &str) -> String {
