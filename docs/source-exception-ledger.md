@@ -425,8 +425,10 @@ require parsing the human table.
 
 `cargo-allow prune --stale` previews stale allow entries that no current
 source-syntax finding matched. Dry-run is the default; `--dry-run` makes that
-choice explicit. `cargo-allow prune --stale --write` removes only those stale
-entries from the selected policy file after revalidating the rendered policy.
+choice explicit. Human dry-run and write output includes a diff-style TOML
+removal preview so reviewers can inspect the exact canonical `[[allow]]` blocks
+before or after cleanup. `cargo-allow prune --stale --write` removes only those
+stale entries from the selected policy file after revalidating the rendered policy.
 `--format json` emits the stale cleanup preview or write result as
 `cargo-allow.prune.v1`, including source-tree inventory context, scanner
 limitations, mode flags, written path when write mode changed the policy, and

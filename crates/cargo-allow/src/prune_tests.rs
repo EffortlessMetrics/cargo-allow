@@ -113,6 +113,36 @@ fn config_without_prune_candidates_removes_only_stale_entries() {
 }
 
 #[test]
+fn removed_toml_blocks_extracts_only_stale_allow_entries() {
+    let mut cfg = AllowConfig::empty();
+    cfg.allow
+        .push(non_rust_prune_fixture_entry("allow-live", "docs/live.md"));
+    cfg.allow
+        .push(non_rust_prune_fixture_entry("allow-stale", "docs/stale.md"));
+    let rendered = render_policy(&cfg);
+    let candidates = vec![PruneCandidate {
+        id: "allow-stale".to_string(),
+        kind: FindingKind::NonRustFile,
+        family: Some("documentation".to_string()),
+        owner: "owner".to_string(),
+        classification: "classification".to_string(),
+        scope: "docs/stale.md".to_string(),
+        reason: "reason".to_string(),
+    }];
+
+    let blocks = stale_removed_toml_blocks(&rendered, &candidates);
+
+    assert_eq!(blocks.len(), 1);
+    let block = blocks
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected stale TOML block"));
+    assert!(block.contains("[[allow]]"));
+    assert!(block.contains("id = \"allow-stale\""));
+    assert!(block.contains("path = \"docs/stale.md\""));
+    assert!(!block.contains("allow-live"));
+}
+
+#[test]
 fn cmd_prune_write_removes_only_stale_entries_from_policy_file() {
     let root = prune_fixture_dir();
     let policy_dir = root.join("policy");
