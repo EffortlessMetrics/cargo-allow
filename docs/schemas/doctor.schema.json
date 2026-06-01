@@ -122,6 +122,10 @@
           ],
           "description": "Validation diagnostic when config.valid is false; null when config is valid or no config was found."
         },
+        "suggested_init_command": {
+          "type": "string",
+          "description": "Optional standalone cargo-allow command to create a policy for the diagnosed source-tree root. Emitted when no config file was found."
+        },
         "broken_evidence_links": {
           "type": "integer",
           "minimum": 0,

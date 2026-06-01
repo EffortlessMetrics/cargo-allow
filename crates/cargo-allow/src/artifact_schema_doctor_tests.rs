@@ -80,6 +80,13 @@ fn doctor_schema_locks_setup_artifact_contract() {
         "/properties/config/properties/diagnostic/type",
         &["string", "null"],
     );
+    assert_eq!(
+        schema
+            .pointer("/properties/config/properties/suggested_init_command/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "doctor config suggested_init_command should be an optional string"
+    );
     for field in ["broken_evidence_links", "weak_evidence_references"] {
         assert_eq!(
             schema

@@ -110,6 +110,33 @@ fn doctor_human_renderer_records_root_config_and_inventory() {
 }
 
 #[test]
+fn doctor_json_renderer_suggests_init_when_config_is_missing() {
+    let json = render_doctor_json(DoctorReport {
+        source_tree_root: "H:/Code/Rust/cargo-allow",
+        root_discovery: "nearest_git_root",
+        config_path: None,
+        config_schema_version: None,
+        config_policy: None,
+        config_owner: None,
+        config_status: None,
+        config_valid: None,
+        config_diagnostic: None,
+        broken_evidence_links: None,
+        weak_evidence_references: None,
+        inventory_source: "filesystem_fallback",
+        files_scanned: 7,
+    });
+
+    assert!(json.contains("\"found\": false"));
+    assert!(json.contains("\"path\": null"));
+    assert!(json.contains("\"valid\": null"));
+    assert!(json.contains("\"diagnostic\": null"));
+    assert!(json.contains(
+        "\"suggested_init_command\": \"cargo-allow init --root \\\"H:/Code/Rust/cargo-allow\\\"\""
+    ));
+}
+
+#[test]
 fn doctor_human_renderer_reports_invalid_config_status() {
     let text = render_doctor_human(DoctorReport {
         source_tree_root: "H:/Code/Rust/cargo-allow",
