@@ -324,6 +324,62 @@ fn human_audit_report_includes_review_summary() {
 }
 
 #[test]
+fn human_audit_report_routes_evidence_repairs_even_with_review_queue() {
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        finding_index: None,
+        message: "unreceipted source exception".to_string(),
+        score: 0,
+    }];
+    let mut context = context("git_tracked");
+    context.policy_missing_evidence_entries = Some(2);
+    context.broken_evidence_links = Some(1);
+    context.weak_evidence_references = Some(1);
+
+    let text = render_human_with_context("audit", &[], &outcomes, false, context);
+
+    assert!(
+        text.contains("Recommended next step: review the queue below before tightening policy.")
+    );
+    assert!(text.contains("Evidence repair queues:"));
+    assert!(text.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
+    assert!(text.contains("cargo-allow worklist --missing-evidence --format json"));
+    assert!(
+        text.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
+    );
+    assert!(text.contains("Audit review queue:"));
+}
+
+#[test]
+fn markdown_audit_report_routes_evidence_repairs_even_with_review_queue() {
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        finding_index: None,
+        message: "unreceipted source exception".to_string(),
+        score: 0,
+    }];
+    let mut context = context("git_tracked");
+    context.policy_missing_evidence_entries = Some(2);
+    context.broken_evidence_links = Some(1);
+    context.weak_evidence_references = Some(1);
+
+    let text = render_markdown_with_context("audit", &[], &outcomes, false, context);
+
+    assert!(
+        text.contains("Recommended next step: review the queue below before tightening policy.")
+    );
+    assert!(text.contains("### Evidence Repair Queues"));
+    assert!(text.contains("`cargo-allow worklist --item-kind broken_evidence_link --format json`"));
+    assert!(text.contains("`cargo-allow worklist --missing-evidence --format json`"));
+    assert!(
+        text.contains("`cargo-allow worklist --item-kind weak_evidence_reference --format json`")
+    );
+    assert!(text.contains("## Audit Review Queue"));
+}
+
+#[test]
 fn human_audit_report_routes_clean_policy_to_no_new_ci() {
     let text = render_human_with_context("audit", &[], &[], false, context("git_tracked"));
 

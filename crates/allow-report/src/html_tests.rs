@@ -65,6 +65,34 @@ fn html_audit_report_counts_weak_evidence_references_context() {
     assert!(html.contains("replace unstructured or unknown-prefix evidence/link references"));
 }
 
+#[test]
+fn html_audit_report_routes_evidence_repairs_even_with_review_queue() {
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        finding_index: None,
+        message: "unreceipted source exception".to_string(),
+        score: 0,
+    }];
+    let mut context = context("git_tracked");
+    context.policy_missing_evidence_entries = Some(2);
+    context.broken_evidence_links = Some(1);
+    context.weak_evidence_references = Some(1);
+
+    let html = render_html_with_context("audit", &[], &outcomes, false, context);
+
+    assert!(
+        html.contains("Recommended next step: review the queue below before tightening policy.")
+    );
+    assert!(html.contains("<h3>Evidence Repair Queues</h3>"));
+    assert!(html.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
+    assert!(html.contains("cargo-allow worklist --missing-evidence --format json"));
+    assert!(
+        html.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
+    );
+    assert!(html.contains("<h2>Audit Review Queue</h2>"));
+}
+
 fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
     Finding {
         kind,
