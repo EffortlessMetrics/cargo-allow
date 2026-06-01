@@ -1,6 +1,8 @@
 use crate::contracts::WORKLIST_ARTIFACT;
 use crate::json::{bool_json, json_string_array, option_json, push_json_fixed_artifact_preamble};
-use crate::worklist_summary::{worklist_difficulty_count, worklist_risk_count};
+use crate::worklist_summary::{
+    worklist_difficulty_count, worklist_kind_counts, worklist_risk_count,
+};
 use crate::{InventoryContext, WorklistFilters, WorklistItem};
 use allow_core::json_escape;
 
@@ -34,9 +36,23 @@ pub fn render_worklist_json(
         worklist_difficulty_count(items, "small")
     ));
     out.push_str(&format!(
-        "    \"medium_difficulty\": {}\n",
+        "    \"medium_difficulty\": {}",
         worklist_difficulty_count(items, "medium")
     ));
+    let kind_counts = worklist_kind_counts(items);
+    if kind_counts.is_empty() {
+        out.push('\n');
+    } else {
+        out.push_str(",\n");
+        out.push_str("    \"item_kinds\": {\n");
+        for (index, (kind, count)) in kind_counts.iter().enumerate() {
+            if index > 0 {
+                out.push_str(",\n");
+            }
+            out.push_str(&format!("      \"{}\": {}", json_escape(kind), count));
+        }
+        out.push_str("\n    }\n");
+    }
     out.push_str("  },\n");
     out.push_str("  \"work_items\": [\n");
     for (index, item) in items.iter().enumerate() {

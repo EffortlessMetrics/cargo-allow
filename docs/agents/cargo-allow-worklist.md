@@ -54,6 +54,9 @@ evidence/link work should usually start with
 `cargo-allow list --weak-evidence --format json`.
 Saved worklist artifacts record the applied filters; preserve that context in
 handoffs.
+When `summary.item_kinds` is present, use it to understand the queue mix before
+choosing an item; it is a routing summary, not proof that every item has been
+reviewed.
 The default order already puts high-risk work first, then lower estimated
 difficulty. Within the same queue kind, policy-backed items with lower
 `selector_precision` appear earlier so broad or weak receipts are easier to

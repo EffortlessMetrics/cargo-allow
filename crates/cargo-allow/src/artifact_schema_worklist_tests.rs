@@ -124,6 +124,17 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
             "medium_difficulty",
         ],
     );
+    assert!(
+        !summary
+            .get("required")
+            .and_then(Value::as_array)
+            .unwrap_or_else(|| std::panic::panic_any(
+                "worklist summary required should be an array"
+            ))
+            .iter()
+            .any(|field| field.as_str() == Some("item_kinds")),
+        "worklist summary item_kinds should stay optional for worklist.v1 compatibility"
+    );
     for field in [
         "work_items",
         "high",
@@ -138,6 +149,44 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
                 .and_then(Value::as_str),
             Some("integer"),
             "worklist summary {field} should be an integer"
+        );
+    }
+    assert_eq!(
+        schema
+            .pointer("/$defs/summary/properties/item_kinds/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/item_kind_counts"),
+        "worklist summary item_kinds should use item-kind count schema"
+    );
+    let item_kind_counts = required_schema_pointer("worklist", &schema, "/$defs/item_kind_counts");
+    assert_eq!(
+        item_kind_counts
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "worklist item_kind_counts should reject unknown queue kinds"
+    );
+    assert!(
+        item_kind_counts.get("required").is_none(),
+        "worklist item_kind_counts fields should stay optional"
+    );
+    assert_worklist_item_kind_count_properties(item_kind_counts);
+    for kind in WORK_ITEM_KINDS {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/item_kind_counts/properties/{kind}/type"))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "worklist item_kind_counts {kind} should be an integer"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/item_kind_counts/properties/{kind}/minimum"
+                ))
+                .and_then(Value::as_u64),
+            Some(0),
+            "worklist item_kind_counts {kind} minimum"
         );
     }
 
@@ -388,4 +437,23 @@ fn assert_worklist_filter_properties(filters: &Value) {
     .collect::<BTreeSet<_>>();
 
     assert_eq!(actual, expected, "worklist filter schema properties");
+}
+
+fn assert_worklist_item_kind_count_properties(item_kind_counts: &Value) {
+    let Some(properties) = item_kind_counts
+        .get("properties")
+        .and_then(Value::as_object)
+    else {
+        std::panic::panic_any("worklist item_kind_counts properties should be an object");
+    };
+    let actual = properties
+        .keys()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    let expected = WORK_ITEM_KINDS.iter().copied().collect::<BTreeSet<_>>();
+
+    assert_eq!(
+        actual, expected,
+        "worklist item_kind_counts schema properties"
+    );
 }

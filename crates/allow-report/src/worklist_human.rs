@@ -1,5 +1,7 @@
 use crate::evidence_reference_human::evidence_reference_human_status;
-use crate::worklist_summary::{worklist_difficulty_count, worklist_risk_count};
+use crate::worklist_summary::{
+    worklist_difficulty_count, worklist_kind_counts, worklist_risk_count,
+};
 use crate::{CLAIM_BOUNDARY_TEXT, InventoryContext, WorklistFilters, WorklistItem};
 
 pub fn render_worklist_human(
@@ -41,6 +43,13 @@ pub fn render_worklist_human(
         "  medium    {}\n",
         worklist_difficulty_count(items, "medium")
     ));
+    let kind_counts = worklist_kind_counts(items);
+    if !kind_counts.is_empty() {
+        out.push_str("Queue kinds:\n");
+        for (kind, count) in kind_counts {
+            out.push_str(&format!("  {kind:<26} {count}\n"));
+        }
+    }
     for item in items.iter().take(80) {
         out.push_str(&format!(
             "\n{} ({}, {}) {}\n",
