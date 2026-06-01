@@ -59,6 +59,57 @@ fn saved_worklist_output_includes_broken_evidence_items() {
 }
 
 #[test]
+fn saved_worklist_default_output_includes_policy_missing_evidence_items() {
+    let fixture = SourceTreeFixture::new("saved-worklist-default-missing-evidence");
+    fixture.write_policy_with_missing_evidence_entry();
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let worklist = artifact_dir.join("worklist.json");
+
+    run_cargo_allow(&[
+        "worklist",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&worklist),
+    ]);
+    let value =
+        assert_source_syntax_artifact(&worklist, allow_report::WORKLIST_SCHEMA_ID, "worklist");
+    assert_eq!(
+        value
+            .pointer("/summary/work_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "default worklist should contain one policy missing-evidence item"
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/missing_evidence")
+            .and_then(serde_json::Value::as_bool),
+        Some(false),
+        "default worklist artifact should preserve the inactive missing-evidence filter"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/kind")
+            .and_then(serde_json::Value::as_str),
+        Some("missing_evidence"),
+        "default worklist item kind"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/allow_id")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-missing-evidence"),
+        "default worklist allow id"
+    );
+}
+
+#[test]
 fn saved_worklist_output_includes_policy_missing_evidence_items() {
     let fixture = SourceTreeFixture::new("saved-worklist-missing-evidence");
     fixture.write_policy_with_missing_evidence_entry();

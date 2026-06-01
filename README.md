@@ -94,8 +94,8 @@ cargo-allow check --mode no-new \
 `check --mode no-new` can pass while still reporting advisory policy-health
 counts such as `policy_missing_evidence` in the receipt. That field means
 retained non-baseline allow entries currently match the scanned source tree but
-still have no evidence references; route them with
-`cargo-allow worklist --missing-evidence`.
+still have no evidence references. The default worklist includes that evidence
+cleanup queue; use `cargo-allow worklist --missing-evidence` to focus it.
 
 Review PR posture:
 
@@ -167,7 +167,8 @@ reviewed.
 
 Matched non-baseline entries with empty `evidence` are not hidden: report and
 receipt artifacts may include `policy_missing_evidence`, and the matching work
-queue is available through `cargo-allow worklist --missing-evidence`.
+queue is included in the default worklist. Use
+`cargo-allow worklist --missing-evidence` to focus only those entries.
 
 Broken local evidence links are also visible without making discovery commands
 unusable. `audit`, `diff`, `explain`, `list`, `worklist`, `propose`, and

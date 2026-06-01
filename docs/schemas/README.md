@@ -368,8 +368,10 @@ revalidates the remaining policy before writing. Use
 broken-link repair queue,
 `cargo-allow worklist --item-kind weak_evidence_reference --format json` for
 unstructured or unknown-prefix evidence/link cleanup, and
-`cargo-allow worklist --missing-evidence --format json` for retained entries
-that still need evidence references.
+the default `cargo-allow worklist --format json` queue for retained entries
+that still need evidence references. Use
+`cargo-allow worklist --missing-evidence --format json` to focus only those
+missing-evidence entries.
 Worklist JSON items for broken or weak evidence/link diagnostics may include an
 optional `evidence_reference` object with the original evidence string,
 normalized prefix/target metadata, diagnostic status, optional diagnostic

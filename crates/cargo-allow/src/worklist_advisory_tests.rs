@@ -43,6 +43,7 @@ fn worklist_items_report_broad_scope_advisories() {
     entry.glob = Some("scripts/**".to_string());
     entry.selector.glob = Some("scripts/**".to_string());
     entry.family = Some("shell_script".to_string());
+    entry.evidence = vec!["doc:docs/policy/scripts.md".to_string()];
     cfg.allow.push(entry);
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::Matched,
@@ -52,7 +53,7 @@ fn worklist_items_report_broad_scope_advisories() {
         score: 100,
     }];
 
-    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1, false);
+    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1);
     let json = render_worklist_json_with_context(&items, WorklistContext::default());
     let human = render_worklist_human_with_context(&items, WorklistContext::default());
 
@@ -97,6 +98,7 @@ fn worklist_broad_scope_advisories_use_exception_risk() {
     entry.glob = Some("crates/runtime/**".to_string());
     entry.selector.glob = Some("crates/runtime/**".to_string());
     entry.family = Some("unsafe_block".to_string());
+    entry.evidence = vec!["unsafe-review:docs/evidence/unsafe.json".to_string()];
     cfg.allow.push(entry);
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::Matched,
@@ -106,7 +108,7 @@ fn worklist_broad_scope_advisories_use_exception_risk() {
         score: 100,
     }];
 
-    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1, false);
+    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1);
 
     let item = items
         .first()
@@ -140,7 +142,7 @@ fn worklist_items_report_matched_baseline_debt_advisories() {
         score: 100,
     }];
 
-    let items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 1, false);
+    let items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 1);
     let json = render_worklist_json_with_context(&items, WorklistContext::default());
     let human = render_worklist_human_with_context(&items, WorklistContext::default());
 
@@ -185,6 +187,7 @@ fn worklist_policy_advisories_ignore_exact_selector_globs() {
     let mut cfg = AllowConfig::empty();
     let mut entry = test_entry("allow-doc", FindingKind::NonRustFile);
     entry.selector.glob = Some("docs/README.md".to_string());
+    entry.evidence = vec!["doc:docs/README.md".to_string()];
     cfg.allow.push(entry);
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::Matched,
@@ -194,13 +197,13 @@ fn worklist_policy_advisories_ignore_exact_selector_globs() {
         score: 100,
     }];
 
-    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1, false);
+    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1);
 
     assert!(items.is_empty());
 }
 
 #[test]
-fn worklist_policy_advisories_report_missing_evidence_when_requested() {
+fn worklist_policy_advisories_report_missing_evidence_by_default() {
     let mut cfg = AllowConfig::empty();
     let mut entry = test_entry("allow-doc", FindingKind::NonRustFile);
     entry.path = Some(PathBuf::from("docs/policy.md"));
@@ -221,20 +224,12 @@ fn worklist_policy_advisories_report_missing_evidence_when_requested() {
         score: 100,
     }];
 
-    let default_items = work_items_from_policy_advisories(
-        &cfg,
-        std::slice::from_ref(&finding),
-        &outcomes,
-        1,
-        false,
-    );
-    let requested_items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 1, true);
+    let items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 1);
 
-    assert!(default_items.is_empty());
-    let item = requested_items
+    let item = items
         .first()
         .unwrap_or_else(|| std::panic::panic_any("expected missing evidence advisory"));
-    assert_eq!(requested_items.len(), 1);
+    assert_eq!(items.len(), 1);
     assert_eq!(item.kind, "missing_evidence");
     assert_eq!(item.status, MatchStatus::EvidenceMissing);
     assert_eq!(item.evidence_count, Some(0));
@@ -271,7 +266,7 @@ fn worklist_policy_advisories_specialize_high_risk_policy_missing_evidence_actio
         score: 100,
     }];
 
-    let items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 1, true);
+    let items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 1);
 
     let item = items
         .first()
@@ -323,7 +318,7 @@ fn worklist_policy_advisories_report_unsafe_missing_evidence_when_requested() {
         score: 100,
     }];
 
-    let items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 1, true);
+    let items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 1);
 
     let item = items
         .first()
@@ -370,7 +365,7 @@ fn worklist_policy_advisories_ignore_unmatched_broad_scopes() {
         score: 0,
     }];
 
-    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1, false);
+    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 1);
 
     assert!(items.is_empty());
 }

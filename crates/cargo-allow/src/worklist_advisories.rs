@@ -16,7 +16,6 @@ pub(super) fn work_items_from_policy_advisories(
     findings: &[Finding],
     outcomes: &[MatchOutcome],
     start_index: usize,
-    include_missing_evidence: bool,
 ) -> Vec<WorkItem> {
     let mut items = Vec::new();
     for entry in &cfg.allow {
@@ -59,7 +58,7 @@ pub(super) fn work_items_from_policy_advisories(
             });
             continue;
         }
-        if include_missing_evidence && entry.evidence.is_empty() {
+        if entry.evidence.is_empty() {
             let item_index = start_index + items.len();
             let kind = missing_evidence_kind(entry).to_string();
             items.push(WorkItem {
