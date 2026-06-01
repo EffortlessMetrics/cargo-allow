@@ -598,6 +598,14 @@
           "type": "integer",
           "minimum": 0
         },
+        "broken_evidence_links": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "weak_evidence_references": {
+          "type": "integer",
+          "minimum": 0
+        },
         "new_findings": {
           "type": "integer",
           "minimum": 0

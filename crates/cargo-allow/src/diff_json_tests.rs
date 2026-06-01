@@ -315,6 +315,38 @@ fn json_report_includes_structured_posture_changes() {
 }
 
 #[test]
+fn json_report_includes_diff_summary_evidence_health() {
+    let context = allow_report::ReportContext {
+        broken_evidence_links: Some(1),
+        weak_evidence_references: Some(2),
+        ..allow_report::ReportContext::default()
+    };
+
+    let json = render_diff_json_report(&[], &[], true, context, 1, &[], &[]);
+    let value = parse_json("diff report", &json);
+
+    assert_eq!(
+        value
+            .pointer("/diff/summary/broken_evidence_links")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/weak_evidence_references")
+            .and_then(Value::as_u64),
+        Some(2)
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/broken_evidence_links")
+            .and_then(Value::as_u64),
+        Some(1),
+        "base report summary should keep evidence health counts"
+    );
+}
+
+#[test]
 fn json_report_keeps_base_report_when_append_fails() {
     let base = "not json".to_string();
 

@@ -27,6 +27,14 @@ fn contains_json_string_field(json: &str, field: &str, value: &str) -> bool {
 }
 
 pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
+    render_diff_posture_json_with_evidence_health(report, 0, 0)
+}
+
+pub(crate) fn render_diff_posture_json_with_evidence_health(
+    report: DiffReport<'_>,
+    broken_evidence_links: usize,
+    weak_evidence_references: usize,
+) -> String {
     let mut out = String::new();
     out.push_str("{\n");
     out.push_str(&format!(
@@ -42,6 +50,18 @@ pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
         "      \"current_failures\": {},\n",
         report.summary.current_failures
     ));
+    if broken_evidence_links > 0 {
+        out.push_str(&format!(
+            "      \"broken_evidence_links\": {},\n",
+            broken_evidence_links
+        ));
+    }
+    if weak_evidence_references > 0 {
+        out.push_str(&format!(
+            "      \"weak_evidence_references\": {},\n",
+            weak_evidence_references
+        ));
+    }
     out.push_str(&format!(
         "      \"new_findings\": {},\n",
         report.summary.new_findings
