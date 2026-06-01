@@ -160,7 +160,9 @@ The current implementation inventories these source-tree surfaces:
 - unsafe syntax
 - panic-family calls and macros
 - indexing and slicing syntax
-- lint suppressions
+- lint suppressions, including direct `allow` / `expect` attributes and
+  source-visible `cfg_attr(..., allow(...))` / `cfg_attr(..., expect(...))`
+  conditionals
 - non-Rust tracked files
 - generated-code policy
 - legacy policy exceptions
