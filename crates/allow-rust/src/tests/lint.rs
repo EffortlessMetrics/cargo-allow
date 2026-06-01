@@ -59,6 +59,53 @@ fn load() {}
 }
 
 #[test]
+fn detects_each_lint_in_multi_lint_attribute() {
+    let src = r#"
+#[allow(dead_code, unused_variables)]
+fn load() {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let lints = findings
+        .iter()
+        .filter(|f| {
+            f.kind == FindingKind::LintException && f.family.as_deref() == Some("allow_attribute")
+        })
+        .map(|f| f.identity.lint.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(lints, vec![Some("dead_code"), Some("unused_variables")]);
+}
+
+#[test]
+fn detects_each_lint_in_multi_lint_expect_attribute_without_reason_metadata() {
+    let src = r#"
+#[expect(clippy::unwrap_used, clippy::expect_used, reason = "policy:allow-lint")]
+fn load() {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let lints = findings
+        .iter()
+        .filter(|f| {
+            f.kind == FindingKind::LintException && f.family.as_deref() == Some("expect_attribute")
+        })
+        .map(|f| {
+            (
+                f.identity.lint.as_deref(),
+                f.identity.target_fingerprint.as_deref(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        lints,
+        vec![
+            (Some("clippy::unwrap_used"), Some("policy:allow-lint")),
+            (Some("clippy::expect_used"), Some("policy:allow-lint"))
+        ]
+    );
+}
+
+#[test]
 fn detects_spaced_lint_attribute_tokens_from_source_syntax() {
     let outer = r#"  # [ allow(dead_code) ]"#;
     let inner = r#"# ! [ expect(clippy::unwrap_used, reason = "policy:allow-lint") ]"#;
@@ -248,6 +295,10 @@ fn detect_attr_returns_text_after_outer_and_inner_prefixes() {
         Some("clippy::unwrap_used)]")
     );
     assert_eq!(detect_attr("allow(dead_code)", "allow"), Some("dead_code)"));
+    assert_eq!(
+        detect_attr("allow (dead_code)", "allow"),
+        Some("dead_code)")
+    );
 }
 
 fn last_column(line: &str, needle: &str) -> u32 {
