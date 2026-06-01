@@ -28,9 +28,19 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
             ));
             if let Some(count) = facts.broken_evidence_links {
                 out.push_str(&format!("broken evidence links: {count}\n"));
+                if count > 0 {
+                    out.push_str(
+                        "broken evidence worklist: cargo-allow worklist --item-kind broken_evidence_link --format json\n",
+                    );
+                }
             }
             if let Some(count) = facts.weak_evidence_references {
                 out.push_str(&format!("weak evidence/link references: {count}\n"));
+                if count > 0 {
+                    out.push_str(
+                        "weak evidence worklist: cargo-allow worklist --item-kind weak_evidence_reference --format json\n",
+                    );
+                }
             }
         }
         None => out.push_str("config: not found; run `cargo-allow init`\n"),
