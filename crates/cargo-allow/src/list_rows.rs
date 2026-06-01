@@ -29,7 +29,7 @@ pub(super) fn list_rows_with_source_tree_files(
     cfg.allow
         .iter()
         .map(|entry| {
-            let evidence_diagnostics = evidence_reference_diagnostics_for_source_tree(
+            let evidence_diagnostics = entry_reference_diagnostics_for_source_tree(
                 root,
                 entry,
                 evidence_source_tree_files,
@@ -80,6 +80,23 @@ pub(super) fn list_rows_with_source_tree_files(
             }
         })
         .collect()
+}
+
+fn entry_reference_diagnostics_for_source_tree(
+    root: &Path,
+    entry: &AllowEntry,
+    evidence_source_tree_files: Option<&BTreeSet<String>>,
+) -> Vec<allow_policy::EvidenceReferenceDiagnostic> {
+    let mut diagnostics =
+        evidence_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files);
+    let mut link_entry = entry.clone();
+    link_entry.evidence = entry.links.clone();
+    diagnostics.extend(evidence_reference_diagnostics_for_source_tree(
+        root,
+        &link_entry,
+        evidence_source_tree_files,
+    ));
+    diagnostics
 }
 
 fn list_entry_status(

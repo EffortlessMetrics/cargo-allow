@@ -221,6 +221,40 @@ fn list_rows_report_evidence_health_counts() {
 }
 
 #[test]
+fn list_rows_report_link_health_counts() {
+    let root = list_fixture_dir();
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("fixture docs dir: {err}")));
+    fs::write(root.join("docs/present-link.md"), "rationale")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("fixture link file: {err}")));
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-link-health", FindingKind::NonRustFile);
+    entry.evidence = vec!["test:list_rows_report_link_health_counts".to_string()];
+    entry.links = vec![
+        "doc:docs/present-link.md".to_string(),
+        "doc:docs/missing-link.md".to_string(),
+        "spreadsheet:manual-review".to_string(),
+        "unstructured link note".to_string(),
+    ];
+    cfg.allow.push(entry);
+
+    let rows = list_rows(&root, &cfg, &[], &[]);
+    let row = rows
+        .iter()
+        .find(|row| row.id == "allow-link-health")
+        .unwrap_or_else(|| std::panic::panic_any("expected link health row"));
+
+    assert_eq!(
+        row.evidence_count, 1,
+        "list evidence_count remains the number of evidence entries"
+    );
+    assert_eq!(row.broken_evidence_references, 1);
+    assert_eq!(row.weak_evidence_references, 2);
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn list_rows_count_local_evidence_outside_source_tree_inventory_as_broken() {
     let root = list_fixture_dir();
     fs::create_dir_all(root.join("docs"))
