@@ -135,16 +135,27 @@ fn explain_entry_text_reports_local_evidence_outside_source_tree_inventory_as_mi
     cfg.allow.push(entry.clone());
     let source_tree_files = BTreeSet::new();
 
+    let finding = test_finding(
+        FindingKind::NonRustFile,
+        None,
+        "tracked.file",
+        "tracked_file",
+    );
+
     let text = explain_entry_text_with_source_tree_files(
         &root,
         &cfg,
         &entry,
-        &[],
+        &[finding],
         Some(&source_tree_files),
     );
 
     assert!(text.contains("[missing] missing: doc:docs/untracked.md"));
     assert!(text.contains("not in the default source-tree inventory"));
+    assert!(text.contains("action: commit the referenced evidence file"));
+    assert!(text.contains("action: or rerun with --include-untracked"));
+    assert!(text.contains("proof: cargo-allow explain allow-file --include-untracked"));
+    assert!(text.contains("proof: cargo-allow check --include-untracked --mode no-new"));
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }

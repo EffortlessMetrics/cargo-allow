@@ -1,5 +1,7 @@
 use super::{ExplainContext, explain_steps::explain_next_steps};
-use crate::evidence_inventory::evidence_reference_diagnostics_for_source_tree;
+use crate::evidence_inventory::{
+    DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE, evidence_reference_diagnostics_for_source_tree,
+};
 use crate::evidence_render::evidence_reference_target_text;
 use allow_core::{AllowEntry, Finding, MatchOutcome, allow_entry_broad_scope};
 use allow_diff::selector_precision_score;
@@ -60,12 +62,16 @@ fn render_explain_report<R>(
     let has_weak_evidence = evidence_diagnostics
         .iter()
         .any(|diagnostic| diagnostic.status.is_weak_reference());
+    let has_evidence_outside_default_inventory = evidence_diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.message == DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE);
     let (suggested_actions, proof_commands) = explain_next_steps(
         entry,
         findings,
         outcomes,
         has_broken_evidence,
         has_weak_evidence,
+        has_evidence_outside_default_inventory,
     );
     let normalized_targets = evidence_diagnostics
         .iter()
