@@ -110,6 +110,10 @@
         "entries_with_evidence": {
           "type": "integer",
           "minimum": 0
+        },
+        "weak_evidence_references": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },

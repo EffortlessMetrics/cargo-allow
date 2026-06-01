@@ -10,7 +10,8 @@ fn render_migrate_summary_json_records_policy_migration_context() {
     baseline.classification = "baseline_debt".to_string();
     let mut unsafe_entry = test_entry("allow-unsafe", FindingKind::Unsafe);
     unsafe_entry.evidence = vec!["unsafe-review:docs/evidence/unsafe.json".to_string()];
-    let lint_entry = test_entry("allow-lint", FindingKind::LintException);
+    let mut lint_entry = test_entry("allow-lint", FindingKind::LintException);
+    lint_entry.evidence = vec!["TODO: replace with typed lint evidence".to_string()];
     cfg.allow.push(baseline);
     cfg.allow.push(unsafe_entry);
     cfg.allow.push(lint_entry);
@@ -84,8 +85,15 @@ fn render_migrate_summary_json_records_policy_migration_context() {
         value
             .pointer("/summary/entries_with_evidence")
             .and_then(Value::as_u64),
-        Some(1),
+        Some(2),
         "migrate evidence entries"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/weak_evidence_references")
+            .and_then(Value::as_u64),
+        Some(1),
+        "migrate weak evidence references"
     );
 }
 

@@ -19,6 +19,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
         unsafe_entries: 2,
         lint_exception_entries: 4,
         entries_with_evidence: 3,
+        weak_evidence_references: Some(2),
         notes: "migration notes",
     };
 
@@ -38,6 +39,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(json.contains("\"unsafe_entries\": 2"));
     assert!(json.contains("\"lint_exception_entries\": 4"));
     assert!(json.contains("\"entries_with_evidence\": 3"));
+    assert!(json.contains("\"weak_evidence_references\": 2"));
     assert!(json.contains("\"notes\": \"migration notes\""));
     let expected = format!(
         r#"{{
@@ -67,7 +69,8 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     "baseline_debt": 5,
     "unsafe_entries": 2,
     "lint_exception_entries": 4,
-    "entries_with_evidence": 3
+    "entries_with_evidence": 3,
+    "weak_evidence_references": 2
   }},
   "notes": "migration notes"
 }}
@@ -89,6 +92,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(text.contains("unsafe_entries: 2"));
     assert!(text.contains("lint_exception_entries: 4"));
     assert!(text.contains("entries_with_evidence: 3"));
+    assert!(text.contains("weak_evidence_references: 2"));
     assert!(
         text.contains("inventory: source_tree/policy_migration via git_tracked; files scanned: 76")
     );
@@ -148,6 +152,7 @@ fn migrate_report_from_config_counts_summary_fields() {
     assert_eq!(report.unsafe_entries, 1);
     assert_eq!(report.lint_exception_entries, 1);
     assert_eq!(report.entries_with_evidence, 2);
+    assert_eq!(report.weak_evidence_references, None);
     assert_eq!(report.inventory.scanner, "policy_migration");
 }
 

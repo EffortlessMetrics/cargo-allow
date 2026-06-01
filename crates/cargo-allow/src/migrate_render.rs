@@ -1,6 +1,6 @@
 use super::MigrateContext;
 use allow_core::AllowConfig;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub(super) fn render_migrate_summary(
     cfg: &AllowConfig,
@@ -29,7 +29,7 @@ fn migrate_report<'a>(
     force: bool,
 ) -> allow_report::MigrateReport<'a> {
     let notes = allow_policy_legacy::migration_notes();
-    allow_report::MigrateReport::from_config(
+    let mut report = allow_report::MigrateReport::from_config(
         allow_report::InventoryContext::policy_migration(
             &context.inventory_source,
             context.source_tree_root.as_deref(),
@@ -41,5 +41,20 @@ fn migrate_report<'a>(
         output,
         force,
         notes,
-    )
+    );
+    let weak_evidence_references = allow_policy::weak_evidence_reference_count(
+        evidence_diagnostic_root(context).as_path(),
+        cfg,
+    );
+    report.weak_evidence_references =
+        (weak_evidence_references > 0).then_some(weak_evidence_references);
+    report
+}
+
+fn evidence_diagnostic_root(context: &MigrateContext) -> PathBuf {
+    context
+        .source_tree_root
+        .as_deref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
 }
