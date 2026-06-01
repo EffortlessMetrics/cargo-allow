@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, SimpleDate};
+use allow_core::{CargoAllowError, CargoAllowResult, Finding, FindingKind, SimpleDate};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 
@@ -30,7 +30,7 @@ use crate::{
 const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
 
 #[cfg(test)]
-use allow_core::{Finding, MatchStatus};
+use allow_core::MatchStatus;
 #[cfg(test)]
 use std::path::{Path, PathBuf};
 
@@ -51,10 +51,8 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         .find(|outcome| outcome.finding_index == Some(finding_index))
         .ok_or_else(|| CargoAllowError::new("selected finding did not produce a match outcome"))?;
     ensure_addable_outcome(selected_outcome.status)?;
-    if finding.kind == FindingKind::Unsafe && args.evidence.is_empty() {
-        return Err(CargoAllowError::new(
-            "unsafe allow entries require at least one --evidence reference",
-        ));
+    if args.evidence.is_empty() {
+        require_add_evidence(finding)?;
     }
     let id = args.id.clone().unwrap_or_else(|| next_allow_id(&cfg));
     if cfg.allow.iter().any(|entry| entry.id == id) {
@@ -100,6 +98,26 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     }
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())
+}
+
+fn require_add_evidence(finding: &Finding) -> CargoAllowResult<()> {
+    let Some(label) = add_evidence_required_label(finding) else {
+        return Ok(());
+    };
+    Err(CargoAllowError::new(format!(
+        "{label} allow entries require at least one --evidence reference"
+    )))
+}
+
+fn add_evidence_required_label(finding: &Finding) -> Option<String> {
+    match (finding.kind, finding.family.as_deref()) {
+        (FindingKind::Unsafe, _) => Some("unsafe".to_string()),
+        (FindingKind::PolicyException, Some("process_spawn" | "network_destination")) => finding
+            .family
+            .as_ref()
+            .map(|family| format!("policy_exception.{family}")),
+        _ => None,
+    }
 }
 
 fn default_add_review_after() -> String {

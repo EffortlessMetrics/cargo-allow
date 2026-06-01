@@ -166,6 +166,62 @@ fn allow_entry_from_finding_uses_structural_selector_and_review_metadata() {
 }
 
 #[test]
+fn add_evidence_requirement_covers_high_risk_policy_exceptions() {
+    let unsafe_finding = test_finding_at_line(
+        FindingKind::Unsafe,
+        Some("unsafe_block"),
+        "src/lib.rs",
+        "unsafe_block",
+        42,
+    );
+    let process_finding = test_finding_at_line(
+        FindingKind::PolicyException,
+        Some("process_spawn"),
+        "src/lib.rs",
+        "policy_exception",
+        42,
+    );
+    let network_finding = test_finding_at_line(
+        FindingKind::PolicyException,
+        Some("network_destination"),
+        "src/lib.rs",
+        "policy_exception",
+        42,
+    );
+    let workflow_finding = test_finding_at_line(
+        FindingKind::PolicyException,
+        Some("github_workflow"),
+        ".github/workflows/ci.yml",
+        "tracked_file",
+        1,
+    );
+
+    let unsafe_err =
+        require_add_evidence(&unsafe_finding).expect_err("unsafe add should require evidence");
+    assert!(
+        unsafe_err
+            .to_string()
+            .contains("unsafe allow entries require at least one --evidence reference")
+    );
+    let process_err = require_add_evidence(&process_finding)
+        .expect_err("process policy add should require evidence");
+    assert!(process_err.to_string().contains(
+        "policy_exception.process_spawn allow entries require at least one --evidence reference"
+    ));
+    let network_err = require_add_evidence(&network_finding)
+        .expect_err("network policy add should require evidence");
+    assert!(
+        network_err.to_string().contains(
+            "policy_exception.network_destination allow entries require at least one --evidence reference"
+        )
+    );
+    assert!(
+        require_add_evidence(&workflow_finding).is_ok(),
+        "lower-risk policy exceptions can still be added without immediate evidence"
+    );
+}
+
+#[test]
 fn default_add_review_after_is_relative_to_current_date() {
     let before = allow_core::SimpleDate::today_utc_approx().add_days(ADD_REVIEW_AFTER_DEFAULT_DAYS);
     let review_after = default_add_review_after();
