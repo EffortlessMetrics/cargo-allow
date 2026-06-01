@@ -32,12 +32,7 @@ pub(super) fn filter_work_items(
                     .unwrap_or(true)
                 && filters
                     .path
-                    .map(|path| {
-                        item.path
-                            .as_deref()
-                            .map(|item_path| source_tree_path_matches_filter(item_path, path))
-                            .unwrap_or(false)
-                    })
+                    .map(|path| work_item_path_matches_filter(item, path))
                     .unwrap_or(true)
                 && filters
                     .source_package
@@ -64,6 +59,20 @@ pub(super) fn filter_work_items(
                 && (!filters.missing_evidence || item.evidence_count == Some(0))
         })
         .collect()
+}
+
+fn work_item_path_matches_filter(item: &WorkItem, filter: &str) -> bool {
+    let Some(item_path) = item.path.as_deref() else {
+        return false;
+    };
+    if item
+        .evidence_reference
+        .as_ref()
+        .is_some_and(|reference| reference.status == "invalid_local_path")
+    {
+        return item_path.replace('\\', "/") == filter.replace('\\', "/");
+    }
+    source_tree_path_matches_filter(item_path, filter)
 }
 
 fn item_kind_matches(item_kind: &str, filter: &str) -> bool {

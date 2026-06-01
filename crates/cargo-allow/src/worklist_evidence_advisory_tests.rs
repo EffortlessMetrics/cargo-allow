@@ -79,6 +79,43 @@ fn worklist_items_report_invalid_local_evidence_paths() {
 }
 
 #[test]
+fn worklist_path_filter_does_not_normalize_invalid_evidence_paths() {
+    let root = migrate_fixture_dir();
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-doc", FindingKind::NonRustFile);
+    entry.evidence = vec!["doc:docs/../src/lib.rs".to_string()];
+    cfg.allow.push(entry);
+
+    let items = work_items_from_evidence_diagnostics(&root, &cfg, 1);
+    let normalized_filter = filter_work_items(
+        items.clone(),
+        WorklistFilters {
+            path: Some("src/lib.rs"),
+            ..WorklistFilters::default()
+        },
+    );
+    let exact_invalid_filter = filter_work_items(
+        items,
+        WorklistFilters {
+            path: Some("docs/../src/lib.rs"),
+            ..WorklistFilters::default()
+        },
+    );
+
+    assert!(
+        normalized_filter.is_empty(),
+        "invalid local evidence targets must not be routed as their normalized source-tree path"
+    );
+    assert_eq!(
+        exact_invalid_filter.len(),
+        1,
+        "operators can still filter by the exact invalid evidence target text"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn worklist_items_report_weak_evidence_references() {
     let root = migrate_fixture_dir();
     let mut cfg = AllowConfig::empty();
