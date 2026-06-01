@@ -1,7 +1,8 @@
 use super::worklist_item_kind::{BROKEN_EVIDENCE_LINK, WEAK_EVIDENCE_REFERENCE};
 use super::worklist_priority::{DIFFICULTY_SMALL, RISK_HIGH, RISK_MEDIUM};
 use super::{WorkItem, WorkItemEvidenceReference, proof_commands};
-use allow_core::{AllowConfig, AllowEntry, FindingKind, MatchStatus, normalize_path};
+use crate::evidence_render::evidence_reference_target_text;
+use allow_core::{AllowConfig, AllowEntry, FindingKind, MatchStatus};
 use allow_diff::selector_precision_score;
 use allow_policy::{EvidenceReferenceDiagnostic, evidence_reference_diagnostics};
 use std::path::Path;
@@ -40,15 +41,16 @@ fn work_item_from_evidence_diagnostic(
         BROKEN_EVIDENCE_LINK
     };
     let proof_commands = proof_commands(kind, None, Some(entry));
+    let target = evidence_reference_target_text(&diagnostic);
     let path = if kind == BROKEN_EVIDENCE_LINK {
-        diagnostic.target.as_ref().map(normalize_path)
+        target.clone()
     } else {
         None
     };
     let evidence_reference = WorkItemEvidenceReference {
         raw: diagnostic.raw.clone(),
         prefix: diagnostic.prefix.clone(),
-        target: diagnostic.target.as_ref().map(normalize_path),
+        target,
         status: diagnostic.status.as_str().to_string(),
         category: diagnostic.category.as_str().to_string(),
         message: diagnostic.message.clone(),

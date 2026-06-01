@@ -110,3 +110,40 @@ fn saved_explain_output_reports_present_and_traceability_evidence() {
         "present and traceability evidence should not create repair actions"
     );
 }
+
+#[test]
+fn saved_explain_output_preserves_invalid_evidence_target() {
+    let fixture = SourceTreeFixture::new("saved-explain-invalid-evidence-scope");
+    fixture.write_policy_with_invalid_evidence_scope();
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let explain = artifact_dir.join("explain-invalid-evidence.json");
+
+    run_cargo_allow(&[
+        "explain",
+        "allow-invalid-evidence-scope",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&explain),
+    ]);
+    let value = assert_source_syntax_artifact(&explain, allow_report::EXPLAIN_SCHEMA_ID, "explain");
+    assert_eq!(
+        value
+            .pointer("/evidence_references/0/status")
+            .and_then(serde_json::Value::as_str),
+        Some("invalid_local_path"),
+        "explain should surface invalid local evidence target status"
+    );
+    assert_eq!(
+        value
+            .pointer("/evidence_references/0/target")
+            .and_then(serde_json::Value::as_str),
+        Some("docs/../src/lib.rs"),
+        "explain should preserve invalid target text instead of normalizing it into a valid-looking path"
+    );
+}
