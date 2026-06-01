@@ -30,6 +30,7 @@ pub(super) fn append_diff_posture_summary(
     text: &mut String,
     format: OutputFormat,
     current_failures: usize,
+    evidence: EvidenceReportSummary,
     outcomes: &[MatchOutcome],
     finding_changes: &[allow_diff::FindingPostureChange],
     policy_changes: &[allow_diff::PolicyChange],
@@ -39,11 +40,15 @@ pub(super) fn append_diff_posture_summary(
     }
     let finding_rows = finding_change_rows(finding_changes);
     let policy_rows = policy_change_rows(policy_changes);
-    text.push_str(&allow_report::render_diff_posture_summary_human(
-        current_failures.max(current_no_new_failures(outcomes)),
-        &finding_rows,
-        &policy_rows,
-    ));
+    text.push_str(
+        &allow_report::render_diff_posture_summary_human_with_evidence_health(
+            current_failures.max(current_no_new_failures(outcomes)),
+            evidence.broken_evidence_links,
+            evidence.weak_evidence_references,
+            &finding_rows,
+            &policy_rows,
+        ),
+    );
 }
 
 pub(super) fn append_finding_posture_changes(

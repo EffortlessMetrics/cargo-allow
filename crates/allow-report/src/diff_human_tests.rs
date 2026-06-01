@@ -69,3 +69,13 @@ fn diff_posture_human_summary_reports_reviewer_action() {
     assert!(text.contains("new_source_findings: 1"));
     assert!(text.contains("policy_failures: 1"));
 }
+
+#[test]
+fn diff_posture_human_summary_reports_evidence_health_counts() {
+    let text = render_diff_posture_summary_human_with_evidence_health(0, 1, 2, &[], &[]);
+
+    assert!(text.contains("Diff posture summary:"));
+    assert!(text.contains("broken_evidence_links: 1"));
+    assert!(text.contains("weak_evidence_references: 2"));
+    assert!(text.contains("new_source_findings: 0"));
+}
