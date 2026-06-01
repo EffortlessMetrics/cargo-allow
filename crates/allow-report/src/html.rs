@@ -136,6 +136,7 @@ fn render_audit_summary_html(
             "<p>Recommended next step: review the queue below before tightening policy.</p>\n",
         );
     }
+    render_evidence_repair_queues_html(summary, signals, out);
     if !queue.is_empty() {
         out.push_str("<h2>Audit Review Queue</h2>\n<ul>\n");
         for outcome in queue {
@@ -147,6 +148,32 @@ fn render_audit_summary_html(
         }
         out.push_str("</ul>\n");
     }
+}
+
+fn render_evidence_repair_queues_html(summary: &Summary, signals: ReviewSignals, out: &mut String) {
+    let commands = evidence_repair_commands(summary, signals);
+    if commands.is_empty() {
+        return;
+    }
+    out.push_str("<h3>Evidence Repair Queues</h3>\n<ul>\n");
+    for command in commands {
+        out.push_str(&format!("<li><code>{}</code></li>\n", html_escape(command)));
+    }
+    out.push_str("</ul>\n");
+}
+
+fn evidence_repair_commands(summary: &Summary, signals: ReviewSignals) -> Vec<&'static str> {
+    let mut commands = Vec::new();
+    if signals.broken_evidence_links > 0 {
+        commands.push("cargo-allow worklist --item-kind broken_evidence_link --format json");
+    }
+    if signals.policy_missing_evidence > 0 || summary.count(MatchStatus::EvidenceMissing) > 0 {
+        commands.push("cargo-allow worklist --missing-evidence --format json");
+    }
+    if signals.weak_evidence_references > 0 {
+        commands.push("cargo-allow worklist --item-kind weak_evidence_reference --format json");
+    }
+    commands
 }
 
 fn render_non_rust_html(findings: &[Finding], outcomes: &[MatchOutcome], out: &mut String) {

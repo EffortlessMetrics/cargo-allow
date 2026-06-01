@@ -163,6 +163,7 @@ fn render_audit_summary_human(
         signals,
         queue.is_empty(),
     ));
+    append_audit_evidence_repair_queues_human(summary, signals, out);
     if !queue.is_empty() {
         out.push_str("\nAudit review queue:\n");
         for outcome in queue.iter().take(AUDIT_REVIEW_QUEUE_LIMIT) {
@@ -336,6 +337,7 @@ fn render_audit_summary_markdown(
         signals,
         queue.is_empty(),
     ));
+    append_audit_evidence_repair_queues_markdown(summary, signals, out);
 
     if !queue.is_empty() {
         out.push_str("\n## Audit Review Queue\n\n");
@@ -348,6 +350,50 @@ fn render_audit_summary_markdown(
         }
         append_markdown_omitted_review_queue_note(out, queue.len());
     }
+}
+
+fn append_audit_evidence_repair_queues_human(
+    summary: &Summary,
+    signals: ReviewSignals,
+    out: &mut String,
+) {
+    let commands = audit_evidence_repair_commands(summary, signals);
+    if commands.is_empty() {
+        return;
+    }
+    out.push_str("\nEvidence repair queues:\n");
+    for command in commands {
+        out.push_str(&format!("  {command}\n"));
+    }
+}
+
+fn append_audit_evidence_repair_queues_markdown(
+    summary: &Summary,
+    signals: ReviewSignals,
+    out: &mut String,
+) {
+    let commands = audit_evidence_repair_commands(summary, signals);
+    if commands.is_empty() {
+        return;
+    }
+    out.push_str("\n### Evidence Repair Queues\n\n");
+    for command in commands {
+        out.push_str(&format!("- `{command}`\n"));
+    }
+}
+
+fn audit_evidence_repair_commands(summary: &Summary, signals: ReviewSignals) -> Vec<&'static str> {
+    let mut commands = Vec::new();
+    if signals.broken_evidence_links > 0 {
+        commands.push("cargo-allow worklist --item-kind broken_evidence_link --format json");
+    }
+    if signals.policy_missing_evidence > 0 || summary.count(MatchStatus::EvidenceMissing) > 0 {
+        commands.push("cargo-allow worklist --missing-evidence --format json");
+    }
+    if signals.weak_evidence_references > 0 {
+        commands.push("cargo-allow worklist --item-kind weak_evidence_reference --format json");
+    }
+    commands
 }
 
 fn append_human_omitted_review_queue_note(out: &mut String, queue_count: usize) {
