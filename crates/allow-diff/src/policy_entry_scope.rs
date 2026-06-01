@@ -66,7 +66,7 @@ fn scope_change(base: &AllowEntry, head: &AllowEntry) -> ScopeChange {
 
     let base_glob = base.glob.as_deref().map(normalize_scope_text);
     let head_glob = head.glob.as_deref().map(normalize_scope_text);
-    if base_glob.is_some() && head_glob.is_some() && base_glob != head_glob {
+    if base_path == head_path && base_glob != head_glob {
         return ScopeChange {
             field: ScopeChangeField::Glob,
             before: base_glob,
@@ -76,10 +76,7 @@ fn scope_change(base: &AllowEntry, head: &AllowEntry) -> ScopeChange {
 
     let base_selector_glob = base.selector.glob.as_deref().map(normalize_scope_text);
     let head_selector_glob = head.selector.glob.as_deref().map(normalize_scope_text);
-    if base_selector_glob.is_some()
-        && head_selector_glob.is_some()
-        && base_selector_glob != head_selector_glob
-    {
+    if base_path == head_path && base_selector_glob != head_selector_glob {
         return ScopeChange {
             field: ScopeChangeField::SelectorGlob,
             before: base_selector_glob,

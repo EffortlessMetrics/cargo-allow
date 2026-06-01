@@ -24,6 +24,48 @@ fn detects_scope_broadening_from_path_to_glob() {
 }
 
 #[test]
+fn detects_scope_broadening_when_entry_glob_is_added_alongside_path() {
+    let base = config_with(entry("allow-1"));
+    let mut widened = entry("allow-1");
+    widened.glob = Some("src/**".to_string());
+    let head = config_with(widened);
+
+    let changes = policy_changes(&base, &head);
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::ScopeBroadened)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("adding an alternate entry glob should broaden scope")
+        });
+    assert_eq!(change.severity, PolicyChangeSeverity::Fail);
+    let scope = change.scope.as_ref().unwrap_or_else(|| {
+        std::panic::panic_any("scope broadening should include structured scope delta")
+    });
+    assert_eq!(scope.field, ScopeChangeField::Glob);
+    assert_eq!(scope.before, None);
+    assert_eq!(scope.after.as_deref(), Some("src/**"));
+}
+
+#[test]
+fn detects_scope_broadening_when_selector_glob_is_added_alongside_path() {
+    let base = config_with(entry("allow-1"));
+    let mut widened = entry("allow-1");
+    widened.selector.glob = Some("tests/**".to_string());
+    let head = config_with(widened);
+
+    let changes = policy_changes(&base, &head);
+
+    assert!(
+        changes
+            .iter()
+            .any(|change| change.kind == PolicyChangeKind::ScopeBroadened
+                && change.severity == PolicyChangeSeverity::Fail),
+        "adding an alternate selector glob should broaden path-matched scope"
+    );
+}
+
+#[test]
 fn detects_scope_broadening_from_windows_path_to_glob() {
     let mut base_entry = entry("allow-1");
     base_entry.path = Some(PathBuf::from(r"src\lib.rs"));
@@ -142,12 +184,15 @@ fn detects_scope_narrowing_between_globs() {
 
 #[test]
 fn scope_broadening_respects_directory_segment_boundaries() {
+    let mut base_entry = entry("allow-1");
+    base_entry.path = Some(PathBuf::from("src/parser/lib.rs"));
+    let base = config_with(base_entry);
     let mut widened = entry("allow-1");
     widened.path = None;
     widened.glob = Some("src/parse/**".to_string());
     let head = config_with(widened);
 
-    let changes = policy_changes(&config_with(entry("allow-1")), &head);
+    let changes = policy_changes(&base, &head);
 
     assert!(
         !changes
