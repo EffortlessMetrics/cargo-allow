@@ -46,6 +46,19 @@ pub fn render_diff_posture_summary_human_with_evidence_health(
             "  weak_evidence_references: {weak_evidence_references}\n"
         ));
     }
+    if broken_evidence_links > 0 || weak_evidence_references > 0 {
+        out.push_str("  evidence_repair_queues:\n");
+        if broken_evidence_links > 0 {
+            out.push_str(
+                "    cargo-allow worklist --item-kind broken_evidence_link --format json\n",
+            );
+        }
+        if weak_evidence_references > 0 {
+            out.push_str(
+                "    cargo-allow worklist --item-kind weak_evidence_reference --format json\n",
+            );
+        }
+    }
     out.push_str(&format!(
         "  new_source_findings: {}\n",
         summary.new_findings

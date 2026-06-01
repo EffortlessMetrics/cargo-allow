@@ -70,6 +70,20 @@ pub fn render_diff_pr_summary_markdown_with_evidence_health(
         "\n**Reviewer action:** {}\n\n",
         posture.reviewer_action()
     ));
+    if broken_evidence_links > 0 || weak_evidence_references > 0 {
+        out.push_str("**Evidence repair queues:**\n");
+        if broken_evidence_links > 0 {
+            out.push_str(
+                "- `cargo-allow worklist --item-kind broken_evidence_link --format json`\n",
+            );
+        }
+        if weak_evidence_references > 0 {
+            out.push_str(
+                "- `cargo-allow worklist --item-kind weak_evidence_reference --format json`\n",
+            );
+        }
+        out.push('\n');
+    }
     out.push_str("> ");
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out.push_str("\n\n");

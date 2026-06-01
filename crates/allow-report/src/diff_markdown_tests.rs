@@ -53,6 +53,14 @@ fn diff_pr_summary_markdown_reports_evidence_health_rows() {
     assert!(summary.contains("| Current check failures | 1 |"));
     assert!(summary.contains("| Broken evidence links | 1 |"));
     assert!(summary.contains("| Weak evidence/link references | 2 |"));
+    assert!(summary.contains("**Evidence repair queues:**"));
+    assert!(
+        summary.contains("`cargo-allow worklist --item-kind broken_evidence_link --format json`")
+    );
+    assert!(
+        summary
+            .contains("`cargo-allow worklist --item-kind weak_evidence_reference --format json`")
+    );
 }
 
 #[test]

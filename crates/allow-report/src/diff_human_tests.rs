@@ -77,5 +77,10 @@ fn diff_posture_human_summary_reports_evidence_health_counts() {
     assert!(text.contains("Diff posture summary:"));
     assert!(text.contains("broken_evidence_links: 1"));
     assert!(text.contains("weak_evidence_references: 2"));
+    assert!(text.contains("evidence_repair_queues:"));
+    assert!(text.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
+    assert!(
+        text.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
+    );
     assert!(text.contains("new_source_findings: 0"));
 }
