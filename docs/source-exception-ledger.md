@@ -44,6 +44,9 @@ Token-like entry metadata such as `owner`, `classification`, and `family` must
 not include leading or trailing whitespace. Those values are policy identifiers,
 not display strings, and exact matching keeps baseline-debt, routing, and diff
 signals deterministic.
+`evidence` and `links` entries must also be non-empty, whitespace-normal, and
+unique inside an allow entry so receipts do not inflate proof or traceability
+signals by repeating the same reference.
 
 `path` scopes are exact source-tree paths. Source-tree scopes must not include
 leading or trailing whitespace because cargo-allow treats them as selectors,
