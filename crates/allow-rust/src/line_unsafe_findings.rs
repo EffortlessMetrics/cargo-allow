@@ -17,6 +17,7 @@ pub(crate) fn scan_unsafe_constructs(
             unsafe_construct.kind.family(),
             unsafe_construct.kind.ast_kind(),
             |id| {
+                id.symbol = unsafe_construct.symbol.clone();
                 if context.safety_comment_nearby {
                     id.target_fingerprint = Some("safety-comment:present".to_string());
                 }

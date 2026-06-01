@@ -57,10 +57,11 @@ impl UnsafeSyntaxKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct UnsafeSyntaxConstruct {
     pub(crate) kind: UnsafeSyntaxKind,
     pub(crate) column: u32,
+    pub(crate) symbol: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
