@@ -270,7 +270,7 @@ fn explain_entry_json_routes_broken_evidence_to_repair_queue() {
         Path::new("target/cargo-allow-test-missing-root"),
         &cfg,
         &entry,
-        &[finding],
+        std::slice::from_ref(&finding),
         ExplainContext {
             inventory: allow_report::InventoryContext::source_syntax(
                 "filesystem_fallback",
@@ -312,5 +312,23 @@ fn explain_entry_json_routes_broken_evidence_to_repair_queue() {
         proof_commands.iter().any(|command| command.as_str()
             == Some("cargo-allow worklist --item-kind broken_evidence_link --format json")),
         "explain should route broken evidence to the worklist repair queue"
+    );
+    assert!(
+        proof_commands
+            .iter()
+            .any(|command| command.as_str()
+                == Some("cargo-allow list --broken-evidence --format json")),
+        "explain should keep the ledger broken-evidence shortcut visible"
+    );
+
+    let text = explain_entry_text(
+        Path::new("target/cargo-allow-test-missing-root"),
+        &cfg,
+        &entry,
+        std::slice::from_ref(&finding),
+    );
+    assert!(
+        text.contains("proof: cargo-allow list --broken-evidence --format json"),
+        "human explain should keep the ledger broken-evidence shortcut visible"
     );
 }

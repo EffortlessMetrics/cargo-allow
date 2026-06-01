@@ -122,7 +122,7 @@ pub fn render_explain_human(report: ExplainReport<'_>) -> String {
         for action in report.suggested_actions.iter().take(2) {
             out.push_str(&format!("- action: {action}\n"));
         }
-        for command in report.proof_commands.iter().take(5) {
+        for command in report.proof_commands.iter().take(8) {
             out.push_str(&format!("- proof: {command}\n"));
         }
     }
