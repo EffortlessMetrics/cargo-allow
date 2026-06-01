@@ -64,6 +64,23 @@ fn sarif_result_properties_include_source_package_context() {
     assert!(sarif.contains("\"uri\": \"crates/parser/src/lib.rs\""));
 }
 
+#[test]
+fn sarif_run_properties_include_policy_evidence_health_counts() {
+    let mut context = context("git_tracked");
+    context.baseline_debt_entries = Some(3);
+    context.policy_missing_evidence_entries = Some(2);
+    context.broken_evidence_links = Some(1);
+    context.weak_evidence_references = Some(1);
+
+    let sarif = render_sarif_with_context("audit", &[], &[], false, context);
+
+    assert!(sarif.contains("\"policy_baseline_debt\": 3"));
+    assert!(sarif.contains("\"policy_missing_evidence\": 2"));
+    assert!(sarif.contains("\"broken_evidence_links\": 1"));
+    assert!(sarif.contains("\"weak_evidence_references\": 1"));
+    assert!(sarif.contains("\"results\": [\n\n      ]"));
+}
+
 fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
     Finding {
         kind,

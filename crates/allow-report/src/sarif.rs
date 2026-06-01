@@ -1,7 +1,10 @@
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
 
-use crate::ReportContext;
 use crate::json::{bool_json, option_json, push_json_source_context_properties};
+use crate::{
+    ReportContext, Summary, baseline_debt_count, broken_evidence_link_count,
+    policy_missing_evidence_count, weak_evidence_reference_count,
+};
 
 pub fn render_sarif(
     command: &str,
@@ -25,6 +28,7 @@ pub fn render_sarif_with_context(
     failed: bool,
     context: ReportContext<'_>,
 ) -> String {
+    let summary = Summary::from_outcomes(outcomes);
     let reportable = outcomes
         .iter()
         .filter(|outcome| outcome.status != MatchStatus::Matched)
@@ -62,6 +66,7 @@ pub fn render_sarif_with_context(
     ));
     out.push_str(&format!("        \"failed\": {},\n", bool_json(failed)));
     push_json_source_context_properties(&mut out, context.into(), "        ");
+    push_policy_context_properties(&mut out, &summary, context);
     out.push_str("      },\n");
     out.push_str("      \"results\": [\n");
     for (index, outcome) in reportable.iter().enumerate() {
@@ -76,6 +81,42 @@ pub fn render_sarif_with_context(
     out.push_str("  ]\n");
     out.push_str("}\n");
     out
+}
+
+fn push_policy_context_properties(out: &mut String, summary: &Summary, context: ReportContext<'_>) {
+    let rows = policy_context_property_rows(summary, context);
+    if rows.is_empty() {
+        return;
+    }
+    out.push_str(",\n");
+    for (index, (name, count)) in rows.iter().enumerate() {
+        let comma = if index + 1 == rows.len() { "" } else { "," };
+        out.push_str(&format!("        \"{name}\": {count}{comma}\n"));
+    }
+}
+
+fn policy_context_property_rows(
+    summary: &Summary,
+    context: ReportContext<'_>,
+) -> Vec<(&'static str, usize)> {
+    let mut rows = Vec::new();
+    let baseline_debt = baseline_debt_count(summary, context);
+    if baseline_debt > summary.count(MatchStatus::BaselineDebt) {
+        rows.push(("policy_baseline_debt", baseline_debt));
+    }
+    let policy_missing_evidence = policy_missing_evidence_count(summary, context);
+    if policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing) {
+        rows.push(("policy_missing_evidence", policy_missing_evidence));
+    }
+    let broken_evidence_links = broken_evidence_link_count(context);
+    if broken_evidence_links > 0 {
+        rows.push(("broken_evidence_links", broken_evidence_links));
+    }
+    let weak_evidence_references = weak_evidence_reference_count(context);
+    if weak_evidence_references > 0 {
+        rows.push(("weak_evidence_references", weak_evidence_references));
+    }
+    rows
 }
 
 const SARIF_STATUSES: &[MatchStatus] = &[
