@@ -178,11 +178,43 @@ fn detects_unsafe_attribute_from_syntax() {
 }
 
 #[test]
+fn detects_cfg_attr_unsafe_attribute_from_source_syntax() {
+    let src = r#"
+        #[cfg_attr(feature = "ffi", unsafe(no_mangle))]
+        fn exported() {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    assert!(
+        findings.iter().any(|f| {
+            f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr")
+        })
+    );
+}
+
+#[test]
 fn syntax_unsafe_attributes_ignore_attribute_text_in_strings() {
     let src = r##"
         fn load() {
             let text = "#[unsafe(no_mangle)]";
         }
+        "##;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    assert!(
+        !findings.iter().any(|f| {
+            f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr")
+        })
+    );
+}
+
+#[test]
+fn syntax_unsafe_attributes_ignore_unsafe_text_inside_attribute_strings() {
+    let src = r##"
+        #[doc = "example #[unsafe(no_mangle)] text"]
+        #[cfg_attr(feature = "docs", doc = "unsafe(no_mangle)")]
+        #[cfg_attr(feature = "docs", doc = r#"unsafe(export_name = "fixture")"#)]
+        fn exported() {}
         "##;
     let findings = scan_rust_source("src/lib.rs", src);
 
