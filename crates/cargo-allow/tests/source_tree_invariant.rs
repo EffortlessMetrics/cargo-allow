@@ -133,6 +133,37 @@ fn cargo_dependency_file_scan_includes_lockfile() {
     );
 }
 
+#[test]
+fn published_library_crates_document_source_tree_boundary() {
+    let root = workspace_root();
+    let mut violations = Vec::new();
+
+    for path in library_crate_roots(&root) {
+        let text = fs::read_to_string(&path)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
+        let docs = crate_level_docs(&text);
+        let relative = source_tree_path(&root, &path);
+        if docs.is_empty() {
+            violations.push(format!("{relative} is missing crate-level Rustdoc"));
+            continue;
+        }
+        if !docs.contains("cargo-allow") {
+            violations.push(format!("{relative} crate docs should mention cargo-allow"));
+        }
+        if !documents_source_tree_boundary(&docs) {
+            violations.push(format!(
+                "{relative} crate docs should preserve source-tree/no-execution boundary"
+            ));
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "published library crate docs should describe their cargo-allow source-tree boundary:\n{}",
+        violations.join("\n")
+    );
+}
+
 fn compact_for_token_scan(text: &str) -> String {
     text.chars().filter(|ch| !ch.is_whitespace()).collect()
 }
@@ -160,6 +191,50 @@ fn cargo_dependency_files(root: &Path) -> Vec<PathBuf> {
             .is_some_and(|name| name == "Cargo.toml" || name == "Cargo.lock")
     });
     files
+}
+
+fn library_crate_roots(root: &Path) -> Vec<PathBuf> {
+    let crates_dir = root.join("crates");
+    let mut files = Vec::new();
+    let entries = fs::read_dir(&crates_dir).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("read {}: {err}", crates_dir.display()))
+    });
+    for entry in entries {
+        let entry = entry.unwrap_or_else(|err| {
+            std::panic::panic_any(format!("read entry under {}: {err}", crates_dir.display()))
+        });
+        let lib = entry.path().join("src/lib.rs");
+        if lib.is_file() {
+            files.push(lib);
+        }
+    }
+    files.sort();
+    files
+}
+
+fn crate_level_docs(text: &str) -> String {
+    text.lines()
+        .take_while(|line| line.starts_with("//!"))
+        .map(|line| line.trim_start_matches("//!").trim())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn documents_source_tree_boundary(docs: &str) -> bool {
+    let docs = docs.to_ascii_lowercase();
+    [
+        "source-tree",
+        "source-syntax",
+        "without invoking",
+        "does not invoke",
+        "does not call",
+        "does not require",
+        "without executing",
+        "does not execute",
+        "repository code",
+    ]
+    .iter()
+    .any(|needle| docs.contains(needle))
 }
 
 fn collect_files(root: &Path, files: &mut Vec<PathBuf>, include: impl Fn(&Path) -> bool + Copy) {
