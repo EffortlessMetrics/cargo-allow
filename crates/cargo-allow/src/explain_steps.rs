@@ -1,4 +1,4 @@
-use allow_core::{AllowEntry, Finding, MatchOutcome, MatchStatus};
+use allow_core::{AllowEntry, Finding, FindingKind, MatchOutcome, MatchStatus};
 
 use crate::worklist;
 
@@ -72,6 +72,24 @@ pub(super) fn explain_next_steps(
     if entry.classification == "baseline_debt" {
         let finding = findings.first();
         let kind = "baseline_debt";
+        return (
+            worklist::suggested_actions(kind)
+                .into_iter()
+                .take(2)
+                .collect(),
+            worklist::proof_commands(kind, finding, Some(entry))
+                .into_iter()
+                .take(5)
+                .collect(),
+        );
+    }
+    if entry.evidence.is_empty() {
+        let finding = findings.first();
+        let kind = if entry.kind == FindingKind::Unsafe {
+            "unsafe_missing_evidence"
+        } else {
+            "missing_evidence"
+        };
         return (
             worklist::suggested_actions(kind)
                 .into_iter()
