@@ -251,6 +251,60 @@ fn worklist_policy_advisories_report_missing_evidence_when_requested() {
 }
 
 #[test]
+fn worklist_policy_advisories_report_unsafe_missing_evidence_when_requested() {
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-unsafe", FindingKind::Unsafe);
+    entry.path = Some(PathBuf::from("crates/runtime/src/ffi.rs"));
+    entry.family = Some("unsafe_block".to_string());
+    cfg.allow.push(entry);
+    let finding = test_finding(
+        FindingKind::Unsafe,
+        Some("unsafe_block"),
+        "crates/runtime/src/ffi.rs",
+        "unsafe_block",
+    );
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Matched,
+        allow_id: Some("allow-unsafe".to_string()),
+        finding_index: Some(0),
+        message: "matched".to_string(),
+        score: 100,
+    }];
+
+    let items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 1, true);
+
+    let item = items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected unsafe missing evidence advisory"));
+    assert_eq!(items.len(), 1);
+    assert_eq!(item.id, "work-unsafe-missing-evidence-0001");
+    assert_eq!(item.kind, "unsafe_missing_evidence");
+    assert_eq!(item.status, MatchStatus::EvidenceMissing);
+    assert_eq!(item.risk, "high");
+    assert_eq!(item.difficulty, "medium");
+    assert_eq!(item.evidence_count, Some(0));
+    assert_eq!(item.allow_id.as_deref(), Some("allow-unsafe"));
+    assert_eq!(item.path.as_deref(), Some("crates/runtime/src/ffi.rs"));
+    assert_eq!(item.exception_kind.as_deref(), Some("unsafe"));
+    assert_eq!(item.family.as_deref(), Some("unsafe_block"));
+    assert!(
+        item.suggested_actions
+            .iter()
+            .any(|action| action.contains("unsafe-review"))
+    );
+    assert!(
+        item.proof_commands
+            .iter()
+            .any(|command| command == "cargo-allow worklist --missing-evidence --format json")
+    );
+    assert!(
+        item.proof_commands
+            .iter()
+            .any(|command| command == "cargo-allow check --kind unsafe --mode no-new")
+    );
+}
+
+#[test]
 fn worklist_policy_advisories_ignore_unmatched_broad_scopes() {
     let mut cfg = AllowConfig::empty();
     let mut entry = test_entry("allow-scripts", FindingKind::NonRustFile);

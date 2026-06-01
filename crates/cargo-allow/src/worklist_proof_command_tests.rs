@@ -294,6 +294,7 @@ fn unsafe_missing_evidence_adds_unsafe_check_when_kind_is_unknown() {
             "cargo-allow explain allow-policy",
             "cargo-allow list --allow-id allow-policy --format json",
             "cargo-allow worklist --allow-id allow-policy --format json",
+            "cargo-allow worklist --missing-evidence --format json",
             "cargo-allow check --mode no-new",
             "cargo-allow worklist --item-kind unsafe_missing_evidence --format json",
             "cargo-allow worklist --format json",
