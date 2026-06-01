@@ -1,4 +1,4 @@
-use allow_core::{AllowEntry, normalize_path};
+use allow_core::{AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, normalize_path};
 use allow_policy::{
     EvidenceReferenceCategory, EvidenceReferenceDiagnostic, EvidenceReferenceStatus,
     evidence_reference_diagnostics,
@@ -56,4 +56,24 @@ pub(crate) fn evidence_reference_diagnostics_for_source_tree(
                 .to_string();
     }
     diagnostics
+}
+
+pub(crate) fn validate_evidence_references_for_source_tree(
+    root: &Path,
+    cfg: &AllowConfig,
+    source_tree_files: Option<&BTreeSet<String>>,
+) -> CargoAllowResult<()> {
+    for entry in &cfg.allow {
+        for diagnostic in
+            evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
+        {
+            if diagnostic.status.is_broken_local_link() {
+                return Err(CargoAllowError::new(format!(
+                    "{} evidence `{}`: {}",
+                    entry.id, diagnostic.raw, diagnostic.message
+                )));
+            }
+        }
+    }
+    Ok(())
 }

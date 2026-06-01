@@ -5,6 +5,7 @@ use allow_policy::load_policy;
 use clap::Parser;
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 fn argv(items: Vec<&str>) -> Vec<String> {
@@ -261,6 +262,129 @@ fn cmd_prune_write_rejects_broken_evidence_that_would_remain() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
 
+#[test]
+fn cmd_prune_write_rejects_untracked_evidence_that_would_remain_by_default() {
+    let root = prune_fixture_dir();
+    let policy_dir = root.join("policy");
+    let docs_dir = root.join("docs");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::create_dir_all(&docs_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("docs dir: {err}")));
+    fs::write(docs_dir.join("live.md"), "# live\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("live doc: {err}")));
+
+    let mut cfg = AllowConfig::empty();
+    let mut live = non_rust_prune_fixture_entry("allow-live", "docs/live.md");
+    live.evidence = vec!["doc:policy/evidence.md".to_string()];
+    cfg.allow.push(live);
+    cfg.allow
+        .push(non_rust_prune_fixture_entry("allow-stale", "docs/stale.md"));
+    cfg.workspace.ignored = vec!["policy/evidence.md".to_string()];
+    let policy_path = policy_dir.join("allow.toml");
+    fs::write(&policy_path, render_policy(&cfg))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "policy/allow.toml", "docs/live.md"]);
+    git(&root, &["commit", "-m", "base policy"]);
+    fs::write(policy_dir.join("evidence.md"), "untracked evidence")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("evidence doc: {err}")));
+
+    let err = cmd_prune(&PruneArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy_path.clone()),
+        stale: true,
+        dry_run: false,
+        write: true,
+        include_untracked: false,
+        format: PruneFormat::Human,
+        output: None,
+    })
+    .expect_err("prune write should reject untracked evidence that remains by default");
+
+    assert!(
+        err.to_string()
+            .contains("not in the default source-tree inventory"),
+        "diagnostic should explain source-tree evidence boundary: {err}"
+    );
+    let rendered = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy read: {err}")));
+    assert!(
+        rendered.contains("allow-stale"),
+        "policy should not be rewritten when remaining evidence is untracked"
+    );
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn cmd_prune_write_include_untracked_accepts_untracked_evidence_that_would_remain() {
+    let root = prune_fixture_dir();
+    let policy_dir = root.join("policy");
+    let docs_dir = root.join("docs");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::create_dir_all(&docs_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("docs dir: {err}")));
+    fs::write(docs_dir.join("live.md"), "# live\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("live doc: {err}")));
+
+    let mut cfg = AllowConfig::empty();
+    let mut live = non_rust_prune_fixture_entry("allow-live", "docs/live.md");
+    live.evidence = vec!["doc:policy/evidence.md".to_string()];
+    cfg.allow.push(live);
+    cfg.allow
+        .push(non_rust_prune_fixture_entry("allow-stale", "docs/stale.md"));
+    cfg.workspace.ignored = vec!["policy/evidence.md".to_string()];
+    let policy_path = policy_dir.join("allow.toml");
+    fs::write(&policy_path, render_policy(&cfg))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "policy/allow.toml", "docs/live.md"]);
+    git(&root, &["commit", "-m", "base policy"]);
+    fs::write(policy_dir.join("evidence.md"), "untracked evidence")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("evidence doc: {err}")));
+
+    cmd_prune(&PruneArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy_path.clone()),
+        stale: true,
+        dry_run: false,
+        write: true,
+        include_untracked: true,
+        format: PruneFormat::Human,
+        output: None,
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "prune write should accept include-untracked evidence: {err}"
+        ))
+    });
+
+    let rendered = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy read: {err}")));
+    assert!(rendered.contains("allow-live"));
+    assert!(!rendered.contains("allow-stale"));
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
 static NEXT_PRUNE_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
 fn prune_fixture_dir() -> PathBuf {
@@ -306,6 +430,22 @@ fn non_rust_prune_fixture_entry(id: &str, path: &str) -> AllowEntry {
     entry.path = Some(PathBuf::from(path));
     entry.lifecycle.review_after = Some("2026-11-01".to_string());
     entry
+}
+
+fn git(root: &std::path::Path, args: &[&str]) {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+    if !output.status.success() {
+        std::panic::panic_any(format!(
+            "git {args:?} failed: stdout=`{}` stderr=`{}`",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
 }
 
 fn test_outcome(

@@ -1,7 +1,11 @@
 use super::test_support::test_finding_at_line;
 use super::*;
-use crate::{CargoAllowCli, CargoAllowCommand};
+use crate::{CargoAllowCli, CargoAllowCommand, RootArgs};
+use allow_core::{AllowConfig, AllowEntry};
+use allow_policy::render_policy;
 use clap::Parser;
+use std::fs;
+use std::process::Command;
 
 #[test]
 fn clap_parses_add_from_finding() {
@@ -175,6 +179,174 @@ fn default_add_review_after_is_relative_to_current_date() {
     );
 }
 
+#[test]
+fn cmd_add_rejects_untracked_local_evidence_by_default() {
+    let root = add_fixture_dir();
+    write_add_fixture_with_untracked_evidence(&root);
+    let output = root.join("policy/allow.added.toml");
+
+    let err = cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(root.join("policy/allow.toml")),
+        kind: "panic".to_string(),
+        path: PathBuf::from("src/lib.rs"),
+        line: 1,
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: Some(output.clone()),
+        force: false,
+        summary_format: AddSummaryFormat::Human,
+        summary_output: None,
+    })
+    .expect_err("add should reject retained untracked local evidence by default");
+
+    assert!(
+        err.to_string()
+            .contains("not in the default source-tree inventory"),
+        "diagnostic should explain source-tree evidence boundary: {err}"
+    );
+    assert!(
+        !output.exists(),
+        "add should not write policy output when evidence validation fails"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn cmd_add_include_untracked_accepts_untracked_local_evidence() {
+    let root = add_fixture_dir();
+    write_add_fixture_with_untracked_evidence(&root);
+    let output = root.join("policy/allow.added.toml");
+
+    cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(root.join("policy/allow.toml")),
+        kind: "panic".to_string(),
+        path: PathBuf::from("src/lib.rs"),
+        line: 1,
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: true,
+        write: Some(output.clone()),
+        force: false,
+        summary_format: AddSummaryFormat::Human,
+        summary_output: None,
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "add should accept include-untracked evidence: {err}"
+        ))
+    });
+
+    let rendered = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read output policy: {err}")));
+    assert!(rendered.contains("allow-0002"));
+    assert!(rendered.contains("test:parser_validates"));
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
 fn argv(items: Vec<&str>) -> Vec<String> {
     items.into_iter().map(String::from).collect()
+}
+
+fn write_add_fixture_with_untracked_evidence(root: &std::path::Path) {
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "fn parse(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("source write: {err}")));
+    let mut cfg = AllowConfig::empty();
+    cfg.workspace.ignored = vec!["policy/evidence.md".to_string()];
+    cfg.allow.push(test_policy_entry_with_untracked_evidence());
+    fs::write(root.join("policy/allow.toml"), render_policy(&cfg))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+    git(root, &["init"]);
+    git(
+        root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(root, &["config", "user.name", "cargo-allow test"]);
+    git(root, &["add", "policy/allow.toml", "src/lib.rs"]);
+    git(root, &["commit", "-m", "base policy"]);
+    fs::write(root.join("policy/evidence.md"), "untracked evidence")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("evidence doc: {err}")));
+}
+
+fn test_policy_entry_with_untracked_evidence() -> AllowEntry {
+    AllowEntry {
+        id: "allow-0001".to_string(),
+        kind: FindingKind::NonRustFile,
+        family: Some("configuration".to_string()),
+        path: Some(PathBuf::from("policy/allow.toml")),
+        glob: None,
+        owner: "core".to_string(),
+        classification: "fixture".to_string(),
+        reason: "fixture policy file".to_string(),
+        evidence: vec!["doc:policy/evidence.md".to_string()],
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: allow_core::Lifecycle {
+            created: None,
+            review_after: Some("2026-11-01".to_string()),
+            expires: None,
+        },
+        selector: allow_core::Selector {
+            ast_kind: Some("tracked_file".to_string()),
+            ..allow_core::Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
+fn add_fixture_dir() -> std::path::PathBuf {
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let dir = std::env::temp_dir().join(format!("cargo-allow-add-{}-{stamp}", std::process::id()));
+    match fs::remove_dir_all(&dir) {
+        Ok(()) => {}
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => std::panic::panic_any(format!("remove add fixture {}: {err}", dir.display())),
+    }
+    fs::create_dir_all(&dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create add fixture: {err}")));
+    dir
+}
+
+fn git(root: &std::path::Path, args: &[&str]) {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+    if !output.status.success() {
+        std::panic::panic_any(format!(
+            "git {args:?} failed: stdout=`{}` stderr=`{}`",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
 }
