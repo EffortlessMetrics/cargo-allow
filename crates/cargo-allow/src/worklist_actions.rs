@@ -73,6 +73,19 @@ pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
     }
 }
 
+pub(crate) fn suggested_actions_for_context(
+    kind: &str,
+    finding: Option<&Finding>,
+    entry: Option<&AllowEntry>,
+) -> Vec<String> {
+    if kind == MISSING_EVIDENCE {
+        if let Some(family) = high_risk_policy_exception_family(finding, entry) {
+            return high_risk_policy_missing_evidence_actions(family);
+        }
+    }
+    suggested_actions(kind)
+}
+
 pub(super) fn evidence_prefix_examples() -> String {
     let prefixes = allow_policy::canonical_evidence_prefixes()
         .map(|prefix| format!("{prefix}:"))
@@ -100,6 +113,30 @@ fn english_join(values: &[String]) -> String {
             out
         }
     }
+}
+
+fn high_risk_policy_exception_family<'a>(
+    finding: Option<&'a Finding>,
+    entry: Option<&'a AllowEntry>,
+) -> Option<&'a str> {
+    let exception_kind = finding
+        .map(|finding| finding.kind)
+        .or_else(|| entry.map(|entry| entry.kind));
+    if exception_kind != Some(FindingKind::PolicyException) {
+        return None;
+    }
+    let family = finding
+        .and_then(|finding| finding.family.as_deref())
+        .or_else(|| entry.and_then(|entry| entry.family.as_deref()))?;
+    matches!(family, "process_spawn" | "network_destination").then_some(family)
+}
+
+fn high_risk_policy_missing_evidence_actions(family: &str) -> Vec<String> {
+    vec![
+        format!("add typed evidence for the policy_exception.{family} exception"),
+        "review whether the policy exception can be removed or narrowed before retaining it"
+            .to_string(),
+    ]
 }
 
 pub(crate) fn proof_commands(
