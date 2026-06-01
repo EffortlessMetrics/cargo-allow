@@ -1,7 +1,9 @@
 use super::worklist_item_kind::{BROKEN_EVIDENCE_LINK, WEAK_EVIDENCE_REFERENCE};
 use super::worklist_priority::{DIFFICULTY_SMALL, RISK_HIGH, RISK_MEDIUM};
 use super::{WorkItem, WorkItemEvidenceReference, proof_commands};
-use crate::evidence_inventory::evidence_reference_diagnostics_for_source_tree;
+use crate::evidence_inventory::{
+    DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE, evidence_reference_diagnostics_for_source_tree,
+};
 use crate::evidence_render::evidence_reference_target_text;
 use allow_core::{AllowConfig, AllowEntry, FindingKind, MatchStatus};
 use allow_diff::selector_precision_score;
@@ -54,7 +56,14 @@ fn work_item_from_evidence_diagnostic(
         debug_assert!(diagnostic.status.is_broken_local_link());
         BROKEN_EVIDENCE_LINK
     };
-    let proof_commands = proof_commands(kind, None, Some(entry));
+    let mut proof_commands = proof_commands(kind, None, Some(entry));
+    if evidence_exists_outside_default_inventory(&diagnostic) {
+        proof_commands.push(format!(
+            "cargo-allow explain {} --include-untracked",
+            entry.id
+        ));
+        proof_commands.push("cargo-allow check --include-untracked --mode no-new".to_string());
+    }
     let target = evidence_reference_target_text(&diagnostic);
     let path = if kind == BROKEN_EVIDENCE_LINK {
         target.clone()
@@ -98,7 +107,23 @@ fn work_item_from_evidence_diagnostic(
             "{} evidence `{}`: {}",
             entry.id, diagnostic.raw, diagnostic.message
         ),
-        suggested_actions: super::suggested_actions(kind),
+        suggested_actions: evidence_suggested_actions(kind, &diagnostic),
         proof_commands,
     }
+}
+
+fn evidence_suggested_actions(kind: &str, diagnostic: &EvidenceReferenceDiagnostic) -> Vec<String> {
+    if evidence_exists_outside_default_inventory(diagnostic) {
+        return vec![
+            "commit the referenced evidence file if it should support repository policy"
+                .to_string(),
+            "or rerun with --include-untracked when intentionally reviewing local receipt artifacts"
+                .to_string(),
+        ];
+    }
+    super::suggested_actions(kind)
+}
+
+fn evidence_exists_outside_default_inventory(diagnostic: &EvidenceReferenceDiagnostic) -> bool {
+    diagnostic.message == DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE
 }
