@@ -1,5 +1,6 @@
 use super::PruneCandidate;
 use allow_core::{AllowConfig, MatchOutcome, MatchStatus};
+use std::collections::BTreeSet;
 
 pub(super) fn prune_stale_candidates(
     cfg: &AllowConfig,
@@ -33,4 +34,59 @@ pub(super) fn config_without_prune_candidates(
         .allow
         .retain(|entry| !candidates.iter().any(|candidate| candidate.id == entry.id));
     pruned
+}
+
+pub(super) fn removed_toml_blocks(
+    rendered_policy: &str,
+    candidates: &[PruneCandidate],
+) -> Vec<String> {
+    let ids = candidates
+        .iter()
+        .map(|candidate| candidate.id.as_str())
+        .collect::<BTreeSet<_>>();
+    allow_blocks(rendered_policy)
+        .into_iter()
+        .filter(|block| ids.iter().any(|id| block_contains_allow_id(block, id)))
+        .map(str::to_string)
+        .collect()
+}
+
+fn allow_blocks(rendered_policy: &str) -> Vec<&str> {
+    let mut blocks = Vec::new();
+    let mut start = None;
+    for (offset, line) in rendered_policy.match_indices("[[allow]]") {
+        debug_assert_eq!(line, "[[allow]]");
+        if let Some(previous) = start.replace(offset) {
+            if let Some(block) = rendered_policy.get(previous..offset) {
+                blocks.push(block.trim_end());
+            }
+        }
+    }
+    if let Some(previous) = start {
+        if let Some(block) = rendered_policy.get(previous..) {
+            blocks.push(block.trim_end());
+        }
+    }
+    blocks
+}
+
+fn block_contains_allow_id(block: &str, id: &str) -> bool {
+    block
+        .lines()
+        .any(|line| line.trim() == format!("id = \"{}\"", escape_toml_basic(id)))
+}
+
+fn escape_toml_basic(value: &str) -> String {
+    let mut out = String::new();
+    for ch in value.chars() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            _ => out.push(ch),
+        }
+    }
+    out
 }

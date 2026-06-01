@@ -13,7 +13,17 @@ fn render_prune_stale_preview_is_dry_run_first() {
         reason: "The old exception is gone.".to_string(),
     }];
 
-    let text = render_prune_stale_result(&candidates, true, false, None, test_prune_context());
+    let removed_toml_blocks =
+        vec!["[[allow]]\nid = \"allow-stale\"\nkind = \"panic\"\nfamily = \"unwrap\"".to_string()];
+
+    let text = render_prune_stale_result(
+        &candidates,
+        &removed_toml_blocks,
+        true,
+        false,
+        None,
+        test_prune_context(),
+    );
 
     assert!(
         text.contains("Inventory: source_tree/source_syntax via git_tracked; files scanned: 49")
@@ -24,6 +34,10 @@ fn render_prune_stale_preview_is_dry_run_first() {
     assert!(text.contains("stale entries: 1"));
     assert!(text.contains("allow-stale"));
     assert!(text.contains("No files were changed"));
+    assert!(text.contains("TOML removal preview:"));
+    assert!(text.contains("```diff"));
+    assert!(text.contains("- [[allow]]"));
+    assert!(text.contains("- id = \"allow-stale\""));
 }
 
 #[test]
@@ -87,6 +101,7 @@ fn render_prune_stale_result_reports_written_policy() {
 
     let text = render_prune_stale_result(
         &candidates,
+        &[],
         false,
         true,
         Some(Path::new("policy/allow.toml")),
@@ -100,10 +115,11 @@ fn render_prune_stale_result_reports_written_policy() {
 
 #[test]
 fn render_prune_stale_result_reports_write_mode_with_no_candidates() {
-    let text = render_prune_stale_result(&[], false, true, None, test_prune_context());
+    let text = render_prune_stale_result(&[], &[], false, true, None, test_prune_context());
 
     assert!(text.contains("mode: write"));
     assert!(text.contains("No stale allow entries found."));
+    assert!(!text.contains("TOML removal preview:"));
 }
 
 fn test_prune_context() -> PruneContext<'static> {

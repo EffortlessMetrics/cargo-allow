@@ -21,7 +21,10 @@ mod prune_types;
 pub(crate) use prune_args::PruneArgs;
 use prune_args::PruneFormat;
 use prune_render::{render_prune_stale_json, render_prune_stale_result};
-use prune_stale::{config_without_prune_candidates, prune_stale_candidates};
+use prune_stale::{
+    config_without_prune_candidates, prune_stale_candidates,
+    removed_toml_blocks as stale_removed_toml_blocks,
+};
 use prune_types::{PruneCandidate, PruneContext, PruneRenderMode};
 
 #[cfg(test)]
@@ -52,6 +55,12 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
     )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let candidates = prune_stale_candidates(&cfg, &outcomes);
+    let rendered_policy =
+        (args.format == PruneFormat::Human && !candidates.is_empty()).then(|| render_policy(&cfg));
+    let removed_toml_blocks = rendered_policy
+        .as_deref()
+        .map(|rendered| stale_removed_toml_blocks(rendered, &candidates))
+        .unwrap_or_default();
     let written_path = if args.write && !candidates.is_empty() {
         let path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
             CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
@@ -77,6 +86,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
     let text = match args.format {
         PruneFormat::Human => render_prune_stale_result(
             &candidates,
+            &removed_toml_blocks,
             args.dry_run,
             args.write,
             written_path.as_deref(),
