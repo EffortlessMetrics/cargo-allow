@@ -34,6 +34,36 @@ fn rejects_missing_local_evidence_references() {
 }
 
 #[test]
+fn rejects_missing_local_link_references() {
+    let root = unique_test_dir("link-missing");
+    fs::create_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create root: {err}")));
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-doc-link"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                links = ["doc:docs/missing-link.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy parses: {err}")));
+
+    let err = validate_local_evidence_references(&root, &cfg).unwrap_err();
+    assert!(err.to_string().contains("allow-doc-link link"));
+    assert!(err.to_string().contains("missing local file"));
+    remove_test_dir(root);
+}
+
+#[test]
 fn rejects_directory_local_evidence_references() {
     let root = unique_test_dir("evidence-directory");
     fs::create_dir_all(root.join("docs/safety"))

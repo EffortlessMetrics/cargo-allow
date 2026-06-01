@@ -1,7 +1,7 @@
 use allow_core::{AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, normalize_path};
 use allow_policy::{
-    EvidenceReferenceCategory, EvidenceReferenceDiagnostic, EvidenceReferenceStatus,
-    evidence_reference_diagnostics,
+    EvidenceReferenceCategory, EvidenceReferenceDiagnostic, EvidenceReferenceSource,
+    EvidenceReferenceStatus, evidence_reference_diagnostics, policy_reference_diagnostics,
 };
 use std::collections::BTreeSet;
 use std::fs;
@@ -39,22 +39,8 @@ pub(crate) fn evidence_reference_diagnostics_for_source_tree(
     source_tree_files: Option<&BTreeSet<String>>,
 ) -> Vec<EvidenceReferenceDiagnostic> {
     let mut diagnostics = evidence_reference_diagnostics(root, entry);
-    let Some(source_tree_files) = source_tree_files else {
-        return diagnostics;
-    };
     for diagnostic in &mut diagnostics {
-        if diagnostic.status != EvidenceReferenceStatus::LocalFilePresent {
-            continue;
-        }
-        let Some(target) = diagnostic.target.as_ref() else {
-            continue;
-        };
-        if source_tree_files.contains(&normalize_path(target)) {
-            continue;
-        }
-        diagnostic.status = EvidenceReferenceStatus::LocalFileMissing;
-        diagnostic.category = EvidenceReferenceCategory::Missing;
-        diagnostic.message = DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE.to_string();
+        apply_source_tree_inventory_to_diagnostic(diagnostic, source_tree_files);
     }
     diagnostics
 }
@@ -82,56 +68,40 @@ pub(crate) fn validate_evidence_references_for_source_tree(
     Ok(())
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct PolicyReferenceDiagnostic {
-    pub(crate) source: ReferenceSource,
-    pub(crate) diagnostic: EvidenceReferenceDiagnostic,
-}
-
 pub(crate) fn policy_reference_diagnostics_for_source_tree(
     root: &Path,
     entry: &AllowEntry,
     source_tree_files: Option<&BTreeSet<String>>,
 ) -> Vec<PolicyReferenceDiagnostic> {
-    let mut diagnostics =
-        evidence_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
-            .into_iter()
-            .map(|diagnostic| PolicyReferenceDiagnostic {
-                source: ReferenceSource::Evidence,
-                diagnostic,
-            })
-            .collect::<Vec<_>>();
-    let mut link_entry = entry.clone();
-    link_entry.evidence = entry.links.clone();
-    diagnostics.extend(
-        evidence_reference_diagnostics_for_source_tree(root, &link_entry, source_tree_files)
-            .into_iter()
-            .map(|diagnostic| PolicyReferenceDiagnostic {
-                source: ReferenceSource::Link,
-                diagnostic,
-            }),
-    );
-    diagnostics
+    policy_reference_diagnostics(root, entry)
+        .into_iter()
+        .map(|mut reference| {
+            apply_source_tree_inventory_to_diagnostic(&mut reference.diagnostic, source_tree_files);
+            reference
+        })
+        .collect()
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ReferenceSource {
-    Evidence,
-    Link,
-}
+pub(crate) type PolicyReferenceDiagnostic = allow_policy::PolicyReferenceDiagnostic;
+pub(crate) type ReferenceSource = EvidenceReferenceSource;
 
-impl ReferenceSource {
-    pub(crate) fn label(self) -> &'static str {
-        match self {
-            Self::Evidence => "evidence",
-            Self::Link => "link",
-        }
+fn apply_source_tree_inventory_to_diagnostic(
+    diagnostic: &mut EvidenceReferenceDiagnostic,
+    source_tree_files: Option<&BTreeSet<String>>,
+) {
+    let Some(source_tree_files) = source_tree_files else {
+        return;
+    };
+    if diagnostic.status != EvidenceReferenceStatus::LocalFilePresent {
+        return;
     }
-
-    pub(crate) fn message(self, message: &str) -> String {
-        match self {
-            Self::Evidence => message.to_string(),
-            Self::Link => message.replace("evidence", "link"),
-        }
+    let Some(target) = diagnostic.target.as_ref() else {
+        return;
+    };
+    if source_tree_files.contains(&normalize_path(target)) {
+        return;
     }
+    diagnostic.status = EvidenceReferenceStatus::LocalFileMissing;
+    diagnostic.category = EvidenceReferenceCategory::Missing;
+    diagnostic.message = DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE.to_string();
 }

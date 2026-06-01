@@ -35,8 +35,9 @@ pub use evidence::{
     broken_evidence_link_count, validate_local_evidence_references, weak_evidence_reference_count,
 };
 pub use evidence_diagnostics::{
-    EvidenceReferenceCategory, EvidenceReferenceDiagnostic, EvidenceReferenceStatus,
-    evidence_reference_diagnostics,
+    EvidenceReferenceCategory, EvidenceReferenceDiagnostic, EvidenceReferenceSource,
+    EvidenceReferenceStatus, PolicyReferenceDiagnostic, evidence_reference_diagnostics,
+    policy_reference_diagnostics,
 };
 pub use evidence_reference::{
     canonical_evidence_prefixes, local_file_evidence_prefixes, recognized_evidence_prefixes,
