@@ -77,16 +77,15 @@ pub(crate) fn validate_allow_entry_evidence_and_limit(
             entry.id
         )));
     }
-    if entry.kind == FindingKind::Unsafe
-        && entry.classification != "baseline_debt"
+    if let Some(label) = typed_evidence_required_label(entry)
         && !entry
             .evidence
             .iter()
             .any(|evidence| evidence_is_typed(evidence))
     {
         return Err(CargoAllowError::new(format!(
-            "{} unsafe entry requires at least one typed evidence reference",
-            entry.id
+            "{} {label} entry requires at least one typed evidence reference",
+            entry.id,
         )));
     }
     if requirements.evidence_required && entry.evidence.is_empty() {
@@ -102,6 +101,20 @@ pub(crate) fn validate_allow_entry_evidence_and_limit(
         )));
     }
     Ok(())
+}
+
+fn typed_evidence_required_label(entry: &AllowEntry) -> Option<String> {
+    if entry.classification == "baseline_debt" {
+        return None;
+    }
+    match (entry.kind, entry.family.as_deref()) {
+        (FindingKind::Unsafe, _) => Some("unsafe".to_string()),
+        (FindingKind::PolicyException, Some("process_spawn" | "network_destination")) => entry
+            .family
+            .as_deref()
+            .map(|family| format!("policy_exception.{family}")),
+        _ => None,
+    }
 }
 
 fn evidence_is_typed(evidence: &str) -> bool {
