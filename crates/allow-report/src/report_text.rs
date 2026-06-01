@@ -86,6 +86,10 @@ pub fn render_human_with_context(
         render_audit_summary_human(&summary, outcomes, context, &mut out);
     }
     render_non_rust_human(findings, outcomes, &mut out);
+    if command != "audit" {
+        let signals = ReviewSignals::from_summary(&summary, context);
+        append_evidence_repair_queues_human(&summary, signals, &mut out);
+    }
     out.push('\n');
     let non_matched = outcomes
         .iter()
@@ -163,7 +167,7 @@ fn render_audit_summary_human(
         signals,
         queue.is_empty(),
     ));
-    append_audit_evidence_repair_queues_human(summary, signals, out);
+    append_evidence_repair_queues_human(summary, signals, out);
     if !queue.is_empty() {
         out.push_str("\nAudit review queue:\n");
         for outcome in queue.iter().take(AUDIT_REVIEW_QUEUE_LIMIT) {
@@ -251,6 +255,10 @@ pub fn render_markdown_with_context(
         render_audit_summary_markdown(&summary, outcomes, context, &mut out);
     }
     render_non_rust_markdown(findings, outcomes, &mut out);
+    if command != "audit" {
+        let signals = ReviewSignals::from_summary(&summary, context);
+        append_evidence_repair_queues_markdown(&summary, signals, &mut out);
+    }
     let non_matched = outcomes
         .iter()
         .filter(|o| o.status != MatchStatus::Matched)
@@ -337,7 +345,7 @@ fn render_audit_summary_markdown(
         signals,
         queue.is_empty(),
     ));
-    append_audit_evidence_repair_queues_markdown(summary, signals, out);
+    append_evidence_repair_queues_markdown(summary, signals, out);
 
     if !queue.is_empty() {
         out.push_str("\n## Audit Review Queue\n\n");
@@ -352,12 +360,12 @@ fn render_audit_summary_markdown(
     }
 }
 
-fn append_audit_evidence_repair_queues_human(
+fn append_evidence_repair_queues_human(
     summary: &Summary,
     signals: ReviewSignals,
     out: &mut String,
 ) {
-    let commands = audit_evidence_repair_commands(summary, signals);
+    let commands = evidence_repair_commands(summary, signals);
     if commands.is_empty() {
         return;
     }
@@ -367,12 +375,12 @@ fn append_audit_evidence_repair_queues_human(
     }
 }
 
-fn append_audit_evidence_repair_queues_markdown(
+fn append_evidence_repair_queues_markdown(
     summary: &Summary,
     signals: ReviewSignals,
     out: &mut String,
 ) {
-    let commands = audit_evidence_repair_commands(summary, signals);
+    let commands = evidence_repair_commands(summary, signals);
     if commands.is_empty() {
         return;
     }
@@ -382,7 +390,7 @@ fn append_audit_evidence_repair_queues_markdown(
     }
 }
 
-fn audit_evidence_repair_commands(summary: &Summary, signals: ReviewSignals) -> Vec<&'static str> {
+fn evidence_repair_commands(summary: &Summary, signals: ReviewSignals) -> Vec<&'static str> {
     let mut commands = Vec::new();
     if signals.broken_evidence_links > 0 {
         commands.push("cargo-allow worklist --item-kind broken_evidence_link --format json");
