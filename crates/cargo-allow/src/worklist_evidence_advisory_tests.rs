@@ -95,6 +95,32 @@ fn worklist_items_report_broken_local_traceability_links() {
 }
 
 #[test]
+fn worklist_items_rank_broken_policy_exception_evidence_by_exception_risk() {
+    let root = migrate_fixture_dir();
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-network", FindingKind::PolicyException);
+    entry.family = Some("network_destination".to_string());
+    entry.evidence = vec!["doc:docs/missing-network-policy.md".to_string()];
+    cfg.allow.push(entry);
+
+    let items = work_items_from_evidence_diagnostics(&root, &cfg, 1);
+
+    let item = items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one work item"));
+    assert_eq!(item.kind, "broken_evidence_link");
+    assert_eq!(item.exception_kind.as_deref(), Some("policy_exception"));
+    assert_eq!(item.family.as_deref(), Some("network_destination"));
+    assert_eq!(item.risk, "high");
+    assert_eq!(item.difficulty, "small");
+    assert_eq!(item.status, MatchStatus::EvidenceMissing);
+    assert_eq!(item.allow_id.as_deref(), Some("allow-network"));
+    assert_eq!(item.path.as_deref(), Some("docs/missing-network-policy.md"));
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn worklist_items_report_weak_traceability_links() {
     let root = migrate_fixture_dir();
     let mut cfg = AllowConfig::empty();
