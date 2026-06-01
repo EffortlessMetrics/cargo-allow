@@ -39,6 +39,7 @@ fn panic_macro_invocation(node: Node<'_>, source: &str) -> Option<(u32, PanicMac
         PanicMacroInvocation {
             kind,
             column: source_column(source, start.row, start.column + base_offset),
+            macro_path: normalize_snippet(macro_text),
         },
     ))
 }

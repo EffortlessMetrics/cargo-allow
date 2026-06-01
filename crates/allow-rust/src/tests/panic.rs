@@ -175,6 +175,24 @@ fn detects_panic_macros_from_syntax() {
 }
 
 #[test]
+fn syntax_panic_macros_record_visible_macro_path() {
+    let src = r#"
+        fn load() {
+            panic!("bad");
+            std::panic!("scoped");
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let macro_paths = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::Panic && f.family.as_deref() == Some("panic_macro"))
+        .map(|f| f.identity.target_fingerprint.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(macro_paths, vec![Some("panic"), Some("std::panic")]);
+}
+
+#[test]
 fn syntax_panic_macros_ignore_text_in_strings_and_comments() {
     let src = r##"
         fn load() {

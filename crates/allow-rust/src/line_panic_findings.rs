@@ -32,6 +32,7 @@ pub(crate) fn scan_panic_calls(
             "macro_call",
             |id| {
                 id.macro_name = Some(macro_invocation.kind.macro_name().to_string());
+                id.target_fingerprint = Some(macro_invocation.macro_path.clone());
             },
             findings,
         );
