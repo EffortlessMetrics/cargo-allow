@@ -46,6 +46,11 @@ policy-owner or debt-class slice, such as `--owner unowned --classification
 baseline_debt`.
 Use `--missing-evidence` to focus policy-backed entries that have no evidence
 references yet.
+For evidence-quality work, use the proof commands embedded in each item. Broken
+local evidence/link work should usually start with
+`cargo-allow list --broken-evidence --format json`; weak or untyped
+evidence/link work should usually start with
+`cargo-allow list --weak-evidence --format json`.
 Saved worklist artifacts record the applied filters; preserve that context in
 handoffs.
 The default order already puts high-risk work first, then lower estimated
