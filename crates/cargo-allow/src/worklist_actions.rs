@@ -261,6 +261,12 @@ fn append_closeout_commands(kind: &str, commands: &mut Vec<String>) {
 
 fn list_shortcut_arg(kind: &str) -> Option<&'static str> {
     match kind {
+        EXPIRED_ALLOW => Some("expired"),
+        STALE_ALLOW => Some("stale"),
+        BASELINE_DEBT => Some("baseline-debt"),
+        REVIEW_DUE => Some("review-due"),
+        BROAD_SCOPE => Some("broad-scope"),
+        MISSING_EVIDENCE | UNSAFE_MISSING_EVIDENCE => Some("missing-evidence"),
         BROKEN_EVIDENCE_LINK => Some("broken-evidence"),
         WEAK_EVIDENCE_REFERENCE => Some("weak-evidence"),
         _ => None,

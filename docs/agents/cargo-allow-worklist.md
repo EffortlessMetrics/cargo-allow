@@ -51,6 +51,9 @@ For stale cleanup work, start with the item proof commands for
 `cargo-allow prune --stale --dry-run` and `cargo-allow prune --stale --format
 json`; the dry-run keeps policy changes reviewable before any write, and the
 JSON preview is useful for handoffs.
+For ledger inspection before editing policy, use any included
+`cargo-allow list --expired`, `--review-due`, `--stale`, `--baseline-debt`,
+`--broad-scope`, or `--missing-evidence` proof commands.
 For evidence-quality work, use the proof commands embedded in each item. Broken
 local evidence/link work should usually start with
 `cargo-allow list --broken-evidence --format json`; weak or untyped

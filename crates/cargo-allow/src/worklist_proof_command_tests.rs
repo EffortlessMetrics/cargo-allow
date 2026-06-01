@@ -171,6 +171,7 @@ fn proof_commands_map_entry_only_kinds_and_worklist_shortcuts() {
             "cargo-allow worklist --broad-scope --format json",
             "cargo-allow check --kind workflow --mode no-new",
             "cargo-allow worklist --item-kind broad_scope --format json",
+            "cargo-allow list --broad-scope --format json",
             "cargo-allow worklist --kind workflow --format json",
         ]
     );
@@ -186,6 +187,7 @@ fn proof_commands_map_entry_only_kinds_and_worklist_shortcuts() {
             "cargo-allow worklist --baseline-debt --format json",
             "cargo-allow check --kind dependency-surface --mode no-new",
             "cargo-allow worklist --item-kind baseline_debt --format json",
+            "cargo-allow list --baseline-debt --format json",
             "cargo-allow worklist --kind dependency-surface --format json",
         ]
     );
@@ -202,6 +204,7 @@ fn proof_commands_map_entry_only_kinds_and_worklist_shortcuts() {
             "cargo-allow worklist --missing-evidence --format json",
             "cargo-allow check --kind non-rust --mode no-new",
             "cargo-allow worklist --item-kind missing_evidence --format json",
+            "cargo-allow list --missing-evidence --format json",
             "cargo-allow worklist --kind non-rust --format json",
         ]
     );
@@ -230,6 +233,7 @@ fn proof_commands_cover_policy_family_aliases_and_unknown_policy_fallback() {
                 format!("cargo-allow worklist --allow-id allow-{family} --format json"),
                 format!("cargo-allow check --kind {kind_arg} --mode no-new"),
                 "cargo-allow worklist --item-kind review_due --format json".to_string(),
+                "cargo-allow list --review-due --format json".to_string(),
                 format!("cargo-allow worklist --kind {kind_arg} --format json"),
             ],
             "{family} should map to --kind {kind_arg}"
@@ -247,6 +251,7 @@ fn proof_commands_cover_policy_family_aliases_and_unknown_policy_fallback() {
             "cargo-allow worklist --baseline-debt --format json",
             "cargo-allow check --mode no-new",
             "cargo-allow worklist --item-kind baseline_debt --format json",
+            "cargo-allow list --baseline-debt --format json",
             "cargo-allow worklist --format json",
         ]
     );
@@ -259,6 +264,7 @@ fn proof_commands_cover_policy_family_aliases_and_unknown_policy_fallback() {
             "cargo-allow worklist --allow-id allow-policy --format json",
             "cargo-allow check --mode no-new",
             "cargo-allow worklist --item-kind review_due --format json",
+            "cargo-allow list --review-due --format json",
             "cargo-allow worklist --format json",
         ]
     );
@@ -278,9 +284,54 @@ fn missing_evidence_keeps_shortcut_when_kind_is_unknown() {
             "cargo-allow worklist --missing-evidence --format json",
             "cargo-allow check --mode no-new",
             "cargo-allow worklist --item-kind missing_evidence --format json",
+            "cargo-allow list --missing-evidence --format json",
             "cargo-allow worklist --format json",
         ]
     );
+}
+
+#[test]
+fn proof_commands_include_matching_list_shortcuts() {
+    let entry = test_entry("allow-maintenance", FindingKind::Unsafe);
+
+    let cases = [
+        ("expired_allow", "cargo-allow list --expired --format json"),
+        ("stale_allow", "cargo-allow list --stale --format json"),
+        (
+            "baseline_debt",
+            "cargo-allow list --baseline-debt --format json",
+        ),
+        ("review_due", "cargo-allow list --review-due --format json"),
+        (
+            "broad_scope",
+            "cargo-allow list --broad-scope --format json",
+        ),
+        (
+            "missing_evidence",
+            "cargo-allow list --missing-evidence --format json",
+        ),
+        (
+            "unsafe_missing_evidence",
+            "cargo-allow list --missing-evidence --format json",
+        ),
+        (
+            "broken_evidence_link",
+            "cargo-allow list --broken-evidence --format json",
+        ),
+        (
+            "weak_evidence_reference",
+            "cargo-allow list --weak-evidence --format json",
+        ),
+    ];
+
+    for (kind, expected) in cases {
+        assert!(
+            proof_commands(kind, None, Some(&entry))
+                .iter()
+                .any(|command| command == expected),
+            "{kind} should include `{expected}`"
+        );
+    }
 }
 
 #[test]
@@ -333,6 +384,7 @@ fn unsafe_missing_evidence_adds_unsafe_check_when_kind_is_unknown() {
             "cargo-allow worklist --missing-evidence --format json",
             "cargo-allow check --mode no-new",
             "cargo-allow worklist --item-kind unsafe_missing_evidence --format json",
+            "cargo-allow list --missing-evidence --format json",
             "cargo-allow worklist --format json",
             "cargo-allow check --kind unsafe --mode no-new",
         ]
