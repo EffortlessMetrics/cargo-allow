@@ -339,42 +339,41 @@ fn promote_broken_added_evidence_policy_changes(
         let Some(evidence) = change.evidence.as_ref() else {
             continue;
         };
-        if !added_evidence_has_broken_local_link(
+        let Some(message) = added_evidence_broken_local_link_message(
             root,
             head_files,
             head_cfg,
             &change.allow_id,
             &evidence.added,
-        ) {
+        ) else {
             continue;
-        }
+        };
         change.severity = allow_diff::PolicyChangeSeverity::Fail;
-        change.message = format!("{} broken local evidence added", change.allow_id);
+        change.message = format!("{} {message}", change.allow_id);
     }
     Ok(())
 }
 
-fn added_evidence_has_broken_local_link(
+fn added_evidence_broken_local_link_message(
     root: &Path,
     head_files: Option<&BTreeSet<String>>,
     head_cfg: &AllowConfig,
     allow_id: &str,
     added: &[String],
-) -> bool {
+) -> Option<&'static str> {
     if let Some(head_files) = head_files {
         return added
             .iter()
             .filter_map(|reference| local_evidence_reference(reference))
-            .any(|reference| reference.is_broken_in_revision(head_files));
+            .find_map(|reference| reference.broken_message_in_revision(head_files));
     }
-    let Some(entry) = head_cfg.allow.iter().find(|entry| entry.id == allow_id) else {
-        return false;
-    };
+    let entry = head_cfg.allow.iter().find(|entry| entry.id == allow_id)?;
     allow_policy::evidence_reference_diagnostics(root, entry)
         .iter()
-        .any(|diagnostic| {
-            added.iter().any(|item| item == &diagnostic.raw)
-                && diagnostic.status.is_broken_local_link()
+        .find_map(|diagnostic| {
+            (added.iter().any(|item| item == &diagnostic.raw)
+                && diagnostic.status.is_broken_local_link())
+            .then_some("broken local evidence added")
         })
 }
 
@@ -429,9 +428,16 @@ enum LocalEvidenceReference {
 
 impl LocalEvidenceReference {
     fn is_broken_in_revision(&self, head_files: &BTreeSet<String>) -> bool {
+        self.broken_message_in_revision(head_files).is_some()
+    }
+
+    fn broken_message_in_revision(&self, head_files: &BTreeSet<String>) -> Option<&'static str> {
         match self {
-            Self::SourceTreePath(target) => !head_files.contains(target),
-            Self::InvalidLocalPath => true,
+            Self::SourceTreePath(target) if !head_files.contains(target) => {
+                Some("local evidence added outside compared source-tree inventory")
+            }
+            Self::SourceTreePath(_) => None,
+            Self::InvalidLocalPath => Some("broken local evidence added"),
         }
     }
 }

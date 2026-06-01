@@ -135,6 +135,36 @@ fn diff_policy_changes_promote_broken_added_evidence_to_failure() {
 }
 
 #[test]
+fn diff_policy_changes_explain_added_evidence_outside_compared_inventory() {
+    let root = diff_fixture_dir();
+    let mut base_entry = entry("allow-panic", FindingKind::Panic);
+    base_entry.evidence.clear();
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-panic", FindingKind::Panic);
+    head_entry.evidence = vec!["doc:docs/untracked.md".to_string()];
+    let head = config_with(head_entry);
+    let mut changes = policy_changes_for_diff(Some(base), &head, None)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy diff: {err}")));
+    let compared_files = std::collections::BTreeSet::new();
+
+    promote_broken_added_evidence_policy_changes(&root, Some(&compared_files), &head, &mut changes)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("promote evidence changes: {err}")));
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == allow_diff::PolicyChangeKind::EvidenceAdded)
+        .unwrap_or_else(|| std::panic::panic_any("evidence addition should be reported"));
+    assert_eq!(change.severity, allow_diff::PolicyChangeSeverity::Fail);
+    assert!(
+        change
+            .message
+            .contains("outside compared source-tree inventory"),
+        "message should explain source-tree inventory failure: {change:?}"
+    );
+    remove_diff_fixture_dir(root);
+}
+
+#[test]
 fn diff_policy_changes_keep_present_added_evidence_as_improvement() {
     let root = diff_fixture_dir();
     fs::create_dir_all(root.join("docs"))
