@@ -91,8 +91,7 @@ pub fn render_worklist_human(
         if let Some(reference) = item.evidence_reference.as_ref() {
             let status = evidence_reference_human_status(reference);
             out.push_str(&format!(
-                "  evidence reference: [{}] {}: {} (status={}, prefix={}, target={})\n",
-                status.marker,
+                "  evidence reference: {}: {} (status={}, prefix={}, target={})\n",
                 status.label,
                 reference.raw,
                 reference.status,
