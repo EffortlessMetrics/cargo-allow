@@ -505,7 +505,8 @@ They also include lifecycle dates and an evidence-reference count when tied to a
 policy entry, making expiry pressure and evidence gaps visible in the queue.
 When available, they also include selector precision so agents can distinguish
 narrow retained receipts from broad policy entries that may need review or
-narrowing.
+narrowing. Lower scores mean fewer structural identity fields; higher scores
+mean the selector is more specific, not that the exception is proven correct.
 It is a routing surface, not an auto-fix plan: agents and humans should fix,
 prove, narrow, or remove the exception instead of adding suppressions just to
 silence cargo-allow.
