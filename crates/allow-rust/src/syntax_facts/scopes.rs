@@ -65,6 +65,7 @@ fn collect_nested_line_scopes(
 
     if node.kind() == "foreign_mod_item" {
         if let Some(name) = extern_container_name(node, source) {
+            record_container_scope(node, &name, &paths.module_path, scopes);
             paths.extern_path.push(name);
             visit_child_scopes(node, source, paths, scopes);
             paths.extern_path.pop();

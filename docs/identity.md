@@ -147,6 +147,7 @@ Unsafe item symbols are source-visible only: for example unsafe functions use th
 function name, unsafe traits use the trait name, unsafe impls use the visible
 impl target, and unsafe extern blocks use the visible ABI plus declared item
 names where available.
+Unsafe extern block findings also use the visible ABI as container identity.
 
 For source-code exception kinds (`panic`, `unsafe`, and `lint_exception`), a
 path or glob only scopes the search and is not enough identity by itself. At
