@@ -136,9 +136,10 @@ workflow, or script source for process-spawn discovery and does not validate
 runtime process behavior.
 
 Migration records `legacy-policy:<id>` as typed traceability evidence for each
-process policy entry and preserves legacy facts such as `binary:`,
-`argv_shape:`, `network_reach:`, and `called_by:` as weak evidence references
-until the entry is reviewed and linked to stronger proof.
+process policy entry, preserves existing `evidence` or `covered_by` fields, and
+keeps legacy facts such as `binary:`, `argv_shape:`, `network_reach:`, and
+`called_by:` as weak evidence references until the entry is reviewed and linked
+to stronger proof.
 
 Network-policy compat is available for shiplog-style
 `policy/network-allowlist.toml`:
@@ -153,9 +154,10 @@ network policy entries and reports them as matched
 workflow logs, or runtime traffic for outbound network discovery.
 
 Migration records `legacy-policy:<id>` as typed traceability evidence for each
-network policy entry and preserves legacy facts such as `destination:`, `lane:`,
-`auth_required:`, and `auth_secret:` as weak evidence references until the
-entry is reviewed and linked to stronger proof.
+network policy entry, preserves existing `evidence` or `covered_by` fields, and
+keeps legacy facts such as `destination:`, `lane:`, `auth_required:`, and
+`auth_secret:` as weak evidence references until the entry is reviewed and
+linked to stronger proof.
 
 No-panic allowlist migration is available for legacy
 `policy/no-panic-allowlist.toml` files:

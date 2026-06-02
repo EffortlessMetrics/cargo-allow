@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use toml::Value;
 
-use crate::fields::{required_bool_field, required_string_field, string_field};
+use crate::fields::{legacy_evidence, required_bool_field, required_string_field, string_field};
 use crate::parser_support::normalize_legacy_expires;
 use crate::types::LegacyNetworkRule;
 
@@ -29,6 +29,7 @@ fn parse_network_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyNet
         lane: required_string_field(table, "lane", &id)?,
         owner: required_string_field(table, "owner", &id)?,
         reason: required_string_field(table, "reason", &id)?,
+        evidence: legacy_evidence(table),
         created: Some(required_string_field(table, "created", &id)?),
         review_after: string_field(table, "review_after"),
         expires: normalize_legacy_expires(string_field(table, "expires")),

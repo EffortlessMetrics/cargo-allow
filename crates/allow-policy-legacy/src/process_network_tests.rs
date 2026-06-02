@@ -109,6 +109,55 @@ fn process_policy_requires_legacy_xtask_fields() {
 }
 
 #[test]
+fn process_migration_preserves_legacy_evidence_when_present() {
+    let path = fixture_dir().join("process-allowlist.toml");
+    std::fs::write(
+        &path,
+        r#"schema_version = 1
+policy = "process-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "proc-release-script"
+binary = "bash"
+argv_shape = ["scripts/release.sh"]
+network_reach = false
+called_by = [".github/workflows/release.yml"]
+owner = "release"
+reason = "Release helper fixture."
+evidence = ["doc:docs/release/README.md", "issue:#123"]
+created = "2026-05-09"
+expires = "permanent"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+    let cfg = load_legacy_or_canonical(&path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("process policy with evidence migrates: {err}"))
+    });
+
+    let entry = cfg
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected process allow entry"));
+    assert!(
+        entry
+            .evidence
+            .iter()
+            .any(|item| item == "doc:docs/release/README.md")
+    );
+    assert!(entry.evidence.iter().any(|item| item == "issue:#123"));
+    assert!(
+        entry
+            .evidence
+            .iter()
+            .any(|item| item == "legacy-policy:proc-release-script")
+    );
+    assert!(entry.evidence.iter().any(|item| item == "binary:bash"));
+}
+
+#[test]
 fn migrates_network_allowlist_to_policy_exception_entries() {
     let policy = network_policy_fixture_path();
     let cfg = load_legacy_or_canonical(&policy)
@@ -160,6 +209,52 @@ fn migrates_network_allowlist_to_policy_exception_entries() {
             .evidence
             .iter()
             .any(|item| item == "auth_secret:GITHUB_TOKEN")
+    );
+}
+
+#[test]
+fn network_migration_accepts_covered_by_as_legacy_evidence() {
+    let path = fixture_dir().join("network-allowlist.toml");
+    std::fs::write(
+        &path,
+        r#"schema_version = 1
+policy = "network-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "net-release-api"
+destination = "api.github.com"
+auth_required = true
+auth_secret = "GITHUB_TOKEN"
+lane = "release"
+owner = "release/ci"
+reason = "Release API fixture."
+covered_by = "doc:docs/ci.md"
+created = "2026-05-09"
+expires = "permanent"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+    let cfg = load_legacy_or_canonical(&path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("network policy with covered_by migrates: {err}"))
+    });
+
+    let entry = cfg
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected network allow entry"));
+    assert_eq!(
+        entry.evidence,
+        vec![
+            "doc:docs/ci.md".to_string(),
+            "legacy-policy:net-release-api".to_string(),
+            "destination:api.github.com".to_string(),
+            "lane:release".to_string(),
+            "auth_required:true".to_string(),
+            "auth_secret:GITHUB_TOKEN".to_string(),
+        ]
     );
 }
 

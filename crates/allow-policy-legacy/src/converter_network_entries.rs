@@ -41,12 +41,11 @@ pub(crate) fn entry_from_network_rule(rule: &LegacyNetworkRule) -> AllowEntry {
 }
 
 fn network_evidence(rule: &LegacyNetworkRule) -> Vec<String> {
-    let mut evidence = vec![
-        format!("legacy-policy:{}", rule.id),
-        format!("destination:{}", rule.destination),
-        format!("lane:{}", rule.lane),
-        format!("auth_required:{}", rule.auth_required),
-    ];
+    let mut evidence = rule.evidence.clone();
+    evidence.push(format!("legacy-policy:{}", rule.id));
+    evidence.push(format!("destination:{}", rule.destination));
+    evidence.push(format!("lane:{}", rule.lane));
+    evidence.push(format!("auth_required:{}", rule.auth_required));
     if let Some(secret) = &rule.auth_secret {
         evidence.push(format!("auth_secret:{secret}"));
     }
