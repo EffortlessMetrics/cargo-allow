@@ -8,6 +8,7 @@ pub(crate) struct LegacyDependencySurfaceRule {
     pub(crate) reason: String,
     pub(crate) broad_glob_reason: Option<String>,
     pub(crate) dep_count_at_baseline: Option<i64>,
+    pub(crate) evidence: Vec<String>,
     pub(crate) created: Option<String>,
     pub(crate) review_after: Option<String>,
     pub(crate) expires: Option<String>,

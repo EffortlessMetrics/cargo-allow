@@ -40,7 +40,8 @@ pub(crate) fn entry_from_dependency_surface_rule(rule: &LegacyDependencySurfaceR
 }
 
 fn dependency_surface_evidence(rule: &LegacyDependencySurfaceRule) -> Vec<String> {
-    let mut evidence = vec![format!("surface:{}", rule.surface)];
+    let mut evidence = rule.evidence.clone();
+    evidence.push(format!("surface:{}", rule.surface));
     if let Some(count) = rule.dep_count_at_baseline {
         evidence.push(format!("dep_count_at_baseline:{count}"));
     }

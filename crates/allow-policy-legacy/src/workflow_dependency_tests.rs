@@ -137,6 +137,67 @@ fn workflow_compat_preserves_missing_and_stale_drift() {
 }
 
 #[test]
+fn workflow_migration_preserves_legacy_evidence_when_present() {
+    let path = fixture_dir().join("workflow-allowlist.toml");
+    std::fs::write(
+        &path,
+        r#"schema_version = 1
+policy = "workflow-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[entry]]
+path = ".github/workflows/release.yml"
+owner = "release/ci"
+reason = "Release workflow fixture."
+permissions = ["contents:read"]
+secrets_used = []
+external_actions = ["actions/checkout@v4"]
+evidence = ["doc:docs/ci.md", "issue:#123"]
+created = "2026-05-09"
+expires = "permanent"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+    let cfg = load_legacy_or_canonical(&path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("workflow policy with evidence migrates: {err}"))
+    });
+
+    let workflow = cfg
+        .allow
+        .iter()
+        .find(|entry| entry.family.as_deref() == Some("github_workflow"))
+        .unwrap_or_else(|| std::panic::panic_any("expected workflow file entry"));
+    assert!(
+        workflow
+            .evidence
+            .iter()
+            .any(|item| item == "doc:docs/ci.md")
+    );
+    assert!(workflow.evidence.iter().any(|item| item == "issue:#123"));
+    assert!(
+        workflow
+            .evidence
+            .iter()
+            .any(|item| item == "permission:contents:read")
+    );
+
+    let action = cfg
+        .allow
+        .iter()
+        .find(|entry| entry.family.as_deref() == Some("workflow_external_action"))
+        .unwrap_or_else(|| std::panic::panic_any("expected workflow action entry"));
+    assert!(action.evidence.iter().any(|item| item == "doc:docs/ci.md"));
+    assert!(
+        action
+            .evidence
+            .iter()
+            .any(|item| item == "external_action:actions/checkout@v4")
+    );
+}
+
+#[test]
 fn migrates_dependency_surface_allowlist_to_policy_exception_entries() {
     let policy = dependency_policy_fixture_path();
     let cfg = load_legacy_or_canonical(&policy)
@@ -172,6 +233,48 @@ fn migrates_dependency_surface_allowlist_to_policy_exception_entries() {
         .unwrap_or_else(|| std::panic::panic_any("expected crate glob entry"));
     assert_eq!(crates.glob.as_deref(), Some("crates/*/Cargo.toml"));
     assert!(crates.reason.contains("Scope note:"));
+}
+
+#[test]
+fn dependency_surface_migration_accepts_covered_by_as_legacy_evidence() {
+    let path = fixture_dir().join("dependency-surface-allowlist.toml");
+    std::fs::write(
+        &path,
+        r#"schema_version = 1
+policy = "dependency-surface-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "dep-release-manifest"
+path = "Cargo.toml"
+surface = "workspace_manifest"
+owner = "release"
+reason = "Workspace dependency block fixture."
+dep_count_at_baseline = 22
+covered_by = "doc:docs/dependencies.md"
+created = "2026-05-09"
+expires = "permanent"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+    let cfg = load_legacy_or_canonical(&path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("dependency policy with covered_by migrates: {err}"))
+    });
+
+    let entry = cfg
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected dependency surface entry"));
+    assert_eq!(
+        entry.evidence,
+        vec![
+            "doc:docs/dependencies.md".to_string(),
+            "surface:workspace_manifest".to_string(),
+            "dep_count_at_baseline:22".to_string(),
+        ]
+    );
 }
 
 #[test]
