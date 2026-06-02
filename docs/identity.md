@@ -48,6 +48,7 @@ Current container names include:
 | Free function | `parse_span` |
 | Nested module function | module `parser::inner`, container `normalize_span` |
 | Inherent impl method | `Parser::parse_span` |
+| Trait definition method | `ParserApi::parse_span` |
 | Trait impl method | `<Parser as ParserApi>::parse_span` |
 
 Container names are stable source-syntax hints, not type identities. They do not
@@ -137,9 +138,14 @@ surface:
 | Panic method calls | `ast_kind`, `container`, `callee`, `receiver_fingerprint`, `normalized_snippet_hash` |
 | Panic macros | `ast_kind`, `container`, `macro_name`, `normalized_snippet_hash` |
 | Indexing and slicing | `ast_kind`, `container`, `symbol`, `target_fingerprint`, `normalized_snippet_hash` |
-| Unsafe syntax | `ast_kind`, `container`, `normalized_snippet_hash` |
+| Unsafe syntax | `ast_kind`, `container`, `symbol`, `normalized_snippet_hash` |
 | Lint suppressions | `ast_kind`, `container`, `lint`, `symbol`, `normalized_snippet_hash` |
 | Non-Rust files | `ast_kind`, `glob`, `symbol`, `target_fingerprint` |
+
+Unsafe item symbols are source-visible only: for example unsafe functions use the
+function name, unsafe traits use the trait name, unsafe impls use the visible
+impl target, and unsafe extern blocks use the visible ABI plus declared item
+names where available.
 
 For source-code exception kinds (`panic`, `unsafe`, and `lint_exception`), a
 path or glob only scopes the search and is not enough identity by itself. At

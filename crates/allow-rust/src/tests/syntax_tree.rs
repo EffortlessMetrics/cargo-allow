@@ -101,6 +101,27 @@ fn syntax_containers_include_trait_impl_methods() {
 }
 
 #[test]
+fn syntax_containers_include_trait_definition_methods() {
+    let source = r#"
+        mod parser {
+            trait ParserApi {
+                fn parse_span(&self) {}
+            }
+        }
+        "#;
+    let tree = parse_rust_syntax(source)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+    let containers = tree.containers(source);
+
+    let method = containers
+        .iter()
+        .find(|container| container.name == "ParserApi::parse_span")
+        .unwrap_or_else(|| std::panic::panic_any("ParserApi::parse_span should exist"));
+    assert_eq!(method.kind, "method");
+    assert_eq!(method.module().as_deref(), Some("parser"));
+}
+
+#[test]
 fn syntax_containers_recover_from_invalid_source() {
     let source = r#"
         fn parsed_before_error() {}
