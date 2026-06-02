@@ -125,6 +125,73 @@ lint = "clippy::unwrap_used"
 }
 
 #[test]
+fn clippy_compat_preserves_legacy_evidence_when_present() {
+    let path = fixture_dir().join("clippy-exceptions-with-evidence.toml");
+    fs::write(
+        &path,
+        r#"schema_version = 1
+policy = "clippy-exceptions"
+
+[[allow]]
+id = "clippy-reviewed"
+path = "src/lib.rs"
+lint = "clippy::unwrap_used"
+evidence = ["test:lint_policy_is_linked", "issue:#123"]
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+    let cfg = load_clippy_exceptions_compat_config(&path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("clippy compat config with evidence loads: {err}"))
+    });
+
+    let entry = cfg
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected clippy exception entry"));
+    assert_eq!(
+        entry.evidence,
+        vec![
+            "test:lint_policy_is_linked".to_string(),
+            "issue:#123".to_string()
+        ]
+    );
+    assert_eq!(
+        allow_policy::weak_evidence_reference_count(Path::new("."), &cfg),
+        0,
+        "recognized legacy clippy evidence should not be reported as weak"
+    );
+}
+
+#[test]
+fn clippy_compat_accepts_covered_by_as_legacy_evidence() {
+    let path = fixture_dir().join("clippy-exceptions-covered-by.toml");
+    fs::write(
+        &path,
+        r#"schema_version = 1
+policy = "clippy-exceptions"
+
+[[allow]]
+id = "clippy-covered"
+path = "src/lib.rs"
+lint = "clippy::panic"
+covered_by = "test:lint_policy_covered"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+    let cfg = load_clippy_exceptions_compat_config(&path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("clippy compat config with covered_by loads: {err}"))
+    });
+
+    let entry = cfg
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected clippy exception entry"));
+    assert_eq!(entry.evidence, vec!["test:lint_policy_covered".to_string()]);
+}
+
+#[test]
 fn clippy_compat_loader_requires_clippy_policy() {
     let policy = generated_policy_fixture_path();
 

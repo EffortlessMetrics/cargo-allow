@@ -7,6 +7,7 @@ pub(crate) struct LegacyClippyRule {
     pub(crate) owner: String,
     pub(crate) classification: String,
     pub(crate) reason: String,
+    pub(crate) evidence: Vec<String>,
     pub(crate) symbol: Option<String>,
     pub(crate) target_fingerprint: Option<String>,
     pub(crate) created: Option<String>,
