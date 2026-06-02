@@ -111,14 +111,48 @@ pub fn render_diff_policy_changes_human(changes: &[DiffPolicyChange<'_>]) -> Str
         out.push_str("  none\n");
         return out;
     }
-    for change in changes {
-        out.push_str(&format!(
-            "  {} {} {}: {}\n",
-            change.severity, change.allow_id, change.kind, change.message
-        ));
-        if let Some(detail) = policy_change_detail(change) {
-            out.push_str(&format!("    detail: {detail}\n"));
+    append_policy_changes_human_section(&mut out, "Policy failures", changes, "fail");
+    append_policy_changes_human_section(&mut out, "Policy review required", changes, "review");
+    append_policy_changes_human_section(&mut out, "Policy improvements", changes, "improvement");
+    let known_severities = ["fail", "review", "improvement"];
+    if changes
+        .iter()
+        .any(|change| !known_severities.contains(&change.severity))
+    {
+        out.push_str("  Other policy changes:\n");
+        for change in changes
+            .iter()
+            .filter(|change| !known_severities.contains(&change.severity))
+        {
+            append_policy_change_human_row(&mut out, change);
         }
     }
     out
+}
+
+fn append_policy_changes_human_section(
+    out: &mut String,
+    heading: &str,
+    changes: &[DiffPolicyChange<'_>],
+    severity: &str,
+) {
+    if !changes.iter().any(|change| change.severity == severity) {
+        return;
+    }
+    out.push_str(&format!("  {heading}:\n"));
+    for change in changes {
+        if change.severity == severity {
+            append_policy_change_human_row(out, change);
+        }
+    }
+}
+
+fn append_policy_change_human_row(out: &mut String, change: &DiffPolicyChange<'_>) {
+    out.push_str(&format!(
+        "    {} {} {}: {}\n",
+        change.severity, change.allow_id, change.kind, change.message
+    ));
+    if let Some(detail) = policy_change_detail(change) {
+        out.push_str(&format!("      detail: {detail}\n"));
+    }
 }
