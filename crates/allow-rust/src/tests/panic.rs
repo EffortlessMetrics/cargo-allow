@@ -94,6 +94,35 @@ fn syntax_panic_methods_record_multiline_receiver_fingerprint() {
 }
 
 #[test]
+fn syntax_panic_methods_record_nested_receiver_fingerprint() {
+    let src = r#"
+        fn load(builder: Builder, fallback: Loader) {
+            builder.step().unwrap();
+            fallback.source().expect("loaded");
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let receivers = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::Panic && f.identity.ast_kind == "method_call")
+        .map(|f| {
+            (
+                f.family.as_deref(),
+                f.identity.receiver_fingerprint.as_deref(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        receivers,
+        vec![
+            (Some("unwrap"), Some("builder.step()")),
+            (Some("expect"), Some("fallback.source()")),
+        ]
+    );
+}
+
+#[test]
 fn syntax_panic_methods_record_unicode_receiver_fingerprint() {
     let name = "\u{00e9}_value";
     let src = format!(
