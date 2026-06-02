@@ -3,7 +3,6 @@ use allow_core::{Finding, FindingKind};
 use crate::finding_builder::push_finding;
 use crate::line_context::LineContext;
 use crate::syntax_kinds::IndexExpression;
-use crate::text::{index_symbol, index_target_fingerprint};
 
 pub(crate) fn scan_index_expr(
     context: LineContext<'_>,
@@ -22,9 +21,9 @@ pub(crate) fn scan_index_expr(
             family,
             "index_expr",
             |id| {
-                id.symbol = Some(index_symbol(context.line));
+                id.symbol = Some(expression.symbol.clone());
                 id.receiver_fingerprint = expression.receiver_fingerprint.clone();
-                id.target_fingerprint = index_target_fingerprint(context.line);
+                id.target_fingerprint = expression.target_fingerprint.clone();
             },
             findings,
         );

@@ -1,5 +1,3 @@
-use allow_core::normalize_snippet;
-
 pub(crate) fn detect_attr<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     let outer = format!("#[{name}");
     let inner = format!("#![{name}");
@@ -58,22 +56,4 @@ pub(crate) fn byte_column_to_char_column(line: &str, byte_column: usize) -> u32 
         .take_while(|(idx, _)| *idx < byte_column)
         .count() as u32
         + 1
-}
-
-pub(crate) fn index_symbol(line: &str) -> String {
-    let norm = normalize_snippet(line);
-    norm.chars().take(100).collect()
-}
-
-pub(crate) fn index_target_fingerprint(line: &str) -> Option<String> {
-    line.split('[').next().map(|s| {
-        normalize_snippet(s)
-            .chars()
-            .rev()
-            .take(40)
-            .collect::<String>()
-            .chars()
-            .rev()
-            .collect()
-    })
 }

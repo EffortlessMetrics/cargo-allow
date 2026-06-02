@@ -109,8 +109,8 @@ review_after = "2026-08-01"
 [allow.selector]
 ast_kind = "index_expr"
 container = "token_at"
-symbol = "&tokens[idx]"
-target_fingerprint = "&tokens"
+symbol = "tokens[idx]"
+target_fingerprint = "tokens"
 normalized_snippet_hash = "fnv1a64:707a90fd00693cea"
 line_hint = 6
 
