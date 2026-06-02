@@ -185,7 +185,7 @@ fn release_0_1_3_install_examples_use_published_release() {
 }
 
 #[test]
-fn release_0_1_3_packages_inherit_workspace_readme() {
+fn release_candidate_packages_use_crate_local_readmes() {
     let root = workspace_root();
     let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
     let package_manifests = workspace_package_manifests(&root);
@@ -196,12 +196,26 @@ fn release_0_1_3_packages_inherit_workspace_readme() {
             "[workspace.package]",
             r#"readme = "README.md""#
         ),
-        "workspace package metadata should point published crates at the public README"
+        "workspace package metadata should keep the root product README"
     );
     for (package, manifest) in package_manifests {
         assert!(
-            manifest.contains("readme.workspace = true"),
-            "{package} should inherit the workspace README for crates.io packaging"
+            manifest.contains(r#"readme = "README.md""#),
+            "{package} should publish its crate-local README"
+        );
+        assert!(
+            !manifest.contains("readme.workspace = true"),
+            "{package} should not inherit the root product README as package docs"
+        );
+        let readme_path = format!("crates/{package}/README.md");
+        let readme = read_workspace_file(&root, &readme_path);
+        assert!(
+            readme.contains(&format!("# {package}")),
+            "{readme_path} should identify the crate"
+        );
+        assert!(
+            readme.contains("Most users should"),
+            "{readme_path} should route normal users back to the cargo-allow product"
         );
     }
 }
