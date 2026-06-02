@@ -138,6 +138,79 @@ fn diff_finding_markdown_groups_findings_by_change() {
 }
 
 #[test]
+fn diff_policy_markdown_groups_policy_changes_by_severity() {
+    let policy_changes = vec![
+        DiffPolicyChange {
+            severity: "review",
+            allow_id: "allow-review",
+            kind: "expiry_extended",
+            message: "allow-review expiry extended",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "improvement",
+            allow_id: "allow-improved",
+            kind: "evidence_added",
+            message: "allow-improved evidence added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "fail",
+            allow_id: "allow-fail",
+            kind: "scope_broadened",
+            message: "allow-fail scope broadened",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+    ];
+
+    let markdown = render_diff_policy_changes_markdown(&policy_changes);
+
+    let failures = markdown
+        .find("### Policy Failures")
+        .unwrap_or_else(|| std::panic::panic_any("expected failure section"));
+    let review = markdown
+        .find("### Policy Review Required")
+        .unwrap_or_else(|| std::panic::panic_any("expected review section"));
+    let improvements = markdown
+        .find("### Policy Improvements")
+        .unwrap_or_else(|| std::panic::panic_any("expected improvement section"));
+    assert!(
+        failures < review && review < improvements,
+        "markdown policy sections should be ordered by reviewer severity"
+    );
+    assert!(markdown.contains("| `fail` | `allow-fail` | `scope_broadened` |"));
+    assert!(markdown.contains("| `review` | `allow-review` | `expiry_extended` |"));
+    assert!(markdown.contains("| `improvement` | `allow-improved` | `evidence_added` |"));
+}
+
+#[test]
 fn diff_pr_summary_markdown_highlights_policy_review_required() {
     let removed = vec!["test:old-proof".to_string()];
     let policy_changes = vec![DiffPolicyChange {
