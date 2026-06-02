@@ -108,12 +108,14 @@ while that summary field remains optional in the schema so older
 `cargo-allow.propose.v1` artifacts without the unsafe-specific count remain
 valid.
 `migrate` summary artifacts may include `summary.lint_exception_entries`,
+`summary.broken_evidence_links`, `summary.unsafe_broken_evidence_links`,
 `summary.weak_evidence_references`, and
 `summary.unsafe_weak_evidence_references` as optional migration-health counts.
-The current renderer emits the lint count, emits weak evidence references only
-when legacy conversion preserved unstructured or unknown-prefix evidence, and
-emits the unsafe-specific weak-evidence count only when those weak references
-belong to migrated unsafe entries.
+The current renderer emits the lint count, emits broken local evidence links
+only when migrated references point to missing or invalid local paths, emits
+weak evidence references only when legacy conversion preserved unstructured or
+unknown-prefix evidence, and emits the unsafe-specific evidence-health counts
+only when those references belong to migrated unsafe entries.
 
 The shared report schema is emitted by `audit`, `check`, and `diff`, but the
 top-level `diff` posture extension is valid only on reports whose

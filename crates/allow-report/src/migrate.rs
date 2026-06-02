@@ -21,6 +21,15 @@ pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
         "entries_with_evidence: {}\n",
         report.entries_with_evidence
     ));
+    if let Some(count) = report.broken_evidence_links.filter(|count| *count > 0) {
+        out.push_str(&format!("broken_evidence_links: {count}\n"));
+    }
+    if let Some(count) = report
+        .unsafe_broken_evidence_links
+        .filter(|count| *count > 0)
+    {
+        out.push_str(&format!("unsafe_broken_evidence_links: {count}\n"));
+    }
     if let Some(count) = report.weak_evidence_references.filter(|count| *count > 0) {
         out.push_str(&format!("weak_evidence_references: {count}\n"));
     }
@@ -94,34 +103,28 @@ pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
         "    \"lint_exception_entries\": {},\n",
         report.lint_exception_entries
     ));
-    let weak_evidence_references = report.weak_evidence_references.filter(|count| *count > 0);
-    let unsafe_weak_evidence_references = report
-        .unsafe_weak_evidence_references
-        .filter(|count| *count > 0);
-    if weak_evidence_references.is_some() || unsafe_weak_evidence_references.is_some() {
-        out.push_str(&format!(
-            "    \"entries_with_evidence\": {},\n",
-            report.entries_with_evidence
-        ));
-        if let Some(count) = weak_evidence_references {
-            out.push_str(&format!("    \"weak_evidence_references\": {count}"));
-            if unsafe_weak_evidence_references.is_some() {
-                out.push_str(",\n");
-            } else {
-                out.push('\n');
-            }
+    let mut summary_tail = vec![format!(
+        "    \"entries_with_evidence\": {}",
+        report.entries_with_evidence
+    )];
+    for (name, count) in [
+        ("broken_evidence_links", report.broken_evidence_links),
+        (
+            "unsafe_broken_evidence_links",
+            report.unsafe_broken_evidence_links,
+        ),
+        ("weak_evidence_references", report.weak_evidence_references),
+        (
+            "unsafe_weak_evidence_references",
+            report.unsafe_weak_evidence_references,
+        ),
+    ] {
+        if let Some(count) = count.filter(|count| *count > 0) {
+            summary_tail.push(format!("    \"{name}\": {count}"));
         }
-        if let Some(count) = unsafe_weak_evidence_references {
-            out.push_str(&format!(
-                "    \"unsafe_weak_evidence_references\": {count}\n"
-            ));
-        }
-    } else {
-        out.push_str(&format!(
-            "    \"entries_with_evidence\": {}\n",
-            report.entries_with_evidence
-        ));
     }
+    out.push_str(&summary_tail.join(",\n"));
+    out.push('\n');
     out.push_str("  },\n");
     out.push_str(&format!("  \"notes\": \"{}\"\n", json_escape(report.notes)));
     out.push_str("}\n");

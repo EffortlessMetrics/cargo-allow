@@ -111,6 +111,14 @@
           "type": "integer",
           "minimum": 0
         },
+        "broken_evidence_links": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unsafe_broken_evidence_links": {
+          "type": "integer",
+          "minimum": 0
+        },
         "weak_evidence_references": {
           "type": "integer",
           "minimum": 0
