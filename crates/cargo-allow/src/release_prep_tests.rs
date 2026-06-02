@@ -2,10 +2,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const PUBLISHED_RELEASE_VERSION: &str = "0.1.5";
-const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.4";
-const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.5.md";
-const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.4.md";
+const PUBLISHED_RELEASE_VERSION: &str = "0.1.6";
+const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.5";
+const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.6.md";
+const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.5.md";
 
 #[test]
 fn release_publish_order_matches_internal_dependency_graph() {
