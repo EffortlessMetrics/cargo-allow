@@ -15,6 +15,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
     let actual = defs.keys().map(String::as_str).collect::<BTreeSet<_>>();
     let expected = [
         "allow_entry",
+        "audit_remediation_item",
         "canonical_evidence_prefix",
         "claim_boundary_flag",
         "counts",
@@ -149,6 +150,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         "summary",
         "trend",
         "source_inventory",
+        "audit_remediation_item",
         "source_inventory_kind_row",
         "source_inventory_family_row",
         "finding_posture_change",

@@ -231,6 +231,87 @@ fn json_report_routes_evidence_repair_queues() {
 }
 
 #[test]
+fn json_audit_report_routes_remediation_roadmap() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, Some(5));
+    context.policy_missing_evidence_entries = Some(4);
+    context.broken_evidence_links = Some(2);
+    context.weak_evidence_references = Some(3);
+    let outcomes = vec![
+        outcome(MatchStatus::New, Some(0)),
+        outcome(MatchStatus::Expired, None),
+        outcome(MatchStatus::ReviewDue, None),
+        outcome(MatchStatus::Stale, None),
+        outcome(MatchStatus::Ambiguous, None),
+        outcome(MatchStatus::InvalidSelector, None),
+        outcome(MatchStatus::MissingRequiredField, None),
+        outcome(MatchStatus::EvidenceMissing, None),
+    ];
+
+    let json = render_json_with_context("audit", &[], &outcomes, true, context);
+
+    assert!(json.contains("\"audit_remediation_roadmap\""));
+    assert!(json.contains("\"signal\": \"new_unreceipted\""));
+    assert!(json.contains("\"command\": \"cargo-allow worklist --status new --format json\""));
+    assert!(json.contains("\"signal\": \"expired\""));
+    assert!(json.contains("\"command\": \"cargo-allow worklist --status expired --format json\""));
+    assert!(json.contains("\"signal\": \"review_due\""));
+    assert!(
+        json.contains("\"command\": \"cargo-allow worklist --status review_due --format json\"")
+    );
+    assert!(json.contains("\"signal\": \"stale\""));
+    assert!(json.contains("\"command\": \"cargo-allow prune --stale --dry-run --format json --output target/cargo-allow/prune.json\""));
+    assert!(json.contains("\"signal\": \"ambiguous\""));
+    assert!(
+        json.contains("\"command\": \"cargo-allow worklist --status ambiguous --format json\"")
+    );
+    assert!(json.contains("\"signal\": \"invalid_selector\""));
+    assert!(
+        json.contains(
+            "\"command\": \"cargo-allow worklist --status invalid_selector --format json\""
+        )
+    );
+    assert!(json.contains("\"signal\": \"missing_required_field\""));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --status missing_required_field --format json\""
+    ));
+    assert!(json.contains("\"signal\": \"missing_evidence\""));
+    assert!(
+        json.contains("\"command\": \"cargo-allow worklist --missing-evidence --format json\"")
+    );
+    assert!(json.contains("\"signal\": \"broken_evidence_links\""));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
+    ));
+    assert!(json.contains("\"signal\": \"weak_evidence_references\""));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind weak_evidence_reference --format json\""
+    ));
+    assert!(json.contains("\"signal\": \"baseline_debt\""));
+    assert!(json.contains("\"command\": \"cargo-allow worklist --baseline-debt --format json\""));
+    assert!(json.contains("\"count\": 5"));
+}
+
+#[test]
+fn json_audit_report_omits_remediation_roadmap_when_clean() {
+    let json = render_json_with_context(
+        "audit",
+        &[],
+        &[],
+        false,
+        ReportContext::source_syntax("git_tracked", None, None, None),
+    );
+
+    assert!(!json.contains("\"audit_remediation_roadmap\""));
+}
+
+#[test]
+fn json_check_report_omits_audit_remediation_roadmap() {
+    let json = render_json("check", &[], &[outcome(MatchStatus::New, Some(0))], true);
+
+    assert!(!json.contains("\"audit_remediation_roadmap\""));
+}
+
+#[test]
 fn json_report_omits_evidence_repair_queues_when_clean() {
     let json = render_json_with_context(
         "audit",

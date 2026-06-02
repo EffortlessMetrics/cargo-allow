@@ -255,6 +255,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
         (
             "report",
             &[
+                "audit_remediation_roadmap",
                 "claim_boundary",
                 "command",
                 "diff",
