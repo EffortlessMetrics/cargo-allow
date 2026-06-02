@@ -97,6 +97,59 @@ fn generated_compat_preserves_missing_and_stale_drift() {
 }
 
 #[test]
+fn generated_migration_preserves_legacy_evidence_when_present() {
+    let path = fixture_dir().join("generated-allowlist.toml");
+    std::fs::write(
+        &path,
+        r#"schema_version = 1
+policy = "generated-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "generated-schema"
+path = "docs/generated/schema.json"
+generator = "cargo xtask schema"
+regenerate_command = "cargo xtask schema"
+owner = "policy"
+reason = "Generated schema fixture."
+evidence = ["doc:docs/schemas/README.md", "issue:#123"]
+created = "2026-05-10"
+expires = "permanent"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+    let cfg = load_legacy_or_canonical(&path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("generated policy with evidence migrates: {err}"))
+    });
+
+    let entry = cfg
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected generated allow entry"));
+    assert!(
+        entry
+            .evidence
+            .iter()
+            .any(|item| item == "doc:docs/schemas/README.md")
+    );
+    assert!(entry.evidence.iter().any(|item| item == "issue:#123"));
+    assert!(
+        entry
+            .evidence
+            .iter()
+            .any(|item| item == "generator:cargo xtask schema")
+    );
+    assert!(
+        entry
+            .evidence
+            .iter()
+            .any(|item| item == "cargo:cargo xtask schema")
+    );
+}
+
+#[test]
 fn migrates_executable_allowlist_to_policy_exception_entries() {
     let policy = executable_policy_fixture_path();
     let cfg = load_legacy_or_canonical(&policy)
@@ -121,6 +174,46 @@ fn migrates_executable_allowlist_to_policy_exception_entries() {
     assert_eq!(
         entry.selector.target_fingerprint.as_deref(),
         Some("git-mode:100755")
+    );
+}
+
+#[test]
+fn executable_migration_accepts_covered_by_as_legacy_evidence() {
+    let path = fixture_dir().join("executable-allowlist.toml");
+    std::fs::write(
+        &path,
+        r#"schema_version = 1
+policy = "executable-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "exec-release-helper"
+path = "scripts/release.sh"
+interpreter = "bash"
+owner = "release"
+reason = "Release helper fixture."
+covered_by = "doc:docs/release/README.md"
+created = "2026-05-09"
+expires = "permanent"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+    let cfg = load_legacy_or_canonical(&path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("executable policy with covered_by migrates: {err}"))
+    });
+
+    let entry = cfg
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected executable allow entry"));
+    assert_eq!(
+        entry.evidence,
+        vec![
+            "doc:docs/release/README.md".to_string(),
+            "interpreter:bash".to_string(),
+        ]
     );
 }
 

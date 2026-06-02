@@ -47,6 +47,7 @@ pub(crate) struct LegacyGeneratedRule {
     pub(crate) reason: String,
     pub(crate) generator: Option<String>,
     pub(crate) regenerate_command: Option<String>,
+    pub(crate) evidence: Vec<String>,
     pub(crate) created: Option<String>,
     pub(crate) expires: Option<String>,
 }

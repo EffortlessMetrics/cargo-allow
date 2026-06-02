@@ -35,8 +35,9 @@ pub(crate) fn entry_from_executable_rule(rule: &LegacyExecutableRule) -> AllowEn
 }
 
 fn executable_evidence(rule: &LegacyExecutableRule) -> Vec<String> {
-    rule.interpreter
-        .as_ref()
-        .map(|interpreter| vec![format!("interpreter:{interpreter}")])
-        .unwrap_or_default()
+    let mut evidence = rule.evidence.clone();
+    if let Some(interpreter) = &rule.interpreter {
+        evidence.push(format!("interpreter:{interpreter}"));
+    }
+    evidence
 }
