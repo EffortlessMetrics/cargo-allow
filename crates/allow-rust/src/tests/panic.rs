@@ -193,6 +193,48 @@ fn syntax_panic_macros_record_visible_macro_path() {
 }
 
 #[test]
+fn syntax_panic_macros_record_visible_macro_path_for_full_family() {
+    let src = r#"
+        fn load() {
+            std::panic!("bad");
+            crate::todo!("later");
+            core::unimplemented!("later");
+            alloc::unreachable!("bad state");
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let macro_paths = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::Panic && f.identity.ast_kind == "macro_call")
+        .map(|f| {
+            (
+                f.family.as_deref(),
+                f.identity.macro_name.as_deref(),
+                f.identity.target_fingerprint.as_deref(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        macro_paths,
+        vec![
+            (Some("panic_macro"), Some("panic"), Some("std::panic")),
+            (Some("todo"), Some("todo"), Some("crate::todo")),
+            (
+                Some("unimplemented"),
+                Some("unimplemented"),
+                Some("core::unimplemented")
+            ),
+            (
+                Some("unreachable"),
+                Some("unreachable"),
+                Some("alloc::unreachable")
+            ),
+        ]
+    );
+}
+
+#[test]
 fn syntax_panic_macros_ignore_text_in_strings_and_comments() {
     let src = r##"
         fn load() {
