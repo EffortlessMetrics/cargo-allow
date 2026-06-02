@@ -191,7 +191,9 @@ expansion, or type analysis, so findings are limited to visible source
 attributes such as `#[allow]`, `#![allow]`, `#[expect]`, and `#![expect]`.
 Only `path` and `lint` are required in the legacy entry; missing owner,
 reason, classification, or lifecycle metadata is migrated as temporary
-`baseline_debt` requiring human review.
+`baseline_debt` requiring human review. Migrated entries use
+`legacy-policy:<id>` as recognized traceability evidence rather than inventing
+an unrecognized lint evidence prefix.
 
 Unsafe allowlist compat is available for legacy `policy/unsafe-allowlist.toml`
 files:
