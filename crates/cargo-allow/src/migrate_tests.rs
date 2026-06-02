@@ -377,9 +377,15 @@ fn migrate_repo_policy_human_summary_routes_evidence_repair_queues() {
     assert!(
         summary.contains("cargo-allow worklist --item-kind broken_evidence_link --format json")
     );
+    assert!(summary.contains(
+        "cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json"
+    ));
     assert!(
         summary.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
     );
+    assert!(summary.contains(
+        "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json"
+    ));
 }
 
 fn migrate_fixture_dir() -> PathBuf {

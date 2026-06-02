@@ -7,6 +7,11 @@ use crate::json::{bool_json, push_json_fixed_artifact_preamble};
 use crate::{CLAIM_BOUNDARY_TEXT, MigrateReport};
 use allow_core::json_escape;
 
+const UNSAFE_BROKEN_EVIDENCE_LINK_COMMAND: &str =
+    "cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json";
+const UNSAFE_WEAK_EVIDENCE_REFERENCE_COMMAND: &str =
+    "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json";
+
 pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("cargo-allow migrate summary\n");
@@ -81,10 +86,16 @@ fn migrate_evidence_repair_commands(report: MigrateReport<'_>) -> Vec<&'static s
     {
         commands.push(BROKEN_EVIDENCE_LINK_COMMAND);
     }
+    if report.unsafe_broken_evidence_links.unwrap_or(0) > 0 {
+        commands.push(UNSAFE_BROKEN_EVIDENCE_LINK_COMMAND);
+    }
     if report.weak_evidence_references.unwrap_or(0) > 0
         || report.unsafe_weak_evidence_references.unwrap_or(0) > 0
     {
         commands.push(WEAK_EVIDENCE_REFERENCE_COMMAND);
+    }
+    if report.unsafe_weak_evidence_references.unwrap_or(0) > 0 {
+        commands.push(UNSAFE_WEAK_EVIDENCE_REFERENCE_COMMAND);
     }
     commands
 }
@@ -197,9 +208,17 @@ fn append_migrate_evidence_repair_queues_json(report: MigrateReport<'_>, out: &m
             queue.unsafe_count
         ));
         out.push_str(&format!(
-            "      \"command\": \"{}\"\n",
+            "      \"command\": \"{}\"",
             json_escape(queue.command)
         ));
+        if let Some(unsafe_command) = queue.unsafe_command {
+            out.push_str(",\n");
+            out.push_str(&format!(
+                "      \"unsafe_command\": \"{}\"",
+                json_escape(unsafe_command)
+            ));
+        }
+        out.push('\n');
         out.push_str("    }");
     }
     out.push_str("\n  ],\n");
@@ -211,18 +230,23 @@ fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvide
     let unsafe_broken_count = report.unsafe_broken_evidence_links.unwrap_or(0);
     let weak_count = report.weak_evidence_references.unwrap_or(0);
     let unsafe_weak_count = report.unsafe_weak_evidence_references.unwrap_or(0);
-    for queue in evidence_repair_queues_from_counts(
-        broken_count + unsafe_broken_count,
-        0,
-        weak_count + unsafe_weak_count,
-    ) {
+    let broken_total = broken_count.max(unsafe_broken_count);
+    let weak_total = weak_count.max(unsafe_weak_count);
+    for queue in evidence_repair_queues_from_counts(broken_total, 0, weak_total) {
         let Some(item_kind) = queue.item_kind else {
             continue;
         };
         let (count, unsafe_count) = match item_kind {
-            "broken_evidence_link" => (broken_count, unsafe_broken_count),
-            "weak_evidence_reference" => (weak_count, unsafe_weak_count),
+            "broken_evidence_link" => (broken_total, unsafe_broken_count),
+            "weak_evidence_reference" => (weak_total, unsafe_weak_count),
             _ => (queue.count, 0),
+        };
+        let unsafe_command = match item_kind {
+            "broken_evidence_link" if unsafe_count > 0 => Some(UNSAFE_BROKEN_EVIDENCE_LINK_COMMAND),
+            "weak_evidence_reference" if unsafe_count > 0 => {
+                Some(UNSAFE_WEAK_EVIDENCE_REFERENCE_COMMAND)
+            }
+            _ => None,
         };
         queues.push(MigrateEvidenceRepairQueue {
             signal: queue.signal,
@@ -232,6 +256,7 @@ fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvide
             count,
             unsafe_count,
             command: queue.command,
+            unsafe_command,
         });
     }
     queues
@@ -245,4 +270,5 @@ struct MigrateEvidenceRepairQueue {
     count: usize,
     unsafe_count: usize,
     command: &'static str,
+    unsafe_command: Option<&'static str>,
 }

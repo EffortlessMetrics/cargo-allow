@@ -246,7 +246,12 @@ input mode, output path, source-tree inventory context when repo-policy
 migration collected one, allow-entry counts, baseline-debt counts, unsafe-entry
 counts, lint-exception counts, evidence-bearing entry counts, weak-evidence
 reference counts when present, and the same migration notes shown by the human
-summary. The canonical policy output remains TOML.
+summary. When migrated policy contains broken local evidence links or weak
+evidence references, the summary also routes repair work to the corresponding
+`cargo-allow worklist --item-kind ... --format json` queue. Unsafe-specific
+evidence gaps include an additional `--kind unsafe` route so reviewers and
+agents can focus on retained unsafe exceptions first. The canonical policy
+output remains TOML.
 
 Migration is still a bridge. The combined policy carries retained legacy
 receipts forward; it does not prove that stale legacy entries are removable and

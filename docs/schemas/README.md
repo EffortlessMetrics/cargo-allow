@@ -129,7 +129,9 @@ include an optional `evidence_repair_queues` array with stable evidence-health
 `signal` names, human `label` strings, machine `route_kind` values, stable
 worklist `item_kind` names, total and unsafe-specific counts, and the exact
 `cargo-allow worklist --item-kind ... --format json` command for each repair
-queue. Current migration repair queues use `route_kind = "worklist_item_kind"`.
+queue. When `unsafe_count` is non-zero, queue rows may also include an
+`unsafe_command` with the corresponding `--kind unsafe` worklist route. Current
+migration repair queues use `route_kind = "worklist_item_kind"`.
 
 The shared report schema is emitted by `audit`, `check`, and `diff`, but the
 top-level `diff` posture extension is valid only on reports whose

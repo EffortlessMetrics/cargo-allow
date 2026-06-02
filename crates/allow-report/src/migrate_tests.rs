@@ -60,6 +60,12 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(json.contains(
         "\"command\": \"cargo-allow worklist --item-kind weak_evidence_reference --format json\""
     ));
+    assert!(json.contains(
+        "\"unsafe_command\": \"cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json\""
+    ));
+    assert!(json.contains(
+        "\"unsafe_command\": \"cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json\""
+    ));
     assert!(json.contains("\"notes\": \"migration notes\""));
     let expected = format!(
         r#"{{
@@ -103,7 +109,8 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
       "item_kind": "broken_evidence_link",
       "count": 3,
       "unsafe_count": 1,
-      "command": "cargo-allow worklist --item-kind broken_evidence_link --format json"
+      "command": "cargo-allow worklist --item-kind broken_evidence_link --format json",
+      "unsafe_command": "cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json"
     }},
     {{
       "signal": "weak_evidence_references",
@@ -112,7 +119,8 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
       "item_kind": "weak_evidence_reference",
       "count": 2,
       "unsafe_count": 1,
-      "command": "cargo-allow worklist --item-kind weak_evidence_reference --format json"
+      "command": "cargo-allow worklist --item-kind weak_evidence_reference --format json",
+      "unsafe_command": "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json"
     }}
   ],
   "notes": "migration notes"
@@ -141,9 +149,15 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(text.contains("unsafe_weak_evidence_references: 1"));
     assert!(text.contains("evidence_repair_queues:"));
     assert!(text.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
+    assert!(text.contains(
+        "cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json"
+    ));
     assert!(
         text.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
     );
+    assert!(text.contains(
+        "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json"
+    ));
     assert!(
         text.contains("inventory: source_tree/policy_migration via git_tracked; files scanned: 76")
     );
@@ -219,6 +233,86 @@ fn migrate_report_from_config_counts_summary_fields() {
         !json.contains("\"evidence_repair_queues\""),
         "clean migration JSON should not emit repair queues"
     );
+}
+
+#[test]
+fn migrate_repair_queues_omit_unsafe_command_without_unsafe_count() {
+    let report = MigrateReport {
+        inventory: InventoryContext::new(
+            "source_tree",
+            "policy_migration",
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(76),
+        ),
+        input_kind: "repo_policy",
+        input_path: "policy",
+        output_path: "policy/allow.toml",
+        force: true,
+        allow_entries: 1,
+        baseline_debt: 0,
+        unsafe_entries: 0,
+        lint_exception_entries: 0,
+        entries_with_evidence: 1,
+        broken_evidence_links: Some(1),
+        unsafe_broken_evidence_links: None,
+        weak_evidence_references: None,
+        unsafe_weak_evidence_references: None,
+        notes: "migration notes",
+    };
+
+    let json = render_migrate_json(report);
+
+    assert!(json.contains("\"evidence_repair_queues\""));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
+    ));
+    assert!(
+        !json.contains("\"unsafe_command\""),
+        "non-unsafe evidence repair queues should not emit unsafe-scoped routing"
+    );
+
+    let text = render_migrate_human(report);
+    assert!(text.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
+    assert!(
+        !text.contains("--kind unsafe"),
+        "non-unsafe human repair queues should not include unsafe-scoped routing"
+    );
+}
+
+#[test]
+fn migrate_repair_queues_normalize_unsafe_subset_counts() {
+    let report = MigrateReport {
+        inventory: InventoryContext::new(
+            "source_tree",
+            "policy_migration",
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(76),
+        ),
+        input_kind: "repo_policy",
+        input_path: "policy",
+        output_path: "policy/allow.toml",
+        force: true,
+        allow_entries: 1,
+        baseline_debt: 0,
+        unsafe_entries: 1,
+        lint_exception_entries: 0,
+        entries_with_evidence: 1,
+        broken_evidence_links: None,
+        unsafe_broken_evidence_links: Some(1),
+        weak_evidence_references: None,
+        unsafe_weak_evidence_references: None,
+        notes: "migration notes",
+    };
+
+    let json = render_migrate_json(report);
+
+    assert!(json.contains("\"count\": 1"));
+    assert!(json.contains("\"unsafe_count\": 1"));
+    assert!(json.contains(
+        "\"unsafe_command\": \"cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json\""
+    ));
 }
 
 fn allow_entry(

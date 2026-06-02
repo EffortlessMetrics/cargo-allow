@@ -193,6 +193,13 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
     );
     assert_eq!(
         schema
+            .pointer("/$defs/evidence_repair_queue/properties/unsafe_command/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "migrate evidence repair queue unsafe_command should be an optional string"
+    );
+    assert_eq!(
+        schema
             .pointer("/properties/notes/type")
             .and_then(Value::as_str),
         Some("string"),

@@ -130,6 +130,37 @@ fn command_json_artifact_renderers_emit_parseable_v1_contracts() {
         Some(0),
         "migrate lint_exception_entries"
     );
+    assert_eq!(
+        migrate
+            .pointer("/summary/unsafe_entries")
+            .and_then(Value::as_u64),
+        Some(1),
+        "migrate unsafe_entries"
+    );
+    let queues = migrate
+        .pointer("/evidence_repair_queues")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("migrate sample should route evidence repair queues")
+        });
+    assert!(
+        queues.iter().any(|queue| {
+            queue.get("unsafe_command").and_then(Value::as_str)
+                == Some(
+                    "cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json",
+                )
+        }),
+        "migrate sample should route unsafe broken evidence"
+    );
+    assert!(
+        queues.iter().any(|queue| {
+            queue.get("unsafe_command").and_then(Value::as_str)
+                == Some(
+                    "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json",
+                )
+        }),
+        "migrate sample should route unsafe weak evidence"
+    );
 
     let doctor_json = doctor::sample_doctor_json_for_contract_test();
     let doctor = parse_json_artifact(

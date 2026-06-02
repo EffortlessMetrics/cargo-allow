@@ -152,6 +152,11 @@ fn render_migrate_summary_json_records_policy_migration_context() {
         "migrate broken evidence queue command"
     );
     assert_eq!(
+        broken.get("unsafe_command").and_then(Value::as_str),
+        Some("cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json"),
+        "migrate broken evidence unsafe queue command"
+    );
+    assert_eq!(
         weak.get("item_kind").and_then(Value::as_str),
         Some("weak_evidence_reference"),
         "migrate weak evidence queue kind"
@@ -170,6 +175,13 @@ fn render_migrate_summary_json_records_policy_migration_context() {
         weak.get("command").and_then(Value::as_str),
         Some("cargo-allow worklist --item-kind weak_evidence_reference --format json"),
         "migrate weak evidence queue command"
+    );
+    assert_eq!(
+        weak.get("unsafe_command").and_then(Value::as_str),
+        Some(
+            "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json"
+        ),
+        "migrate weak evidence unsafe queue command"
     );
 }
 

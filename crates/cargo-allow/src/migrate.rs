@@ -70,14 +70,17 @@ pub(crate) fn sample_migrate_json_for_contract_test() -> String {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(allow_core::AllowEntry {
         id: "allow-migrate".to_string(),
-        kind: FindingKind::NonRustFile,
-        family: None,
+        kind: FindingKind::Unsafe,
+        family: Some("unsafe_fn".to_string()),
         path: Some("src/lib.rs".into()),
         glob: None,
         owner: "team".to_string(),
         classification: "reviewed".to_string(),
         reason: "test".to_string(),
-        evidence: Vec::new(),
+        evidence: vec![
+            "doc:docs/safety/missing-migrate-sample.md".to_string(),
+            "TODO: add unsafe-review or boundary-test evidence".to_string(),
+        ],
         links: Vec::new(),
         occurrence_limit: None,
         lifecycle: allow_core::Lifecycle::empty(),
