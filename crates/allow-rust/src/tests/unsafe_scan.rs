@@ -199,6 +199,27 @@ fn detects_repeated_unsafe_blocks_on_one_line() {
 }
 
 #[test]
+fn unsafe_block_findings_record_enclosing_container_identity() {
+    let src = r#"
+        fn read_left(ptr: *const u8) -> u8 {
+            unsafe { core::ptr::read(ptr) }
+        }
+
+        fn read_right(ptr: *const u8) -> u8 {
+            unsafe { core::ptr::read(ptr) }
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let containers = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_block"))
+        .map(|f| f.identity.container.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(containers, vec![Some("read_left"), Some("read_right")]);
+}
+
+#[test]
 fn unsafe_findings_record_nearby_safety_comment_metadata() {
     let src = r#"
         fn read(ptr: *const u8) -> u8 {
