@@ -19,3 +19,11 @@ pub(crate) fn lifecycle_from_rule(rule: &LegacyNonRustRule) -> Lifecycle {
         rule.expires.clone(),
     )
 }
+
+pub(crate) fn evidence_from_rule(rule: &LegacyNonRustRule) -> Vec<String> {
+    if rule.evidence.is_empty() {
+        vec![format!("legacy-policy:{}", rule.id)]
+    } else {
+        rule.evidence.clone()
+    }
+}

@@ -1,7 +1,7 @@
 use allow_core::{AllowEntry, FindingKind, Selector};
 use std::path::PathBuf;
 
-use crate::converter_file_support::lifecycle_from_rule;
+use crate::converter_file_support::{evidence_from_rule, lifecycle_from_rule};
 use crate::types::LegacyNonRustRule;
 
 pub(crate) fn entry_from_rule(rule: &LegacyNonRustRule) -> AllowEntry {
@@ -19,7 +19,7 @@ pub(crate) fn entry_from_rule(rule: &LegacyNonRustRule) -> AllowEntry {
         owner: rule.owner.clone(),
         classification: rule.classification.clone(),
         reason: rule.reason.clone(),
-        evidence: Vec::new(),
+        evidence: evidence_from_rule(rule),
         links: Vec::new(),
         occurrence_limit: None,
         lifecycle: lifecycle_from_rule(rule),
