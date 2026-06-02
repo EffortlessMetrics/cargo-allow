@@ -66,6 +66,27 @@ fn unsafe_trait_findings_record_trait_symbol() {
 }
 
 #[test]
+fn unsafe_impl_findings_record_impl_target_symbol() {
+    let src = r#"
+        struct Handle;
+        unsafe impl Send for Handle {}
+        unsafe impl Sync for Handle {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    let symbols = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_impl"))
+        .map(|f| f.identity.symbol.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        symbols,
+        vec![Some("<Handle as Send>"), Some("<Handle as Sync>")]
+    );
+}
+
+#[test]
 fn detects_unsafe_function_signatures_from_syntax() {
     let src = r#"
         trait Reader {
