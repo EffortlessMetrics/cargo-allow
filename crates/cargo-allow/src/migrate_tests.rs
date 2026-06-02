@@ -341,6 +341,47 @@ fn migrate_repo_policy_summary_counts_unsafe_broken_evidence() {
     );
 }
 
+#[test]
+fn migrate_repo_policy_human_summary_routes_evidence_repair_queues() {
+    let dir = migrate_fixture_dir();
+    let policy_dir = dir.join("policy");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::write(
+        policy_dir.join("unsafe-allowlist.toml"),
+        unsafe_policy_broken_and_weak_evidence_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("unsafe fixture write: {err}")));
+    let out = dir.join("allow.toml");
+    let summary_output = dir.join("migrate-summary.txt");
+
+    cmd_migrate(&MigrateArgs {
+        root: RootArgs::default(),
+        from: None,
+        repo_policy: Some(policy_dir),
+        out,
+        force: false,
+        summary_format: MigrateSummaryFormat::Human,
+        summary_output: Some(summary_output.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("unsafe repo-policy migrate: {err}")));
+
+    let summary = fs::read_to_string(&summary_output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read migrate summary: {err}")));
+
+    assert!(summary.contains("broken_evidence_links: 1"));
+    assert!(summary.contains("unsafe_broken_evidence_links: 1"));
+    assert!(summary.contains("weak_evidence_references: 1"));
+    assert!(summary.contains("unsafe_weak_evidence_references: 1"));
+    assert!(summary.contains("evidence_repair_queues:"));
+    assert!(
+        summary.contains("cargo-allow worklist --item-kind broken_evidence_link --format json")
+    );
+    assert!(
+        summary.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
+    );
+}
+
 fn migrate_fixture_dir() -> PathBuf {
     static NEXT_MIGRATE_FIXTURE: AtomicUsize = AtomicUsize::new(0);
     let id = NEXT_MIGRATE_FIXTURE.fetch_add(1, Ordering::Relaxed);
@@ -384,6 +425,27 @@ path = "src/lib.rs"
 family = "unsafe_fn"
 kind = "unsafe-fn"
 evidence = ["doc:docs/safety/missing-ffi.md"]
+
+[allow.selector]
+kind = "unsafe-fn"
+"#
+}
+
+fn unsafe_policy_broken_and_weak_evidence_fixture_text() -> &'static str {
+    r#"schema_version = 1
+policy = "unsafe-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "legacy-unsafe-missing-and-todo"
+path = "src/lib.rs"
+family = "unsafe_fn"
+kind = "unsafe-fn"
+evidence = [
+  "doc:docs/safety/missing-ffi.md",
+  "TODO: add unsafe-review or boundary-test evidence"
+]
 
 [allow.selector]
 kind = "unsafe-fn"

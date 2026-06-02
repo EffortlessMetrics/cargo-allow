@@ -105,6 +105,11 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(text.contains("unsafe_broken_evidence_links: 1"));
     assert!(text.contains("weak_evidence_references: 2"));
     assert!(text.contains("unsafe_weak_evidence_references: 1"));
+    assert!(text.contains("evidence_repair_queues:"));
+    assert!(text.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
+    assert!(
+        text.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
+    );
     assert!(
         text.contains("inventory: source_tree/policy_migration via git_tracked; files scanned: 76")
     );
@@ -169,6 +174,12 @@ fn migrate_report_from_config_counts_summary_fields() {
     assert_eq!(report.weak_evidence_references, None);
     assert_eq!(report.unsafe_weak_evidence_references, None);
     assert_eq!(report.inventory.scanner, "policy_migration");
+
+    let text = render_migrate_human(report);
+    assert!(
+        !text.contains("evidence_repair_queues:"),
+        "clean migration summaries should not route repair queues"
+    );
 }
 
 fn allow_entry(
