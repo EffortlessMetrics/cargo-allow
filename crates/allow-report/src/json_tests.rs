@@ -205,6 +205,45 @@ fn json_report_trend_counts_weak_evidence_references_context() {
 }
 
 #[test]
+fn json_report_routes_evidence_repair_queues() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
+    context.broken_evidence_links = Some(2);
+    context.policy_missing_evidence_entries = Some(4);
+    context.weak_evidence_references = Some(3);
+    let json = render_json_with_context("audit", &[], &[], false, context);
+
+    assert!(json.contains("\"evidence_repair_queues\""));
+    assert!(json.contains("\"signal\": \"broken_evidence_links\""));
+    assert!(json.contains("\"count\": 2"));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
+    ));
+    assert!(json.contains("\"signal\": \"missing_evidence\""));
+    assert!(json.contains("\"count\": 4"));
+    assert!(
+        json.contains("\"command\": \"cargo-allow worklist --missing-evidence --format json\"")
+    );
+    assert!(json.contains("\"signal\": \"weak_evidence_references\""));
+    assert!(json.contains("\"count\": 3"));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind weak_evidence_reference --format json\""
+    ));
+}
+
+#[test]
+fn json_report_omits_evidence_repair_queues_when_clean() {
+    let json = render_json_with_context(
+        "audit",
+        &[],
+        &[],
+        false,
+        ReportContext::source_syntax("git_tracked", None, None, None),
+    );
+
+    assert!(!json.contains("\"evidence_repair_queues\""));
+}
+
+#[test]
 fn json_report_trend_counts_policy_missing_evidence_context() {
     let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
     context.policy_missing_evidence_entries = Some(4);

@@ -1,4 +1,6 @@
-use crate::artifact_schema_support::{assert_enum_equals, parse_schema, required_schema_pointer};
+use crate::artifact_schema_support::{
+    assert_enum_equals, assert_required_fields, parse_schema, required_schema_pointer,
+};
 use serde_json::Value;
 
 #[test]
@@ -103,6 +105,68 @@ fn report_schema_allows_optional_weak_evidence_reference_counts() {
             "report {pointer} count minimum"
         );
     }
+}
+
+#[test]
+fn report_schema_allows_optional_evidence_repair_queues() {
+    let schema = parse_schema(
+        "report",
+        include_str!("../../../docs/schemas/report.schema.json"),
+    );
+
+    assert_eq!(
+        schema
+            .pointer("/properties/evidence_repair_queues/type")
+            .and_then(Value::as_str),
+        Some("array"),
+        "report evidence repair queues should be an optional array"
+    );
+    let queue = required_schema_pointer(
+        "report",
+        &schema,
+        "/properties/evidence_repair_queues/items",
+    );
+    assert_eq!(
+        queue.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "report evidence repair queue rows should reject unknown fields"
+    );
+    assert_required_fields(
+        "report evidence repair queue",
+        queue,
+        &["signal", "count", "command"],
+    );
+    assert_enum_equals(
+        "report evidence repair queue signal",
+        &schema,
+        "/properties/evidence_repair_queues/items/properties/signal/enum",
+        &[
+            "broken_evidence_links",
+            "missing_evidence",
+            "weak_evidence_references",
+        ],
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/evidence_repair_queues/items/properties/count/type")
+            .and_then(Value::as_str),
+        Some("integer"),
+        "report evidence repair queue count should be an integer"
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/evidence_repair_queues/items/properties/count/minimum")
+            .and_then(Value::as_u64),
+        Some(0),
+        "report evidence repair queue count should be non-negative"
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/evidence_repair_queues/items/properties/command/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "report evidence repair queue command should be a string"
+    );
 }
 
 #[test]

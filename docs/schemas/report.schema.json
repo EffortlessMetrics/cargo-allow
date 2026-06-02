@@ -109,6 +109,34 @@
     "trend": {
       "$ref": "#/$defs/trend"
     },
+    "evidence_repair_queues": {
+      "type": "array",
+      "description": "Optional evidence-health repair queues emitted when report summary or trend counts include broken local evidence links, missing evidence, or weak evidence references.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["signal", "count", "command"],
+        "properties": {
+          "signal": {
+            "enum": [
+              "broken_evidence_links",
+              "missing_evidence",
+              "weak_evidence_references"
+            ],
+            "description": "Evidence-health signal routed by this queue."
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of report evidence-health items routed by this queue."
+          },
+          "command": {
+            "type": "string",
+            "description": "Suggested cargo-allow worklist command for this queue."
+          }
+        }
+      }
+    },
     "source_inventory": {
       "$ref": "#/$defs/source_inventory",
       "description": "Optional aggregate inventory of source exception findings by governed kind and kind.family label. Emitted when findings are present so automation does not need to re-aggregate the findings array."
