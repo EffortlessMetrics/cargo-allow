@@ -1,7 +1,9 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use toml::Value;
 
-use crate::fields::{optional_last_seen, optional_u32_field, required_string_field, string_field};
+use crate::fields::{
+    legacy_evidence, optional_last_seen, optional_u32_field, required_string_field, string_field,
+};
 use crate::parser_support::normalize_legacy_expires;
 use crate::types::LegacyNoPanicAllowEntry;
 use crate::{default_baseline_created, default_baseline_expires};
@@ -54,6 +56,7 @@ fn parse_no_panic_allowlist_entry(
             .unwrap_or_else(|| {
                 "Generated from legacy no-panic allowlist; requires human review.".to_string()
             }),
+        evidence: legacy_evidence(table),
         created: string_field(table, "created").or_else(|| Some(default_baseline_created())),
         review_after,
         expires,
