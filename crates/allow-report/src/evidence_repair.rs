@@ -13,7 +13,9 @@ pub(crate) const WEAK_EVIDENCE_REFERENCE_COMMAND: &str =
 pub(crate) struct EvidenceRepairQueue {
     pub(crate) signal: &'static str,
     pub(crate) label: &'static str,
+    pub(crate) route_kind: &'static str,
     pub(crate) item_kind: Option<&'static str>,
+    pub(crate) worklist_filter: Option<&'static str>,
     pub(crate) count: usize,
     pub(crate) command: &'static str,
 }
@@ -46,27 +48,39 @@ pub(crate) fn evidence_repair_queues_from_counts(
     let mut queues = Vec::new();
     push_evidence_repair_queue_if(
         &mut queues,
-        broken_evidence_links,
-        "broken_evidence_links",
-        "broken evidence links",
-        Some("broken_evidence_link"),
-        BROKEN_EVIDENCE_LINK_COMMAND,
+        EvidenceRepairQueue {
+            signal: "broken_evidence_links",
+            label: "broken evidence links",
+            route_kind: "worklist_item_kind",
+            item_kind: Some("broken_evidence_link"),
+            worklist_filter: None,
+            count: broken_evidence_links,
+            command: BROKEN_EVIDENCE_LINK_COMMAND,
+        },
     );
     push_evidence_repair_queue_if(
         &mut queues,
-        missing_evidence,
-        "missing_evidence",
-        "missing evidence",
-        Some("missing_evidence"),
-        MISSING_EVIDENCE_COMMAND,
+        EvidenceRepairQueue {
+            signal: "missing_evidence",
+            label: "missing evidence",
+            route_kind: "worklist_filter",
+            item_kind: Some("missing_evidence"),
+            worklist_filter: Some("missing_evidence"),
+            count: missing_evidence,
+            command: MISSING_EVIDENCE_COMMAND,
+        },
     );
     push_evidence_repair_queue_if(
         &mut queues,
-        weak_evidence_references,
-        "weak_evidence_references",
-        "weak evidence references",
-        Some("weak_evidence_reference"),
-        WEAK_EVIDENCE_REFERENCE_COMMAND,
+        EvidenceRepairQueue {
+            signal: "weak_evidence_references",
+            label: "weak evidence references",
+            route_kind: "worklist_item_kind",
+            item_kind: Some("weak_evidence_reference"),
+            worklist_filter: None,
+            count: weak_evidence_references,
+            command: WEAK_EVIDENCE_REFERENCE_COMMAND,
+        },
     );
     queues
 }
@@ -84,10 +98,20 @@ pub(crate) fn push_evidence_repair_queue_json_fields(
         "{indent}\"label\": \"{}\",\n",
         json_escape(queue.label)
     ));
+    out.push_str(&format!(
+        "{indent}\"route_kind\": \"{}\",\n",
+        json_escape(queue.route_kind)
+    ));
     if let Some(item_kind) = queue.item_kind {
         out.push_str(&format!(
             "{indent}\"item_kind\": \"{}\",\n",
             json_escape(item_kind)
+        ));
+    }
+    if let Some(worklist_filter) = queue.worklist_filter {
+        out.push_str(&format!(
+            "{indent}\"worklist_filter\": \"{}\",\n",
+            json_escape(worklist_filter)
         ));
     }
     out.push_str(&format!("{indent}\"count\": {},\n", queue.count));
@@ -99,19 +123,9 @@ pub(crate) fn push_evidence_repair_queue_json_fields(
 
 fn push_evidence_repair_queue_if(
     queues: &mut Vec<EvidenceRepairQueue>,
-    count: usize,
-    signal: &'static str,
-    label: &'static str,
-    item_kind: Option<&'static str>,
-    command: &'static str,
+    queue: EvidenceRepairQueue,
 ) {
-    if count > 0 {
-        queues.push(EvidenceRepairQueue {
-            signal,
-            label,
-            item_kind,
-            count,
-            command,
-        });
+    if queue.count > 0 {
+        queues.push(queue);
     }
 }

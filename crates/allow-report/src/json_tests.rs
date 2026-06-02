@@ -215,6 +215,7 @@ fn json_report_routes_evidence_repair_queues() {
     assert!(json.contains("\"evidence_repair_queues\""));
     assert!(json.contains("\"signal\": \"broken_evidence_links\""));
     assert!(json.contains("\"label\": \"broken evidence links\""));
+    assert!(json.contains("\"route_kind\": \"worklist_item_kind\""));
     assert!(json.contains("\"item_kind\": \"broken_evidence_link\""));
     assert!(json.contains("\"count\": 2"));
     assert!(json.contains(
@@ -222,7 +223,9 @@ fn json_report_routes_evidence_repair_queues() {
     ));
     assert!(json.contains("\"signal\": \"missing_evidence\""));
     assert!(json.contains("\"label\": \"missing evidence\""));
+    assert!(json.contains("\"route_kind\": \"worklist_filter\""));
     assert!(json.contains("\"item_kind\": \"missing_evidence\""));
+    assert!(json.contains("\"worklist_filter\": \"missing_evidence\""));
     assert!(json.contains("\"count\": 4"));
     assert!(
         json.contains("\"command\": \"cargo-allow worklist --missing-evidence --format json\"")

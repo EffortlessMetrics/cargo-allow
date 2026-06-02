@@ -148,6 +148,13 @@
             "type": "string",
             "description": "Human-friendly queue label for display and agent logs."
           },
+          "route_kind": {
+            "enum": [
+              "worklist_item_kind",
+              "worklist_filter"
+            ],
+            "description": "Machine routing mode for the follow-up command."
+          },
           "item_kind": {
             "enum": [
               "broken_evidence_link",
@@ -155,6 +162,12 @@
               "weak_evidence_reference"
             ],
             "description": "Stable cargo-allow worklist item kind routed by this queue when available."
+          },
+          "worklist_filter": {
+            "enum": [
+              "missing_evidence"
+            ],
+            "description": "Named worklist filter used by this row when route_kind is worklist_filter."
           },
           "count": {
             "type": "integer",

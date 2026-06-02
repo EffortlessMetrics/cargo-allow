@@ -177,6 +177,12 @@ fn receipt_schema_allows_optional_evidence_repair_queues() {
         "receipt evidence repair queue label should be a string"
     );
     assert_enum_equals(
+        "receipt evidence repair queue route kind",
+        &schema,
+        "/properties/evidence_repair_queues/items/properties/route_kind/enum",
+        &["worklist_item_kind", "worklist_filter"],
+    );
+    assert_enum_equals(
         "receipt evidence repair queue item kind",
         &schema,
         "/properties/evidence_repair_queues/items/properties/item_kind/enum",
@@ -185,6 +191,12 @@ fn receipt_schema_allows_optional_evidence_repair_queues() {
             "missing_evidence",
             "weak_evidence_reference",
         ],
+    );
+    assert_enum_equals(
+        "receipt evidence repair queue worklist filter",
+        &schema,
+        "/properties/evidence_repair_queues/items/properties/worklist_filter/enum",
+        &["missing_evidence"],
     );
     assert_eq!(
         schema

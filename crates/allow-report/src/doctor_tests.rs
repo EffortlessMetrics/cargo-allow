@@ -213,6 +213,7 @@ fn doctor_json_renderer_routes_evidence_repair_queues() {
     assert!(json.contains("\"evidence_repair_queues\""));
     assert!(json.contains("\"signal\": \"broken_evidence_links\""));
     assert!(json.contains("\"label\": \"broken evidence links\""));
+    assert!(json.contains("\"route_kind\": \"worklist_item_kind\""));
     assert!(json.contains("\"item_kind\": \"broken_evidence_link\""));
     assert!(json.contains("\"count\": 2"));
     assert!(json.contains(
