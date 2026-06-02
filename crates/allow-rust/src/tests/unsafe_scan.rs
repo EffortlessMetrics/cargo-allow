@@ -295,6 +295,28 @@ fn detects_unsafe_attribute_from_syntax() {
 }
 
 #[test]
+fn unsafe_attribute_findings_record_target_container_identity() {
+    let src = r#"
+        #[unsafe(no_mangle)]
+        fn exported_left() {}
+
+        #[unsafe(export_name = "exported_right")]
+        fn exported_right() {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let containers = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr"))
+        .map(|f| f.identity.container.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        containers,
+        vec![Some("exported_left"), Some("exported_right")]
+    );
+}
+
+#[test]
 fn detects_spaced_unsafe_attribute_tokens_from_source_syntax() {
     let line = r#"        # [ unsafe(no_mangle) ]"#;
     let src = format!(
