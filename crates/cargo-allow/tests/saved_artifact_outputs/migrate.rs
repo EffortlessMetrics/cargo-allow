@@ -13,6 +13,11 @@ fn saved_migrate_output_covers_policy_migration_summary_contract() {
         process_policy_fixture_text(),
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write process policy fixture: {err}")));
+    fs::write(
+        legacy_dir.join("unsafe-allowlist.toml"),
+        unsafe_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write unsafe policy fixture: {err}")));
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let migrated_policy = artifact_dir.join("allow.migrated.toml");
@@ -43,8 +48,57 @@ fn saved_migrate_output_covers_policy_migration_summary_contract() {
         value
             .pointer("/summary/allow_entries")
             .and_then(serde_json::Value::as_u64),
-        Some(1),
+        Some(2),
         "migrate summary allow entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/unsafe_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate summary unsafe entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/unsafe_broken_evidence_links")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate summary unsafe broken evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/unsafe_weak_evidence_references")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate summary unsafe weak evidence count"
+    );
+    let queues = value
+        .pointer("/evidence_repair_queues")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("migrate summary should route evidence repair queues")
+        });
+    assert!(
+        queues.iter().any(|queue| {
+            queue
+                .get("unsafe_command")
+                .and_then(serde_json::Value::as_str)
+                == Some(
+                    "cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json",
+                )
+        }),
+        "migrate summary should route unsafe broken evidence repair"
+    );
+    assert!(
+        queues.iter().any(|queue| {
+            queue
+                .get("unsafe_command")
+                .and_then(serde_json::Value::as_str)
+                == Some(
+                    "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json",
+                )
+        }),
+        "migrate summary should route unsafe weak evidence repair"
     );
     let actual_policy_output = value
         .pointer("/output/path")
@@ -74,5 +128,26 @@ owner = "release"
 reason = "Release preflight package proof; pure local checks."
 created = "2026-05-09"
 expires = "permanent"
+"#
+}
+
+fn unsafe_policy_fixture_text() -> &'static str {
+    r#"schema_version = 1
+policy = "unsafe-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "unsafe-ffi-boundary"
+path = "src/lib.rs"
+family = "unsafe_fn"
+kind = "unsafe-fn"
+evidence = [
+  "doc:docs/safety/missing-ffi.md",
+  "TODO: add unsafe-review or boundary-test evidence"
+]
+
+[allow.selector]
+kind = "unsafe-fn"
 "#
 }

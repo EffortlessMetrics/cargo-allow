@@ -265,6 +265,10 @@
         "command": {
           "type": "string",
           "description": "Suggested cargo-allow worklist command for this queue."
+        },
+        "unsafe_command": {
+          "type": "string",
+          "description": "Optional unsafe-scoped cargo-allow worklist command when unsafe_count is non-zero."
         }
       }
     }
