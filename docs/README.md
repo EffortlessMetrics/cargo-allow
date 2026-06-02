@@ -16,6 +16,10 @@ ledger and the planned growth around it.
   init/propose, and no-new checks.
 - [Structural identity v1](identity.md): the source-syntax identity contract
   used by matching and diff posture.
+- [PR posture](pr-posture.md): reviewer-facing diff posture and net posture
+  semantics.
+- [Policy weakening](policy-weakening.md): policy edits that broaden, weaken,
+  or improve retained source exceptions.
 - [Migration from xtask](migration-from-xtask.md): how bespoke allowlist tasks
   should move into cargo-allow.
 - [CI](ci.md): GitHub Actions examples for PR posture diffs and mainline
