@@ -73,6 +73,8 @@ That mode reads generated file findings from `.gitattributes` entries marked
 `linguist-generated=true` and compares them against exact paths in
 `policy/generated-allowlist.toml`, preserving both missing-policy and stale
 policy drift.
+Existing legacy `evidence` or `covered_by` fields are preserved alongside
+generated-file facts such as `generator:` and `cargo:` regenerate commands.
 
 Executable-bit compat is available for shiplog-style
 `policy/executable-allowlist.toml`:
@@ -86,6 +88,8 @@ entries with tree mode `100755` and compares them against exact paths in
 `policy/executable-allowlist.toml`. In canonical output, these entries are
 represented as `policy_exception.executable_file` because executable bits are a
 file-policy exception surface rather than Rust syntax.
+Existing legacy `evidence` or `covered_by` fields are preserved alongside
+source-tree facts such as the script interpreter.
 
 Workflow compat is available for shiplog-style `policy/workflow-allowlist.toml`:
 
