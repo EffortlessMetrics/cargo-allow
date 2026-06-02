@@ -1,6 +1,41 @@
 use super::*;
 
 #[test]
+fn diff_finding_human_output_groups_findings_by_change() {
+    let finding_changes = vec![
+        DiffFindingChange {
+            change: "removed",
+            key: "panic|unwrap|src/old.rs",
+            kind: "panic",
+            family: Some("unwrap"),
+            path: "src/old.rs",
+        },
+        DiffFindingChange {
+            change: "new",
+            key: "unsafe|unsafe_block|src/new.rs",
+            kind: "unsafe",
+            family: Some("unsafe_block"),
+            path: "src/new.rs",
+        },
+    ];
+
+    let text = render_diff_finding_changes_human(&finding_changes);
+
+    let attention = text
+        .find("Finding attention:")
+        .unwrap_or_else(|| std::panic::panic_any("expected attention section"));
+    let improvements = text
+        .find("Finding improvements:")
+        .unwrap_or_else(|| std::panic::panic_any("expected improvement section"));
+    assert!(
+        attention < improvements,
+        "human finding sections should show attention before improvements"
+    );
+    assert!(text.contains("new unsafe.unsafe_block at src/new.rs"));
+    assert!(text.contains("removed panic.unwrap at src/old.rs"));
+}
+
+#[test]
 fn diff_policy_human_output_includes_structured_details() {
     let removed_fields = ["container", "normalized_snippet_hash"];
     let policy_changes = vec![DiffPolicyChange {
