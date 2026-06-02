@@ -51,7 +51,7 @@ fn unsafe_syntax_construct(node: Node<'_>, source: &str) -> Option<(u32, UnsafeS
             node,
             "extern_modifier",
             UnsafeSyntaxKind::ExternBlock,
-            None,
+            extern_block_symbol(node, source),
             source,
         ),
         "unsafe_block" => unsafe_child_point(node)
@@ -94,6 +94,45 @@ fn item_name(node: Node<'_>, source: &str) -> Option<String> {
     let name = node.child_by_field_name("name")?;
     let symbol = normalize_snippet(node_text(source, name)?);
     (!symbol.is_empty()).then_some(symbol)
+}
+
+fn extern_block_symbol(node: Node<'_>, source: &str) -> Option<String> {
+    let abi = extern_abi(node, source).unwrap_or_else(|| "extern".to_string());
+    let mut item_names = Vec::new();
+    collect_foreign_item_names(node, source, &mut item_names);
+    let symbol = if item_names.is_empty() {
+        format!("extern {abi}")
+    } else {
+        format!("extern {abi}:{}", item_names.join(","))
+    };
+    let symbol = normalize_snippet(&symbol);
+    (!symbol.is_empty()).then_some(symbol)
+}
+
+fn extern_abi(node: Node<'_>, source: &str) -> Option<String> {
+    if node.kind() == "string_literal" {
+        return node_text(source, node)
+            .map(normalize_snippet)
+            .filter(|abi| !abi.is_empty());
+    }
+    let mut cursor = node.walk();
+    node.children(&mut cursor)
+        .find_map(|child| extern_abi(child, source))
+}
+
+fn collect_foreign_item_names(node: Node<'_>, source: &str, item_names: &mut Vec<String>) {
+    if matches!(
+        node.kind(),
+        "function_signature_item" | "static_item" | "type_item"
+    ) && let Some(name) = item_name(node, source)
+    {
+        item_names.push(name);
+    }
+
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_foreign_item_names(child, source, item_names);
+    }
 }
 
 fn located_construct(
