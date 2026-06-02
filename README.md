@@ -232,6 +232,7 @@ pass CI.
 ## Documentation
 
 - Source exception ledger: [docs/source-exception-ledger.md](docs/source-exception-ledger.md)
+- Getting started: [docs/getting-started.md](docs/getting-started.md)
 - Claim boundaries: [docs/claim-boundaries.md](docs/claim-boundaries.md)
 - CI examples: [docs/ci.md](docs/ci.md)
 - JSON schemas: [docs/schemas/README.md](docs/schemas/README.md)
