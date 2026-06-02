@@ -28,6 +28,15 @@ fn migrates_clippy_exceptions_to_lint_policy_entries() {
         entry.selector.target_fingerprint.as_deref(),
         Some("policy:clippy-unwrap-policy")
     );
+    assert_eq!(
+        entry.evidence,
+        vec!["legacy-policy:clippy-unwrap-policy".to_string()]
+    );
+    assert_eq!(
+        allow_policy::weak_evidence_reference_count(Path::new("."), &cfg),
+        0,
+        "clippy migration should not create synthetic weak lint: evidence"
+    );
     assert_eq!(entry.lifecycle.review_after.as_deref(), Some("2026-09-09"));
 }
 
@@ -103,6 +112,15 @@ lint = "clippy::unwrap_used"
     assert_eq!(entry.owner, "unowned");
     assert_eq!(entry.classification, "baseline_debt");
     assert!(entry.reason.contains("requires human review"));
+    assert_eq!(
+        entry.evidence,
+        vec!["legacy-policy:legacy-clippy-0000".to_string()]
+    );
+    assert_eq!(
+        allow_policy::weak_evidence_reference_count(Path::new("."), &cfg),
+        0,
+        "minimal clippy migration should preserve recognized legacy evidence"
+    );
     assert_current_baseline_window(&entry.lifecycle);
 }
 

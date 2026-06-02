@@ -15,7 +15,7 @@ pub(crate) fn entry_from_clippy_rule(rule: &LegacyClippyRule) -> AllowEntry {
         owner: rule.owner.clone(),
         classification: rule.classification.clone(),
         reason: rule.reason.clone(),
-        evidence: vec![format!("lint:{}", rule.lint)],
+        evidence: vec![format!("legacy-policy:{}", rule.id)],
         links: vec![format!("legacy-policy:{}", rule.id)],
         occurrence_limit: None,
         lifecycle: lifecycle_from_legacy_fields(
