@@ -47,7 +47,11 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(json.contains("\"weak_evidence_references\": 2"));
     assert!(json.contains("\"unsafe_weak_evidence_references\": 1"));
     assert!(json.contains("\"evidence_repair_queues\""));
+    assert!(json.contains("\"signal\": \"broken_evidence_links\""));
+    assert!(json.contains("\"label\": \"broken evidence links\""));
     assert!(json.contains("\"item_kind\": \"broken_evidence_link\""));
+    assert!(json.contains("\"signal\": \"weak_evidence_references\""));
+    assert!(json.contains("\"label\": \"weak evidence references\""));
     assert!(json.contains("\"item_kind\": \"weak_evidence_reference\""));
     assert!(json.contains(
         "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
@@ -92,12 +96,16 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
   }},
   "evidence_repair_queues": [
     {{
+      "signal": "broken_evidence_links",
+      "label": "broken evidence links",
       "item_kind": "broken_evidence_link",
       "count": 3,
       "unsafe_count": 1,
       "command": "cargo-allow worklist --item-kind broken_evidence_link --format json"
     }},
     {{
+      "signal": "weak_evidence_references",
+      "label": "weak evidence references",
       "item_kind": "weak_evidence_reference",
       "count": 2,
       "unsafe_count": 1,

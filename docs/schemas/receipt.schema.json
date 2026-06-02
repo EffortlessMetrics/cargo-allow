@@ -106,6 +106,18 @@
             ],
             "description": "Evidence-health signal routed by this queue."
           },
+          "label": {
+            "type": "string",
+            "description": "Human-friendly queue label for display and agent logs."
+          },
+          "item_kind": {
+            "enum": [
+              "broken_evidence_link",
+              "missing_evidence",
+              "weak_evidence_reference"
+            ],
+            "description": "Stable cargo-allow worklist item kind routed by this queue when available."
+          },
           "count": {
             "type": "integer",
             "minimum": 0,

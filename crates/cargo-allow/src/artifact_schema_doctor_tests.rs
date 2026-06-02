@@ -134,6 +134,21 @@ fn doctor_schema_locks_setup_artifact_contract() {
     assert_eq!(
         schema
             .pointer(
+                "/properties/config/properties/evidence_repair_queues/items/properties/label/type",
+            )
+            .and_then(Value::as_str),
+        Some("string"),
+        "doctor evidence repair queue label should be a string"
+    );
+    assert_enum_equals(
+        "doctor evidence repair queue item kind",
+        &schema,
+        "/properties/config/properties/evidence_repair_queues/items/properties/item_kind/enum",
+        &["broken_evidence_link", "weak_evidence_reference"],
+    );
+    assert_eq!(
+        schema
+            .pointer(
                 "/properties/config/properties/evidence_repair_queues/items/properties/count/type",
             )
             .and_then(Value::as_str),

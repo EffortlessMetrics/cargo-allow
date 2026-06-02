@@ -228,6 +228,17 @@
         "command"
       ],
       "properties": {
+        "signal": {
+          "enum": [
+            "broken_evidence_links",
+            "weak_evidence_references"
+          ],
+          "description": "Evidence-health migration signal routed by this queue."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-friendly queue label for display and agent logs."
+        },
         "item_kind": {
           "enum": [
             "broken_evidence_link",

@@ -1,6 +1,8 @@
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
 
-use crate::evidence_repair::evidence_repair_queues_from_context;
+use crate::evidence_repair::{
+    evidence_repair_queues_from_context, push_evidence_repair_queue_json_fields,
+};
 use crate::json::{bool_json, option_json, push_json_source_context_properties};
 use crate::{
     ReportContext, Summary, baseline_debt_count, broken_evidence_link_count,
@@ -138,15 +140,7 @@ fn push_evidence_repair_queues_property(
             out.push_str(",\n");
         }
         out.push_str("          {\n");
-        out.push_str(&format!(
-            "            \"signal\": \"{}\",\n",
-            json_escape(queue.signal)
-        ));
-        out.push_str(&format!("            \"count\": {},\n", queue.count));
-        out.push_str(&format!(
-            "            \"command\": \"{}\"\n",
-            json_escape(queue.command)
-        ));
+        push_evidence_repair_queue_json_fields(out, queue, "            ");
         out.push_str("          }");
     }
     out.push_str("\n        ]\n");
