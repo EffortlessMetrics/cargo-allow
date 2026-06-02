@@ -3,8 +3,27 @@ use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use std::env;
 use std::path::{Path, PathBuf};
 
-use super::{MigrateContext, MigrationLoad};
+use super::migrate_types::{MigrateContext, MigrationLoad};
 use crate::root_relative_path;
+
+pub(super) fn load_single_file_migration_config(
+    explicit_root: Option<&Path>,
+    from: &Path,
+) -> CargoAllowResult<MigrationLoad> {
+    let root = explicit_root
+        .map(|root| resolve_source_tree_root(Some(root), root))
+        .transpose()?;
+    Ok(MigrationLoad {
+        cfg: allow_policy_legacy::load_legacy_or_canonical(from)?,
+        context: MigrateContext {
+            inventory_source: "unknown".to_string(),
+            source_tree_root: root.as_deref().map(allow_report::source_tree_path_text),
+            inventory_files: None,
+            input_kind: "from".to_string(),
+            input_path: normalize_path(from),
+        },
+    })
+}
 
 pub(super) fn load_repo_policy_migration_config(
     explicit_root: Option<&Path>,
