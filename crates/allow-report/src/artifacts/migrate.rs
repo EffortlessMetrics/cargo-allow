@@ -15,6 +15,7 @@ pub struct MigrateReport<'a> {
     pub lint_exception_entries: usize,
     pub entries_with_evidence: usize,
     pub weak_evidence_references: Option<usize>,
+    pub unsafe_weak_evidence_references: Option<usize>,
     pub notes: &'a str,
 }
 
@@ -41,6 +42,7 @@ impl<'a> MigrateReport<'a> {
             lint_exception_entries: counts.lint_exception_entries,
             entries_with_evidence: counts.entries_with_evidence,
             weak_evidence_references: None,
+            unsafe_weak_evidence_references: None,
             notes,
         }
     }

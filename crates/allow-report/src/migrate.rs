@@ -24,6 +24,12 @@ pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
     if let Some(count) = report.weak_evidence_references.filter(|count| *count > 0) {
         out.push_str(&format!("weak_evidence_references: {count}\n"));
     }
+    if let Some(count) = report
+        .unsafe_weak_evidence_references
+        .filter(|count| *count > 0)
+    {
+        out.push_str(&format!("unsafe_weak_evidence_references: {count}\n"));
+    }
     out.push_str(&format!(
         "inventory: {}/{} via {}{}\n",
         report.inventory.scope,
@@ -88,12 +94,28 @@ pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
         "    \"lint_exception_entries\": {},\n",
         report.lint_exception_entries
     ));
-    if let Some(count) = report.weak_evidence_references.filter(|count| *count > 0) {
+    let weak_evidence_references = report.weak_evidence_references.filter(|count| *count > 0);
+    let unsafe_weak_evidence_references = report
+        .unsafe_weak_evidence_references
+        .filter(|count| *count > 0);
+    if weak_evidence_references.is_some() || unsafe_weak_evidence_references.is_some() {
         out.push_str(&format!(
             "    \"entries_with_evidence\": {},\n",
             report.entries_with_evidence
         ));
-        out.push_str(&format!("    \"weak_evidence_references\": {count}\n"));
+        if let Some(count) = weak_evidence_references {
+            out.push_str(&format!("    \"weak_evidence_references\": {count}"));
+            if unsafe_weak_evidence_references.is_some() {
+                out.push_str(",\n");
+            } else {
+                out.push('\n');
+            }
+        }
+        if let Some(count) = unsafe_weak_evidence_references {
+            out.push_str(&format!(
+                "    \"unsafe_weak_evidence_references\": {count}\n"
+            ));
+        }
     } else {
         out.push_str(&format!(
             "    \"entries_with_evidence\": {}\n",

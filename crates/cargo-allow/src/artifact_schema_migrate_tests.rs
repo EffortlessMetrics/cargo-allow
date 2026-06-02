@@ -101,6 +101,7 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
         "lint_exception_entries",
         "entries_with_evidence",
         "weak_evidence_references",
+        "unsafe_weak_evidence_references",
     ] {
         assert_eq!(
             schema
