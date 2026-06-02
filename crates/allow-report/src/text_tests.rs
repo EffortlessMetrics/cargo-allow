@@ -169,10 +169,22 @@ fn markdown_audit_report_includes_review_summary() {
     assert!(text.contains("| Match outcomes | 2 |"));
     assert!(text.contains("| Review items | 2 |"));
     assert!(text.contains("| New unreceipted | 1 |"));
+    assert!(text.contains("| Review due | 0 |"));
+    assert!(text.contains("| Stale | 0 |"));
+    assert!(text.contains("| Ambiguous | 0 |"));
+    assert!(text.contains("| Invalid selectors | 0 |"));
+    assert!(text.contains("| Missing required fields | 0 |"));
     assert!(text.contains("| Evidence gaps | 1 |"));
     assert!(
         text.contains("Recommended next step: review the queue below before tightening policy.")
     );
+    assert!(text.contains("## Audit Remediation Roadmap"));
+    assert!(
+        text.contains("| new unreceipted | `cargo-allow worklist --status new --format json` |")
+    );
+    assert!(text.contains(
+        "| missing evidence | `cargo-allow worklist --missing-evidence --format json` |"
+    ));
     assert!(text.contains("## Audit Review Queue"));
     assert!(text.contains("- `new`: unreceipted shell script at scripts/new.sh"));
     assert!(text.contains(
@@ -310,9 +322,19 @@ fn human_audit_report_includes_review_summary() {
     assert!(text.contains("match_outcomes"));
     assert!(text.contains("review_items"));
     assert!(text.contains("new_unreceipted"));
+    assert!(text.contains("review_due"));
+    assert!(text.contains("stale"));
+    assert!(text.contains("ambiguous"));
+    assert!(text.contains("invalid_selector"));
+    assert!(text.contains("missing_required_field"));
     assert!(text.contains("evidence_gaps"));
     assert!(
         text.contains("Recommended next step: review the queue below before tightening policy.")
+    );
+    assert!(text.contains("Audit remediation roadmap:"));
+    assert!(text.contains("new unreceipted: cargo-allow worklist --status new --format json"));
+    assert!(
+        text.contains("missing evidence: cargo-allow worklist --missing-evidence --format json")
     );
     assert!(text.contains("Audit review queue:"));
     assert!(text.contains("new: unreceipted shell script at scripts/new.sh"));
@@ -342,6 +364,19 @@ fn human_audit_report_routes_evidence_repairs_even_with_review_queue() {
     assert!(
         text.contains("Recommended next step: review the queue below before tightening policy.")
     );
+    assert!(text.contains("Audit remediation roadmap:"));
+    assert!(text.contains("new unreceipted: cargo-allow worklist --status new --format json"));
+    assert!(
+        text.contains("missing evidence: cargo-allow worklist --missing-evidence --format json")
+    );
+    assert!(text.contains(
+        "broken evidence links: cargo-allow worklist --item-kind broken_evidence_link --format json"
+    ));
+    assert!(
+        text.contains(
+            "weak evidence references: cargo-allow worklist --item-kind weak_evidence_reference --format json"
+        )
+    );
     assert!(text.contains("Evidence repair queues:"));
     assert!(text.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
     assert!(text.contains("cargo-allow worklist --missing-evidence --format json"));
@@ -370,6 +405,23 @@ fn markdown_audit_report_routes_evidence_repairs_even_with_review_queue() {
     assert!(
         text.contains("Recommended next step: review the queue below before tightening policy.")
     );
+    assert!(text.contains("## Audit Remediation Roadmap"));
+    assert!(
+        text.contains("| new unreceipted | `cargo-allow worklist --status new --format json` |")
+    );
+    assert!(text.contains(
+        "| missing evidence | `cargo-allow worklist --missing-evidence --format json` |"
+    ));
+    assert!(
+        text.contains(
+            "| broken evidence links | `cargo-allow worklist --item-kind broken_evidence_link --format json` |"
+        )
+    );
+    assert!(
+        text.contains(
+            "| weak evidence references | `cargo-allow worklist --item-kind weak_evidence_reference --format json` |"
+        )
+    );
     assert!(text.contains("### Evidence Repair Queues"));
     assert!(text.contains("`cargo-allow worklist --item-kind broken_evidence_link --format json`"));
     assert!(text.contains("`cargo-allow worklist --missing-evidence --format json`"));
@@ -387,7 +439,78 @@ fn human_audit_report_routes_clean_policy_to_no_new_ci() {
     assert!(text.contains("review_items"));
     assert!(text.contains(" 0\n"));
     assert!(text.contains("Recommended next step: keep `cargo-allow check --mode no-new` in CI."));
+    assert!(!text.contains("Audit remediation roadmap:"));
     assert!(!text.contains("Audit review queue:"));
+}
+
+#[test]
+fn markdown_audit_report_routes_lifecycle_and_selector_remediation() {
+    let outcomes = vec![
+        MatchOutcome {
+            status: MatchStatus::Expired,
+            allow_id: Some("allow-expired".to_string()),
+            finding_index: None,
+            message: "allow-expired is expired".to_string(),
+            score: 0,
+        },
+        MatchOutcome {
+            status: MatchStatus::ReviewDue,
+            allow_id: Some("allow-review".to_string()),
+            finding_index: None,
+            message: "allow-review is due for review".to_string(),
+            score: 0,
+        },
+        MatchOutcome {
+            status: MatchStatus::Stale,
+            allow_id: Some("allow-stale".to_string()),
+            finding_index: None,
+            message: "allow-stale is stale".to_string(),
+            score: 0,
+        },
+        MatchOutcome {
+            status: MatchStatus::Ambiguous,
+            allow_id: Some("allow-ambiguous".to_string()),
+            finding_index: None,
+            message: "allow-ambiguous is ambiguous".to_string(),
+            score: 0,
+        },
+        MatchOutcome {
+            status: MatchStatus::InvalidSelector,
+            allow_id: Some("allow-invalid".to_string()),
+            finding_index: None,
+            message: "allow-invalid selector is invalid".to_string(),
+            score: 0,
+        },
+        MatchOutcome {
+            status: MatchStatus::MissingRequiredField,
+            allow_id: Some("allow-missing".to_string()),
+            finding_index: None,
+            message: "allow-missing lacks required policy fields".to_string(),
+            score: 0,
+        },
+    ];
+
+    let text = render_markdown_with_context("audit", &[], &outcomes, false, context("git_tracked"));
+
+    assert!(text.contains("| Expired | 1 |"));
+    assert!(text.contains("| Review due | 1 |"));
+    assert!(text.contains("| Stale | 1 |"));
+    assert!(text.contains("| Ambiguous | 1 |"));
+    assert!(text.contains("| Invalid selectors | 1 |"));
+    assert!(text.contains("| Missing required fields | 1 |"));
+    assert!(text.contains("## Audit Remediation Roadmap"));
+    assert!(text.contains("| expired | `cargo-allow worklist --status expired --format json` |"));
+    assert!(
+        text.contains("| review due | `cargo-allow worklist --status review_due --format json` |")
+    );
+    assert!(text.contains("| stale | `cargo-allow prune --stale --dry-run --format json --output target/cargo-allow/prune.json` |"));
+    assert!(
+        text.contains("| ambiguous | `cargo-allow worklist --status ambiguous --format json` |")
+    );
+    assert!(text.contains(
+        "| invalid selectors | `cargo-allow worklist --status invalid_selector --format json` |"
+    ));
+    assert!(text.contains("| missing required fields | `cargo-allow worklist --status missing_required_field --format json` |"));
 }
 
 #[test]
@@ -402,7 +525,7 @@ fn markdown_audit_report_counts_policy_baseline_debt_context() {
 
     assert!(text.contains("| Review items | 3 |"));
     assert!(text.contains("| Baseline debt | 3 |"));
-    assert!(text.contains("cargo-allow worklist --format json"));
+    assert!(text.contains("cargo-allow worklist --baseline-debt --format json"));
     assert!(!text.contains("## Audit Review Queue"));
 }
 
