@@ -40,19 +40,19 @@ These labels are reviewer guidance for the scanned source-tree inventory. They
 do not claim macro expansion, type information, build awareness, control-flow
 analysis, data-flow analysis, proof adequacy, or coverage.
 
-## What Counts as Worse
+## What Needs Attention
 
-Common blocking signals include:
+Common attention signals include:
 
 - new unreceipted source findings.
 - selector precision decreases.
 - source-tree scope broadening.
 - occurrence-limit loosening.
-- expiry or review-date extension.
 - typed evidence removal.
 - owner, reason, or classification removal.
 - policy requirement loosening.
 - new ignored inventory scopes.
+- expiry or review-date extension.
 
 See [Policy Weakening](policy-weakening.md) for the detailed weakening model.
 

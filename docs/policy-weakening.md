@@ -18,8 +18,6 @@ These changes are failing policy-posture signals:
   removed.
 - `occurrence_limit_loosened`: a capped baseline allows more occurrences or
   becomes unlimited.
-- `expiry_extended`: `expires` is pushed out or removed.
-- `review_after_extended`: review is pushed out or removed.
 - `evidence_removed`: typed evidence is removed.
 - `owner_removed` or `owner_unassigned`: concrete ownership is removed.
 - `reason_removed`: rationale is removed.
@@ -41,6 +39,8 @@ These changes are not always worse, but they require review:
 - `selector_changed`: equal-precision structural selector identity changes.
 - `owner_changed`, `reason_changed`, or `classification_changed`.
 - `created_changed`.
+- `expiry_extended`: `expires` is pushed out or removed.
+- `review_after_extended`: review is pushed out or removed.
 - weak evidence or traceability changes that cannot be validated locally.
 - generated scope changes.
 
