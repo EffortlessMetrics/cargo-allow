@@ -257,6 +257,10 @@ fn json_audit_report_routes_remediation_roadmap() {
 
     assert!(json.contains("\"audit_remediation_roadmap\""));
     assert!(json.contains("\"signal\": \"new_unreceipted\""));
+    assert!(json.contains("\"label\": \"new unreceipted\""));
+    assert!(json.contains("\"route_kind\": \"worklist_status\""));
+    assert!(json.contains("\"item_kind\": \"new_unreceipted_finding\""));
+    assert!(json.contains("\"worklist_status\": \"new\""));
     assert!(json.contains("\"command\": \"cargo-allow worklist --status new --format json\""));
     assert!(json.contains("\"signal\": \"expired\""));
     assert!(json.contains("\"command\": \"cargo-allow worklist --status expired --format json\""));
@@ -265,6 +269,8 @@ fn json_audit_report_routes_remediation_roadmap() {
         json.contains("\"command\": \"cargo-allow worklist --status review_due --format json\"")
     );
     assert!(json.contains("\"signal\": \"stale\""));
+    assert!(json.contains("\"route_kind\": \"prune_stale\""));
+    assert!(json.contains("\"item_kind\": \"stale_allow\""));
     assert!(json.contains("\"command\": \"cargo-allow prune --stale --dry-run --format json --output target/cargo-allow/prune.json\""));
     assert!(json.contains("\"signal\": \"ambiguous\""));
     assert!(
@@ -281,10 +287,15 @@ fn json_audit_report_routes_remediation_roadmap() {
         "\"command\": \"cargo-allow worklist --status missing_required_field --format json\""
     ));
     assert!(json.contains("\"signal\": \"missing_evidence\""));
+    assert!(json.contains("\"route_kind\": \"worklist_filter\""));
+    assert!(json.contains("\"item_kind\": \"missing_evidence\""));
+    assert!(json.contains("\"worklist_filter\": \"missing_evidence\""));
     assert!(
         json.contains("\"command\": \"cargo-allow worklist --missing-evidence --format json\"")
     );
     assert!(json.contains("\"signal\": \"broken_evidence_links\""));
+    assert!(json.contains("\"route_kind\": \"worklist_item_kind\""));
+    assert!(json.contains("\"item_kind\": \"broken_evidence_link\""));
     assert!(json.contains(
         "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
     ));
@@ -293,6 +304,8 @@ fn json_audit_report_routes_remediation_roadmap() {
         "\"command\": \"cargo-allow worklist --item-kind weak_evidence_reference --format json\""
     ));
     assert!(json.contains("\"signal\": \"baseline_debt\""));
+    assert!(json.contains("\"item_kind\": \"baseline_debt\""));
+    assert!(json.contains("\"worklist_filter\": \"baseline_debt\""));
     assert!(json.contains("\"command\": \"cargo-allow worklist --baseline-debt --format json\""));
     assert!(json.contains("\"count\": 5"));
 }
