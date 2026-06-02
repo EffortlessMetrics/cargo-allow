@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult, normalize_path};
+use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_policy::{render_policy, validate_policy};
 
 use crate::{emit_stderr_text, write_file_no_overwrite};
@@ -13,9 +13,9 @@ mod migrate_render;
 mod migrate_types;
 pub(crate) use migrate_args::MigrateArgs;
 use migrate_args::MigrateSummaryFormat;
-use migrate_load::load_repo_policy_migration_config;
+use migrate_load::{load_repo_policy_migration_config, load_single_file_migration_config};
 use migrate_render::{render_migrate_summary, render_migrate_summary_json};
-use migrate_types::{MigrateContext, MigrationLoad};
+use migrate_types::MigrateContext;
 
 #[cfg(test)]
 use crate::RootArgs;
@@ -26,16 +26,7 @@ use std::path::{Path, PathBuf};
 
 pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
     let migration = match (&args.from, &args.repo_policy) {
-        (Some(from), None) => MigrationLoad {
-            cfg: allow_policy_legacy::load_legacy_or_canonical(from)?,
-            context: MigrateContext {
-                inventory_source: "unknown".to_string(),
-                source_tree_root: None,
-                inventory_files: None,
-                input_kind: "from".to_string(),
-                input_path: normalize_path(from),
-            },
-        },
+        (Some(from), None) => load_single_file_migration_config(args.root.root.as_deref(), from)?,
         (None, Some(repo_policy)) => {
             load_repo_policy_migration_config(args.root.root.as_deref(), repo_policy)?
         }

@@ -388,6 +388,69 @@ fn migrate_repo_policy_human_summary_routes_evidence_repair_queues() {
     ));
 }
 
+#[test]
+fn migrate_from_uses_explicit_root_for_evidence_diagnostics() {
+    let dir = migrate_fixture_dir();
+    let docs_dir = dir.join("docs/safety");
+    fs::create_dir_all(&docs_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("docs dir: {err}")));
+    fs::write(
+        docs_dir.join("migrated-boundary.md"),
+        "reviewed migration boundary",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("evidence write: {err}")));
+    let from = dir.join("legacy.allow.toml");
+    fs::write(&from, canonical_policy_with_present_evidence_fixture_text())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("canonical fixture write: {err}")));
+    let out = dir.join("allow.toml");
+    let summary_output = dir.join("migrate-summary.json");
+
+    cmd_migrate(&MigrateArgs {
+        root: RootArgs {
+            root: Some(dir.clone()),
+        },
+        from: Some(from),
+        repo_policy: None,
+        out,
+        force: false,
+        summary_format: MigrateSummaryFormat::Json,
+        summary_output: Some(summary_output.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("single-file migrate: {err}")));
+
+    let summary = fs::read_to_string(&summary_output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read migrate summary: {err}")));
+    let value = serde_json::from_str::<Value>(&summary)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse migrate summary: {err}")));
+    let expected_root = allow_report::source_tree_path_text(&dir);
+
+    assert_eq!(
+        value.pointer("/input/kind").and_then(Value::as_str),
+        Some("from"),
+        "single-file migrate input kind"
+    );
+    assert_eq!(
+        value.pointer("/inventory/root").and_then(Value::as_str),
+        Some(expected_root.as_str()),
+        "single-file migrate should record explicit source-tree root"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/entries_with_evidence")
+            .and_then(Value::as_u64),
+        Some(1),
+        "single-file migrate evidence-bearing entries"
+    );
+    assert!(
+        value.pointer("/summary/broken_evidence_links").is_none(),
+        "present local evidence under --root should not be reported as broken"
+    );
+    assert!(
+        value.pointer("/evidence_repair_queues").is_none(),
+        "present local evidence under --root should not route repair work"
+    );
+}
+
 fn migrate_fixture_dir() -> PathBuf {
     static NEXT_MIGRATE_FIXTURE: AtomicUsize = AtomicUsize::new(0);
     let id = NEXT_MIGRATE_FIXTURE.fetch_add(1, Ordering::Relaxed);
@@ -402,6 +465,32 @@ fn migrate_fixture_dir() -> PathBuf {
     fs::create_dir_all(&dir)
         .unwrap_or_else(|err| std::panic::panic_any(format!("fixture dir: {err}")));
     dir
+}
+
+fn canonical_policy_with_present_evidence_fixture_text() -> &'static str {
+    r#"schema_version = "0.1"
+policy = "cargo-allow"
+owner = "EffortlessMetrics"
+status = "active"
+
+[[allow]]
+id = "allow-migrated-doc"
+kind = "non_rust_file"
+family = "documentation"
+path = "README.md"
+owner = "docs"
+classification = "reviewed_documentation"
+reason = "Retained documentation file carried forward from legacy migration."
+created = "2026-06-02"
+review_after = "2026-11-01"
+evidence = ["doc:docs/safety/migrated-boundary.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "README.md"
+target_fingerprint = "md"
+line_hint = 1
+"#
 }
 
 fn unsafe_policy_missing_evidence_fixture_text() -> &'static str {
