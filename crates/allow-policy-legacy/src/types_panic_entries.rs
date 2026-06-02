@@ -23,6 +23,7 @@ pub(crate) struct LegacyNoPanicAllowEntry {
     pub(crate) owner: String,
     pub(crate) classification: String,
     pub(crate) reason: String,
+    pub(crate) evidence: Vec<String>,
     pub(crate) created: Option<String>,
     pub(crate) review_after: Option<String>,
     pub(crate) expires: Option<String>,

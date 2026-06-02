@@ -20,10 +20,7 @@ pub(crate) fn entry_from_no_panic_allow_entry(rule: &LegacyNoPanicAllowEntry) ->
         owner: rule.owner.clone(),
         classification: rule.classification.clone(),
         reason: rule.reason.clone(),
-        evidence: vec![
-            "legacy_policy:no-panic-allowlist".to_string(),
-            format!("legacy_index:{}", rule.index),
-        ],
+        evidence: no_panic_allowlist_evidence(rule),
         links: vec!["legacy-policy:no-panic-allowlist".to_string()],
         occurrence_limit: None,
         lifecycle: lifecycle_from_legacy_fields(
@@ -43,5 +40,16 @@ pub(crate) fn entry_from_no_panic_allow_entry(rule: &LegacyNoPanicAllowEntry) ->
             ..Selector::default()
         },
         last_seen: rule.last_seen.clone(),
+    }
+}
+
+fn no_panic_allowlist_evidence(rule: &LegacyNoPanicAllowEntry) -> Vec<String> {
+    if rule.evidence.is_empty() {
+        vec![
+            "legacy_policy:no-panic-allowlist".to_string(),
+            format!("legacy_index:{}", rule.index),
+        ]
+    } else {
+        rule.evidence.clone()
     }
 }

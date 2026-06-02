@@ -154,9 +154,9 @@ cargo-allow migrate --from policy/no-panic-allowlist.toml --out target/no-panic.
 
 Compat maps retained panic-family entries to canonical `panic` receipts.
 Legacy `explanation` fields become `reason`, `selector.kind` becomes
-`selector.ast_kind`, and `last_seen` line/column values remain hints only. It
-does not run Cargo, rustc, Clippy, macro expansion, type analysis, control
-flow, or data flow.
+`selector.ast_kind`, existing `evidence` or `covered_by` fields are preserved,
+and `last_seen` line/column values remain hints only. It does not run Cargo,
+rustc, Clippy, macro expansion, type analysis, control flow, or data flow.
 
 No-panic baseline migration is available for shiplog-style
 `policy/no-panic-baseline.toml`:

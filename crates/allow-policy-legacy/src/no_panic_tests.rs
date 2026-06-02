@@ -1,6 +1,7 @@
 use super::*;
 use crate::test_support::*;
 use allow_core::FindingKind;
+use std::{fs, path::Path};
 
 #[test]
 fn migrates_no_panic_baseline_to_count_limited_baseline_debt() {
@@ -124,6 +125,86 @@ fn migrates_no_panic_allowlist_to_structural_panic_entries() {
     assert_eq!(generated.owner, "unowned");
     assert_eq!(generated.selector.macro_name.as_deref(), Some("panic"));
     assert_current_baseline_window(&generated.lifecycle);
+}
+
+#[test]
+fn no_panic_allowlist_preserves_legacy_evidence_when_present() {
+    let path = fixture_dir().join("no-panic-allowlist-with-evidence.toml");
+    fs::write(
+        &path,
+        r#"schema_version = 1
+policy = "no-panic-allowlist"
+
+[[allow]]
+id = "no-panic-reviewed"
+path = "src/lib.rs"
+family = "unwrap"
+reason = "Parser validates optional value."
+evidence = ["test:parser_validates_optional_value", "issue:#123"]
+
+[allow.selector]
+kind = "method-call"
+callee = "unwrap"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+    let cfg = load_no_panic_allowlist_compat_config(&path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("no-panic allowlist with evidence loads: {err}"))
+    });
+
+    let entry = cfg
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected no-panic allow entry"));
+    assert_eq!(
+        entry.evidence,
+        vec![
+            "test:parser_validates_optional_value".to_string(),
+            "issue:#123".to_string()
+        ]
+    );
+    assert_eq!(
+        allow_policy::weak_evidence_reference_count(Path::new("."), &cfg),
+        0,
+        "recognized legacy no-panic evidence should not be reported as weak"
+    );
+}
+
+#[test]
+fn no_panic_allowlist_accepts_covered_by_as_legacy_evidence() {
+    let path = fixture_dir().join("no-panic-allowlist-covered-by.toml");
+    fs::write(
+        &path,
+        r#"schema_version = 1
+policy = "no-panic-allowlist"
+
+[[allow]]
+id = "no-panic-covered"
+path = "src/lib.rs"
+family = "panic"
+explanation = "Crash path is unreachable after argument validation."
+covered_by = "test:panic_path_unreachable"
+
+[allow.selector]
+kind = "macro-call"
+callee = "panic"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+    let cfg = load_no_panic_allowlist_compat_config(&path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("no-panic allowlist with covered_by loads: {err}"))
+    });
+
+    let entry = cfg
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected no-panic allow entry"));
+    assert_eq!(
+        entry.evidence,
+        vec!["test:panic_path_unreachable".to_string()]
+    );
 }
 
 #[test]
