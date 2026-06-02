@@ -238,6 +238,61 @@ fn report_schema_allows_optional_audit_remediation_roadmap() {
     );
     assert_eq!(
         schema
+            .pointer("/$defs/audit_remediation_item/properties/label/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "report audit remediation roadmap label should be a string"
+    );
+    assert_enum_equals(
+        "report audit remediation roadmap route kind",
+        &schema,
+        "/$defs/audit_remediation_item/properties/route_kind/enum",
+        &[
+            "worklist_status",
+            "worklist_item_kind",
+            "worklist_filter",
+            "prune_stale",
+        ],
+    );
+    assert_enum_equals(
+        "report audit remediation roadmap item kind",
+        &schema,
+        "/$defs/audit_remediation_item/properties/item_kind/enum",
+        &[
+            "new_unreceipted_finding",
+            "expired_allow",
+            "review_due",
+            "stale_allow",
+            "ambiguous_selector",
+            "invalid_selector",
+            "missing_required_field",
+            "missing_evidence",
+            "broken_evidence_link",
+            "weak_evidence_reference",
+            "baseline_debt",
+        ],
+    );
+    assert_enum_equals(
+        "report audit remediation roadmap worklist status",
+        &schema,
+        "/$defs/audit_remediation_item/properties/worklist_status/enum",
+        &[
+            "new",
+            "expired",
+            "review_due",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+        ],
+    );
+    assert_enum_equals(
+        "report audit remediation roadmap worklist filter",
+        &schema,
+        "/$defs/audit_remediation_item/properties/worklist_filter/enum",
+        &["missing_evidence", "baseline_debt"],
+    );
+    assert_eq!(
+        schema
             .pointer("/$defs/audit_remediation_item/properties/count/type")
             .and_then(Value::as_str),
         Some("integer"),

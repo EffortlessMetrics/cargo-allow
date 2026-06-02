@@ -205,6 +205,32 @@ fn append_audit_remediation_roadmap_json(
             "      \"signal\": \"{}\",\n",
             json_escape(item.signal)
         ));
+        out.push_str(&format!(
+            "      \"label\": \"{}\",\n",
+            json_escape(item.label)
+        ));
+        out.push_str(&format!(
+            "      \"route_kind\": \"{}\",\n",
+            json_escape(item.route.route_kind)
+        ));
+        if let Some(item_kind) = item.route.item_kind {
+            out.push_str(&format!(
+                "      \"item_kind\": \"{}\",\n",
+                json_escape(item_kind)
+            ));
+        }
+        if let Some(worklist_status) = item.route.worklist_status {
+            out.push_str(&format!(
+                "      \"worklist_status\": \"{}\",\n",
+                json_escape(worklist_status)
+            ));
+        }
+        if let Some(worklist_filter) = item.route.worklist_filter {
+            out.push_str(&format!(
+                "      \"worklist_filter\": \"{}\",\n",
+                json_escape(worklist_filter)
+            ));
+        }
         out.push_str(&format!("      \"count\": {},\n", item.count));
         out.push_str(&format!(
             "      \"command\": \"{}\"\n",

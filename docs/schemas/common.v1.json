@@ -613,6 +613,53 @@
           ],
           "description": "Audit remediation signal routed by this roadmap row."
         },
+        "label": {
+          "type": "string",
+          "description": "Human-friendly roadmap label for display and agent logs."
+        },
+        "route_kind": {
+          "enum": [
+            "worklist_status",
+            "worklist_item_kind",
+            "worklist_filter",
+            "prune_stale"
+          ],
+          "description": "Machine routing mode for the follow-up command."
+        },
+        "item_kind": {
+          "enum": [
+            "new_unreceipted_finding",
+            "expired_allow",
+            "review_due",
+            "stale_allow",
+            "ambiguous_selector",
+            "invalid_selector",
+            "missing_required_field",
+            "missing_evidence",
+            "broken_evidence_link",
+            "weak_evidence_reference",
+            "baseline_debt"
+          ],
+          "description": "Stable cargo-allow worklist item kind associated with this row when applicable."
+        },
+        "worklist_status": {
+          "enum": [
+            "new",
+            "expired",
+            "review_due",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field"
+          ],
+          "description": "Worklist --status value used by this row when route_kind is worklist_status."
+        },
+        "worklist_filter": {
+          "enum": [
+            "missing_evidence",
+            "baseline_debt"
+          ],
+          "description": "Named worklist filter used by this row when route_kind is worklist_filter."
+        },
         "count": {
           "type": "integer",
           "minimum": 0,
