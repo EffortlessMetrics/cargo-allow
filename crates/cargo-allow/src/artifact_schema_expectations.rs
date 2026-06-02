@@ -210,6 +210,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
             &[
                 "claim_boundary",
                 "command",
+                "follow_up_queues",
                 "generated_entry_defaults",
                 "inventory",
                 "options",

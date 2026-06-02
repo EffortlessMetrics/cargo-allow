@@ -191,6 +191,53 @@ fn render_propose_summary_json_records_generated_baseline_boundary() {
             .and_then(Value::as_u64),
         Some(1)
     );
+    let queues = value
+        .pointer("/follow_up_queues")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("propose should emit follow-up queues"));
+    assert_eq!(queues.len(), 2);
+    assert_eq!(
+        queues[0].pointer("/signal").and_then(Value::as_str),
+        Some("baseline_debt_entries_proposed")
+    );
+    assert_eq!(
+        queues[0].pointer("/route_kind").and_then(Value::as_str),
+        Some("worklist_filter")
+    );
+    assert_eq!(
+        queues[0].pointer("/item_kind").and_then(Value::as_str),
+        Some("baseline_debt")
+    );
+    assert_eq!(
+        queues[0]
+            .pointer("/worklist_filter")
+            .and_then(Value::as_str),
+        Some("baseline_debt")
+    );
+    assert_eq!(queues[0].pointer("/count").and_then(Value::as_u64), Some(3));
+    assert_eq!(
+        queues[0].pointer("/command").and_then(Value::as_str),
+        Some("cargo-allow worklist --baseline-debt --format json")
+    );
+    assert_eq!(
+        queues[1].pointer("/signal").and_then(Value::as_str),
+        Some("unsafe_baseline_debt_entries_proposed")
+    );
+    assert_eq!(
+        queues[1].pointer("/route_kind").and_then(Value::as_str),
+        Some("worklist_item_kind")
+    );
+    assert_eq!(
+        queues[1].pointer("/item_kind").and_then(Value::as_str),
+        Some("weak_evidence_reference")
+    );
+    assert_eq!(queues[1].pointer("/count").and_then(Value::as_u64), Some(1));
+    assert_eq!(
+        queues[1].pointer("/command").and_then(Value::as_str),
+        Some(
+            "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json"
+        )
+    );
     assert_eq!(
         value
             .pointer("/generated_entry_defaults/owner")

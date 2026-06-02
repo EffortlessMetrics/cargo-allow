@@ -37,6 +37,7 @@ pub fn render_propose_human(report: ProposeReport<'_>) -> String {
     } else {
         out.push_str("output: stdout\n");
     }
+    append_propose_follow_up_queues_human(report, &mut out);
     out.push_str(
         "claim boundary: proposal only; generated debt still requires human review and evidence.\n",
     );
@@ -82,6 +83,7 @@ pub fn render_propose_json(report: ProposeReport<'_>) -> String {
         report.unsafe_baseline_debt_entries_proposed
     ));
     out.push_str("  },\n");
+    append_propose_follow_up_queues_json(report, &mut out);
     out.push_str("  \"generated_entry_defaults\": {\n");
     out.push_str("    \"owner\": \"unowned\",\n");
     out.push_str("    \"classification\": \"baseline_debt\",\n");
@@ -93,4 +95,106 @@ pub fn render_propose_json(report: ProposeReport<'_>) -> String {
     out.push_str("  }\n");
     out.push_str("}\n");
     out
+}
+
+fn append_propose_follow_up_queues_human(report: ProposeReport<'_>, out: &mut String) {
+    let queues = propose_follow_up_queues(report);
+    if queues.is_empty() {
+        return;
+    }
+    out.push_str("follow_up_queues:\n");
+    for queue in queues {
+        out.push_str(&format!("  {}\n", queue.command));
+    }
+}
+
+fn append_propose_follow_up_queues_json(report: ProposeReport<'_>, out: &mut String) {
+    let queues = propose_follow_up_queues(report);
+    if queues.is_empty() {
+        return;
+    }
+    out.push_str("  \"follow_up_queues\": [\n");
+    for (index, queue) in queues.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str("    {\n");
+        out.push_str(&format!(
+            "      \"signal\": \"{}\",\n",
+            json_escape(queue.signal)
+        ));
+        out.push_str(&format!(
+            "      \"label\": \"{}\",\n",
+            json_escape(queue.label)
+        ));
+        out.push_str(&format!(
+            "      \"route_kind\": \"{}\",\n",
+            json_escape(queue.route_kind)
+        ));
+        out.push_str(&format!(
+            "      \"item_kind\": \"{}\",\n",
+            json_escape(queue.item_kind)
+        ));
+        if let Some(worklist_filter) = queue.worklist_filter {
+            out.push_str(&format!(
+                "      \"worklist_filter\": \"{}\",\n",
+                json_escape(worklist_filter)
+            ));
+        }
+        out.push_str(&format!("      \"count\": {},\n", queue.count));
+        out.push_str(&format!(
+            "      \"command\": \"{}\"\n",
+            json_escape(queue.command)
+        ));
+        out.push_str("    }");
+    }
+    out.push_str("\n  ],\n");
+}
+
+fn propose_follow_up_queues(report: ProposeReport<'_>) -> Vec<ProposeFollowUpQueue> {
+    let mut queues = Vec::new();
+    push_propose_follow_up_queue_if(
+        &mut queues,
+        ProposeFollowUpQueue {
+            signal: "baseline_debt_entries_proposed",
+            label: "baseline debt entries",
+            route_kind: "worklist_filter",
+            item_kind: "baseline_debt",
+            worklist_filter: Some("baseline_debt"),
+            count: report.baseline_debt_entries_proposed,
+            command: "cargo-allow worklist --baseline-debt --format json",
+        },
+    );
+    push_propose_follow_up_queue_if(
+        &mut queues,
+        ProposeFollowUpQueue {
+            signal: "unsafe_baseline_debt_entries_proposed",
+            label: "unsafe baseline debt entries",
+            route_kind: "worklist_item_kind",
+            item_kind: "weak_evidence_reference",
+            worklist_filter: None,
+            count: report.unsafe_baseline_debt_entries_proposed,
+            command: "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json",
+        },
+    );
+    queues
+}
+
+fn push_propose_follow_up_queue_if(
+    queues: &mut Vec<ProposeFollowUpQueue>,
+    queue: ProposeFollowUpQueue,
+) {
+    if queue.count > 0 {
+        queues.push(queue);
+    }
+}
+
+struct ProposeFollowUpQueue {
+    signal: &'static str,
+    label: &'static str,
+    route_kind: &'static str,
+    item_kind: &'static str,
+    worklist_filter: Option<&'static str>,
+    count: usize,
+    command: &'static str,
 }

@@ -107,6 +107,14 @@ for v1 compatibility.
 while that summary field remains optional in the schema so older
 `cargo-allow.propose.v1` artifacts without the unsafe-specific count remain
 valid.
+When proposal generation creates temporary baseline debt, current `propose`
+JSON artifacts may also include an optional `follow_up_queues` array with stable
+`signal` names, human `label` strings, machine `route_kind` values, stable
+worklist `item_kind` names, optional `worklist_filter` values, routed `count`
+values, and exact `cargo-allow worklist ... --format json` commands. These
+queues point generated baseline debt at the existing baseline-debt and weak
+unsafe-evidence worklist routes; they do not convert generated debt into
+approval.
 `migrate` summary artifacts may include `summary.lint_exception_entries`,
 `summary.broken_evidence_links`, `summary.unsafe_broken_evidence_links`,
 `summary.weak_evidence_references`, and

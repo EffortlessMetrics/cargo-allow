@@ -1,5 +1,6 @@
 use crate::artifact_schema_support::{
-    assert_required_fields, assert_schema_type_equals, parse_schema, required_schema_pointer,
+    assert_enum_equals, assert_required_fields, assert_schema_type_equals, parse_schema,
+    required_schema_pointer,
 };
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -84,6 +85,87 @@ fn propose_schema_locks_generated_baseline_summary_contract() {
             .and_then(Value::as_str),
         Some("integer"),
         "propose unsafe baseline debt count should be an integer"
+    );
+
+    assert_eq!(
+        schema
+            .pointer("/properties/follow_up_queues/type")
+            .and_then(Value::as_str),
+        Some("array"),
+        "propose follow_up_queues should be an optional array"
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/follow_up_queues/items/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/follow_up_queue"),
+        "propose follow_up_queues should use the queue row definition"
+    );
+    let queue = required_schema_pointer("propose", &schema, "/$defs/follow_up_queue");
+    assert_eq!(
+        queue.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "propose follow-up queue should reject unknown fields"
+    );
+    assert_required_fields(
+        "propose follow-up queue",
+        queue,
+        &["signal", "route_kind", "item_kind", "count", "command"],
+    );
+    assert_enum_equals(
+        "propose follow-up queue signal",
+        &schema,
+        "/$defs/follow_up_queue/properties/signal/enum",
+        &[
+            "baseline_debt_entries_proposed",
+            "unsafe_baseline_debt_entries_proposed",
+        ],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/follow_up_queue/properties/label/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "propose follow-up queue label should be a string"
+    );
+    assert_enum_equals(
+        "propose follow-up queue route kind",
+        &schema,
+        "/$defs/follow_up_queue/properties/route_kind/enum",
+        &["worklist_filter", "worklist_item_kind"],
+    );
+    assert_enum_equals(
+        "propose follow-up queue item kind",
+        &schema,
+        "/$defs/follow_up_queue/properties/item_kind/enum",
+        &["baseline_debt", "weak_evidence_reference"],
+    );
+    assert_enum_equals(
+        "propose follow-up queue worklist filter",
+        &schema,
+        "/$defs/follow_up_queue/properties/worklist_filter/enum",
+        &["baseline_debt"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/follow_up_queue/properties/count/type")
+            .and_then(Value::as_str),
+        Some("integer"),
+        "propose follow-up queue count should be an integer"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/follow_up_queue/properties/count/minimum")
+            .and_then(Value::as_u64),
+        Some(0),
+        "propose follow-up queue count should be non-negative"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/follow_up_queue/properties/command/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "propose follow-up queue command should be a string"
     );
 
     let defaults =
