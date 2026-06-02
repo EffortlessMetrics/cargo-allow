@@ -139,6 +139,17 @@ fn render_audit_summary_html(
         ("Review items", signals.review_items),
         ("New unreceipted", summary.count(MatchStatus::New)),
         ("Expired", summary.count(MatchStatus::Expired)),
+        ("Review due", summary.count(MatchStatus::ReviewDue)),
+        ("Stale", summary.count(MatchStatus::Stale)),
+        ("Ambiguous", summary.count(MatchStatus::Ambiguous)),
+        (
+            "Invalid selectors",
+            summary.count(MatchStatus::InvalidSelector),
+        ),
+        (
+            "Missing required fields",
+            summary.count(MatchStatus::MissingRequiredField),
+        ),
         ("Evidence gaps", summary.count(MatchStatus::EvidenceMissing)),
         ("Policy missing evidence", signals.policy_missing_evidence),
         ("Broken evidence links", signals.broken_evidence_links),
@@ -172,6 +183,7 @@ fn render_audit_summary_html(
             "<p>Recommended next step: review the queue below before tightening policy.</p>\n",
         );
     }
+    render_audit_remediation_roadmap_html(summary, signals, out);
     render_evidence_repair_queues_html(summary, signals, out);
     if !queue.is_empty() {
         out.push_str("<h2>Audit Review Queue</h2>\n<ul>\n");
@@ -183,6 +195,118 @@ fn render_audit_summary_html(
             ));
         }
         out.push_str("</ul>\n");
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct AuditRemediationCommand {
+    signal: &'static str,
+    command: &'static str,
+}
+
+fn render_audit_remediation_roadmap_html(
+    summary: &Summary,
+    signals: ReviewSignals,
+    out: &mut String,
+) {
+    let commands = audit_remediation_commands(summary, signals);
+    if commands.is_empty() {
+        return;
+    }
+    out.push_str("<h2>Audit Remediation Roadmap</h2>\n");
+    out.push_str("<table><thead><tr><th>Signal</th><th>Command</th></tr></thead><tbody>\n");
+    for command in commands {
+        out.push_str(&format!(
+            "<tr><td>{}</td><td><code>{}</code></td></tr>\n",
+            html_escape(command.signal),
+            html_escape(command.command)
+        ));
+    }
+    out.push_str("</tbody></table>\n");
+}
+
+fn audit_remediation_commands(
+    summary: &Summary,
+    signals: ReviewSignals,
+) -> Vec<AuditRemediationCommand> {
+    let mut commands = Vec::new();
+    push_audit_command_if(
+        &mut commands,
+        summary.count(MatchStatus::New) > 0,
+        "new unreceipted",
+        "cargo-allow worklist --status new --format json",
+    );
+    push_audit_command_if(
+        &mut commands,
+        summary.count(MatchStatus::Expired) > 0,
+        "expired",
+        "cargo-allow worklist --status expired --format json",
+    );
+    push_audit_command_if(
+        &mut commands,
+        summary.count(MatchStatus::ReviewDue) > 0,
+        "review due",
+        "cargo-allow worklist --status review_due --format json",
+    );
+    push_audit_command_if(
+        &mut commands,
+        summary.count(MatchStatus::Stale) > 0,
+        "stale",
+        "cargo-allow prune --stale --dry-run --format json --output target/cargo-allow/prune.json",
+    );
+    push_audit_command_if(
+        &mut commands,
+        summary.count(MatchStatus::Ambiguous) > 0,
+        "ambiguous",
+        "cargo-allow worklist --status ambiguous --format json",
+    );
+    push_audit_command_if(
+        &mut commands,
+        summary.count(MatchStatus::InvalidSelector) > 0,
+        "invalid selectors",
+        "cargo-allow worklist --status invalid_selector --format json",
+    );
+    push_audit_command_if(
+        &mut commands,
+        summary.count(MatchStatus::MissingRequiredField) > 0,
+        "missing required fields",
+        "cargo-allow worklist --status missing_required_field --format json",
+    );
+    push_audit_command_if(
+        &mut commands,
+        signals.policy_missing_evidence > 0 || summary.count(MatchStatus::EvidenceMissing) > 0,
+        "missing evidence",
+        "cargo-allow worklist --missing-evidence --format json",
+    );
+    push_audit_command_if(
+        &mut commands,
+        signals.broken_evidence_links > 0,
+        "broken evidence links",
+        "cargo-allow worklist --item-kind broken_evidence_link --format json",
+    );
+    push_audit_command_if(
+        &mut commands,
+        signals.weak_evidence_references > 0,
+        "weak evidence references",
+        "cargo-allow worklist --item-kind weak_evidence_reference --format json",
+    );
+    push_audit_command_if(
+        &mut commands,
+        signals.baseline_debt > 0,
+        "baseline debt",
+        "cargo-allow worklist --baseline-debt --format json",
+    );
+    commands
+}
+
+fn push_audit_command_if(
+    commands: &mut Vec<AuditRemediationCommand>,
+    condition: bool,
+    signal: &'static str,
+    command: &'static str,
+) {
+    if condition {
+        commands.push(AuditRemediationCommand { signal, command });
     }
 }
 

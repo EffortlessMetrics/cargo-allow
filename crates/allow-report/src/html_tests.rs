@@ -118,6 +118,19 @@ fn html_audit_report_routes_evidence_repairs_even_with_review_queue() {
     assert!(
         html.contains("Recommended next step: review the queue below before tightening policy.")
     );
+    assert!(html.contains("<h2>Audit Remediation Roadmap</h2>"));
+    assert!(html.contains(
+        "<tr><td>new unreceipted</td><td><code>cargo-allow worklist --status new --format json</code></td></tr>"
+    ));
+    assert!(html.contains(
+        "<tr><td>missing evidence</td><td><code>cargo-allow worklist --missing-evidence --format json</code></td></tr>"
+    ));
+    assert!(html.contains(
+        "<tr><td>broken evidence links</td><td><code>cargo-allow worklist --item-kind broken_evidence_link --format json</code></td></tr>"
+    ));
+    assert!(html.contains(
+        "<tr><td>weak evidence references</td><td><code>cargo-allow worklist --item-kind weak_evidence_reference --format json</code></td></tr>"
+    ));
     assert!(html.contains("<h3>Evidence Repair Queues</h3>"));
     assert!(html.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
     assert!(html.contains("cargo-allow worklist --missing-evidence --format json"));
@@ -125,6 +138,94 @@ fn html_audit_report_routes_evidence_repairs_even_with_review_queue() {
         html.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
     );
     assert!(html.contains("<h2>Audit Review Queue</h2>"));
+}
+
+#[test]
+fn html_audit_report_routes_clean_policy_to_no_new_ci() {
+    let html = render_html_with_context("audit", &[], &[], false, context("git_tracked"));
+
+    assert!(html.contains("<h2>Audit Summary</h2>"));
+    assert!(html.contains(
+        "Recommended next step: keep <code>cargo-allow check --mode no-new</code> in CI."
+    ));
+    assert!(!html.contains("<h2>Audit Remediation Roadmap</h2>"));
+    assert!(!html.contains("<h2>Audit Review Queue</h2>"));
+}
+
+#[test]
+fn html_audit_report_routes_lifecycle_and_selector_remediation() {
+    let outcomes = vec![
+        MatchOutcome {
+            status: MatchStatus::Expired,
+            allow_id: Some("allow-expired".to_string()),
+            finding_index: None,
+            message: "allow-expired is expired".to_string(),
+            score: 0,
+        },
+        MatchOutcome {
+            status: MatchStatus::ReviewDue,
+            allow_id: Some("allow-review".to_string()),
+            finding_index: None,
+            message: "allow-review is due for review".to_string(),
+            score: 0,
+        },
+        MatchOutcome {
+            status: MatchStatus::Stale,
+            allow_id: Some("allow-stale".to_string()),
+            finding_index: None,
+            message: "allow-stale is stale".to_string(),
+            score: 0,
+        },
+        MatchOutcome {
+            status: MatchStatus::Ambiguous,
+            allow_id: Some("allow-ambiguous".to_string()),
+            finding_index: None,
+            message: "allow-ambiguous is ambiguous".to_string(),
+            score: 0,
+        },
+        MatchOutcome {
+            status: MatchStatus::InvalidSelector,
+            allow_id: Some("allow-invalid".to_string()),
+            finding_index: None,
+            message: "allow-invalid selector is invalid".to_string(),
+            score: 0,
+        },
+        MatchOutcome {
+            status: MatchStatus::MissingRequiredField,
+            allow_id: Some("allow-missing".to_string()),
+            finding_index: None,
+            message: "allow-missing lacks required policy fields".to_string(),
+            score: 0,
+        },
+    ];
+
+    let html = render_html_with_context("audit", &[], &outcomes, false, context("git_tracked"));
+
+    assert!(html.contains("<td>Expired</td><td class=\"count\">1</td>"));
+    assert!(html.contains("<td>Review due</td><td class=\"count\">1</td>"));
+    assert!(html.contains("<td>Stale</td><td class=\"count\">1</td>"));
+    assert!(html.contains("<td>Ambiguous</td><td class=\"count\">1</td>"));
+    assert!(html.contains("<td>Invalid selectors</td><td class=\"count\">1</td>"));
+    assert!(html.contains("<td>Missing required fields</td><td class=\"count\">1</td>"));
+    assert!(html.contains("<h2>Audit Remediation Roadmap</h2>"));
+    assert!(html.contains(
+        "<tr><td>expired</td><td><code>cargo-allow worklist --status expired --format json</code></td></tr>"
+    ));
+    assert!(html.contains(
+        "<tr><td>review due</td><td><code>cargo-allow worklist --status review_due --format json</code></td></tr>"
+    ));
+    assert!(html.contains(
+        "<tr><td>stale</td><td><code>cargo-allow prune --stale --dry-run --format json --output target/cargo-allow/prune.json</code></td></tr>"
+    ));
+    assert!(html.contains(
+        "<tr><td>ambiguous</td><td><code>cargo-allow worklist --status ambiguous --format json</code></td></tr>"
+    ));
+    assert!(html.contains(
+        "<tr><td>invalid selectors</td><td><code>cargo-allow worklist --status invalid_selector --format json</code></td></tr>"
+    ));
+    assert!(html.contains(
+        "<tr><td>missing required fields</td><td><code>cargo-allow worklist --status missing_required_field --format json</code></td></tr>"
+    ));
 }
 
 fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
