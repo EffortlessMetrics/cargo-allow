@@ -118,9 +118,10 @@ unknown-prefix evidence, and emits the unsafe-specific evidence-health counts
 only when those references belong to migrated unsafe entries. When those
 evidence-health counts are non-zero, current `migrate` JSON artifacts may also
 include an optional `evidence_repair_queues` array with stable evidence-health
-`signal` names, human `label` strings, stable worklist `item_kind` names, total
-and unsafe-specific counts, and the exact `cargo-allow worklist --item-kind ...
---format json` command for each repair queue.
+`signal` names, human `label` strings, machine `route_kind` values, stable
+worklist `item_kind` names, total and unsafe-specific counts, and the exact
+`cargo-allow worklist --item-kind ... --format json` command for each repair
+queue. Current migration repair queues use `route_kind = "worklist_item_kind"`.
 
 The shared report schema is emitted by `audit`, `check`, and `diff`, but the
 top-level `diff` posture extension is valid only on reports whose

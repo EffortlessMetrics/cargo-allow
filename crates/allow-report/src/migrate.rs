@@ -184,6 +184,10 @@ fn append_migrate_evidence_repair_queues_json(report: MigrateReport<'_>, out: &m
             json_escape(queue.label)
         ));
         out.push_str(&format!(
+            "      \"route_kind\": \"{}\",\n",
+            json_escape(queue.route_kind)
+        ));
+        out.push_str(&format!(
             "      \"item_kind\": \"{}\",\n",
             json_escape(queue.item_kind)
         ));
@@ -223,6 +227,7 @@ fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvide
         queues.push(MigrateEvidenceRepairQueue {
             signal: queue.signal,
             label: queue.label,
+            route_kind: "worklist_item_kind",
             item_kind,
             count,
             unsafe_count,
@@ -235,6 +240,7 @@ fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvide
 struct MigrateEvidenceRepairQueue {
     signal: &'static str,
     label: &'static str,
+    route_kind: &'static str,
     item_kind: &'static str,
     count: usize,
     unsafe_count: usize,

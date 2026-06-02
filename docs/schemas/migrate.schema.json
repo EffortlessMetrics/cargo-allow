@@ -239,6 +239,12 @@
           "type": "string",
           "description": "Human-friendly queue label for display and agent logs."
         },
+        "route_kind": {
+          "enum": [
+            "worklist_item_kind"
+          ],
+          "description": "Machine routing mode for the follow-up command."
+        },
         "item_kind": {
           "enum": [
             "broken_evidence_link",
