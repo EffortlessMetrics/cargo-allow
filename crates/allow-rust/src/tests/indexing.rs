@@ -82,6 +82,51 @@ fn syntax_indexing_records_receiver_identity_per_expression() {
 }
 
 #[test]
+fn syntax_indexing_keeps_borrowed_index_family_as_indexing() {
+    let src = r#"
+        fn load(items: &[u8]) -> &u8 {
+            &items[0]
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let families = findings
+        .iter()
+        .filter(|f| f.identity.ast_kind == "index_expr")
+        .map(|f| f.family.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(families, vec![Some("indexing")]);
+}
+
+#[test]
+fn syntax_indexing_classifies_range_indexes_as_slices() {
+    let src = r#"
+        fn load(text: &str) {
+            let prefix = text[..1];
+            let middle = text[1..3];
+            let inclusive = text[1..=3];
+            let borrowed = &text[0..1];
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let families = findings
+        .iter()
+        .filter(|f| f.identity.ast_kind == "index_expr")
+        .map(|f| f.family.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        families,
+        vec![
+            Some("string_slice"),
+            Some("string_slice"),
+            Some("string_slice"),
+            Some("string_slice"),
+        ]
+    );
+}
+
+#[test]
 fn syntax_indexing_records_nested_receiver_identity() {
     let src = r#"
         fn load(matrix: &[&[u8]]) -> u8 {

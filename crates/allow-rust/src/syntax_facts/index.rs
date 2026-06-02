@@ -29,12 +29,36 @@ pub(super) fn record_index_expression(node: Node<'_>, source: &str, facts: &mut 
     let expression = IndexExpression {
         column,
         receiver_fingerprint: index_receiver_fingerprint(node, source),
+        is_slice: index_selector_is_slice(node, source),
     };
     let expressions = facts.index_expressions.entry(line).or_default();
     if !expressions.contains(&expression) {
         expressions.push(expression);
         expressions.sort_by_key(|expression| expression.column);
     }
+}
+
+fn index_selector_is_slice(node: Node<'_>, source: &str) -> bool {
+    node.child_by_field_name("index")
+        .and_then(|index| node_text(source, index))
+        .or_else(|| direct_index_selector_text(node, source))
+        .is_some_and(|selector| selector.contains(".."))
+}
+
+fn direct_index_selector_text<'a>(node: Node<'_>, source: &'a str) -> Option<&'a str> {
+    let mut cursor = node.walk();
+    let mut start = None;
+    for child in node.children(&mut cursor) {
+        if child.kind() == "[" {
+            start = Some(child.end_byte());
+            continue;
+        }
+        if child.kind() == "]" {
+            let start = start?;
+            return source.get(start..child.start_byte());
+        }
+    }
+    None
 }
 
 fn direct_index_bracket_point(node: Node<'_>) -> Option<Point> {

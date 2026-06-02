@@ -97,7 +97,7 @@ column = 35
 [[allow]]
 id = "allow-0071"
 kind = "panic"
-family = "string_slice"
+family = "indexing"
 path = "fixtures/panic/src/lib.rs"
 owner = "core/rust-scanner"
 classification = "panic_scanner_fixture"
