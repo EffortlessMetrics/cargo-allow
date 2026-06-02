@@ -26,9 +26,14 @@ pub(super) fn record_index_expression(node: Node<'_>, source: &str, facts: &mut 
     });
     let line = bracket_point.row as u32 + 1;
     let column = source_column(source, bracket_point.row, bracket_point.column);
+    let receiver_fingerprint = index_receiver_fingerprint(node, source);
     let expression = IndexExpression {
         column,
-        receiver_fingerprint: index_receiver_fingerprint(node, source),
+        symbol: index_expression_symbol(node, source),
+        target_fingerprint: receiver_fingerprint
+            .clone()
+            .map(|receiver| target_fingerprint(&receiver)),
+        receiver_fingerprint,
         is_slice: index_selector_is_slice(node, source),
     };
     let expressions = facts.index_expressions.entry(line).or_default();
@@ -36,6 +41,23 @@ pub(super) fn record_index_expression(node: Node<'_>, source: &str, facts: &mut 
         expressions.push(expression);
         expressions.sort_by_key(|expression| expression.column);
     }
+}
+
+fn index_expression_symbol(node: Node<'_>, source: &str) -> String {
+    node_text(source, node)
+        .map(normalize_snippet)
+        .map(|symbol| symbol.chars().take(100).collect())
+        .unwrap_or_default()
+}
+
+fn target_fingerprint(text: &str) -> String {
+    text.chars()
+        .rev()
+        .take(40)
+        .collect::<String>()
+        .chars()
+        .rev()
+        .collect()
 }
 
 fn index_selector_is_slice(node: Node<'_>, source: &str) -> bool {

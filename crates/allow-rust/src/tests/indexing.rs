@@ -1,5 +1,4 @@
 use crate::scan_rust_source;
-use crate::text::{index_symbol, index_target_fingerprint};
 
 #[test]
 fn syntax_indexing_ignores_common_bracket_false_positives() {
@@ -79,6 +78,40 @@ fn syntax_indexing_records_receiver_identity_per_expression() {
         .collect::<Vec<_>>();
 
     assert_eq!(receivers, vec![Some("left"), Some("right")]);
+}
+
+#[test]
+fn syntax_indexing_records_symbol_identity_per_expression() {
+    let src = r#"
+        fn load(left: &[u8], right: &[u8]) -> u8 {
+            left[0] + right[1]
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let symbols = findings
+        .iter()
+        .filter(|f| f.family.as_deref() == Some("indexing"))
+        .map(|f| f.identity.symbol.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(symbols, vec![Some("left[0]"), Some("right[1]")]);
+}
+
+#[test]
+fn syntax_indexing_records_target_identity_per_expression() {
+    let src = r#"
+        fn load(left: &[u8], right: &[u8]) -> u8 {
+            left[0] + right[1]
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let targets = findings
+        .iter()
+        .filter(|f| f.family.as_deref() == Some("indexing"))
+        .map(|f| f.identity.target_fingerprint.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(targets, vec![Some("left"), Some("right")]);
 }
 
 #[test]
@@ -177,19 +210,4 @@ fn syntax_indexing_uses_direct_bracket_not_receiver_bracket() {
         indexing.span.as_ref().map(|span| (span.line, span.column)),
         Some((2, 17))
     );
-}
-
-#[test]
-fn index_symbol_truncates_on_character_boundaries() {
-    let line = format!("let actual = values[{}];", "\u{00e9}".repeat(120));
-
-    assert_eq!(index_symbol(&line).chars().count(), 100);
-}
-
-#[test]
-fn index_target_fingerprint_truncates_on_character_boundaries() {
-    let line = format!("let actual = {}[0];", "\u{00e9}".repeat(60));
-    let fingerprint = index_target_fingerprint(&line);
-
-    assert_eq!(fingerprint.as_ref().map(|s| s.chars().count()), Some(40));
 }

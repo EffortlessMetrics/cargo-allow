@@ -148,7 +148,9 @@ pub(crate) struct PanicMethodCall {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct IndexExpression {
     pub(crate) column: u32,
+    pub(crate) symbol: String,
     pub(crate) receiver_fingerprint: Option<String>,
+    pub(crate) target_fingerprint: Option<String>,
     pub(crate) is_slice: bool,
 }
 
