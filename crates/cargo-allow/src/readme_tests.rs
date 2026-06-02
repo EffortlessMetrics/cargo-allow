@@ -20,6 +20,39 @@ fn readme_preserves_source_tree_boundary() {
 }
 
 #[test]
+fn readmes_preserve_green_checkmark_logo() {
+    let root_readme = include_str!("../../../README.md");
+    let crate_readme = include_str!("../README.md");
+    let logo = include_str!("../../../docs/assets/cargo-allow-checkmark.svg");
+
+    assert!(
+        root_readme.contains("docs/assets/cargo-allow-checkmark.svg"),
+        "root README should show the local cargo-allow logo asset"
+    );
+    assert!(
+        crate_readme.contains(
+            "https://raw.githubusercontent.com/EffortlessMetrics/cargo-allow/main/docs/assets/cargo-allow-checkmark.svg"
+        ),
+        "crate README should use an absolute logo URL for published crate rendering"
+    );
+    for readme in [root_readme, crate_readme] {
+        assert!(
+            readme.contains("alt=\"cargo-allow green checkmark logo\""),
+            "README logo image should keep descriptive alt text"
+        );
+        assert!(
+            readme.contains("width=\"96\"") && readme.contains("height=\"96\""),
+            "README logo image should keep stable dimensions"
+        );
+    }
+    assert!(
+        logo.contains("<title id=\"title\">cargo-allow green checkmark logo</title>")
+            && logo.contains("fill=\"#1f9d55\""),
+        "logo asset should remain a green checkmark SVG"
+    );
+}
+
+#[test]
 fn claim_boundary_docs_preserve_source_package_boundary() {
     let claim_boundaries = include_str!("../../../docs/claim-boundaries.md");
 

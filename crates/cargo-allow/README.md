@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/EffortlessMetrics/cargo-allow/main/docs/assets/cargo-allow-checkmark.svg" alt="cargo-allow green checkmark logo" width="96" height="96">
+</p>
+
 # cargo-allow
 
 Source-tree exception ledger and policy scanner for Rust repositories.

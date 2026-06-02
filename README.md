@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/cargo-allow-checkmark.svg" alt="cargo-allow green checkmark logo" width="96" height="96">
+</p>
+
 # cargo-allow
 
 No invisible source exceptions.
