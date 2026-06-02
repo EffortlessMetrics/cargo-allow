@@ -86,6 +86,47 @@ fn policy_directory_includes_lint_and_unsafe_legacy_policies() {
 }
 
 #[test]
+fn policy_directory_includes_no_panic_legacy_policies() {
+    let dir = fixture_dir();
+    fs::write(
+        dir.join("no-panic-baseline.toml"),
+        no_panic_baseline_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("baseline fixture write: {err}")));
+    fs::write(
+        dir.join("no-panic-allowlist.toml"),
+        no_panic_allowlist_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("allowlist fixture write: {err}")));
+
+    let cfg = load_legacy_policy_dir(&dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy directory migrates: {err}")));
+
+    assert_eq!(cfg.policy, "cargo-allow");
+    assert!(
+        cfg.allow
+            .iter()
+            .any(|entry| entry.id == "panic-baseline-0001"
+                && entry.kind == allow_core::FindingKind::Panic
+                && entry.family.as_deref() == Some("unwrap")
+                && entry.classification == "baseline_debt"
+                && entry.occurrence_limit == Some(2)
+                && entry.evidence.iter().any(|item| item == "baseline_count:2")),
+        "repo-policy migration should preserve no-panic baseline occurrence limits"
+    );
+    assert!(
+        cfg.allow.iter().any(|entry| entry.id == "no-panic-unwrap"
+            && entry.kind == allow_core::FindingKind::Panic
+            && entry.family.as_deref() == Some("unwrap")
+            && entry.classification == "reviewed_panic_exception"
+            && entry.selector.ast_kind.as_deref() == Some("method_call")
+            && entry.selector.callee.as_deref() == Some("unwrap")
+            && entry.selector.container.as_deref() == Some("load")),
+        "repo-policy migration should preserve reviewed no-panic structural selectors"
+    );
+}
+
+#[test]
 fn policy_directory_can_expand_non_rust_globs_with_findings() {
     let dir = fixture_dir();
     fs::write(dir.join("non-rust-allowlist.toml"), policy_fixture_text())
