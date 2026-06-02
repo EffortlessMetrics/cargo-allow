@@ -123,10 +123,62 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
     if let Some(count) = facts.weak_evidence_references {
         out.push_str(&format!(",\n    \"weak_evidence_references\": {count}"));
     }
+    append_doctor_evidence_repair_queues_json(facts, &mut out);
     out.push('\n');
     out.push_str("  }\n");
     out.push_str("}\n");
     out
+}
+
+fn append_doctor_evidence_repair_queues_json(facts: DoctorReport<'_>, out: &mut String) {
+    let queues = doctor_evidence_repair_queues(facts);
+    if queues.is_empty() {
+        return;
+    }
+
+    out.push_str(",\n    \"evidence_repair_queues\": [\n");
+    for (index, queue) in queues.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str("      {\n");
+        out.push_str(&format!(
+            "        \"signal\": \"{}\",\n",
+            json_escape(queue.signal)
+        ));
+        out.push_str(&format!("        \"count\": {},\n", queue.count));
+        out.push_str(&format!(
+            "        \"command\": \"{}\"\n",
+            json_escape(queue.command)
+        ));
+        out.push_str("      }");
+    }
+    out.push_str("\n    ]");
+}
+
+fn doctor_evidence_repair_queues(facts: DoctorReport<'_>) -> Vec<DoctorEvidenceRepairQueue> {
+    let mut queues = Vec::new();
+    if let Some(count) = facts.broken_evidence_links.filter(|count| *count > 0) {
+        queues.push(DoctorEvidenceRepairQueue {
+            signal: "broken_evidence_links",
+            count,
+            command: "cargo-allow worklist --item-kind broken_evidence_link --format json",
+        });
+    }
+    if let Some(count) = facts.weak_evidence_references.filter(|count| *count > 0) {
+        queues.push(DoctorEvidenceRepairQueue {
+            signal: "weak_evidence_references",
+            count,
+            command: "cargo-allow worklist --item-kind weak_evidence_reference --format json",
+        });
+    }
+    queues
+}
+
+struct DoctorEvidenceRepairQueue {
+    signal: &'static str,
+    count: usize,
+    command: &'static str,
 }
 
 fn config_status_text(valid: Option<bool>, diagnostic: Option<&str>) -> String {

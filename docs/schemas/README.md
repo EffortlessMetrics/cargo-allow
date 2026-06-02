@@ -151,6 +151,10 @@ the saved no-new evidence has broken local evidence links, missing evidence, or
 weak evidence references. These rows mirror report JSON queue routing so CI
 artifacts can point directly at the worklist command needed to repair retained
 evidence gaps.
+Doctor JSON may include optional `config.evidence_repair_queues` rows when setup
+diagnostics find broken local evidence links or weak evidence references in the
+loaded policy. The rows keep root/config readiness checks machine-routable while
+preserving the source-tree/no-code-execution claim boundary.
 
 ## Claim Boundary Vocabulary
 
