@@ -20,6 +20,8 @@ ledger and the planned growth around it.
   should move into cargo-allow.
 - [CI](ci.md): GitHub Actions examples for PR posture diffs and mainline
   checks.
+- [How-to guides](how-to/README.md): task guides for CI, explain, evidence
+  repair, stale pruning, migration, and agent worklists.
 - [Crates](crates.md): workspace crate responsibilities and library namespace
   policy.
 - [0.1.0 release runbook](release/0.1.0.md): publish order, dry-run sequencing,

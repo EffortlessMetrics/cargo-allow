@@ -235,6 +235,7 @@ pass CI.
 - Getting started: [docs/getting-started.md](docs/getting-started.md)
 - Claim boundaries: [docs/claim-boundaries.md](docs/claim-boundaries.md)
 - CI examples: [docs/ci.md](docs/ci.md)
+- How-to guides: [docs/how-to/README.md](docs/how-to/README.md)
 - JSON schemas: [docs/schemas/README.md](docs/schemas/README.md)
 - Agent worklists: [docs/agents/cargo-allow-worklist.md](docs/agents/cargo-allow-worklist.md)
 - Migration from xtask: [docs/migration-from-xtask.md](docs/migration-from-xtask.md)
