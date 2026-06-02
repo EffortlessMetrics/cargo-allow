@@ -237,6 +237,7 @@ pass CI.
 - JSON schemas: [docs/schemas/README.md](docs/schemas/README.md)
 - Agent worklists: [docs/agents/cargo-allow-worklist.md](docs/agents/cargo-allow-worklist.md)
 - Migration from xtask: [docs/migration-from-xtask.md](docs/migration-from-xtask.md)
+- Crates: [docs/crates.md](docs/crates.md)
 - Design notes: [docs/design.md](docs/design.md)
 - Roadmap: [docs/roadmap.md](docs/roadmap.md)
 
@@ -258,6 +259,7 @@ The workspace uses `allow-*` crates for implementation layers:
 
 These crates are public because the workspace is split cleanly, but their
 primary purpose is supporting `cargo-allow`. See the
+[crate responsibility guide](docs/crates.md) and
 [crate namespace policy](docs/crate-namespace.md) before adding new public
 crates.
 

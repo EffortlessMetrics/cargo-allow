@@ -439,6 +439,29 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0130"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/crates.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Documents workspace crate responsibilities and the first-party library namespace boundary."
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/claim-boundaries.md"]
+created = "2026-06-01"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/crates.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/crates.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0077"
 kind = "non_rust_file"
 family = "configuration"
