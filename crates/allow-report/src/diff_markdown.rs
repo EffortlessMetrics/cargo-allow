@@ -4,6 +4,7 @@ use crate::text::markdown_cell;
 use crate::{CLAIM_BOUNDARY_TEXT, DiffFindingChange, DiffPolicyChange};
 
 const PR_SUMMARY_HIGHLIGHT_LIMIT: usize = 8;
+const DIFF_MARKDOWN_CHANGE_LIMIT: usize = 120;
 
 pub fn render_diff_pr_summary_markdown(
     current_failures: usize,
@@ -250,8 +251,47 @@ pub fn render_diff_finding_changes_markdown(changes: &[DiffFindingChange<'_>]) -
         out.push_str("No source finding posture changes detected.\n");
         return out;
     }
+    append_finding_changes_markdown_section(&mut out, "Finding Attention", changes, "new");
+    append_finding_changes_markdown_section(&mut out, "Finding Improvements", changes, "removed");
+    let known_changes = ["new", "removed"];
+    if changes
+        .iter()
+        .any(|change| !known_changes.contains(&change.change))
+    {
+        out.push_str("### Other Finding Changes\n\n");
+        append_finding_changes_markdown_table(
+            &mut out,
+            changes
+                .iter()
+                .filter(|change| !known_changes.contains(&change.change)),
+        );
+    }
+    out
+}
+
+fn append_finding_changes_markdown_section<'a>(
+    out: &mut String,
+    heading: &str,
+    changes: &'a [DiffFindingChange<'a>],
+    change_kind: &str,
+) {
+    if !changes.iter().any(|change| change.change == change_kind) {
+        return;
+    }
+    out.push_str(&format!("### {heading}\n\n"));
+    append_finding_changes_markdown_table(
+        out,
+        changes.iter().filter(|change| change.change == change_kind),
+    );
+}
+
+fn append_finding_changes_markdown_table<'a>(
+    out: &mut String,
+    changes: impl Iterator<Item = &'a DiffFindingChange<'a>>,
+) {
+    let changes = changes.collect::<Vec<_>>();
     out.push_str("| Change | Kind | Family | Path |\n|---|---|---|---|\n");
-    for change in changes.iter().take(120) {
+    for change in changes.iter().take(DIFF_MARKDOWN_CHANGE_LIMIT) {
         out.push_str(&format!(
             "| `{}` | `{}` | `{}` | `{}` |\n",
             markdown_cell(change.change),
@@ -260,13 +300,13 @@ pub fn render_diff_finding_changes_markdown(changes: &[DiffFindingChange<'_>]) -
             markdown_cell(change.path)
         ));
     }
-    if changes.len() > 120 {
+    if changes.len() > DIFF_MARKDOWN_CHANGE_LIMIT {
         out.push_str(&format!(
             "\n{} additional finding posture changes omitted.\n",
-            changes.len() - 120
+            changes.len() - DIFF_MARKDOWN_CHANGE_LIMIT
         ));
     }
-    out
+    out.push('\n');
 }
 
 pub fn render_diff_policy_changes_markdown(changes: &[DiffPolicyChange<'_>]) -> String {

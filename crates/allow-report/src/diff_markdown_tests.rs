@@ -103,6 +103,41 @@ fn diff_posture_tables_escape_markdown_cells() {
 }
 
 #[test]
+fn diff_finding_markdown_groups_findings_by_change() {
+    let finding_changes = vec![
+        DiffFindingChange {
+            change: "removed",
+            key: "panic|unwrap|src/old.rs",
+            kind: "panic",
+            family: Some("unwrap"),
+            path: "src/old.rs",
+        },
+        DiffFindingChange {
+            change: "new",
+            key: "unsafe|unsafe_block|src/new.rs",
+            kind: "unsafe",
+            family: Some("unsafe_block"),
+            path: "src/new.rs",
+        },
+    ];
+
+    let markdown = render_diff_finding_changes_markdown(&finding_changes);
+
+    let attention = markdown
+        .find("### Finding Attention")
+        .unwrap_or_else(|| std::panic::panic_any("expected attention section"));
+    let improvements = markdown
+        .find("### Finding Improvements")
+        .unwrap_or_else(|| std::panic::panic_any("expected improvement section"));
+    assert!(
+        attention < improvements,
+        "markdown finding sections should show attention before improvements"
+    );
+    assert!(markdown.contains("| `new` | `unsafe` | `unsafe_block` | `src/new.rs` |"));
+    assert!(markdown.contains("| `removed` | `panic` | `unwrap` | `src/old.rs` |"));
+}
+
+#[test]
 fn diff_pr_summary_markdown_highlights_policy_review_required() {
     let removed = vec!["test:old-proof".to_string()];
     let policy_changes = vec![DiffPolicyChange {
