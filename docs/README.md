@@ -12,6 +12,8 @@ ledger and the planned growth around it.
   product.
 - [Source exception ledger](source-exception-ledger.md): the policy concepts and
   entry model.
+- [Getting started](getting-started.md): first-run tutorial for doctor, audit,
+  init/propose, and no-new checks.
 - [Structural identity v1](identity.md): the source-syntax identity contract
   used by matching and diff posture.
 - [Migration from xtask](migration-from-xtask.md): how bespoke allowlist tasks
