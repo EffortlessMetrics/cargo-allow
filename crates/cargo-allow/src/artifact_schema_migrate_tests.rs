@@ -153,6 +153,12 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
         "migrate evidence repair queue label should be a string"
     );
     assert_enum_equals(
+        "migrate evidence repair queue route kind",
+        &schema,
+        "/$defs/evidence_repair_queue/properties/route_kind/enum",
+        &["worklist_item_kind"],
+    );
+    assert_enum_equals(
         "migrate evidence repair queue item kind",
         &schema,
         "/$defs/evidence_repair_queue/properties/item_kind/enum",
