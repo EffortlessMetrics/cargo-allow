@@ -80,12 +80,6 @@ It does not require:
 Other tools can provide evidence. `cargo-allow` owns the durable
 source-exception ledger.
 
-When cargo-allow reports `source_package`, that value is optional context read
-from source-tree `Cargo.toml` text when a readable `[package].name` is present.
-Invalid, unreadable, or non-UTF8 manifests are ignored for that context so the
-source scan can continue; the value is not Cargo metadata or build-membership
-proof.
-
 Current reports may claim:
 
 ```text
