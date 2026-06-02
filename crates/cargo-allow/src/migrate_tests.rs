@@ -1,6 +1,7 @@
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand};
 use clap::Parser;
+use serde_json::Value;
 use std::fs;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -134,6 +135,101 @@ fn migrate_repo_policy_writes_combined_canonical_policy() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("read migrated policy: {err}")));
     assert!(rendered.contains("process_spawn"));
     assert!(rendered.contains("network_destination"));
+}
+
+#[test]
+fn migrate_repo_policy_writes_json_summary_with_inventory_context() {
+    let dir = migrate_fixture_dir();
+    let policy_dir = dir.join("policy");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::write(
+        policy_dir.join("process-allowlist.toml"),
+        process_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("process fixture write: {err}")));
+    fs::write(
+        policy_dir.join("network-allowlist.toml"),
+        network_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("network fixture write: {err}")));
+    let out = dir.join("allow.toml");
+    let summary_output = dir.join("migrate-summary.json");
+
+    cmd_migrate(&MigrateArgs {
+        root: RootArgs::default(),
+        from: None,
+        repo_policy: Some(policy_dir),
+        out: out.clone(),
+        force: false,
+        summary_format: MigrateSummaryFormat::Json,
+        summary_output: Some(summary_output.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("repo-policy migrate: {err}")));
+
+    let summary = fs::read_to_string(&summary_output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read migrate summary: {err}")));
+    let value = serde_json::from_str::<Value>(&summary)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse migrate summary: {err}")));
+
+    assert_eq!(
+        value.pointer("/schema_id").and_then(Value::as_str),
+        Some(allow_report::MIGRATE_SCHEMA_ID),
+        "migrate schema id"
+    );
+    assert_eq!(
+        value.pointer("/command").and_then(Value::as_str),
+        Some("migrate"),
+        "migrate command"
+    );
+    assert_eq!(
+        value.pointer("/inventory/scope").and_then(Value::as_str),
+        Some("source_tree"),
+        "migrate inventory scope"
+    );
+    assert_eq!(
+        value.pointer("/inventory/scanner").and_then(Value::as_str),
+        Some("policy_migration"),
+        "migrate inventory scanner"
+    );
+    assert_eq!(
+        value.pointer("/inventory/source").and_then(Value::as_str),
+        Some("filesystem_fallback"),
+        "migrate inventory source"
+    );
+    assert!(
+        value
+            .pointer("/inventory/files_scanned")
+            .and_then(Value::as_u64)
+            .is_some_and(|count| count >= 2),
+        "repo-policy migration summary should include source-tree inventory file count"
+    );
+    assert_eq!(
+        value.pointer("/input/kind").and_then(Value::as_str),
+        Some("repo_policy"),
+        "migrate input kind"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/allow_entries")
+            .and_then(Value::as_u64),
+        Some(2),
+        "migrate allow entries"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/entries_with_evidence")
+            .and_then(Value::as_u64),
+        Some(2),
+        "migrate evidence-bearing entries"
+    );
+    assert!(
+        value
+            .pointer("/summary/weak_evidence_references")
+            .and_then(Value::as_u64)
+            .is_some_and(|count| count > 0),
+        "repo-policy migration summary should surface weak evidence references"
+    );
 }
 
 fn migrate_fixture_dir() -> PathBuf {
