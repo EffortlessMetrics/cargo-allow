@@ -40,8 +40,12 @@ fn diff_pr_summary_markdown_reports_net_posture() {
     assert!(summary.contains("### Policy Improvements"));
     assert!(summary.contains("| `allow-0001` | `selector_precision_increased` |"));
     assert!(
-        !summary.contains("### Policy Attention"),
-        "improvement-only summaries should not create attention rows"
+        !summary.contains("### Policy Failures"),
+        "improvement-only summaries should not create failure rows"
+    );
+    assert!(
+        !summary.contains("### Policy Review Required"),
+        "improvement-only summaries should not create review rows"
     );
 }
 
@@ -99,7 +103,7 @@ fn diff_posture_tables_escape_markdown_cells() {
 }
 
 #[test]
-fn diff_pr_summary_markdown_highlights_policy_attention() {
+fn diff_pr_summary_markdown_highlights_policy_review_required() {
     let removed = vec!["test:old-proof".to_string()];
     let policy_changes = vec![DiffPolicyChange {
         severity: "review",
@@ -125,14 +129,61 @@ fn diff_pr_summary_markdown_highlights_policy_attention() {
     let summary = render_diff_pr_summary_markdown(0, &[], &policy_changes);
 
     assert!(summary.contains("**Net posture:** `review-required`"));
-    assert!(summary.contains("### Policy Attention"));
+    assert!(summary.contains("### Policy Review Required"));
+    assert!(!summary.contains("### Policy Failures"));
     assert!(
         summary.contains("| Severity | Allow ID | Kind | Detail | Message |"),
-        "policy attention should include structured details"
+        "policy review rows should include structured details"
     );
     assert!(summary.contains("| `review` | `allow\\|0042` | `evidence_removed` |"));
     assert!(summary.contains("evidence.evidence: removed: test:old-proof; added: none"));
     assert!(summary.contains("allow-0042 evidence removed from policy"));
+}
+
+#[test]
+fn diff_pr_summary_markdown_highlights_policy_failures_separately() {
+    let policy_changes = vec![
+        DiffPolicyChange {
+            severity: "fail",
+            allow_id: "allow-0001",
+            kind: "scope_broadened",
+            message: "allow-0001 scope broadened",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "review",
+            allow_id: "allow-0002",
+            kind: "expiry_extended",
+            message: "allow-0002 expiry extended",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+    ];
+
+    let summary = render_diff_pr_summary_markdown(0, &[], &policy_changes);
+
+    assert!(summary.contains("**Net posture:** `worse`"));
+    assert!(summary.contains("### Policy Failures"));
+    assert!(summary.contains("| `fail` | `allow-0001` | `scope_broadened` |"));
+    assert!(summary.contains("### Policy Review Required"));
+    assert!(summary.contains("| `review` | `allow-0002` | `expiry_extended` |"));
 }
 
 #[test]
@@ -194,5 +245,5 @@ fn diff_pr_summary_markdown_reports_omitted_policy_highlights() {
 
     let summary = render_diff_pr_summary_markdown(0, &[], &policy_changes);
 
-    assert!(summary.contains("2 additional policy attention changes omitted from this summary."));
+    assert!(summary.contains("2 additional policy failures omitted from this summary."));
 }

@@ -141,23 +141,20 @@ fn append_finding_highlight_row(out: &mut String, change: &DiffFindingChange<'_>
 }
 
 fn append_policy_highlights(out: &mut String, policy_changes: &[DiffPolicyChange<'_>]) {
-    let attention_count = policy_changes
-        .iter()
-        .filter(|change| change.severity != "improvement")
-        .count();
-    if attention_count > 0 {
-        out.push_str("### Policy Attention\n\n");
-        out.push_str("| Severity | Allow ID | Kind | Detail | Message |\n|---|---|---|---|---|\n");
-        for change in policy_changes
-            .iter()
-            .filter(|change| change.severity != "improvement")
-            .take(PR_SUMMARY_HIGHLIGHT_LIMIT)
-        {
-            append_policy_highlight_row(out, change);
-        }
-        append_omitted_summary_note(out, attention_count, "policy attention change");
-        out.push('\n');
-    }
+    append_policy_severity_highlights(
+        out,
+        policy_changes,
+        "fail",
+        "### Policy Failures",
+        "policy failure",
+    );
+    append_policy_severity_highlights(
+        out,
+        policy_changes,
+        "review",
+        "### Policy Review Required",
+        "policy review item",
+    );
 
     let improvement_count = policy_changes
         .iter()
@@ -183,6 +180,35 @@ fn append_policy_highlights(out: &mut String, policy_changes: &[DiffPolicyChange
         append_omitted_summary_note(out, improvement_count, "policy improvement change");
         out.push('\n');
     }
+}
+
+fn append_policy_severity_highlights(
+    out: &mut String,
+    policy_changes: &[DiffPolicyChange<'_>],
+    severity: &str,
+    heading: &str,
+    singular_label: &str,
+) {
+    let count = policy_changes
+        .iter()
+        .filter(|change| change.severity == severity)
+        .count();
+    if count == 0 {
+        return;
+    }
+
+    out.push_str(heading);
+    out.push_str("\n\n");
+    out.push_str("| Severity | Allow ID | Kind | Detail | Message |\n|---|---|---|---|---|\n");
+    for change in policy_changes
+        .iter()
+        .filter(|change| change.severity == severity)
+        .take(PR_SUMMARY_HIGHLIGHT_LIMIT)
+    {
+        append_policy_highlight_row(out, change);
+    }
+    append_omitted_summary_note(out, count, singular_label);
+    out.push('\n');
 }
 
 fn append_omitted_summary_note(out: &mut String, count: usize, singular_label: &str) {
