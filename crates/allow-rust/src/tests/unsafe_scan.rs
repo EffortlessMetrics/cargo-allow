@@ -87,6 +87,37 @@ fn unsafe_impl_findings_record_impl_target_symbol() {
 }
 
 #[test]
+fn unsafe_extern_block_findings_record_visible_context_symbol() {
+    let src = r#"
+        unsafe extern "C" {
+            fn read_handle();
+            static HANDLE_COUNT: usize;
+        }
+
+        unsafe extern "system" {
+            fn close_handle();
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    let symbols = findings
+        .iter()
+        .filter(|f| {
+            f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_extern_block")
+        })
+        .map(|f| f.identity.symbol.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        symbols,
+        vec![
+            Some("extern \"C\":read_handle,HANDLE_COUNT"),
+            Some("extern \"system\":close_handle")
+        ]
+    );
+}
+
+#[test]
 fn detects_unsafe_function_signatures_from_syntax() {
     let src = r#"
         trait Reader {
