@@ -27,10 +27,86 @@ fn diff_policy_human_output_includes_structured_details() {
 
     let text = render_diff_policy_changes_human(&policy_changes);
 
+    assert!(text.contains("Policy failures:"));
     assert!(text.contains("fail allow-0001 selector_precision_decreased"));
     assert!(text.contains(
         "detail: selector_precision: 82 -> 41; removed: container, normalized_snippet_hash; added: none"
     ));
+}
+
+#[test]
+fn diff_policy_human_output_groups_policy_changes_by_severity() {
+    let policy_changes = vec![
+        DiffPolicyChange {
+            severity: "review",
+            allow_id: "allow-review",
+            kind: "expiry_extended",
+            message: "allow-review expiry extended",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "improvement",
+            allow_id: "allow-improved",
+            kind: "evidence_added",
+            message: "allow-improved evidence added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "fail",
+            allow_id: "allow-fail",
+            kind: "scope_broadened",
+            message: "allow-fail scope broadened",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+    ];
+
+    let text = render_diff_policy_changes_human(&policy_changes);
+
+    let failures = text
+        .find("Policy failures:")
+        .unwrap_or_else(|| std::panic::panic_any("expected failure section"));
+    let review = text
+        .find("Policy review required:")
+        .unwrap_or_else(|| std::panic::panic_any("expected review section"));
+    let improvements = text
+        .find("Policy improvements:")
+        .unwrap_or_else(|| std::panic::panic_any("expected improvement section"));
+    assert!(
+        failures < review && review < improvements,
+        "human policy sections should be ordered by reviewer severity"
+    );
+    assert!(text.contains("fail allow-fail scope_broadened: allow-fail scope broadened"));
+    assert!(text.contains("review allow-review expiry_extended: allow-review expiry extended"));
+    assert!(
+        text.contains("improvement allow-improved evidence_added: allow-improved evidence added")
+    );
 }
 
 #[test]
