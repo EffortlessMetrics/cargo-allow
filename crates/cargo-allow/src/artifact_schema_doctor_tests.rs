@@ -141,6 +141,12 @@ fn doctor_schema_locks_setup_artifact_contract() {
         "doctor evidence repair queue label should be a string"
     );
     assert_enum_equals(
+        "doctor evidence repair queue route kind",
+        &schema,
+        "/properties/config/properties/evidence_repair_queues/items/properties/route_kind/enum",
+        &["worklist_item_kind"],
+    );
+    assert_enum_equals(
         "doctor evidence repair queue item kind",
         &schema,
         "/properties/config/properties/evidence_repair_queues/items/properties/item_kind/enum",

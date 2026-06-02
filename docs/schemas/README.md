@@ -136,10 +136,11 @@ posture worsened.
 Report JSON may also include an optional top-level `evidence_repair_queues`
 array when audit, check, or diff reports have broken local evidence links,
 missing evidence, or weak evidence references. Queue rows include a stable
-`signal`, a human `label`, a stable worklist `item_kind` when one is available,
+`signal`, a human `label`, machine `route_kind`, a stable worklist `item_kind`
+when one is available, route-specific `worklist_filter` values when applicable,
 the routed `count`, and the exact `cargo-allow worklist ... --format json`
 command so CI and agents can route evidence repair work without parsing human
-text.
+text or shell command strings.
 Audit report JSON may also include an optional top-level
 `audit_remediation_roadmap` array when `command = "audit"` and the first-run
 inventory has review or repair signals. Rows include a stable `signal`, human
@@ -161,14 +162,15 @@ inventory without requiring consumers to archive the full report artifact.
 Check receipts may also include an optional `evidence_repair_queues` array when
 the saved no-new evidence has broken local evidence links, missing evidence, or
 weak evidence references. These rows mirror report JSON queue routing, including
-`signal`, `label`, optional `item_kind`, `count`, and `command`, so CI artifacts
-can point directly at the worklist command needed to repair retained evidence
-gaps.
+`signal`, `label`, machine `route_kind`, optional `item_kind`, optional
+`worklist_filter`, `count`, and `command`, so CI artifacts can point directly at
+the worklist command needed to repair retained evidence gaps.
 Doctor JSON may include optional `config.evidence_repair_queues` rows when setup
 diagnostics find broken local evidence links or weak evidence references in the
-loaded policy. The rows include `signal`, `label`, `item_kind`, `count`, and
-`command` so root/config readiness checks stay machine-routable while preserving
-the source-tree/no-code-execution claim boundary.
+loaded policy. The rows include `signal`, `label`, machine `route_kind`,
+`item_kind`, `count`, and `command` so root/config readiness checks stay
+machine-routable while preserving the source-tree/no-code-execution claim
+boundary.
 
 ## Claim Boundary Vocabulary
 
@@ -509,10 +511,11 @@ surfaces; JSON is the machine surface. SARIF is for code-scanning ingestion.
 Its run properties may include advisory policy/evidence-health counts such as
 `policy_baseline_debt`, `policy_missing_evidence`, `broken_evidence_links`, and
 `weak_evidence_references`. SARIF run properties may also include an optional
-`evidence_repair_queues` array with `signal`, `label`, optional `item_kind`,
-`count`, and exact `cargo-allow worklist ... --format json` command rows for
-those advisory evidence-health signals, but SARIF results remain limited to
-non-matched source-tree outcomes rather than synthetic policy-health rows.
+`evidence_repair_queues` array with `signal`, `label`, machine `route_kind`,
+optional `item_kind`, optional `worklist_filter`, `count`, and exact
+`cargo-allow worklist ... --format json` command rows for those advisory
+evidence-health signals, but SARIF results remain limited to non-matched
+source-tree outcomes rather than synthetic policy-health rows.
 
 ## Boundary
 
