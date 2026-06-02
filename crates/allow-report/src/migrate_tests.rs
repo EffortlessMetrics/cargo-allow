@@ -19,6 +19,8 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
         unsafe_entries: 2,
         lint_exception_entries: 4,
         entries_with_evidence: 3,
+        broken_evidence_links: Some(3),
+        unsafe_broken_evidence_links: Some(1),
         weak_evidence_references: Some(2),
         unsafe_weak_evidence_references: Some(1),
         notes: "migration notes",
@@ -40,6 +42,8 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(json.contains("\"unsafe_entries\": 2"));
     assert!(json.contains("\"lint_exception_entries\": 4"));
     assert!(json.contains("\"entries_with_evidence\": 3"));
+    assert!(json.contains("\"broken_evidence_links\": 3"));
+    assert!(json.contains("\"unsafe_broken_evidence_links\": 1"));
     assert!(json.contains("\"weak_evidence_references\": 2"));
     assert!(json.contains("\"unsafe_weak_evidence_references\": 1"));
     assert!(json.contains("\"notes\": \"migration notes\""));
@@ -72,6 +76,8 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     "unsafe_entries": 2,
     "lint_exception_entries": 4,
     "entries_with_evidence": 3,
+    "broken_evidence_links": 3,
+    "unsafe_broken_evidence_links": 1,
     "weak_evidence_references": 2,
     "unsafe_weak_evidence_references": 1
   }},
@@ -95,6 +101,8 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(text.contains("unsafe_entries: 2"));
     assert!(text.contains("lint_exception_entries: 4"));
     assert!(text.contains("entries_with_evidence: 3"));
+    assert!(text.contains("broken_evidence_links: 3"));
+    assert!(text.contains("unsafe_broken_evidence_links: 1"));
     assert!(text.contains("weak_evidence_references: 2"));
     assert!(text.contains("unsafe_weak_evidence_references: 1"));
     assert!(
@@ -156,6 +164,8 @@ fn migrate_report_from_config_counts_summary_fields() {
     assert_eq!(report.unsafe_entries, 1);
     assert_eq!(report.lint_exception_entries, 1);
     assert_eq!(report.entries_with_evidence, 2);
+    assert_eq!(report.broken_evidence_links, None);
+    assert_eq!(report.unsafe_broken_evidence_links, None);
     assert_eq!(report.weak_evidence_references, None);
     assert_eq!(report.unsafe_weak_evidence_references, None);
     assert_eq!(report.inventory.scanner, "policy_migration");

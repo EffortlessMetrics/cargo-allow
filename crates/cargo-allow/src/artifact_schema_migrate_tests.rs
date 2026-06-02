@@ -100,6 +100,8 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
         "unsafe_entries",
         "lint_exception_entries",
         "entries_with_evidence",
+        "broken_evidence_links",
+        "unsafe_broken_evidence_links",
         "weak_evidence_references",
         "unsafe_weak_evidence_references",
     ] {

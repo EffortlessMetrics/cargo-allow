@@ -285,6 +285,62 @@ fn migrate_repo_policy_summary_counts_unsafe_weak_evidence() {
     );
 }
 
+#[test]
+fn migrate_repo_policy_summary_counts_unsafe_broken_evidence() {
+    let dir = migrate_fixture_dir();
+    let policy_dir = dir.join("policy");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::write(
+        policy_dir.join("unsafe-allowlist.toml"),
+        unsafe_policy_broken_evidence_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("unsafe fixture write: {err}")));
+    let out = dir.join("allow.toml");
+    let summary_output = dir.join("migrate-summary.json");
+
+    cmd_migrate(&MigrateArgs {
+        root: RootArgs::default(),
+        from: None,
+        repo_policy: Some(policy_dir),
+        out,
+        force: false,
+        summary_format: MigrateSummaryFormat::Json,
+        summary_output: Some(summary_output.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("unsafe repo-policy migrate: {err}")));
+
+    let summary = fs::read_to_string(&summary_output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read migrate summary: {err}")));
+    let value = serde_json::from_str::<Value>(&summary)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse migrate summary: {err}")));
+
+    assert_eq!(
+        value
+            .pointer("/summary/broken_evidence_links")
+            .and_then(Value::as_u64),
+        Some(1),
+        "unsafe migration summary should count broken local evidence references"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/unsafe_broken_evidence_links")
+            .and_then(Value::as_u64),
+        Some(1),
+        "unsafe migration summary should count unsafe broken local evidence references"
+    );
+    assert!(
+        value.pointer("/summary/weak_evidence_references").is_none(),
+        "typed missing local evidence should not be classified as weak evidence"
+    );
+    assert!(
+        value
+            .pointer("/summary/unsafe_weak_evidence_references")
+            .is_none(),
+        "typed missing local unsafe evidence should not be classified as weak evidence"
+    );
+}
+
 fn migrate_fixture_dir() -> PathBuf {
     static NEXT_MIGRATE_FIXTURE: AtomicUsize = AtomicUsize::new(0);
     let id = NEXT_MIGRATE_FIXTURE.fetch_add(1, Ordering::Relaxed);
@@ -310,6 +366,24 @@ status = "advisory"
 [[allow]]
 path = "src/lib.rs"
 family = "unsafe_fn"
+
+[allow.selector]
+kind = "unsafe-fn"
+"#
+}
+
+fn unsafe_policy_broken_evidence_fixture_text() -> &'static str {
+    r#"schema_version = 1
+policy = "unsafe-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "legacy-unsafe-missing-doc"
+path = "src/lib.rs"
+family = "unsafe_fn"
+kind = "unsafe-fn"
+evidence = ["doc:docs/safety/missing-ffi.md"]
 
 [allow.selector]
 kind = "unsafe-fn"
