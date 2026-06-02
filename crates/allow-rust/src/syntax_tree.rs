@@ -145,7 +145,7 @@ fn collect_containers(
         }
     }
 
-    if node.kind() == "function_item" {
+    if matches!(node.kind(), "function_item" | "function_signature_item") {
         if let Some(name) = node
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
