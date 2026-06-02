@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use toml::Value;
 
-use crate::fields::{raw_string_field, string_field};
+use crate::fields::{legacy_evidence, raw_string_field, string_field};
 use crate::parser_support::normalize_legacy_expires;
 use crate::types::LegacyNonRustRule;
 
@@ -70,6 +70,7 @@ fn parse_non_rust_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyNo
         classification: string_field(table, "category")
             .unwrap_or_else(|| "legacy_non_rust".to_string()),
         reason,
+        evidence: legacy_evidence(table),
         created: string_field(table, "created"),
         review_after: string_field(table, "review_after"),
         expires: normalize_legacy_expires(string_field(table, "expires")),

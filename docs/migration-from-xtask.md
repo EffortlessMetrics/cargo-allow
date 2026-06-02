@@ -39,6 +39,10 @@ side-by-side proof run.
 Broad legacy `glob` entries must still carry a non-empty
 `broad_glob_reason`. cargo-allow rejects missing or whitespace-only scope
 justifications instead of treating a broad glob as a fully reviewed exception.
+Existing legacy `evidence` or `covered_by` fields are preserved in migrated
+non-Rust entries. Entries without legacy evidence use `legacy-policy:<id>` as
+typed traceability evidence so generated receipts still point back to the
+source policy without inventing proof.
 
 Then classify deltas:
 
