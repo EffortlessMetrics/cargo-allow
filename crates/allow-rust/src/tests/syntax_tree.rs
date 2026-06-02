@@ -143,6 +143,34 @@ fn syntax_containers_include_trait_method_signatures() {
 }
 
 #[test]
+fn syntax_containers_include_extern_function_signatures_with_abi() {
+    let source = r#"
+        extern "C" {
+            fn access();
+        }
+
+        extern "system" {
+            fn access();
+        }
+        "#;
+    let tree = parse_rust_syntax(source)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+    let names = tree
+        .containers(source)
+        .into_iter()
+        .map(|container| container.name)
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        names,
+        vec![
+            "extern \"C\"::access".to_string(),
+            "extern \"system\"::access".to_string(),
+        ]
+    );
+}
+
+#[test]
 fn syntax_containers_recover_from_invalid_source() {
     let source = r#"
         fn parsed_before_error() {}

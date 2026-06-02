@@ -3,33 +3,29 @@ use std::collections::BTreeMap;
 use tree_sitter::Node;
 
 use crate::syntax_kinds::RustLineScope;
-use crate::syntax_tree::{impl_container_name, node_text};
+use crate::syntax_tree::{extern_container_name, impl_container_name, node_text};
 
 pub(super) fn collect_line_scopes(
     node: Node<'_>,
     source: &str,
     scopes: &mut BTreeMap<u32, RustLineScope>,
 ) {
-    let mut module_path = Vec::new();
-    let mut impl_path = Vec::new();
-    let mut trait_path = Vec::new();
-    collect_nested_line_scopes(
-        node,
-        source,
-        &mut module_path,
-        &mut impl_path,
-        &mut trait_path,
-        &[],
-        scopes,
-    );
+    let mut paths = ScopePaths::default();
+    collect_nested_line_scopes(node, source, &mut paths, &[], scopes);
+}
+
+#[derive(Default)]
+struct ScopePaths {
+    module_path: Vec<String>,
+    impl_path: Vec<String>,
+    trait_path: Vec<String>,
+    extern_path: Vec<String>,
 }
 
 fn collect_nested_line_scopes(
     node: Node<'_>,
     source: &str,
-    module_path: &mut Vec<String>,
-    impl_path: &mut Vec<String>,
-    trait_path: &mut Vec<String>,
+    paths: &mut ScopePaths,
     outer_attribute_lines: &[(u32, u32)],
     scopes: &mut BTreeMap<u32, RustLineScope>,
 ) {
@@ -38,19 +34,19 @@ fn collect_nested_line_scopes(
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
         {
-            module_path.push(name.to_string());
-            record_module_scope(node, module_path, scopes);
-            visit_child_scopes(node, source, module_path, impl_path, trait_path, scopes);
-            module_path.pop();
+            paths.module_path.push(name.to_string());
+            record_module_scope(node, &paths.module_path, scopes);
+            visit_child_scopes(node, source, paths, scopes);
+            paths.module_path.pop();
             return;
         }
     }
 
     if node.kind() == "impl_item" {
         if let Some(name) = impl_container_name(node, source) {
-            impl_path.push(name);
-            visit_child_scopes(node, source, module_path, impl_path, trait_path, scopes);
-            impl_path.pop();
+            paths.impl_path.push(name);
+            visit_child_scopes(node, source, paths, scopes);
+            paths.impl_path.pop();
             return;
         }
     }
@@ -60,9 +56,18 @@ fn collect_nested_line_scopes(
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
         {
-            trait_path.push(name.to_string());
-            visit_child_scopes(node, source, module_path, impl_path, trait_path, scopes);
-            trait_path.pop();
+            paths.trait_path.push(name.to_string());
+            visit_child_scopes(node, source, paths, scopes);
+            paths.trait_path.pop();
+            return;
+        }
+    }
+
+    if node.kind() == "foreign_mod_item" {
+        if let Some(name) = extern_container_name(node, source) {
+            paths.extern_path.push(name);
+            visit_child_scopes(node, source, paths, scopes);
+            paths.extern_path.pop();
             return;
         }
     }
@@ -72,28 +77,33 @@ fn collect_nested_line_scopes(
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
         {
-            let container = if let Some(impl_name) = impl_path.last() {
+            let container = if let Some(impl_name) = paths.impl_path.last() {
                 format!("{impl_name}::{name}")
-            } else if let Some(trait_name) = trait_path.last() {
+            } else if let Some(trait_name) = paths.trait_path.last() {
                 format!("{trait_name}::{name}")
+            } else if let Some(extern_name) = paths.extern_path.last() {
+                format!("{extern_name}::{name}")
             } else {
                 name.to_string()
             };
-            record_container_scope(node, &container, module_path, scopes);
-            record_attribute_line_scopes(outer_attribute_lines, &container, module_path, scopes);
-            record_outer_attribute_scopes(node, &container, module_path, scopes);
+            record_container_scope(node, &container, &paths.module_path, scopes);
+            record_attribute_line_scopes(
+                outer_attribute_lines,
+                &container,
+                &paths.module_path,
+                scopes,
+            );
+            record_outer_attribute_scopes(node, &container, &paths.module_path, scopes);
         }
     }
 
-    visit_child_scopes(node, source, module_path, impl_path, trait_path, scopes);
+    visit_child_scopes(node, source, paths, scopes);
 }
 
 fn visit_child_scopes(
     node: Node<'_>,
     source: &str,
-    module_path: &mut Vec<String>,
-    impl_path: &mut Vec<String>,
-    trait_path: &mut Vec<String>,
+    paths: &mut ScopePaths,
     scopes: &mut BTreeMap<u32, RustLineScope>,
 ) {
     let mut cursor = node.walk();
@@ -103,15 +113,7 @@ fn visit_child_scopes(
             pending_outer_attribute_lines.push(node_line_range(child));
             continue;
         }
-        collect_nested_line_scopes(
-            child,
-            source,
-            module_path,
-            impl_path,
-            trait_path,
-            &pending_outer_attribute_lines,
-            scopes,
-        );
+        collect_nested_line_scopes(child, source, paths, &pending_outer_attribute_lines, scopes);
         pending_outer_attribute_lines.clear();
     }
 }

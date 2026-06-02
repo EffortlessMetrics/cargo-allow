@@ -50,6 +50,7 @@ Current container names include:
 | Inherent impl method | `Parser::parse_span` |
 | Trait definition method | `ParserApi::parse_span` |
 | Trait impl method | `<Parser as ParserApi>::parse_span` |
+| Extern function signature | `extern "C"::read_handle` |
 
 Container names are stable source-syntax hints, not type identities. They do not
 resolve aliases, macro-generated items, conditional compilation, or duplicate

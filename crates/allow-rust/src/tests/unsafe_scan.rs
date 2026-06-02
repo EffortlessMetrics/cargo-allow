@@ -166,6 +166,39 @@ fn unsafe_function_findings_record_function_symbol() {
 }
 
 #[test]
+fn unsafe_extern_function_signatures_record_abi_container_identity() {
+    let src = r#"
+        extern "C" {
+            pub unsafe fn access();
+        }
+
+        extern "system" {
+            pub unsafe fn access();
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    let identities = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_fn"))
+        .map(|f| {
+            (
+                f.identity.container.as_deref(),
+                f.identity.symbol.as_deref(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        identities,
+        vec![
+            (Some("extern \"C\"::access"), Some("access")),
+            (Some("extern \"system\"::access"), Some("access")),
+        ]
+    );
+}
+
+#[test]
 fn unsafe_trait_method_signatures_record_trait_container_identity() {
     let src = r#"
         trait Reader {
