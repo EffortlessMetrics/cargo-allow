@@ -276,16 +276,22 @@ fn syntax_unsafe_constructs_ignore_text_in_strings() {
 
 #[test]
 fn detects_unsafe_attribute_from_syntax() {
-    let src = r#"
-        #[unsafe(no_mangle)]
-        fn exported() {}
-        "#;
-    let findings = scan_rust_source("src/lib.rs", src);
+    let line = r#"        #[unsafe(no_mangle)]"#;
+    let src = format!(
+        r#"
+{line}
+        fn exported() {{}}
+        "#
+    );
+    let findings = scan_rust_source("src/lib.rs", &src);
 
-    assert!(
-        findings.iter().any(|f| {
-            f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr")
-        })
+    let unsafe_attr = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr"))
+        .unwrap_or_else(|| std::panic::panic_any("unsafe attribute should be found"));
+    assert_eq!(
+        unsafe_attr.span.as_ref().map(|span| span.column),
+        Some(crate::text::column(line, "unsafe"))
     );
     assert!(
         !findings
@@ -304,15 +310,23 @@ fn unsafe_attribute_findings_record_target_container_identity() {
         fn exported_right() {}
         "#;
     let findings = scan_rust_source("src/lib.rs", src);
-    let containers = findings
+    let identities = findings
         .iter()
         .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr"))
-        .map(|f| f.identity.container.as_deref())
+        .map(|f| {
+            (
+                f.identity.container.as_deref(),
+                f.identity.symbol.as_deref(),
+            )
+        })
         .collect::<Vec<_>>();
 
     assert_eq!(
-        containers,
-        vec![Some("exported_left"), Some("exported_right")]
+        identities,
+        vec![
+            (Some("exported_left"), Some("no_mangle")),
+            (Some("exported_right"), Some("export_name")),
+        ]
     );
 }
 
@@ -390,17 +404,22 @@ fn detects_multiple_cfg_attr_unsafe_attributes() {
         "#
     );
     let findings = scan_rust_source("src/lib.rs", &src);
-    let columns = findings
+    let identities = findings
         .iter()
         .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_attr"))
-        .map(|f| f.span.as_ref().map(|span| span.column))
+        .map(|f| {
+            (
+                f.span.as_ref().map(|span| span.column),
+                f.identity.symbol.as_deref(),
+            )
+        })
         .collect::<Vec<_>>();
 
     assert_eq!(
-        columns,
+        identities,
         vec![
-            Some(crate::text::column(line, "unsafe")),
-            Some(last_column(line, "unsafe"))
+            (Some(crate::text::column(line, "unsafe")), Some("no_mangle")),
+            (Some(last_column(line, "unsafe")), Some("export_name"))
         ]
     );
 }

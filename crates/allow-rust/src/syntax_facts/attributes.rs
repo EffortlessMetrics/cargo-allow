@@ -1,6 +1,7 @@
+use allow_core::normalize_snippet;
 use tree_sitter::Node;
 
-use crate::syntax_kinds::{LintAttribute, LintAttributeKind, RustSyntaxFacts};
+use crate::syntax_kinds::{LintAttribute, LintAttributeKind, RustSyntaxFacts, UnsafeAttribute};
 use crate::syntax_tree::node_text;
 use crate::text::{detect_attr, source_column};
 
@@ -35,9 +36,12 @@ pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut R
     }
     let unsafe_attribute_offsets = unsafe_attribute_offsets(text);
     if !unsafe_attribute_offsets.is_empty() {
-        let columns = facts.unsafe_attribute_columns.entry(line).or_default();
+        let attributes = facts.unsafe_attributes.entry(line).or_default();
         for offset in unsafe_attribute_offsets {
-            columns.push(source_column(source, start.row, start.column + offset));
+            attributes.push(UnsafeAttribute {
+                column: source_column(source, start.row, start.column + offset),
+                symbol: unsafe_attribute_symbol(text, offset),
+            });
         }
     }
 }
@@ -60,10 +64,6 @@ fn lint_attribute_kinds(text: &str) -> Vec<(LintAttributeKind, usize)> {
 }
 
 fn unsafe_attribute_offsets(text: &str) -> Vec<usize> {
-    let trimmed = text.trim_start();
-    if trimmed.starts_with("#[unsafe(") || trimmed.starts_with("#![unsafe(") {
-        return vec![text.len() - trimmed.len()];
-    }
     if let Some(offset) = attribute_name_offset(text, "unsafe") {
         return vec![offset];
     }
@@ -71,6 +71,28 @@ fn unsafe_attribute_offsets(text: &str) -> Vec<usize> {
         return Vec::new();
     }
     find_attribute_invocations_outside_rust_strings(text, "unsafe")
+}
+
+fn unsafe_attribute_symbol(text: &str, offset: usize) -> Option<String> {
+    let mut cursor = offset + "unsafe".len();
+    cursor = skip_rust_whitespace(text, cursor);
+    if !text.get(cursor..).is_some_and(|rest| rest.starts_with('(')) {
+        return None;
+    }
+    cursor += '('.len_utf8();
+    cursor = skip_rust_whitespace(text, cursor);
+    let start = cursor;
+
+    while let Some(ch) = text.get(cursor..).and_then(|rest| rest.chars().next()) {
+        if !(ch == '_' || ch == ':' || ch.is_alphanumeric()) {
+            break;
+        }
+        cursor += ch.len_utf8();
+    }
+
+    text.get(start..cursor)
+        .map(normalize_snippet)
+        .filter(|symbol| !symbol.is_empty())
 }
 
 fn cfg_attr_lint_kinds(text: &str) -> Vec<(LintAttributeKind, usize)> {

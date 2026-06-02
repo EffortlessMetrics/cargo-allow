@@ -1,5 +1,6 @@
 use crate::syntax_kinds::{
-    IndexExpression, LintAttribute, PanicMacroInvocation, PanicMethodCall, UnsafeSyntaxConstruct,
+    IndexExpression, LintAttribute, PanicMacroInvocation, PanicMethodCall, UnsafeAttribute,
+    UnsafeSyntaxConstruct,
 };
 
 pub(crate) struct SyntaxLineFacts<'a> {
@@ -8,6 +9,6 @@ pub(crate) struct SyntaxLineFacts<'a> {
     pub(crate) panic_methods: &'a [PanicMethodCall],
     pub(crate) index_expressions: &'a [IndexExpression],
     pub(crate) unsafe_constructs: &'a [UnsafeSyntaxConstruct],
-    pub(crate) unsafe_attribute_columns: &'a [u32],
+    pub(crate) unsafe_attributes: &'a [UnsafeAttribute],
     pub(crate) safety_comment_nearby: bool,
 }
