@@ -2,7 +2,7 @@ use allow_core::normalize_snippet;
 use tree_sitter::Node;
 
 use crate::syntax_kinds::{RustSyntaxFacts, UnsafeSyntaxConstruct, UnsafeSyntaxKind};
-use crate::syntax_tree::node_text;
+use crate::syntax_tree::{impl_container_name, node_text};
 use crate::text::source_column;
 
 pub(super) fn record_node_unsafe_construct(
@@ -33,9 +33,13 @@ fn unsafe_syntax_construct(node: Node<'_>, source: &str) -> Option<(u32, UnsafeS
             item_name(node, source),
             source,
         ),
-        "impl_item" => {
-            unsafe_modifier_construct(node, "impl", UnsafeSyntaxKind::Impl, None, source)
-        }
+        "impl_item" => unsafe_modifier_construct(
+            node,
+            "impl",
+            UnsafeSyntaxKind::Impl,
+            impl_container_name(node, source),
+            source,
+        ),
         "trait_item" => unsafe_modifier_construct(
             node,
             "trait",
