@@ -241,6 +241,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "claim_boundary",
                 "command",
                 "counts",
+                "evidence_repair_queues",
                 "failed",
                 "inventory",
                 "scanner_limitations",

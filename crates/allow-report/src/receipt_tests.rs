@@ -130,6 +130,45 @@ fn receipt_counts_policy_missing_evidence_context() {
 }
 
 #[test]
+fn receipt_routes_evidence_repair_queues() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
+    context.broken_evidence_links = Some(2);
+    context.policy_missing_evidence_entries = Some(4);
+    context.weak_evidence_references = Some(3);
+
+    let json = render_receipt_with_context("check", &[], false, context);
+
+    assert!(json.contains("\"evidence_repair_queues\""));
+    assert!(json.contains("\"signal\": \"broken_evidence_links\""));
+    assert!(json.contains("\"count\": 2"));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
+    ));
+    assert!(json.contains("\"signal\": \"missing_evidence\""));
+    assert!(json.contains("\"count\": 4"));
+    assert!(
+        json.contains("\"command\": \"cargo-allow worklist --missing-evidence --format json\"")
+    );
+    assert!(json.contains("\"signal\": \"weak_evidence_references\""));
+    assert!(json.contains("\"count\": 3"));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind weak_evidence_reference --format json\""
+    ));
+}
+
+#[test]
+fn receipt_omits_evidence_repair_queues_when_clean() {
+    let json = render_receipt_with_context(
+        "check",
+        &[],
+        false,
+        ReportContext::source_syntax("git_tracked", None, None, None),
+    );
+
+    assert!(!json.contains("\"evidence_repair_queues\""));
+}
+
+#[test]
 fn receipt_can_include_source_exception_inventory() {
     let findings = vec![
         file_finding(FindingKind::Panic, "unwrap", "src/lib.rs"),
@@ -162,6 +201,28 @@ fn receipt_can_include_source_exception_inventory() {
     assert!(json.contains(
         "{\"kind\": \"unsafe\", \"family\": \"unsafe_block\", \"label\": \"unsafe.unsafe_block\", \"total\": 1, \"matched\": 0, \"new\": 1, \"review_items\": 1}"
     ));
+}
+
+#[test]
+fn receipt_can_include_evidence_repair_queues_and_source_inventory() {
+    let findings = vec![file_finding(
+        FindingKind::Unsafe,
+        "unsafe_block",
+        "src/ffi.rs",
+    )];
+    let outcomes = vec![outcome(MatchStatus::EvidenceMissing, Some(0))];
+
+    let json = render_receipt_with_context_and_inventory(
+        "check",
+        &findings,
+        &outcomes,
+        true,
+        ReportContext::source_syntax("git_tracked", None, None, None),
+    );
+
+    assert!(json.contains("\"evidence_repair_queues\""));
+    assert!(json.contains("\"signal\": \"missing_evidence\""));
+    assert!(json.contains("\"source_inventory\""));
 }
 
 fn outcome(status: MatchStatus, finding_index: Option<usize>) -> MatchOutcome {

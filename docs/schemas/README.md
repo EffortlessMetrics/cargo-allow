@@ -146,6 +146,11 @@ Check receipts may also include the same optional `source_inventory` object
 when the receipt is produced from a source-tree scan with findings. This lets
 stored no-new evidence carry both the gate counts and the source-exception
 inventory without requiring consumers to archive the full report artifact.
+Check receipts may also include an optional `evidence_repair_queues` array when
+the saved no-new evidence has broken local evidence links, missing evidence, or
+weak evidence references. These rows mirror report JSON queue routing so CI
+artifacts can point directly at the worklist command needed to repair retained
+evidence gaps.
 
 ## Claim Boundary Vocabulary
 
