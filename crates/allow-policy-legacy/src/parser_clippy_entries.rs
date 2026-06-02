@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use toml::Value;
 
-use crate::fields::{required_string_field, string_field};
+use crate::fields::{legacy_evidence, required_string_field, string_field};
 use crate::parser_support::{normalize_legacy_expires, normalize_lint_attribute_family};
 use crate::types::LegacyClippyRule;
 use crate::{default_baseline_created, default_baseline_expires};
@@ -40,6 +40,7 @@ fn parse_clippy_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyClip
         reason: string_field(table, "reason").unwrap_or_else(|| {
             "Generated from legacy Clippy exceptions policy; requires human review.".to_string()
         }),
+        evidence: legacy_evidence(table),
         symbol: string_field(table, "symbol"),
         target_fingerprint: string_field(table, "target_fingerprint")
             .or_else(|| string_field(table, "policy_id").map(|id| format!("policy:{id}"))),

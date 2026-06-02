@@ -15,7 +15,7 @@ pub(crate) fn entry_from_clippy_rule(rule: &LegacyClippyRule) -> AllowEntry {
         owner: rule.owner.clone(),
         classification: rule.classification.clone(),
         reason: rule.reason.clone(),
-        evidence: vec![format!("legacy-policy:{}", rule.id)],
+        evidence: clippy_evidence(rule),
         links: vec![format!("legacy-policy:{}", rule.id)],
         occurrence_limit: None,
         lifecycle: lifecycle_from_legacy_fields(
@@ -32,5 +32,13 @@ pub(crate) fn entry_from_clippy_rule(rule: &LegacyClippyRule) -> AllowEntry {
             ..Selector::default()
         },
         last_seen: None,
+    }
+}
+
+fn clippy_evidence(rule: &LegacyClippyRule) -> Vec<String> {
+    if rule.evidence.is_empty() {
+        vec![format!("legacy-policy:{}", rule.id)]
+    } else {
+        rule.evidence.clone()
     }
 }
