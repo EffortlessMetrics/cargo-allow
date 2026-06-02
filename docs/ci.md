@@ -100,7 +100,9 @@ does not include proof-tool results or build-derived findings. SARIF run
 properties may include advisory policy/evidence-health counts such as
 `policy_missing_evidence`, `broken_evidence_links`, and
 `weak_evidence_references`, but those counts are run context rather than
-synthetic code-scanning results.
+synthetic code-scanning results. When repair work exists, SARIF run properties
+may also include an `evidence_repair_queues` array with the matching
+`cargo-allow worklist ... --format json` commands.
 
 ## Artifacts
 

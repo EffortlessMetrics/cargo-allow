@@ -67,6 +67,7 @@ pub fn render_sarif_with_context(
     out.push_str(&format!("        \"failed\": {},\n", bool_json(failed)));
     push_json_source_context_properties(&mut out, context.into(), "        ");
     push_policy_context_properties(&mut out, &summary, context);
+    push_evidence_repair_queues_property(&mut out, &summary, context);
     out.push_str("      },\n");
     out.push_str("      \"results\": [\n");
     for (index, outcome) in reportable.iter().enumerate() {
@@ -117,6 +118,76 @@ fn policy_context_property_rows(
         rows.push(("weak_evidence_references", weak_evidence_references));
     }
     rows
+}
+
+fn push_evidence_repair_queues_property(
+    out: &mut String,
+    summary: &Summary,
+    context: ReportContext<'_>,
+) {
+    let queues = evidence_repair_queues(summary, context);
+    if queues.is_empty() {
+        return;
+    }
+
+    out.push_str(",\n");
+    out.push_str("        \"evidence_repair_queues\": [\n");
+    for (index, queue) in queues.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str("          {\n");
+        out.push_str(&format!(
+            "            \"signal\": \"{}\",\n",
+            json_escape(queue.signal)
+        ));
+        out.push_str(&format!("            \"count\": {},\n", queue.count));
+        out.push_str(&format!(
+            "            \"command\": \"{}\"\n",
+            json_escape(queue.command)
+        ));
+        out.push_str("          }");
+    }
+    out.push_str("\n        ]\n");
+}
+
+fn evidence_repair_queues(
+    summary: &Summary,
+    context: ReportContext<'_>,
+) -> Vec<EvidenceRepairQueue> {
+    let mut queues = Vec::new();
+    if let Some(count) = context.broken_evidence_links.filter(|count| *count > 0) {
+        queues.push(EvidenceRepairQueue {
+            signal: "broken_evidence_links",
+            count,
+            command: "cargo-allow worklist --item-kind broken_evidence_link --format json",
+        });
+    }
+    let missing_evidence_count = context
+        .policy_missing_evidence_entries
+        .unwrap_or(0)
+        .max(summary.count(MatchStatus::EvidenceMissing));
+    if missing_evidence_count > 0 {
+        queues.push(EvidenceRepairQueue {
+            signal: "missing_evidence",
+            count: missing_evidence_count,
+            command: "cargo-allow worklist --missing-evidence --format json",
+        });
+    }
+    if let Some(count) = context.weak_evidence_references.filter(|count| *count > 0) {
+        queues.push(EvidenceRepairQueue {
+            signal: "weak_evidence_references",
+            count,
+            command: "cargo-allow worklist --item-kind weak_evidence_reference --format json",
+        });
+    }
+    queues
+}
+
+struct EvidenceRepairQueue {
+    signal: &'static str,
+    count: usize,
+    command: &'static str,
 }
 
 const SARIF_STATUSES: &[MatchStatus] = &[

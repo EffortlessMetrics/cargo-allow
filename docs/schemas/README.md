@@ -494,7 +494,10 @@ a JSON artifact exists for the same workflow. Markdown and HTML are review
 surfaces; JSON is the machine surface. SARIF is for code-scanning ingestion.
 Its run properties may include advisory policy/evidence-health counts such as
 `policy_baseline_debt`, `policy_missing_evidence`, `broken_evidence_links`, and
-`weak_evidence_references`, but SARIF results remain limited to non-matched
+`weak_evidence_references`. SARIF run properties may also include an optional
+`evidence_repair_queues` array with `signal`, `count`, and exact
+`cargo-allow worklist ... --format json` command rows for those advisory
+evidence-health signals, but SARIF results remain limited to non-matched
 source-tree outcomes rather than synthetic policy-health rows.
 
 ## Boundary

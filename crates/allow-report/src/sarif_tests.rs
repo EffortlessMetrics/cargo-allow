@@ -78,7 +78,47 @@ fn sarif_run_properties_include_policy_evidence_health_counts() {
     assert!(sarif.contains("\"policy_missing_evidence\": 2"));
     assert!(sarif.contains("\"broken_evidence_links\": 1"));
     assert!(sarif.contains("\"weak_evidence_references\": 1"));
+    assert!(sarif.contains("\"evidence_repair_queues\""));
+    assert!(sarif.contains("\"signal\": \"broken_evidence_links\""));
+    assert!(sarif.contains(
+        "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
+    ));
+    assert!(sarif.contains("\"signal\": \"missing_evidence\""));
+    assert!(
+        sarif.contains("\"command\": \"cargo-allow worklist --missing-evidence --format json\"")
+    );
+    assert!(sarif.contains("\"signal\": \"weak_evidence_references\""));
+    assert!(sarif.contains(
+        "\"command\": \"cargo-allow worklist --item-kind weak_evidence_reference --format json\""
+    ));
     assert!(sarif.contains("\"results\": [\n\n      ]"));
+}
+
+#[test]
+fn sarif_run_properties_route_outcome_evidence_missing_repair_queue() {
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::EvidenceMissing,
+        allow_id: Some("allow-unsafe-0001".to_string()),
+        finding_index: None,
+        message: "unsafe allow entry requires evidence".to_string(),
+        score: 0,
+    }];
+
+    let sarif = render_sarif_with_context("check", &[], &outcomes, true, context("git_tracked"));
+
+    assert!(sarif.contains("\"evidence_repair_queues\""));
+    assert!(sarif.contains("\"signal\": \"missing_evidence\""));
+    assert!(sarif.contains("\"count\": 1"));
+    assert!(
+        sarif.contains("\"command\": \"cargo-allow worklist --missing-evidence --format json\"")
+    );
+}
+
+#[test]
+fn sarif_run_properties_omit_evidence_repair_queues_when_clean() {
+    let sarif = render_sarif_with_context("check", &[], &[], false, context("git_tracked"));
+
+    assert!(!sarif.contains("\"evidence_repair_queues\""));
 }
 
 fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
