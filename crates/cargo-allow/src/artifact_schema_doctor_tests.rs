@@ -103,6 +103,61 @@ fn doctor_schema_locks_setup_artifact_contract() {
             "doctor config {field} minimum"
         );
     }
+    assert_eq!(
+        schema
+            .pointer("/properties/config/properties/evidence_repair_queues/type")
+            .and_then(Value::as_str),
+        Some("array"),
+        "doctor config evidence_repair_queues should be an optional array"
+    );
+    let queue = required_schema_pointer(
+        "doctor",
+        &schema,
+        "/properties/config/properties/evidence_repair_queues/items",
+    );
+    assert_eq!(
+        queue.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "doctor evidence repair queue rows should reject unknown fields"
+    );
+    assert_required_fields(
+        "doctor evidence repair queue",
+        queue,
+        &["signal", "count", "command"],
+    );
+    assert_enum_equals(
+        "doctor evidence repair queue signal",
+        &schema,
+        "/properties/config/properties/evidence_repair_queues/items/properties/signal/enum",
+        &["broken_evidence_links", "weak_evidence_references"],
+    );
+    assert_eq!(
+        schema
+            .pointer(
+                "/properties/config/properties/evidence_repair_queues/items/properties/count/type",
+            )
+            .and_then(Value::as_str),
+        Some("integer"),
+        "doctor evidence repair queue count should be an integer"
+    );
+    assert_eq!(
+        schema
+            .pointer(
+                "/properties/config/properties/evidence_repair_queues/items/properties/count/minimum",
+            )
+            .and_then(Value::as_u64),
+        Some(0),
+        "doctor evidence repair queue count should be non-negative"
+    );
+    assert_eq!(
+        schema
+            .pointer(
+                "/properties/config/properties/evidence_repair_queues/items/properties/command/type",
+            )
+            .and_then(Value::as_str),
+        Some("string"),
+        "doctor evidence repair queue command should be a string"
+    );
 
     assert_eq!(
         schema

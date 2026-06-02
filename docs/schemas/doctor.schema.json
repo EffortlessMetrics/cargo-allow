@@ -135,6 +135,33 @@
           "type": "integer",
           "minimum": 0,
           "description": "Optional count of unstructured or unknown-prefix evidence or link references found in the policy. Emitted, including zero, when a policy model is available; omitted when no policy model is available."
+        },
+        "evidence_repair_queues": {
+          "type": "array",
+          "description": "Optional evidence-health repair queues emitted when doctor finds broken local evidence links or weak evidence references.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["signal", "count", "command"],
+            "properties": {
+              "signal": {
+                "enum": [
+                  "broken_evidence_links",
+                  "weak_evidence_references"
+                ],
+                "description": "Evidence-health setup signal routed by this queue."
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Number of doctor evidence-health items routed by this queue."
+              },
+              "command": {
+                "type": "string",
+                "description": "Suggested cargo-allow worklist command for this queue."
+              }
+            }
+          }
         }
       }
     },

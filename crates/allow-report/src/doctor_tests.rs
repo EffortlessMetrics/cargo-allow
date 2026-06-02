@@ -191,3 +191,55 @@ fn doctor_json_renderer_includes_optional_evidence_health_counts() {
     assert!(json.contains("\"broken_evidence_links\": 2"));
     assert!(json.contains("\"weak_evidence_references\": 1"));
 }
+
+#[test]
+fn doctor_json_renderer_routes_evidence_repair_queues() {
+    let json = render_doctor_json(DoctorReport {
+        source_tree_root: "H:/Code/Rust/cargo-allow",
+        root_discovery: "nearest_git_root",
+        config_path: Some("policy/allow.toml"),
+        config_schema_version: Some("0.1"),
+        config_policy: Some("cargo-allow"),
+        config_owner: Some("core/policy"),
+        config_status: Some("active"),
+        config_valid: Some(false),
+        config_diagnostic: Some("missing evidence file"),
+        broken_evidence_links: Some(2),
+        weak_evidence_references: Some(1),
+        inventory_source: "git_tracked",
+        files_scanned: 7,
+    });
+
+    assert!(json.contains("\"evidence_repair_queues\""));
+    assert!(json.contains("\"signal\": \"broken_evidence_links\""));
+    assert!(json.contains("\"count\": 2"));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
+    ));
+    assert!(json.contains("\"signal\": \"weak_evidence_references\""));
+    assert!(json.contains("\"count\": 1"));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind weak_evidence_reference --format json\""
+    ));
+}
+
+#[test]
+fn doctor_json_renderer_omits_evidence_repair_queues_when_clean() {
+    let json = render_doctor_json(DoctorReport {
+        source_tree_root: "H:/Code/Rust/cargo-allow",
+        root_discovery: "nearest_git_root",
+        config_path: Some("policy/allow.toml"),
+        config_schema_version: Some("0.1"),
+        config_policy: Some("cargo-allow"),
+        config_owner: Some("core/policy"),
+        config_status: Some("active"),
+        config_valid: Some(true),
+        config_diagnostic: None,
+        broken_evidence_links: Some(0),
+        weak_evidence_references: Some(0),
+        inventory_source: "git_tracked",
+        files_scanned: 7,
+    });
+
+    assert!(!json.contains("\"evidence_repair_queues\""));
+}
