@@ -1,3 +1,4 @@
+use crate::audit_remediation::audit_remediation_items;
 use crate::non_rust::{render_non_rust_human, render_non_rust_markdown};
 use crate::text::markdown_inline_code;
 use crate::{
@@ -451,24 +452,18 @@ fn evidence_repair_commands(summary: &Summary, signals: ReviewSignals) -> Vec<&'
     commands
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct AuditRemediationCommand {
-    signal: &'static str,
-    command: &'static str,
-}
-
 fn append_audit_remediation_roadmap_human(
     summary: &Summary,
     signals: ReviewSignals,
     out: &mut String,
 ) {
-    let commands = audit_remediation_commands(summary, signals);
-    if commands.is_empty() {
+    let items = audit_remediation_items(summary, signals);
+    if items.is_empty() {
         return;
     }
     out.push_str("\nAudit remediation roadmap:\n");
-    for command in commands {
-        out.push_str(&format!("  {}: {}\n", command.signal, command.command));
+    for item in items {
+        out.push_str(&format!("  {}: {}\n", item.label, item.command));
     }
 }
 
@@ -477,99 +472,14 @@ fn append_audit_remediation_roadmap_markdown(
     signals: ReviewSignals,
     out: &mut String,
 ) {
-    let commands = audit_remediation_commands(summary, signals);
-    if commands.is_empty() {
+    let items = audit_remediation_items(summary, signals);
+    if items.is_empty() {
         return;
     }
     out.push_str("\n## Audit Remediation Roadmap\n\n");
     out.push_str("| Signal | Command |\n|---|---|\n");
-    for command in commands {
-        out.push_str(&format!("| {} | `{}` |\n", command.signal, command.command));
-    }
-}
-
-fn audit_remediation_commands(
-    summary: &Summary,
-    signals: ReviewSignals,
-) -> Vec<AuditRemediationCommand> {
-    let mut commands = Vec::new();
-    push_audit_command_if(
-        &mut commands,
-        summary.count(MatchStatus::New) > 0,
-        "new unreceipted",
-        "cargo-allow worklist --status new --format json",
-    );
-    push_audit_command_if(
-        &mut commands,
-        summary.count(MatchStatus::Expired) > 0,
-        "expired",
-        "cargo-allow worklist --status expired --format json",
-    );
-    push_audit_command_if(
-        &mut commands,
-        summary.count(MatchStatus::ReviewDue) > 0,
-        "review due",
-        "cargo-allow worklist --status review_due --format json",
-    );
-    push_audit_command_if(
-        &mut commands,
-        summary.count(MatchStatus::Stale) > 0,
-        "stale",
-        "cargo-allow prune --stale --dry-run --format json --output target/cargo-allow/prune.json",
-    );
-    push_audit_command_if(
-        &mut commands,
-        summary.count(MatchStatus::Ambiguous) > 0,
-        "ambiguous",
-        "cargo-allow worklist --status ambiguous --format json",
-    );
-    push_audit_command_if(
-        &mut commands,
-        summary.count(MatchStatus::InvalidSelector) > 0,
-        "invalid selectors",
-        "cargo-allow worklist --status invalid_selector --format json",
-    );
-    push_audit_command_if(
-        &mut commands,
-        summary.count(MatchStatus::MissingRequiredField) > 0,
-        "missing required fields",
-        "cargo-allow worklist --status missing_required_field --format json",
-    );
-    push_audit_command_if(
-        &mut commands,
-        signals.policy_missing_evidence > 0 || summary.count(MatchStatus::EvidenceMissing) > 0,
-        "missing evidence",
-        "cargo-allow worklist --missing-evidence --format json",
-    );
-    push_audit_command_if(
-        &mut commands,
-        signals.broken_evidence_links > 0,
-        "broken evidence links",
-        "cargo-allow worklist --item-kind broken_evidence_link --format json",
-    );
-    push_audit_command_if(
-        &mut commands,
-        signals.weak_evidence_references > 0,
-        "weak evidence references",
-        "cargo-allow worklist --item-kind weak_evidence_reference --format json",
-    );
-    push_audit_command_if(
-        &mut commands,
-        signals.baseline_debt > 0,
-        "baseline debt",
-        "cargo-allow worklist --baseline-debt --format json",
-    );
-    commands
-}
-
-fn push_audit_command_if(
-    commands: &mut Vec<AuditRemediationCommand>,
-    condition: bool,
-    signal: &'static str,
-    command: &'static str,
-) {
-    if condition {
-        commands.push(AuditRemediationCommand { signal, command });
+    for item in items {
+        out.push_str(&format!("| {} | `{}` |\n", item.label, item.command));
     }
 }
 
