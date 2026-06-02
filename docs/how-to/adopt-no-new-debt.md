@@ -14,7 +14,10 @@ cargo-allow audit
 Generate a starting policy:
 
 ```bash
-cargo-allow propose --write policy/allow.toml
+cargo-allow propose \
+  --write policy/allow.toml \
+  --summary-format json \
+  --summary-output target/cargo-allow/propose.json
 ```
 
 Run the gate:
@@ -31,6 +34,10 @@ Generated entries are adoption scaffolding, not approval. Review entries with:
 cargo-allow list --baseline-debt
 cargo-allow worklist --baseline-debt --format json
 ```
+
+When `propose` writes a JSON summary, use `follow_up_queues` to route the next
+work. Generated unsafe baseline entries are also routed toward weak-evidence
+cleanup because the TODO evidence placeholder is not proof.
 
 Close baseline debt by removing the finding, narrowing the selector, adding
 owner/reason/lifecycle/evidence, or deleting stale policy. Do not convert

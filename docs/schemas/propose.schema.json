@@ -92,6 +92,13 @@
         }
       }
     },
+    "follow_up_queues": {
+      "type": "array",
+      "description": "Optional follow-up worklist queues emitted when proposal generation creates temporary baseline debt.",
+      "items": {
+        "$ref": "#/$defs/follow_up_queue"
+      }
+    },
     "generated_entry_defaults": {
       "type": "object",
       "additionalProperties": false,
@@ -192,6 +199,59 @@
           "type": "integer",
           "minimum": 0,
           "description": "Number of source-tree inventory files considered before scanner filtering, when collected."
+        }
+      }
+    },
+    "follow_up_queue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal",
+        "route_kind",
+        "item_kind",
+        "count",
+        "command"
+      ],
+      "properties": {
+        "signal": {
+          "enum": [
+            "baseline_debt_entries_proposed",
+            "unsafe_baseline_debt_entries_proposed"
+          ],
+          "description": "Proposal summary signal routed by this follow-up queue."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-friendly queue label for display and agent logs."
+        },
+        "route_kind": {
+          "enum": [
+            "worklist_filter",
+            "worklist_item_kind"
+          ],
+          "description": "Machine routing mode for the follow-up command."
+        },
+        "item_kind": {
+          "enum": [
+            "baseline_debt",
+            "weak_evidence_reference"
+          ],
+          "description": "Stable cargo-allow worklist item kind associated with this follow-up queue."
+        },
+        "worklist_filter": {
+          "enum": [
+            "baseline_debt"
+          ],
+          "description": "Named worklist filter used by this row when route_kind is worklist_filter."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of proposed entries routed by this queue."
+        },
+        "command": {
+          "type": "string",
+          "description": "Suggested cargo-allow worklist command for this queue."
         }
       }
     }

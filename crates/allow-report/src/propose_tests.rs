@@ -30,6 +30,20 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
     assert!(json.contains("\"findings_scanned\": 54"));
     assert!(json.contains("\"baseline_debt_entries_proposed\": 2"));
     assert!(json.contains("\"unsafe_baseline_debt_entries_proposed\": 1"));
+    assert!(json.contains("\"follow_up_queues\""));
+    assert!(json.contains("\"signal\": \"baseline_debt_entries_proposed\""));
+    assert!(json.contains("\"label\": \"baseline debt entries\""));
+    assert!(json.contains("\"route_kind\": \"worklist_filter\""));
+    assert!(json.contains("\"item_kind\": \"baseline_debt\""));
+    assert!(json.contains("\"worklist_filter\": \"baseline_debt\""));
+    assert!(json.contains("\"command\": \"cargo-allow worklist --baseline-debt --format json\""));
+    assert!(json.contains("\"signal\": \"unsafe_baseline_debt_entries_proposed\""));
+    assert!(json.contains("\"label\": \"unsafe baseline debt entries\""));
+    assert!(json.contains("\"route_kind\": \"worklist_item_kind\""));
+    assert!(json.contains("\"item_kind\": \"weak_evidence_reference\""));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json\""
+    ));
     assert!(json.contains("\"owner\": \"unowned\""));
     assert!(json.contains("\"classification\": \"baseline_debt\""));
     let expected = format!(
@@ -58,6 +72,25 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
     "baseline_debt_entries_proposed": 2,
     "unsafe_baseline_debt_entries_proposed": 1
   }},
+  "follow_up_queues": [
+    {{
+      "signal": "baseline_debt_entries_proposed",
+      "label": "baseline debt entries",
+      "route_kind": "worklist_filter",
+      "item_kind": "baseline_debt",
+      "worklist_filter": "baseline_debt",
+      "count": 2,
+      "command": "cargo-allow worklist --baseline-debt --format json"
+    }},
+    {{
+      "signal": "unsafe_baseline_debt_entries_proposed",
+      "label": "unsafe baseline debt entries",
+      "route_kind": "worklist_item_kind",
+      "item_kind": "weak_evidence_reference",
+      "count": 1,
+      "command": "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json"
+    }}
+  ],
   "generated_entry_defaults": {{
     "owner": "unowned",
     "classification": "baseline_debt",
@@ -86,6 +119,31 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
     assert!(text.contains("classification: baseline_debt"));
     assert!(text.contains("expires: 2026-08-02"));
     assert!(text.contains("output: target/cargo-allow/proposed.toml"));
+    assert!(text.contains("follow_up_queues:"));
+    assert!(text.contains("cargo-allow worklist --baseline-debt --format json"));
+    assert!(text.contains(
+        "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json"
+    ));
     assert!(text.contains("generated debt still requires human review"));
     assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
+}
+
+#[test]
+fn propose_renderer_omits_follow_up_queues_when_nothing_proposed() {
+    let report = ProposeReport {
+        inventory: InventoryContext::source_syntax("git_tracked", None, Some(12)),
+        kind: None,
+        expires: "2026-08-02",
+        policy_output: None,
+        force: false,
+        findings_scanned: 12,
+        baseline_debt_entries_proposed: 0,
+        unsafe_baseline_debt_entries_proposed: 0,
+    };
+
+    let json = render_propose_json(report);
+    let text = render_propose_human(report);
+
+    assert!(!json.contains("\"follow_up_queues\""));
+    assert!(!text.contains("follow_up_queues:"));
 }

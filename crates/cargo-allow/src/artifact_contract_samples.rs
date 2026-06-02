@@ -112,6 +112,7 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
             expected_top_level_keys: &[
                 "claim_boundary",
                 "command",
+                "follow_up_queues",
                 "generated_entry_defaults",
                 "inventory",
                 "options",
