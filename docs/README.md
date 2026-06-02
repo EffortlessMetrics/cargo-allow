@@ -36,8 +36,9 @@ ledger and the planned growth around it.
   post-0.1.1 receipt inventory contract.
 - [0.1.3 release record](release/0.1.3.md): completed patch release for the
   post-0.1.2 evidence, diff posture, and source-snapshot hardening.
-- [0.1.4 release candidate](release/0.1.4.md): staged patch candidate for the
-  post-0.1.3 setup diagnostics and evidence-repair queue hardening.
+- [0.1.4 release record](release/0.1.4.md): completed patch release for the
+  post-0.1.3 setup diagnostics, evidence routing, README logo, and scanner
+  identity hardening.
 - [Agent worklist prompt](agents/cargo-allow-worklist.md): bounded agent use of
   `cargo-allow worklist`.
 - [Schemas](schemas/README.md): JSON schemas for doctor, report, receipt,

@@ -2,15 +2,13 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const PUBLISHED_RELEASE_VERSION: &str = "0.1.3";
-const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.2";
-const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.3.md";
-const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.2.md";
-const CANDIDATE_RELEASE_VERSION: &str = "0.1.4";
-const CANDIDATE_RELEASE_DOC: &str = "docs/release/0.1.4.md";
+const PUBLISHED_RELEASE_VERSION: &str = "0.1.4";
+const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.3";
+const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.4.md";
+const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.3.md";
 
 #[test]
-fn release_0_1_3_publish_order_matches_internal_dependency_graph() {
+fn release_publish_order_matches_internal_dependency_graph() {
     let root = workspace_root();
     let release_doc = fs::read_to_string(root.join(PUBLISHED_RELEASE_DOC)).unwrap_or_else(|err| {
         std::panic::panic_any(format!("read {PUBLISHED_RELEASE_DOC}: {err}"))
@@ -49,55 +47,58 @@ fn release_0_1_3_publish_order_matches_internal_dependency_graph() {
 }
 
 #[test]
-fn release_0_1_2_record_keeps_completed_publication_evidence() {
+fn previous_release_record_keeps_completed_publication_evidence() {
     let root = workspace_root();
     let release_doc = fs::read_to_string(root.join(PREVIOUS_RELEASE_DOC))
         .unwrap_or_else(|err| std::panic::panic_any(format!("read {PREVIOUS_RELEASE_DOC}: {err}")));
 
     assert!(
-        release_doc.contains("# 0.1.2 Release Record"),
+        release_doc.contains(&format!("# {PREVIOUS_PUBLISHED_VERSION} Release Record")),
         "release record should name the completed patch release"
     );
     assert!(
-        release_doc.contains("to `0.1.2`"),
+        release_doc.contains(&format!("to `{PREVIOUS_PUBLISHED_VERSION}`"))
+            || release_doc.contains(&format!("completed `{PREVIOUS_PUBLISHED_VERSION}`")),
         "release record should document the completed version bump"
     );
     assert!(
-        release_doc.contains("--version 0.1.2"),
+        release_doc.contains(&format!("--version {PREVIOUS_PUBLISHED_VERSION}")),
         "release record should smoke-test the published {PREVIOUS_PUBLISHED_VERSION} binary"
     );
 }
 
 #[test]
-fn release_0_1_4_candidate_versions_are_staged_without_publication_claims() {
+fn release_record_versions_match_published_workspace() {
     let root = workspace_root();
-    let release_doc = read_workspace_file(&root, CANDIDATE_RELEASE_DOC);
+    let release_doc = read_workspace_file(&root, PUBLISHED_RELEASE_DOC);
     let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
     let lockfile = read_workspace_file(&root, "Cargo.lock");
     let package_manifests = workspace_package_manifests(&root);
     let workspace_version = workspace_package_version(&workspace_manifest);
 
     assert_eq!(
-        workspace_version, CANDIDATE_RELEASE_VERSION,
-        "{CANDIDATE_RELEASE_VERSION} release candidate should stage the workspace package version"
+        workspace_version, PUBLISHED_RELEASE_VERSION,
+        "{PUBLISHED_RELEASE_VERSION} release record should match the workspace package version"
     );
     assert!(
-        release_doc.contains("# 0.1.4 Release Candidate"),
-        "0.1.4 note should name itself as a candidate, not a completed release record"
+        release_doc.contains(&format!("# {PUBLISHED_RELEASE_VERSION} Release Record")),
+        "release note should name itself as a completed release record"
     );
     assert!(
-        release_doc.contains("not a publication record"),
-        "0.1.4 candidate note should say it is not a publication record"
+        release_doc.contains(&format!(
+            "completed `{PUBLISHED_RELEASE_VERSION}` patch release"
+        )),
+        "release note should document the completed patch release"
     );
     assert!(
-        release_doc.contains("has not been") && release_doc.contains("tagged or published"),
-        "0.1.4 candidate note should deny completed release actions"
+        release_doc.contains("Published Registry State")
+            && release_doc.contains(&format!("cargo-allow {PUBLISHED_RELEASE_VERSION}")),
+        "release note should record published registry visibility"
     );
     assert!(
-        release_doc.contains("workspace package version")
-            && release_doc.contains("internal dependency requirements")
-            && release_doc.contains("staged at `0.1.4`"),
-        "0.1.4 candidate note should document the staged version bump"
+        release_doc.contains("Final Verification")
+            && release_doc.contains(&format!("cargo-allow {PUBLISHED_RELEASE_VERSION}")),
+        "release note should record installed-binary verification"
     );
 
     for (package, manifest) in &package_manifests {
@@ -123,7 +124,7 @@ fn release_0_1_4_candidate_versions_are_staged_without_publication_claims() {
     for (dependency, version) in workspace_dependency_versions {
         assert_eq!(
             version, workspace_version,
-            "{dependency} workspace dependency should require the release-candidate version"
+            "{dependency} workspace dependency should require the published release version"
         );
     }
 
@@ -136,34 +137,20 @@ fn release_0_1_4_candidate_versions_are_staged_without_publication_claims() {
     for (package, version) in lock_versions {
         assert_eq!(
             version, workspace_version,
-            "{package} lockfile entry should carry the release-candidate version"
-        );
-    }
-
-    for relative_path in release_install_surfaces() {
-        let content = read_workspace_file(&root, relative_path);
-        assert!(
-            content.contains(&format!(
-                "cargo install cargo-allow --version {PUBLISHED_RELEASE_VERSION} --locked"
-            )),
-            "{relative_path} should keep the published {PUBLISHED_RELEASE_VERSION} install pin until {CANDIDATE_RELEASE_VERSION} is published"
-        );
-        assert!(
-            !content.contains(&format!(
-                "cargo install cargo-allow --version {CANDIDATE_RELEASE_VERSION} --locked"
-            )),
-            "{relative_path} should not advertise unpublished {CANDIDATE_RELEASE_VERSION}"
+            "{package} lockfile entry should carry the published release version"
         );
     }
 }
 
 #[test]
-fn release_0_1_3_install_examples_use_published_release() {
+fn install_examples_use_published_release() {
     let root = workspace_root();
     let release_doc = read_workspace_file(&root, PUBLISHED_RELEASE_DOC);
 
     assert!(
-        release_doc.contains("Public install examples now pin the published `0.1.3` release"),
+        release_doc.contains(&format!(
+            "Public install examples now pin the published `{PUBLISHED_RELEASE_VERSION}` release"
+        )),
         "release record should note that public install examples moved to the published release"
     );
 
@@ -185,7 +172,7 @@ fn release_0_1_3_install_examples_use_published_release() {
 }
 
 #[test]
-fn release_candidate_packages_use_crate_local_readmes() {
+fn release_packages_use_crate_local_readmes() {
     let root = workspace_root();
     let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
     let package_manifests = workspace_package_manifests(&root);
@@ -232,6 +219,7 @@ fn release_install_surfaces() -> &'static [&'static str] {
     &[
         "README.md",
         "docs/ci.md",
+        "docs/getting-started.md",
         "examples/github-actions/cargo-allow-check.yml",
         "examples/github-actions/cargo-allow-diff.yml",
     ]

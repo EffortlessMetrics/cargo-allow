@@ -18,7 +18,7 @@ cargo install cargo-allow --locked
 For a pinned published release:
 
 ```bash
-cargo install cargo-allow --version 0.1.3 --locked
+cargo install cargo-allow --version 0.1.4 --locked
 ```
 
 Do not copy release-candidate versions into install commands until they are
