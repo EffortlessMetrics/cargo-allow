@@ -127,6 +127,83 @@ fn policy_directory_includes_no_panic_legacy_policies() {
 }
 
 #[test]
+fn policy_directory_includes_file_workflow_and_dependency_policies() {
+    let dir = fixture_dir();
+    fs::write(
+        dir.join("generated-allowlist.toml"),
+        generated_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("generated fixture write: {err}")));
+    fs::write(
+        dir.join("executable-allowlist.toml"),
+        executable_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("executable fixture write: {err}")));
+    fs::write(
+        dir.join("workflow-allowlist.toml"),
+        workflow_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("workflow fixture write: {err}")));
+    fs::write(
+        dir.join("dependency-surface-allowlist.toml"),
+        dependency_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("dependency fixture write: {err}")));
+
+    let cfg = load_legacy_policy_dir(&dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy directory migrates: {err}")));
+
+    assert_eq!(cfg.policy, "cargo-allow");
+    assert_eq!(cfg.allow.len(), 7);
+    assert!(
+        cfg.allow
+            .iter()
+            .any(|entry| entry.kind == allow_core::FindingKind::GeneratedCode
+                && entry.family.as_deref() == Some("generated_code")
+                && entry.path.as_deref() == Some(Path::new("policy/no-panic-baseline.toml"))),
+        "repo-policy migration should include generated-code legacy policy entries"
+    );
+    assert!(
+        cfg.allow.iter().any(
+            |entry| entry.kind == allow_core::FindingKind::PolicyException
+                && entry.family.as_deref() == Some("executable_file")
+                && entry.path.as_deref() == Some(Path::new("scripts/package-proof.sh"))
+                && entry.selector.target_fingerprint.as_deref() == Some("git-mode:100755")
+        ),
+        "repo-policy migration should include executable-file legacy policy entries"
+    );
+    assert!(
+        cfg.allow.iter().any(
+            |entry| entry.kind == allow_core::FindingKind::PolicyException
+                && entry.family.as_deref() == Some("github_workflow")
+                && entry.path.as_deref() == Some(Path::new(".github/workflows/ci.yml"))
+        ),
+        "repo-policy migration should include workflow-file legacy policy entries"
+    );
+    assert!(
+        cfg.allow.iter().any(
+            |entry| entry.kind == allow_core::FindingKind::PolicyException
+                && entry.family.as_deref() == Some("workflow_external_action")
+                && entry.selector.target_fingerprint.as_deref()
+                    == Some("action:actions/checkout@v6.0.2")
+        ),
+        "repo-policy migration should include workflow external-action entries"
+    );
+    assert!(
+        cfg.allow.iter().any(
+            |entry| entry.kind == allow_core::FindingKind::PolicyException
+                && entry.family.as_deref() == Some("dependency_surface")
+                && entry.path.as_deref() == Some(Path::new("Cargo.toml"))
+                && entry
+                    .evidence
+                    .iter()
+                    .any(|item| item == "dep_count_at_baseline:22")
+        ),
+        "repo-policy migration should include dependency-surface legacy policy entries"
+    );
+}
+
+#[test]
 fn policy_directory_can_expand_non_rust_globs_with_findings() {
     let dir = fixture_dir();
     fs::write(dir.join("non-rust-allowlist.toml"), policy_fixture_text())
