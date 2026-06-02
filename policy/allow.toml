@@ -1794,3 +1794,26 @@ glob = "docs/release/0.1.5.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0145"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/0.1.6.md"
+owner = "core/release"
+classification = "release_runbook"
+reason = "Documents the completed 0.1.6 patch-release publication, registry verification, and rollback limits."
+created = "2026-06-02"
+review_after = "2026-11-01"
+evidence = ["doc:docs/release/0.1.5.md", "doc:docs/claim-boundaries.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/0.1.6.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/release/0.1.6.md"
+
+[allow.last_seen]
+line = 1
+column = 1

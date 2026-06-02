@@ -102,7 +102,7 @@ cargo install cargo-allow --locked
 For a specific published release:
 
 ```bash
-cargo install cargo-allow --version 0.1.5 --locked
+cargo install cargo-allow --version 0.1.6 --locked
 ```
 
 Use the latest published version shown on crates.io. Do not copy
