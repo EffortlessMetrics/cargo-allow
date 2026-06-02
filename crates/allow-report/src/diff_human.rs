@@ -2,6 +2,8 @@ use crate::diff_policy_detail::policy_change_detail;
 use crate::diff_posture::{diff_net_posture, diff_posture_summary};
 use crate::{DiffFindingChange, DiffPolicyChange};
 
+const DIFF_HUMAN_CHANGE_LIMIT: usize = 120;
+
 pub fn render_diff_posture_summary_human(
     current_failures: usize,
     finding_changes: &[DiffFindingChange<'_>],
@@ -86,22 +88,75 @@ pub fn render_diff_finding_changes_human(changes: &[DiffFindingChange<'_>]) -> S
         out.push_str("  none\n");
         return out;
     }
-    for change in changes.iter().take(120) {
-        out.push_str(&format!(
-            "  {} {}{} at {}\n",
-            change.change,
-            change.kind,
-            change
-                .family
-                .map(|family| format!(".{family}"))
-                .unwrap_or_default(),
-            change.path
-        ));
-    }
-    if changes.len() > 120 {
-        out.push_str(&format!("  ... {} more omitted\n", changes.len() - 120));
+    append_finding_changes_human_section(&mut out, "Finding attention", changes, "new");
+    append_finding_changes_human_section(&mut out, "Finding improvements", changes, "removed");
+    let known_changes = ["new", "removed"];
+    if changes
+        .iter()
+        .any(|change| !known_changes.contains(&change.change))
+    {
+        out.push_str("  Other finding changes:\n");
+        let other_count = changes
+            .iter()
+            .filter(|change| !known_changes.contains(&change.change))
+            .count();
+        for change in changes
+            .iter()
+            .filter(|change| !known_changes.contains(&change.change))
+            .take(DIFF_HUMAN_CHANGE_LIMIT)
+        {
+            append_finding_change_human_row(&mut out, change);
+        }
+        if other_count > DIFF_HUMAN_CHANGE_LIMIT {
+            out.push_str(&format!(
+                "    ... {} more omitted\n",
+                other_count - DIFF_HUMAN_CHANGE_LIMIT
+            ));
+        }
     }
     out
+}
+
+fn append_finding_changes_human_section(
+    out: &mut String,
+    heading: &str,
+    changes: &[DiffFindingChange<'_>],
+    change_kind: &str,
+) {
+    if !changes.iter().any(|change| change.change == change_kind) {
+        return;
+    }
+    out.push_str(&format!("  {heading}:\n"));
+    let matching_count = changes
+        .iter()
+        .filter(|change| change.change == change_kind)
+        .count();
+    for change in changes
+        .iter()
+        .filter(|change| change.change == change_kind)
+        .take(DIFF_HUMAN_CHANGE_LIMIT)
+    {
+        append_finding_change_human_row(out, change);
+    }
+    if matching_count > DIFF_HUMAN_CHANGE_LIMIT {
+        out.push_str(&format!(
+            "    ... {} more omitted\n",
+            matching_count - DIFF_HUMAN_CHANGE_LIMIT
+        ));
+    }
+}
+
+fn append_finding_change_human_row(out: &mut String, change: &DiffFindingChange<'_>) {
+    out.push_str(&format!(
+        "    {} {}{} at {}\n",
+        change.change,
+        change.kind,
+        change
+            .family
+            .map(|family| format!(".{family}"))
+            .unwrap_or_default(),
+        change.path
+    ));
 }
 
 pub fn render_diff_policy_changes_human(changes: &[DiffPolicyChange<'_>]) -> String {
