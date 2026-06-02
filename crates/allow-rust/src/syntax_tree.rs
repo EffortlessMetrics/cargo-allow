@@ -45,11 +45,13 @@ impl RustSyntaxTree {
         let mut containers = Vec::new();
         let mut module_path = Vec::new();
         let mut impl_path = Vec::new();
+        let mut trait_path = Vec::new();
         collect_containers(
             self.tree.root_node(),
             source,
             &mut module_path,
             &mut impl_path,
+            &mut trait_path,
             &mut containers,
         );
         containers
@@ -106,6 +108,7 @@ fn collect_containers(
     source: &str,
     module_path: &mut Vec<String>,
     impl_path: &mut Vec<String>,
+    trait_path: &mut Vec<String>,
     containers: &mut Vec<RustSyntaxContainer>,
 ) {
     if node.kind() == "mod_item" {
@@ -114,7 +117,7 @@ fn collect_containers(
             .and_then(|name| node_text(source, name))
         {
             module_path.push(name.to_string());
-            visit_child_containers(node, source, module_path, impl_path, containers);
+            visit_child_containers(node, source, module_path, impl_path, trait_path, containers);
             module_path.pop();
             return;
         }
@@ -123,8 +126,21 @@ fn collect_containers(
     if node.kind() == "impl_item" {
         if let Some(name) = impl_container_name(node, source) {
             impl_path.push(name);
-            visit_child_containers(node, source, module_path, impl_path, containers);
+            visit_child_containers(node, source, module_path, impl_path, trait_path, containers);
             impl_path.pop();
+            return;
+        }
+    }
+
+    if node.kind() == "trait_item" {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| node_text(source, name))
+            .map(normalize_scope_text)
+        {
+            trait_path.push(name);
+            visit_child_containers(node, source, module_path, impl_path, trait_path, containers);
+            trait_path.pop();
             return;
         }
     }
@@ -136,6 +152,8 @@ fn collect_containers(
         {
             let (kind, name) = if let Some(impl_name) = impl_path.last() {
                 ("method", format!("{impl_name}::{name}"))
+            } else if let Some(trait_name) = trait_path.last() {
+                ("method", format!("{trait_name}::{name}"))
             } else {
                 ("function", name.to_string())
             };
@@ -153,7 +171,7 @@ fn collect_containers(
         }
     }
 
-    visit_child_containers(node, source, module_path, impl_path, containers);
+    visit_child_containers(node, source, module_path, impl_path, trait_path, containers);
 }
 
 fn visit_child_containers(
@@ -161,11 +179,19 @@ fn visit_child_containers(
     source: &str,
     module_path: &mut Vec<String>,
     impl_path: &mut Vec<String>,
+    trait_path: &mut Vec<String>,
     containers: &mut Vec<RustSyntaxContainer>,
 ) {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        collect_containers(child, source, module_path, impl_path, containers);
+        collect_containers(
+            child,
+            source,
+            module_path,
+            impl_path,
+            trait_path,
+            containers,
+        );
     }
 }
 

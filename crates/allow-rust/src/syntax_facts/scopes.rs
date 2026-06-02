@@ -12,7 +12,16 @@ pub(super) fn collect_line_scopes(
 ) {
     let mut module_path = Vec::new();
     let mut impl_path = Vec::new();
-    collect_nested_line_scopes(node, source, &mut module_path, &mut impl_path, &[], scopes);
+    let mut trait_path = Vec::new();
+    collect_nested_line_scopes(
+        node,
+        source,
+        &mut module_path,
+        &mut impl_path,
+        &mut trait_path,
+        &[],
+        scopes,
+    );
 }
 
 fn collect_nested_line_scopes(
@@ -20,6 +29,7 @@ fn collect_nested_line_scopes(
     source: &str,
     module_path: &mut Vec<String>,
     impl_path: &mut Vec<String>,
+    trait_path: &mut Vec<String>,
     outer_attribute_lines: &[(u32, u32)],
     scopes: &mut BTreeMap<u32, RustLineScope>,
 ) {
@@ -30,7 +40,7 @@ fn collect_nested_line_scopes(
         {
             module_path.push(name.to_string());
             record_module_scope(node, module_path, scopes);
-            visit_child_scopes(node, source, module_path, impl_path, scopes);
+            visit_child_scopes(node, source, module_path, impl_path, trait_path, scopes);
             module_path.pop();
             return;
         }
@@ -39,8 +49,20 @@ fn collect_nested_line_scopes(
     if node.kind() == "impl_item" {
         if let Some(name) = impl_container_name(node, source) {
             impl_path.push(name);
-            visit_child_scopes(node, source, module_path, impl_path, scopes);
+            visit_child_scopes(node, source, module_path, impl_path, trait_path, scopes);
             impl_path.pop();
+            return;
+        }
+    }
+
+    if node.kind() == "trait_item" {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| node_text(source, name))
+        {
+            trait_path.push(name.to_string());
+            visit_child_scopes(node, source, module_path, impl_path, trait_path, scopes);
+            trait_path.pop();
             return;
         }
     }
@@ -52,6 +74,8 @@ fn collect_nested_line_scopes(
         {
             let container = if let Some(impl_name) = impl_path.last() {
                 format!("{impl_name}::{name}")
+            } else if let Some(trait_name) = trait_path.last() {
+                format!("{trait_name}::{name}")
             } else {
                 name.to_string()
             };
@@ -61,7 +85,7 @@ fn collect_nested_line_scopes(
         }
     }
 
-    visit_child_scopes(node, source, module_path, impl_path, scopes);
+    visit_child_scopes(node, source, module_path, impl_path, trait_path, scopes);
 }
 
 fn visit_child_scopes(
@@ -69,6 +93,7 @@ fn visit_child_scopes(
     source: &str,
     module_path: &mut Vec<String>,
     impl_path: &mut Vec<String>,
+    trait_path: &mut Vec<String>,
     scopes: &mut BTreeMap<u32, RustLineScope>,
 ) {
     let mut cursor = node.walk();
@@ -83,6 +108,7 @@ fn visit_child_scopes(
             source,
             module_path,
             impl_path,
+            trait_path,
             &pending_outer_attribute_lines,
             scopes,
         );

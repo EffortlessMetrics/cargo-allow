@@ -105,3 +105,26 @@ fn scan_uses_syntax_trait_impl_method_scope() {
         Some("<Parser as ParserApi>::parse")
     );
 }
+
+#[test]
+fn scan_uses_syntax_trait_method_scope() {
+    let src = r#"
+        trait ParserApi {
+            fn parse(&self, value: Result<(), ()>) {
+                value.unwrap();
+            }
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let Some(finding) = findings
+        .iter()
+        .find(|f| f.family.as_deref() == Some("unwrap"))
+    else {
+        std::panic::panic_any("trait method unwrap finding should exist");
+    };
+
+    assert_eq!(
+        finding.identity.container.as_deref(),
+        Some("ParserApi::parse")
+    );
+}
