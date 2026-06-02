@@ -1,4 +1,5 @@
 use crate::contracts::RECEIPT_ARTIFACT;
+use crate::evidence_repair::evidence_repair_queues_from_context;
 use crate::json::{
     push_json_artifact_header, push_json_artifact_source_context, push_json_status_fields,
 };
@@ -6,7 +7,7 @@ use crate::{
     RECEIPT_COMMAND_CHECK, ReportContext, Summary, baseline_debt_count,
     render_count_fields_with_policy_context, render_source_inventory_json,
 };
-use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape};
+use allow_core::{Finding, MatchOutcome, json_escape};
 
 pub fn render_receipt(command: &str, outcomes: &[MatchOutcome], failed: bool) -> String {
     render_receipt_with_context(command, outcomes, failed, ReportContext::default())
@@ -77,7 +78,7 @@ fn append_evidence_repair_queues_json(
     context: ReportContext<'_>,
     out: &mut String,
 ) {
-    let queues = evidence_repair_queues(summary, context);
+    let queues = evidence_repair_queues_from_context(summary, context);
     if queues.is_empty() {
         return;
     }
@@ -100,43 +101,4 @@ fn append_evidence_repair_queues_json(
         out.push_str("    }");
     }
     out.push_str("\n  ]");
-}
-
-fn evidence_repair_queues(
-    summary: &Summary,
-    context: ReportContext<'_>,
-) -> Vec<EvidenceRepairQueue> {
-    let mut queues = Vec::new();
-    if let Some(count) = context.broken_evidence_links.filter(|count| *count > 0) {
-        queues.push(EvidenceRepairQueue {
-            signal: "broken_evidence_links",
-            count,
-            command: "cargo-allow worklist --item-kind broken_evidence_link --format json",
-        });
-    }
-    let missing_evidence_count = context
-        .policy_missing_evidence_entries
-        .unwrap_or(0)
-        .max(summary.count(MatchStatus::EvidenceMissing));
-    if missing_evidence_count > 0 {
-        queues.push(EvidenceRepairQueue {
-            signal: "missing_evidence",
-            count: missing_evidence_count,
-            command: "cargo-allow worklist --missing-evidence --format json",
-        });
-    }
-    if let Some(count) = context.weak_evidence_references.filter(|count| *count > 0) {
-        queues.push(EvidenceRepairQueue {
-            signal: "weak_evidence_references",
-            count,
-            command: "cargo-allow worklist --item-kind weak_evidence_reference --format json",
-        });
-    }
-    queues
-}
-
-struct EvidenceRepairQueue {
-    signal: &'static str,
-    count: usize,
-    command: &'static str,
 }

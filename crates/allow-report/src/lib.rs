@@ -24,6 +24,7 @@ mod doctor;
 #[cfg(test)]
 mod doctor_tests;
 mod evidence_reference_human;
+mod evidence_repair;
 mod explain;
 mod explain_common;
 mod explain_human;

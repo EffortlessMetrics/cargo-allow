@@ -1,5 +1,6 @@
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
 
+use crate::evidence_repair::evidence_repair_queues_from_context;
 use crate::json::{bool_json, option_json, push_json_source_context_properties};
 use crate::{
     ReportContext, Summary, baseline_debt_count, broken_evidence_link_count,
@@ -125,7 +126,7 @@ fn push_evidence_repair_queues_property(
     summary: &Summary,
     context: ReportContext<'_>,
 ) {
-    let queues = evidence_repair_queues(summary, context);
+    let queues = evidence_repair_queues_from_context(summary, context);
     if queues.is_empty() {
         return;
     }
@@ -149,45 +150,6 @@ fn push_evidence_repair_queues_property(
         out.push_str("          }");
     }
     out.push_str("\n        ]\n");
-}
-
-fn evidence_repair_queues(
-    summary: &Summary,
-    context: ReportContext<'_>,
-) -> Vec<EvidenceRepairQueue> {
-    let mut queues = Vec::new();
-    if let Some(count) = context.broken_evidence_links.filter(|count| *count > 0) {
-        queues.push(EvidenceRepairQueue {
-            signal: "broken_evidence_links",
-            count,
-            command: "cargo-allow worklist --item-kind broken_evidence_link --format json",
-        });
-    }
-    let missing_evidence_count = context
-        .policy_missing_evidence_entries
-        .unwrap_or(0)
-        .max(summary.count(MatchStatus::EvidenceMissing));
-    if missing_evidence_count > 0 {
-        queues.push(EvidenceRepairQueue {
-            signal: "missing_evidence",
-            count: missing_evidence_count,
-            command: "cargo-allow worklist --missing-evidence --format json",
-        });
-    }
-    if let Some(count) = context.weak_evidence_references.filter(|count| *count > 0) {
-        queues.push(EvidenceRepairQueue {
-            signal: "weak_evidence_references",
-            count,
-            command: "cargo-allow worklist --item-kind weak_evidence_reference --format json",
-        });
-    }
-    queues
-}
-
-struct EvidenceRepairQueue {
-    signal: &'static str,
-    count: usize,
-    command: &'static str,
 }
 
 const SARIF_STATUSES: &[MatchStatus] = &[

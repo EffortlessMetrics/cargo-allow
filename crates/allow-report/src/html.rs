@@ -1,6 +1,9 @@
 use allow_core::{Finding, MatchOutcome, MatchStatus};
 
 use crate::audit_remediation::audit_remediation_items;
+use crate::evidence_repair::{
+    BROKEN_EVIDENCE_LINK_COMMAND, WEAK_EVIDENCE_REFERENCE_COMMAND, evidence_repair_queues,
+};
 use crate::text::html_escape;
 use crate::{
     CLAIM_BOUNDARY_TEXT, FilePosture, ReportContext, ReviewSignals, STATUS_COUNT_ORDER, Summary,
@@ -170,13 +173,13 @@ fn render_audit_summary_html(
     if signals.review_items == 0 {
         out.push_str("<p>Recommended next step: keep <code>cargo-allow check --mode no-new</code> in CI.</p>\n");
     } else if queue.is_empty() && signals.broken_evidence_links > 0 {
-        out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --item-kind broken_evidence_link --format json</code> to repair broken local evidence/link references.</p>\n");
+        out.push_str(&format!("<p>Recommended next step: run <code>{}</code> to repair broken local evidence/link references.</p>\n", html_escape(BROKEN_EVIDENCE_LINK_COMMAND)));
     } else if queue.is_empty()
         && signals.policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing)
     {
         out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --format json</code> to route retained entries with no evidence references; add <code>--missing-evidence</code> to focus that queue.</p>\n");
     } else if queue.is_empty() && signals.weak_evidence_references > 0 {
-        out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --item-kind weak_evidence_reference --format json</code> to replace unstructured or unknown-prefix evidence/link references.</p>\n");
+        out.push_str(&format!("<p>Recommended next step: run <code>{}</code> to replace unstructured or unknown-prefix evidence/link references.</p>\n", html_escape(WEAK_EVIDENCE_REFERENCE_COMMAND)));
     } else if queue.is_empty() && signals.baseline_debt > 0 {
         out.push_str("<p>Recommended next step: run <code>cargo-allow worklist --format json</code> to review generated baseline debt.</p>\n");
     } else {
@@ -233,17 +236,10 @@ fn render_evidence_repair_queues_html(summary: &Summary, signals: ReviewSignals,
 }
 
 fn evidence_repair_commands(summary: &Summary, signals: ReviewSignals) -> Vec<&'static str> {
-    let mut commands = Vec::new();
-    if signals.broken_evidence_links > 0 {
-        commands.push("cargo-allow worklist --item-kind broken_evidence_link --format json");
-    }
-    if signals.policy_missing_evidence > 0 || summary.count(MatchStatus::EvidenceMissing) > 0 {
-        commands.push("cargo-allow worklist --missing-evidence --format json");
-    }
-    if signals.weak_evidence_references > 0 {
-        commands.push("cargo-allow worklist --item-kind weak_evidence_reference --format json");
-    }
-    commands
+    evidence_repair_queues(summary, signals)
+        .into_iter()
+        .map(|queue| queue.command)
+        .collect()
 }
 
 fn render_non_rust_html(findings: &[Finding], outcomes: &[MatchOutcome], out: &mut String) {

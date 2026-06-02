@@ -1,4 +1,8 @@
 use crate::contracts::MIGRATE_ARTIFACT;
+use crate::evidence_repair::{
+    BROKEN_EVIDENCE_LINK_COMMAND, WEAK_EVIDENCE_REFERENCE_COMMAND,
+    evidence_repair_queues_from_counts,
+};
 use crate::json::{bool_json, push_json_fixed_artifact_preamble};
 use crate::{CLAIM_BOUNDARY_TEXT, MigrateReport};
 use allow_core::json_escape;
@@ -75,12 +79,12 @@ fn migrate_evidence_repair_commands(report: MigrateReport<'_>) -> Vec<&'static s
     if report.broken_evidence_links.unwrap_or(0) > 0
         || report.unsafe_broken_evidence_links.unwrap_or(0) > 0
     {
-        commands.push("cargo-allow worklist --item-kind broken_evidence_link --format json");
+        commands.push(BROKEN_EVIDENCE_LINK_COMMAND);
     }
     if report.weak_evidence_references.unwrap_or(0) > 0
         || report.unsafe_weak_evidence_references.unwrap_or(0) > 0
     {
-        commands.push("cargo-allow worklist --item-kind weak_evidence_reference --format json");
+        commands.push(WEAK_EVIDENCE_REFERENCE_COMMAND);
     }
     commands
 }
@@ -193,23 +197,26 @@ fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvide
     let mut queues = Vec::new();
     let broken_count = report.broken_evidence_links.unwrap_or(0);
     let unsafe_broken_count = report.unsafe_broken_evidence_links.unwrap_or(0);
-    if broken_count > 0 || unsafe_broken_count > 0 {
-        queues.push(MigrateEvidenceRepairQueue {
-            item_kind: "broken_evidence_link",
-            count: broken_count,
-            unsafe_count: unsafe_broken_count,
-            command: "cargo-allow worklist --item-kind broken_evidence_link --format json",
-        });
-    }
-
     let weak_count = report.weak_evidence_references.unwrap_or(0);
     let unsafe_weak_count = report.unsafe_weak_evidence_references.unwrap_or(0);
-    if weak_count > 0 || unsafe_weak_count > 0 {
+    for queue in evidence_repair_queues_from_counts(
+        broken_count + unsafe_broken_count,
+        0,
+        weak_count + unsafe_weak_count,
+    ) {
+        let Some(item_kind) = queue.item_kind else {
+            continue;
+        };
+        let (count, unsafe_count) = match item_kind {
+            "broken_evidence_link" => (broken_count, unsafe_broken_count),
+            "weak_evidence_reference" => (weak_count, unsafe_weak_count),
+            _ => (queue.count, 0),
+        };
         queues.push(MigrateEvidenceRepairQueue {
-            item_kind: "weak_evidence_reference",
-            count: weak_count,
-            unsafe_count: unsafe_weak_count,
-            command: "cargo-allow worklist --item-kind weak_evidence_reference --format json",
+            item_kind,
+            count,
+            unsafe_count,
+            command: queue.command,
         });
     }
     queues

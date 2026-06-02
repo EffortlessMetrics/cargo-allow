@@ -1,4 +1,8 @@
 use crate::contracts::DOCTOR_ARTIFACT;
+use crate::evidence_repair::{
+    BROKEN_EVIDENCE_LINK_COMMAND, EvidenceRepairQueue, WEAK_EVIDENCE_REFERENCE_COMMAND,
+    evidence_repair_queues_from_counts,
+};
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
 use crate::{CLAIM_BOUNDARY_TEXT, DoctorReport, InventoryContext};
 use allow_core::json_escape;
@@ -29,17 +33,17 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
             if let Some(count) = facts.broken_evidence_links {
                 out.push_str(&format!("broken evidence links: {count}\n"));
                 if count > 0 {
-                    out.push_str(
-                        "broken evidence worklist: cargo-allow worklist --item-kind broken_evidence_link --format json\n",
-                    );
+                    out.push_str(&format!(
+                        "broken evidence worklist: {BROKEN_EVIDENCE_LINK_COMMAND}\n"
+                    ));
                 }
             }
             if let Some(count) = facts.weak_evidence_references {
                 out.push_str(&format!("weak evidence/link references: {count}\n"));
                 if count > 0 {
-                    out.push_str(
-                        "weak evidence worklist: cargo-allow worklist --item-kind weak_evidence_reference --format json\n",
-                    );
+                    out.push_str(&format!(
+                        "weak evidence worklist: {WEAK_EVIDENCE_REFERENCE_COMMAND}\n"
+                    ));
                 }
             }
         }
@@ -156,29 +160,12 @@ fn append_doctor_evidence_repair_queues_json(facts: DoctorReport<'_>, out: &mut 
     out.push_str("\n    ]");
 }
 
-fn doctor_evidence_repair_queues(facts: DoctorReport<'_>) -> Vec<DoctorEvidenceRepairQueue> {
-    let mut queues = Vec::new();
-    if let Some(count) = facts.broken_evidence_links.filter(|count| *count > 0) {
-        queues.push(DoctorEvidenceRepairQueue {
-            signal: "broken_evidence_links",
-            count,
-            command: "cargo-allow worklist --item-kind broken_evidence_link --format json",
-        });
-    }
-    if let Some(count) = facts.weak_evidence_references.filter(|count| *count > 0) {
-        queues.push(DoctorEvidenceRepairQueue {
-            signal: "weak_evidence_references",
-            count,
-            command: "cargo-allow worklist --item-kind weak_evidence_reference --format json",
-        });
-    }
-    queues
-}
-
-struct DoctorEvidenceRepairQueue {
-    signal: &'static str,
-    count: usize,
-    command: &'static str,
+fn doctor_evidence_repair_queues(facts: DoctorReport<'_>) -> Vec<EvidenceRepairQueue> {
+    evidence_repair_queues_from_counts(
+        facts.broken_evidence_links.unwrap_or(0),
+        0,
+        facts.weak_evidence_references.unwrap_or(0),
+    )
 }
 
 fn config_status_text(valid: Option<bool>, diagnostic: Option<&str>) -> String {

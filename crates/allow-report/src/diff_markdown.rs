@@ -1,5 +1,6 @@
 use crate::diff_policy_detail::policy_change_detail;
 use crate::diff_posture::{diff_net_posture, diff_posture_summary};
+use crate::evidence_repair::evidence_repair_queues_from_counts;
 use crate::text::markdown_cell;
 use crate::{CLAIM_BOUNDARY_TEXT, DiffFindingChange, DiffPolicyChange};
 
@@ -71,17 +72,12 @@ pub fn render_diff_pr_summary_markdown_with_evidence_health(
         "\n**Reviewer action:** {}\n\n",
         posture.reviewer_action()
     ));
-    if broken_evidence_links > 0 || weak_evidence_references > 0 {
+    let evidence_repair_queues =
+        evidence_repair_queues_from_counts(broken_evidence_links, 0, weak_evidence_references);
+    if !evidence_repair_queues.is_empty() {
         out.push_str("**Evidence repair queues:**\n");
-        if broken_evidence_links > 0 {
-            out.push_str(
-                "- `cargo-allow worklist --item-kind broken_evidence_link --format json`\n",
-            );
-        }
-        if weak_evidence_references > 0 {
-            out.push_str(
-                "- `cargo-allow worklist --item-kind weak_evidence_reference --format json`\n",
-            );
+        for queue in evidence_repair_queues {
+            out.push_str(&format!("- `{}`\n", queue.command));
         }
         out.push('\n');
     }
