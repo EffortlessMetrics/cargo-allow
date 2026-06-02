@@ -39,6 +39,9 @@ ledger and the planned growth around it.
 - [0.1.4 release record](release/0.1.4.md): completed patch release for the
   post-0.1.3 setup diagnostics, evidence routing, README logo, and scanner
   identity hardening.
+- [0.1.5 release record](release/0.1.5.md): completed patch release for
+  evidence-health repair queue routing metadata and unsafe-scoped migration
+  evidence repair routes.
 - [Agent worklist prompt](agents/cargo-allow-worklist.md): bounded agent use of
   `cargo-allow worklist`.
 - [Schemas](schemas/README.md): JSON schemas for doctor, report, receipt,
