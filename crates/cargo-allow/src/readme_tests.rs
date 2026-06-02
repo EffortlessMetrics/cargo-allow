@@ -9,13 +9,28 @@ fn readme_preserves_source_tree_boundary() {
         "does **not** require a successful build",
         "does **not** invoke\nCargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros",
         "`Cargo.toml` and `Cargo.lock` are files in the scanned source tree, not required\nbuild metadata.",
-        "the value is not Cargo metadata or build-membership\nproof.",
         "No new unreceipted findings were found in scanned source-tree inventory.",
         "They must not claim that no unsafe, panic, lint suppression, or other exception\nexists outside the syntax-visible surface that was scanned.",
     ] {
         assert!(
             readme.contains(required_text),
             "README should preserve source-tree boundary text: {required_text}"
+        );
+    }
+}
+
+#[test]
+fn claim_boundary_docs_preserve_source_package_boundary() {
+    let claim_boundaries = include_str!("../../../docs/claim-boundaries.md");
+
+    for required_text in [
+        "When cargo-allow reports `source_package`, that value is optional context read\nfrom source-tree `Cargo.toml` text",
+        "Invalid, unreadable, or non-UTF8 manifests are ignored for that context so the\nsource scan can continue",
+        "the value is not Cargo metadata or build-membership\nproof.",
+    ] {
+        assert!(
+            claim_boundaries.contains(required_text),
+            "claim boundary docs should preserve source_package boundary text: {required_text}"
         );
     }
 }

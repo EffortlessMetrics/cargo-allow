@@ -63,6 +63,12 @@ current directory, with git-tracked inventory preferred and symlink-safe
 filesystem traversal as fallback. Cargo manifests and lockfiles are ordinary
 files in that inventory, not required build metadata.
 
+When cargo-allow reports `source_package`, that value is optional context read
+from source-tree `Cargo.toml` text when a readable `[package].name` is present.
+Invalid, unreadable, or non-UTF8 manifests are ignored for that context so the
+source scan can continue; the value is not Cargo metadata or build-membership
+proof.
+
 ## Line Hints Are Not Identity
 
 Line and column values are useful review hints. They are not stable identity.
