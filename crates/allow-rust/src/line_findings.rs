@@ -38,7 +38,7 @@ pub(crate) fn scan_line(
             safety_comment_nearby: syntax.safety_comment_nearby,
         },
         syntax.unsafe_constructs,
-        syntax.unsafe_attribute_columns,
+        syntax.unsafe_attributes,
         findings,
     );
 

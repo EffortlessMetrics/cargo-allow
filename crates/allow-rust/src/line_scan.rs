@@ -51,8 +51,8 @@ pub(crate) fn scan_source_lines(
                     .get(&line_no)
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),
-                unsafe_attribute_columns: syntax
-                    .unsafe_attribute_columns
+                unsafe_attributes: syntax
+                    .unsafe_attributes
                     .get(&line_no)
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),

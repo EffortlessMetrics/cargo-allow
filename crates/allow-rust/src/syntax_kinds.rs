@@ -64,6 +64,12 @@ pub(crate) struct UnsafeSyntaxConstruct {
     pub(crate) symbol: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct UnsafeAttribute {
+    pub(crate) column: u32,
+    pub(crate) symbol: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum PanicMacroKind {
     Panic,
@@ -160,5 +166,5 @@ pub(crate) struct RustSyntaxFacts {
     pub(crate) panic_methods: BTreeMap<u32, Vec<PanicMethodCall>>,
     pub(crate) scopes: BTreeMap<u32, RustLineScope>,
     pub(crate) unsafe_constructs: BTreeMap<u32, Vec<UnsafeSyntaxConstruct>>,
-    pub(crate) unsafe_attribute_columns: BTreeMap<u32, Vec<u32>>,
+    pub(crate) unsafe_attributes: BTreeMap<u32, Vec<UnsafeAttribute>>,
 }

@@ -2,12 +2,12 @@ use allow_core::{Finding, FindingKind};
 
 use crate::finding_builder::push_finding;
 use crate::line_context::LineContext;
-use crate::syntax_kinds::UnsafeSyntaxConstruct;
+use crate::syntax_kinds::{UnsafeAttribute, UnsafeSyntaxConstruct};
 
 pub(crate) fn scan_unsafe_constructs(
     context: UnsafeLineContext<'_>,
     unsafe_constructs: &[UnsafeSyntaxConstruct],
-    unsafe_attribute_columns: &[u32],
+    unsafe_attributes: &[UnsafeAttribute],
     findings: &mut Vec<Finding>,
 ) {
     for unsafe_construct in unsafe_constructs {
@@ -25,13 +25,14 @@ pub(crate) fn scan_unsafe_constructs(
             findings,
         );
     }
-    for column in unsafe_attribute_columns {
+    for attribute in unsafe_attributes {
         push_finding(
-            context.line.site(*column),
+            context.line.site(attribute.column),
             FindingKind::Unsafe,
             "unsafe_attr",
             "unsafe_attr",
             |id| {
+                id.symbol = attribute.symbol.clone();
                 if context.safety_comment_nearby {
                     id.target_fingerprint = Some("safety-comment:present".to_string());
                 }
