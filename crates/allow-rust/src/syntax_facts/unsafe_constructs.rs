@@ -2,7 +2,7 @@ use allow_core::normalize_snippet;
 use tree_sitter::Node;
 
 use crate::syntax_kinds::{RustSyntaxFacts, UnsafeSyntaxConstruct, UnsafeSyntaxKind};
-use crate::syntax_tree::{impl_container_name, node_text};
+use crate::syntax_tree::{extern_container_name, impl_container_name, node_text};
 use crate::text::source_column;
 
 pub(super) fn record_node_unsafe_construct(
@@ -97,27 +97,16 @@ fn item_name(node: Node<'_>, source: &str) -> Option<String> {
 }
 
 fn extern_block_symbol(node: Node<'_>, source: &str) -> Option<String> {
-    let abi = extern_abi(node, source).unwrap_or_else(|| "extern".to_string());
+    let context = extern_container_name(node, source).unwrap_or_else(|| "extern".to_string());
     let mut item_names = Vec::new();
     collect_foreign_item_names(node, source, &mut item_names);
     let symbol = if item_names.is_empty() {
-        format!("extern {abi}")
+        context
     } else {
-        format!("extern {abi}:{}", item_names.join(","))
+        format!("{context}:{}", item_names.join(","))
     };
     let symbol = normalize_snippet(&symbol);
     (!symbol.is_empty()).then_some(symbol)
-}
-
-fn extern_abi(node: Node<'_>, source: &str) -> Option<String> {
-    if node.kind() == "string_literal" {
-        return node_text(source, node)
-            .map(normalize_snippet)
-            .filter(|abi| !abi.is_empty());
-    }
-    let mut cursor = node.walk();
-    node.children(&mut cursor)
-        .find_map(|child| extern_abi(child, source))
 }
 
 fn collect_foreign_item_names(node: Node<'_>, source: &str, item_names: &mut Vec<String>) {
