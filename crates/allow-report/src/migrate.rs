@@ -39,6 +39,7 @@ pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
     {
         out.push_str(&format!("unsafe_weak_evidence_references: {count}\n"));
     }
+    append_migrate_evidence_repair_queues_human(report, &mut out);
     out.push_str(&format!(
         "inventory: {}/{} via {}{}\n",
         report.inventory.scope,
@@ -56,6 +57,32 @@ pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out.push('\n');
     out
+}
+
+fn append_migrate_evidence_repair_queues_human(report: MigrateReport<'_>, out: &mut String) {
+    let commands = migrate_evidence_repair_commands(report);
+    if commands.is_empty() {
+        return;
+    }
+    out.push_str("evidence_repair_queues:\n");
+    for command in commands {
+        out.push_str(&format!("  {command}\n"));
+    }
+}
+
+fn migrate_evidence_repair_commands(report: MigrateReport<'_>) -> Vec<&'static str> {
+    let mut commands = Vec::new();
+    if report.broken_evidence_links.unwrap_or(0) > 0
+        || report.unsafe_broken_evidence_links.unwrap_or(0) > 0
+    {
+        commands.push("cargo-allow worklist --item-kind broken_evidence_link --format json");
+    }
+    if report.weak_evidence_references.unwrap_or(0) > 0
+        || report.unsafe_weak_evidence_references.unwrap_or(0) > 0
+    {
+        commands.push("cargo-allow worklist --item-kind weak_evidence_reference --format json");
+    }
+    commands
 }
 
 fn migrate_inventory_files_suffix(inventory: crate::InventoryContext<'_>) -> String {
