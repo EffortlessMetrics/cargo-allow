@@ -118,6 +118,33 @@ fn unsafe_extern_block_findings_record_visible_context_symbol() {
 }
 
 #[test]
+fn unsafe_extern_block_findings_record_abi_container_identity() {
+    let src = r#"
+        unsafe extern "C" {
+            fn read_handle();
+        }
+
+        unsafe extern "system" {
+            fn close_handle();
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    let containers = findings
+        .iter()
+        .filter(|f| {
+            f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_extern_block")
+        })
+        .map(|f| f.identity.container.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        containers,
+        vec![Some("extern \"C\""), Some("extern \"system\"")]
+    );
+}
+
+#[test]
 fn detects_unsafe_function_signatures_from_syntax() {
     let src = r#"
         trait Reader {
