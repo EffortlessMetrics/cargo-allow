@@ -115,7 +115,12 @@ The current renderer emits the lint count, emits broken local evidence links
 only when migrated references point to missing or invalid local paths, emits
 weak evidence references only when legacy conversion preserved unstructured or
 unknown-prefix evidence, and emits the unsafe-specific evidence-health counts
-only when those references belong to migrated unsafe entries.
+only when those references belong to migrated unsafe entries. When those
+evidence-health counts are non-zero, current `migrate` JSON artifacts may also
+include an optional `evidence_repair_queues` array with stable worklist
+`item_kind` names, total and unsafe-specific counts, and the exact
+`cargo-allow worklist --item-kind ... --format json` command for each repair
+queue.
 
 The shared report schema is emitted by `audit`, `check`, and `diff`, but the
 top-level `diff` posture extension is valid only on reports whose

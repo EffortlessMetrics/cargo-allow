@@ -129,6 +129,13 @@
         }
       }
     },
+    "evidence_repair_queues": {
+      "type": "array",
+      "description": "Optional worklist queue routing emitted when migrated policy has broken local evidence links or weak evidence references.",
+      "items": {
+        "$ref": "#/$defs/evidence_repair_queue"
+      }
+    },
     "notes": {
       "type": "string"
     }
@@ -208,6 +215,39 @@
           "type": "integer",
           "minimum": 0,
           "description": "Number of source-tree inventory files considered during repo-policy migration, when collected."
+        }
+      }
+    },
+    "evidence_repair_queue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "item_kind",
+        "count",
+        "unsafe_count",
+        "command"
+      ],
+      "properties": {
+        "item_kind": {
+          "enum": [
+            "broken_evidence_link",
+            "weak_evidence_reference"
+          ],
+          "description": "Stable cargo-allow worklist item kind for the repair queue."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total migrated references routed to this repair queue."
+        },
+        "unsafe_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Migrated unsafe references routed to this repair queue."
+        },
+        "command": {
+          "type": "string",
+          "description": "Suggested cargo-allow worklist command for this queue."
         }
       }
     }

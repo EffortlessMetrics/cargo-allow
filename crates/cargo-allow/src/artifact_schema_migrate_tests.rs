@@ -113,6 +113,65 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
             "migrate summary {field} should be an integer"
         );
     }
+
+    assert_eq!(
+        schema
+            .pointer("/properties/evidence_repair_queues/type")
+            .and_then(Value::as_str),
+        Some("array"),
+        "migrate evidence repair queues should be an optional array"
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/evidence_repair_queues/items/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/evidence_repair_queue"),
+        "migrate evidence repair queues should use the queue row definition"
+    );
+    let queue = required_schema_pointer("migrate", &schema, "/$defs/evidence_repair_queue");
+    assert_eq!(
+        queue.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "migrate evidence repair queue should reject unknown fields"
+    );
+    assert_required_fields(
+        "migrate evidence repair queue",
+        queue,
+        &["item_kind", "count", "unsafe_count", "command"],
+    );
+    assert_enum_equals(
+        "migrate evidence repair queue item kind",
+        &schema,
+        "/$defs/evidence_repair_queue/properties/item_kind/enum",
+        &["broken_evidence_link", "weak_evidence_reference"],
+    );
+    for field in ["count", "unsafe_count"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/evidence_repair_queue/properties/{field}/type"
+                ))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "migrate evidence repair queue {field} should be an integer"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/evidence_repair_queue/properties/{field}/minimum"
+                ))
+                .and_then(Value::as_u64),
+            Some(0),
+            "migrate evidence repair queue {field} should be non-negative"
+        );
+    }
+    assert_eq!(
+        schema
+            .pointer("/$defs/evidence_repair_queue/properties/command/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "migrate evidence repair queue command should be a string"
+    );
     assert_eq!(
         schema
             .pointer("/properties/notes/type")
