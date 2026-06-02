@@ -1,3 +1,4 @@
+use crate::audit_remediation::audit_remediation_items;
 use crate::contracts::REPORT_ARTIFACT;
 use crate::json::{
     option_json, push_json_artifact_header, push_json_artifact_source_context,
@@ -227,7 +228,7 @@ fn append_audit_remediation_roadmap_json(
     if command != "audit" {
         return;
     }
-    let roadmap = audit_remediation_roadmap(summary, ReviewSignals::from_summary(summary, context));
+    let roadmap = audit_remediation_items(summary, ReviewSignals::from_summary(summary, context));
     if roadmap.is_empty() {
         return;
     }
@@ -250,103 +251,6 @@ fn append_audit_remediation_roadmap_json(
         out.push_str("    }");
     }
     out.push_str("\n  ],\n");
-}
-
-fn audit_remediation_roadmap(
-    summary: &Summary,
-    signals: ReviewSignals,
-) -> Vec<AuditRemediationItem> {
-    let mut items = Vec::new();
-    push_audit_roadmap_item_if(
-        &mut items,
-        summary.count(MatchStatus::New),
-        "new_unreceipted",
-        "cargo-allow worklist --status new --format json",
-    );
-    push_audit_roadmap_item_if(
-        &mut items,
-        summary.count(MatchStatus::Expired),
-        "expired",
-        "cargo-allow worklist --status expired --format json",
-    );
-    push_audit_roadmap_item_if(
-        &mut items,
-        summary.count(MatchStatus::ReviewDue),
-        "review_due",
-        "cargo-allow worklist --status review_due --format json",
-    );
-    push_audit_roadmap_item_if(
-        &mut items,
-        summary.count(MatchStatus::Stale),
-        "stale",
-        "cargo-allow prune --stale --dry-run --format json --output target/cargo-allow/prune.json",
-    );
-    push_audit_roadmap_item_if(
-        &mut items,
-        summary.count(MatchStatus::Ambiguous),
-        "ambiguous",
-        "cargo-allow worklist --status ambiguous --format json",
-    );
-    push_audit_roadmap_item_if(
-        &mut items,
-        summary.count(MatchStatus::InvalidSelector),
-        "invalid_selector",
-        "cargo-allow worklist --status invalid_selector --format json",
-    );
-    push_audit_roadmap_item_if(
-        &mut items,
-        summary.count(MatchStatus::MissingRequiredField),
-        "missing_required_field",
-        "cargo-allow worklist --status missing_required_field --format json",
-    );
-    push_audit_roadmap_item_if(
-        &mut items,
-        signals
-            .policy_missing_evidence
-            .max(summary.count(MatchStatus::EvidenceMissing)),
-        "missing_evidence",
-        "cargo-allow worklist --missing-evidence --format json",
-    );
-    push_audit_roadmap_item_if(
-        &mut items,
-        signals.broken_evidence_links,
-        "broken_evidence_links",
-        "cargo-allow worklist --item-kind broken_evidence_link --format json",
-    );
-    push_audit_roadmap_item_if(
-        &mut items,
-        signals.weak_evidence_references,
-        "weak_evidence_references",
-        "cargo-allow worklist --item-kind weak_evidence_reference --format json",
-    );
-    push_audit_roadmap_item_if(
-        &mut items,
-        signals.baseline_debt,
-        "baseline_debt",
-        "cargo-allow worklist --baseline-debt --format json",
-    );
-    items
-}
-
-fn push_audit_roadmap_item_if(
-    items: &mut Vec<AuditRemediationItem>,
-    count: usize,
-    signal: &'static str,
-    command: &'static str,
-) {
-    if count > 0 {
-        items.push(AuditRemediationItem {
-            signal,
-            count,
-            command,
-        });
-    }
-}
-
-struct AuditRemediationItem {
-    signal: &'static str,
-    count: usize,
-    command: &'static str,
 }
 
 fn render_trend_fields(summary: &Summary, context: ReportContext<'_>, indent: &str) -> String {
