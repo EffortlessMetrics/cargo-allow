@@ -131,6 +131,12 @@ Diff reports may include optional `diff.summary.broken_evidence_links` and
 evidence-health signals. These duplicate the base report evidence-health counts
 inside the PR-posture summary so JSON diff consumers do not need to join across
 artifact sections to explain why the net posture worsened.
+Report JSON may also include an optional top-level `evidence_repair_queues`
+array when audit, check, or diff reports have broken local evidence links,
+missing evidence, or weak evidence references. Queue rows include a stable
+`signal`, the routed `count`, and the exact `cargo-allow worklist ... --format
+json` command so CI and agents can route evidence repair work without parsing
+human text.
 Report JSON may also include an optional `source_inventory` object when source
 findings are present. This is the machine-readable counterpart to the audit
 source-exception inventory, grouped by governed exception kind and
