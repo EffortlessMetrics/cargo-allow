@@ -153,7 +153,71 @@ pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
     out.push_str(&summary_tail.join(",\n"));
     out.push('\n');
     out.push_str("  },\n");
+    append_migrate_evidence_repair_queues_json(report, &mut out);
     out.push_str(&format!("  \"notes\": \"{}\"\n", json_escape(report.notes)));
     out.push_str("}\n");
     out
+}
+
+fn append_migrate_evidence_repair_queues_json(report: MigrateReport<'_>, out: &mut String) {
+    let queues = migrate_evidence_repair_queues(report);
+    if queues.is_empty() {
+        return;
+    }
+
+    out.push_str("  \"evidence_repair_queues\": [\n");
+    for (index, queue) in queues.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str("    {\n");
+        out.push_str(&format!(
+            "      \"item_kind\": \"{}\",\n",
+            json_escape(queue.item_kind)
+        ));
+        out.push_str(&format!("      \"count\": {},\n", queue.count));
+        out.push_str(&format!(
+            "      \"unsafe_count\": {},\n",
+            queue.unsafe_count
+        ));
+        out.push_str(&format!(
+            "      \"command\": \"{}\"\n",
+            json_escape(queue.command)
+        ));
+        out.push_str("    }");
+    }
+    out.push_str("\n  ],\n");
+}
+
+fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvidenceRepairQueue> {
+    let mut queues = Vec::new();
+    let broken_count = report.broken_evidence_links.unwrap_or(0);
+    let unsafe_broken_count = report.unsafe_broken_evidence_links.unwrap_or(0);
+    if broken_count > 0 || unsafe_broken_count > 0 {
+        queues.push(MigrateEvidenceRepairQueue {
+            item_kind: "broken_evidence_link",
+            count: broken_count,
+            unsafe_count: unsafe_broken_count,
+            command: "cargo-allow worklist --item-kind broken_evidence_link --format json",
+        });
+    }
+
+    let weak_count = report.weak_evidence_references.unwrap_or(0);
+    let unsafe_weak_count = report.unsafe_weak_evidence_references.unwrap_or(0);
+    if weak_count > 0 || unsafe_weak_count > 0 {
+        queues.push(MigrateEvidenceRepairQueue {
+            item_kind: "weak_evidence_reference",
+            count: weak_count,
+            unsafe_count: unsafe_weak_count,
+            command: "cargo-allow worklist --item-kind weak_evidence_reference --format json",
+        });
+    }
+    queues
+}
+
+struct MigrateEvidenceRepairQueue {
+    item_kind: &'static str,
+    count: usize,
+    unsafe_count: usize,
+    command: &'static str,
 }

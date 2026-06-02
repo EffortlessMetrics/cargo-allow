@@ -119,6 +119,58 @@ fn render_migrate_summary_json_records_policy_migration_context() {
         Some(1),
         "migrate unsafe weak evidence references"
     );
+    let queues = value
+        .pointer("/evidence_repair_queues")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("migrate JSON should route evidence repair queues")
+        });
+    let [broken, weak] = queues.as_slice() else {
+        std::panic::panic_any(format!(
+            "expected two migrate evidence repair queues, got {}",
+            queues.len()
+        ));
+    };
+    assert_eq!(
+        broken.get("item_kind").and_then(Value::as_str),
+        Some("broken_evidence_link"),
+        "migrate broken evidence queue kind"
+    );
+    assert_eq!(
+        broken.get("count").and_then(Value::as_u64),
+        Some(1),
+        "migrate broken evidence queue count"
+    );
+    assert_eq!(
+        broken.get("unsafe_count").and_then(Value::as_u64),
+        Some(1),
+        "migrate broken evidence unsafe count"
+    );
+    assert_eq!(
+        broken.get("command").and_then(Value::as_str),
+        Some("cargo-allow worklist --item-kind broken_evidence_link --format json"),
+        "migrate broken evidence queue command"
+    );
+    assert_eq!(
+        weak.get("item_kind").and_then(Value::as_str),
+        Some("weak_evidence_reference"),
+        "migrate weak evidence queue kind"
+    );
+    assert_eq!(
+        weak.get("count").and_then(Value::as_u64),
+        Some(2),
+        "migrate weak evidence queue count"
+    );
+    assert_eq!(
+        weak.get("unsafe_count").and_then(Value::as_u64),
+        Some(1),
+        "migrate weak evidence unsafe count"
+    );
+    assert_eq!(
+        weak.get("command").and_then(Value::as_str),
+        Some("cargo-allow worklist --item-kind weak_evidence_reference --format json"),
+        "migrate weak evidence queue command"
+    );
 }
 
 fn test_entry(id: &str, kind: FindingKind) -> AllowEntry {

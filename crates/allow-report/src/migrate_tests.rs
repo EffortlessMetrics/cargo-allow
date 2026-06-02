@@ -46,6 +46,15 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(json.contains("\"unsafe_broken_evidence_links\": 1"));
     assert!(json.contains("\"weak_evidence_references\": 2"));
     assert!(json.contains("\"unsafe_weak_evidence_references\": 1"));
+    assert!(json.contains("\"evidence_repair_queues\""));
+    assert!(json.contains("\"item_kind\": \"broken_evidence_link\""));
+    assert!(json.contains("\"item_kind\": \"weak_evidence_reference\""));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
+    ));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind weak_evidence_reference --format json\""
+    ));
     assert!(json.contains("\"notes\": \"migration notes\""));
     let expected = format!(
         r#"{{
@@ -81,6 +90,20 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     "weak_evidence_references": 2,
     "unsafe_weak_evidence_references": 1
   }},
+  "evidence_repair_queues": [
+    {{
+      "item_kind": "broken_evidence_link",
+      "count": 3,
+      "unsafe_count": 1,
+      "command": "cargo-allow worklist --item-kind broken_evidence_link --format json"
+    }},
+    {{
+      "item_kind": "weak_evidence_reference",
+      "count": 2,
+      "unsafe_count": 1,
+      "command": "cargo-allow worklist --item-kind weak_evidence_reference --format json"
+    }}
+  ],
   "notes": "migration notes"
 }}
 "#,
@@ -179,6 +202,11 @@ fn migrate_report_from_config_counts_summary_fields() {
     assert!(
         !text.contains("evidence_repair_queues:"),
         "clean migration summaries should not route repair queues"
+    );
+    let json = render_migrate_json(report);
+    assert!(
+        !json.contains("\"evidence_repair_queues\""),
+        "clean migration JSON should not emit repair queues"
     );
 }
 
