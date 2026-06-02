@@ -78,9 +78,9 @@ fn markdown_pr_summary_reports_evidence_health_counts() {
     let text = render_diff_pr_summary_markdown(
         1,
         EvidenceReportSummary {
+            policy_missing_evidence_entries: 3,
             broken_evidence_links: 1,
             weak_evidence_references: 2,
-            ..EvidenceReportSummary::default()
         },
         &[],
         &[],
@@ -90,6 +90,7 @@ fn markdown_pr_summary_reports_evidence_health_counts() {
     assert!(text.contains("**Net posture:** `worse`"));
     assert!(text.contains("| Current check failures | 1 |"));
     assert!(text.contains("| Broken evidence links | 1 |"));
+    assert!(text.contains("| Missing evidence | 3 |"));
     assert!(text.contains("| Weak evidence/link references | 2 |"));
 }
 

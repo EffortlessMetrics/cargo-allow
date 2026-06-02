@@ -17,9 +17,10 @@ pub(super) fn render_diff_pr_summary_markdown(
 ) -> String {
     let finding_rows = finding_change_rows(finding_changes);
     let policy_rows = policy_change_rows(policy_changes);
-    allow_report::render_diff_pr_summary_markdown_with_evidence_health(
+    allow_report::render_diff_pr_summary_markdown_with_evidence_health_counts(
         current_failures.max(current_no_new_failures(outcomes)),
         evidence.broken_evidence_links,
+        evidence.policy_missing_evidence_entries,
         evidence.weak_evidence_references,
         &finding_rows,
         &policy_rows,
@@ -41,9 +42,10 @@ pub(super) fn append_diff_posture_summary(
     let finding_rows = finding_change_rows(finding_changes);
     let policy_rows = policy_change_rows(policy_changes);
     text.push_str(
-        &allow_report::render_diff_posture_summary_human_with_evidence_health(
+        &allow_report::render_diff_posture_summary_human_with_evidence_health_counts(
             current_failures.max(current_no_new_failures(outcomes)),
             evidence.broken_evidence_links,
+            evidence.policy_missing_evidence_entries,
             evidence.weak_evidence_references,
             &finding_rows,
             &policy_rows,

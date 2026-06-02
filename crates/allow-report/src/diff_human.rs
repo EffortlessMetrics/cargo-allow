@@ -19,9 +19,45 @@ pub fn render_diff_posture_summary_human(
     )
 }
 
+pub fn render_diff_posture_summary_human_with_evidence_health_counts(
+    current_failures: usize,
+    broken_evidence_links: usize,
+    missing_evidence: usize,
+    weak_evidence_references: usize,
+    finding_changes: &[DiffFindingChange<'_>],
+    policy_changes: &[DiffPolicyChange<'_>],
+) -> String {
+    render_diff_posture_summary_human_with_evidence_health_counts_inner(
+        current_failures,
+        broken_evidence_links,
+        missing_evidence,
+        weak_evidence_references,
+        finding_changes,
+        policy_changes,
+    )
+}
+
 pub fn render_diff_posture_summary_human_with_evidence_health(
     current_failures: usize,
     broken_evidence_links: usize,
+    weak_evidence_references: usize,
+    finding_changes: &[DiffFindingChange<'_>],
+    policy_changes: &[DiffPolicyChange<'_>],
+) -> String {
+    render_diff_posture_summary_human_with_evidence_health_counts_inner(
+        current_failures,
+        broken_evidence_links,
+        0,
+        weak_evidence_references,
+        finding_changes,
+        policy_changes,
+    )
+}
+
+fn render_diff_posture_summary_human_with_evidence_health_counts_inner(
+    current_failures: usize,
+    broken_evidence_links: usize,
+    missing_evidence: usize,
     weak_evidence_references: usize,
     finding_changes: &[DiffFindingChange<'_>],
     policy_changes: &[DiffPolicyChange<'_>],
@@ -44,13 +80,19 @@ pub fn render_diff_posture_summary_human_with_evidence_health(
             "  broken_evidence_links: {broken_evidence_links}\n"
         ));
     }
+    if missing_evidence > 0 {
+        out.push_str(&format!("  missing_evidence: {missing_evidence}\n"));
+    }
     if weak_evidence_references > 0 {
         out.push_str(&format!(
             "  weak_evidence_references: {weak_evidence_references}\n"
         ));
     }
-    let evidence_repair_queues =
-        evidence_repair_queues_from_counts(broken_evidence_links, 0, weak_evidence_references);
+    let evidence_repair_queues = evidence_repair_queues_from_counts(
+        broken_evidence_links,
+        missing_evidence,
+        weak_evidence_references,
+    );
     if !evidence_repair_queues.is_empty() {
         out.push_str("  evidence_repair_queues:\n");
         for queue in evidence_repair_queues {

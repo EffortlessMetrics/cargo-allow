@@ -145,6 +145,10 @@ fn render_json_report(
                 &crate::diff_json::render_diff_posture_json_with_evidence_health(
                     diff,
                     context.broken_evidence_links.unwrap_or(0),
+                    context
+                        .policy_missing_evidence_entries
+                        .unwrap_or(0)
+                        .max(summary.count(MatchStatus::EvidenceMissing)),
                     context.weak_evidence_references.unwrap_or(0),
                 ),
             );

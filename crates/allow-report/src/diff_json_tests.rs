@@ -177,9 +177,10 @@ fn diff_json_report_summary_includes_nonzero_evidence_health() {
         finding_changes: &[],
         policy_changes: &[],
     };
-    let rendered = crate::diff_json::render_diff_posture_json_with_evidence_health(report, 1, 2);
+    let rendered = crate::diff_json::render_diff_posture_json_with_evidence_health(report, 1, 3, 2);
 
     assert!(rendered.contains("\"broken_evidence_links\": 1"));
+    assert!(rendered.contains("\"missing_evidence\": 3"));
     assert!(rendered.contains("\"weak_evidence_references\": 2"));
 }
 
