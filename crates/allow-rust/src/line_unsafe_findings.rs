@@ -2,7 +2,7 @@ use allow_core::{Finding, FindingKind};
 
 use crate::finding_builder::push_finding;
 use crate::line_context::LineContext;
-use crate::syntax_kinds::{UnsafeAttribute, UnsafeSyntaxConstruct};
+use crate::syntax_kinds::{UnsafeAttribute, UnsafeSyntaxConstruct, UnsafeSyntaxKind};
 
 pub(crate) fn scan_unsafe_constructs(
     context: UnsafeLineContext<'_>,
@@ -18,6 +18,14 @@ pub(crate) fn scan_unsafe_constructs(
             unsafe_construct.kind.ast_kind(),
             |id| {
                 id.symbol = unsafe_construct.symbol.clone();
+                if id.container.is_none()
+                    && matches!(
+                        unsafe_construct.kind,
+                        UnsafeSyntaxKind::Impl | UnsafeSyntaxKind::Trait
+                    )
+                {
+                    id.container = unsafe_construct.symbol.clone();
+                }
                 if context.safety_comment_nearby {
                     id.target_fingerprint = Some("safety-comment:present".to_string());
                 }

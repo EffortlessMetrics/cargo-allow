@@ -66,6 +66,23 @@ fn unsafe_trait_findings_record_trait_symbol() {
 }
 
 #[test]
+fn unsafe_trait_findings_record_trait_container_identity() {
+    let src = r#"
+        unsafe trait Reader {}
+        unsafe trait Writer {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    let containers = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_trait"))
+        .map(|f| f.identity.container.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(containers, vec![Some("Reader"), Some("Writer")]);
+}
+
+#[test]
 fn unsafe_impl_findings_record_impl_target_symbol() {
     let src = r#"
         struct Handle;
@@ -82,6 +99,27 @@ fn unsafe_impl_findings_record_impl_target_symbol() {
 
     assert_eq!(
         symbols,
+        vec![Some("<Handle as Send>"), Some("<Handle as Sync>")]
+    );
+}
+
+#[test]
+fn unsafe_impl_findings_record_impl_target_container_identity() {
+    let src = r#"
+        struct Handle;
+        unsafe impl Send for Handle {}
+        unsafe impl Sync for Handle {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    let containers = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_impl"))
+        .map(|f| f.identity.container.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        containers,
         vec![Some("<Handle as Send>"), Some("<Handle as Sync>")]
     );
 }
