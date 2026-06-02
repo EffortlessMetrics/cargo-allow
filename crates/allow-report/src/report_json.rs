@@ -1,5 +1,6 @@
 use crate::audit_remediation::audit_remediation_items;
 use crate::contracts::REPORT_ARTIFACT;
+use crate::evidence_repair::evidence_repair_queues;
 use crate::json::{
     option_json, push_json_artifact_header, push_json_artifact_source_context,
     push_json_status_fields, render_match_outcome_json_compact,
@@ -182,41 +183,6 @@ fn append_evidence_repair_queues_json(
         out.push_str("    }");
     }
     out.push_str("\n  ],\n");
-}
-
-fn evidence_repair_queues(summary: &Summary, signals: ReviewSignals) -> Vec<EvidenceRepairQueue> {
-    let mut queues = Vec::new();
-    if signals.broken_evidence_links > 0 {
-        queues.push(EvidenceRepairQueue {
-            signal: "broken_evidence_links",
-            count: signals.broken_evidence_links,
-            command: "cargo-allow worklist --item-kind broken_evidence_link --format json",
-        });
-    }
-    let missing_evidence_count = signals
-        .policy_missing_evidence
-        .max(summary.count(MatchStatus::EvidenceMissing));
-    if missing_evidence_count > 0 {
-        queues.push(EvidenceRepairQueue {
-            signal: "missing_evidence",
-            count: missing_evidence_count,
-            command: "cargo-allow worklist --missing-evidence --format json",
-        });
-    }
-    if signals.weak_evidence_references > 0 {
-        queues.push(EvidenceRepairQueue {
-            signal: "weak_evidence_references",
-            count: signals.weak_evidence_references,
-            command: "cargo-allow worklist --item-kind weak_evidence_reference --format json",
-        });
-    }
-    queues
-}
-
-struct EvidenceRepairQueue {
-    signal: &'static str,
-    count: usize,
-    command: &'static str,
 }
 
 fn append_audit_remediation_roadmap_json(

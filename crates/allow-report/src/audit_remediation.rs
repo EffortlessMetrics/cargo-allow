@@ -1,5 +1,8 @@
 use allow_core::MatchStatus;
 
+use crate::evidence_repair::{
+    BROKEN_EVIDENCE_LINK_COMMAND, MISSING_EVIDENCE_COMMAND, WEAK_EVIDENCE_REFERENCE_COMMAND,
+};
 use crate::{ReviewSignals, Summary};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,21 +74,21 @@ pub(crate) fn audit_remediation_items(
             .max(summary.count(MatchStatus::EvidenceMissing)),
         "missing_evidence",
         "missing evidence",
-        "cargo-allow worklist --missing-evidence --format json",
+        MISSING_EVIDENCE_COMMAND,
     );
     push_audit_remediation_item_if(
         &mut items,
         signals.broken_evidence_links,
         "broken_evidence_links",
         "broken evidence links",
-        "cargo-allow worklist --item-kind broken_evidence_link --format json",
+        BROKEN_EVIDENCE_LINK_COMMAND,
     );
     push_audit_remediation_item_if(
         &mut items,
         signals.weak_evidence_references,
         "weak_evidence_references",
         "weak evidence references",
-        "cargo-allow worklist --item-kind weak_evidence_reference --format json",
+        WEAK_EVIDENCE_REFERENCE_COMMAND,
     );
     push_audit_remediation_item_if(
         &mut items,

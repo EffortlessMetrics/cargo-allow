@@ -1,4 +1,7 @@
 use crate::audit_remediation::audit_remediation_items;
+use crate::evidence_repair::{
+    BROKEN_EVIDENCE_LINK_COMMAND, WEAK_EVIDENCE_REFERENCE_COMMAND, evidence_repair_queues,
+};
 use crate::non_rust::{render_non_rust_human, render_non_rust_markdown};
 use crate::text::markdown_inline_code;
 use crate::{
@@ -188,7 +191,7 @@ fn render_audit_summary_human(
         "  {:24} {}\n",
         "baseline_debt", signals.baseline_debt
     ));
-    out.push_str(audit_recommended_next_step(
+    out.push_str(&audit_recommended_next_step(
         summary,
         signals,
         queue.is_empty(),
@@ -387,7 +390,7 @@ fn render_audit_summary_markdown(
         signals.weak_evidence_references
     ));
     out.push_str(&format!("| Baseline debt | {} |\n", signals.baseline_debt));
-    out.push_str(audit_recommended_next_step(
+    out.push_str(&audit_recommended_next_step(
         summary,
         signals,
         queue.is_empty(),
@@ -439,17 +442,10 @@ fn append_evidence_repair_queues_markdown(
 }
 
 fn evidence_repair_commands(summary: &Summary, signals: ReviewSignals) -> Vec<&'static str> {
-    let mut commands = Vec::new();
-    if signals.broken_evidence_links > 0 {
-        commands.push("cargo-allow worklist --item-kind broken_evidence_link --format json");
-    }
-    if signals.policy_missing_evidence > 0 || summary.count(MatchStatus::EvidenceMissing) > 0 {
-        commands.push("cargo-allow worklist --missing-evidence --format json");
-    }
-    if signals.weak_evidence_references > 0 {
-        commands.push("cargo-allow worklist --item-kind weak_evidence_reference --format json");
-    }
-    commands
+    evidence_repair_queues(summary, signals)
+        .into_iter()
+        .map(|queue| queue.command)
+        .collect()
 }
 
 fn append_audit_remediation_roadmap_human(
@@ -507,21 +503,25 @@ fn audit_recommended_next_step(
     summary: &Summary,
     signals: ReviewSignals,
     queue_empty: bool,
-) -> &'static str {
+) -> String {
     if signals.review_items == 0 {
-        "\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n"
+        "\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n".to_string()
     } else if queue_empty && signals.broken_evidence_links > 0 {
-        "\nRecommended next step: run `cargo-allow worklist --item-kind broken_evidence_link --format json` to repair broken local evidence/link references.\n"
+        format!(
+            "\nRecommended next step: run `{BROKEN_EVIDENCE_LINK_COMMAND}` to repair broken local evidence/link references.\n"
+        )
     } else if queue_empty
         && signals.policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing)
     {
-        "\nRecommended next step: run `cargo-allow worklist --format json` to route retained entries with no evidence references; add `--missing-evidence` to focus that queue.\n"
+        "\nRecommended next step: run `cargo-allow worklist --format json` to route retained entries with no evidence references; add `--missing-evidence` to focus that queue.\n".to_string()
     } else if queue_empty && signals.weak_evidence_references > 0 {
-        "\nRecommended next step: run `cargo-allow worklist --item-kind weak_evidence_reference --format json` to replace unstructured or unknown-prefix evidence/link references.\n"
+        format!(
+            "\nRecommended next step: run `{WEAK_EVIDENCE_REFERENCE_COMMAND}` to replace unstructured or unknown-prefix evidence/link references.\n"
+        )
     } else if queue_empty && signals.baseline_debt > 0 {
-        "\nRecommended next step: run `cargo-allow worklist --format json` to review generated baseline debt.\n"
+        "\nRecommended next step: run `cargo-allow worklist --format json` to review generated baseline debt.\n".to_string()
     } else {
-        "\nRecommended next step: review the queue below before tightening policy.\n"
+        "\nRecommended next step: review the queue below before tightening policy.\n".to_string()
     }
 }
 
