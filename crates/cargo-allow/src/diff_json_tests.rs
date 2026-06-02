@@ -318,6 +318,7 @@ fn json_report_includes_structured_posture_changes() {
 fn json_report_includes_diff_summary_evidence_health() {
     let context = allow_report::ReportContext {
         broken_evidence_links: Some(1),
+        policy_missing_evidence_entries: Some(3),
         weak_evidence_references: Some(2),
         ..allow_report::ReportContext::default()
     };
@@ -339,10 +340,23 @@ fn json_report_includes_diff_summary_evidence_health() {
     );
     assert_eq!(
         value
+            .pointer("/diff/summary/missing_evidence")
+            .and_then(Value::as_u64),
+        Some(3)
+    );
+    assert_eq!(
+        value
             .pointer("/summary/broken_evidence_links")
             .and_then(Value::as_u64),
         Some(1),
         "base report summary should keep evidence health counts"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/policy_missing_evidence")
+            .and_then(Value::as_u64),
+        Some(3),
+        "base report summary should keep policy missing evidence counts"
     );
 }
 

@@ -183,13 +183,15 @@ fn diff_posture_human_summary_reports_reviewer_action() {
 
 #[test]
 fn diff_posture_human_summary_reports_evidence_health_counts() {
-    let text = render_diff_posture_summary_human_with_evidence_health(0, 1, 2, &[], &[]);
+    let text = render_diff_posture_summary_human_with_evidence_health_counts(0, 1, 3, 2, &[], &[]);
 
     assert!(text.contains("Diff posture summary:"));
     assert!(text.contains("broken_evidence_links: 1"));
+    assert!(text.contains("missing_evidence: 3"));
     assert!(text.contains("weak_evidence_references: 2"));
     assert!(text.contains("evidence_repair_queues:"));
     assert!(text.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
+    assert!(text.contains("cargo-allow worklist --missing-evidence --format json"));
     assert!(
         text.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
     );

@@ -107,7 +107,11 @@ fn common_schema_diff_fragments_keep_source_tree_contracts() {
             "common diff_summary {field} minimum"
         );
     }
-    for field in ["broken_evidence_links", "weak_evidence_references"] {
+    for field in [
+        "broken_evidence_links",
+        "missing_evidence",
+        "weak_evidence_references",
+    ] {
         assert_eq!(
             schema
                 .pointer(&format!("/$defs/diff_summary/properties/{field}/type"))

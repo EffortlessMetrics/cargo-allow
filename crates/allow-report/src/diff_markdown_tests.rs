@@ -51,16 +51,18 @@ fn diff_pr_summary_markdown_reports_net_posture() {
 
 #[test]
 fn diff_pr_summary_markdown_reports_evidence_health_rows() {
-    let summary = render_diff_pr_summary_markdown_with_evidence_health(1, 1, 2, &[], &[]);
+    let summary = render_diff_pr_summary_markdown_with_evidence_health_counts(1, 1, 3, 2, &[], &[]);
 
     assert!(summary.contains("**Net posture:** `worse`"));
     assert!(summary.contains("| Current check failures | 1 |"));
     assert!(summary.contains("| Broken evidence links | 1 |"));
+    assert!(summary.contains("| Missing evidence | 3 |"));
     assert!(summary.contains("| Weak evidence/link references | 2 |"));
     assert!(summary.contains("**Evidence repair queues:**"));
     assert!(
         summary.contains("`cargo-allow worklist --item-kind broken_evidence_link --format json`")
     );
+    assert!(summary.contains("`cargo-allow worklist --missing-evidence --format json`"));
     assert!(
         summary
             .contains("`cargo-allow worklist --item-kind weak_evidence_reference --format json`")
