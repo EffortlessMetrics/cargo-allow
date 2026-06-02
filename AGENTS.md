@@ -41,7 +41,8 @@ unsafe-proof, test-adequacy, or coverage-proof behavior until implemented.
 
 ## Git, PR, and Release Workflow
 
-For exploratory, review-only, or analysis-only work, do not commit.
+For exploratory, review-only, or analysis-only work, stop at findings unless
+the user turns it into an implementation lane.
 
 For a user-authorized swarm, PR, or release lane, scoped commits, branch pushes,
 PR creation, PR updates, PR merge, post-merge sync, and cleanup are normal once
@@ -52,8 +53,8 @@ unless they are clearly created by the current lane. Before git operations that
 change state, inspect branch, status, and the relevant diff.
 
 Do not hard-reset, force-push, rewrite history, or move branch refs unless
-explicitly asked. Do not mutate `origin/main` directly unless the user
-explicitly asks for direct repository maintenance.
+explicitly asked. Do not push directly to `main`; use the normal PR merge path
+unless the user explicitly asks for direct repository maintenance.
 
 Deleting local or remote branches and worktrees is allowed for branches and
 worktrees created by the current lane, or confirmed stale after inspection. Do
