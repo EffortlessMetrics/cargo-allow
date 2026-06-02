@@ -1,6 +1,6 @@
 use crate::audit_remediation::audit_remediation_items;
 use crate::contracts::REPORT_ARTIFACT;
-use crate::evidence_repair::evidence_repair_queues;
+use crate::evidence_repair::{evidence_repair_queues, push_evidence_repair_queue_json_fields};
 use crate::json::{
     option_json, push_json_artifact_header, push_json_artifact_source_context,
     push_json_status_fields, render_match_outcome_json_compact,
@@ -175,15 +175,7 @@ fn append_evidence_repair_queues_json(
             out.push_str(",\n");
         }
         out.push_str("    {\n");
-        out.push_str(&format!(
-            "      \"signal\": \"{}\",\n",
-            json_escape(queue.signal)
-        ));
-        out.push_str(&format!("      \"count\": {},\n", queue.count));
-        out.push_str(&format!(
-            "      \"command\": \"{}\"\n",
-            json_escape(queue.command)
-        ));
+        push_evidence_repair_queue_json_fields(out, queue, "      ");
         out.push_str("    }");
     }
     out.push_str("\n  ],\n");

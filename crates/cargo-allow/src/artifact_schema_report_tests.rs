@@ -148,6 +148,23 @@ fn report_schema_allows_optional_evidence_repair_queues() {
     );
     assert_eq!(
         schema
+            .pointer("/properties/evidence_repair_queues/items/properties/label/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "report evidence repair queue label should be a string"
+    );
+    assert_enum_equals(
+        "report evidence repair queue item kind",
+        &schema,
+        "/properties/evidence_repair_queues/items/properties/item_kind/enum",
+        &[
+            "broken_evidence_link",
+            "missing_evidence",
+            "weak_evidence_reference",
+        ],
+    );
+    assert_eq!(
+        schema
             .pointer("/properties/evidence_repair_queues/items/properties/count/type")
             .and_then(Value::as_str),
         Some("integer"),

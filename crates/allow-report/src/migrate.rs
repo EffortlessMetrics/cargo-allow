@@ -176,6 +176,14 @@ fn append_migrate_evidence_repair_queues_json(report: MigrateReport<'_>, out: &m
         }
         out.push_str("    {\n");
         out.push_str(&format!(
+            "      \"signal\": \"{}\",\n",
+            json_escape(queue.signal)
+        ));
+        out.push_str(&format!(
+            "      \"label\": \"{}\",\n",
+            json_escape(queue.label)
+        ));
+        out.push_str(&format!(
             "      \"item_kind\": \"{}\",\n",
             json_escape(queue.item_kind)
         ));
@@ -213,6 +221,8 @@ fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvide
             _ => (queue.count, 0),
         };
         queues.push(MigrateEvidenceRepairQueue {
+            signal: queue.signal,
+            label: queue.label,
             item_kind,
             count,
             unsafe_count,
@@ -223,6 +233,8 @@ fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvide
 }
 
 struct MigrateEvidenceRepairQueue {
+    signal: &'static str,
+    label: &'static str,
     item_kind: &'static str,
     count: usize,
     unsafe_count: usize,

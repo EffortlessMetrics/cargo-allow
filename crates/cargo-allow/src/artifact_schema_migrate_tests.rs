@@ -140,6 +140,19 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
         &["item_kind", "count", "unsafe_count", "command"],
     );
     assert_enum_equals(
+        "migrate evidence repair queue signal",
+        &schema,
+        "/$defs/evidence_repair_queue/properties/signal/enum",
+        &["broken_evidence_links", "weak_evidence_references"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/evidence_repair_queue/properties/label/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "migrate evidence repair queue label should be a string"
+    );
+    assert_enum_equals(
         "migrate evidence repair queue item kind",
         &schema,
         "/$defs/evidence_repair_queue/properties/item_kind/enum",

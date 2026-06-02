@@ -1,4 +1,4 @@
-use allow_core::MatchStatus;
+use allow_core::{MatchStatus, json_escape};
 
 use crate::{ReportContext, ReviewSignals, Summary};
 
@@ -57,7 +57,7 @@ pub(crate) fn evidence_repair_queues_from_counts(
         missing_evidence,
         "missing_evidence",
         "missing evidence",
-        None,
+        Some("missing_evidence"),
         MISSING_EVIDENCE_COMMAND,
     );
     push_evidence_repair_queue_if(
@@ -69,6 +69,32 @@ pub(crate) fn evidence_repair_queues_from_counts(
         WEAK_EVIDENCE_REFERENCE_COMMAND,
     );
     queues
+}
+
+pub(crate) fn push_evidence_repair_queue_json_fields(
+    out: &mut String,
+    queue: &EvidenceRepairQueue,
+    indent: &str,
+) {
+    out.push_str(&format!(
+        "{indent}\"signal\": \"{}\",\n",
+        json_escape(queue.signal)
+    ));
+    out.push_str(&format!(
+        "{indent}\"label\": \"{}\",\n",
+        json_escape(queue.label)
+    ));
+    if let Some(item_kind) = queue.item_kind {
+        out.push_str(&format!(
+            "{indent}\"item_kind\": \"{}\",\n",
+            json_escape(item_kind)
+        ));
+    }
+    out.push_str(&format!("{indent}\"count\": {},\n", queue.count));
+    out.push_str(&format!(
+        "{indent}\"command\": \"{}\"\n",
+        json_escape(queue.command)
+    ));
 }
 
 fn push_evidence_repair_queue_if(

@@ -117,26 +117,28 @@ weak evidence references only when legacy conversion preserved unstructured or
 unknown-prefix evidence, and emits the unsafe-specific evidence-health counts
 only when those references belong to migrated unsafe entries. When those
 evidence-health counts are non-zero, current `migrate` JSON artifacts may also
-include an optional `evidence_repair_queues` array with stable worklist
-`item_kind` names, total and unsafe-specific counts, and the exact
-`cargo-allow worklist --item-kind ... --format json` command for each repair
-queue.
+include an optional `evidence_repair_queues` array with stable evidence-health
+`signal` names, human `label` strings, stable worklist `item_kind` names, total
+and unsafe-specific counts, and the exact `cargo-allow worklist --item-kind ...
+--format json` command for each repair queue.
 
 The shared report schema is emitted by `audit`, `check`, and `diff`, but the
 top-level `diff` posture extension is valid only on reports whose
 `command = "diff"`. Audit and check reports use the same base schema without
 the PR-posture extension.
-Diff reports may include optional `diff.summary.broken_evidence_links` and
-`diff.summary.weak_evidence_references` when the compared head policy has
-evidence-health signals. These duplicate the base report evidence-health counts
-inside the PR-posture summary so JSON diff consumers do not need to join across
-artifact sections to explain why the net posture worsened.
+Diff reports may include optional `diff.summary.broken_evidence_links`,
+`diff.summary.missing_evidence`, and `diff.summary.weak_evidence_references`
+when the compared head policy has evidence-health signals. These duplicate the
+base report evidence-health counts inside the PR-posture summary so JSON diff
+consumers do not need to join across artifact sections to explain why the net
+posture worsened.
 Report JSON may also include an optional top-level `evidence_repair_queues`
 array when audit, check, or diff reports have broken local evidence links,
 missing evidence, or weak evidence references. Queue rows include a stable
-`signal`, the routed `count`, and the exact `cargo-allow worklist ... --format
-json` command so CI and agents can route evidence repair work without parsing
-human text.
+`signal`, a human `label`, a stable worklist `item_kind` when one is available,
+the routed `count`, and the exact `cargo-allow worklist ... --format json`
+command so CI and agents can route evidence repair work without parsing human
+text.
 Audit report JSON may also include an optional top-level
 `audit_remediation_roadmap` array when `command = "audit"` and the first-run
 inventory has review or repair signals. Rows include a stable `signal`, the
@@ -155,13 +157,15 @@ stored no-new evidence carry both the gate counts and the source-exception
 inventory without requiring consumers to archive the full report artifact.
 Check receipts may also include an optional `evidence_repair_queues` array when
 the saved no-new evidence has broken local evidence links, missing evidence, or
-weak evidence references. These rows mirror report JSON queue routing so CI
-artifacts can point directly at the worklist command needed to repair retained
-evidence gaps.
+weak evidence references. These rows mirror report JSON queue routing, including
+`signal`, `label`, optional `item_kind`, `count`, and `command`, so CI artifacts
+can point directly at the worklist command needed to repair retained evidence
+gaps.
 Doctor JSON may include optional `config.evidence_repair_queues` rows when setup
 diagnostics find broken local evidence links or weak evidence references in the
-loaded policy. The rows keep root/config readiness checks machine-routable while
-preserving the source-tree/no-code-execution claim boundary.
+loaded policy. The rows include `signal`, `label`, `item_kind`, `count`, and
+`command` so root/config readiness checks stay machine-routable while preserving
+the source-tree/no-code-execution claim boundary.
 
 ## Claim Boundary Vocabulary
 
@@ -502,10 +506,10 @@ surfaces; JSON is the machine surface. SARIF is for code-scanning ingestion.
 Its run properties may include advisory policy/evidence-health counts such as
 `policy_baseline_debt`, `policy_missing_evidence`, `broken_evidence_links`, and
 `weak_evidence_references`. SARIF run properties may also include an optional
-`evidence_repair_queues` array with `signal`, `count`, and exact
-`cargo-allow worklist ... --format json` command rows for those advisory
-evidence-health signals, but SARIF results remain limited to non-matched
-source-tree outcomes rather than synthetic policy-health rows.
+`evidence_repair_queues` array with `signal`, `label`, optional `item_kind`,
+`count`, and exact `cargo-allow worklist ... --format json` command rows for
+those advisory evidence-health signals, but SARIF results remain limited to
+non-matched source-tree outcomes rather than synthetic policy-health rows.
 
 ## Boundary
 

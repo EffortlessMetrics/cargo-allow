@@ -1,5 +1,7 @@
 use crate::contracts::RECEIPT_ARTIFACT;
-use crate::evidence_repair::evidence_repair_queues_from_context;
+use crate::evidence_repair::{
+    evidence_repair_queues_from_context, push_evidence_repair_queue_json_fields,
+};
 use crate::json::{
     push_json_artifact_header, push_json_artifact_source_context, push_json_status_fields,
 };
@@ -7,7 +9,7 @@ use crate::{
     RECEIPT_COMMAND_CHECK, ReportContext, Summary, baseline_debt_count,
     render_count_fields_with_policy_context, render_source_inventory_json,
 };
-use allow_core::{Finding, MatchOutcome, json_escape};
+use allow_core::{Finding, MatchOutcome};
 
 pub fn render_receipt(command: &str, outcomes: &[MatchOutcome], failed: bool) -> String {
     render_receipt_with_context(command, outcomes, failed, ReportContext::default())
@@ -89,15 +91,7 @@ fn append_evidence_repair_queues_json(
             out.push_str(",\n");
         }
         out.push_str("    {\n");
-        out.push_str(&format!(
-            "      \"signal\": \"{}\",\n",
-            json_escape(queue.signal)
-        ));
-        out.push_str(&format!("      \"count\": {},\n", queue.count));
-        out.push_str(&format!(
-            "      \"command\": \"{}\"\n",
-            json_escape(queue.command)
-        ));
+        push_evidence_repair_queue_json_fields(out, queue, "      ");
         out.push_str("    }");
     }
     out.push_str("\n  ]");

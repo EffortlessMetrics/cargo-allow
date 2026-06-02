@@ -1,7 +1,7 @@
 use crate::contracts::DOCTOR_ARTIFACT;
 use crate::evidence_repair::{
     BROKEN_EVIDENCE_LINK_COMMAND, EvidenceRepairQueue, WEAK_EVIDENCE_REFERENCE_COMMAND,
-    evidence_repair_queues_from_counts,
+    evidence_repair_queues_from_counts, push_evidence_repair_queue_json_fields,
 };
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
 use crate::{CLAIM_BOUNDARY_TEXT, DoctorReport, InventoryContext};
@@ -146,15 +146,7 @@ fn append_doctor_evidence_repair_queues_json(facts: DoctorReport<'_>, out: &mut 
             out.push_str(",\n");
         }
         out.push_str("      {\n");
-        out.push_str(&format!(
-            "        \"signal\": \"{}\",\n",
-            json_escape(queue.signal)
-        ));
-        out.push_str(&format!("        \"count\": {},\n", queue.count));
-        out.push_str(&format!(
-            "        \"command\": \"{}\"\n",
-            json_escape(queue.command)
-        ));
+        push_evidence_repair_queue_json_fields(out, queue, "        ");
         out.push_str("      }");
     }
     out.push_str("\n    ]");
