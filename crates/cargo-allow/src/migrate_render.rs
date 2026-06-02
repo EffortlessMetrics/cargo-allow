@@ -1,5 +1,5 @@
 use super::MigrateContext;
-use allow_core::AllowConfig;
+use allow_core::{AllowConfig, FindingKind};
 use std::path::{Path, PathBuf};
 
 pub(super) fn render_migrate_summary(
@@ -48,6 +48,10 @@ fn migrate_report<'a>(
     );
     report.weak_evidence_references =
         (weak_evidence_references > 0).then_some(weak_evidence_references);
+    let unsafe_weak_evidence_references =
+        unsafe_weak_evidence_reference_count(evidence_diagnostic_root(context).as_path(), cfg);
+    report.unsafe_weak_evidence_references =
+        (unsafe_weak_evidence_references > 0).then_some(unsafe_weak_evidence_references);
     report
 }
 
@@ -57,4 +61,13 @@ fn evidence_diagnostic_root(context: &MigrateContext) -> PathBuf {
         .as_deref()
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."))
+}
+
+fn unsafe_weak_evidence_reference_count(root: &Path, cfg: &AllowConfig) -> usize {
+    cfg.allow
+        .iter()
+        .filter(|entry| entry.kind == FindingKind::Unsafe)
+        .flat_map(|entry| allow_policy::policy_reference_diagnostics(root, entry))
+        .filter(|reference| reference.diagnostic.status.is_weak_reference())
+        .count()
 }

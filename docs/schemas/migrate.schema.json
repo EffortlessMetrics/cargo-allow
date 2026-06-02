@@ -114,6 +114,10 @@
         "weak_evidence_references": {
           "type": "integer",
           "minimum": 0
+        },
+        "unsafe_weak_evidence_references": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },
