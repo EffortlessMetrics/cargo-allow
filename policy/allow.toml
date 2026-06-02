@@ -439,6 +439,190 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0132"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/README.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Indexes task-focused how-to guides for cargo-allow user workflows."
+evidence = ["doc:README.md", "doc:docs/getting-started.md", "doc:docs/claim-boundaries.md"]
+created = "2026-06-01"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/how-to/README.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/how-to/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0133"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/adopt-no-new-debt.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Documents the no-new-debt adoption workflow without duplicating the policy reference."
+evidence = ["doc:README.md", "doc:docs/getting-started.md", "doc:docs/source-exception-ledger.md"]
+created = "2026-06-01"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/how-to/adopt-no-new-debt.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/how-to/adopt-no-new-debt.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0134"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/run-in-ci.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Documents the task-focused CI setup path for PR posture and mainline receipts."
+evidence = ["doc:README.md", "doc:docs/ci.md", "doc:docs/claim-boundaries.md"]
+created = "2026-06-01"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/how-to/run-in-ci.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/how-to/run-in-ci.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0135"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/explain-an-allow.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Documents the task-focused flow for explaining one retained allow entry."
+evidence = ["doc:README.md", "doc:docs/source-exception-ledger.md", "doc:docs/claim-boundaries.md"]
+created = "2026-06-01"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/how-to/explain-an-allow.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/how-to/explain-an-allow.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0136"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/fix-broken-evidence.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Documents how to repair broken and weak evidence references without executing proof tools."
+evidence = ["doc:README.md", "doc:docs/source-exception-ledger.md", "doc:docs/claim-boundaries.md"]
+created = "2026-06-01"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/how-to/fix-broken-evidence.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/how-to/fix-broken-evidence.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0137"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/prune-stale-allows.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Documents stale allow preview and write workflows while preserving dry-run-first review."
+evidence = ["doc:README.md", "doc:docs/source-exception-ledger.md", "doc:docs/claim-boundaries.md"]
+created = "2026-06-01"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/how-to/prune-stale-allows.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/how-to/prune-stale-allows.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0138"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/migrate-from-xtask.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Documents the task-focused migration workflow from legacy xtask policy into cargo-allow."
+evidence = ["doc:README.md", "doc:docs/migration-from-xtask.md", "doc:docs/claim-boundaries.md"]
+created = "2026-06-01"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/how-to/migrate-from-xtask.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/how-to/migrate-from-xtask.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0139"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/feed-agent-worklists.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Documents how to route bounded human or agent work from cargo-allow worklists."
+evidence = ["doc:README.md", "doc:docs/agents/cargo-allow-worklist.md", "doc:docs/claim-boundaries.md"]
+created = "2026-06-01"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/how-to/feed-agent-worklists.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/how-to/feed-agent-worklists.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0131"
 kind = "non_rust_file"
 family = "documentation"
