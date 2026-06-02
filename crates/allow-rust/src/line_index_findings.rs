@@ -11,7 +11,7 @@ pub(crate) fn scan_index_expr(
     findings: &mut Vec<Finding>,
 ) {
     for expression in index_expressions {
-        let family = if context.line.contains("&") && context.line.contains("[") {
+        let family = if expression.is_slice {
             "string_slice"
         } else {
             "indexing"
