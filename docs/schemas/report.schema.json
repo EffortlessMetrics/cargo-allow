@@ -16,6 +16,18 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "required": ["audit_remediation_roadmap"]
+      },
+      "then": {
+        "properties": {
+          "command": {
+            "const": "audit"
+          }
+        }
+      }
     }
   ],
   "required": [
@@ -108,6 +120,13 @@
     },
     "trend": {
       "$ref": "#/$defs/trend"
+    },
+    "audit_remediation_roadmap": {
+      "type": "array",
+      "description": "Optional audit-only remediation roadmap emitted when audit reports have review or repair signals that can be routed to a follow-up cargo-allow command.",
+      "items": {
+        "$ref": "#/$defs/audit_remediation_item"
+      }
     },
     "evidence_repair_queues": {
       "type": "array",
@@ -393,6 +412,38 @@
           "type": "integer",
           "minimum": 0,
           "description": "Optional count of unstructured or unknown-prefix evidence or link references included in review item totals when available."
+        }
+      }
+    },
+    "audit_remediation_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signal", "count", "command"],
+      "properties": {
+        "signal": {
+          "enum": [
+            "new_unreceipted",
+            "expired",
+            "review_due",
+            "stale",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "missing_evidence",
+            "broken_evidence_links",
+            "weak_evidence_references",
+            "baseline_debt"
+          ],
+          "description": "Audit remediation signal routed by this roadmap row."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of audit items routed by this roadmap row."
+        },
+        "command": {
+          "type": "string",
+          "description": "Suggested cargo-allow command for this audit remediation row."
         }
       }
     },

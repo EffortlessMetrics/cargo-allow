@@ -170,6 +170,111 @@ fn report_schema_allows_optional_evidence_repair_queues() {
 }
 
 #[test]
+fn report_schema_allows_optional_audit_remediation_roadmap() {
+    let schema = parse_schema(
+        "report",
+        include_str!("../../../docs/schemas/report.schema.json"),
+    );
+
+    assert_eq!(
+        schema
+            .pointer("/properties/audit_remediation_roadmap/type")
+            .and_then(Value::as_str),
+        Some("array"),
+        "report audit remediation roadmap should be an optional array"
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/audit_remediation_roadmap/items/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/audit_remediation_item"),
+        "report audit remediation roadmap should use its shared row fragment"
+    );
+    let item = required_schema_pointer("report", &schema, "/$defs/audit_remediation_item");
+    assert_eq!(
+        item.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "report audit remediation roadmap rows should reject unknown fields"
+    );
+    assert_required_fields(
+        "report audit remediation roadmap item",
+        item,
+        &["signal", "count", "command"],
+    );
+    assert_enum_equals(
+        "report audit remediation roadmap signal",
+        &schema,
+        "/$defs/audit_remediation_item/properties/signal/enum",
+        &[
+            "new_unreceipted",
+            "expired",
+            "review_due",
+            "stale",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "missing_evidence",
+            "broken_evidence_links",
+            "weak_evidence_references",
+            "baseline_debt",
+        ],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/audit_remediation_item/properties/count/type")
+            .and_then(Value::as_str),
+        Some("integer"),
+        "report audit remediation roadmap count should be an integer"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/audit_remediation_item/properties/count/minimum")
+            .and_then(Value::as_u64),
+        Some(0),
+        "report audit remediation roadmap count should be non-negative"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/audit_remediation_item/properties/command/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "report audit remediation roadmap command should be a string"
+    );
+}
+
+#[test]
+fn report_schema_constrains_audit_remediation_roadmap_to_audit_command() {
+    let schema = parse_schema(
+        "report",
+        include_str!("../../../docs/schemas/report.schema.json"),
+    );
+
+    let all_of = schema
+        .get("allOf")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("report schema allOf should be an array"));
+    let has_audit_constraint = all_of.iter().any(|constraint| {
+        constraint
+            .pointer("/if/required")
+            .and_then(Value::as_array)
+            .is_some_and(|required| {
+                required
+                    .iter()
+                    .any(|field| field.as_str() == Some("audit_remediation_roadmap"))
+            })
+            && constraint
+                .pointer("/then/properties/command/const")
+                .and_then(Value::as_str)
+                == Some("audit")
+    });
+
+    assert!(
+        has_audit_constraint,
+        "report audit_remediation_roadmap should be constrained to command=audit"
+    );
+}
+
+#[test]
 fn report_schema_allows_optional_policy_missing_evidence_counts() {
     let schema = parse_schema(
         "report",

@@ -36,8 +36,8 @@ macro-expansion, or proof-level coverage.
   vocabularies, structural identity, selector, allow-entry shapes, source
   finding rows, stale-prune rows, evidence-prefix vocabularies, evidence and
   link diagnostic row shapes used by `explain` and `worklist`, worklist filters and
-  work-item rows, report inventory, summary, trend, finding, and outcome rows,
-  receipt count rows, the diff posture object, diff-summary, finding-change,
+  work-item rows, report inventory, summary, trend, audit remediation, finding,
+  and outcome rows, receipt count rows, the diff posture object, diff-summary, finding-change,
   policy-change, selector-identity, selector-precision, exception-identity,
   scope-change, occurrence-limit, lifecycle, evidence-change, metadata-change,
   requirement-change, and policy-status fragments used by `diff`.
@@ -137,6 +137,13 @@ missing evidence, or weak evidence references. Queue rows include a stable
 `signal`, the routed `count`, and the exact `cargo-allow worklist ... --format
 json` command so CI and agents can route evidence repair work without parsing
 human text.
+Audit report JSON may also include an optional top-level
+`audit_remediation_roadmap` array when `command = "audit"` and the first-run
+inventory has review or repair signals. Rows include a stable `signal`, the
+routed `count`, and an exact follow-up command such as a focused
+`cargo-allow worklist ... --format json` queue or the stale-prune dry-run
+preview command. This is the machine-readable counterpart to the human,
+Markdown, and HTML audit remediation roadmap.
 Report JSON may also include an optional `source_inventory` object when source
 findings are present. This is the machine-readable counterpart to the audit
 source-exception inventory, grouped by governed exception kind and
