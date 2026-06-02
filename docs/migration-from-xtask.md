@@ -103,6 +103,9 @@ both the workflow files and external-action references against
 `policy/workflow-allowlist.toml`. In canonical output, these entries are
 represented as `policy_exception.github_workflow` and
 `policy_exception.workflow_external_action`.
+Existing legacy `evidence` or `covered_by` fields are preserved alongside
+workflow facts such as permissions, secrets, duplicate-lane notes, and external
+action references.
 
 Dependency-surface compat is available for shiplog-style
 `policy/dependency-surface-allowlist.toml`:
@@ -116,6 +119,8 @@ dependency-surface patterns still match scanned source-tree inventory files,
 then reports those matched surfaces as `policy_exception.dependency_surface`.
 It does not yet perform full unlisted-manifest discovery across every
 dependency manifest or lockfile in the scanned source tree.
+Existing legacy `evidence` or `covered_by` fields are preserved alongside
+dependency-surface facts such as surface type and baseline dependency count.
 
 Process-policy compat is available for shiplog-style
 `policy/process-allowlist.toml`:

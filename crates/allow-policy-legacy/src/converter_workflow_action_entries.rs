@@ -17,7 +17,7 @@ pub(crate) fn workflow_action_entry(rule: &LegacyWorkflowRule, action: &str) -> 
         owner: rule.owner.clone(),
         classification: "workflow_external_action".to_string(),
         reason: rule.reason.clone(),
-        evidence: vec![format!("external_action:{action}")],
+        evidence: workflow_action_evidence(rule, action),
         links: vec![format!("legacy-policy:workflow:{path}")],
         occurrence_limit: None,
         lifecycle: lifecycle_from_workflow_rule(rule),
@@ -30,4 +30,10 @@ pub(crate) fn workflow_action_entry(rule: &LegacyWorkflowRule, action: &str) -> 
         },
         last_seen: None,
     }
+}
+
+fn workflow_action_evidence(rule: &LegacyWorkflowRule, action: &str) -> Vec<String> {
+    let mut evidence = rule.evidence.clone();
+    evidence.push(format!("external_action:{action}"));
+    evidence
 }
