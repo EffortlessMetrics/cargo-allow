@@ -145,6 +145,26 @@ fn report_schema_locks_diff_posture_extension_contract() {
         "/$defs/finding_posture_change/properties/source_package/type",
         &["string", "null"],
     );
+    for field in ["line", "column"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/finding_posture_change/properties/{field}/type"
+                ))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "report finding posture {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/finding_posture_change/properties/{field}/minimum"
+                ))
+                .and_then(Value::as_u64),
+            Some(1),
+            "report finding posture {field} minimum"
+        );
+    }
     assert_eq!(
         schema
             .pointer("/$defs/finding_posture_change/properties/source_package/minLength")

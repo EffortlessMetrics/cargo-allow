@@ -216,7 +216,7 @@ fn append_finding_highlight_row(
             markdown_cell(change.change),
             markdown_cell(change.kind),
             markdown_cell(change.family.unwrap_or("")),
-            markdown_cell(change.path),
+            markdown_cell(&finding_location(change)),
             markdown_cell(change.source_package.unwrap_or(""))
         ));
     } else {
@@ -225,7 +225,7 @@ fn append_finding_highlight_row(
             markdown_cell(change.change),
             markdown_cell(change.kind),
             markdown_cell(change.family.unwrap_or("")),
-            markdown_cell(change.path)
+            markdown_cell(&finding_location(change))
         ));
     }
 }
@@ -412,7 +412,7 @@ fn append_finding_change_markdown_row(
             markdown_cell(change.change),
             markdown_cell(change.kind),
             markdown_cell(change.family.unwrap_or("")),
-            markdown_cell(change.path),
+            markdown_cell(&finding_location(change)),
             markdown_cell(change.source_package.unwrap_or(""))
         ));
     } else {
@@ -421,8 +421,17 @@ fn append_finding_change_markdown_row(
             markdown_cell(change.change),
             markdown_cell(change.kind),
             markdown_cell(change.family.unwrap_or("")),
-            markdown_cell(change.path)
+            markdown_cell(&finding_location(change))
         ));
+    }
+}
+
+fn finding_location(change: &DiffFindingChange<'_>) -> String {
+    match (change.line, change.column) {
+        (Some(line), Some(column)) => format!("{}:{line}:{column}", change.path),
+        (Some(line), None) => format!("{}:{line}", change.path),
+        (None, Some(column)) => format!("{} column={column}", change.path),
+        (None, None) => change.path.to_string(),
     }
 }
 

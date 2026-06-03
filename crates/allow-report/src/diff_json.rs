@@ -127,6 +127,12 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
         out.push_str(&format!("\"kind\": \"{}\", ", json_escape(change.kind)));
         out.push_str(&format!("\"family\": {}, ", option_json(change.family)));
         out.push_str(&format!("\"path\": \"{}\"", json_escape(change.path)));
+        if let Some(line) = change.line {
+            out.push_str(&format!(", \"line\": {line}"));
+        }
+        if let Some(column) = change.column {
+            out.push_str(&format!(", \"column\": {column}"));
+        }
         if let Some(source_package) = change.source_package {
             out.push_str(&format!(
                 ", \"source_package\": \"{}\"",

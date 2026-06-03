@@ -184,6 +184,26 @@ fn common_schema_diff_fragments_keep_source_tree_contracts() {
             "common finding posture {field} minLength"
         );
     }
+    for field in ["line", "column"] {
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/finding_posture_change/properties/{field}/type"
+                ))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "common finding posture {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!(
+                    "/$defs/finding_posture_change/properties/{field}/minimum"
+                ))
+                .and_then(Value::as_u64),
+            Some(1),
+            "common finding posture {field} minimum"
+        );
+    }
     assert_schema_type_equals(
         "common finding_posture_change family",
         &schema,

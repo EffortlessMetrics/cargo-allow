@@ -53,6 +53,9 @@ the PR and not hidden by a broader ignored path or weaker policy.
 When present, `finding_changes[].source_package` is source-derived routing
 context. It is not Cargo metadata.
 
+When present, `finding_changes[].line` and `finding_changes[].column` are
+review/navigation hints. They are not stable finding identity.
+
 ## Check Policy Changes
 
 Read policy sections in this order:

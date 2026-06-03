@@ -250,6 +250,8 @@ fn finding_posture_change(
         finding_kind: finding_kind.to_string(),
         family: family.map(str::to_string),
         path: path.to_string(),
+        line: Some(12),
+        column: Some(5),
         source_package: Some("parser".to_string()),
     }
 }

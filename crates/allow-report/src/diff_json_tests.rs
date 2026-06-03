@@ -8,6 +8,8 @@ fn diff_json_renderer_appends_posture_extension() {
         kind: "panic",
         family: Some("unwrap"),
         path: "src/lib.rs",
+        line: None,
+        column: None,
         source_package: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
@@ -117,6 +119,8 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
         kind: "panic",
         family: Some("unwrap"),
         path: "src/lib.rs",
+        line: None,
+        column: None,
         source_package: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
@@ -284,6 +288,8 @@ fn diff_json_report_includes_finding_change_source_package_when_available() {
         kind: "panic",
         family: Some("unwrap"),
         path: "src/lib.rs",
+        line: Some(12),
+        column: Some(5),
         source_package: Some("parser"),
     }];
     let report = DiffReport {
@@ -303,6 +309,8 @@ fn diff_json_report_includes_finding_change_source_package_when_available() {
 
     let rendered = crate::diff_json::render_diff_posture_json(report);
 
+    assert!(rendered.contains("\"line\": 12"));
+    assert!(rendered.contains("\"column\": 5"));
     assert!(rendered.contains("\"source_package\": \"parser\""));
 }
 
@@ -314,6 +322,8 @@ fn diff_json_report_matches_posture_golden_contract() {
         kind: "panic",
         family: Some("unwrap"),
         path: "src/lib.rs",
+        line: None,
+        column: None,
         source_package: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
