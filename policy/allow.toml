@@ -715,6 +715,29 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0147"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/review-pr-posture.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Documents the task-focused reviewer workflow for interpreting cargo-allow diff posture, evidence health, and follow-up queues."
+evidence = ["doc:docs/pr-posture.md", "doc:docs/policy-weakening.md", "doc:docs/claim-boundaries.md"]
+created = "2026-06-03"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/how-to/review-pr-posture.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/how-to/review-pr-posture.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0139"
 kind = "non_rust_file"
 family = "documentation"
