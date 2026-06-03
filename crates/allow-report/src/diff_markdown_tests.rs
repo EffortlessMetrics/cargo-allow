@@ -70,6 +70,83 @@ fn diff_pr_summary_markdown_reports_evidence_health_rows() {
 }
 
 #[test]
+fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
+    let policy_changes = vec![
+        DiffPolicyChange {
+            severity: "improvement",
+            allow_id: "allow-added",
+            kind: "evidence_added",
+            message: "allow-added evidence added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "fail",
+            allow_id: "allow-removed",
+            kind: "evidence_removed",
+            message: "allow-removed evidence removed",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "improvement",
+            allow_id: "allow-link-added",
+            kind: "link_added",
+            message: "allow-link-added link added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "review",
+            allow_id: "allow-link-removed",
+            kind: "link_removed",
+            message: "allow-link-removed link removed",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+    ];
+
+    let summary = render_diff_pr_summary_markdown(0, &[], &policy_changes);
+
+    assert!(summary.contains("| Evidence added | 1 |"));
+    assert!(summary.contains("| Evidence removed | 1 |"));
+    assert!(summary.contains("| Links added | 1 |"));
+    assert!(summary.contains("| Links removed | 1 |"));
+}
+
+#[test]
 fn diff_posture_tables_escape_markdown_cells() {
     let finding_changes = vec![DiffFindingChange {
         change: "new",

@@ -1,5 +1,5 @@
 use crate::diff_policy_detail::policy_change_detail;
-use crate::diff_posture::{diff_net_posture, diff_posture_summary};
+use crate::diff_posture::{diff_evidence_delta_summary, diff_net_posture, diff_posture_summary};
 use crate::evidence_repair::evidence_repair_queues_from_counts;
 use crate::{DiffFindingChange, DiffPolicyChange};
 
@@ -86,6 +86,28 @@ fn render_diff_posture_summary_human_with_evidence_health_counts_inner(
     if weak_evidence_references > 0 {
         out.push_str(&format!(
             "  weak_evidence_references: {weak_evidence_references}\n"
+        ));
+    }
+    let evidence_delta = diff_evidence_delta_summary(policy_changes);
+    if evidence_delta.evidence_added > 0 {
+        out.push_str(&format!(
+            "  evidence_added: {}\n",
+            evidence_delta.evidence_added
+        ));
+    }
+    if evidence_delta.evidence_removed > 0 {
+        out.push_str(&format!(
+            "  evidence_removed: {}\n",
+            evidence_delta.evidence_removed
+        ));
+    }
+    if evidence_delta.link_added > 0 {
+        out.push_str(&format!("  link_added: {}\n", evidence_delta.link_added));
+    }
+    if evidence_delta.link_removed > 0 {
+        out.push_str(&format!(
+            "  link_removed: {}\n",
+            evidence_delta.link_removed
         ));
     }
     let evidence_repair_queues = evidence_repair_queues_from_counts(

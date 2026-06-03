@@ -146,6 +146,12 @@ when the compared head policy has evidence-health signals. These duplicate the
 base report evidence-health counts inside the PR-posture summary so JSON diff
 consumers do not need to join across artifact sections to explain why the net
 posture worsened.
+Diff reports may also include optional `diff.summary.evidence_added`,
+`diff.summary.evidence_removed`, `diff.summary.link_added`, and
+`diff.summary.link_removed` counts when policy evidence or traceability-link
+rows changed in the compared PR posture. These counts summarize the
+corresponding `diff.policy_changes[].kind` rows; the rows remain the source for
+severity, message, and added/removed values.
 Report JSON may also include an optional top-level `evidence_repair_queues`
 array when audit, check, or diff reports have broken local evidence links,
 missing evidence, or weak evidence references. Queue rows include a stable

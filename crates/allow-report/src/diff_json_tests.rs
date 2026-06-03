@@ -185,6 +185,96 @@ fn diff_json_report_summary_includes_nonzero_evidence_health() {
 }
 
 #[test]
+fn diff_json_report_summary_includes_nonzero_evidence_delta_counts() {
+    let policy_changes = vec![
+        DiffPolicyChange {
+            severity: "improvement",
+            allow_id: "allow-added",
+            kind: "evidence_added",
+            message: "allow-added evidence added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "fail",
+            allow_id: "allow-removed",
+            kind: "evidence_removed",
+            message: "allow-removed evidence removed",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "improvement",
+            allow_id: "allow-link-added",
+            kind: "link_added",
+            message: "allow-link-added link added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "review",
+            allow_id: "allow-link-removed",
+            kind: "link_removed",
+            message: "allow-link-removed link removed",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+    ];
+    let report = DiffReport {
+        net_posture: "worse",
+        reviewer_action: "review evidence deltas",
+        summary: DiffPostureSummary {
+            current_failures: 0,
+            new_findings: 0,
+            removed_findings: 0,
+            policy_failures: 1,
+            policy_review_items: 1,
+            policy_improvements: 2,
+        },
+        finding_changes: &[],
+        policy_changes: &policy_changes,
+    };
+    let rendered = crate::diff_json::render_diff_posture_json(report);
+
+    assert!(rendered.contains("\"evidence_added\": 1"));
+    assert!(rendered.contains("\"evidence_removed\": 1"));
+    assert!(rendered.contains("\"link_added\": 1"));
+    assert!(rendered.contains("\"link_removed\": 1"));
+}
+
+#[test]
 fn diff_json_report_matches_posture_golden_contract() {
     let finding_changes = vec![DiffFindingChange {
         change: "removed",

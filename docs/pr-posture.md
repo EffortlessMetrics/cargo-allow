@@ -49,6 +49,7 @@ Common attention signals include:
 - source-tree scope broadening.
 - occurrence-limit loosening.
 - typed evidence removal.
+- added or removed evidence and traceability links.
 - owner, reason, or classification removal.
 - policy requirement loosening.
 - new ignored inventory scopes.
