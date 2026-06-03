@@ -97,14 +97,22 @@ Evidence delta counts describe what the PR changed:
 - `weak_evidence_added`
 - `broken_evidence_added`
 - `evidence_removed`
+- `evidence_removal_failures`
+- `evidence_removal_review_items`
+- `evidence_removal_improvements`
 - `link_added`
 - `weak_link_added`
 - `broken_link_added`
 - `link_removed`
+- `link_removal_failures`
+- `link_removal_review_items`
+- `link_removal_improvements`
 
 Use the detailed `policy_changes` rows for severity, message, and exact
 added/removed values. The weak and broken added counts are shortcuts for
-review/fail evidence introductions; they do not replace row-level review.
+review/fail evidence introductions. Removal failure, review, and improvement
+counts are shortcuts for existing row severities; they do not replace row-level
+review.
 
 ## Route Follow-Up Work
 

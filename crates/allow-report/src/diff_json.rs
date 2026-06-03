@@ -96,6 +96,24 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
             evidence_delta.evidence_removed
         ));
     }
+    if evidence_delta.evidence_removal_failures > 0 {
+        out.push_str(&format!(
+            "      \"evidence_removal_failures\": {},\n",
+            evidence_delta.evidence_removal_failures
+        ));
+    }
+    if evidence_delta.evidence_removal_review_items > 0 {
+        out.push_str(&format!(
+            "      \"evidence_removal_review_items\": {},\n",
+            evidence_delta.evidence_removal_review_items
+        ));
+    }
+    if evidence_delta.evidence_removal_improvements > 0 {
+        out.push_str(&format!(
+            "      \"evidence_removal_improvements\": {},\n",
+            evidence_delta.evidence_removal_improvements
+        ));
+    }
     if evidence_delta.link_added > 0 {
         out.push_str(&format!(
             "      \"link_added\": {},\n",
@@ -118,6 +136,24 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
         out.push_str(&format!(
             "      \"link_removed\": {},\n",
             evidence_delta.link_removed
+        ));
+    }
+    if evidence_delta.link_removal_failures > 0 {
+        out.push_str(&format!(
+            "      \"link_removal_failures\": {},\n",
+            evidence_delta.link_removal_failures
+        ));
+    }
+    if evidence_delta.link_removal_review_items > 0 {
+        out.push_str(&format!(
+            "      \"link_removal_review_items\": {},\n",
+            evidence_delta.link_removal_review_items
+        ));
+    }
+    if evidence_delta.link_removal_improvements > 0 {
+        out.push_str(&format!(
+            "      \"link_removal_improvements\": {},\n",
+            evidence_delta.link_removal_improvements
         ));
     }
     out.push_str(&format!(

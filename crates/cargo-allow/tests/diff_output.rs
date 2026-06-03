@@ -45,11 +45,23 @@ fn diff_json_reports_evidence_removed_policy_weakening() {
     );
     let output = root.join("diff.json");
 
-    assert_saved_json_diff_failure(&root, &output);
+    let value = assert_saved_json_diff_failure(&root, &output);
     assert_file_contains(
         &output,
         "\"evidence_removed\"",
         "diff output should include evidence removal posture",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/evidence_removed",
+        1,
+        "diff evidence removal generic evidence count",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/evidence_removal_failures",
+        1,
+        "diff evidence removal failure count",
     );
     assert_file_contains(
         &output,
@@ -76,6 +88,18 @@ fn diff_json_reports_local_evidence_removed_policy_weakening() {
         "/diff/net_posture",
         "worse",
         "diff local evidence removal net posture",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/evidence_removed",
+        1,
+        "diff local evidence removal generic evidence count",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/evidence_removal_failures",
+        1,
+        "diff local evidence removal failure count",
     );
     assert_policy_change(&value, "evidence_removed", "allow-unwrap", "fail");
     assert_file_contains(
@@ -305,6 +329,18 @@ fn diff_json_reports_local_link_removed_policy_failure() {
         "/diff/summary/policy_failures",
         1,
         "diff local link removal policy failure count",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/link_removed",
+        1,
+        "diff local link removal generic link count",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/link_removal_failures",
+        1,
+        "diff local link removal failure count",
     );
     assert_policy_change(&value, "link_removed", "allow-unwrap", "fail");
     assert_file_contains(
