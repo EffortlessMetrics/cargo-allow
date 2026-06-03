@@ -270,8 +270,10 @@ migration collected one, allow-entry counts, baseline-debt counts, unsafe-entry
 counts, lint-exception counts, evidence-bearing entry counts, total evidence
 reference counts, weak-evidence reference counts when present, and the same
 migration notes shown by the human summary. When migrated policy contains
-broken local evidence links or weak
-evidence references, the summary also routes repair work to the corresponding
+`baseline_debt`, the summary routes follow-up work through
+`cargo-allow worklist --item-kind baseline_debt --format json`. When migrated
+policy contains broken local evidence links or weak evidence references, the
+summary also routes repair work to the corresponding
 `cargo-allow worklist --item-kind ... --format json` queue. Unsafe-specific
 evidence gaps include an additional `--kind unsafe` route so reviewers and
 agents can focus on retained unsafe exceptions first. The canonical policy

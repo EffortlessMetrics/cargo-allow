@@ -11,6 +11,7 @@ const UNSAFE_BROKEN_EVIDENCE_LINK_COMMAND: &str =
     "cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json";
 const UNSAFE_WEAK_EVIDENCE_REFERENCE_COMMAND: &str =
     "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json";
+const BASELINE_DEBT_COMMAND: &str = "cargo-allow worklist --item-kind baseline_debt --format json";
 
 pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
     let mut out = String::new();
@@ -54,6 +55,7 @@ pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
     {
         out.push_str(&format!("unsafe_weak_evidence_references: {count}\n"));
     }
+    append_migrate_follow_up_queues_human(report, &mut out);
     append_migrate_evidence_repair_queues_human(report, &mut out);
     out.push_str(&format!(
         "inventory: {}/{} via {}{}\n",
@@ -72,6 +74,17 @@ pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out.push('\n');
     out
+}
+
+fn append_migrate_follow_up_queues_human(report: MigrateReport<'_>, out: &mut String) {
+    let queues = migrate_follow_up_queues(report);
+    if queues.is_empty() {
+        return;
+    }
+    out.push_str("follow_up_queues:\n");
+    for queue in queues {
+        out.push_str(&format!("  {}\n", queue.command));
+    }
 }
 
 fn append_migrate_evidence_repair_queues_human(report: MigrateReport<'_>, out: &mut String) {
@@ -183,10 +196,49 @@ pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
     out.push_str(&summary_tail.join(",\n"));
     out.push('\n');
     out.push_str("  },\n");
+    append_migrate_follow_up_queues_json(report, &mut out);
     append_migrate_evidence_repair_queues_json(report, &mut out);
     out.push_str(&format!("  \"notes\": \"{}\"\n", json_escape(report.notes)));
     out.push_str("}\n");
     out
+}
+
+fn append_migrate_follow_up_queues_json(report: MigrateReport<'_>, out: &mut String) {
+    let queues = migrate_follow_up_queues(report);
+    if queues.is_empty() {
+        return;
+    }
+
+    out.push_str("  \"follow_up_queues\": [\n");
+    for (index, queue) in queues.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str("    {\n");
+        out.push_str(&format!(
+            "      \"signal\": \"{}\",\n",
+            json_escape(queue.signal)
+        ));
+        out.push_str(&format!(
+            "      \"label\": \"{}\",\n",
+            json_escape(queue.label)
+        ));
+        out.push_str(&format!(
+            "      \"route_kind\": \"{}\",\n",
+            json_escape(queue.route_kind)
+        ));
+        out.push_str(&format!(
+            "      \"item_kind\": \"{}\",\n",
+            json_escape(queue.item_kind)
+        ));
+        out.push_str(&format!("      \"count\": {},\n", queue.count));
+        out.push_str(&format!(
+            "      \"command\": \"{}\"\n",
+            json_escape(queue.command)
+        ));
+        out.push_str("    }");
+    }
+    out.push_str("\n  ],\n");
 }
 
 fn append_migrate_evidence_repair_queues_json(report: MigrateReport<'_>, out: &mut String) {
@@ -239,6 +291,21 @@ fn append_migrate_evidence_repair_queues_json(report: MigrateReport<'_>, out: &m
     out.push_str("\n  ],\n");
 }
 
+fn migrate_follow_up_queues(report: MigrateReport<'_>) -> Vec<MigrateFollowUpQueue> {
+    let mut queues = Vec::new();
+    if report.baseline_debt > 0 {
+        queues.push(MigrateFollowUpQueue {
+            signal: "baseline_debt",
+            label: "baseline debt entries",
+            route_kind: "worklist_item_kind",
+            item_kind: "baseline_debt",
+            count: report.baseline_debt,
+            command: BASELINE_DEBT_COMMAND,
+        });
+    }
+    queues
+}
+
 fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvidenceRepairQueue> {
     let mut queues = Vec::new();
     let broken_count = report.broken_evidence_links.unwrap_or(0);
@@ -275,6 +342,15 @@ fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvide
         });
     }
     queues
+}
+
+struct MigrateFollowUpQueue {
+    signal: &'static str,
+    label: &'static str,
+    route_kind: &'static str,
+    item_kind: &'static str,
+    count: usize,
+    command: &'static str,
 }
 
 struct MigrateEvidenceRepairQueue {

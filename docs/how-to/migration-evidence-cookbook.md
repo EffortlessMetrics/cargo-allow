@@ -61,9 +61,9 @@ invalid in the scanned source tree.
 Use the queue that matches the summary signal:
 
 ```bash
+cargo-allow worklist --item-kind baseline_debt --format json
 cargo-allow worklist --item-kind broken_evidence_link --format json
 cargo-allow worklist --item-kind weak_evidence_reference --format json
-cargo-allow worklist --item-kind baseline_debt --format json
 ```
 
 For unsafe-specific evidence debt:
