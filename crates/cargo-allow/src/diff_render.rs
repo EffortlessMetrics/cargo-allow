@@ -185,6 +185,7 @@ fn finding_change_rows(
             line: change.line,
             column: change.column,
             source_package: change.source_package.as_deref(),
+            identity: Some(&change.identity),
         })
         .collect()
 }

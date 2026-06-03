@@ -109,6 +109,7 @@ fn finding_posture_change(
         line: None,
         column: None,
         source_package: None,
+        identity: allow_core::StructuralIdentity::new("rust", "method_call"),
     }
 }
 

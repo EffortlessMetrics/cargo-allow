@@ -56,6 +56,9 @@ context. It is not Cargo metadata.
 When present, `finding_changes[].line` and `finding_changes[].column` are
 review/navigation hints. They are not stable finding identity.
 
+When present, `finding_changes[].identity` shows the source-syntax structural
+identity used for posture matching.
+
 ## Check Policy Changes
 
 Read policy sections in this order:

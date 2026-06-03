@@ -70,3 +70,20 @@ fn finding_posture_preserves_source_location_hints() {
     assert_eq!(change.line, Some(42));
     assert_eq!(change.column, Some(1));
 }
+
+#[test]
+fn finding_posture_preserves_structural_identity_context() {
+    let head = finding("src/lib.rs", 42, "load");
+
+    let changes = finding_posture_changes(&[], &[head]);
+
+    let change = changes
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one posture change"));
+    assert_eq!(change.identity.ast_kind, "unsafe_fn");
+    assert_eq!(change.identity.container.as_deref(), Some("load"));
+    assert_eq!(
+        change.identity.normalized_snippet_hash.as_deref(),
+        Some("fnv1a64:load")
+    );
+}

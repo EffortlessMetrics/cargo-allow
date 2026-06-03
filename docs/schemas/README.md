@@ -154,7 +154,10 @@ corresponding `diff.policy_changes[].kind` rows; the rows remain the source for
 severity, message, and added/removed values.
 Diff finding-change rows may include optional `diff.finding_changes[].line` and
 `diff.finding_changes[].column` source locations for review/navigation only;
-they are not part of stable finding identity. Rows may also include optional
+they are not part of stable finding identity. Rows may include optional
+`diff.finding_changes[].identity` structural context showing the source-syntax
+identity used by posture matching; within that object, `line_hint` and
+`column_hint` remain review hints. Rows may also include optional
 `diff.finding_changes[].source_package` when cargo-allow can derive package
 context from source-tree `Cargo.toml` text; this is routing context, not Cargo
 metadata.

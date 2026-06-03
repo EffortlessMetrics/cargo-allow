@@ -23,7 +23,7 @@ pub fn render_explain_finding_json(finding: &Finding, status: &str, indent: &str
     )
 }
 
-fn structural_identity_json(identity: &StructuralIdentity, indent: &str) -> String {
+pub(crate) fn structural_identity_json(identity: &StructuralIdentity, indent: &str) -> String {
     format!(
         "{{\n{indent}      \"language\": \"{}\",\n{indent}      \"crate_name\": {},\n{indent}      \"module\": {},\n{indent}      \"container\": {},\n{indent}      \"ast_kind\": \"{}\",\n{indent}      \"symbol\": {},\n{indent}      \"callee\": {},\n{indent}      \"macro_name\": {},\n{indent}      \"lint\": {},\n{indent}      \"receiver_fingerprint\": {},\n{indent}      \"target_fingerprint\": {},\n{indent}      \"normalized_snippet_hash\": {},\n{indent}      \"line_hint\": {},\n{indent}      \"column_hint\": {}\n{indent}    }}",
         json_escape(&identity.language),

@@ -1947,6 +1947,10 @@
             "null"
           ],
           "minLength": 1
+        },
+        "identity": {
+          "$ref": "#/$defs/structural_identity",
+          "description": "Optional structural identity context for the source finding; line_hint and column_hint remain review/navigation hints, not stable identity."
         }
       }
     },
