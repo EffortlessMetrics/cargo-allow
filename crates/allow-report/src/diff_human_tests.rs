@@ -219,6 +219,35 @@ fn diff_posture_human_summary_reports_evidence_health_counts() {
 }
 
 #[test]
+fn diff_posture_human_summary_reports_structural_delta_counts() {
+    let policy_changes = vec![
+        bare_policy_change("fail", "allow-scope-broadened", "scope_broadened"),
+        bare_policy_change("review", "allow-scope-changed", "scope_changed"),
+        bare_policy_change("improvement", "allow-scope-narrowed", "scope_narrowed"),
+        bare_policy_change("review", "allow-selector-changed", "selector_changed"),
+        bare_policy_change(
+            "fail",
+            "allow-selector-decreased",
+            "selector_precision_decreased",
+        ),
+        bare_policy_change(
+            "improvement",
+            "allow-selector-increased",
+            "selector_precision_increased",
+        ),
+    ];
+
+    let text = render_diff_posture_summary_human(0, &[], &policy_changes);
+
+    assert!(text.contains("scope_broadened: 1"));
+    assert!(text.contains("scope_changed: 1"));
+    assert!(text.contains("scope_narrowed: 1"));
+    assert!(text.contains("selector_changed: 1"));
+    assert!(text.contains("selector_precision_decreased: 1"));
+    assert!(text.contains("selector_precision_increased: 1"));
+}
+
+#[test]
 fn diff_posture_human_summary_reports_evidence_delta_counts() {
     let policy_changes = vec![
         DiffPolicyChange {
@@ -431,4 +460,27 @@ fn diff_posture_human_summary_reports_evidence_delta_counts() {
     assert!(text.contains("link_removal_failures: 1"));
     assert!(text.contains("link_removal_review_items: 1"));
     assert!(text.contains("link_removal_improvements: 1"));
+}
+
+fn bare_policy_change(
+    severity: &'static str,
+    allow_id: &'static str,
+    kind: &'static str,
+) -> DiffPolicyChange<'static> {
+    DiffPolicyChange {
+        severity,
+        allow_id,
+        kind,
+        message: "policy posture changed",
+        exception_identity: None,
+        selector_identity: None,
+        selector_precision: None,
+        scope: None,
+        occurrence_limit: None,
+        lifecycle: None,
+        evidence: None,
+        metadata: None,
+        requirement: None,
+        policy_status: None,
+    }
 }

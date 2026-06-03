@@ -74,6 +74,35 @@ fn diff_pr_summary_markdown_reports_evidence_health_rows() {
 }
 
 #[test]
+fn diff_pr_summary_markdown_reports_structural_delta_rows() {
+    let policy_changes = vec![
+        bare_policy_change("fail", "allow-scope-broadened", "scope_broadened"),
+        bare_policy_change("review", "allow-scope-changed", "scope_changed"),
+        bare_policy_change("improvement", "allow-scope-narrowed", "scope_narrowed"),
+        bare_policy_change("review", "allow-selector-changed", "selector_changed"),
+        bare_policy_change(
+            "fail",
+            "allow-selector-decreased",
+            "selector_precision_decreased",
+        ),
+        bare_policy_change(
+            "improvement",
+            "allow-selector-increased",
+            "selector_precision_increased",
+        ),
+    ];
+
+    let summary = render_diff_pr_summary_markdown(0, &[], &policy_changes);
+
+    assert!(summary.contains("| Scope broadened | 1 |"));
+    assert!(summary.contains("| Scope changed | 1 |"));
+    assert!(summary.contains("| Scope narrowed | 1 |"));
+    assert!(summary.contains("| Selector changed | 1 |"));
+    assert!(summary.contains("| Selector precision decreased | 1 |"));
+    assert!(summary.contains("| Selector precision increased | 1 |"));
+}
+
+#[test]
 fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
     let policy_changes = vec![
         DiffPolicyChange {
@@ -609,4 +638,27 @@ fn diff_pr_summary_markdown_reports_omitted_policy_highlights() {
     let summary = render_diff_pr_summary_markdown(0, &[], &policy_changes);
 
     assert!(summary.contains("2 additional policy failures omitted from this summary."));
+}
+
+fn bare_policy_change(
+    severity: &'static str,
+    allow_id: &'static str,
+    kind: &'static str,
+) -> DiffPolicyChange<'static> {
+    DiffPolicyChange {
+        severity,
+        allow_id,
+        kind,
+        message: "policy posture changed",
+        exception_identity: None,
+        selector_identity: None,
+        selector_precision: None,
+        scope: None,
+        occurrence_limit: None,
+        lifecycle: None,
+        evidence: None,
+        metadata: None,
+        requirement: None,
+        policy_status: None,
+    }
 }

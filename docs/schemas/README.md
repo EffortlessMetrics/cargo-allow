@@ -154,6 +154,14 @@ when the compared head policy has evidence-health signals. These duplicate the
 base report evidence-health counts inside the PR-posture summary so JSON diff
 consumers do not need to join across artifact sections to explain why the net
 posture worsened.
+Diff reports may include optional structural posture counts such as
+`diff.summary.scope_broadened`, `diff.summary.scope_changed`,
+`diff.summary.scope_narrowed`, `diff.summary.selector_changed`,
+`diff.summary.selector_precision_decreased`, and
+`diff.summary.selector_precision_increased` when the corresponding
+`diff.policy_changes[].kind` rows are present. These fields summarize existing
+row kinds for reviewers and automation; they do not replace row-level scope or
+selector detail.
 Diff reports may also include optional `diff.summary.evidence_added`,
 `diff.summary.weak_evidence_added`, `diff.summary.broken_evidence_added`,
 `diff.summary.evidence_removed`, severity-derived evidence-removal counts,
@@ -378,6 +386,11 @@ Rows with `scope_broadened`, `scope_narrowed`, or `scope_changed` may also
 include an optional `scope` object with the changed scope carrier and normalized
 before/after source-tree scopes. This lets consumers review scope movement
 without parsing the human `message` string.
+The same row kinds may also be summarized in
+`diff.summary.scope_broadened`, `diff.summary.scope_changed`,
+`diff.summary.scope_narrowed`, `diff.summary.selector_changed`,
+`diff.summary.selector_precision_decreased`, and
+`diff.summary.selector_precision_increased`.
 Rows with `occurrence_limit_loosened` or `occurrence_limit_tightened` may also
 include an optional `occurrence_limit` object with before/after count values.
 This lets consumers distinguish capped baseline changes from unlimited approval

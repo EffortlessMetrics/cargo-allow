@@ -25,7 +25,13 @@ fn diff_json_with_output_file_does_not_emit_human_posture_to_stderr() {
     );
     let output = root.join("diff.json");
 
-    assert_saved_json_diff_failure(&root, &output);
+    let value = assert_saved_json_diff_failure(&root, &output);
+    assert_json_u64(
+        &value,
+        "/diff/summary/scope_broadened",
+        1,
+        "diff scope broadening summary count",
+    );
     assert_file_contains(
         &output,
         "\"scope_broadened\"",

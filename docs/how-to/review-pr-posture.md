@@ -81,6 +81,21 @@ Improvements include narrowed scope, increased selector precision, tightened
 limits, added typed evidence, restored owner or reason fields, and reduced
 generated `baseline_debt`.
 
+## Check Structural Deltas
+
+Structural delta counts describe scope and selector movement:
+
+- `scope_broadened`
+- `scope_changed`
+- `scope_narrowed`
+- `selector_changed`
+- `selector_precision_decreased`
+- `selector_precision_increased`
+
+Use the detailed `policy_changes` rows for before/after scope, selector
+identity, and selector precision details. These summary counts are shortcuts for
+existing row kinds; they do not replace row-level review.
+
 ## Check Evidence Health
 
 Evidence health counts describe the compared head policy:
