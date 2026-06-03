@@ -110,6 +110,18 @@ fn diff_json_reports_invalid_local_evidence_added_policy_failure() {
         1,
         "diff invalid local evidence addition failure count",
     );
+    assert_json_u64(
+        &value,
+        "/diff/summary/evidence_added",
+        1,
+        "diff invalid local evidence addition generic evidence count",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/broken_evidence_added",
+        1,
+        "diff invalid local evidence addition broken evidence count",
+    );
     assert_policy_change(&value, "evidence_added", "allow-unwrap", "fail");
     assert_file_contains(
         &output,
@@ -148,6 +160,18 @@ fn diff_json_reports_missing_local_evidence_added_policy_failure() {
         "/diff/summary/policy_failures",
         1,
         "diff missing local evidence addition policy failure count",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/evidence_added",
+        1,
+        "diff missing local evidence addition generic evidence count",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/broken_evidence_added",
+        1,
+        "diff missing local evidence addition broken evidence count",
     );
     assert_policy_change(&value, "evidence_added", "allow-unwrap", "fail");
     assert_file_contains(
@@ -192,6 +216,18 @@ fn diff_json_reports_untracked_local_evidence_added_policy_failure_by_default() 
         1,
         "untracked local evidence addition should fail by default",
     );
+    assert_json_u64(
+        &value,
+        "/diff/summary/evidence_added",
+        1,
+        "diff untracked local evidence addition generic evidence count",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/broken_evidence_added",
+        1,
+        "diff untracked local evidence addition broken evidence count",
+    );
     assert_policy_change(&value, "evidence_added", "allow-unwrap", "fail");
     assert_file_contains(
         &output,
@@ -224,6 +260,18 @@ fn diff_json_reports_missing_local_link_added_policy_failure() {
         "/diff/summary/policy_failures",
         1,
         "diff missing local link addition policy failure count",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/link_added",
+        1,
+        "diff missing local link addition generic link count",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/broken_link_added",
+        1,
+        "diff missing local link addition broken link count",
     );
     assert_policy_change(&value, "link_added", "allow-unwrap", "fail");
     assert_file_contains(
@@ -978,6 +1026,18 @@ fn diff_json_reports_weak_evidence_added_as_review_required() {
         "/diff/summary/policy_review_items",
         1,
         "diff weak evidence addition review item count",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/evidence_added",
+        1,
+        "diff weak evidence addition generic evidence count",
+    );
+    assert_json_u64(
+        &value,
+        "/diff/summary/weak_evidence_added",
+        1,
+        "diff weak evidence addition weak evidence count",
     );
     assert_policy_change(&value, "evidence_added", "allow-unwrap", "review");
     assert_file_contains(

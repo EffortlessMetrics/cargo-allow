@@ -94,6 +94,38 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
         },
         DiffPolicyChange {
             severity: "fail",
+            allow_id: "allow-broken-added",
+            kind: "evidence_added",
+            message: "allow-broken-added broken local evidence added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "review",
+            allow_id: "allow-weak-added",
+            kind: "evidence_added",
+            message: "allow-weak-added weak evidence added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "fail",
             allow_id: "allow-removed",
             kind: "evidence_removed",
             message: "allow-removed evidence removed",
@@ -126,6 +158,38 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
         },
         DiffPolicyChange {
             severity: "review",
+            allow_id: "allow-weak-link-added",
+            kind: "link_added",
+            message: "allow-weak-link-added weak traceability link added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "fail",
+            allow_id: "allow-broken-link-added",
+            kind: "link_added",
+            message: "allow-broken-link-added broken local link added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "review",
             allow_id: "allow-link-removed",
             kind: "link_removed",
             message: "allow-link-removed link removed",
@@ -144,9 +208,13 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
 
     let summary = render_diff_pr_summary_markdown(0, &[], &policy_changes);
 
-    assert!(summary.contains("| Evidence added | 1 |"));
+    assert!(summary.contains("| Evidence added | 3 |"));
+    assert!(summary.contains("| Weak evidence added | 1 |"));
+    assert!(summary.contains("| Broken evidence added | 1 |"));
     assert!(summary.contains("| Evidence removed | 1 |"));
-    assert!(summary.contains("| Links added | 1 |"));
+    assert!(summary.contains("| Links added | 3 |"));
+    assert!(summary.contains("| Weak links added | 1 |"));
+    assert!(summary.contains("| Broken links added | 1 |"));
     assert!(summary.contains("| Links removed | 1 |"));
 }
 
