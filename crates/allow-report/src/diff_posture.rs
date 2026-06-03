@@ -8,6 +8,14 @@ pub enum DiffNetPosture {
     Unchanged,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct DiffEvidenceDeltaSummary {
+    pub(crate) evidence_added: usize,
+    pub(crate) evidence_removed: usize,
+    pub(crate) link_added: usize,
+    pub(crate) link_removed: usize,
+}
+
 impl DiffNetPosture {
     pub fn as_str(self) -> &'static str {
         match self {
@@ -28,6 +36,22 @@ impl DiffNetPosture {
             Self::Unchanged => "no source exception posture change detected.",
         }
     }
+}
+
+pub(crate) fn diff_evidence_delta_summary(
+    policy_changes: &[DiffPolicyChange<'_>],
+) -> DiffEvidenceDeltaSummary {
+    let mut summary = DiffEvidenceDeltaSummary::default();
+    for change in policy_changes {
+        match change.kind {
+            "evidence_added" => summary.evidence_added += 1,
+            "evidence_removed" => summary.evidence_removed += 1,
+            "link_added" => summary.link_added += 1,
+            "link_removed" => summary.link_removed += 1,
+            _ => {}
+        }
+    }
+    summary
 }
 
 pub fn diff_posture_summary(

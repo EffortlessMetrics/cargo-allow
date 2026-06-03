@@ -98,6 +98,30 @@ fn report_schema_locks_diff_posture_extension_contract() {
             "policy_improvements",
         ],
     );
+    for field in [
+        "broken_evidence_links",
+        "missing_evidence",
+        "weak_evidence_references",
+        "evidence_added",
+        "evidence_removed",
+        "link_added",
+        "link_removed",
+    ] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/diff_summary/properties/{field}/type"))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "report diff summary optional {field} type"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/diff_summary/properties/{field}/minimum"))
+                .and_then(Value::as_u64),
+            Some(0),
+            "report diff summary optional {field} minimum"
+        );
+    }
     assert_enum_equals(
         "report match status",
         &schema,

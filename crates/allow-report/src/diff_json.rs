@@ -1,6 +1,7 @@
 use allow_core::json_escape;
 
 use crate::DiffReport;
+use crate::diff_posture::diff_evidence_delta_summary;
 use crate::json::{json_string_array, option_json};
 use crate::{REPORT_COMMAND_DIFF, REPORT_SCHEMA_ID};
 
@@ -67,6 +68,31 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
         out.push_str(&format!(
             "      \"weak_evidence_references\": {},\n",
             weak_evidence_references
+        ));
+    }
+    let evidence_delta = diff_evidence_delta_summary(report.policy_changes);
+    if evidence_delta.evidence_added > 0 {
+        out.push_str(&format!(
+            "      \"evidence_added\": {},\n",
+            evidence_delta.evidence_added
+        ));
+    }
+    if evidence_delta.evidence_removed > 0 {
+        out.push_str(&format!(
+            "      \"evidence_removed\": {},\n",
+            evidence_delta.evidence_removed
+        ));
+    }
+    if evidence_delta.link_added > 0 {
+        out.push_str(&format!(
+            "      \"link_added\": {},\n",
+            evidence_delta.link_added
+        ));
+    }
+    if evidence_delta.link_removed > 0 {
+        out.push_str(&format!(
+            "      \"link_removed\": {},\n",
+            evidence_delta.link_removed
         ));
     }
     out.push_str(&format!(

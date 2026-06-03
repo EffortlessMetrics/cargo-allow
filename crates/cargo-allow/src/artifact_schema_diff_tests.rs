@@ -111,6 +111,10 @@ fn common_schema_diff_fragments_keep_source_tree_contracts() {
         "broken_evidence_links",
         "missing_evidence",
         "weak_evidence_references",
+        "evidence_added",
+        "evidence_removed",
+        "link_added",
+        "link_removed",
     ] {
         assert_eq!(
             schema
