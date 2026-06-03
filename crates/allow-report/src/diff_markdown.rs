@@ -113,6 +113,24 @@ fn render_diff_pr_summary_markdown_with_evidence_health_counts_inner(
             evidence_delta.evidence_removed
         ));
     }
+    if evidence_delta.evidence_removal_failures > 0 {
+        out.push_str(&format!(
+            "| Evidence removal failures | {} |\n",
+            evidence_delta.evidence_removal_failures
+        ));
+    }
+    if evidence_delta.evidence_removal_review_items > 0 {
+        out.push_str(&format!(
+            "| Evidence removal review items | {} |\n",
+            evidence_delta.evidence_removal_review_items
+        ));
+    }
+    if evidence_delta.evidence_removal_improvements > 0 {
+        out.push_str(&format!(
+            "| Evidence removal improvements | {} |\n",
+            evidence_delta.evidence_removal_improvements
+        ));
+    }
     if evidence_delta.link_added > 0 {
         out.push_str(&format!(
             "| Links added | {} |\n",
@@ -135,6 +153,24 @@ fn render_diff_pr_summary_markdown_with_evidence_health_counts_inner(
         out.push_str(&format!(
             "| Links removed | {} |\n",
             evidence_delta.link_removed
+        ));
+    }
+    if evidence_delta.link_removal_failures > 0 {
+        out.push_str(&format!(
+            "| Link removal failures | {} |\n",
+            evidence_delta.link_removal_failures
+        ));
+    }
+    if evidence_delta.link_removal_review_items > 0 {
+        out.push_str(&format!(
+            "| Link removal review items | {} |\n",
+            evidence_delta.link_removal_review_items
+        ));
+    }
+    if evidence_delta.link_removal_improvements > 0 {
+        out.push_str(&format!(
+            "| Link removal improvements | {} |\n",
+            evidence_delta.link_removal_improvements
         ));
     }
     out.push_str(&format!(

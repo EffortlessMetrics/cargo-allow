@@ -1861,6 +1861,18 @@
           "type": "integer",
           "minimum": 0
         },
+        "evidence_removal_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_removal_review_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_removal_improvements": {
+          "type": "integer",
+          "minimum": 0
+        },
         "link_added": {
           "type": "integer",
           "minimum": 0
@@ -1874,6 +1886,18 @@
           "minimum": 0
         },
         "link_removed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "link_removal_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "link_removal_review_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "link_removal_improvements": {
           "type": "integer",
           "minimum": 0
         },

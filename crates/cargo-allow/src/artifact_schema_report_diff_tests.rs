@@ -107,10 +107,16 @@ fn report_schema_locks_diff_posture_extension_contract() {
         "weak_evidence_added",
         "broken_evidence_added",
         "evidence_removed",
+        "evidence_removal_failures",
+        "evidence_removal_review_items",
+        "evidence_removal_improvements",
         "link_added",
         "weak_link_added",
         "broken_link_added",
         "link_removed",
+        "link_removal_failures",
+        "link_removal_review_items",
+        "link_removal_improvements",
     ] {
         assert_eq!(
             schema

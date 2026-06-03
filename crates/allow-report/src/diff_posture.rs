@@ -14,10 +14,16 @@ pub(crate) struct DiffEvidenceDeltaSummary {
     pub(crate) weak_evidence_added: usize,
     pub(crate) broken_evidence_added: usize,
     pub(crate) evidence_removed: usize,
+    pub(crate) evidence_removal_failures: usize,
+    pub(crate) evidence_removal_review_items: usize,
+    pub(crate) evidence_removal_improvements: usize,
     pub(crate) link_added: usize,
     pub(crate) weak_link_added: usize,
     pub(crate) broken_link_added: usize,
     pub(crate) link_removed: usize,
+    pub(crate) link_removal_failures: usize,
+    pub(crate) link_removal_review_items: usize,
+    pub(crate) link_removal_improvements: usize,
 }
 
 impl DiffNetPosture {
@@ -56,7 +62,15 @@ pub(crate) fn diff_evidence_delta_summary(
                     _ => {}
                 }
             }
-            "evidence_removed" => summary.evidence_removed += 1,
+            "evidence_removed" => {
+                summary.evidence_removed += 1;
+                match change.severity {
+                    "fail" => summary.evidence_removal_failures += 1,
+                    "review" => summary.evidence_removal_review_items += 1,
+                    "improvement" => summary.evidence_removal_improvements += 1,
+                    _ => {}
+                }
+            }
             "link_added" => {
                 summary.link_added += 1;
                 match change.severity {
@@ -65,7 +79,15 @@ pub(crate) fn diff_evidence_delta_summary(
                     _ => {}
                 }
             }
-            "link_removed" => summary.link_removed += 1,
+            "link_removed" => {
+                summary.link_removed += 1;
+                match change.severity {
+                    "fail" => summary.link_removal_failures += 1,
+                    "review" => summary.link_removal_review_items += 1,
+                    "improvement" => summary.link_removal_improvements += 1,
+                    _ => {}
+                }
+            }
             _ => {}
         }
     }

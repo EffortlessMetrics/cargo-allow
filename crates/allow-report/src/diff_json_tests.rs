@@ -260,6 +260,38 @@ fn diff_json_report_summary_includes_nonzero_evidence_delta_counts() {
             policy_status: None,
         },
         DiffPolicyChange {
+            severity: "review",
+            allow_id: "allow-removed-review",
+            kind: "evidence_removed",
+            message: "allow-removed-review weak evidence removed",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "improvement",
+            allow_id: "allow-removed-improvement",
+            kind: "evidence_removed",
+            message: "allow-removed-improvement weak evidence removed",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
             severity: "improvement",
             allow_id: "allow-link-added",
             kind: "link_added",
@@ -323,6 +355,38 @@ fn diff_json_report_summary_includes_nonzero_evidence_delta_counts() {
             requirement: None,
             policy_status: None,
         },
+        DiffPolicyChange {
+            severity: "fail",
+            allow_id: "allow-link-removed-fail",
+            kind: "link_removed",
+            message: "allow-link-removed-fail local traceability link removed",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "improvement",
+            allow_id: "allow-link-removed-improvement",
+            kind: "link_removed",
+            message: "allow-link-removed-improvement weak traceability link removed",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
     ];
     let report = DiffReport {
         net_posture: "worse",
@@ -331,9 +395,9 @@ fn diff_json_report_summary_includes_nonzero_evidence_delta_counts() {
             current_failures: 0,
             new_findings: 0,
             removed_findings: 0,
-            policy_failures: 3,
-            policy_review_items: 3,
-            policy_improvements: 2,
+            policy_failures: 4,
+            policy_review_items: 4,
+            policy_improvements: 4,
         },
         finding_changes: &[],
         policy_changes: &policy_changes,
@@ -343,11 +407,17 @@ fn diff_json_report_summary_includes_nonzero_evidence_delta_counts() {
     assert!(rendered.contains("\"evidence_added\": 3"));
     assert!(rendered.contains("\"weak_evidence_added\": 1"));
     assert!(rendered.contains("\"broken_evidence_added\": 1"));
-    assert!(rendered.contains("\"evidence_removed\": 1"));
+    assert!(rendered.contains("\"evidence_removed\": 3"));
+    assert!(rendered.contains("\"evidence_removal_failures\": 1"));
+    assert!(rendered.contains("\"evidence_removal_review_items\": 1"));
+    assert!(rendered.contains("\"evidence_removal_improvements\": 1"));
     assert!(rendered.contains("\"link_added\": 3"));
     assert!(rendered.contains("\"weak_link_added\": 1"));
     assert!(rendered.contains("\"broken_link_added\": 1"));
-    assert!(rendered.contains("\"link_removed\": 1"));
+    assert!(rendered.contains("\"link_removed\": 3"));
+    assert!(rendered.contains("\"link_removal_failures\": 1"));
+    assert!(rendered.contains("\"link_removal_review_items\": 1"));
+    assert!(rendered.contains("\"link_removal_improvements\": 1"));
 }
 
 #[test]
