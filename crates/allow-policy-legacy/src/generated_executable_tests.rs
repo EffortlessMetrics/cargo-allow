@@ -27,6 +27,12 @@ fn migrates_generated_allowlist_to_canonical_policy() {
     );
     assert_eq!(entry.lifecycle.expires.as_deref(), Some("never"));
     assert_eq!(entry.lifecycle.review_after.as_deref(), Some("2026-05-10"));
+    assert!(
+        entry
+            .evidence
+            .iter()
+            .any(|item| item == "legacy-policy:generated-no-panic-baseline")
+    );
     assert!(entry.evidence.iter().any(|item| item.starts_with("cargo:")));
 }
 
@@ -139,6 +145,12 @@ expires = "permanent"
         entry
             .evidence
             .iter()
+            .any(|item| item == "legacy-policy:generated-schema")
+    );
+    assert!(
+        entry
+            .evidence
+            .iter()
             .any(|item| item == "generator:cargo xtask schema")
     );
     assert!(
@@ -170,7 +182,13 @@ fn migrates_executable_allowlist_to_policy_exception_entries() {
     );
     assert_eq!(entry.lifecycle.expires.as_deref(), Some("never"));
     assert_eq!(entry.lifecycle.review_after.as_deref(), Some("2026-05-09"));
-    assert_eq!(entry.evidence, vec!["interpreter:bash"]);
+    assert_eq!(
+        entry.evidence,
+        vec![
+            "legacy-policy:exec-package-proof".to_string(),
+            "interpreter:bash".to_string(),
+        ]
+    );
     assert_eq!(
         entry.selector.target_fingerprint.as_deref(),
         Some("git-mode:100755")
@@ -212,6 +230,7 @@ expires = "permanent"
         entry.evidence,
         vec![
             "doc:docs/release/README.md".to_string(),
+            "legacy-policy:exec-release-helper".to_string(),
             "interpreter:bash".to_string(),
         ]
     );

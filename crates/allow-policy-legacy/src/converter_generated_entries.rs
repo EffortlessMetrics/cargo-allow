@@ -33,6 +33,7 @@ pub(crate) fn entry_from_generated_rule(rule: &LegacyGeneratedRule) -> AllowEntr
 
 fn generated_evidence(rule: &LegacyGeneratedRule) -> Vec<String> {
     let mut evidence = rule.evidence.clone();
+    evidence.push(format!("legacy-policy:{}", rule.id));
     if let Some(generator) = &rule.generator {
         evidence.push(format!("generator:{generator}"));
     }

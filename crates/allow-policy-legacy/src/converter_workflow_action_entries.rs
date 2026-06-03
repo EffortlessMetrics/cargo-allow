@@ -34,6 +34,10 @@ pub(crate) fn workflow_action_entry(rule: &LegacyWorkflowRule, action: &str) -> 
 
 fn workflow_action_evidence(rule: &LegacyWorkflowRule, action: &str) -> Vec<String> {
     let mut evidence = rule.evidence.clone();
+    evidence.push(format!(
+        "legacy-policy:workflow:{}",
+        normalize_path(&rule.path)
+    ));
     evidence.push(format!("external_action:{action}"));
     evidence
 }

@@ -36,6 +36,7 @@ pub(crate) fn entry_from_executable_rule(rule: &LegacyExecutableRule) -> AllowEn
 
 fn executable_evidence(rule: &LegacyExecutableRule) -> Vec<String> {
     let mut evidence = rule.evidence.clone();
+    evidence.push(format!("legacy-policy:{}", rule.id));
     if let Some(interpreter) = &rule.interpreter {
         evidence.push(format!("interpreter:{interpreter}"));
     }
