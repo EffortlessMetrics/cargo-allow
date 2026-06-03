@@ -33,6 +33,24 @@ If `migrate-summary.json` includes `evidence_repair_queues`, run the listed
 worklist commands before treating migrated entries as reviewed. Unsafe evidence
 repair rows may include a focused `--kind unsafe` command.
 
+## Close Out Migration Worklists
+
+Before removing the old xtask gate, run the migration closeout queues that
+match the summary counts:
+
+```bash
+cargo-allow worklist --item-kind broken_evidence_link --format json
+cargo-allow worklist --item-kind weak_evidence_reference --format json
+cargo-allow worklist --item-kind baseline_debt --format json
+cargo-allow worklist --kind unsafe --item-kind broken_evidence_link --format json
+cargo-allow worklist --kind unsafe --item-kind weak_evidence_reference --format json
+```
+
+Use the broken-evidence queue for missing or invalid local files, the
+weak-evidence queue for unstructured or unknown-prefix references, and the
+baseline-debt queue for generated migration debt that still needs real owner,
+reason, lifecycle, selector, and evidence review.
+
 ## Claim Boundary
 
 Migration converts policy data. It does not execute legacy xtasks, build the

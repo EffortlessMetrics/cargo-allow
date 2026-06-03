@@ -127,3 +127,38 @@ fn clap_accepts_hyphenated_worklist_item_kind_alias() {
         })) if item_kind == "stale_allow"
     ));
 }
+
+#[test]
+fn clap_parses_migration_closeout_worklist_presets() {
+    let cases = [
+        (None, "broken_evidence_link"),
+        (None, "weak_evidence_reference"),
+        (None, "baseline_debt"),
+        (Some("unsafe"), "broken_evidence_link"),
+        (Some("unsafe"), "weak_evidence_reference"),
+    ];
+
+    for (kind, item_kind) in cases {
+        let mut args = vec!["cargo-allow", "worklist"];
+        if let Some(kind) = kind {
+            args.extend(["--kind", kind]);
+        }
+        args.extend(["--item-kind", item_kind, "--format", "json"]);
+
+        let parsed = CargoAllowCli::try_parse_from(argv(args)).unwrap_or_else(|err| {
+            std::panic::panic_any(format!(
+                "migration closeout preset {kind:?}/{item_kind} should parse: {err}"
+            ))
+        });
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Worklist(WorklistArgs {
+                kind: parsed_kind,
+                item_kind: Some(parsed_item_kind),
+                format: WorklistFormat::Json,
+                ..
+            })) if parsed_kind.as_deref() == kind && parsed_item_kind == item_kind
+        ));
+    }
+}
