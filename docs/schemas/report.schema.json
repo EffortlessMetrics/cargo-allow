@@ -869,11 +869,27 @@
           "type": "integer",
           "minimum": 0
         },
+        "weak_evidence_added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "broken_evidence_added": {
+          "type": "integer",
+          "minimum": 0
+        },
         "evidence_removed": {
           "type": "integer",
           "minimum": 0
         },
         "link_added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "weak_link_added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "broken_link_added": {
           "type": "integer",
           "minimum": 0
         },

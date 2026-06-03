@@ -155,11 +155,15 @@ base report evidence-health counts inside the PR-posture summary so JSON diff
 consumers do not need to join across artifact sections to explain why the net
 posture worsened.
 Diff reports may also include optional `diff.summary.evidence_added`,
-`diff.summary.evidence_removed`, `diff.summary.link_added`, and
+`diff.summary.weak_evidence_added`, `diff.summary.broken_evidence_added`,
+`diff.summary.evidence_removed`, `diff.summary.link_added`,
+`diff.summary.weak_link_added`, `diff.summary.broken_link_added`, and
 `diff.summary.link_removed` counts when policy evidence or traceability-link
-rows changed in the compared PR posture. These counts summarize the
-corresponding `diff.policy_changes[].kind` rows; the rows remain the source for
-severity, message, and added/removed values.
+rows changed in the compared PR posture. The generic added/removed counts
+summarize the corresponding `diff.policy_changes[].kind` rows; weak and broken
+added counts summarize review/fail additions so consumers can flag weak or
+broken evidence introductions without parsing row messages. The rows remain the
+source for severity, message, and added/removed values.
 Diff finding-change rows may include optional `diff.finding_changes[].line` and
 `diff.finding_changes[].column` source locations for review/navigation only;
 they are not part of stable finding identity. Rows may include optional
@@ -383,12 +387,19 @@ Rows with `evidence_added`, `evidence_removed`, `link_added`, or `link_removed`
 may also include an optional `evidence` object with the changed collection and
 added/removed values. `evidence_added` is an improvement for typed evidence
 references, but review-required when the added value is weak evidence such as an
-unstructured string, unknown prefix, or empty typed reference. `evidence_removed`
-fails when typed evidence is removed, improves posture when only weak evidence
-is removed and typed evidence remains, and requires review when weak evidence is
-removed without any remaining typed evidence. `link_removed` fails for local
-traceability-link removal, improves posture when only weak traceability links
-are removed and typed traceability remains, and otherwise requires review.
+unstructured string, unknown prefix, or empty typed reference, and fails when
+added local evidence is invalid, missing, or outside the compared inventory.
+Weak or broken evidence additions may also be counted in
+`diff.summary.weak_evidence_added` or `diff.summary.broken_evidence_added`.
+`evidence_removed` fails when typed evidence is removed, improves posture when
+only weak evidence is removed and typed evidence remains, and requires review
+when weak evidence is removed without any remaining typed evidence.
+`link_removed` fails for local traceability-link removal, improves posture when
+only weak traceability links are removed and typed traceability remains, and
+otherwise requires review. `link_added` follows the same
+improvement/review/fail local-link rules as added evidence. Weak or broken link
+additions may also be counted in `diff.summary.weak_link_added` or
+`diff.summary.broken_link_added`.
 Rows with `owner_added`, `owner_changed`, `owner_removed`, `owner_unassigned`,
 `reason_added`, `reason_changed`, `reason_removed`, `classification_added`,
 `classification_changed`, `classification_removed`,

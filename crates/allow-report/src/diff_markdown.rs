@@ -95,6 +95,18 @@ fn render_diff_pr_summary_markdown_with_evidence_health_counts_inner(
             evidence_delta.evidence_added
         ));
     }
+    if evidence_delta.weak_evidence_added > 0 {
+        out.push_str(&format!(
+            "| Weak evidence added | {} |\n",
+            evidence_delta.weak_evidence_added
+        ));
+    }
+    if evidence_delta.broken_evidence_added > 0 {
+        out.push_str(&format!(
+            "| Broken evidence added | {} |\n",
+            evidence_delta.broken_evidence_added
+        ));
+    }
     if evidence_delta.evidence_removed > 0 {
         out.push_str(&format!(
             "| Evidence removed | {} |\n",
@@ -105,6 +117,18 @@ fn render_diff_pr_summary_markdown_with_evidence_health_counts_inner(
         out.push_str(&format!(
             "| Links added | {} |\n",
             evidence_delta.link_added
+        ));
+    }
+    if evidence_delta.weak_link_added > 0 {
+        out.push_str(&format!(
+            "| Weak links added | {} |\n",
+            evidence_delta.weak_link_added
+        ));
+    }
+    if evidence_delta.broken_link_added > 0 {
+        out.push_str(&format!(
+            "| Broken links added | {} |\n",
+            evidence_delta.broken_link_added
         ));
     }
     if evidence_delta.link_removed > 0 {

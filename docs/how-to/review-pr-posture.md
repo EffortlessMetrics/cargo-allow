@@ -94,12 +94,17 @@ Evidence health counts describe the compared head policy:
 Evidence delta counts describe what the PR changed:
 
 - `evidence_added`
+- `weak_evidence_added`
+- `broken_evidence_added`
 - `evidence_removed`
 - `link_added`
+- `weak_link_added`
+- `broken_link_added`
 - `link_removed`
 
 Use the detailed `policy_changes` rows for severity, message, and exact
-added/removed values.
+added/removed values. The weak and broken added counts are shortcuts for
+review/fail evidence introductions; they do not replace row-level review.
 
 ## Route Follow-Up Work
 

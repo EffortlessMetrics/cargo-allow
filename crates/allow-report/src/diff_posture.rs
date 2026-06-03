@@ -11,8 +11,12 @@ pub enum DiffNetPosture {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct DiffEvidenceDeltaSummary {
     pub(crate) evidence_added: usize,
+    pub(crate) weak_evidence_added: usize,
+    pub(crate) broken_evidence_added: usize,
     pub(crate) evidence_removed: usize,
     pub(crate) link_added: usize,
+    pub(crate) weak_link_added: usize,
+    pub(crate) broken_link_added: usize,
     pub(crate) link_removed: usize,
 }
 
@@ -44,9 +48,23 @@ pub(crate) fn diff_evidence_delta_summary(
     let mut summary = DiffEvidenceDeltaSummary::default();
     for change in policy_changes {
         match change.kind {
-            "evidence_added" => summary.evidence_added += 1,
+            "evidence_added" => {
+                summary.evidence_added += 1;
+                match change.severity {
+                    "review" => summary.weak_evidence_added += 1,
+                    "fail" => summary.broken_evidence_added += 1,
+                    _ => {}
+                }
+            }
             "evidence_removed" => summary.evidence_removed += 1,
-            "link_added" => summary.link_added += 1,
+            "link_added" => {
+                summary.link_added += 1;
+                match change.severity {
+                    "review" => summary.weak_link_added += 1,
+                    "fail" => summary.broken_link_added += 1,
+                    _ => {}
+                }
+            }
             "link_removed" => summary.link_removed += 1,
             _ => {}
         }

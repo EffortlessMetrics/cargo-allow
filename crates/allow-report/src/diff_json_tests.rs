@@ -213,6 +213,38 @@ fn diff_json_report_summary_includes_nonzero_evidence_delta_counts() {
         },
         DiffPolicyChange {
             severity: "fail",
+            allow_id: "allow-broken-added",
+            kind: "evidence_added",
+            message: "allow-broken-added broken local evidence added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "review",
+            allow_id: "allow-weak-added",
+            kind: "evidence_added",
+            message: "allow-weak-added weak evidence added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "fail",
             allow_id: "allow-removed",
             kind: "evidence_removed",
             message: "allow-removed evidence removed",
@@ -232,6 +264,38 @@ fn diff_json_report_summary_includes_nonzero_evidence_delta_counts() {
             allow_id: "allow-link-added",
             kind: "link_added",
             message: "allow-link-added link added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "review",
+            allow_id: "allow-weak-link-added",
+            kind: "link_added",
+            message: "allow-weak-link-added weak traceability link added",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "fail",
+            allow_id: "allow-broken-link-added",
+            kind: "link_added",
+            message: "allow-broken-link-added broken local link added",
             exception_identity: None,
             selector_identity: None,
             selector_precision: None,
@@ -267,8 +331,8 @@ fn diff_json_report_summary_includes_nonzero_evidence_delta_counts() {
             current_failures: 0,
             new_findings: 0,
             removed_findings: 0,
-            policy_failures: 1,
-            policy_review_items: 1,
+            policy_failures: 3,
+            policy_review_items: 3,
             policy_improvements: 2,
         },
         finding_changes: &[],
@@ -276,9 +340,13 @@ fn diff_json_report_summary_includes_nonzero_evidence_delta_counts() {
     };
     let rendered = crate::diff_json::render_diff_posture_json(report);
 
-    assert!(rendered.contains("\"evidence_added\": 1"));
+    assert!(rendered.contains("\"evidence_added\": 3"));
+    assert!(rendered.contains("\"weak_evidence_added\": 1"));
+    assert!(rendered.contains("\"broken_evidence_added\": 1"));
     assert!(rendered.contains("\"evidence_removed\": 1"));
-    assert!(rendered.contains("\"link_added\": 1"));
+    assert!(rendered.contains("\"link_added\": 3"));
+    assert!(rendered.contains("\"weak_link_added\": 1"));
+    assert!(rendered.contains("\"broken_link_added\": 1"));
     assert!(rendered.contains("\"link_removed\": 1"));
 }
 

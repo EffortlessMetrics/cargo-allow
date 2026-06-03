@@ -104,8 +104,12 @@ fn report_schema_locks_diff_posture_extension_contract() {
         "missing_evidence",
         "weak_evidence_references",
         "evidence_added",
+        "weak_evidence_added",
+        "broken_evidence_added",
         "evidence_removed",
         "link_added",
+        "weak_link_added",
+        "broken_link_added",
         "link_removed",
     ] {
         assert_eq!(
