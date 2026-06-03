@@ -31,6 +31,11 @@ pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
         report.entries_with_evidence
     ));
     out.push_str(&format!("evidence_entries: {}\n", report.evidence_entries));
+    out.push_str(&format!(
+        "entries_with_links: {}\n",
+        report.entries_with_links
+    ));
+    out.push_str(&format!("link_entries: {}\n", report.link_entries));
     if let Some(count) = report.broken_evidence_links.filter(|count| *count > 0) {
         out.push_str(&format!("broken_evidence_links: {count}\n"));
     }
@@ -154,6 +159,11 @@ pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
         "    \"evidence_entries\": {}",
         report.evidence_entries
     ));
+    summary_tail.push(format!(
+        "    \"entries_with_links\": {}",
+        report.entries_with_links
+    ));
+    summary_tail.push(format!("    \"link_entries\": {}", report.link_entries));
     for (name, count) in [
         ("broken_evidence_links", report.broken_evidence_links),
         (

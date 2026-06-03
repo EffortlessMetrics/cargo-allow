@@ -13,8 +13,10 @@ fn render_migrate_summary_json_records_policy_migration_context() {
         "doc:docs/missing-unsafe-evidence.md".to_string(),
         "TODO: add unsafe-review or boundary-test evidence".to_string(),
     ];
+    unsafe_entry.links = vec!["legacy-policy:allow-unsafe".to_string()];
     let mut lint_entry = test_entry("allow-lint", FindingKind::LintException);
     lint_entry.evidence = vec!["TODO: replace with typed lint evidence".to_string()];
+    lint_entry.links = vec!["legacy-policy:allow-lint".to_string()];
     cfg.allow.push(baseline);
     cfg.allow.push(unsafe_entry);
     cfg.allow.push(lint_entry);
@@ -97,6 +99,20 @@ fn render_migrate_summary_json_records_policy_migration_context() {
             .and_then(Value::as_u64),
         Some(3),
         "migrate evidence reference entries"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/entries_with_links")
+            .and_then(Value::as_u64),
+        Some(2),
+        "migrate link-bearing entries"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/link_entries")
+            .and_then(Value::as_u64),
+        Some(2),
+        "migrate traceability link entries"
     );
     assert_eq!(
         value
