@@ -57,7 +57,8 @@ When present, `finding_changes[].line` and `finding_changes[].column` are
 review/navigation hints. They are not stable finding identity.
 
 When present, `finding_changes[].identity` shows the source-syntax structural
-identity used for posture matching.
+identity used for posture matching. Human and Markdown summaries show this as a
+compact `Identity` column; JSON reports keep the structured object.
 
 ## Check Policy Changes
 

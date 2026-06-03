@@ -152,6 +152,8 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
 
 #[test]
 fn diff_posture_tables_escape_markdown_cells() {
+    let mut identity = allow_core::StructuralIdentity::new("rust", "method|call");
+    identity.callee = Some("unwrap`call".to_string());
     let finding_changes = vec![DiffFindingChange {
         change: "new",
         key: "panic|unwrap|src/lib.rs",
@@ -161,7 +163,7 @@ fn diff_posture_tables_escape_markdown_cells() {
         line: Some(12),
         column: Some(5),
         source_package: Some("parser|core"),
-        identity: None,
+        identity: Some(&identity),
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
@@ -187,12 +189,16 @@ fn diff_posture_tables_escape_markdown_cells() {
     assert!(findings.contains("unwrap\\`family"));
     assert!(findings.contains("src/lib.rs:12:5"));
     assert!(findings.contains("parser\\|core"));
+    assert!(findings.contains("ast_kind=method\\|call,callee=unwrap\\`call"));
     assert!(policy.contains("allow\\|0001"));
     assert!(policy.contains("message with \\| pipe"));
 }
 
 #[test]
 fn diff_finding_markdown_groups_findings_by_change() {
+    let mut identity = allow_core::StructuralIdentity::new("rust", "unsafe_block");
+    identity.container = Some("runtime_init".to_string());
+    identity.callee = Some("dangerous_call".to_string());
     let finding_changes = vec![
         DiffFindingChange {
             change: "removed",
@@ -214,7 +220,7 @@ fn diff_finding_markdown_groups_findings_by_change() {
             line: Some(7),
             column: Some(3),
             source_package: Some("runtime"),
-            identity: None,
+            identity: Some(&identity),
         },
     ];
 
@@ -230,9 +236,9 @@ fn diff_finding_markdown_groups_findings_by_change() {
         attention < improvements,
         "markdown finding sections should show attention before improvements"
     );
-    assert!(markdown.contains("| Change | Kind | Family | Path | Source Package |"));
+    assert!(markdown.contains("| Change | Kind | Family | Path | Source Package | Identity |"));
     assert!(
-        markdown.contains("| `new` | `unsafe` | `unsafe_block` | `src/new.rs:7:3` | `runtime` |")
+        markdown.contains("| `new` | `unsafe` | `unsafe_block` | `src/new.rs:7:3` | `runtime` | `ast_kind=unsafe_block,container=runtime_init,callee=dangerous_call` |")
     );
     assert!(markdown.contains("| `removed` | `panic` | `unwrap` | `src/old.rs` |"));
 }
@@ -396,6 +402,8 @@ fn diff_pr_summary_markdown_highlights_policy_failures_separately() {
 
 #[test]
 fn diff_pr_summary_markdown_highlights_new_findings() {
+    let mut identity = allow_core::StructuralIdentity::new("rust", "method_call");
+    identity.callee = Some("unwrap".to_string());
     let finding_changes = vec![DiffFindingChange {
         change: "new",
         key: "panic|unwrap|src/lib.rs",
@@ -405,15 +413,15 @@ fn diff_pr_summary_markdown_highlights_new_findings() {
         line: Some(12),
         column: Some(5),
         source_package: Some("parser"),
-        identity: None,
+        identity: Some(&identity),
     }];
 
     let summary = render_diff_pr_summary_markdown(0, &finding_changes, &[]);
 
     assert!(summary.contains("**Net posture:** `review-required`"));
     assert!(summary.contains("### Finding Attention"));
-    assert!(summary.contains("| Change | Kind | Family | Path | Source Package |"));
-    assert!(summary.contains("| `new` | `panic` | `unwrap` | `src/lib.rs:12:5` | `parser` |"));
+    assert!(summary.contains("| Change | Kind | Family | Path | Source Package | Identity |"));
+    assert!(summary.contains("| `new` | `panic` | `unwrap` | `src/lib.rs:12:5` | `parser` | `ast_kind=method_call,callee=unwrap` |"));
     assert!(
         !summary.contains("### Finding Improvements"),
         "new-only summaries should not create finding improvement rows"

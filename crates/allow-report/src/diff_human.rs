@@ -1,3 +1,4 @@
+use crate::diff_finding_detail::structural_identity_summary;
 use crate::diff_policy_detail::policy_change_detail;
 use crate::diff_posture::{diff_evidence_delta_summary, diff_net_posture, diff_posture_summary};
 use crate::evidence_repair::evidence_repair_queues_from_counts;
@@ -211,8 +212,12 @@ fn append_finding_change_human_row(out: &mut String, change: &DiffFindingChange<
         .source_package
         .map(|package| format!(" source_package={package}"))
         .unwrap_or_default();
+    let identity = change
+        .identity
+        .map(|identity| format!(" identity={}", structural_identity_summary(identity)))
+        .unwrap_or_default();
     out.push_str(&format!(
-        "    {} {}{} at {}{}\n",
+        "    {} {}{} at {}{}{}\n",
         change.change,
         change.kind,
         change
@@ -220,7 +225,8 @@ fn append_finding_change_human_row(out: &mut String, change: &DiffFindingChange<
             .map(|family| format!(".{family}"))
             .unwrap_or_default(),
         finding_location(change),
-        source_package
+        source_package,
+        identity
     ));
 }
 

@@ -1,3 +1,4 @@
+use crate::diff_finding_detail::structural_identity_summary;
 use crate::diff_policy_detail::policy_change_detail;
 use crate::diff_posture::{diff_evidence_delta_summary, diff_net_posture, diff_posture_summary};
 use crate::evidence_repair::evidence_repair_queues_from_counts;
@@ -164,13 +165,14 @@ fn append_finding_highlights(out: &mut String, finding_changes: &[DiffFindingCha
     if new_count > 0 {
         out.push_str("### Finding Attention\n\n");
         let include_source_package = finding_changes_have_source_package(finding_changes, "new");
-        append_finding_highlight_header(out, include_source_package);
+        let include_identity = finding_changes_have_identity(finding_changes, "new");
+        append_finding_highlight_header(out, include_source_package, include_identity);
         for change in finding_changes
             .iter()
             .filter(|change| change.change == "new")
             .take(PR_SUMMARY_HIGHLIGHT_LIMIT)
         {
-            append_finding_highlight_row(out, change, include_source_package);
+            append_finding_highlight_row(out, change, include_source_package, include_identity);
         }
         append_omitted_summary_note(out, new_count, "new finding change");
         out.push('\n');
@@ -184,50 +186,68 @@ fn append_finding_highlights(out: &mut String, finding_changes: &[DiffFindingCha
         out.push_str("### Finding Improvements\n\n");
         let include_source_package =
             finding_changes_have_source_package(finding_changes, "removed");
-        append_finding_highlight_header(out, include_source_package);
+        let include_identity = finding_changes_have_identity(finding_changes, "removed");
+        append_finding_highlight_header(out, include_source_package, include_identity);
         for change in finding_changes
             .iter()
             .filter(|change| change.change == "removed")
             .take(PR_SUMMARY_HIGHLIGHT_LIMIT)
         {
-            append_finding_highlight_row(out, change, include_source_package);
+            append_finding_highlight_row(out, change, include_source_package, include_identity);
         }
         append_omitted_summary_note(out, removed_count, "removed finding change");
         out.push('\n');
     }
 }
 
-fn append_finding_highlight_header(out: &mut String, include_source_package: bool) {
+fn append_finding_highlight_header(
+    out: &mut String,
+    include_source_package: bool,
+    include_identity: bool,
+) {
+    out.push_str("| Change | Kind | Family | Path |");
     if include_source_package {
-        out.push_str("| Change | Kind | Family | Path | Source Package |\n|---|---|---|---|---|\n");
-    } else {
-        out.push_str("| Change | Kind | Family | Path |\n|---|---|---|---|\n");
+        out.push_str(" Source Package |");
     }
+    if include_identity {
+        out.push_str(" Identity |");
+    }
+    out.push_str("\n|---|---|---|---|");
+    if include_source_package {
+        out.push_str("---|");
+    }
+    if include_identity {
+        out.push_str("---|");
+    }
+    out.push('\n');
 }
 
 fn append_finding_highlight_row(
     out: &mut String,
     change: &DiffFindingChange<'_>,
     include_source_package: bool,
+    include_identity: bool,
 ) {
+    out.push_str(&format!(
+        "| `{}` | `{}` | `{}` | `{}` |",
+        markdown_cell(change.change),
+        markdown_cell(change.kind),
+        markdown_cell(change.family.unwrap_or("")),
+        markdown_cell(&finding_location(change))
+    ));
     if include_source_package {
         out.push_str(&format!(
-            "| `{}` | `{}` | `{}` | `{}` | `{}` |\n",
-            markdown_cell(change.change),
-            markdown_cell(change.kind),
-            markdown_cell(change.family.unwrap_or("")),
-            markdown_cell(&finding_location(change)),
+            " `{}` |",
             markdown_cell(change.source_package.unwrap_or(""))
         ));
-    } else {
+    }
+    if include_identity {
         out.push_str(&format!(
-            "| `{}` | `{}` | `{}` | `{}` |\n",
-            markdown_cell(change.change),
-            markdown_cell(change.kind),
-            markdown_cell(change.family.unwrap_or("")),
-            markdown_cell(&finding_location(change))
+            " `{}` |",
+            markdown_cell(&finding_identity_summary(change))
         ));
     }
+    out.push('\n');
 }
 
 fn append_policy_highlights(out: &mut String, policy_changes: &[DiffPolicyChange<'_>]) {
@@ -380,9 +400,10 @@ fn append_finding_changes_markdown_table<'a>(
 ) {
     let changes = changes.collect::<Vec<_>>();
     let include_source_package = changes.iter().any(|change| change.source_package.is_some());
-    append_finding_change_table_header(out, include_source_package);
+    let include_identity = changes.iter().any(|change| change.identity.is_some());
+    append_finding_change_table_header(out, include_source_package, include_identity);
     for change in changes.iter().take(DIFF_MARKDOWN_CHANGE_LIMIT) {
-        append_finding_change_markdown_row(out, change, include_source_package);
+        append_finding_change_markdown_row(out, change, include_source_package, include_identity);
     }
     if changes.len() > DIFF_MARKDOWN_CHANGE_LIMIT {
         out.push_str(&format!(
@@ -393,37 +414,54 @@ fn append_finding_changes_markdown_table<'a>(
     out.push('\n');
 }
 
-fn append_finding_change_table_header(out: &mut String, include_source_package: bool) {
+fn append_finding_change_table_header(
+    out: &mut String,
+    include_source_package: bool,
+    include_identity: bool,
+) {
+    out.push_str("| Change | Kind | Family | Path |");
     if include_source_package {
-        out.push_str("| Change | Kind | Family | Path | Source Package |\n|---|---|---|---|---|\n");
-    } else {
-        out.push_str("| Change | Kind | Family | Path |\n|---|---|---|---|\n");
+        out.push_str(" Source Package |");
     }
+    if include_identity {
+        out.push_str(" Identity |");
+    }
+    out.push_str("\n|---|---|---|---|");
+    if include_source_package {
+        out.push_str("---|");
+    }
+    if include_identity {
+        out.push_str("---|");
+    }
+    out.push('\n');
 }
 
 fn append_finding_change_markdown_row(
     out: &mut String,
     change: &DiffFindingChange<'_>,
     include_source_package: bool,
+    include_identity: bool,
 ) {
+    out.push_str(&format!(
+        "| `{}` | `{}` | `{}` | `{}` |",
+        markdown_cell(change.change),
+        markdown_cell(change.kind),
+        markdown_cell(change.family.unwrap_or("")),
+        markdown_cell(&finding_location(change))
+    ));
     if include_source_package {
         out.push_str(&format!(
-            "| `{}` | `{}` | `{}` | `{}` | `{}` |\n",
-            markdown_cell(change.change),
-            markdown_cell(change.kind),
-            markdown_cell(change.family.unwrap_or("")),
-            markdown_cell(&finding_location(change)),
+            " `{}` |",
             markdown_cell(change.source_package.unwrap_or(""))
         ));
-    } else {
+    }
+    if include_identity {
         out.push_str(&format!(
-            "| `{}` | `{}` | `{}` | `{}` |\n",
-            markdown_cell(change.change),
-            markdown_cell(change.kind),
-            markdown_cell(change.family.unwrap_or("")),
-            markdown_cell(&finding_location(change))
+            " `{}` |",
+            markdown_cell(&finding_identity_summary(change))
         ));
     }
+    out.push('\n');
 }
 
 fn finding_location(change: &DiffFindingChange<'_>) -> String {
@@ -435,6 +473,13 @@ fn finding_location(change: &DiffFindingChange<'_>) -> String {
     }
 }
 
+fn finding_identity_summary(change: &DiffFindingChange<'_>) -> String {
+    change
+        .identity
+        .map(structural_identity_summary)
+        .unwrap_or_default()
+}
+
 fn finding_changes_have_source_package(
     changes: &[DiffFindingChange<'_>],
     change_kind: &str,
@@ -442,6 +487,12 @@ fn finding_changes_have_source_package(
     changes
         .iter()
         .any(|change| change.change == change_kind && change.source_package.is_some())
+}
+
+fn finding_changes_have_identity(changes: &[DiffFindingChange<'_>], change_kind: &str) -> bool {
+    changes
+        .iter()
+        .any(|change| change.change == change_kind && change.identity.is_some())
 }
 
 pub fn render_diff_policy_changes_markdown(changes: &[DiffPolicyChange<'_>]) -> String {

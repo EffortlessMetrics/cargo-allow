@@ -2,6 +2,9 @@ use super::*;
 
 #[test]
 fn diff_finding_human_output_groups_findings_by_change() {
+    let mut identity = allow_core::StructuralIdentity::new("rust", "unsafe_block");
+    identity.container = Some("runtime_init".to_string());
+    identity.callee = Some("dangerous_call".to_string());
     let finding_changes = vec![
         DiffFindingChange {
             change: "removed",
@@ -23,7 +26,7 @@ fn diff_finding_human_output_groups_findings_by_change() {
             line: Some(7),
             column: Some(3),
             source_package: Some("runtime"),
-            identity: None,
+            identity: Some(&identity),
         },
     ];
 
@@ -40,6 +43,11 @@ fn diff_finding_human_output_groups_findings_by_change() {
         "human finding sections should show attention before improvements"
     );
     assert!(text.contains("new unsafe.unsafe_block at src/new.rs:7:3 source_package=runtime"));
+    assert!(
+        text.contains(
+            "identity=ast_kind=unsafe_block,container=runtime_init,callee=dangerous_call"
+        )
+    );
     assert!(text.contains("removed panic.unwrap at src/old.rs"));
 }
 
