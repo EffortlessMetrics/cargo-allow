@@ -277,6 +277,24 @@ evidence gaps include an additional `--kind unsafe` route so reviewers and
 agents can focus on retained unsafe exceptions first. The canonical policy
 output remains TOML.
 
+After reviewing the migration summary, run the closeout queues that match the
+reported debt before removing the legacy gate:
+
+```bash
+cargo-allow worklist --item-kind broken_evidence_link --format json
+cargo-allow worklist --item-kind weak_evidence_reference --format json
+cargo-allow worklist --item-kind baseline_debt --format json
+cargo-allow worklist --kind unsafe --item-kind broken_evidence_link --format json
+cargo-allow worklist --kind unsafe --item-kind weak_evidence_reference --format json
+```
+
+Broken evidence means a local `doc:`, `spec:`, `adr:`, `ripr:`,
+`unsafe-review:`, or `coverage:` reference no longer resolves in the source
+tree. Weak evidence means the migrated policy retained an unstructured string,
+unknown prefix, or empty typed target. `baseline_debt` remains generated
+migration debt until a reviewer replaces it with real owner, reason,
+classification, lifecycle, selector, and evidence.
+
 Migration is still a bridge. The combined policy carries retained legacy
 receipts forward; it does not prove that stale legacy entries are removable and
 does not add source discovery beyond the compatibility lanes already listed.
