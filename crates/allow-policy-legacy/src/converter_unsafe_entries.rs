@@ -36,7 +36,10 @@ pub(crate) fn entry_from_unsafe_rule(rule: &LegacyUnsafeRule) -> AllowEntry {
 
 fn unsafe_evidence(rule: &LegacyUnsafeRule) -> Vec<String> {
     if rule.evidence.is_empty() {
-        vec!["TODO: add unsafe-review or boundary-test evidence".to_string()]
+        vec![
+            format!("legacy-policy:{}", rule.id),
+            "TODO: add unsafe-review or boundary-test evidence".to_string(),
+        ]
     } else {
         rule.evidence.clone()
     }
