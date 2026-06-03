@@ -93,5 +93,6 @@ No unsafe, panic, lint suppression, or policy exception exists.
 
 - [CI](ci.md)
 - [Run in CI](how-to/run-in-ci.md)
+- [Review PR posture](how-to/review-pr-posture.md)
 - [Policy weakening](policy-weakening.md)
 - [JSON schemas](schemas/README.md)
