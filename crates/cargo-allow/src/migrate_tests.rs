@@ -230,6 +230,20 @@ fn migrate_repo_policy_writes_json_summary_with_inventory_context() {
             .is_some_and(|count| count > 2),
         "repo-policy migration summary should count migrated evidence references"
     );
+    assert_eq!(
+        value
+            .pointer("/summary/entries_with_links")
+            .and_then(Value::as_u64),
+        Some(2),
+        "repo-policy migration summary should count link-bearing migrated entries"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/link_entries")
+            .and_then(Value::as_u64),
+        Some(2),
+        "repo-policy migration summary should count canonical traceability links"
+    );
     assert!(
         value
             .pointer("/summary/weak_evidence_references")

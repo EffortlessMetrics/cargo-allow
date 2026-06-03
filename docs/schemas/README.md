@@ -116,17 +116,19 @@ queues point generated baseline debt at the existing baseline-debt and weak
 unsafe-evidence worklist routes; they do not convert generated debt into
 approval.
 `migrate` summary artifacts may include `summary.lint_exception_entries`,
-`summary.evidence_entries`,
+`summary.evidence_entries`, `summary.entries_with_links`,
+`summary.link_entries`,
 `summary.broken_evidence_links`, `summary.unsafe_broken_evidence_links`,
 `summary.weak_evidence_references`, and
 `summary.unsafe_weak_evidence_references` as optional migration-health counts.
 The current renderer emits the lint count, emits `evidence_entries` as the total
 number of `evidence` values carried into the migrated canonical policy, emits
-broken local evidence links only when migrated references point to missing or
-invalid local paths, emits weak evidence references only when legacy conversion
-preserved unstructured or unknown-prefix evidence, and emits the unsafe-specific
-evidence-health counts only when those references belong to migrated unsafe
-entries. When those
+link counts for canonical traceability links carried into the migrated policy,
+emits broken local evidence links only when migrated references point to
+missing or invalid local paths, emits weak evidence references only when legacy
+conversion preserved unstructured or unknown-prefix evidence, and emits the
+unsafe-specific evidence-health counts only when those references belong to
+migrated unsafe entries. When those
 evidence-health counts are non-zero, current `migrate` JSON artifacts may also
 include an optional `evidence_repair_queues` array with stable evidence-health
 `signal` names, human `label` strings, machine `route_kind` values, stable

@@ -116,6 +116,16 @@
           "minimum": 0,
           "description": "Total evidence values present in the migrated canonical policy, across all allow entries."
         },
+        "entries_with_links": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total migrated allow entries that carry at least one canonical traceability link."
+        },
+        "link_entries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total canonical traceability link values present in the migrated policy, across all allow entries."
+        },
         "broken_evidence_links": {
           "type": "integer",
           "minimum": 0

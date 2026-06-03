@@ -21,6 +21,10 @@ Important fields:
   one evidence value.
 - `summary.evidence_entries`: total evidence values carried into the migrated
   policy.
+- `summary.entries_with_links`: migrated allow entries that have at least one
+  canonical traceability link.
+- `summary.link_entries`: total canonical traceability link values carried into
+  the migrated policy.
 - `summary.broken_evidence_links`: local evidence or link references that no
   longer resolve in the source tree.
 - `summary.weak_evidence_references`: unstructured, empty, or unknown-prefix

@@ -20,6 +20,8 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
         lint_exception_entries: 4,
         entries_with_evidence: 3,
         evidence_entries: 5,
+        entries_with_links: 6,
+        link_entries: 7,
         broken_evidence_links: Some(3),
         unsafe_broken_evidence_links: Some(1),
         weak_evidence_references: Some(2),
@@ -44,6 +46,8 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(json.contains("\"lint_exception_entries\": 4"));
     assert!(json.contains("\"entries_with_evidence\": 3"));
     assert!(json.contains("\"evidence_entries\": 5"));
+    assert!(json.contains("\"entries_with_links\": 6"));
+    assert!(json.contains("\"link_entries\": 7"));
     assert!(json.contains("\"broken_evidence_links\": 3"));
     assert!(json.contains("\"unsafe_broken_evidence_links\": 1"));
     assert!(json.contains("\"weak_evidence_references\": 2"));
@@ -99,6 +103,8 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     "lint_exception_entries": 4,
     "entries_with_evidence": 3,
     "evidence_entries": 5,
+    "entries_with_links": 6,
+    "link_entries": 7,
     "broken_evidence_links": 3,
     "unsafe_broken_evidence_links": 1,
     "weak_evidence_references": 2,
@@ -147,6 +153,8 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(text.contains("lint_exception_entries: 4"));
     assert!(text.contains("entries_with_evidence: 3"));
     assert!(text.contains("evidence_entries: 5"));
+    assert!(text.contains("entries_with_links: 6"));
+    assert!(text.contains("link_entries: 7"));
     assert!(text.contains("broken_evidence_links: 3"));
     assert!(text.contains("unsafe_broken_evidence_links: 1"));
     assert!(text.contains("weak_evidence_references: 2"));
@@ -179,23 +187,27 @@ fn migrate_report_from_config_counts_summary_fields() {
             allow_core::FindingKind::Panic,
             "baseline_debt",
             &[],
+            &["legacy-policy:allow-baseline"],
         ),
         allow_entry(
             "allow-unsafe",
             allow_core::FindingKind::Unsafe,
             "ffi_boundary",
             &["doc:docs/safety.md"],
+            &["legacy-policy:allow-unsafe"],
         ),
         allow_entry(
             "allow-non-rust",
             allow_core::FindingKind::NonRustFile,
             "release_script",
             &["issue:123"],
+            &[],
         ),
         allow_entry(
             "allow-lint",
             allow_core::FindingKind::LintException,
             "lint_exception",
+            &[],
             &[],
         ),
     ];
@@ -222,6 +234,8 @@ fn migrate_report_from_config_counts_summary_fields() {
     assert_eq!(report.lint_exception_entries, 1);
     assert_eq!(report.entries_with_evidence, 2);
     assert_eq!(report.evidence_entries, 2);
+    assert_eq!(report.entries_with_links, 2);
+    assert_eq!(report.link_entries, 2);
     assert_eq!(report.broken_evidence_links, None);
     assert_eq!(report.unsafe_broken_evidence_links, None);
     assert_eq!(report.weak_evidence_references, None);
@@ -260,6 +274,8 @@ fn migrate_repair_queues_omit_unsafe_command_without_unsafe_count() {
         lint_exception_entries: 0,
         entries_with_evidence: 1,
         evidence_entries: 1,
+        entries_with_links: 0,
+        link_entries: 0,
         broken_evidence_links: Some(1),
         unsafe_broken_evidence_links: None,
         weak_evidence_references: None,
@@ -306,6 +322,8 @@ fn migrate_repair_queues_normalize_unsafe_subset_counts() {
         lint_exception_entries: 0,
         entries_with_evidence: 1,
         evidence_entries: 1,
+        entries_with_links: 0,
+        link_entries: 0,
         broken_evidence_links: None,
         unsafe_broken_evidence_links: Some(1),
         weak_evidence_references: None,
@@ -327,6 +345,7 @@ fn allow_entry(
     kind: allow_core::FindingKind,
     classification: &str,
     evidence: &[&str],
+    links: &[&str],
 ) -> allow_core::AllowEntry {
     allow_core::AllowEntry {
         id: id.to_string(),
@@ -338,7 +357,7 @@ fn allow_entry(
         classification: classification.to_string(),
         reason: "reason".to_string(),
         evidence: evidence.iter().map(|item| (*item).to_string()).collect(),
-        links: Vec::new(),
+        links: links.iter().map(|item| (*item).to_string()).collect(),
         occurrence_limit: None,
         lifecycle: allow_core::Lifecycle::empty(),
         selector: allow_core::Selector::default(),
