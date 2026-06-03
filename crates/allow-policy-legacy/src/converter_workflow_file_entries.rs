@@ -31,6 +31,10 @@ pub(crate) fn workflow_file_entry(rule: &LegacyWorkflowRule) -> AllowEntry {
 
 fn workflow_evidence(rule: &LegacyWorkflowRule) -> Vec<String> {
     let mut evidence = rule.evidence.clone();
+    evidence.push(format!(
+        "legacy-policy:workflow:{}",
+        normalize_path(&rule.path)
+    ));
     evidence.extend(
         rule.permissions
             .iter()

@@ -35,6 +35,12 @@ fn migrates_workflow_allowlist_to_policy_exception_entries() {
     assert_eq!(action.classification, "workflow_external_action");
     assert_eq!(action.lifecycle.expires.as_deref(), Some("never"));
     assert_eq!(action.lifecycle.review_after.as_deref(), Some("2026-05-09"));
+    assert!(
+        action
+            .evidence
+            .iter()
+            .any(|item| item == "legacy-policy:workflow:.github/workflows/ci.yml")
+    );
 }
 
 #[test]
@@ -180,6 +186,12 @@ expires = "permanent"
         workflow
             .evidence
             .iter()
+            .any(|item| item == "legacy-policy:workflow:.github/workflows/release.yml")
+    );
+    assert!(
+        workflow
+            .evidence
+            .iter()
             .any(|item| item == "permission:contents:read")
     );
 
@@ -189,6 +201,12 @@ expires = "permanent"
         .find(|entry| entry.family.as_deref() == Some("workflow_external_action"))
         .unwrap_or_else(|| std::panic::panic_any("expected workflow action entry"));
     assert!(action.evidence.iter().any(|item| item == "doc:docs/ci.md"));
+    assert!(
+        action
+            .evidence
+            .iter()
+            .any(|item| item == "legacy-policy:workflow:.github/workflows/release.yml")
+    );
     assert!(
         action
             .evidence
@@ -218,6 +236,12 @@ fn migrates_dependency_surface_allowlist_to_policy_exception_entries() {
     assert_eq!(
         workspace.lifecycle.review_after.as_deref(),
         Some("2026-05-09")
+    );
+    assert!(
+        workspace
+            .evidence
+            .iter()
+            .any(|item| item == "legacy-policy:dep-workspace-cargo-toml")
     );
     assert!(
         workspace
@@ -271,6 +295,7 @@ expires = "permanent"
         entry.evidence,
         vec![
             "doc:docs/dependencies.md".to_string(),
+            "legacy-policy:dep-release-manifest".to_string(),
             "surface:workspace_manifest".to_string(),
             "dep_count_at_baseline:22".to_string(),
         ]

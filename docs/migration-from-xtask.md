@@ -74,7 +74,8 @@ That mode reads generated file findings from `.gitattributes` entries marked
 `policy/generated-allowlist.toml`, preserving both missing-policy and stale
 policy drift.
 Existing legacy `evidence` or `covered_by` fields are preserved alongside
-generated-file facts such as `generator:` and `cargo:` regenerate commands.
+`legacy-policy:<id>` traceability and generated-file facts such as `generator:`
+and `cargo:` regenerate commands.
 
 Executable-bit compat is available for shiplog-style
 `policy/executable-allowlist.toml`:
@@ -89,7 +90,8 @@ entries with tree mode `100755` and compares them against exact paths in
 represented as `policy_exception.executable_file` because executable bits are a
 file-policy exception surface rather than Rust syntax.
 Existing legacy `evidence` or `covered_by` fields are preserved alongside
-source-tree facts such as the script interpreter.
+`legacy-policy:<id>` traceability and source-tree facts such as the script
+interpreter.
 
 Workflow compat is available for shiplog-style `policy/workflow-allowlist.toml`:
 
@@ -104,8 +106,8 @@ both the workflow files and external-action references against
 represented as `policy_exception.github_workflow` and
 `policy_exception.workflow_external_action`.
 Existing legacy `evidence` or `covered_by` fields are preserved alongside
-workflow facts such as permissions, secrets, duplicate-lane notes, and external
-action references.
+`legacy-policy:workflow:<path>` traceability and workflow facts such as
+permissions, secrets, duplicate-lane notes, and external action references.
 
 Dependency-surface compat is available for shiplog-style
 `policy/dependency-surface-allowlist.toml`:
@@ -120,7 +122,8 @@ then reports those matched surfaces as `policy_exception.dependency_surface`.
 It does not yet perform full unlisted-manifest discovery across every
 dependency manifest or lockfile in the scanned source tree.
 Existing legacy `evidence` or `covered_by` fields are preserved alongside
-dependency-surface facts such as surface type and baseline dependency count.
+`legacy-policy:<id>` traceability and dependency-surface facts such as surface
+type and baseline dependency count.
 
 Process-policy compat is available for shiplog-style
 `policy/process-allowlist.toml`:
