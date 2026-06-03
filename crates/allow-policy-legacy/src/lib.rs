@@ -114,6 +114,8 @@ mod generated_executable_tests;
 #[cfg(test)]
 mod lint_unsafe_tests;
 #[cfg(test)]
+mod metadata_matrix_tests;
+#[cfg(test)]
 mod no_panic_tests;
 #[cfg(test)]
 mod non_rust_tests;
