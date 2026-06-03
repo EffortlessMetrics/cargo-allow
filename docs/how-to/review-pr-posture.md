@@ -50,6 +50,9 @@ evidence.
 Removed source findings are usually improvements. Confirm they were removed by
 the PR and not hidden by a broader ignored path or weaker policy.
 
+When present, `finding_changes[].source_package` is source-derived routing
+context. It is not Cargo metadata.
+
 ## Check Policy Changes
 
 Read policy sections in this order:

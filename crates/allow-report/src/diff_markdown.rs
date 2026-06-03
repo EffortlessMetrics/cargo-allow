@@ -163,13 +163,14 @@ fn append_finding_highlights(out: &mut String, finding_changes: &[DiffFindingCha
         .count();
     if new_count > 0 {
         out.push_str("### Finding Attention\n\n");
-        out.push_str("| Change | Kind | Family | Path |\n|---|---|---|---|\n");
+        let include_source_package = finding_changes_have_source_package(finding_changes, "new");
+        append_finding_highlight_header(out, include_source_package);
         for change in finding_changes
             .iter()
             .filter(|change| change.change == "new")
             .take(PR_SUMMARY_HIGHLIGHT_LIMIT)
         {
-            append_finding_highlight_row(out, change);
+            append_finding_highlight_row(out, change, include_source_package);
         }
         append_omitted_summary_note(out, new_count, "new finding change");
         out.push('\n');
@@ -181,27 +182,52 @@ fn append_finding_highlights(out: &mut String, finding_changes: &[DiffFindingCha
         .count();
     if removed_count > 0 {
         out.push_str("### Finding Improvements\n\n");
-        out.push_str("| Change | Kind | Family | Path |\n|---|---|---|---|\n");
+        let include_source_package =
+            finding_changes_have_source_package(finding_changes, "removed");
+        append_finding_highlight_header(out, include_source_package);
         for change in finding_changes
             .iter()
             .filter(|change| change.change == "removed")
             .take(PR_SUMMARY_HIGHLIGHT_LIMIT)
         {
-            append_finding_highlight_row(out, change);
+            append_finding_highlight_row(out, change, include_source_package);
         }
         append_omitted_summary_note(out, removed_count, "removed finding change");
         out.push('\n');
     }
 }
 
-fn append_finding_highlight_row(out: &mut String, change: &DiffFindingChange<'_>) {
-    out.push_str(&format!(
-        "| `{}` | `{}` | `{}` | `{}` |\n",
-        markdown_cell(change.change),
-        markdown_cell(change.kind),
-        markdown_cell(change.family.unwrap_or("")),
-        markdown_cell(change.path)
-    ));
+fn append_finding_highlight_header(out: &mut String, include_source_package: bool) {
+    if include_source_package {
+        out.push_str("| Change | Kind | Family | Path | Source Package |\n|---|---|---|---|---|\n");
+    } else {
+        out.push_str("| Change | Kind | Family | Path |\n|---|---|---|---|\n");
+    }
+}
+
+fn append_finding_highlight_row(
+    out: &mut String,
+    change: &DiffFindingChange<'_>,
+    include_source_package: bool,
+) {
+    if include_source_package {
+        out.push_str(&format!(
+            "| `{}` | `{}` | `{}` | `{}` | `{}` |\n",
+            markdown_cell(change.change),
+            markdown_cell(change.kind),
+            markdown_cell(change.family.unwrap_or("")),
+            markdown_cell(change.path),
+            markdown_cell(change.source_package.unwrap_or(""))
+        ));
+    } else {
+        out.push_str(&format!(
+            "| `{}` | `{}` | `{}` | `{}` |\n",
+            markdown_cell(change.change),
+            markdown_cell(change.kind),
+            markdown_cell(change.family.unwrap_or("")),
+            markdown_cell(change.path)
+        ));
+    }
 }
 
 fn append_policy_highlights(out: &mut String, policy_changes: &[DiffPolicyChange<'_>]) {
@@ -353,15 +379,10 @@ fn append_finding_changes_markdown_table<'a>(
     changes: impl Iterator<Item = &'a DiffFindingChange<'a>>,
 ) {
     let changes = changes.collect::<Vec<_>>();
-    out.push_str("| Change | Kind | Family | Path |\n|---|---|---|---|\n");
+    let include_source_package = changes.iter().any(|change| change.source_package.is_some());
+    append_finding_change_table_header(out, include_source_package);
     for change in changes.iter().take(DIFF_MARKDOWN_CHANGE_LIMIT) {
-        out.push_str(&format!(
-            "| `{}` | `{}` | `{}` | `{}` |\n",
-            markdown_cell(change.change),
-            markdown_cell(change.kind),
-            markdown_cell(change.family.unwrap_or("")),
-            markdown_cell(change.path)
-        ));
+        append_finding_change_markdown_row(out, change, include_source_package);
     }
     if changes.len() > DIFF_MARKDOWN_CHANGE_LIMIT {
         out.push_str(&format!(
@@ -370,6 +391,48 @@ fn append_finding_changes_markdown_table<'a>(
         ));
     }
     out.push('\n');
+}
+
+fn append_finding_change_table_header(out: &mut String, include_source_package: bool) {
+    if include_source_package {
+        out.push_str("| Change | Kind | Family | Path | Source Package |\n|---|---|---|---|---|\n");
+    } else {
+        out.push_str("| Change | Kind | Family | Path |\n|---|---|---|---|\n");
+    }
+}
+
+fn append_finding_change_markdown_row(
+    out: &mut String,
+    change: &DiffFindingChange<'_>,
+    include_source_package: bool,
+) {
+    if include_source_package {
+        out.push_str(&format!(
+            "| `{}` | `{}` | `{}` | `{}` | `{}` |\n",
+            markdown_cell(change.change),
+            markdown_cell(change.kind),
+            markdown_cell(change.family.unwrap_or("")),
+            markdown_cell(change.path),
+            markdown_cell(change.source_package.unwrap_or(""))
+        ));
+    } else {
+        out.push_str(&format!(
+            "| `{}` | `{}` | `{}` | `{}` |\n",
+            markdown_cell(change.change),
+            markdown_cell(change.kind),
+            markdown_cell(change.family.unwrap_or("")),
+            markdown_cell(change.path)
+        ));
+    }
+}
+
+fn finding_changes_have_source_package(
+    changes: &[DiffFindingChange<'_>],
+    change_kind: &str,
+) -> bool {
+    changes
+        .iter()
+        .any(|change| change.change == change_kind && change.source_package.is_some())
 }
 
 pub fn render_diff_policy_changes_markdown(changes: &[DiffPolicyChange<'_>]) -> String {

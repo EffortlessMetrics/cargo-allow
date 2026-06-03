@@ -207,15 +207,20 @@ fn append_finding_changes_human_section(
 }
 
 fn append_finding_change_human_row(out: &mut String, change: &DiffFindingChange<'_>) {
+    let source_package = change
+        .source_package
+        .map(|package| format!(" source_package={package}"))
+        .unwrap_or_default();
     out.push_str(&format!(
-        "    {} {}{} at {}\n",
+        "    {} {}{} at {}{}\n",
         change.change,
         change.kind,
         change
             .family
             .map(|family| format!(".{family}"))
             .unwrap_or_default(),
-        change.path
+        change.path,
+        source_package
     ));
 }
 

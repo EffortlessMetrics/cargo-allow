@@ -152,6 +152,10 @@ Diff reports may also include optional `diff.summary.evidence_added`,
 rows changed in the compared PR posture. These counts summarize the
 corresponding `diff.policy_changes[].kind` rows; the rows remain the source for
 severity, message, and added/removed values.
+Diff finding-change rows may include optional
+`diff.finding_changes[].source_package` when cargo-allow can derive package
+context from source-tree `Cargo.toml` text; this is routing context, not Cargo
+metadata.
 Report JSON may also include an optional top-level `evidence_repair_queues`
 array when audit, check, or diff reports have broken local evidence links,
 missing evidence, or weak evidence references. Queue rows include a stable

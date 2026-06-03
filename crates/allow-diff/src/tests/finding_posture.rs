@@ -44,3 +44,16 @@ fn finding_posture_reports_count_changes_for_same_identity() {
     assert_eq!(change.kind, FindingPostureKind::New);
     assert_eq!(change.path, "src/lib.rs");
 }
+
+#[test]
+fn finding_posture_preserves_source_package_context() {
+    let mut head = finding("src/lib.rs", 10, "load");
+    head.identity.crate_name = Some("parser".to_string());
+
+    let changes = finding_posture_changes(&[], &[head]);
+
+    let change = changes
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one posture change"));
+    assert_eq!(change.source_package.as_deref(), Some("parser"));
+}

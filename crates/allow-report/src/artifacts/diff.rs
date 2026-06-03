@@ -15,6 +15,7 @@ pub struct DiffFindingChange<'a> {
     pub kind: &'a str,
     pub family: Option<&'a str>,
     pub path: &'a str,
+    pub source_package: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, Copy)]
