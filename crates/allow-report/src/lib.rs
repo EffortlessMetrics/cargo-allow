@@ -15,6 +15,7 @@ mod artifacts;
 mod audit_remediation;
 mod contracts;
 mod diff;
+mod diff_finding_detail;
 mod diff_human;
 mod diff_json;
 mod diff_markdown;
