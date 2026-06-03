@@ -43,6 +43,16 @@ fn validate_source_tree_scope(
             diagnostic.parent_segment_message(label),
         ));
     }
+    if text != "." && text.split('/').any(|part| part == ".") {
+        return Err(CargoAllowError::new(
+            diagnostic.current_segment_message(label),
+        ));
+    }
+    if text.split('/').any(|part| part.is_empty()) {
+        return Err(CargoAllowError::new(
+            diagnostic.empty_segment_message(label),
+        ));
+    }
     match diagnostic {
         SourceTreeScopeDiagnostic::Path => validate_exact_path_syntax(label, &text)?,
         SourceTreeScopeDiagnostic::Glob => validate_supported_glob_syntax(label, &text)?,
@@ -122,6 +132,20 @@ impl SourceTreeScopeDiagnostic {
         match self {
             Self::Path => format!("{label} path must not contain parent directory segments"),
             Self::Glob => format!("{label} must not contain parent directory segments"),
+        }
+    }
+
+    fn current_segment_message(self, label: &str) -> String {
+        match self {
+            Self::Path => format!("{label} path must not contain current directory segments"),
+            Self::Glob => format!("{label} must not contain current directory segments"),
+        }
+    }
+
+    fn empty_segment_message(self, label: &str) -> String {
+        match self {
+            Self::Path => format!("{label} path must not contain empty path segments"),
+            Self::Glob => format!("{label} must not contain empty path segments"),
         }
     }
 }

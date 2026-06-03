@@ -1,5 +1,5 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
-use allow_policy::{find_config, load_policy};
+use allow_policy::{find_config, load_policy, load_policy_with_reportable_evidence};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -12,31 +12,43 @@ impl EvidenceValidationMode {
     pub(crate) fn aborts_on_broken_local_evidence(self) -> bool {
         matches!(self, Self::Abort)
     }
+
+    fn permits_reportable_policy_evidence(self) -> bool {
+        matches!(self, Self::ReportOnly)
+    }
 }
 
-pub(crate) fn load_config_required(
+pub(crate) fn load_config_required_with_evidence_mode(
     root: &Path,
     config: Option<&Path>,
+    evidence_validation: EvidenceValidationMode,
 ) -> CargoAllowResult<AllowConfig> {
     let path = config_path(root, config).ok_or_else(|| {
         CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
     })?;
-    load_policy_for_root(path)
+    load_policy_for_root(path, evidence_validation)
 }
 
-pub(crate) fn load_config_optional(
+pub(crate) fn load_config_optional_with_evidence_mode(
     root: &Path,
     config: Option<&Path>,
+    evidence_validation: EvidenceValidationMode,
 ) -> CargoAllowResult<Option<AllowConfig>> {
     match config_path(root, config) {
-        Some(path) => Ok(Some(load_policy_for_root(path)?)),
+        Some(path) => Ok(Some(load_policy_for_root(path, evidence_validation)?)),
         None => Ok(None),
     }
 }
 
-fn load_policy_for_root(path: PathBuf) -> CargoAllowResult<AllowConfig> {
-    let cfg = load_policy(path)?;
-    Ok(cfg)
+fn load_policy_for_root(
+    path: PathBuf,
+    evidence_validation: EvidenceValidationMode,
+) -> CargoAllowResult<AllowConfig> {
+    if evidence_validation.permits_reportable_policy_evidence() {
+        load_policy_with_reportable_evidence(path)
+    } else {
+        load_policy(path)
+    }
 }
 
 pub(crate) fn config_path(root: &Path, config: Option<&Path>) -> Option<PathBuf> {

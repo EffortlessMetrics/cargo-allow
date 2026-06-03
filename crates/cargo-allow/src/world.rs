@@ -8,7 +8,8 @@ use crate::{
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    extend_unique_findings, load_config_optional, load_config_required, parse_kind_filter,
+    extend_unique_findings, load_config_optional_with_evidence_mode,
+    load_config_required_with_evidence_mode, parse_kind_filter,
 };
 
 pub(crate) fn load_world(
@@ -40,9 +41,10 @@ pub(crate) fn load_world_with_evidence_mode(
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let cfg = if require_config {
-        load_config_required(&root, config)?
+        load_config_required_with_evidence_mode(&root, config, evidence_validation)?
     } else {
-        load_config_optional(&root, config)?.unwrap_or_else(AllowConfig::empty)
+        load_config_optional_with_evidence_mode(&root, config, evidence_validation)?
+            .unwrap_or_else(AllowConfig::empty)
     };
     let opts = InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),

@@ -5,6 +5,12 @@ use crate::evidence_reference::{EvidenceReference, recognized_evidence_prefixes}
 use crate::source_tree_scope::validate_path_scope;
 use crate::text_validation::{validate_no_surrounding_whitespace, validate_required_text};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LinkScopeValidation {
+    Strict,
+    ReportOnly,
+}
+
 pub(crate) fn validate_allow_entry_identity(
     entry: &AllowEntry,
     ids: &mut BTreeSet<String>,
@@ -25,6 +31,7 @@ pub(crate) fn validate_allow_entry_identity(
 pub(crate) fn validate_allow_entry_requirements(
     entry: &AllowEntry,
     requirements: &Requirements,
+    link_scope_validation: LinkScopeValidation,
 ) -> CargoAllowResult<()> {
     if !entry.owner.is_empty() {
         validate_no_surrounding_whitespace(&format!("{} owner", entry.id), &entry.owner)?;
@@ -63,7 +70,9 @@ pub(crate) fn validate_allow_entry_requirements(
     validate_non_empty_values(&entry.id, "link", &entry.links)?;
     validate_unique_values(&entry.id, "evidence", &entry.evidence)?;
     validate_unique_values(&entry.id, "link", &entry.links)?;
-    validate_local_link_scopes(entry)?;
+    if link_scope_validation == LinkScopeValidation::Strict {
+        validate_local_link_scopes(entry)?;
+    }
     Ok(())
 }
 

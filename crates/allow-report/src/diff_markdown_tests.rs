@@ -63,14 +63,9 @@ fn diff_pr_summary_markdown_reports_evidence_health_rows() {
     assert!(summary.contains("| Missing evidence | 3 |"));
     assert!(summary.contains("| Weak evidence/link references | 2 |"));
     assert!(summary.contains("**Evidence repair queues:**"));
-    assert!(
-        summary.contains("`cargo-allow worklist --item-kind broken_evidence_link --format json`")
-    );
+    assert!(summary.contains("`cargo-allow worklist --broken-evidence --format json`"));
     assert!(summary.contains("`cargo-allow worklist --missing-evidence --format json`"));
-    assert!(
-        summary
-            .contains("`cargo-allow worklist --item-kind weak_evidence_reference --format json`")
-    );
+    assert!(summary.contains("`cargo-allow worklist --weak-evidence --format json`"));
 }
 
 #[test]

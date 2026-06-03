@@ -11,8 +11,9 @@ pub(crate) use crate::kind_filter::{
     parse_kind_filter, parse_kind_filter_arg,
 };
 pub(crate) use crate::policy_config::{
-    EvidenceValidationMode, config_path, git_relative_config_path, load_config_optional,
-    load_config_required, root_relative_path,
+    EvidenceValidationMode, config_path, git_relative_config_path,
+    load_config_optional_with_evidence_mode, load_config_required_with_evidence_mode,
+    root_relative_path,
 };
 pub(crate) use crate::reporting::{
     EvidenceReportSummary, ReportRenderArgs, SourceTreeReportContext, print_report, report_config,

@@ -141,12 +141,11 @@ fn receipt_routes_evidence_repair_queues() {
     assert!(json.contains("\"evidence_repair_queues\""));
     assert!(json.contains("\"signal\": \"broken_evidence_links\""));
     assert!(json.contains("\"label\": \"broken evidence links\""));
-    assert!(json.contains("\"route_kind\": \"worklist_item_kind\""));
+    assert!(json.contains("\"route_kind\": \"worklist_filter\""));
     assert!(json.contains("\"item_kind\": \"broken_evidence_link\""));
+    assert!(json.contains("\"worklist_filter\": \"broken_evidence\""));
     assert!(json.contains("\"count\": 2"));
-    assert!(json.contains(
-        "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
-    ));
+    assert!(json.contains("\"command\": \"cargo-allow worklist --broken-evidence --format json\""));
     assert!(json.contains("\"signal\": \"missing_evidence\""));
     assert!(json.contains("\"label\": \"missing evidence\""));
     assert!(json.contains("\"route_kind\": \"worklist_filter\""));
@@ -159,10 +158,9 @@ fn receipt_routes_evidence_repair_queues() {
     assert!(json.contains("\"signal\": \"weak_evidence_references\""));
     assert!(json.contains("\"label\": \"weak evidence references\""));
     assert!(json.contains("\"item_kind\": \"weak_evidence_reference\""));
+    assert!(json.contains("\"worklist_filter\": \"weak_evidence\""));
     assert!(json.contains("\"count\": 3"));
-    assert!(json.contains(
-        "\"command\": \"cargo-allow worklist --item-kind weak_evidence_reference --format json\""
-    ));
+    assert!(json.contains("\"command\": \"cargo-allow worklist --weak-evidence --format json\""));
 }
 
 #[test]

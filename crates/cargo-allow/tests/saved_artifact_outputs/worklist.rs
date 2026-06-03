@@ -425,6 +425,147 @@ fn saved_worklist_output_includes_invalid_evidence_scope_items() {
     assert_proof_commands_stay_cargo_allow(&value, "/work_items/0/proof_commands");
 }
 
+#[test]
+fn saved_worklist_output_includes_redundant_segment_evidence_scope_items() {
+    let fixture = SourceTreeFixture::new("saved-worklist-redundant-evidence-scope");
+    fixture.write_policy_with_redundant_segment_evidence_scope();
+
+    let value = run_broken_evidence_worklist(&fixture);
+    assert_eq!(
+        value
+            .pointer("/summary/work_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/kind")
+            .and_then(serde_json::Value::as_str),
+        Some("broken_evidence_link")
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/allow_id")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-redundant-segment-evidence-scope")
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/path")
+            .and_then(serde_json::Value::as_str),
+        Some("docs/./safety.md")
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/raw")
+            .and_then(serde_json::Value::as_str),
+        Some("doc:docs/./safety.md")
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/target")
+            .and_then(serde_json::Value::as_str),
+        Some("docs/./safety.md")
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/status")
+            .and_then(serde_json::Value::as_str),
+        Some("invalid_local_path")
+    );
+    let message = value
+        .pointer("/work_items/0/message")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_else(|| std::panic::panic_any("worklist item should include message"));
+    assert!(
+        message.contains("allow-redundant-segment-evidence-scope evidence `doc:docs/./safety.md`")
+            && message.contains("current directory segments"),
+        "worklist should explain why the redundant local evidence scope is invalid: {message}"
+    );
+    assert_proof_command_present(
+        &value,
+        "/work_items/0/proof_commands",
+        "cargo-allow worklist --broken-evidence --format json",
+    );
+    assert_proof_commands_stay_cargo_allow(&value, "/work_items/0/proof_commands");
+}
+
+#[test]
+fn saved_worklist_output_includes_redundant_segment_link_scope_items() {
+    let fixture = SourceTreeFixture::new("saved-worklist-redundant-link-scope");
+    fixture.write_policy_with_redundant_segment_link_scope();
+
+    let value = run_broken_evidence_worklist(&fixture);
+    assert_eq!(
+        value
+            .pointer("/summary/work_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/kind")
+            .and_then(serde_json::Value::as_str),
+        Some("broken_evidence_link")
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/allow_id")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-redundant-segment-link-scope")
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/path")
+            .and_then(serde_json::Value::as_str),
+        Some("docs/./safety.md")
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/raw")
+            .and_then(serde_json::Value::as_str),
+        Some("doc:docs/./safety.md")
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/target")
+            .and_then(serde_json::Value::as_str),
+        Some("docs/./safety.md")
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/status")
+            .and_then(serde_json::Value::as_str),
+        Some("invalid_local_path")
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/suggested_actions/0")
+            .and_then(serde_json::Value::as_str),
+        Some("restore or commit the referenced local traceability file")
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/suggested_actions/1")
+            .and_then(serde_json::Value::as_str),
+        Some("or update the link reference to a valid source-tree-relative path")
+    );
+    let message = value
+        .pointer("/work_items/0/message")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_else(|| std::panic::panic_any("worklist item should include message"));
+    assert!(
+        message.contains("allow-redundant-segment-link-scope link `doc:docs/./safety.md`")
+            && message.contains("link path must not contain current directory segments"),
+        "worklist should explain why the redundant local traceability link scope is invalid: {message}"
+    );
+    assert_proof_command_present(
+        &value,
+        "/work_items/0/proof_commands",
+        "cargo-allow worklist --broken-evidence --format json",
+    );
+    assert_proof_commands_stay_cargo_allow(&value, "/work_items/0/proof_commands");
+}
 fn run_broken_evidence_worklist(fixture: &SourceTreeFixture) -> serde_json::Value {
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let worklist = artifact_dir.join("worklist.json");
@@ -435,12 +576,26 @@ fn run_broken_evidence_worklist(fixture: &SourceTreeFixture) -> serde_json::Valu
         fixture.root_str(),
         "--config",
         "policy/allow.toml",
-        "--item-kind",
-        "broken_evidence_link",
+        "--broken-evidence",
         "--format",
         "json",
         "--output",
         path_arg(&worklist),
     ]);
     assert_source_syntax_artifact(&worklist, allow_report::WORKLIST_SCHEMA_ID, "worklist")
+}
+
+fn assert_proof_command_present(value: &serde_json::Value, pointer: &str, expected: &str) {
+    let commands = value
+        .pointer(pointer)
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!("{pointer} should point to proof_commands array"))
+        });
+    assert!(
+        commands
+            .iter()
+            .any(|command| command.as_str() == Some(expected)),
+        "{pointer} should include `{expected}`: {commands:?}"
+    );
 }

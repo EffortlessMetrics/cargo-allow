@@ -157,7 +157,8 @@
               },
               "route_kind": {
                 "enum": [
-                  "worklist_item_kind"
+                  "worklist_item_kind",
+                  "worklist_filter"
                 ],
                 "description": "Machine routing mode for the follow-up command."
               },
@@ -167,6 +168,13 @@
                   "weak_evidence_reference"
                 ],
                 "description": "Stable cargo-allow worklist item kind routed by this queue."
+              },
+              "worklist_filter": {
+                "enum": [
+                  "broken_evidence",
+                  "weak_evidence"
+                ],
+                "description": "Named worklist filter used by this row when route_kind is worklist_filter."
               },
               "count": {
                 "type": "integer",

@@ -1,4 +1,6 @@
-use super::worklist_item_kind::{BASELINE_DEBT, BROAD_SCOPE};
+use super::worklist_item_kind::{
+    BASELINE_DEBT, BROAD_SCOPE, BROKEN_EVIDENCE_LINK, WEAK_EVIDENCE_REFERENCE,
+};
 use super::worklist_priority::{
     DIFFICULTY_MEDIUM, DIFFICULTY_SMALL, RISK_HIGH, RISK_LOW, RISK_MEDIUM,
 };
@@ -57,6 +59,8 @@ pub(super) fn filter_work_items(
                     .map(|difficulty| item.difficulty == difficulty)
                     .unwrap_or(true)
                 && (!filters.missing_evidence || item.evidence_count == Some(0))
+                && (!filters.broken_evidence || item.kind == BROKEN_EVIDENCE_LINK)
+                && (!filters.weak_evidence || item.kind == WEAK_EVIDENCE_REFERENCE)
         })
         .collect()
 }

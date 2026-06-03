@@ -119,6 +119,19 @@ fn rejects_workspace_glob_with_surrounding_whitespace() {
 }
 
 #[test]
+fn rejects_workspace_glob_with_empty_path_segment() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [workspace]
+                ignored = ["docs//**"]
+            "#,
+    );
+
+    assert!(err.contains("source-tree ignored glob must not contain empty path segments"));
+}
+
+#[test]
 fn rejects_duplicate_workspace_ignored_globs() {
     let err = parse_err(
         r#"

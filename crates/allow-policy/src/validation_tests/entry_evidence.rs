@@ -99,6 +99,52 @@ fn accepts_reviewed_unsafe_entry_with_typed_evidence() {
 }
 
 #[test]
+fn reportable_evidence_mode_keeps_invalid_local_links_for_diagnostics() {
+    let input = r#"
+                policy = "cargo-allow"
+
+                [[allow]]
+                id = "allow-invalid-link"
+                kind = "unsafe"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["test:load_rejects_null"]
+                links = ["doc:docs/./safety.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "unsafe_block"
+                container = "load"
+            "#;
+
+    let strict_err = parse_err(input);
+    assert!(strict_err.contains(
+        "allow-invalid-link link entry 1 path must not contain current directory segments"
+    ));
+
+    let cfg = parse_policy_with_reportable_evidence(input)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy should parse: {err}")));
+    let entry = match cfg.allow.first() {
+        Some(entry) => entry,
+        None => std::panic::panic_any("policy should contain allow entry"),
+    };
+    let diagnostics = policy_reference_diagnostics(".", entry);
+
+    assert!(
+        diagnostics.iter().any(|diagnostic| {
+            diagnostic.source == EvidenceReferenceSource::Link
+                && diagnostic.diagnostic.status == EvidenceReferenceStatus::InvalidLocalPath
+                && diagnostic
+                    .diagnostic
+                    .message
+                    .contains("current directory segments")
+        }),
+        "report-only policy loading should keep invalid local links diagnosable: {diagnostics:?}"
+    );
+}
+
+#[test]
 fn accepts_unsafe_baseline_debt_with_weak_evidence_placeholder() {
     let cfg = parse_policy(
         r#"

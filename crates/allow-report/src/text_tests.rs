@@ -369,20 +369,20 @@ fn human_audit_report_routes_evidence_repairs_even_with_review_queue() {
     assert!(
         text.contains("missing evidence: cargo-allow worklist --missing-evidence --format json")
     );
-    assert!(text.contains(
-        "broken evidence links: cargo-allow worklist --item-kind broken_evidence_link --format json"
-    ));
     assert!(
         text.contains(
-            "weak evidence references: cargo-allow worklist --item-kind weak_evidence_reference --format json"
+            "broken evidence links: cargo-allow worklist --broken-evidence --format json"
+        )
+    );
+    assert!(
+        text.contains(
+            "weak evidence references: cargo-allow worklist --weak-evidence --format json"
         )
     );
     assert!(text.contains("Evidence repair queues:"));
-    assert!(text.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
+    assert!(text.contains("cargo-allow worklist --broken-evidence --format json"));
     assert!(text.contains("cargo-allow worklist --missing-evidence --format json"));
-    assert!(
-        text.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
-    );
+    assert!(text.contains("cargo-allow worklist --weak-evidence --format json"));
     assert!(text.contains("Audit review queue:"));
 }
 
@@ -412,22 +412,16 @@ fn markdown_audit_report_routes_evidence_repairs_even_with_review_queue() {
     assert!(text.contains(
         "| missing evidence | `cargo-allow worklist --missing-evidence --format json` |"
     ));
-    assert!(
-        text.contains(
-            "| broken evidence links | `cargo-allow worklist --item-kind broken_evidence_link --format json` |"
-        )
-    );
-    assert!(
-        text.contains(
-            "| weak evidence references | `cargo-allow worklist --item-kind weak_evidence_reference --format json` |"
-        )
-    );
+    assert!(text.contains(
+        "| broken evidence links | `cargo-allow worklist --broken-evidence --format json` |"
+    ));
+    assert!(text.contains(
+        "| weak evidence references | `cargo-allow worklist --weak-evidence --format json` |"
+    ));
     assert!(text.contains("### Evidence Repair Queues"));
-    assert!(text.contains("`cargo-allow worklist --item-kind broken_evidence_link --format json`"));
+    assert!(text.contains("`cargo-allow worklist --broken-evidence --format json`"));
     assert!(text.contains("`cargo-allow worklist --missing-evidence --format json`"));
-    assert!(
-        text.contains("`cargo-allow worklist --item-kind weak_evidence_reference --format json`")
-    );
+    assert!(text.contains("`cargo-allow worklist --weak-evidence --format json`"));
     assert!(text.contains("## Audit Review Queue"));
 }
 
@@ -537,7 +531,7 @@ fn markdown_audit_report_counts_broken_evidence_links_context() {
 
     assert!(text.contains("| Review items | 2 |"));
     assert!(text.contains("| Broken evidence links | 2 |"));
-    assert!(text.contains("worklist --item-kind broken_evidence_link --format json"));
+    assert!(text.contains("worklist --broken-evidence --format json"));
     assert!(text.contains("repair broken local evidence/link references"));
     assert!(!text.contains("## Audit Review Queue"));
 }
@@ -550,7 +544,7 @@ fn markdown_audit_report_counts_weak_evidence_references_context() {
 
     assert!(text.contains("| Review items | 2 |"));
     assert!(text.contains("| Weak evidence/link references | 2 |"));
-    assert!(text.contains("worklist --item-kind weak_evidence_reference --format json"));
+    assert!(text.contains("worklist --weak-evidence --format json"));
     assert!(text.contains("replace unstructured or unknown-prefix evidence/link references"));
     assert!(!text.contains("## Audit Review Queue"));
 }
@@ -654,11 +648,9 @@ fn check_text_reports_evidence_repair_queues_without_audit_queue() {
     let markdown = render_markdown_with_context("check", &[], &[], true, context);
 
     assert!(human.contains("Evidence repair queues:"));
-    assert!(human.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
+    assert!(human.contains("cargo-allow worklist --broken-evidence --format json"));
     assert!(human.contains("cargo-allow worklist --missing-evidence --format json"));
-    assert!(
-        human.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
-    );
+    assert!(human.contains("cargo-allow worklist --weak-evidence --format json"));
     assert!(!human.contains("Audit review queue:"));
     assert!(markdown.contains("### Evidence Repair Queues"));
     assert!(markdown.contains("`cargo-allow worklist --missing-evidence --format json`"));

@@ -310,7 +310,7 @@ fn explain_entry_json_routes_broken_evidence_to_repair_queue() {
         .unwrap_or_else(|| std::panic::panic_any("explain proof commands should be an array"));
     assert!(
         proof_commands.iter().any(|command| command.as_str()
-            == Some("cargo-allow worklist --item-kind broken_evidence_link --format json")),
+            == Some("cargo-allow worklist --broken-evidence --format json")),
         "explain should route broken evidence to the worklist repair queue"
     );
     assert!(

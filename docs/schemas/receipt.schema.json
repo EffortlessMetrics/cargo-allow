@@ -127,7 +127,9 @@
           },
           "worklist_filter": {
             "enum": [
-              "missing_evidence"
+              "broken_evidence",
+              "missing_evidence",
+              "weak_evidence"
             ],
             "description": "Named worklist filter used by this row when route_kind is worklist_filter."
           },

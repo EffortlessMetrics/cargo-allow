@@ -80,5 +80,7 @@ fn report_worklist_filters(filters: WorklistFilters<'_>) -> allow_report::Workli
         risk: filters.risk,
         difficulty: filters.difficulty,
         missing_evidence: filters.missing_evidence,
+        broken_evidence: filters.broken_evidence,
+        weak_evidence: filters.weak_evidence,
     }
 }

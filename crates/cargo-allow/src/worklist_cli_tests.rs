@@ -37,6 +37,8 @@ fn clap_parses_worklist_json_output() {
         "--difficulty",
         "small",
         "--missing-evidence",
+        "--broken-evidence",
+        "--weak-evidence",
         "--format",
         "json",
         "--output",
@@ -61,6 +63,8 @@ fn clap_parses_worklist_json_output() {
             risk: Some(risk),
             difficulty: Some(difficulty),
             missing_evidence: true,
+            broken_evidence: true,
+            weak_evidence: true,
             format: WorklistFormat::Json,
             output: Some(path),
             ..

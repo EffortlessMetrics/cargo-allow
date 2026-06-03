@@ -216,6 +216,27 @@ fn rejects_path_scope_with_surrounding_whitespace() {
 }
 
 #[test]
+fn rejects_path_scope_with_current_directory_segment() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "dot-segment-path"
+                kind = "non_rust_file"
+                path = "docs/./policy.md"
+                owner = "core"
+                classification = "documentation"
+                reason = "fixture"
+                expires = "2026-08-01"
+                [allow.selector]
+                glob = "docs/./policy.md"
+            "#,
+    );
+
+    assert!(err.contains("dot-segment-path path must not contain current directory segments"));
+}
+
+#[test]
 fn rejects_glob_scope_with_surrounding_whitespace() {
     let err = parse_err(
         r#"

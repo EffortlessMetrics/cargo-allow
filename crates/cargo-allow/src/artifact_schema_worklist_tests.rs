@@ -96,7 +96,13 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         "/$defs/filters/properties/difficulty/enum",
         DIFFICULTY_LEVELS,
     );
-    for field in ["baseline_debt", "broad_scope", "missing_evidence"] {
+    for field in [
+        "baseline_debt",
+        "broad_scope",
+        "missing_evidence",
+        "broken_evidence",
+        "weak_evidence",
+    ] {
         assert_eq!(
             schema
                 .pointer(&format!("/$defs/filters/properties/{field}/type"))
@@ -432,6 +438,8 @@ fn assert_worklist_filter_properties(filters: &Value) {
         "risk",
         "difficulty",
         "missing_evidence",
+        "broken_evidence",
+        "weak_evidence",
     ]
     .into_iter()
     .collect::<BTreeSet<_>>();

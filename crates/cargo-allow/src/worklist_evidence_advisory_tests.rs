@@ -373,9 +373,7 @@ fn worklist_items_report_weak_evidence_references() {
     assert!(json.contains("\"target\": \"manual-review\""));
     assert!(json.contains("\"category\": \"unknown_prefix\""));
     assert!(json.contains("\"cargo-allow explain allow-weak-evidence\""));
-    assert!(
-        json.contains("\"cargo-allow worklist --item-kind weak_evidence_reference --format json\"")
-    );
+    assert!(json.contains("\"cargo-allow worklist --weak-evidence --format json\""));
     assert!(json.contains("\"cargo-allow list --weak-evidence --format json\""));
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
