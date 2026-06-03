@@ -1930,6 +1930,13 @@
         "path": {
           "type": "string",
           "minLength": 1
+        },
+        "source_package": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
         }
       }
     },

@@ -190,6 +190,19 @@ fn common_schema_diff_fragments_keep_source_tree_contracts() {
         "/$defs/finding_posture_change/properties/family/type",
         &["string", "null"],
     );
+    assert_schema_type_equals(
+        "common finding_posture_change source_package",
+        &schema,
+        "/$defs/finding_posture_change/properties/source_package/type",
+        &["string", "null"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/finding_posture_change/properties/source_package/minLength")
+            .and_then(Value::as_u64),
+        Some(1),
+        "common finding posture source_package minLength"
+    );
 
     assert_enum_equals(
         "common policy change severities",

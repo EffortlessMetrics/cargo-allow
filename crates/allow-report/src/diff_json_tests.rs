@@ -8,6 +8,7 @@ fn diff_json_renderer_appends_posture_extension() {
         kind: "panic",
         family: Some("unwrap"),
         path: "src/lib.rs",
+        source_package: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
@@ -116,6 +117,7 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
         kind: "panic",
         family: Some("unwrap"),
         path: "src/lib.rs",
+        source_package: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "improvement",
@@ -275,6 +277,36 @@ fn diff_json_report_summary_includes_nonzero_evidence_delta_counts() {
 }
 
 #[test]
+fn diff_json_report_includes_finding_change_source_package_when_available() {
+    let finding_changes = vec![DiffFindingChange {
+        change: "new",
+        key: "panic|unwrap|src/lib.rs",
+        kind: "panic",
+        family: Some("unwrap"),
+        path: "src/lib.rs",
+        source_package: Some("parser"),
+    }];
+    let report = DiffReport {
+        net_posture: "review-required",
+        reviewer_action: "review new finding",
+        summary: DiffPostureSummary {
+            current_failures: 0,
+            new_findings: 1,
+            removed_findings: 0,
+            policy_failures: 0,
+            policy_review_items: 0,
+            policy_improvements: 0,
+        },
+        finding_changes: &finding_changes,
+        policy_changes: &[],
+    };
+
+    let rendered = crate::diff_json::render_diff_posture_json(report);
+
+    assert!(rendered.contains("\"source_package\": \"parser\""));
+}
+
+#[test]
 fn diff_json_report_matches_posture_golden_contract() {
     let finding_changes = vec![DiffFindingChange {
         change: "removed",
@@ -282,6 +314,7 @@ fn diff_json_report_matches_posture_golden_contract() {
         kind: "panic",
         family: Some("unwrap"),
         path: "src/lib.rs",
+        source_package: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "improvement",

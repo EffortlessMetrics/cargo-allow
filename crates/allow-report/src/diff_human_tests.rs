@@ -9,6 +9,7 @@ fn diff_finding_human_output_groups_findings_by_change() {
             kind: "panic",
             family: Some("unwrap"),
             path: "src/old.rs",
+            source_package: None,
         },
         DiffFindingChange {
             change: "new",
@@ -16,6 +17,7 @@ fn diff_finding_human_output_groups_findings_by_change() {
             kind: "unsafe",
             family: Some("unsafe_block"),
             path: "src/new.rs",
+            source_package: Some("runtime"),
         },
     ];
 
@@ -31,7 +33,7 @@ fn diff_finding_human_output_groups_findings_by_change() {
         attention < improvements,
         "human finding sections should show attention before improvements"
     );
-    assert!(text.contains("new unsafe.unsafe_block at src/new.rs"));
+    assert!(text.contains("new unsafe.unsafe_block at src/new.rs source_package=runtime"));
     assert!(text.contains("removed panic.unwrap at src/old.rs"));
 }
 
@@ -152,6 +154,7 @@ fn diff_posture_human_summary_reports_reviewer_action() {
         kind: "panic",
         family: Some("unwrap"),
         path: "src/lib.rs",
+        source_package: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",

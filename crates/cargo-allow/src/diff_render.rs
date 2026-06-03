@@ -182,6 +182,7 @@ fn finding_change_rows(
             kind: &change.finding_kind,
             family: change.family.as_deref(),
             path: &change.path,
+            source_package: change.source_package.as_deref(),
         })
         .collect()
 }

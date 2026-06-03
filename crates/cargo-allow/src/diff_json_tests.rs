@@ -78,6 +78,10 @@ fn json_report_includes_structured_posture_changes() {
         finding_change.get("path").and_then(Value::as_str),
         Some("src/lib.rs")
     );
+    assert_eq!(
+        finding_change.get("source_package").and_then(Value::as_str),
+        Some("parser")
+    );
     let policy_change = first_array_item(&value, "/diff/policy_changes");
     assert_eq!(
         policy_change.get("severity").and_then(Value::as_str),
