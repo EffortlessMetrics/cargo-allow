@@ -60,6 +60,13 @@ fn saved_migrate_output_covers_policy_migration_summary_contract() {
     );
     assert_eq!(
         value
+            .pointer("/summary/evidence_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(7),
+        "migrate summary evidence reference count"
+    );
+    assert_eq!(
+        value
             .pointer("/summary/unsafe_broken_evidence_links")
             .and_then(serde_json::Value::as_u64),
         Some(1),

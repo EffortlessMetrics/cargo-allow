@@ -267,9 +267,10 @@ The migration writer:
 `cargo-allow.migrate.v1` receipt for the conversion. The summary records the
 input mode, output path, source-tree inventory context when repo-policy
 migration collected one, allow-entry counts, baseline-debt counts, unsafe-entry
-counts, lint-exception counts, evidence-bearing entry counts, weak-evidence
-reference counts when present, and the same migration notes shown by the human
-summary. When migrated policy contains broken local evidence links or weak
+counts, lint-exception counts, evidence-bearing entry counts, total evidence
+reference counts, weak-evidence reference counts when present, and the same
+migration notes shown by the human summary. When migrated policy contains
+broken local evidence links or weak
 evidence references, the summary also routes repair work to the corresponding
 `cargo-allow worklist --item-kind ... --format json` queue. Unsafe-specific
 evidence gaps include an additional `--kind unsafe` route so reviewers and

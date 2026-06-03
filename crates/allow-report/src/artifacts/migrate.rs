@@ -14,6 +14,7 @@ pub struct MigrateReport<'a> {
     pub unsafe_entries: usize,
     pub lint_exception_entries: usize,
     pub entries_with_evidence: usize,
+    pub evidence_entries: usize,
     pub broken_evidence_links: Option<usize>,
     pub unsafe_broken_evidence_links: Option<usize>,
     pub weak_evidence_references: Option<usize>,
@@ -43,6 +44,7 @@ impl<'a> MigrateReport<'a> {
             unsafe_entries: counts.unsafe_entries,
             lint_exception_entries: counts.lint_exception_entries,
             entries_with_evidence: counts.entries_with_evidence,
+            evidence_entries: counts.evidence_entries,
             broken_evidence_links: None,
             unsafe_broken_evidence_links: None,
             weak_evidence_references: None,
@@ -59,6 +61,7 @@ struct MigrateSummaryCounts {
     unsafe_entries: usize,
     lint_exception_entries: usize,
     entries_with_evidence: usize,
+    evidence_entries: usize,
 }
 
 impl MigrateSummaryCounts {
@@ -85,6 +88,7 @@ impl MigrateSummaryCounts {
                 .iter()
                 .filter(|entry| !entry.evidence.is_empty())
                 .count(),
+            evidence_entries: cfg.allow.iter().map(|entry| entry.evidence.len()).sum(),
         }
     }
 }
