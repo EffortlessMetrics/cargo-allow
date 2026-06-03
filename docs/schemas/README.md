@@ -129,14 +129,20 @@ missing or invalid local paths, emits weak evidence references only when legacy
 conversion preserved unstructured or unknown-prefix evidence, and emits the
 unsafe-specific evidence-health counts only when those references belong to
 migrated unsafe entries. When those
-evidence-health counts are non-zero, current `migrate` JSON artifacts may also
-include an optional `evidence_repair_queues` array with stable evidence-health
-`signal` names, human `label` strings, machine `route_kind` values, stable
-worklist `item_kind` names, total and unsafe-specific counts, and the exact
-`cargo-allow worklist --item-kind ... --format json` command for each repair
-queue. When `unsafe_count` is non-zero, queue rows may also include an
-`unsafe_command` with the corresponding `--kind unsafe` worklist route. Current
-migration repair queues use `route_kind = "worklist_item_kind"`.
+baseline-debt counts are non-zero, current `migrate` JSON artifacts may include
+an optional `follow_up_queues` array with stable migration `signal` names, human
+`label` strings, machine `route_kind` values, stable worklist `item_kind` names,
+counts, and exact `cargo-allow worklist ... --format json` commands. Current
+migration follow-up queues use `route_kind = "worklist_item_kind"` for
+`baseline_debt`.
+When evidence-health counts are non-zero, current `migrate` JSON artifacts may
+also include an optional `evidence_repair_queues` array with stable
+evidence-health `signal` names, human `label` strings, machine `route_kind`
+values, stable worklist `item_kind` names, total and unsafe-specific counts,
+and the exact `cargo-allow worklist --item-kind ... --format json` command for
+each repair queue. When `unsafe_count` is non-zero, queue rows may also include
+an `unsafe_command` with the corresponding `--kind unsafe` worklist route.
+Current migration repair queues use `route_kind = "worklist_item_kind"`.
 
 The shared report schema is emitted by `audit`, `check`, and `diff`, but the
 top-level `diff` posture extension is valid only on reports whose

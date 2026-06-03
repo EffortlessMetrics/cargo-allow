@@ -131,6 +131,79 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
         Some("#/$defs/evidence_repair_queue"),
         "migrate evidence repair queues should use the queue row definition"
     );
+    assert_eq!(
+        schema
+            .pointer("/properties/follow_up_queues/type")
+            .and_then(Value::as_str),
+        Some("array"),
+        "migrate follow_up_queues should be an optional array"
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/follow_up_queues/items/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/follow_up_queue"),
+        "migrate follow_up_queues should use the queue row definition"
+    );
+    let follow_up_queue = required_schema_pointer("migrate", &schema, "/$defs/follow_up_queue");
+    assert_eq!(
+        follow_up_queue
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "migrate follow-up queue should reject unknown fields"
+    );
+    assert_required_fields(
+        "migrate follow-up queue",
+        follow_up_queue,
+        &["signal", "route_kind", "item_kind", "count", "command"],
+    );
+    assert_enum_equals(
+        "migrate follow-up queue signal",
+        &schema,
+        "/$defs/follow_up_queue/properties/signal/enum",
+        &["baseline_debt"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/follow_up_queue/properties/label/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "migrate follow-up queue label should be a string"
+    );
+    assert_enum_equals(
+        "migrate follow-up queue route kind",
+        &schema,
+        "/$defs/follow_up_queue/properties/route_kind/enum",
+        &["worklist_item_kind"],
+    );
+    assert_enum_equals(
+        "migrate follow-up queue item kind",
+        &schema,
+        "/$defs/follow_up_queue/properties/item_kind/enum",
+        &["baseline_debt"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/follow_up_queue/properties/count/type")
+            .and_then(Value::as_str),
+        Some("integer"),
+        "migrate follow-up queue count should be an integer"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/follow_up_queue/properties/count/minimum")
+            .and_then(Value::as_u64),
+        Some(0),
+        "migrate follow-up queue count should be non-negative"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/follow_up_queue/properties/command/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "migrate follow-up queue command should be a string"
+    );
     let queue = required_schema_pointer("migrate", &schema, "/$defs/evidence_repair_queue");
     assert_eq!(
         queue.get("additionalProperties").and_then(Value::as_bool),

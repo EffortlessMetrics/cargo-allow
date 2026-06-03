@@ -151,6 +151,13 @@
         "$ref": "#/$defs/evidence_repair_queue"
       }
     },
+    "follow_up_queues": {
+      "type": "array",
+      "description": "Optional follow-up worklist queues emitted when migration leaves generated baseline debt to close out.",
+      "items": {
+        "$ref": "#/$defs/follow_up_queue"
+      }
+    },
     "notes": {
       "type": "string"
     }
@@ -230,6 +237,50 @@
           "type": "integer",
           "minimum": 0,
           "description": "Number of source-tree inventory files considered during repo-policy migration, when collected."
+        }
+      }
+    },
+    "follow_up_queue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal",
+        "route_kind",
+        "item_kind",
+        "count",
+        "command"
+      ],
+      "properties": {
+        "signal": {
+          "enum": [
+            "baseline_debt"
+          ],
+          "description": "Migration summary signal routed by this follow-up queue."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-friendly queue label for display and agent logs."
+        },
+        "route_kind": {
+          "enum": [
+            "worklist_item_kind"
+          ],
+          "description": "Machine routing mode for the follow-up command."
+        },
+        "item_kind": {
+          "enum": [
+            "baseline_debt"
+          ],
+          "description": "Stable cargo-allow worklist item kind associated with this follow-up queue."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of migrated baseline-debt entries routed by this queue."
+        },
+        "command": {
+          "type": "string",
+          "description": "Suggested cargo-allow worklist command for this queue."
         }
       }
     },

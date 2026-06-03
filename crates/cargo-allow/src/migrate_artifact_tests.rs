@@ -142,6 +142,43 @@ fn render_migrate_summary_json_records_policy_migration_context() {
         Some(1),
         "migrate unsafe weak evidence references"
     );
+    let follow_up_queues = value
+        .pointer("/follow_up_queues")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("migrate JSON should route baseline-debt follow-up queues")
+        });
+    let [baseline_debt] = follow_up_queues.as_slice() else {
+        std::panic::panic_any(format!(
+            "expected one migrate follow-up queue, got {}",
+            follow_up_queues.len()
+        ));
+    };
+    assert_eq!(
+        baseline_debt.get("signal").and_then(Value::as_str),
+        Some("baseline_debt"),
+        "migrate baseline-debt queue signal"
+    );
+    assert_eq!(
+        baseline_debt.get("route_kind").and_then(Value::as_str),
+        Some("worklist_item_kind"),
+        "migrate baseline-debt queue route kind"
+    );
+    assert_eq!(
+        baseline_debt.get("item_kind").and_then(Value::as_str),
+        Some("baseline_debt"),
+        "migrate baseline-debt queue item kind"
+    );
+    assert_eq!(
+        baseline_debt.get("count").and_then(Value::as_u64),
+        Some(1),
+        "migrate baseline-debt queue count"
+    );
+    assert_eq!(
+        baseline_debt.get("command").and_then(Value::as_str),
+        Some("cargo-allow worklist --item-kind baseline_debt --format json"),
+        "migrate baseline-debt queue command"
+    );
     let queues = value
         .pointer("/evidence_repair_queues")
         .and_then(Value::as_array)

@@ -29,9 +29,10 @@ cargo-allow migrate \
 ```
 
 Review the generated output before replacing `policy/allow.toml`.
-If `migrate-summary.json` includes `evidence_repair_queues`, run the listed
-worklist commands before treating migrated entries as reviewed. Unsafe evidence
-repair rows may include a focused `--kind unsafe` command.
+If `migrate-summary.json` includes `follow_up_queues` or
+`evidence_repair_queues`, run the listed worklist commands before treating
+migrated entries as reviewed. Follow-up rows route generated `baseline_debt`;
+unsafe evidence repair rows may include a focused `--kind unsafe` command.
 
 ## Close Out Migration Worklists
 

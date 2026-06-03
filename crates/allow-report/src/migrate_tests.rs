@@ -52,6 +52,15 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(json.contains("\"unsafe_broken_evidence_links\": 1"));
     assert!(json.contains("\"weak_evidence_references\": 2"));
     assert!(json.contains("\"unsafe_weak_evidence_references\": 1"));
+    assert!(json.contains("\"follow_up_queues\""));
+    assert!(json.contains("\"signal\": \"baseline_debt\""));
+    assert!(json.contains("\"label\": \"baseline debt entries\""));
+    assert!(json.contains("\"item_kind\": \"baseline_debt\""));
+    assert!(
+        json.contains(
+            "\"command\": \"cargo-allow worklist --item-kind baseline_debt --format json\""
+        )
+    );
     assert!(json.contains("\"evidence_repair_queues\""));
     assert!(json.contains("\"signal\": \"broken_evidence_links\""));
     assert!(json.contains("\"label\": \"broken evidence links\""));
@@ -110,6 +119,16 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     "weak_evidence_references": 2,
     "unsafe_weak_evidence_references": 1
   }},
+  "follow_up_queues": [
+    {{
+      "signal": "baseline_debt",
+      "label": "baseline debt entries",
+      "route_kind": "worklist_item_kind",
+      "item_kind": "baseline_debt",
+      "count": 5,
+      "command": "cargo-allow worklist --item-kind baseline_debt --format json"
+    }}
+  ],
   "evidence_repair_queues": [
     {{
       "signal": "broken_evidence_links",
@@ -159,6 +178,8 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(text.contains("unsafe_broken_evidence_links: 1"));
     assert!(text.contains("weak_evidence_references: 2"));
     assert!(text.contains("unsafe_weak_evidence_references: 1"));
+    assert!(text.contains("follow_up_queues:"));
+    assert!(text.contains("cargo-allow worklist --item-kind baseline_debt --format json"));
     assert!(text.contains("evidence_repair_queues:"));
     assert!(text.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
     assert!(text.contains(
@@ -244,10 +265,26 @@ fn migrate_report_from_config_counts_summary_fields() {
 
     let text = render_migrate_human(report);
     assert!(
+        text.contains("follow_up_queues:"),
+        "baseline-debt migration summaries should route follow-up queues"
+    );
+    assert!(
+        text.contains("cargo-allow worklist --item-kind baseline_debt --format json"),
+        "baseline-debt migration summaries should point at the baseline-debt worklist"
+    );
+    assert!(
         !text.contains("evidence_repair_queues:"),
         "clean migration summaries should not route repair queues"
     );
     let json = render_migrate_json(report);
+    assert!(
+        json.contains("\"follow_up_queues\""),
+        "baseline-debt migration JSON should emit follow-up queues"
+    );
+    assert!(
+        json.contains("\"signal\": \"baseline_debt\""),
+        "baseline-debt migration JSON should identify the summary signal"
+    );
     assert!(
         !json.contains("\"evidence_repair_queues\""),
         "clean migration JSON should not emit repair queues"
@@ -286,6 +323,10 @@ fn migrate_repair_queues_omit_unsafe_command_without_unsafe_count() {
     let json = render_migrate_json(report);
 
     assert!(json.contains("\"evidence_repair_queues\""));
+    assert!(
+        !json.contains("\"follow_up_queues\""),
+        "migration JSON without baseline debt should not emit follow-up queues"
+    );
     assert!(json.contains(
         "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
     ));
