@@ -193,6 +193,130 @@ fn diff_json_report_summary_includes_nonzero_evidence_health() {
 }
 
 #[test]
+fn diff_json_report_summary_includes_nonzero_structural_delta_counts() {
+    let policy_changes = vec![
+        DiffPolicyChange {
+            severity: "fail",
+            allow_id: "allow-scope-broadened",
+            kind: "scope_broadened",
+            message: "allow-scope-broadened scope broadened",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "review",
+            allow_id: "allow-scope-changed",
+            kind: "scope_changed",
+            message: "allow-scope-changed scope changed",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "improvement",
+            allow_id: "allow-scope-narrowed",
+            kind: "scope_narrowed",
+            message: "allow-scope-narrowed scope narrowed",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "review",
+            allow_id: "allow-selector-changed",
+            kind: "selector_changed",
+            message: "allow-selector-changed selector changed",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "fail",
+            allow_id: "allow-selector-decreased",
+            kind: "selector_precision_decreased",
+            message: "allow-selector-decreased selector precision decreased",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+        DiffPolicyChange {
+            severity: "improvement",
+            allow_id: "allow-selector-increased",
+            kind: "selector_precision_increased",
+            message: "allow-selector-increased selector precision increased",
+            exception_identity: None,
+            selector_identity: None,
+            selector_precision: None,
+            scope: None,
+            occurrence_limit: None,
+            lifecycle: None,
+            evidence: None,
+            metadata: None,
+            requirement: None,
+            policy_status: None,
+        },
+    ];
+    let report = DiffReport {
+        net_posture: "worse",
+        reviewer_action: "review structural deltas",
+        summary: DiffPostureSummary {
+            current_failures: 0,
+            new_findings: 0,
+            removed_findings: 0,
+            policy_failures: 2,
+            policy_review_items: 2,
+            policy_improvements: 2,
+        },
+        finding_changes: &[],
+        policy_changes: &policy_changes,
+    };
+    let rendered = crate::diff_json::render_diff_posture_json(report);
+
+    assert!(rendered.contains("\"scope_broadened\": 1"));
+    assert!(rendered.contains("\"scope_changed\": 1"));
+    assert!(rendered.contains("\"scope_narrowed\": 1"));
+    assert!(rendered.contains("\"selector_changed\": 1"));
+    assert!(rendered.contains("\"selector_precision_decreased\": 1"));
+    assert!(rendered.contains("\"selector_precision_increased\": 1"));
+}
+
+#[test]
 fn diff_json_report_summary_includes_nonzero_evidence_delta_counts() {
     let policy_changes = vec![
         DiffPolicyChange {
@@ -563,6 +687,7 @@ fn diff_json_report_matches_posture_golden_contract() {
     "reviewer_action": "keep narrower posture",
     "summary": {{
       "current_failures": 0,
+      "selector_precision_increased": 1,
       "new_findings": 0,
       "removed_findings": 1,
       "policy_failures": 0,

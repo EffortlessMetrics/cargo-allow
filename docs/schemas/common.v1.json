@@ -1845,6 +1845,30 @@
           "type": "integer",
           "minimum": 0
         },
+        "scope_broadened": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scope_changed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scope_narrowed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selector_changed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selector_precision_decreased": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selector_precision_increased": {
+          "type": "integer",
+          "minimum": 0
+        },
         "evidence_added": {
           "type": "integer",
           "minimum": 0

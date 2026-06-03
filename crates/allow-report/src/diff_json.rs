@@ -1,7 +1,7 @@
 use allow_core::json_escape;
 
 use crate::DiffReport;
-use crate::diff_posture::diff_evidence_delta_summary;
+use crate::diff_posture::{diff_evidence_delta_summary, diff_structural_delta_summary};
 use crate::explain_json::structural_identity_json;
 use crate::json::{json_string_array, option_json};
 use crate::{REPORT_COMMAND_DIFF, REPORT_SCHEMA_ID};
@@ -69,6 +69,43 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
         out.push_str(&format!(
             "      \"weak_evidence_references\": {},\n",
             weak_evidence_references
+        ));
+    }
+    let structural_delta = diff_structural_delta_summary(report.policy_changes);
+    if structural_delta.scope_broadened > 0 {
+        out.push_str(&format!(
+            "      \"scope_broadened\": {},\n",
+            structural_delta.scope_broadened
+        ));
+    }
+    if structural_delta.scope_changed > 0 {
+        out.push_str(&format!(
+            "      \"scope_changed\": {},\n",
+            structural_delta.scope_changed
+        ));
+    }
+    if structural_delta.scope_narrowed > 0 {
+        out.push_str(&format!(
+            "      \"scope_narrowed\": {},\n",
+            structural_delta.scope_narrowed
+        ));
+    }
+    if structural_delta.selector_changed > 0 {
+        out.push_str(&format!(
+            "      \"selector_changed\": {},\n",
+            structural_delta.selector_changed
+        ));
+    }
+    if structural_delta.selector_precision_decreased > 0 {
+        out.push_str(&format!(
+            "      \"selector_precision_decreased\": {},\n",
+            structural_delta.selector_precision_decreased
+        ));
+    }
+    if structural_delta.selector_precision_increased > 0 {
+        out.push_str(&format!(
+            "      \"selector_precision_increased\": {},\n",
+            structural_delta.selector_precision_increased
         ));
     }
     let evidence_delta = diff_evidence_delta_summary(report.policy_changes);

@@ -1,6 +1,9 @@
 use crate::diff_finding_detail::structural_identity_summary;
 use crate::diff_policy_detail::policy_change_detail;
-use crate::diff_posture::{diff_evidence_delta_summary, diff_net_posture, diff_posture_summary};
+use crate::diff_posture::{
+    diff_evidence_delta_summary, diff_net_posture, diff_posture_summary,
+    diff_structural_delta_summary,
+};
 use crate::evidence_repair::evidence_repair_queues_from_counts;
 use crate::text::markdown_cell;
 use crate::{CLAIM_BOUNDARY_TEXT, DiffFindingChange, DiffPolicyChange};
@@ -86,6 +89,43 @@ fn render_diff_pr_summary_markdown_with_evidence_health_counts_inner(
     if weak_evidence_references > 0 {
         out.push_str(&format!(
             "| Weak evidence/link references | {weak_evidence_references} |\n"
+        ));
+    }
+    let structural_delta = diff_structural_delta_summary(policy_changes);
+    if structural_delta.scope_broadened > 0 {
+        out.push_str(&format!(
+            "| Scope broadened | {} |\n",
+            structural_delta.scope_broadened
+        ));
+    }
+    if structural_delta.scope_changed > 0 {
+        out.push_str(&format!(
+            "| Scope changed | {} |\n",
+            structural_delta.scope_changed
+        ));
+    }
+    if structural_delta.scope_narrowed > 0 {
+        out.push_str(&format!(
+            "| Scope narrowed | {} |\n",
+            structural_delta.scope_narrowed
+        ));
+    }
+    if structural_delta.selector_changed > 0 {
+        out.push_str(&format!(
+            "| Selector changed | {} |\n",
+            structural_delta.selector_changed
+        ));
+    }
+    if structural_delta.selector_precision_decreased > 0 {
+        out.push_str(&format!(
+            "| Selector precision decreased | {} |\n",
+            structural_delta.selector_precision_decreased
+        ));
+    }
+    if structural_delta.selector_precision_increased > 0 {
+        out.push_str(&format!(
+            "| Selector precision increased | {} |\n",
+            structural_delta.selector_precision_increased
         ));
     }
     let evidence_delta = diff_evidence_delta_summary(policy_changes);

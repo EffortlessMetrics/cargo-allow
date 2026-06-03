@@ -26,6 +26,16 @@ pub(crate) struct DiffEvidenceDeltaSummary {
     pub(crate) link_removal_improvements: usize,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct DiffStructuralDeltaSummary {
+    pub(crate) scope_broadened: usize,
+    pub(crate) scope_changed: usize,
+    pub(crate) scope_narrowed: usize,
+    pub(crate) selector_changed: usize,
+    pub(crate) selector_precision_decreased: usize,
+    pub(crate) selector_precision_increased: usize,
+}
+
 impl DiffNetPosture {
     pub fn as_str(self) -> &'static str {
         match self {
@@ -46,6 +56,24 @@ impl DiffNetPosture {
             Self::Unchanged => "no source exception posture change detected.",
         }
     }
+}
+
+pub(crate) fn diff_structural_delta_summary(
+    policy_changes: &[DiffPolicyChange<'_>],
+) -> DiffStructuralDeltaSummary {
+    let mut summary = DiffStructuralDeltaSummary::default();
+    for change in policy_changes {
+        match change.kind {
+            "scope_broadened" => summary.scope_broadened += 1,
+            "scope_changed" => summary.scope_changed += 1,
+            "scope_narrowed" => summary.scope_narrowed += 1,
+            "selector_changed" => summary.selector_changed += 1,
+            "selector_precision_decreased" => summary.selector_precision_decreased += 1,
+            "selector_precision_increased" => summary.selector_precision_increased += 1,
+            _ => {}
+        }
+    }
+    summary
 }
 
 pub(crate) fn diff_evidence_delta_summary(
