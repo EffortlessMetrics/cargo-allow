@@ -93,6 +93,13 @@ fn render_migrate_summary_json_records_policy_migration_context() {
     );
     assert_eq!(
         value
+            .pointer("/summary/evidence_entries")
+            .and_then(Value::as_u64),
+        Some(3),
+        "migrate evidence reference entries"
+    );
+    assert_eq!(
+        value
             .pointer("/summary/broken_evidence_links")
             .and_then(Value::as_u64),
         Some(1),

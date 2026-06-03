@@ -19,6 +19,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
         unsafe_entries: 2,
         lint_exception_entries: 4,
         entries_with_evidence: 3,
+        evidence_entries: 5,
         broken_evidence_links: Some(3),
         unsafe_broken_evidence_links: Some(1),
         weak_evidence_references: Some(2),
@@ -42,6 +43,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(json.contains("\"unsafe_entries\": 2"));
     assert!(json.contains("\"lint_exception_entries\": 4"));
     assert!(json.contains("\"entries_with_evidence\": 3"));
+    assert!(json.contains("\"evidence_entries\": 5"));
     assert!(json.contains("\"broken_evidence_links\": 3"));
     assert!(json.contains("\"unsafe_broken_evidence_links\": 1"));
     assert!(json.contains("\"weak_evidence_references\": 2"));
@@ -96,6 +98,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     "unsafe_entries": 2,
     "lint_exception_entries": 4,
     "entries_with_evidence": 3,
+    "evidence_entries": 5,
     "broken_evidence_links": 3,
     "unsafe_broken_evidence_links": 1,
     "weak_evidence_references": 2,
@@ -143,6 +146,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(text.contains("unsafe_entries: 2"));
     assert!(text.contains("lint_exception_entries: 4"));
     assert!(text.contains("entries_with_evidence: 3"));
+    assert!(text.contains("evidence_entries: 5"));
     assert!(text.contains("broken_evidence_links: 3"));
     assert!(text.contains("unsafe_broken_evidence_links: 1"));
     assert!(text.contains("weak_evidence_references: 2"));
@@ -217,6 +221,7 @@ fn migrate_report_from_config_counts_summary_fields() {
     assert_eq!(report.unsafe_entries, 1);
     assert_eq!(report.lint_exception_entries, 1);
     assert_eq!(report.entries_with_evidence, 2);
+    assert_eq!(report.evidence_entries, 2);
     assert_eq!(report.broken_evidence_links, None);
     assert_eq!(report.unsafe_broken_evidence_links, None);
     assert_eq!(report.weak_evidence_references, None);
@@ -254,6 +259,7 @@ fn migrate_repair_queues_omit_unsafe_command_without_unsafe_count() {
         unsafe_entries: 0,
         lint_exception_entries: 0,
         entries_with_evidence: 1,
+        evidence_entries: 1,
         broken_evidence_links: Some(1),
         unsafe_broken_evidence_links: None,
         weak_evidence_references: None,
@@ -299,6 +305,7 @@ fn migrate_repair_queues_normalize_unsafe_subset_counts() {
         unsafe_entries: 1,
         lint_exception_entries: 0,
         entries_with_evidence: 1,
+        evidence_entries: 1,
         broken_evidence_links: None,
         unsafe_broken_evidence_links: Some(1),
         weak_evidence_references: None,

@@ -225,6 +225,13 @@ fn migrate_repo_policy_writes_json_summary_with_inventory_context() {
     );
     assert!(
         value
+            .pointer("/summary/evidence_entries")
+            .and_then(Value::as_u64)
+            .is_some_and(|count| count > 2),
+        "repo-policy migration summary should count migrated evidence references"
+    );
+    assert!(
+        value
             .pointer("/summary/weak_evidence_references")
             .and_then(Value::as_u64)
             .is_some_and(|count| count > 0),
@@ -440,6 +447,13 @@ fn migrate_from_uses_explicit_root_for_evidence_diagnostics() {
             .and_then(Value::as_u64),
         Some(1),
         "single-file migrate evidence-bearing entries"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/evidence_entries")
+            .and_then(Value::as_u64),
+        Some(1),
+        "single-file migrate evidence reference entries"
     );
     assert!(
         value.pointer("/summary/broken_evidence_links").is_none(),

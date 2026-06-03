@@ -111,6 +111,11 @@
           "type": "integer",
           "minimum": 0
         },
+        "evidence_entries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total evidence values present in the migrated canonical policy, across all allow entries."
+        },
         "broken_evidence_links": {
           "type": "integer",
           "minimum": 0
