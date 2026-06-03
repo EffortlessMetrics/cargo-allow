@@ -223,6 +223,13 @@ fn common_schema_diff_fragments_keep_source_tree_contracts() {
         Some(1),
         "common finding posture source_package minLength"
     );
+    assert_eq!(
+        schema
+            .pointer("/$defs/finding_posture_change/properties/identity/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/structural_identity"),
+        "common finding posture identity should use structural identity"
+    );
 
     assert_enum_equals(
         "common policy change severities",

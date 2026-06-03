@@ -11,6 +11,7 @@ fn diff_json_renderer_appends_posture_extension() {
         line: None,
         column: None,
         source_package: None,
+        identity: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
@@ -122,6 +123,7 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
         line: None,
         column: None,
         source_package: None,
+        identity: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "improvement",
@@ -282,6 +284,8 @@ fn diff_json_report_summary_includes_nonzero_evidence_delta_counts() {
 
 #[test]
 fn diff_json_report_includes_finding_change_source_package_when_available() {
+    let mut identity = allow_core::StructuralIdentity::new("rust", "method_call");
+    identity.callee = Some("unwrap".to_string());
     let finding_changes = vec![DiffFindingChange {
         change: "new",
         key: "panic|unwrap|src/lib.rs",
@@ -291,6 +295,7 @@ fn diff_json_report_includes_finding_change_source_package_when_available() {
         line: Some(12),
         column: Some(5),
         source_package: Some("parser"),
+        identity: Some(&identity),
     }];
     let report = DiffReport {
         net_posture: "review-required",
@@ -312,6 +317,8 @@ fn diff_json_report_includes_finding_change_source_package_when_available() {
     assert!(rendered.contains("\"line\": 12"));
     assert!(rendered.contains("\"column\": 5"));
     assert!(rendered.contains("\"source_package\": \"parser\""));
+    assert!(rendered.contains("\"identity\""));
+    assert!(rendered.contains("\"callee\": \"unwrap\""));
 }
 
 #[test]
@@ -325,6 +332,7 @@ fn diff_json_report_matches_posture_golden_contract() {
         line: None,
         column: None,
         source_package: None,
+        identity: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "improvement",

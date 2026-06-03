@@ -12,6 +12,7 @@ fn diff_finding_human_output_groups_findings_by_change() {
             line: None,
             column: None,
             source_package: None,
+            identity: None,
         },
         DiffFindingChange {
             change: "new",
@@ -22,6 +23,7 @@ fn diff_finding_human_output_groups_findings_by_change() {
             line: Some(7),
             column: Some(3),
             source_package: Some("runtime"),
+            identity: None,
         },
     ];
 
@@ -161,6 +163,7 @@ fn diff_posture_human_summary_reports_reviewer_action() {
         line: None,
         column: None,
         source_package: None,
+        identity: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",

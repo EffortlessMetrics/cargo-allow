@@ -153,6 +153,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
         "audit_remediation_item",
         "source_inventory_kind_row",
         "source_inventory_family_row",
+        "structural_identity",
         "finding_posture_change",
         "policy_change",
         "selector_precision_field",

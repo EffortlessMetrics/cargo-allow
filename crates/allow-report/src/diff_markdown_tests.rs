@@ -11,6 +11,7 @@ fn diff_pr_summary_markdown_reports_net_posture() {
         line: None,
         column: None,
         source_package: None,
+        identity: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "improvement",
@@ -160,6 +161,7 @@ fn diff_posture_tables_escape_markdown_cells() {
         line: Some(12),
         column: Some(5),
         source_package: Some("parser|core"),
+        identity: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
@@ -201,6 +203,7 @@ fn diff_finding_markdown_groups_findings_by_change() {
             line: None,
             column: None,
             source_package: None,
+            identity: None,
         },
         DiffFindingChange {
             change: "new",
@@ -211,6 +214,7 @@ fn diff_finding_markdown_groups_findings_by_change() {
             line: Some(7),
             column: Some(3),
             source_package: Some("runtime"),
+            identity: None,
         },
     ];
 
@@ -401,6 +405,7 @@ fn diff_pr_summary_markdown_highlights_new_findings() {
         line: Some(12),
         column: Some(5),
         source_package: Some("parser"),
+        identity: None,
     }];
 
     let summary = render_diff_pr_summary_markdown(0, &finding_changes, &[]);
@@ -426,6 +431,7 @@ fn diff_pr_summary_markdown_reports_omitted_finding_highlights() {
         line: None,
         column: None,
         source_package: None,
+        identity: None,
     };
     let finding_changes = vec![finding; 9];
 

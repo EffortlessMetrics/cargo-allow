@@ -1,3 +1,4 @@
+use crate::artifact_schema_expectations::structural_identity_fields;
 use crate::artifact_schema_support::{
     assert_enum_equals, assert_required_fields, assert_schema_type_equals, enum_strings,
     match_status_enum, parse_schema, required_schema_pointer,
@@ -171,6 +172,18 @@ fn report_schema_locks_diff_posture_extension_contract() {
             .and_then(Value::as_u64),
         Some(1),
         "report finding posture source_package minLength"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/finding_posture_change/properties/identity/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/structural_identity"),
+        "report finding posture identity should use structural identity"
+    );
+    assert_required_fields(
+        "report structural_identity",
+        required_schema_pointer("report", &schema, "/$defs/structural_identity"),
+        &structural_identity_fields(),
     );
     assert_required_fields(
         "report policy change",

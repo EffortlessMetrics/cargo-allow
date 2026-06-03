@@ -1,4 +1,6 @@
-use allow_core::{Finding, finding_identity_key as core_finding_identity_key, normalize_path};
+use allow_core::{
+    Finding, StructuralIdentity, finding_identity_key as core_finding_identity_key, normalize_path,
+};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -11,6 +13,7 @@ pub struct FindingPostureChange {
     pub line: Option<u32>,
     pub column: Option<u32>,
     pub source_package: Option<String>,
+    pub identity: StructuralIdentity,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -98,6 +101,7 @@ fn finding_posture_change(
         line: finding.span.as_ref().map(|span| span.line),
         column: finding.span.as_ref().map(|span| span.column),
         source_package: finding.source_package_name().map(ToOwned::to_owned),
+        identity: finding.identity.clone(),
     }
 }
 

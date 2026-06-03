@@ -244,6 +244,8 @@ fn finding_posture_change(
     family: Option<&str>,
     path: &str,
 ) -> allow_diff::FindingPostureChange {
+    let mut identity = allow_core::StructuralIdentity::new("rust", "method_call");
+    identity.callee = family.map(str::to_string);
     allow_diff::FindingPostureChange {
         kind,
         key: format!("{finding_kind}:{path}"),
@@ -253,6 +255,7 @@ fn finding_posture_change(
         line: Some(12),
         column: Some(5),
         source_package: Some("parser".to_string()),
+        identity,
     }
 }
 

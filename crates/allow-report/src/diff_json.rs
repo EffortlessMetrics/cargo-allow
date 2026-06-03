@@ -2,6 +2,7 @@ use allow_core::json_escape;
 
 use crate::DiffReport;
 use crate::diff_posture::diff_evidence_delta_summary;
+use crate::explain_json::structural_identity_json;
 use crate::json::{json_string_array, option_json};
 use crate::{REPORT_COMMAND_DIFF, REPORT_SCHEMA_ID};
 
@@ -138,6 +139,10 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
                 ", \"source_package\": \"{}\"",
                 json_escape(source_package)
             ));
+        }
+        if let Some(identity) = change.identity {
+            out.push_str(", \"identity\": ");
+            out.push_str(&structural_identity_json(identity, "    "));
         }
         out.push('}');
     }

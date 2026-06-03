@@ -87,6 +87,18 @@ fn json_report_includes_structured_posture_changes() {
         finding_change.get("source_package").and_then(Value::as_str),
         Some("parser")
     );
+    assert_eq!(
+        finding_change
+            .pointer("/identity/ast_kind")
+            .and_then(Value::as_str),
+        Some("method_call")
+    );
+    assert_eq!(
+        finding_change
+            .pointer("/identity/callee")
+            .and_then(Value::as_str),
+        Some("unwrap")
+    );
     let policy_change = first_array_item(&value, "/diff/policy_changes");
     assert_eq!(
         policy_change.get("severity").and_then(Value::as_str),

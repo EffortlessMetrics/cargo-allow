@@ -1,3 +1,5 @@
+use allow_core::StructuralIdentity;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DiffPostureSummary {
     pub current_failures: usize,
@@ -18,6 +20,7 @@ pub struct DiffFindingChange<'a> {
     pub line: Option<u32>,
     pub column: Option<u32>,
     pub source_package: Option<&'a str>,
+    pub identity: Option<&'a StructuralIdentity>,
 }
 
 #[derive(Debug, Clone, Copy)]
