@@ -222,8 +222,10 @@ cargo-allow migrate --from policy/unsafe-allowlist.toml --out target/unsafe.allo
 Compat maps retained unsafe entries to canonical `unsafe` receipts and compares
 them with current source-syntax unsafe findings. It does not run rustc, build
 scripts, proc macros, or unsafe-review. If a legacy entry is missing evidence,
-the migrated receipt remains temporary `baseline_debt` with TODO unsafe-review
-or boundary-test evidence.
+the migrated receipt remains temporary `baseline_debt` with
+`legacy-policy:<id>` traceability plus TODO unsafe-review or boundary-test
+evidence. The TODO remains weak evidence so the worklist still routes the entry
+for human review.
 
 ## Canonical Policy Flow
 

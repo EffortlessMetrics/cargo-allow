@@ -245,7 +245,18 @@ fn migrates_unsafe_allowlist_to_structural_unsafe_entries() {
         generated
             .evidence
             .iter()
+            .any(|item| item == &format!("legacy-policy:{}", generated.id))
+    );
+    assert!(
+        generated
+            .evidence
+            .iter()
             .any(|item| item.contains("TODO: add unsafe-review"))
+    );
+    assert_eq!(
+        allow_policy::weak_evidence_reference_count(Path::new("."), &cfg),
+        1,
+        "generated unsafe fallback should keep the TODO weak-evidence route"
     );
     assert_current_baseline_window(&generated.lifecycle);
 }
