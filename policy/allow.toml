@@ -692,6 +692,29 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0146"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/migration-evidence-cookbook.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Documents the task-focused migration evidence closeout flow for preserved, weak, broken, and baseline-debt evidence."
+evidence = ["doc:docs/migration-from-xtask.md", "doc:docs/source-exception-ledger.md", "doc:docs/claim-boundaries.md"]
+created = "2026-06-03"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/how-to/migration-evidence-cookbook.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/how-to/migration-evidence-cookbook.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0139"
 kind = "non_rust_file"
 family = "documentation"

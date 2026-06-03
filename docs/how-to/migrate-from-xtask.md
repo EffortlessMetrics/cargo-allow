@@ -51,6 +51,9 @@ weak-evidence queue for unstructured or unknown-prefix references, and the
 baseline-debt queue for generated migration debt that still needs real owner,
 reason, lifecycle, selector, and evidence review.
 
+For a step-by-step closeout flow, use the
+[migration evidence cookbook](migration-evidence-cookbook.md).
+
 ## Claim Boundary
 
 Migration converts policy data. It does not execute legacy xtasks, build the
