@@ -185,6 +185,63 @@ expires = "permanent"
             expected_links: &["legacy-policy:workflow:.github/workflows/release.yml"],
         },
         EvidenceMatrixCase {
+            label: "workflow covered_by",
+            file_name: "workflow-allowlist.toml",
+            policy_text: r#"schema_version = 1
+policy = "workflow-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[entry]]
+path = ".github/workflows/release.yml"
+owner = "release/ci"
+reason = "Release workflow fixture."
+permissions = ["contents:read"]
+secrets_used = ["RELEASE_TOKEN"]
+external_actions = ["actions/checkout@v4"]
+covered_by = "doc:docs/workflows/release.md"
+created = "2026-05-09"
+expires = "permanent"
+"#,
+            entry_id: "workflow-file-github-workflows-release-yml",
+            family: Some("github_workflow"),
+            expected_evidence: &["doc:docs/workflows/release.md"],
+            expected_derived_evidence: &[
+                "legacy-policy:workflow:.github/workflows/release.yml",
+                "permission:contents:read",
+                "secret:RELEASE_TOKEN",
+            ],
+            expected_links: &["legacy-policy:workflow:.github/workflows/release.yml"],
+        },
+        EvidenceMatrixCase {
+            label: "workflow action covered_by",
+            file_name: "workflow-allowlist.toml",
+            policy_text: r#"schema_version = 1
+policy = "workflow-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[entry]]
+path = ".github/workflows/release.yml"
+owner = "release/ci"
+reason = "Release workflow fixture."
+permissions = []
+secrets_used = []
+external_actions = ["actions/checkout@v4"]
+covered_by = "doc:docs/workflows/actions.md"
+created = "2026-05-09"
+expires = "permanent"
+"#,
+            entry_id: "workflow-action-github-workflows-release-yml--actions-checkout-v4",
+            family: Some("workflow_external_action"),
+            expected_evidence: &["doc:docs/workflows/actions.md"],
+            expected_derived_evidence: &[
+                "legacy-policy:workflow:.github/workflows/release.yml",
+                "external_action:actions/checkout@v4",
+            ],
+            expected_links: &["legacy-policy:workflow:.github/workflows/release.yml"],
+        },
+        EvidenceMatrixCase {
             label: "dependency covered_by",
             file_name: "dependency-surface-allowlist.toml",
             policy_text: r#"schema_version = 1
@@ -212,6 +269,35 @@ expires = "permanent"
                 "dep_count_at_baseline:22",
             ],
             expected_links: &["legacy-policy:matrix-dependency"],
+        },
+        EvidenceMatrixCase {
+            label: "dependency evidence",
+            file_name: "dependency-surface-allowlist.toml",
+            policy_text: r#"schema_version = 1
+policy = "dependency-surface-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "matrix-dependency-evidence"
+path = "Cargo.toml"
+surface = "workspace_manifest"
+owner = "release"
+reason = "Workspace dependency block fixture."
+dep_count_at_baseline = 22
+evidence = ["doc:docs/dependencies.md", "issue:#234"]
+created = "2026-05-09"
+expires = "permanent"
+"#,
+            entry_id: "matrix-dependency-evidence",
+            family: Some("dependency_surface"),
+            expected_evidence: &["doc:docs/dependencies.md", "issue:#234"],
+            expected_derived_evidence: &[
+                "legacy-policy:matrix-dependency-evidence",
+                "surface:workspace_manifest",
+                "dep_count_at_baseline:22",
+            ],
+            expected_links: &["legacy-policy:matrix-dependency-evidence"],
         },
         EvidenceMatrixCase {
             label: "process evidence",
@@ -246,6 +332,38 @@ expires = "permanent"
             expected_links: &["legacy-policy:matrix-process"],
         },
         EvidenceMatrixCase {
+            label: "process covered_by",
+            file_name: "process-allowlist.toml",
+            policy_text: r#"schema_version = 1
+policy = "process-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "matrix-process-covered"
+binary = "bash"
+argv_shape = ["scripts/release.sh"]
+network_reach = false
+called_by = [".github/workflows/release.yml"]
+owner = "release"
+reason = "Release helper fixture."
+covered_by = "doc:docs/release/process.md"
+created = "2026-05-09"
+expires = "permanent"
+"#,
+            entry_id: "matrix-process-covered",
+            family: Some("process_spawn"),
+            expected_evidence: &["doc:docs/release/process.md"],
+            expected_derived_evidence: &[
+                "legacy-policy:matrix-process-covered",
+                "binary:bash",
+                "argv_shape:scripts/release.sh",
+                "network_reach:false",
+                "called_by:.github/workflows/release.yml",
+            ],
+            expected_links: &["legacy-policy:matrix-process-covered"],
+        },
+        EvidenceMatrixCase {
             label: "network covered_by",
             file_name: "network-allowlist.toml",
             policy_text: r#"schema_version = 1
@@ -276,6 +394,38 @@ expires = "permanent"
                 "auth_secret:GITHUB_TOKEN",
             ],
             expected_links: &["legacy-policy:matrix-network"],
+        },
+        EvidenceMatrixCase {
+            label: "network evidence",
+            file_name: "network-allowlist.toml",
+            policy_text: r#"schema_version = 1
+policy = "network-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "matrix-network-evidence"
+destination = "api.github.com"
+auth_required = true
+auth_secret = "GITHUB_TOKEN"
+lane = "release"
+owner = "release/ci"
+reason = "Release API fixture."
+evidence = ["doc:docs/network.md", "issue:#345"]
+created = "2026-05-09"
+expires = "permanent"
+"#,
+            entry_id: "matrix-network-evidence",
+            family: Some("network_destination"),
+            expected_evidence: &["doc:docs/network.md", "issue:#345"],
+            expected_derived_evidence: &[
+                "legacy-policy:matrix-network-evidence",
+                "destination:api.github.com",
+                "lane:release",
+                "auth_required:true",
+                "auth_secret:GITHUB_TOKEN",
+            ],
+            expected_links: &["legacy-policy:matrix-network-evidence"],
         },
         EvidenceMatrixCase {
             label: "clippy covered_by",

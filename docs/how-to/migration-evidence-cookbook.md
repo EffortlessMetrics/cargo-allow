@@ -34,6 +34,8 @@ Treat migrated evidence as review context, not proof cargo-allow generated.
 
 Preserved evidence usually comes from legacy `evidence` or `covered_by` fields.
 Keep it when the reference still describes the retained exception.
+The migration fixture matrix covers both legacy spellings for workflow,
+dependency-surface, process, and network policy adapters.
 
 Derived traceability such as `legacy-policy:<id>` points back to the source
 policy. It is useful lineage, but it is not proof that the exception remains
