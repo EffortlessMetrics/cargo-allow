@@ -8,6 +8,8 @@ pub struct FindingPostureChange {
     pub finding_kind: String,
     pub family: Option<String>,
     pub path: String,
+    pub line: Option<u32>,
+    pub column: Option<u32>,
     pub source_package: Option<String>,
 }
 
@@ -93,6 +95,8 @@ fn finding_posture_change(
         finding_kind: finding.kind.as_str().to_string(),
         family: finding.family.clone(),
         path: normalize_path(&finding.path),
+        line: finding.span.as_ref().map(|span| span.line),
+        column: finding.span.as_ref().map(|span| span.column),
         source_package: finding.source_package_name().map(ToOwned::to_owned),
     }
 }

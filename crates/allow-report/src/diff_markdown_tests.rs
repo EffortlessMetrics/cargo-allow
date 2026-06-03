@@ -8,6 +8,8 @@ fn diff_pr_summary_markdown_reports_net_posture() {
         kind: "panic",
         family: Some("unwrap"),
         path: "src/lib.rs",
+        line: None,
+        column: None,
         source_package: None,
     }];
     let policy_changes = vec![DiffPolicyChange {
@@ -155,6 +157,8 @@ fn diff_posture_tables_escape_markdown_cells() {
         kind: "panic|custom",
         family: Some("unwrap`family"),
         path: "src/lib.rs",
+        line: Some(12),
+        column: Some(5),
         source_package: Some("parser|core"),
     }];
     let policy_changes = vec![DiffPolicyChange {
@@ -179,6 +183,7 @@ fn diff_posture_tables_escape_markdown_cells() {
 
     assert!(findings.contains("panic\\|custom"));
     assert!(findings.contains("unwrap\\`family"));
+    assert!(findings.contains("src/lib.rs:12:5"));
     assert!(findings.contains("parser\\|core"));
     assert!(policy.contains("allow\\|0001"));
     assert!(policy.contains("message with \\| pipe"));
@@ -193,6 +198,8 @@ fn diff_finding_markdown_groups_findings_by_change() {
             kind: "panic",
             family: Some("unwrap"),
             path: "src/old.rs",
+            line: None,
+            column: None,
             source_package: None,
         },
         DiffFindingChange {
@@ -201,6 +208,8 @@ fn diff_finding_markdown_groups_findings_by_change() {
             kind: "unsafe",
             family: Some("unsafe_block"),
             path: "src/new.rs",
+            line: Some(7),
+            column: Some(3),
             source_package: Some("runtime"),
         },
     ];
@@ -218,7 +227,9 @@ fn diff_finding_markdown_groups_findings_by_change() {
         "markdown finding sections should show attention before improvements"
     );
     assert!(markdown.contains("| Change | Kind | Family | Path | Source Package |"));
-    assert!(markdown.contains("| `new` | `unsafe` | `unsafe_block` | `src/new.rs` | `runtime` |"));
+    assert!(
+        markdown.contains("| `new` | `unsafe` | `unsafe_block` | `src/new.rs:7:3` | `runtime` |")
+    );
     assert!(markdown.contains("| `removed` | `panic` | `unwrap` | `src/old.rs` |"));
 }
 
@@ -387,6 +398,8 @@ fn diff_pr_summary_markdown_highlights_new_findings() {
         kind: "panic",
         family: Some("unwrap"),
         path: "src/lib.rs",
+        line: Some(12),
+        column: Some(5),
         source_package: Some("parser"),
     }];
 
@@ -395,7 +408,7 @@ fn diff_pr_summary_markdown_highlights_new_findings() {
     assert!(summary.contains("**Net posture:** `review-required`"));
     assert!(summary.contains("### Finding Attention"));
     assert!(summary.contains("| Change | Kind | Family | Path | Source Package |"));
-    assert!(summary.contains("| `new` | `panic` | `unwrap` | `src/lib.rs` | `parser` |"));
+    assert!(summary.contains("| `new` | `panic` | `unwrap` | `src/lib.rs:12:5` | `parser` |"));
     assert!(
         !summary.contains("### Finding Improvements"),
         "new-only summaries should not create finding improvement rows"
@@ -410,6 +423,8 @@ fn diff_pr_summary_markdown_reports_omitted_finding_highlights() {
         kind: "panic",
         family: Some("unwrap"),
         path: "src/lib.rs",
+        line: None,
+        column: None,
         source_package: None,
     };
     let finding_changes = vec![finding; 9];

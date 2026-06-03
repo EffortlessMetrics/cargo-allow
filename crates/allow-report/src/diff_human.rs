@@ -219,9 +219,18 @@ fn append_finding_change_human_row(out: &mut String, change: &DiffFindingChange<
             .family
             .map(|family| format!(".{family}"))
             .unwrap_or_default(),
-        change.path,
+        finding_location(change),
         source_package
     ));
+}
+
+fn finding_location(change: &DiffFindingChange<'_>) -> String {
+    match (change.line, change.column) {
+        (Some(line), Some(column)) => format!("{}:{line}:{column}", change.path),
+        (Some(line), None) => format!("{}:{line}", change.path),
+        (None, Some(column)) => format!("{} column={column}", change.path),
+        (None, None) => change.path.to_string(),
+    }
 }
 
 pub fn render_diff_policy_changes_human(changes: &[DiffPolicyChange<'_>]) -> String {

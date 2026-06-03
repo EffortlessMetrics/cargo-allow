@@ -78,6 +78,11 @@ fn json_report_includes_structured_posture_changes() {
         finding_change.get("path").and_then(Value::as_str),
         Some("src/lib.rs")
     );
+    assert_eq!(finding_change.get("line").and_then(Value::as_u64), Some(12));
+    assert_eq!(
+        finding_change.get("column").and_then(Value::as_u64),
+        Some(5)
+    );
     assert_eq!(
         finding_change.get("source_package").and_then(Value::as_str),
         Some("parser")

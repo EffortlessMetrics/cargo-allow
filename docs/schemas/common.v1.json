@@ -1931,6 +1931,16 @@
           "type": "string",
           "minLength": 1
         },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Optional one-based source line for review/navigation only; excluded from stable finding identity."
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Optional one-based source character column for review/navigation only; excluded from stable finding identity."
+        },
         "source_package": {
           "type": [
             "string",

@@ -57,3 +57,16 @@ fn finding_posture_preserves_source_package_context() {
         .unwrap_or_else(|| std::panic::panic_any("expected one posture change"));
     assert_eq!(change.source_package.as_deref(), Some("parser"));
 }
+
+#[test]
+fn finding_posture_preserves_source_location_hints() {
+    let head = finding("src/lib.rs", 42, "load");
+
+    let changes = finding_posture_changes(&[], &[head]);
+
+    let change = changes
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one posture change"));
+    assert_eq!(change.line, Some(42));
+    assert_eq!(change.column, Some(1));
+}

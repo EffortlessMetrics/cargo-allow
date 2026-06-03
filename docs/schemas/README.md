@@ -152,7 +152,9 @@ Diff reports may also include optional `diff.summary.evidence_added`,
 rows changed in the compared PR posture. These counts summarize the
 corresponding `diff.policy_changes[].kind` rows; the rows remain the source for
 severity, message, and added/removed values.
-Diff finding-change rows may include optional
+Diff finding-change rows may include optional `diff.finding_changes[].line` and
+`diff.finding_changes[].column` source locations for review/navigation only;
+they are not part of stable finding identity. Rows may also include optional
 `diff.finding_changes[].source_package` when cargo-allow can derive package
 context from source-tree `Cargo.toml` text; this is routing context, not Cargo
 metadata.

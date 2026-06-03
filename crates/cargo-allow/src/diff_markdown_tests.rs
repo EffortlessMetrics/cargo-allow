@@ -106,6 +106,8 @@ fn finding_posture_change(
         finding_kind: finding_kind.to_string(),
         family: family.map(str::to_string),
         path: path.to_string(),
+        line: None,
+        column: None,
         source_package: None,
     }
 }
