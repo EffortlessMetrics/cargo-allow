@@ -135,8 +135,8 @@ When the PR summary reports evidence health or baseline debt, route follow-up
 with focused worklists:
 
 ```bash
-cargo-allow worklist --item-kind broken_evidence_link --format json
-cargo-allow worklist --item-kind weak_evidence_reference --format json
+cargo-allow worklist --broken-evidence --format json
+cargo-allow worklist --weak-evidence --format json
 cargo-allow worklist --missing-evidence --format json
 cargo-allow worklist --item-kind baseline_debt --format json
 ```

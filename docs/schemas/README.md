@@ -483,9 +483,9 @@ still including the count in saved report and receipt artifacts when those
 outputs are requested. `doctor` reports invalid policy state, `add` validates
 evidence before writing a reviewed entry, and `prune --stale --write`
 revalidates the remaining policy before writing. Use
-`cargo-allow worklist --item-kind broken_evidence_link --format json` for the
+`cargo-allow worklist --broken-evidence --format json` for the
 broken-link repair queue,
-`cargo-allow worklist --item-kind weak_evidence_reference --format json` for
+`cargo-allow worklist --weak-evidence --format json` for
 unstructured or unknown-prefix evidence/link cleanup, and
 the default `cargo-allow worklist --format json` queue for retained entries
 that still need evidence references. Use

@@ -15,7 +15,7 @@ For narrower queues:
 ```bash
 cargo-allow worklist --risk high --difficulty small --format json
 cargo-allow worklist --baseline-debt --format json
-cargo-allow worklist --item-kind broken_evidence_link --format json
+cargo-allow worklist --broken-evidence --format json
 cargo-allow worklist --allow-id allow-0042 --format json
 ```
 

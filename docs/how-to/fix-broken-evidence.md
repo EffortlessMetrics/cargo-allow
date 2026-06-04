@@ -6,14 +6,14 @@ Use this flow when policy points at missing or invalid local evidence.
 
 ```bash
 cargo-allow list --broken-evidence
-cargo-allow worklist --item-kind broken_evidence_link --format json
+cargo-allow worklist --broken-evidence --format json
 ```
 
 For weak or untyped evidence references:
 
 ```bash
 cargo-allow list --weak-evidence
-cargo-allow worklist --item-kind weak_evidence_reference --format json
+cargo-allow worklist --weak-evidence --format json
 ```
 
 ## Repair
