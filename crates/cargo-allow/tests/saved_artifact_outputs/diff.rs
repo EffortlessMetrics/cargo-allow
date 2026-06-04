@@ -2751,6 +2751,103 @@ fn saved_diff_output_covers_workspace_generated_addition_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_workspace_generated_removal_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-workspace-generated-removed");
+    fixture.write_panic_source();
+    write_policy_with_workspace_generated(&fixture, &["target/**", "vendor/**", "schemas/**"]);
+    commit_fixture_base(&fixture.root);
+    write_policy_with_workspace_generated(&fixture, &["target/**", "vendor/**"]);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("improved"),
+        "diff workspace generated removal net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff workspace generated removal improvement count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str)
+                == Some("workspace_generated_removed")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("workspace.generated")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected workspace generated removal policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("improvement"),
+        "workspace generated removal severity"
+    );
+    assert!(
+        change
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("removed generated source-tree scope")),
+        "workspace generated removal message should name generated source-tree scope: {change:?}"
+    );
+    assert_eq!(
+        change
+            .pointer("/scope/field")
+            .and_then(serde_json::Value::as_str),
+        Some("effective"),
+        "workspace generated removal scope field"
+    );
+    assert_eq!(
+        change
+            .pointer("/scope/before")
+            .and_then(serde_json::Value::as_str),
+        Some("schemas/**"),
+        "workspace generated removal scope before"
+    );
+    assert!(
+        change
+            .pointer("/scope/after")
+            .is_some_and(|value| value.is_null()),
+        "workspace generated removal scope after should be null: {change:?}"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_owner_removal_details() {
     let fixture = SourceTreeFixture::new("saved-diff-owner-removed");
     fixture.write_panic_source();
