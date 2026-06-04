@@ -374,6 +374,139 @@ fn saved_worklist_output_includes_policy_baseline_debt_items() {
 }
 
 #[test]
+fn saved_worklist_output_routes_unsafe_baseline_debt_closeout() {
+    let fixture = SourceTreeFixture::new("saved-worklist-unsafe-baseline-debt");
+    fixture.write_policy_with_unsafe_baseline_debt_entry();
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let worklist = artifact_dir.join("worklist-unsafe-baseline-debt.json");
+
+    run_cargo_allow(&[
+        "worklist",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--kind",
+        "unsafe",
+        "--item-kind",
+        "baseline_debt",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&worklist),
+    ]);
+    let value =
+        assert_source_syntax_artifact(&worklist, allow_report::WORKLIST_SCHEMA_ID, "worklist");
+    assert_eq!(
+        value
+            .pointer("/summary/work_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "unsafe baseline-debt closeout should contain one item"
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/kind")
+            .and_then(serde_json::Value::as_str),
+        Some("unsafe"),
+        "worklist artifact should preserve the unsafe kind filter"
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/item_kind")
+            .and_then(serde_json::Value::as_str),
+        Some("baseline_debt"),
+        "worklist artifact should preserve the baseline-debt item-kind filter"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/kind")
+            .and_then(serde_json::Value::as_str),
+        Some("baseline_debt"),
+        "unsafe baseline-debt worklist item kind"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/exception_kind")
+            .and_then(serde_json::Value::as_str),
+        Some("unsafe"),
+        "unsafe baseline-debt exception kind"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/family")
+            .and_then(serde_json::Value::as_str),
+        Some("unsafe_block"),
+        "unsafe baseline-debt family"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/risk")
+            .and_then(serde_json::Value::as_str),
+        Some("high"),
+        "unsafe baseline-debt risk"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/difficulty")
+            .and_then(serde_json::Value::as_str),
+        Some("medium"),
+        "unsafe baseline-debt difficulty"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/status")
+            .and_then(serde_json::Value::as_str),
+        Some("baseline_debt"),
+        "unsafe baseline-debt status"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/allow_id")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-unsafe-baseline-debt"),
+        "unsafe baseline-debt allow id"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/classification")
+            .and_then(serde_json::Value::as_str),
+        Some("baseline_debt"),
+        "unsafe baseline-debt classification"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_count")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "unsafe baseline-debt weak placeholder evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/proof_commands/0")
+            .and_then(serde_json::Value::as_str),
+        Some("cargo-allow explain allow-unsafe-baseline-debt"),
+        "unsafe baseline-debt explain proof command"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/proof_commands/1")
+            .and_then(serde_json::Value::as_str),
+        Some("cargo-allow list --allow-id allow-unsafe-baseline-debt --format json"),
+        "unsafe baseline-debt list allow-id proof command"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/proof_commands/2")
+            .and_then(serde_json::Value::as_str),
+        Some("cargo-allow worklist --allow-id allow-unsafe-baseline-debt --format json"),
+        "unsafe baseline-debt worklist allow-id proof command"
+    );
+    assert_proof_commands_stay_cargo_allow(&value, "/work_items/0/proof_commands");
+}
+
+#[test]
 fn saved_worklist_output_includes_invalid_evidence_scope_items() {
     let fixture = SourceTreeFixture::new("saved-worklist-invalid-evidence-scope");
     fixture.write_policy_with_invalid_evidence_scope();
