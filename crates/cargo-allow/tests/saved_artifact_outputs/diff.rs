@@ -330,6 +330,107 @@ fn saved_diff_output_covers_selector_precision_decrease_details() {
     );
 }
 
+#[test]
+fn saved_diff_output_covers_evidence_removal_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-evidence-removed");
+    fixture.write_panic_source();
+    write_policy_with_optional_evidence(&fixture, Some("doc:docs/safety.md"));
+    commit_fixture_base(&fixture.root);
+    write_policy_with_optional_evidence(&fixture, None);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--config",
+            "policy/allow.toml",
+            "--base",
+            "HEAD",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("worse"),
+        "diff evidence removal net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/evidence_removed")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff evidence removal summary count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/evidence_removal_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff evidence removal failure count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("evidence_removed")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-evidence")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected evidence removal policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("fail"),
+        "evidence removal severity"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/field")
+            .and_then(serde_json::Value::as_str),
+        Some("evidence"),
+        "evidence removal field"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/removed/0")
+            .and_then(serde_json::Value::as_str),
+        Some("doc:docs/safety.md"),
+        "evidence removal raw reference"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/added")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "evidence removal added references"
+    );
+}
+
 fn write_policy_with_occurrence_limit(fixture: &SourceTreeFixture, occurrence_limit: u32) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
@@ -348,6 +449,44 @@ reason = "Fixture keeps saved diff occurrence-limit posture details covered."
 evidence = ["test:saved_diff_output_covers_occurrence_limit_loosening_details"]
 occurrence_limit = {occurrence_limit}
 created = "2026-05-29"
+review_after = "2026-08-29"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    ));
+    fs::write(fixture.root.join("policy/allow.toml"), policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+}
+
+fn write_policy_with_optional_evidence(fixture: &SourceTreeFixture, evidence: Option<&str>) {
+    fixture.write_minimal_policy();
+    let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+    fs::create_dir_all(fixture.root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+    fs::write(
+        fixture.root.join("docs/safety.md"),
+        "# Safety evidence\n\nFixture evidence artifact.\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence fixture: {err}")));
+    let evidence = evidence
+        .map(|evidence| format!("evidence = [\"{evidence}\"]\n"))
+        .unwrap_or_default();
+    policy.push_str(&format!(
+        r#"
+
+[[allow]]
+id = "allow-unwrap-evidence"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core/tests"
+classification = "reviewed_fixture"
+reason = "Fixture keeps saved diff evidence removal details covered."
+{evidence}created = "2026-05-29"
 review_after = "2026-08-29"
 
 [allow.selector]
