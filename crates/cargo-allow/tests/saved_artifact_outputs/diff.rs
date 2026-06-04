@@ -1194,6 +1194,129 @@ fn saved_diff_output_covers_traceability_link_change_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_broken_traceability_link_addition_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-broken-traceability-link-added");
+    fixture.write_panic_source();
+    write_policy_with_traceability_links(&fixture, &[]);
+    commit_fixture_base(&fixture.root);
+    write_policy_with_missing_traceability_links(&fixture, &["doc:docs/missing-link.md"]);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--config",
+            "policy/allow.toml",
+            "--base",
+            "HEAD",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("worse"),
+        "diff broken traceability link addition net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff broken traceability link addition failure count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/link_added")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff broken traceability link addition summary count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/broken_link_added")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff broken traceability link addition broken-link count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/broken_evidence_links")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff broken traceability link inventory count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let added = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("link_added")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-links")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected broken traceability link addition policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        added.get("severity").and_then(serde_json::Value::as_str),
+        Some("fail"),
+        "broken traceability link addition severity"
+    );
+    assert!(
+        added
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message
+                .contains("local link added outside compared source-tree inventory")),
+        "broken traceability link addition message should route inventory repair: {added:?}"
+    );
+    assert_eq!(
+        added
+            .pointer("/evidence/field")
+            .and_then(serde_json::Value::as_str),
+        Some("links"),
+        "broken traceability link addition field"
+    );
+    assert_eq!(
+        added
+            .pointer("/evidence/added/0")
+            .and_then(serde_json::Value::as_str),
+        Some("doc:docs/missing-link.md"),
+        "broken traceability link addition raw reference"
+    );
+    assert_eq!(
+        added
+            .pointer("/evidence/removed")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "broken traceability link addition removed references"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_lifecycle_extension_details() {
     let fixture = SourceTreeFixture::new("saved-diff-lifecycle-extended");
     fixture.write_panic_source();
@@ -2510,27 +2633,41 @@ callee = "unwrap"
 }
 
 fn write_policy_with_traceability_links(fixture: &SourceTreeFixture, links: &[&str]) {
+    write_policy_with_traceability_links_inner(fixture, links, true);
+}
+
+fn write_policy_with_missing_traceability_links(fixture: &SourceTreeFixture, links: &[&str]) {
+    write_policy_with_traceability_links_inner(fixture, links, false);
+}
+
+fn write_policy_with_traceability_links_inner(
+    fixture: &SourceTreeFixture,
+    links: &[&str],
+    create_local_files: bool,
+) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
-    for path in links
-        .iter()
-        .copied()
-        .filter_map(local_traceability_link_target)
-    {
-        let path = fixture.root.join(path);
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).unwrap_or_else(|err| {
-                std::panic::panic_any(format!("create traceability link dir: {err}"))
+    if create_local_files {
+        for path in links
+            .iter()
+            .copied()
+            .filter_map(local_traceability_link_target)
+        {
+            let path = fixture.root.join(path);
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent).unwrap_or_else(|err| {
+                    std::panic::panic_any(format!("create traceability link dir: {err}"))
+                });
+            }
+            fs::write(
+                path,
+                "# Traceability link\n\nFixture traceability artifact.\n",
+            )
+            .unwrap_or_else(|err| {
+                std::panic::panic_any(format!("write traceability link fixture: {err}"))
             });
         }
-        fs::write(
-            path,
-            "# Traceability link\n\nFixture traceability artifact.\n",
-        )
-        .unwrap_or_else(|err| {
-            std::panic::panic_any(format!("write traceability link fixture: {err}"))
-        });
     }
     let links = if links.is_empty() {
         String::new()
