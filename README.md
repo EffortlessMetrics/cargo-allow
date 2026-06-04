@@ -229,6 +229,7 @@ pass CI.
 
 ## Documentation
 
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
 - Source exception ledger: [docs/source-exception-ledger.md](docs/source-exception-ledger.md)
 - Getting started: [docs/getting-started.md](docs/getting-started.md)
 - Claim boundaries: [docs/claim-boundaries.md](docs/claim-boundaries.md)
