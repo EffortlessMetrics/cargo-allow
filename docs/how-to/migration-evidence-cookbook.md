@@ -38,8 +38,9 @@ Treat migrated evidence as review context, not proof cargo-allow generated.
 
 Preserved evidence usually comes from legacy `evidence` or `covered_by` fields.
 Keep it when the reference still describes the retained exception.
-The migration fixture matrix covers both legacy spellings for generated,
-executable, workflow, dependency-surface, process, and network policy adapters.
+The migration fixture matrix covers both legacy spellings for non-Rust,
+generated, executable, Clippy, no-panic, unsafe, workflow, dependency-surface,
+process, and network policy adapters.
 The metadata matrix covers representative owner, reason, classification, and
 lifecycle preservation for migration adapters that carry review context.
 
