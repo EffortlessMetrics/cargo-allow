@@ -958,6 +958,105 @@ fn saved_diff_output_covers_owner_removal_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_owner_unassigned_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-owner-unassigned");
+    fixture.write_panic_source();
+    write_policy_with_optional_owner(&fixture, Some("core/tests"));
+    commit_fixture_base(&fixture.root);
+    write_policy_with_optional_owner(&fixture, Some("unowned"));
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--config",
+            "policy/allow.toml",
+            "--base",
+            "HEAD",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("worse"),
+        "diff owner-unassigned net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff owner-unassigned failure count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("owner_unassigned")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-owner")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected owner-unassigned policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("fail"),
+        "owner-unassigned severity"
+    );
+    assert_eq!(
+        change
+            .pointer("/metadata/field")
+            .and_then(serde_json::Value::as_str),
+        Some("owner"),
+        "owner-unassigned metadata field"
+    );
+    assert_eq!(
+        change
+            .pointer("/metadata/before")
+            .and_then(serde_json::Value::as_str),
+        Some("core/tests"),
+        "owner-unassigned metadata before"
+    );
+    assert_eq!(
+        change
+            .pointer("/metadata/after")
+            .and_then(serde_json::Value::as_str),
+        Some("unowned"),
+        "owner-unassigned metadata after"
+    );
+    assert!(
+        changes.iter().all(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) != Some("owner_changed")
+        }),
+        "owner-unassigned should not be downgraded to owner_changed: {changes:?}"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_reason_removal_details() {
     let fixture = SourceTreeFixture::new("saved-diff-reason-removed");
     fixture.write_panic_source();
