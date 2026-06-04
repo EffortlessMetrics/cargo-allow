@@ -1032,6 +1032,168 @@ fn saved_diff_output_covers_weak_evidence_removal_improvement_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_traceability_link_change_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-traceability-link-changed");
+    fixture.write_panic_source();
+    write_policy_with_traceability_links(&fixture, &["adr:docs/adr/0001.md", "issue:123"]);
+    commit_fixture_base(&fixture.root);
+    write_policy_with_traceability_links(&fixture, &["issue:123", "pr:456"]);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--config",
+            "policy/allow.toml",
+            "--base",
+            "HEAD",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("worse"),
+        "diff traceability link change net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff traceability link removal failure count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff traceability link addition improvement count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/link_removed")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff traceability link removal summary count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/link_removal_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff traceability link removal failure summary count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/link_added")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff traceability link addition summary count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let removed = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("link_removed")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-links")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected traceability link removal policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        removed.get("severity").and_then(serde_json::Value::as_str),
+        Some("fail"),
+        "traceability link removal severity"
+    );
+    assert_eq!(
+        removed
+            .pointer("/evidence/field")
+            .and_then(serde_json::Value::as_str),
+        Some("links"),
+        "traceability link removal field"
+    );
+    assert_eq!(
+        removed
+            .pointer("/evidence/removed/0")
+            .and_then(serde_json::Value::as_str),
+        Some("adr:docs/adr/0001.md"),
+        "traceability link removal raw reference"
+    );
+    assert_eq!(
+        removed
+            .pointer("/evidence/added")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "traceability link removal added references"
+    );
+
+    let added = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("link_added")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-links")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected traceability link addition policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        added.get("severity").and_then(serde_json::Value::as_str),
+        Some("improvement"),
+        "traceability link addition severity"
+    );
+    assert_eq!(
+        added
+            .pointer("/evidence/field")
+            .and_then(serde_json::Value::as_str),
+        Some("links"),
+        "traceability link addition field"
+    );
+    assert_eq!(
+        added
+            .pointer("/evidence/added/0")
+            .and_then(serde_json::Value::as_str),
+        Some("pr:456"),
+        "traceability link addition raw reference"
+    );
+    assert_eq!(
+        added
+            .pointer("/evidence/removed")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "traceability link addition removed references"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_lifecycle_extension_details() {
     let fixture = SourceTreeFixture::new("saved-diff-lifecycle-extended");
     fixture.write_panic_source();
@@ -2345,6 +2507,73 @@ callee = "unwrap"
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
         .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+}
+
+fn write_policy_with_traceability_links(fixture: &SourceTreeFixture, links: &[&str]) {
+    fixture.write_minimal_policy();
+    let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+    for path in links
+        .iter()
+        .copied()
+        .filter_map(local_traceability_link_target)
+    {
+        let path = fixture.root.join(path);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).unwrap_or_else(|err| {
+                std::panic::panic_any(format!("create traceability link dir: {err}"))
+            });
+        }
+        fs::write(
+            path,
+            "# Traceability link\n\nFixture traceability artifact.\n",
+        )
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("write traceability link fixture: {err}"))
+        });
+    }
+    let links = if links.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "links = [{}]\n",
+            links
+                .iter()
+                .map(|reference| format!("\"{reference}\""))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    };
+    policy.push_str(&format!(
+        r#"
+
+[[allow]]
+id = "allow-unwrap-links"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core/tests"
+classification = "reviewed_fixture"
+reason = "Fixture keeps saved diff traceability link posture details covered."
+evidence = ["test:saved_diff_output_covers_traceability_link_change_details"]
+{links}created = "2026-05-29"
+review_after = "2026-08-29"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    ));
+    fs::write(fixture.root.join("policy/allow.toml"), policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+}
+
+fn local_traceability_link_target(reference: &str) -> Option<&str> {
+    reference
+        .strip_prefix("adr:")
+        .or_else(|| reference.strip_prefix("doc:"))
+        .or_else(|| reference.strip_prefix("spec:"))
 }
 
 fn write_policy_with_selector_container(fixture: &SourceTreeFixture, include_container: bool) {
