@@ -75,6 +75,31 @@ expires = "permanent"
             expected_links: &[],
         },
         EvidenceMatrixCase {
+            label: "non-rust covered_by",
+            file_name: "non-rust-allowlist.toml",
+            policy_text: r#"schema_version = 1
+policy = "non-rust-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "matrix-non-rust-covered"
+glob = ".github/workflows/*.yml"
+category = "ci_declarative"
+owner = "release/ci"
+reason = "GitHub workflow files are reviewed CI policy."
+broad_glob_reason = "Workflow files are all declarative CI surfaces."
+covered_by = "doc:docs/ci.md"
+created = "2026-05-09"
+expires = "permanent"
+"#,
+            entry_id: "matrix-non-rust-covered",
+            family: None,
+            expected_evidence: &["doc:docs/ci.md"],
+            expected_derived_evidence: &[],
+            expected_links: &[],
+        },
+        EvidenceMatrixCase {
             label: "generated covered_by",
             file_name: "generated-allowlist.toml",
             policy_text: r#"schema_version = 1
@@ -484,6 +509,26 @@ expires = "permanent"
             expected_links: &["legacy-policy:matrix-network-evidence"],
         },
         EvidenceMatrixCase {
+            label: "clippy evidence",
+            file_name: "clippy-exceptions.toml",
+            policy_text: r#"schema_version = 1
+policy = "clippy-exceptions"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "matrix-clippy-evidence"
+path = "src/lib.rs"
+lint = "clippy::unwrap_used"
+evidence = ["test:lint_policy_is_linked", "issue:#123"]
+"#,
+            entry_id: "matrix-clippy-evidence",
+            family: Some("expect_attribute"),
+            expected_evidence: &["test:lint_policy_is_linked", "issue:#123"],
+            expected_derived_evidence: &[],
+            expected_links: &["legacy-policy:matrix-clippy-evidence"],
+        },
+        EvidenceMatrixCase {
             label: "clippy covered_by",
             file_name: "clippy-exceptions.toml",
             policy_text: r#"schema_version = 1
@@ -527,6 +572,29 @@ callee = "panic"
             expected_links: &["legacy-policy:no-panic-allowlist"],
         },
         EvidenceMatrixCase {
+            label: "no-panic covered_by",
+            file_name: "no-panic-allowlist.toml",
+            policy_text: r#"schema_version = 1
+policy = "no-panic-allowlist"
+
+[[allow]]
+id = "matrix-no-panic-covered"
+path = "src/lib.rs"
+family = "unwrap"
+reason = "Parser validates optional value."
+covered_by = "test:parser_validates_optional_value"
+
+[allow.selector]
+kind = "method-call"
+callee = "unwrap"
+"#,
+            entry_id: "matrix-no-panic-covered",
+            family: Some("unwrap"),
+            expected_evidence: &["test:parser_validates_optional_value"],
+            expected_derived_evidence: &[],
+            expected_links: &["legacy-policy:no-panic-allowlist"],
+        },
+        EvidenceMatrixCase {
             label: "unsafe evidence",
             file_name: "unsafe-allowlist.toml",
             policy_text: r#"schema_version = 1
@@ -554,6 +622,35 @@ container = "read"
             expected_evidence: &["unsafe-review:docs/evidence/unsafe/read.json"],
             expected_derived_evidence: &[],
             expected_links: &["legacy-policy:matrix-unsafe"],
+        },
+        EvidenceMatrixCase {
+            label: "unsafe covered_by",
+            file_name: "unsafe-allowlist.toml",
+            policy_text: r#"schema_version = 1
+policy = "unsafe-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "matrix-unsafe-covered"
+path = "src/lib.rs"
+family = "unsafe_fn"
+owner = "runtime"
+classification = "reviewed_unsafe_boundary"
+reason = "Caller validates FFI boundary before call."
+covered_by = "unsafe-review:docs/evidence/unsafe/ffi.json"
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "unsafe-fn"
+container = "ffi_call"
+"#,
+            entry_id: "matrix-unsafe-covered",
+            family: Some("unsafe_fn"),
+            expected_evidence: &["unsafe-review:docs/evidence/unsafe/ffi.json"],
+            expected_derived_evidence: &[],
+            expected_links: &["legacy-policy:matrix-unsafe-covered"],
         },
     ]
 }
