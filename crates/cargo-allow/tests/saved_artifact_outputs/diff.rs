@@ -1439,6 +1439,118 @@ fn saved_diff_output_covers_weak_traceability_link_addition_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_weak_traceability_link_removal_improvement_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-weak-traceability-link-removed-improved");
+    fixture.write_panic_source();
+    write_policy_with_traceability_links(&fixture, &["issue:123", "spreadsheet:manual-review"]);
+    commit_fixture_base(&fixture.root);
+    write_policy_with_traceability_links(&fixture, &["issue:123"]);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("improved"),
+        "diff weak traceability link removal net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff weak traceability link removal improvement count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/link_removed")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff weak traceability link removal summary count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/link_removal_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff weak traceability link removal improvement summary count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let removed = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("link_removed")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-links")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected weak traceability link removal policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        removed.get("severity").and_then(serde_json::Value::as_str),
+        Some("improvement"),
+        "weak traceability link removal severity"
+    );
+    assert!(
+        removed
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("weak traceability link removed")),
+        "weak traceability link removal message should name weak link posture: {removed:?}"
+    );
+    assert_eq!(
+        removed
+            .pointer("/evidence/field")
+            .and_then(serde_json::Value::as_str),
+        Some("links"),
+        "weak traceability link removal field"
+    );
+    assert_eq!(
+        removed
+            .pointer("/evidence/removed/0")
+            .and_then(serde_json::Value::as_str),
+        Some("spreadsheet:manual-review"),
+        "weak traceability link removal raw reference"
+    );
+    assert_eq!(
+        removed
+            .pointer("/evidence/added")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "weak traceability link removal added references"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_lifecycle_extension_details() {
     let fixture = SourceTreeFixture::new("saved-diff-lifecycle-extended");
     fixture.write_panic_source();
