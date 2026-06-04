@@ -136,6 +136,90 @@ fn saved_diff_output_covers_occurrence_limit_loosening_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_occurrence_limit_tightening_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-occurrence-limit-tightened");
+    fixture.write_panic_source();
+    write_policy_with_occurrence_limit(&fixture, 3);
+    commit_fixture_base(&fixture.root);
+    write_policy_with_occurrence_limit(&fixture, 1);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("improved"),
+        "diff occurrence-limit tightening net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff occurrence-limit tightening improvement count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str)
+                == Some("occurrence_limit_tightened")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-occurrence-limit")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected occurrence-limit tightening policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("improvement"),
+        "occurrence-limit tightening severity"
+    );
+    assert_eq!(
+        change
+            .pointer("/occurrence_limit/before")
+            .and_then(serde_json::Value::as_u64),
+        Some(3),
+        "occurrence-limit tightening before detail"
+    );
+    assert_eq!(
+        change
+            .pointer("/occurrence_limit/after")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "occurrence-limit tightening after detail"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_scope_broadening_details() {
     let fixture = SourceTreeFixture::new("saved-diff-scope-broadened");
     fixture.write_panic_source();
