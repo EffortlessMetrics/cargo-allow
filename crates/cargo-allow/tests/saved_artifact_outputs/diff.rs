@@ -1663,6 +1663,123 @@ fn saved_diff_output_covers_weak_traceability_link_removal_review_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_typed_traceability_link_removal_review_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-typed-traceability-link-removed-review");
+    fixture.write_panic_source();
+    write_policy_with_traceability_links(&fixture, &["issue:123", "pr:456"]);
+    commit_fixture_base(&fixture.root);
+    write_policy_with_traceability_links(&fixture, &["pr:456"]);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("review-required"),
+        "diff typed traceability link removal review net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_review_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff typed traceability link removal review count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/link_removed")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff typed traceability link removal summary count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/link_removal_review_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff typed traceability link removal review summary count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let removed = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("link_removed")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-links")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected typed traceability link removal review policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        removed.get("severity").and_then(serde_json::Value::as_str),
+        Some("review"),
+        "typed traceability link removal review severity"
+    );
+    let message = removed
+        .get("message")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_else(|| std::panic::panic_any("typed traceability link removal message"));
+    assert!(
+        message.contains("traceability link removed"),
+        "typed traceability link removal message should name removed link posture: {removed:?}"
+    );
+    assert!(
+        !message.contains("local traceability link removed"),
+        "typed traceability link removal should not be reported as local removal: {removed:?}"
+    );
+    assert_eq!(
+        removed
+            .pointer("/evidence/field")
+            .and_then(serde_json::Value::as_str),
+        Some("links"),
+        "typed traceability link removal review field"
+    );
+    assert_eq!(
+        removed
+            .pointer("/evidence/removed/0")
+            .and_then(serde_json::Value::as_str),
+        Some("issue:123"),
+        "typed traceability link removal review raw reference"
+    );
+    assert_eq!(
+        removed
+            .pointer("/evidence/added")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "typed traceability link removal review added references"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_lifecycle_extension_details() {
     let fixture = SourceTreeFixture::new("saved-diff-lifecycle-extended");
     fixture.write_panic_source();
