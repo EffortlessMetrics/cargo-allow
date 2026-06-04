@@ -507,6 +507,244 @@ fn saved_worklist_output_routes_unsafe_baseline_debt_closeout() {
 }
 
 #[test]
+fn saved_worklist_output_routes_unsafe_broken_evidence_closeout() {
+    let fixture = SourceTreeFixture::new("saved-worklist-unsafe-broken-evidence-closeout");
+    fixture.write_policy_with_broken_evidence();
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let worklist = artifact_dir.join("worklist-unsafe-broken-evidence.json");
+
+    run_cargo_allow(&[
+        "worklist",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--kind",
+        "unsafe",
+        "--item-kind",
+        "broken_evidence_link",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&worklist),
+    ]);
+    let value =
+        assert_source_syntax_artifact(&worklist, allow_report::WORKLIST_SCHEMA_ID, "worklist");
+    assert_eq!(
+        value
+            .pointer("/summary/work_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "unsafe broken-evidence closeout should contain one item"
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/kind")
+            .and_then(serde_json::Value::as_str),
+        Some("unsafe"),
+        "worklist artifact should preserve the unsafe kind filter"
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/item_kind")
+            .and_then(serde_json::Value::as_str),
+        Some("broken_evidence_link"),
+        "worklist artifact should preserve the broken-evidence item-kind filter"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/item_kinds/broken_evidence_link")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "unsafe broken-evidence closeout summary should count the routed item"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/kind")
+            .and_then(serde_json::Value::as_str),
+        Some("broken_evidence_link"),
+        "unsafe broken-evidence worklist item kind"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/exception_kind")
+            .and_then(serde_json::Value::as_str),
+        Some("unsafe"),
+        "unsafe broken-evidence exception kind"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/family")
+            .and_then(serde_json::Value::as_str),
+        Some("unsafe_block"),
+        "unsafe broken-evidence family"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/risk")
+            .and_then(serde_json::Value::as_str),
+        Some("high"),
+        "unsafe broken-evidence risk"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/allow_id")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-broken-evidence"),
+        "unsafe broken-evidence allow id"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/raw")
+            .and_then(serde_json::Value::as_str),
+        Some("doc:docs/missing-evidence.md"),
+        "unsafe broken-evidence raw evidence reference"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/status")
+            .and_then(serde_json::Value::as_str),
+        Some("local_file_missing"),
+        "unsafe broken-evidence status"
+    );
+    assert_proof_command_present(
+        &value,
+        "/work_items/0/proof_commands",
+        "cargo-allow check --kind unsafe --mode no-new",
+    );
+    assert_proof_command_present(
+        &value,
+        "/work_items/0/proof_commands",
+        "cargo-allow worklist --kind unsafe --format json",
+    );
+    assert_proof_commands_stay_cargo_allow(&value, "/work_items/0/proof_commands");
+}
+
+#[test]
+fn saved_worklist_output_routes_unsafe_weak_evidence_closeout() {
+    let fixture = SourceTreeFixture::new("saved-worklist-unsafe-weak-evidence-closeout");
+    fixture.write_policy_with_unsafe_baseline_debt_entry();
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let worklist = artifact_dir.join("worklist-unsafe-weak-evidence.json");
+
+    run_cargo_allow(&[
+        "worklist",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--kind",
+        "unsafe",
+        "--item-kind",
+        "weak_evidence_reference",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&worklist),
+    ]);
+    let value =
+        assert_source_syntax_artifact(&worklist, allow_report::WORKLIST_SCHEMA_ID, "worklist");
+    assert_eq!(
+        value
+            .pointer("/summary/work_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "unsafe weak-evidence closeout should contain one item"
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/kind")
+            .and_then(serde_json::Value::as_str),
+        Some("unsafe"),
+        "worklist artifact should preserve the unsafe kind filter"
+    );
+    assert_eq!(
+        value
+            .pointer("/filters/item_kind")
+            .and_then(serde_json::Value::as_str),
+        Some("weak_evidence_reference"),
+        "worklist artifact should preserve the weak-evidence item-kind filter"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/item_kinds/weak_evidence_reference")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "unsafe weak-evidence closeout summary should count the routed item"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/kind")
+            .and_then(serde_json::Value::as_str),
+        Some("weak_evidence_reference"),
+        "unsafe weak-evidence worklist item kind"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/exception_kind")
+            .and_then(serde_json::Value::as_str),
+        Some("unsafe"),
+        "unsafe weak-evidence exception kind"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/family")
+            .and_then(serde_json::Value::as_str),
+        Some("unsafe_block"),
+        "unsafe weak-evidence family"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/allow_id")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-unsafe-baseline-debt"),
+        "unsafe weak-evidence allow id"
+    );
+    assert!(
+        value
+            .pointer("/work_items/0/path")
+            .is_some_and(serde_json::Value::is_null),
+        "weak evidence work items should not expose non-source-tree evidence targets as paths"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/raw")
+            .and_then(serde_json::Value::as_str),
+        Some("TODO: add unsafe-review or boundary-test evidence"),
+        "unsafe weak-evidence raw evidence reference"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/evidence_reference/status")
+            .and_then(serde_json::Value::as_str),
+        Some("unstructured"),
+        "unsafe weak-evidence status"
+    );
+    assert_eq!(
+        value
+            .pointer("/work_items/0/suggested_actions/0")
+            .and_then(serde_json::Value::as_str),
+        Some(
+            "replace weak evidence with unsafe-review, test, spec, or boundary evidence for the unsafe exception"
+        ),
+        "unsafe weak-evidence action should name the stronger evidence boundary"
+    );
+    assert_proof_command_present(
+        &value,
+        "/work_items/0/proof_commands",
+        "cargo-allow check --kind unsafe --mode no-new",
+    );
+    assert_proof_command_present(
+        &value,
+        "/work_items/0/proof_commands",
+        "cargo-allow worklist --kind unsafe --format json",
+    );
+    assert_proof_commands_stay_cargo_allow(&value, "/work_items/0/proof_commands");
+}
+
+#[test]
 fn saved_worklist_output_includes_invalid_evidence_scope_items() {
     let fixture = SourceTreeFixture::new("saved-worklist-invalid-evidence-scope");
     fixture.write_policy_with_invalid_evidence_scope();
