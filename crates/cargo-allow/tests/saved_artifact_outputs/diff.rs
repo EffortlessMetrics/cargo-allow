@@ -435,6 +435,112 @@ fn saved_diff_output_covers_selector_precision_decrease_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_selector_precision_increase_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-selector-precision-increased");
+    fixture.write_panic_source();
+    write_policy_with_selector_container(&fixture, false);
+    commit_fixture_base(&fixture.root);
+    write_policy_with_selector_container(&fixture, true);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("improved"),
+        "diff selector precision increase net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/selector_precision_increased")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff selector precision increase summary count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff selector precision increase improvement count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str)
+                == Some("selector_precision_increased")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-selector-precision")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected selector precision increase policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("improvement"),
+        "selector precision increase severity"
+    );
+    assert_eq!(
+        change
+            .pointer("/selector_precision/before")
+            .and_then(serde_json::Value::as_u64),
+        Some(55),
+        "selector precision increase before detail"
+    );
+    assert_eq!(
+        change
+            .pointer("/selector_precision/after")
+            .and_then(serde_json::Value::as_u64),
+        Some(70),
+        "selector precision increase after detail"
+    );
+    assert_eq!(
+        change
+            .pointer("/selector_precision/added_fields/0")
+            .and_then(serde_json::Value::as_str),
+        Some("container"),
+        "selector precision added field"
+    );
+    assert_eq!(
+        change
+            .pointer("/selector_precision/removed_fields")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "selector precision removed fields should be empty"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_evidence_removal_details() {
     let fixture = SourceTreeFixture::new("saved-diff-evidence-removed");
     fixture.write_panic_source();
