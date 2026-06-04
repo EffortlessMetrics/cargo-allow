@@ -1936,6 +1936,82 @@ fn saved_diff_output_covers_baseline_debt_normalization_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_added_allow_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-allow-added");
+    fixture.write_panic_source();
+    fixture.write_minimal_policy();
+    commit_fixture_base(&fixture.root);
+    write_policy_with_reviewed_allow(&fixture);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("review-required"),
+        "diff added allow net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_review_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff added allow review count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("added_allow")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-added-review")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected added allow policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("review"),
+        "added allow severity"
+    );
+    assert!(
+        change
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("added a new allow entry")),
+        "added allow message should identify the new receipt: {change:?}"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_added_baseline_debt_details() {
     let fixture = SourceTreeFixture::new("saved-diff-baseline-debt-added");
     fixture.write_panic_source();
@@ -3237,6 +3313,35 @@ container = "load"
 callee = "unwrap"
 "#
     ));
+    fs::write(fixture.root.join("policy/allow.toml"), policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+}
+
+fn write_policy_with_reviewed_allow(fixture: &SourceTreeFixture) {
+    fixture.write_minimal_policy();
+    let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+    policy.push_str(
+        r#"
+
+[[allow]]
+id = "allow-added-review"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core/tests"
+classification = "reviewed_fixture"
+reason = "Fixture keeps saved diff added-allow posture details covered."
+evidence = ["test:saved_diff_output_covers_added_allow_details"]
+created = "2026-05-29"
+review_after = "2026-08-29"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#,
+    );
     fs::write(fixture.root.join("policy/allow.toml"), policy)
         .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
 }
