@@ -85,27 +85,75 @@ fn saved_migrate_output_covers_policy_migration_summary_contract() {
         .unwrap_or_else(|| {
             std::panic::panic_any("migrate summary should route evidence repair queues")
         });
-    assert!(
-        queues.iter().any(|queue| {
-            queue
-                .get("unsafe_command")
-                .and_then(serde_json::Value::as_str)
-                == Some(
-                    "cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json",
-                )
-        }),
-        "migrate summary should route unsafe broken evidence repair"
+    let broken = migrate_queue(queues, "broken_evidence_link");
+    assert_eq!(
+        broken.get("signal").and_then(serde_json::Value::as_str),
+        Some("broken_evidence_links"),
+        "migrate broken evidence queue signal"
     );
-    assert!(
-        queues.iter().any(|queue| {
-            queue
-                .get("unsafe_command")
-                .and_then(serde_json::Value::as_str)
-                == Some(
-                    "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json",
-                )
-        }),
-        "migrate summary should route unsafe weak evidence repair"
+    assert_eq!(
+        broken.get("route_kind").and_then(serde_json::Value::as_str),
+        Some("worklist_item_kind"),
+        "migrate broken evidence queue route kind"
+    );
+    assert_eq!(
+        broken.get("count").and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate broken evidence queue count"
+    );
+    assert_eq!(
+        broken
+            .get("unsafe_count")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate broken evidence unsafe queue count"
+    );
+    assert_eq!(
+        broken.get("command").and_then(serde_json::Value::as_str),
+        Some("cargo-allow worklist --broken-evidence --format json"),
+        "migrate broken evidence queue command"
+    );
+    assert_eq!(
+        broken
+            .get("unsafe_command")
+            .and_then(serde_json::Value::as_str),
+        Some("cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json"),
+        "migrate broken evidence unsafe queue command"
+    );
+
+    let weak = migrate_queue(queues, "weak_evidence_reference");
+    assert_eq!(
+        weak.get("signal").and_then(serde_json::Value::as_str),
+        Some("weak_evidence_references"),
+        "migrate weak evidence queue signal"
+    );
+    assert_eq!(
+        weak.get("route_kind").and_then(serde_json::Value::as_str),
+        Some("worklist_item_kind"),
+        "migrate weak evidence queue route kind"
+    );
+    assert_eq!(
+        weak.get("count").and_then(serde_json::Value::as_u64),
+        Some(5),
+        "migrate weak evidence queue count"
+    );
+    assert_eq!(
+        weak.get("unsafe_count").and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate weak evidence unsafe queue count"
+    );
+    assert_eq!(
+        weak.get("command").and_then(serde_json::Value::as_str),
+        Some("cargo-allow worklist --weak-evidence --format json"),
+        "migrate weak evidence queue command"
+    );
+    assert_eq!(
+        weak.get("unsafe_command")
+            .and_then(serde_json::Value::as_str),
+        Some(
+            "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json"
+        ),
+        "migrate weak evidence unsafe queue command"
     );
     let actual_policy_output = value
         .pointer("/output/path")
@@ -465,6 +513,17 @@ fn migrated_entry<'a>(cfg: &'a allow_core::AllowConfig, id: &str) -> &'a allow_c
         .iter()
         .find(|entry| entry.id == id)
         .unwrap_or_else(|| std::panic::panic_any(format!("missing migrated entry {id}")))
+}
+
+fn migrate_queue<'a>(queues: &'a [serde_json::Value], item_kind: &str) -> &'a serde_json::Value {
+    queues
+        .iter()
+        .find(|queue| queue.get("item_kind").and_then(serde_json::Value::as_str) == Some(item_kind))
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "missing migrate evidence repair queue {item_kind}; got {queues:?}"
+            ))
+        })
 }
 
 fn assert_entry_evidence(entry: &allow_core::AllowEntry, expected: &[&str]) {
