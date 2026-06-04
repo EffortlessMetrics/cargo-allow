@@ -2,7 +2,31 @@
   <img src="docs/assets/cargo-allow-checkmark.svg" alt="cargo-allow green checkmark logo" width="96" height="96">
 </p>
 
-# cargo-allow
+<h1 align="center">cargo-allow</h1>
+
+<p align="center">
+  <a href="https://github.com/EffortlessMetrics/cargo-allow/actions/workflows/ci.yml"><img src="https://github.com/EffortlessMetrics/cargo-allow/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
+  <a href="https://crates.io/crates/cargo-allow"><img src="https://img.shields.io/crates/v/cargo-allow.svg" alt="crates.io" /></a>
+  <a href="https://crates.io/crates/cargo-allow"><img src="https://img.shields.io/crates/d/cargo-allow.svg?label=crates.io%20downloads" alt="crates.io downloads" /></a>
+  <a href="https://docs.rs/cargo-allow"><img src="https://docs.rs/cargo-allow/badge.svg" alt="docs.rs" /></a>
+</p>
+
+<p align="center">
+  <a href="https://doc.rust-lang.org/cargo/reference/manifest.html#the-rust-version-field"><img src="https://img.shields.io/badge/MSRV-1.85-blue.svg" alt="MSRV" /></a>
+  <a href="#license"><img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License: MIT OR Apache-2.0" /></a>
+</p>
+
+<p align="center">
+  <em>Source-tree exception ledger for Rust repositories.</em>
+</p>
+
+<!-- cargo-allow badges report repository automation state and package metadata.
+They do not prove that no unsafe, panic, lint suppression, generated code, or
+non-Rust exception exists outside the scanned source-tree/source-syntax surface.
+Current reports may claim only that no new unreceipted findings were found in
+scanned source-tree inventory. There is no GitHub release badge here until a
+GitHub Release exists, and there are no custom posture badges until generated
+badge artifacts and a badge policy exist. -->
 
 No invisible source exceptions.
 
@@ -10,16 +34,32 @@ No invisible source exceptions.
 repository files without executing project code, then checks syntax-visible
 exceptions against `policy/allow.toml`.
 
-It helps answer:
+It helps teams answer:
 
-- What exceptions exist?
+- What source exceptions exist?
 - Why are they allowed?
 - Who owns them?
 - What evidence supports them?
 - When do they expire or need review?
 - Did this PR add, remove, broaden, weaken, or improve anything?
+- What should a human or agent fix next?
 
-## Why This Exists
+## The First Useful Run
+
+The first useful run should feel small:
+
+```text
+one repo
+-> one visible exception surface
+-> one no-new policy
+-> one CI receipt
+-> one worklist item to close
+```
+
+That is the adoption spine: make retained exceptions visible, keep new debt out,
+record CI evidence, and give humans or agents a bounded repair queue.
+
+## The Problem
 
 Most repositories accumulate exceptions:
 
@@ -28,7 +68,7 @@ Most repositories accumulate exceptions:
 - indexing and slicing
 - `#[allow]` / `#[expect]`
 - generated code
-- scripts, workflows, and other non-Rust tracked files
+- scripts, workflows, docs, config, and other non-Rust tracked files
 
 The hard part is not finding one exception. The hard part is keeping retained
 exceptions owned, scoped, evidenced, reviewable, and difficult to silently
@@ -36,24 +76,24 @@ broaden.
 
 `cargo-allow` is the ledger layer.
 
-## What It Does
+## What cargo-allow Does
 
 `cargo-allow` scans source-tree inventory and compares findings to policy
-receipts.
+receipts. The durable policy file is `policy/allow.toml`.
 
 Core workflows:
 
 ```bash
+cargo-allow doctor
 cargo-allow audit
 cargo-allow check --mode no-new
 cargo-allow diff --base origin/main
-cargo-allow explain allow-0042
 cargo-allow list
+cargo-allow explain allow-0042
 cargo-allow worklist --format json
-cargo-allow doctor
 ```
 
-## What It Does Not Claim
+## What cargo-allow Does Not Claim
 
 `cargo-allow` scans repository files directly. It may be installed as a Cargo
 external subcommand, but the primary UX is the standalone `cargo-allow` binary.
@@ -64,22 +104,27 @@ Cargo.
 It does **not** require a successful build and does **not** invoke
 Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros,
 `cargo-deny`, `cargo-vet`, `ripr`, `unsafe-review`, or coverage tooling.
+It does not require network access or GitHub APIs for its own scan.
 `Cargo.toml` and `Cargo.lock` are files in the scanned source tree, not required
 build metadata.
 
 It does not require:
 
 - Cargo metadata
-- `cargo check`
+- `cargo check` or `cargo test`
 - rustc
 - Clippy
 - build scripts
 - proc macro expansion
+- dependency resolution
 - type analysis
 - MIR
 - control-flow or data-flow analysis
 - proof that unsafe code is correct
 - proof that tests are adequate
+- coverage proof
+- network access
+- GitHub API access
 
 Other tools can provide evidence. `cargo-allow` owns the durable
 source-exception ledger.
@@ -93,7 +138,44 @@ No new unreceipted findings were found in scanned source-tree inventory.
 They must not claim that no unsafe, panic, lint suppression, or other exception
 exists outside the syntax-visible surface that was scanned.
 
-## Install
+## Where cargo-allow Fits
+
+`cargo-allow` is not a linter, compiler wrapper, dependency-policy tool, or
+unsafe proof system.
+
+```text
+Clippy:
+  flags code patterns.
+
+cargo-deny / cargo-vet:
+  govern dependency and supply-chain policy.
+
+ripr / unsafe-review / coverage:
+  can provide evidence for retained exceptions.
+
+cargo-allow:
+  owns the source-exception ledger: what is allowed, why, by whom, where,
+  with what evidence, until when, and whether this PR weakened posture.
+```
+
+Other tools can provide evidence. `cargo-allow` owns the durable receipt.
+
+## Quick Start
+
+Most users start from the surface they already own.
+
+| User type | First action | Main doc |
+| --- | --- | --- |
+| Maintainer | Run `cargo-allow doctor`, then `cargo-allow audit`. | [Getting started](docs/getting-started.md) |
+| CI owner | Add `cargo-allow check --mode no-new` and upload the receipt. | [CI guide](docs/how-to/run-in-ci.md) |
+| Reviewer | Run `cargo-allow diff --base origin/main`. | [PR posture](docs/pr-posture.md) |
+| Auditor | Run `cargo-allow list` and `cargo-allow explain <id>`. | [Explain an allow](docs/how-to/explain-an-allow.md) |
+| Migrator | Run `cargo-allow migrate --repo-policy <dir>`. | [Migration](docs/how-to/migrate-from-xtask.md) |
+| Agent operator | Run `cargo-allow worklist --format json`. | [Agent worklists](docs/how-to/feed-agent-worklists.md) |
+
+## First Run
+
+Install:
 
 ```bash
 cargo install cargo-allow --locked
@@ -108,53 +190,33 @@ cargo install cargo-allow --version 0.1.6 --locked
 Use the latest published version shown on crates.io. Do not copy
 release-candidate versions until they are published.
 
-## First Run
-
-From a repository root:
+Check setup:
 
 ```bash
 cargo-allow doctor
+```
+
+Inventory current exceptions:
+
+```bash
 cargo-allow audit
 ```
 
-If no policy exists:
+Start strict, for a small repo:
 
 ```bash
 cargo-allow init --root .
 ```
 
-To adopt no-new-debt without fixing all history first:
+Adopt no-new-debt, for an existing repo:
 
 ```bash
 cargo-allow propose --write policy/allow.toml
 cargo-allow check --mode no-new
 ```
 
-Generated baseline entries are intentionally uncomfortable. They should be
-reviewed, narrowed, evidenced, or removed.
-
-## Policy Example
-
-```toml
-[[allow]]
-id = "allow-0042"
-kind = "panic"
-family = "indexing_slicing"
-path = "crates/parser/src/span.rs"
-owner = "parser"
-classification = "validated_span_invariant"
-reason = "Parser validates TextRange before slicing."
-created = "2026-06-01"
-review_after = "2026-09-01"
-evidence = [
-  "doc:docs/safety/parser-spans.md",
-  "test:parser_rejects_invalid_text_range",
-]
-
-[allow.selector]
-ast_kind = "index_expr"
-container = "slice_checked_text_range"
-```
+Generated baseline entries are intentionally uncomfortable. Review them, narrow
+them, add evidence, or remove them.
 
 ## CI
 
@@ -178,6 +240,51 @@ cargo-allow check \
 ```
 
 Upload `target/cargo-allow/` as a CI artifact, especially on failure.
+
+## Example Review Signal
+
+```text
+REVIEW REQUIRED allow-0042
+
+kind: panic
+family: indexing_slicing
+path: crates/parser/src/span.rs
+owner: parser
+classification: validated_span_invariant
+
+Evidence:
+  ✓ doc:docs/safety/parser-spans.md exists
+  ? test:parser_rejects_invalid_text_range not validated offline
+
+Current match:
+  ast_kind: index_expr
+  container: slice_checked_text_range
+  selector precision: high
+
+Claim boundary:
+  source-tree/source-syntax only; no macro expansion, type analysis, MIR,
+  control-flow, data-flow, or proof-tool execution.
+```
+
+A matching policy receipt is intentionally specific:
+
+```toml
+[[allow]]
+id = "allow-0042"
+kind = "panic"
+family = "indexing_slicing"
+path = "crates/parser/src/span.rs"
+owner = "parser"
+classification = "validated_span_invariant"
+reason = "Parser validates TextRange before slicing."
+created = "2026-06-01"
+review_after = "2026-09-01"
+evidence = ["doc:docs/safety/parser-spans.md"]
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "slice_checked_text_range"
+```
 
 ## Evidence Diagnostics
 
@@ -206,7 +313,7 @@ legacy-policy:no-panic-baseline
 `cargo-allow` does not run those tools. It classifies what it can see and
 reports what is missing.
 
-## Agent Worklists
+## Worklists for Humans and Agents
 
 ```bash
 cargo-allow worklist --format json
@@ -227,20 +334,36 @@ new_unreceipted_finding
 Use the suggested actions and proof commands. Do not suppress findings just to
 pass CI.
 
-## Documentation
+## Current Scope
 
-- Changelog: [CHANGELOG.md](CHANGELOG.md)
-- Source exception ledger: [docs/source-exception-ledger.md](docs/source-exception-ledger.md)
-- Getting started: [docs/getting-started.md](docs/getting-started.md)
-- Claim boundaries: [docs/claim-boundaries.md](docs/claim-boundaries.md)
-- CI examples: [docs/ci.md](docs/ci.md)
-- How-to guides: [docs/how-to/README.md](docs/how-to/README.md)
-- JSON schemas: [docs/schemas/README.md](docs/schemas/README.md)
-- Agent worklists: [docs/agents/cargo-allow-worklist.md](docs/agents/cargo-allow-worklist.md)
-- Migration from xtask: [docs/migration-from-xtask.md](docs/migration-from-xtask.md)
-- Crates: [docs/crates.md](docs/crates.md)
-- Design notes: [docs/design.md](docs/design.md)
-- Roadmap: [docs/roadmap.md](docs/roadmap.md)
+| Surface | Current state |
+| --- | --- |
+| Source inventory | Git-tracked files first, filesystem fallback when needed. |
+| Rust scanning | Source-syntax unsafe, panic-family, indexing/slicing, and lint suppressions. |
+| Non-Rust scanning | Tracked scripts, workflows, docs/config, generated files, and other governed surfaces. |
+| Policy | `policy/allow.toml` receipts with owner, reason, classification, lifecycle, selector, and evidence. |
+| Evidence | Local evidence path checks plus traceability-only references. No proof-tool execution. |
+| PR posture | `diff --base ...` reports new, removed, broadened, weakened, and improved exception posture. |
+| Worklists | JSON queues for humans and agents to close retained-risk seams. |
+| Migration | Legacy policy adapters for replacing bespoke xtask/TOML allowlists. |
+
+## Supporting Docs
+
+| Need | Doc |
+| --- | --- |
+| First hour | [Getting started](docs/getting-started.md) |
+| Claim boundaries | [Claim boundaries](docs/claim-boundaries.md) |
+| Run in CI | [CI guide](docs/how-to/run-in-ci.md) |
+| Explain retained exceptions | [Explain an allow](docs/how-to/explain-an-allow.md) |
+| Repair evidence | [Fix broken evidence](docs/how-to/fix-broken-evidence.md) |
+| Feed agents work | [Agent worklists](docs/how-to/feed-agent-worklists.md) |
+| Migrate legacy policy | [Migration from xtask](docs/how-to/migrate-from-xtask.md) |
+| Understand the model | [Source exception ledger](docs/source-exception-ledger.md) |
+| Understand PR posture | [PR posture](docs/pr-posture.md) |
+| Understand policy weakening | [Policy weakening](docs/policy-weakening.md) |
+| JSON artifacts | [JSON schemas](docs/schemas/README.md) |
+| Crate responsibilities | [Crates](docs/crates.md) |
+| Changelog | [CHANGELOG.md](CHANGELOG.md) |
 
 ## Crates
 
@@ -263,6 +386,16 @@ primary purpose is supporting `cargo-allow`. See the
 [crate responsibility guide](docs/crates.md) and
 [crate namespace policy](docs/crate-namespace.md) before adding new public
 crates.
+
+## Development
+
+Use nearby project patterns, keep changes narrow, and validate source-tree
+posture before publishing a README or policy change:
+
+```bash
+cargo test -p cargo-allow readme
+cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
+```
 
 ## License
 
