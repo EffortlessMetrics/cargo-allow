@@ -2109,6 +2109,105 @@ fn saved_diff_output_covers_baseline_debt_introduction_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_policy_owner_removal_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-policy-owner-removed");
+    fixture.write_panic_source();
+    write_policy_with_optional_policy_owner(&fixture, Some("core/policy"));
+    commit_fixture_base(&fixture.root);
+    write_policy_with_optional_policy_owner(&fixture, None);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--config",
+            "policy/allow.toml",
+            "--base",
+            "HEAD",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("worse"),
+        "diff policy owner removal net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff policy owner removal failure count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("policy_owner_removed")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("policy.owner")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected policy owner removal policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("fail"),
+        "policy owner removal severity"
+    );
+    assert!(
+        change
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("policy.owner removed")),
+        "policy owner removal message should name the policy owner field: {change:?}"
+    );
+    assert_eq!(
+        change
+            .pointer("/metadata/field")
+            .and_then(serde_json::Value::as_str),
+        Some("owner"),
+        "policy owner removal metadata field"
+    );
+    assert_eq!(
+        change
+            .pointer("/metadata/before")
+            .and_then(serde_json::Value::as_str),
+        Some("core/policy"),
+        "policy owner removal metadata before"
+    );
+    assert!(
+        change
+            .pointer("/metadata/after")
+            .is_some_and(|value| value.is_null()),
+        "policy owner removal metadata after should be null: {change:?}"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_owner_removal_details() {
     let fixture = SourceTreeFixture::new("saved-diff-owner-removed");
     fixture.write_panic_source();
@@ -2846,6 +2945,39 @@ container = "load"
 callee = "unwrap"
 "#
     ));
+    fs::write(fixture.root.join("policy/allow.toml"), policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+}
+
+fn write_policy_with_optional_policy_owner(fixture: &SourceTreeFixture, owner: Option<&str>) {
+    fixture.write_minimal_policy();
+    let policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+    let owner = owner
+        .map(|owner| format!("owner = \"{owner}\"\n"))
+        .unwrap_or_default();
+    let mut policy = policy.replacen("owner = \"core/policy\"\n", &owner, 1);
+    policy.push_str(
+        r#"
+
+[[allow]]
+id = "allow-policy-owner-fixture"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core/tests"
+classification = "reviewed_fixture"
+reason = "Fixture keeps saved diff policy-owner-removal posture details covered."
+evidence = ["test:saved_diff_output_covers_policy_owner_removal_details"]
+created = "2026-05-29"
+review_after = "2026-08-29"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#,
+    );
     fs::write(fixture.root.join("policy/allow.toml"), policy)
         .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
 }
