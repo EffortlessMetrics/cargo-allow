@@ -104,6 +104,35 @@ expires = "permanent"
             expected_links: &["legacy-policy:matrix-generated"],
         },
         EvidenceMatrixCase {
+            label: "generated evidence",
+            file_name: "generated-allowlist.toml",
+            policy_text: r#"schema_version = 1
+policy = "generated-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "matrix-generated-evidence"
+path = "docs/generated/api.json"
+generator = "cargo xtask api-schema"
+regenerate_command = "cargo xtask api-schema"
+owner = "policy"
+reason = "Generated API schema fixture."
+evidence = ["doc:docs/api-schema.md", "issue:#567"]
+created = "2026-05-10"
+expires = "permanent"
+"#,
+            entry_id: "matrix-generated-evidence",
+            family: Some("generated_code"),
+            expected_evidence: &["doc:docs/api-schema.md", "issue:#567"],
+            expected_derived_evidence: &[
+                "legacy-policy:matrix-generated-evidence",
+                "generator:cargo xtask api-schema",
+                "cargo:cargo xtask api-schema",
+            ],
+            expected_links: &["legacy-policy:matrix-generated-evidence"],
+        },
+        EvidenceMatrixCase {
             label: "executable covered_by",
             file_name: "executable-allowlist.toml",
             policy_text: r#"schema_version = 1
@@ -126,6 +155,33 @@ expires = "permanent"
             expected_evidence: &["doc:docs/release/README.md"],
             expected_derived_evidence: &["legacy-policy:matrix-executable", "interpreter:bash"],
             expected_links: &["legacy-policy:matrix-executable"],
+        },
+        EvidenceMatrixCase {
+            label: "executable evidence",
+            file_name: "executable-allowlist.toml",
+            policy_text: r#"schema_version = 1
+policy = "executable-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "matrix-executable-evidence"
+path = "scripts/package.sh"
+interpreter = "bash"
+owner = "release"
+reason = "Package helper fixture."
+evidence = ["doc:docs/release/package.md", "issue:#678"]
+created = "2026-05-09"
+expires = "permanent"
+"#,
+            entry_id: "matrix-executable-evidence",
+            family: Some("executable_file"),
+            expected_evidence: &["doc:docs/release/package.md", "issue:#678"],
+            expected_derived_evidence: &[
+                "legacy-policy:matrix-executable-evidence",
+                "interpreter:bash",
+            ],
+            expected_links: &["legacy-policy:matrix-executable-evidence"],
         },
         EvidenceMatrixCase {
             label: "workflow evidence",
