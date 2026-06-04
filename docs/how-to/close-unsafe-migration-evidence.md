@@ -70,15 +70,15 @@ Use the unsafe-specific queues before removing a legacy unsafe gate:
 ```bash
 cargo-allow worklist --kind unsafe --item-kind broken_evidence_link --format json
 cargo-allow worklist --kind unsafe --item-kind weak_evidence_reference --format json
-cargo-allow worklist --kind unsafe --baseline-debt --format json
+cargo-allow worklist --kind unsafe --item-kind baseline_debt --format json
 ```
 
 Use the generic queues only when closing the whole migrated policy:
 
 ```bash
-cargo-allow worklist --broken-evidence --format json
-cargo-allow worklist --weak-evidence --format json
-cargo-allow worklist --baseline-debt --format json
+cargo-allow worklist --item-kind broken_evidence_link --format json
+cargo-allow worklist --item-kind weak_evidence_reference --format json
+cargo-allow worklist --item-kind baseline_debt --format json
 ```
 
 ## Close One Unsafe Item

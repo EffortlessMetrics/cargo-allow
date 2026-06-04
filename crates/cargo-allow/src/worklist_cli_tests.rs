@@ -140,6 +140,7 @@ fn clap_parses_migration_closeout_worklist_presets() {
         (None, "baseline_debt"),
         (Some("unsafe"), "broken_evidence_link"),
         (Some("unsafe"), "weak_evidence_reference"),
+        (Some("unsafe"), "baseline_debt"),
     ];
 
     for (kind, item_kind) in cases {
