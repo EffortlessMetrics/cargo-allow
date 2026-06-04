@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::Path};
 
 use super::*;
 
@@ -119,6 +119,120 @@ fn saved_migrate_output_covers_policy_migration_summary_contract() {
     );
 }
 
+#[test]
+fn saved_migrate_output_preserves_legacy_evidence_and_links() {
+    let fixture = SourceTreeFixture::new("saved-migrate-evidence-preserved");
+    let legacy_dir = fixture.root.join("legacy-policy");
+    fs::create_dir_all(&legacy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+    fs::write(
+        legacy_dir.join("generated-allowlist.toml"),
+        generated_policy_with_evidence_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write generated policy fixture: {err}")));
+    fs::write(
+        legacy_dir.join("executable-allowlist.toml"),
+        executable_policy_with_covered_by_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write executable policy fixture: {err}")));
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let migrated_policy = artifact_dir.join("allow.migrated.toml");
+    let migrate_summary = artifact_dir.join("migrate-summary.json");
+
+    run_cargo_allow(&[
+        "migrate",
+        "--root",
+        fixture.root_str(),
+        "--repo-policy",
+        path_arg(&legacy_dir),
+        "--out",
+        path_arg(&migrated_policy),
+        "--summary-format",
+        "json",
+        "--summary-output",
+        path_arg(&migrate_summary),
+    ]);
+
+    assert_policy_output(&migrated_policy);
+    let value = assert_policy_migration_artifact_with_inventory(
+        &migrate_summary,
+        allow_report::MIGRATE_SCHEMA_ID,
+        "migrate",
+        "filesystem_fallback",
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/allow_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(2),
+        "migrate evidence preservation allow entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/evidence_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(8),
+        "migrate evidence preservation evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/entries_with_links")
+            .and_then(serde_json::Value::as_u64),
+        Some(2),
+        "migrate evidence preservation link-entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/link_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(2),
+        "migrate evidence preservation link count"
+    );
+
+    let cfg = allow_policy::load_policy(&migrated_policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "load migrated policy {}: {err}",
+            migrated_policy.display()
+        ))
+    });
+    let generated = migrated_entry(&cfg, "saved-generated-evidence");
+    assert_eq!(generated.kind, allow_core::FindingKind::GeneratedCode);
+    assert_eq!(generated.family.as_deref(), Some("generated_code"));
+    assert_eq!(
+        generated.path.as_deref(),
+        Some(Path::new("docs/generated/schema.json"))
+    );
+    assert_entry_evidence(
+        generated,
+        &[
+            "doc:docs/generated/schema.md",
+            "issue:#314",
+            "legacy-policy:saved-generated-evidence",
+            "generator:cargo xtask schema",
+            "cargo:cargo xtask schema",
+        ],
+    );
+    assert_entry_links(generated, &["legacy-policy:saved-generated-evidence"]);
+
+    let executable = migrated_entry(&cfg, "saved-executable-covered");
+    assert_eq!(executable.kind, allow_core::FindingKind::PolicyException);
+    assert_eq!(executable.family.as_deref(), Some("executable_file"));
+    assert_eq!(
+        executable.path.as_deref(),
+        Some(Path::new("scripts/package.sh"))
+    );
+    assert_entry_evidence(
+        executable,
+        &[
+            "doc:docs/release/package.md",
+            "legacy-policy:saved-executable-covered",
+            "interpreter:bash",
+        ],
+    );
+    assert_entry_links(executable, &["legacy-policy:saved-executable-covered"]);
+}
+
 fn process_policy_fixture_text() -> &'static str {
     r#"schema_version = 1
 policy = "process-allowlist"
@@ -136,6 +250,72 @@ reason = "Release preflight package proof; pure local checks."
 created = "2026-05-09"
 expires = "permanent"
 "#
+}
+
+fn generated_policy_with_evidence_fixture_text() -> &'static str {
+    r#"schema_version = 1
+policy = "generated-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "saved-generated-evidence"
+path = "docs/generated/schema.json"
+generator = "cargo xtask schema"
+regenerate_command = "cargo xtask schema"
+owner = "policy"
+reason = "Generated schema fixture."
+evidence = ["doc:docs/generated/schema.md", "issue:#314"]
+created = "2026-05-10"
+expires = "permanent"
+"#
+}
+
+fn executable_policy_with_covered_by_fixture_text() -> &'static str {
+    r#"schema_version = 1
+policy = "executable-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "saved-executable-covered"
+path = "scripts/package.sh"
+interpreter = "bash"
+owner = "release"
+reason = "Package helper fixture."
+covered_by = "doc:docs/release/package.md"
+created = "2026-05-09"
+expires = "permanent"
+"#
+}
+
+fn migrated_entry<'a>(cfg: &'a allow_core::AllowConfig, id: &str) -> &'a allow_core::AllowEntry {
+    cfg.allow
+        .iter()
+        .find(|entry| entry.id == id)
+        .unwrap_or_else(|| std::panic::panic_any(format!("missing migrated entry {id}")))
+}
+
+fn assert_entry_evidence(entry: &allow_core::AllowEntry, expected: &[&str]) {
+    for value in expected {
+        assert!(
+            entry.evidence.iter().any(|item| item == value),
+            "{} should preserve evidence `{value}` in {:?}",
+            entry.id,
+            entry.evidence
+        );
+    }
+}
+
+fn assert_entry_links(entry: &allow_core::AllowEntry, expected: &[&str]) {
+    for value in expected {
+        assert!(
+            entry.links.iter().any(|item| item == value),
+            "{} should preserve link `{value}` in {:?}",
+            entry.id,
+            entry.links
+        );
+    }
 }
 
 fn unsafe_policy_fixture_text() -> &'static str {
