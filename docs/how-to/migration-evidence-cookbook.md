@@ -73,6 +73,9 @@ cargo-allow worklist --kind unsafe --item-kind broken_evidence_link --format jso
 cargo-allow worklist --kind unsafe --item-kind weak_evidence_reference --format json
 ```
 
+For unsafe migration closeout, use the
+[unsafe migration evidence guide](close-unsafe-migration-evidence.md).
+
 ## Close One Item
 
 For each work item:

@@ -10,6 +10,7 @@ Use these guides when you already know the task you want to complete.
 - [Prune stale allows](prune-stale-allows.md)
 - [Migrate from xtask](migrate-from-xtask.md)
 - [Migration evidence cookbook](migration-evidence-cookbook.md)
+- [Close unsafe migration evidence](close-unsafe-migration-evidence.md)
 - [Feed agent worklists](feed-agent-worklists.md)
 
 All guides keep the same claim boundary: cargo-allow scans repository files
