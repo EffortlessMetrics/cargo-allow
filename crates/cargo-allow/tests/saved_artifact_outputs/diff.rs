@@ -541,6 +541,93 @@ fn saved_diff_output_covers_selector_precision_increase_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_selector_identity_change_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-selector-changed");
+    fixture.write_panic_source();
+    write_policy_with_selector_receiver(&fixture, "value");
+    commit_fixture_base(&fixture.root);
+    write_policy_with_selector_receiver(&fixture, "val");
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("review-required"),
+        "diff selector identity change net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/selector_changed")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff selector identity change summary count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_review_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff selector identity change review item count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("selector_changed")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-selector-identity")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected selector identity policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("review"),
+        "selector identity change severity"
+    );
+    assert_eq!(
+        change
+            .pointer("/selector_identity/changed_fields/0")
+            .and_then(serde_json::Value::as_str),
+        Some("receiver_fingerprint"),
+        "selector identity changed field"
+    );
+    assert!(
+        change.get("selector_precision").is_none(),
+        "equal-precision selector identity change should omit precision detail: {change:?}"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_evidence_removal_details() {
     let fixture = SourceTreeFixture::new("saved-diff-evidence-removed");
     fixture.write_panic_source();
@@ -2037,6 +2124,36 @@ review_after = "2026-08-29"
 [allow.selector]
 ast_kind = "method_call"
 {container}callee = "unwrap"
+"#
+    ));
+    fs::write(fixture.root.join("policy/allow.toml"), policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+}
+
+fn write_policy_with_selector_receiver(fixture: &SourceTreeFixture, receiver: &str) {
+    fixture.write_minimal_policy();
+    let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+    policy.push_str(&format!(
+        r#"
+
+[[allow]]
+id = "allow-unwrap-selector-identity"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core/tests"
+classification = "reviewed_fixture"
+reason = "Fixture keeps saved diff selector identity change details covered."
+evidence = ["test:saved_diff_output_covers_selector_identity_change_details"]
+created = "2026-05-29"
+review_after = "2026-08-29"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+receiver_fingerprint = "{receiver}"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
