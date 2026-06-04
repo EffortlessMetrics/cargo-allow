@@ -715,6 +715,29 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0148"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/close-unsafe-migration-evidence.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Documents the task-focused closeout flow for migrated unsafe evidence, weak unsafe evidence, broken unsafe evidence, and unsafe baseline debt."
+evidence = ["doc:docs/migration-from-xtask.md", "doc:docs/how-to/migration-evidence-cookbook.md", "doc:docs/claim-boundaries.md"]
+created = "2026-06-04"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/how-to/close-unsafe-migration-evidence.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/how-to/close-unsafe-migration-evidence.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0147"
 kind = "non_rust_file"
 family = "documentation"

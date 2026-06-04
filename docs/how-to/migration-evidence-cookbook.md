@@ -62,8 +62,8 @@ Use the queue that matches the summary signal:
 
 ```bash
 cargo-allow worklist --item-kind baseline_debt --format json
-cargo-allow worklist --item-kind broken_evidence_link --format json
-cargo-allow worklist --item-kind weak_evidence_reference --format json
+cargo-allow worklist --broken-evidence --format json
+cargo-allow worklist --weak-evidence --format json
 ```
 
 For unsafe-specific evidence debt:
@@ -72,6 +72,9 @@ For unsafe-specific evidence debt:
 cargo-allow worklist --kind unsafe --item-kind broken_evidence_link --format json
 cargo-allow worklist --kind unsafe --item-kind weak_evidence_reference --format json
 ```
+
+For unsafe migration closeout, use the
+[unsafe migration evidence guide](close-unsafe-migration-evidence.md).
 
 ## Close One Item
 
