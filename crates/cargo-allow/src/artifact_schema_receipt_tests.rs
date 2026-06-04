@@ -196,7 +196,7 @@ fn receipt_schema_allows_optional_evidence_repair_queues() {
         "receipt evidence repair queue worklist filter",
         &schema,
         "/properties/evidence_repair_queues/items/properties/worklist_filter/enum",
-        &["missing_evidence"],
+        &["broken_evidence", "missing_evidence", "weak_evidence"],
     );
     assert_eq!(
         schema

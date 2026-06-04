@@ -297,6 +297,8 @@ fn worklist_shortcut_arg(kind: &str) -> Option<&'static str> {
         BASELINE_DEBT => Some("baseline-debt"),
         BROAD_SCOPE => Some("broad-scope"),
         MISSING_EVIDENCE | UNSAFE_MISSING_EVIDENCE => Some("missing-evidence"),
+        BROKEN_EVIDENCE_LINK => Some("broken-evidence"),
+        WEAK_EVIDENCE_REFERENCE => Some("weak-evidence"),
         _ => None,
     }
 }

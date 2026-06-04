@@ -78,9 +78,24 @@ pub fn load_policy(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
     parse_policy(&text)
 }
 
+pub fn load_policy_with_reportable_evidence(
+    path: impl AsRef<Path>,
+) -> CargoAllowResult<AllowConfig> {
+    let text = fs::read_to_string(path.as_ref()).map_err(|e| {
+        CargoAllowError::new(format!("failed to read {}: {e}", path.as_ref().display()))
+    })?;
+    parse_policy_with_reportable_evidence(&text)
+}
+
 pub fn parse_policy(input: &str) -> CargoAllowResult<AllowConfig> {
     let cfg = toml_model::parse_policy_toml(input)?;
     validate_policy(&cfg)?;
+    Ok(cfg)
+}
+
+pub fn parse_policy_with_reportable_evidence(input: &str) -> CargoAllowResult<AllowConfig> {
+    let cfg = toml_model::parse_policy_toml(input)?;
+    validation::validate_policy_with_reportable_evidence(&cfg)?;
     Ok(cfg)
 }
 

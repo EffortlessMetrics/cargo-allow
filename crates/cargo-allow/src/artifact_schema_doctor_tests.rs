@@ -144,7 +144,13 @@ fn doctor_schema_locks_setup_artifact_contract() {
         "doctor evidence repair queue route kind",
         &schema,
         "/properties/config/properties/evidence_repair_queues/items/properties/route_kind/enum",
-        &["worklist_item_kind"],
+        &["worklist_item_kind", "worklist_filter"],
+    );
+    assert_enum_equals(
+        "doctor evidence repair queue worklist filter",
+        &schema,
+        "/properties/config/properties/evidence_repair_queues/items/properties/worklist_filter/enum",
+        &["broken_evidence", "weak_evidence"],
     );
     assert_enum_equals(
         "doctor evidence repair queue item kind",

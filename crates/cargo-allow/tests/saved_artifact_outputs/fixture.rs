@@ -97,6 +97,16 @@ safety_comment_required = false
         .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
     }
 
+    pub(crate) fn write_unsafe_source(&self) {
+        fs::create_dir_all(self.root.join("src"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+        fs::write(
+            self.root.join("src/lib.rs"),
+            "pub fn load(ptr: *const u8) -> u8 { unsafe { *ptr } }\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write unsafe source: {err}")));
+    }
+
     pub(crate) fn append_saved_artifact_allow_entries(&self) {
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
             .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
@@ -156,6 +166,42 @@ glob = "docs/missing.md"
             "Fixture exercises invalid evidence scope worklist output.",
             "doc:docs/../src/lib.rs",
         );
+    }
+
+    pub(crate) fn write_policy_with_redundant_segment_evidence_scope(&self) {
+        self.write_policy_with_evidence(
+            "allow-redundant-segment-evidence-scope",
+            "Fixture exercises redundant evidence scope diagnostics in reportable artifact commands.",
+            "doc:docs/./safety.md",
+        );
+    }
+
+    pub(crate) fn write_policy_with_redundant_segment_link_scope(&self) {
+        self.write_minimal_policy();
+        let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        policy.push_str(
+            r#"
+
+[[allow]]
+id = "allow-redundant-segment-link-scope"
+kind = "unsafe"
+family = "unsafe_block"
+path = "src/lib.rs"
+owner = "core/tests"
+classification = "reviewed_fixture"
+reason = "Fixture exercises redundant local link diagnostics in reportable artifact commands."
+evidence = ["test:saved_check_outputs_fail_and_route_redundant_segment_link_scope"]
+links = ["doc:docs/./safety.md"]
+created = "2026-05-29"
+expires = "2026-08-29"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+"#,
+        );
+        fs::write(self.root.join("policy/allow.toml"), policy)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
 
     pub(crate) fn write_policy_with_missing_evidence_entry(&self) {

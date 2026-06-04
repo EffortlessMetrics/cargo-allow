@@ -230,8 +230,16 @@ fn render_worklist_filters_json(filters: WorklistFilters<'_>, indent: &str) -> S
         option_json(filters.difficulty)
     ));
     out.push_str(&format!(
-        "{indent}  \"missing_evidence\": {}\n",
+        "{indent}  \"missing_evidence\": {},\n",
         bool_json(filters.missing_evidence)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"broken_evidence\": {},\n",
+        bool_json(filters.broken_evidence)
+    ));
+    out.push_str(&format!(
+        "{indent}  \"weak_evidence\": {}\n",
+        bool_json(filters.weak_evidence)
     ));
     out.push_str(&format!("{indent}}}"));
     out

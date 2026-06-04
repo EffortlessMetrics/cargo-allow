@@ -1,6 +1,6 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
-use allow_policy::load_policy;
+use allow_policy::load_policy_with_reportable_evidence;
 use std::collections::BTreeSet;
 use std::env;
 use std::path::Path;
@@ -80,7 +80,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
 }
 
 fn load_doctor_policy(config: Option<&Path>) -> Option<CargoAllowResult<AllowConfig>> {
-    config.map(load_policy)
+    config.map(load_policy_with_reportable_evidence)
 }
 
 fn config_status(

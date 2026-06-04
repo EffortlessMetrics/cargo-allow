@@ -3,11 +3,11 @@ use allow_core::{MatchStatus, json_escape};
 use crate::{ReportContext, ReviewSignals, Summary};
 
 pub(crate) const BROKEN_EVIDENCE_LINK_COMMAND: &str =
-    "cargo-allow worklist --item-kind broken_evidence_link --format json";
+    "cargo-allow worklist --broken-evidence --format json";
 pub(crate) const MISSING_EVIDENCE_COMMAND: &str =
     "cargo-allow worklist --missing-evidence --format json";
 pub(crate) const WEAK_EVIDENCE_REFERENCE_COMMAND: &str =
-    "cargo-allow worklist --item-kind weak_evidence_reference --format json";
+    "cargo-allow worklist --weak-evidence --format json";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct EvidenceRepairQueue {
@@ -51,9 +51,9 @@ pub(crate) fn evidence_repair_queues_from_counts(
         EvidenceRepairQueue {
             signal: "broken_evidence_links",
             label: "broken evidence links",
-            route_kind: "worklist_item_kind",
+            route_kind: "worklist_filter",
             item_kind: Some("broken_evidence_link"),
-            worklist_filter: None,
+            worklist_filter: Some("broken_evidence"),
             count: broken_evidence_links,
             command: BROKEN_EVIDENCE_LINK_COMMAND,
         },
@@ -75,9 +75,9 @@ pub(crate) fn evidence_repair_queues_from_counts(
         EvidenceRepairQueue {
             signal: "weak_evidence_references",
             label: "weak evidence references",
-            route_kind: "worklist_item_kind",
+            route_kind: "worklist_filter",
             item_kind: Some("weak_evidence_reference"),
-            worklist_filter: None,
+            worklist_filter: Some("weak_evidence"),
             count: weak_evidence_references,
             command: WEAK_EVIDENCE_REFERENCE_COMMAND,
         },

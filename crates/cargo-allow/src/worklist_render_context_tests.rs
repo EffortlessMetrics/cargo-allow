@@ -49,6 +49,8 @@ fn worklist_renderers_include_applied_filters() {
             risk: Some("high"),
             difficulty: Some("medium"),
             missing_evidence: true,
+            broken_evidence: true,
+            weak_evidence: true,
         },
     };
 
@@ -70,7 +72,9 @@ fn worklist_renderers_include_applied_filters() {
     assert!(json.contains("\"risk\": \"high\""));
     assert!(json.contains("\"difficulty\": \"medium\""));
     assert!(json.contains("\"missing_evidence\": true"));
+    assert!(json.contains("\"broken_evidence\": true"));
+    assert!(json.contains("\"weak_evidence\": true"));
     assert!(human.contains(
-            "Filters: kind=unsafe, family=unsafe_fn, item_kind=baseline_debt, status=baseline_debt, allow_id=allow-0001, path=crates/allow-core, source_package=allow-core, owner=runtime, classification=baseline_debt, baseline_debt=true, broad_scope=true, risk=high, difficulty=medium, missing_evidence=true"
+            "Filters: kind=unsafe, family=unsafe_fn, item_kind=baseline_debt, status=baseline_debt, allow_id=allow-0001, path=crates/allow-core, source_package=allow-core, owner=runtime, classification=baseline_debt, baseline_debt=true, broad_scope=true, risk=high, difficulty=medium, missing_evidence=true, broken_evidence=true, weak_evidence=true"
         ));
 }

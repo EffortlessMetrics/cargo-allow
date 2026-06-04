@@ -208,7 +208,7 @@ fn render_migrate_summary_json_records_policy_migration_context() {
     );
     assert_eq!(
         broken.get("command").and_then(Value::as_str),
-        Some("cargo-allow worklist --item-kind broken_evidence_link --format json"),
+        Some("cargo-allow worklist --broken-evidence --format json"),
         "migrate broken evidence queue command"
     );
     assert_eq!(
@@ -233,7 +233,7 @@ fn render_migrate_summary_json_records_policy_migration_context() {
     );
     assert_eq!(
         weak.get("command").and_then(Value::as_str),
-        Some("cargo-allow worklist --item-kind weak_evidence_reference --format json"),
+        Some("cargo-allow worklist --weak-evidence --format json"),
         "migrate weak evidence queue command"
     );
     assert_eq!(

@@ -81,11 +81,12 @@ fn sarif_run_properties_include_policy_evidence_health_counts() {
     assert!(sarif.contains("\"evidence_repair_queues\""));
     assert!(sarif.contains("\"signal\": \"broken_evidence_links\""));
     assert!(sarif.contains("\"label\": \"broken evidence links\""));
-    assert!(sarif.contains("\"route_kind\": \"worklist_item_kind\""));
+    assert!(sarif.contains("\"route_kind\": \"worklist_filter\""));
     assert!(sarif.contains("\"item_kind\": \"broken_evidence_link\""));
-    assert!(sarif.contains(
-        "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
-    ));
+    assert!(sarif.contains("\"worklist_filter\": \"broken_evidence\""));
+    assert!(
+        sarif.contains("\"command\": \"cargo-allow worklist --broken-evidence --format json\"")
+    );
     assert!(sarif.contains("\"signal\": \"missing_evidence\""));
     assert!(sarif.contains("\"label\": \"missing evidence\""));
     assert!(sarif.contains("\"route_kind\": \"worklist_filter\""));
@@ -97,9 +98,8 @@ fn sarif_run_properties_include_policy_evidence_health_counts() {
     assert!(sarif.contains("\"signal\": \"weak_evidence_references\""));
     assert!(sarif.contains("\"label\": \"weak evidence references\""));
     assert!(sarif.contains("\"item_kind\": \"weak_evidence_reference\""));
-    assert!(sarif.contains(
-        "\"command\": \"cargo-allow worklist --item-kind weak_evidence_reference --format json\""
-    ));
+    assert!(sarif.contains("\"worklist_filter\": \"weak_evidence\""));
+    assert!(sarif.contains("\"command\": \"cargo-allow worklist --weak-evidence --format json\""));
     assert!(sarif.contains("\"results\": [\n\n      ]"));
 }
 

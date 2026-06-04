@@ -25,12 +25,19 @@ const FORBIDDEN_PROOF_COMMAND_TOOL_TOKENS: &[&str] = &[
 ];
 
 pub(crate) fn run_cargo_allow(args: &[&str]) -> std::process::Output {
+    run_cargo_allow_expect_status(args, true)
+}
+
+pub(crate) fn run_cargo_allow_expect_status(
+    args: &[&str],
+    should_succeed: bool,
+) -> std::process::Output {
     let output = cargo_allow_command()
         .args(args)
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow: {err}")));
     let command = format!("cargo-allow {}", args.join(" "));
-    assert_status(&command, &output, true);
+    assert_status(&command, &output, should_succeed);
     assert_stdout_empty(
         &command,
         &output,

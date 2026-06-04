@@ -232,6 +232,14 @@ fn rejects_non_source_tree_relative_local_evidence_references() {
         ("doc:/absolute/safety.md", "source-tree-relative"),
         ("doc:C:/absolute/safety.md", "source-tree-relative"),
         (
+            "doc:./docs/safety.md",
+            "must not contain current directory segments",
+        ),
+        (
+            "doc:docs//safety.md",
+            "must not contain empty path segments",
+        ),
+        (
             "doc:docs\\..\\outside.md",
             "must not contain parent directory segments",
         ),

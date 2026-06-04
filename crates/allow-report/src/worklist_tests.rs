@@ -51,6 +51,8 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
     assert!(json.contains("\"item_kind\": \"stale_allow\""));
     assert!(json.contains("\"baseline_debt\": true"));
     assert!(json.contains("\"missing_evidence\": true"));
+    assert!(json.contains("\"broken_evidence\": false"));
+    assert!(json.contains("\"weak_evidence\": false"));
     assert!(json.contains("\"work_items\": 1"));
     assert!(json.contains("\"high\": 1"));
     assert!(json.contains("\"small_difficulty\": 1"));
@@ -93,7 +95,9 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
     "broad_scope": false,
     "risk": "high",
     "difficulty": null,
-    "missing_evidence": true
+    "missing_evidence": true,
+    "broken_evidence": false,
+    "weak_evidence": false
   }},
   "summary": {{
     "work_items": 1,

@@ -212,6 +212,14 @@
         "missing_evidence": {
           "type": "boolean",
           "description": "Applied --missing-evidence filter. True means only policy-backed work items with no evidence references are included."
+        },
+        "broken_evidence": {
+          "type": "boolean",
+          "description": "Applied --broken-evidence filter. True means only broken local evidence reference work items are included."
+        },
+        "weak_evidence": {
+          "type": "boolean",
+          "description": "Applied --weak-evidence filter. True means only weak evidence reference work items are included."
         }
       }
     },

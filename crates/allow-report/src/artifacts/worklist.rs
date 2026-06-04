@@ -16,6 +16,8 @@ pub struct WorklistFilters<'a> {
     pub risk: Option<&'a str>,
     pub difficulty: Option<&'a str>,
     pub missing_evidence: bool,
+    pub broken_evidence: bool,
+    pub weak_evidence: bool,
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -59,4 +59,6 @@ pub(super) struct WorklistFilters<'a> {
     pub(super) risk: Option<&'a str>,
     pub(super) difficulty: Option<&'a str>,
     pub(super) missing_evidence: bool,
+    pub(super) broken_evidence: bool,
+    pub(super) weak_evidence: bool,
 }

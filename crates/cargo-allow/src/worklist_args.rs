@@ -69,6 +69,12 @@ pub(crate) struct WorklistArgs {
     /// Include only policy-backed work items with no evidence references.
     #[arg(long)]
     pub(super) missing_evidence: bool,
+    /// Include only broken local evidence reference work items.
+    #[arg(long)]
+    pub(super) broken_evidence: bool,
+    /// Include only weak evidence reference work items.
+    #[arg(long)]
+    pub(super) weak_evidence: bool,
     /// Include untracked files in addition to git-tracked files.
     #[arg(long)]
     pub(super) include_untracked: bool,
@@ -108,5 +114,7 @@ pub(super) fn worklist_filters(args: &WorklistArgs) -> WorklistFilters<'_> {
         risk: args.risk.as_deref(),
         difficulty: args.difficulty.as_deref(),
         missing_evidence: args.missing_evidence,
+        broken_evidence: args.broken_evidence,
+        weak_evidence: args.weak_evidence,
     }
 }

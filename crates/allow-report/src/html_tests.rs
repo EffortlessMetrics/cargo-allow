@@ -59,9 +59,7 @@ fn html_audit_report_counts_weak_evidence_references_context() {
     let html = render_html_with_context("audit", &[], &[], false, context);
 
     assert!(html.contains("<td>Weak evidence/link references</td><td class=\"count\">2</td>"));
-    assert!(
-        html.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
-    );
+    assert!(html.contains("cargo-allow worklist --weak-evidence --format json"));
     assert!(html.contains("replace unstructured or unknown-prefix evidence/link references"));
 }
 
@@ -91,11 +89,9 @@ fn html_check_report_includes_evidence_repair_queues() {
     let html = render_html_with_context("check", &[], &[], true, context);
 
     assert!(html.contains("<h3>Evidence Repair Queues</h3>"));
-    assert!(html.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
+    assert!(html.contains("cargo-allow worklist --broken-evidence --format json"));
     assert!(html.contains("cargo-allow worklist --missing-evidence --format json"));
-    assert!(
-        html.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
-    );
+    assert!(html.contains("cargo-allow worklist --weak-evidence --format json"));
     assert!(!html.contains("<h2>Audit Review Queue</h2>"));
 }
 
@@ -126,17 +122,15 @@ fn html_audit_report_routes_evidence_repairs_even_with_review_queue() {
         "<tr><td>missing evidence</td><td><code>cargo-allow worklist --missing-evidence --format json</code></td></tr>"
     ));
     assert!(html.contains(
-        "<tr><td>broken evidence links</td><td><code>cargo-allow worklist --item-kind broken_evidence_link --format json</code></td></tr>"
+        "<tr><td>broken evidence links</td><td><code>cargo-allow worklist --broken-evidence --format json</code></td></tr>"
     ));
     assert!(html.contains(
-        "<tr><td>weak evidence references</td><td><code>cargo-allow worklist --item-kind weak_evidence_reference --format json</code></td></tr>"
+        "<tr><td>weak evidence references</td><td><code>cargo-allow worklist --weak-evidence --format json</code></td></tr>"
     ));
     assert!(html.contains("<h3>Evidence Repair Queues</h3>"));
-    assert!(html.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
+    assert!(html.contains("cargo-allow worklist --broken-evidence --format json"));
     assert!(html.contains("cargo-allow worklist --missing-evidence --format json"));
-    assert!(
-        html.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
-    );
+    assert!(html.contains("cargo-allow worklist --weak-evidence --format json"));
     assert!(html.contains("<h2>Audit Review Queue</h2>"));
 }
 

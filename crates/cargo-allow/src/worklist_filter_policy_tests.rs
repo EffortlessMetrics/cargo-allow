@@ -164,3 +164,60 @@ fn worklist_filters_by_missing_evidence() {
     assert_eq!(item.allow_id.as_deref(), Some("allow-missing"));
     assert_eq!(item.evidence_count, Some(0));
 }
+
+#[test]
+fn worklist_filters_by_evidence_health_shortcuts() {
+    let broken = WorkItem {
+        id: "work-broken-evidence-link-0001".to_string(),
+        kind: "broken_evidence_link".to_string(),
+        exception_kind: Some("unsafe".to_string()),
+        family: Some("unsafe_block".to_string()),
+        owner: Some("runtime".to_string()),
+        classification: Some("reviewed_unsafe_boundary".to_string()),
+        reason: Some("fixture".to_string()),
+        created: None,
+        review_after: None,
+        expires: None,
+        evidence_count: Some(1),
+        selector_precision: Some(42),
+        risk: "high",
+        difficulty: "small",
+        status: MatchStatus::Matched,
+        allow_id: Some("allow-broken".to_string()),
+        finding_index: None,
+        path: Some("docs/missing.md".to_string()),
+        evidence_reference: None,
+        source_package: None,
+        message: "broken evidence".to_string(),
+        suggested_actions: Vec::new(),
+        proof_commands: Vec::new(),
+    };
+    let mut weak = broken.clone();
+    weak.id = "work-weak-evidence-reference-0002".to_string();
+    weak.kind = "weak_evidence_reference".to_string();
+    weak.allow_id = Some("allow-weak".to_string());
+    weak.path = None;
+    weak.message = "weak evidence".to_string();
+
+    let broken_filtered = filter_work_items(
+        vec![broken.clone(), weak.clone()],
+        WorklistFilters {
+            broken_evidence: true,
+            ..WorklistFilters::default()
+        },
+    );
+    let weak_filtered = filter_work_items(
+        vec![broken, weak],
+        WorklistFilters {
+            weak_evidence: true,
+            ..WorklistFilters::default()
+        },
+    );
+
+    assert_eq!(broken_filtered.len(), 1);
+    assert_eq!(broken_filtered[0].allow_id.as_deref(), Some("allow-broken"));
+    assert_eq!(broken_filtered[0].kind, "broken_evidence_link");
+    assert_eq!(weak_filtered.len(), 1);
+    assert_eq!(weak_filtered[0].allow_id.as_deref(), Some("allow-weak"));
+    assert_eq!(weak_filtered[0].kind, "weak_evidence_reference");
+}

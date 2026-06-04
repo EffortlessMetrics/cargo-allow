@@ -41,15 +41,6 @@ impl AuditRemediationRoute {
         }
     }
 
-    fn worklist_item_kind(item_kind: &'static str) -> Self {
-        Self {
-            route_kind: "worklist_item_kind",
-            item_kind: Some(item_kind),
-            worklist_status: None,
-            worklist_filter: None,
-        }
-    }
-
     fn prune_stale() -> Self {
         Self {
             route_kind: "prune_stale",
@@ -136,7 +127,7 @@ pub(crate) fn audit_remediation_items(
         signals.broken_evidence_links,
         "broken_evidence_links",
         "broken evidence links",
-        AuditRemediationRoute::worklist_item_kind("broken_evidence_link"),
+        AuditRemediationRoute::worklist_filter("broken_evidence_link", "broken_evidence"),
         BROKEN_EVIDENCE_LINK_COMMAND,
     );
     push_audit_remediation_item_if(
@@ -144,7 +135,7 @@ pub(crate) fn audit_remediation_items(
         signals.weak_evidence_references,
         "weak_evidence_references",
         "weak evidence references",
-        AuditRemediationRoute::worklist_item_kind("weak_evidence_reference"),
+        AuditRemediationRoute::worklist_filter("weak_evidence_reference", "weak_evidence"),
         WEAK_EVIDENCE_REFERENCE_COMMAND,
     );
     push_audit_remediation_item_if(

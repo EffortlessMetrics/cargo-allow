@@ -179,6 +179,12 @@ fn worklist_filters_human(filters: WorklistFilters<'_>) -> String {
     if filters.missing_evidence {
         parts.push("missing_evidence=true".to_string());
     }
+    if filters.broken_evidence {
+        parts.push("broken_evidence=true".to_string());
+    }
+    if filters.weak_evidence {
+        parts.push("weak_evidence=true".to_string());
+    }
     if parts.is_empty() {
         "Filters: none\n".to_string()
     } else {
