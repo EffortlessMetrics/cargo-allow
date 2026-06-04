@@ -1828,6 +1828,7 @@ fn saved_diff_output_covers_lifecycle_extension_details() {
     assert_lifecycle_change(
         &value,
         "expiry_extended",
+        "review",
         "expires",
         "2026-08-29",
         "2026-12-29",
@@ -1835,9 +1836,74 @@ fn saved_diff_output_covers_lifecycle_extension_details() {
     assert_lifecycle_change(
         &value,
         "review_after_extended",
+        "review",
         "review_after",
         "2026-07-29",
         "2026-10-29",
+    );
+}
+
+#[test]
+fn saved_diff_output_covers_lifecycle_shortening_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-lifecycle-shortened");
+    fixture.write_panic_source();
+    write_policy_with_lifecycle(&fixture, "2026-12-29", "2026-10-29");
+    commit_fixture_base(&fixture.root);
+    write_policy_with_lifecycle(&fixture, "2026-08-29", "2026-07-29");
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("improved"),
+        "diff lifecycle shortening net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(2),
+        "diff lifecycle shortening improvement count"
+    );
+
+    assert_lifecycle_change(
+        &value,
+        "expiry_shortened",
+        "improvement",
+        "expires",
+        "2026-12-29",
+        "2026-08-29",
+    );
+    assert_lifecycle_change(
+        &value,
+        "review_after_shortened",
+        "improvement",
+        "review_after",
+        "2026-10-29",
+        "2026-07-29",
     );
 }
 
@@ -4088,6 +4154,7 @@ callee = "unwrap"
 fn assert_lifecycle_change(
     value: &serde_json::Value,
     kind: &str,
+    severity: &str,
     field: &str,
     before: &str,
     after: &str,
@@ -4110,8 +4177,8 @@ fn assert_lifecycle_change(
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
-        Some("review"),
-        "lifecycle extension severity for {kind}"
+        Some(severity),
+        "lifecycle severity for {kind}"
     );
     assert_eq!(
         change
