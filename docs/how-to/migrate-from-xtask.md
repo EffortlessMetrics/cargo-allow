@@ -40,8 +40,8 @@ Before removing the old xtask gate, run the migration closeout queues that
 match the summary counts:
 
 ```bash
-cargo-allow worklist --item-kind broken_evidence_link --format json
-cargo-allow worklist --item-kind weak_evidence_reference --format json
+cargo-allow worklist --broken-evidence --format json
+cargo-allow worklist --weak-evidence --format json
 cargo-allow worklist --item-kind baseline_debt --format json
 cargo-allow worklist --kind unsafe --item-kind broken_evidence_link --format json
 cargo-allow worklist --kind unsafe --item-kind weak_evidence_reference --format json
