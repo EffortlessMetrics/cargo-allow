@@ -2554,6 +2554,102 @@ fn saved_diff_output_covers_requirement_loosening_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_requirement_tightening_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-requirement-tightened");
+    fixture.write_panic_source();
+    write_policy_with_owner_required(&fixture, false);
+    commit_fixture_base(&fixture.root);
+    write_policy_with_owner_required(&fixture, true);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("improved"),
+        "diff requirement tightening net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff requirement tightening improvement count"
+    );
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("requirement_tightened")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("requirements.owner_required")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected requirement tightening policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("improvement"),
+        "requirement tightening severity"
+    );
+    assert!(
+        change
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("requirements.owner_required tightened")),
+        "requirement tightening message should name the strengthened requirement: {change:?}"
+    );
+    assert_eq!(
+        change
+            .pointer("/requirement/field")
+            .and_then(serde_json::Value::as_str),
+        Some("owner_required"),
+        "requirement tightening field"
+    );
+    assert_eq!(
+        change
+            .pointer("/requirement/before")
+            .and_then(serde_json::Value::as_bool),
+        Some(false),
+        "requirement tightening before"
+    );
+    assert_eq!(
+        change
+            .pointer("/requirement/after")
+            .and_then(serde_json::Value::as_bool),
+        Some(true),
+        "requirement tightening after"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_workspace_ignored_addition_details() {
     let fixture = SourceTreeFixture::new("saved-diff-workspace-ignored-added");
     fixture.write_panic_source();
