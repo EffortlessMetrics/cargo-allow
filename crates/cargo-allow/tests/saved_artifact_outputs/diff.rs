@@ -918,6 +918,120 @@ fn saved_diff_output_covers_weak_evidence_addition_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_weak_evidence_removal_improvement_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-weak-evidence-removed-improved");
+    fixture.write_panic_source();
+    write_policy_with_evidence_references(
+        &fixture,
+        &[
+            "legacy-policy:proc-cargo-install-cargo-deny",
+            "binary:cargo",
+        ],
+    );
+    commit_fixture_base(&fixture.root);
+    write_policy_with_evidence_references(
+        &fixture,
+        &["legacy-policy:proc-cargo-install-cargo-deny"],
+    );
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("improved"),
+        "diff weak evidence removal net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff weak evidence removal improvement count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/evidence_removed")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff weak evidence removal generic evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/evidence_removal_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff weak evidence removal improvement evidence count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("evidence_removed")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-evidence")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected weak evidence removal policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("improvement"),
+        "weak evidence removal severity"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/field")
+            .and_then(serde_json::Value::as_str),
+        Some("evidence"),
+        "weak evidence removal field"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/removed/0")
+            .and_then(serde_json::Value::as_str),
+        Some("binary:cargo"),
+        "weak evidence removal raw reference"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/added")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "weak evidence removal added references"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_lifecycle_extension_details() {
     let fixture = SourceTreeFixture::new("saved-diff-lifecycle-extended");
     fixture.write_panic_source();
@@ -2168,6 +2282,58 @@ path = "src/lib.rs"
 owner = "core/tests"
 classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff evidence removal details covered."
+{evidence}created = "2026-05-29"
+review_after = "2026-08-29"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    ));
+    fs::write(fixture.root.join("policy/allow.toml"), policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+}
+
+fn write_policy_with_evidence_references(fixture: &SourceTreeFixture, evidence: &[&str]) {
+    fixture.write_minimal_policy();
+    let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+    for path in evidence
+        .iter()
+        .filter_map(|reference| reference.strip_prefix("doc:"))
+    {
+        let path = fixture.root.join(path);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)
+                .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+        }
+        fs::write(path, "# Safety evidence\n\nFixture evidence artifact.\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence fixture: {err}")));
+    }
+    let evidence = if evidence.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "evidence = [{}]\n",
+            evidence
+                .iter()
+                .map(|reference| format!("\"{reference}\""))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    };
+    policy.push_str(&format!(
+        r#"
+
+[[allow]]
+id = "allow-unwrap-evidence"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core/tests"
+classification = "reviewed_fixture"
+reason = "Fixture keeps saved diff weak evidence removal details covered."
 {evidence}created = "2026-05-29"
 review_after = "2026-08-29"
 
