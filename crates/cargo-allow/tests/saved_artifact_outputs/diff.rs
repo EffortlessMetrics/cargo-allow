@@ -957,6 +957,101 @@ fn saved_diff_output_covers_owner_removal_details() {
     );
 }
 
+#[test]
+fn saved_diff_output_covers_reason_removal_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-reason-removed");
+    fixture.write_panic_source();
+    write_policy_with_optional_reason(
+        &fixture,
+        Some("Fixture keeps saved diff reason-removal posture details covered."),
+    );
+    commit_fixture_base(&fixture.root);
+    write_policy_with_optional_reason(&fixture, None);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--config",
+            "policy/allow.toml",
+            "--base",
+            "HEAD",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("worse"),
+        "diff reason removal net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff reason removal failure count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("reason_removed")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-reason")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected reason removal policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("fail"),
+        "reason removal severity"
+    );
+    assert_eq!(
+        change
+            .pointer("/metadata/field")
+            .and_then(serde_json::Value::as_str),
+        Some("reason"),
+        "reason removal metadata field"
+    );
+    assert_eq!(
+        change
+            .pointer("/metadata/before")
+            .and_then(serde_json::Value::as_str),
+        Some("Fixture keeps saved diff reason-removal posture details covered."),
+        "reason removal metadata before"
+    );
+    assert!(
+        change
+            .pointer("/metadata/after")
+            .is_some_and(|value| value.is_null()),
+        "reason removal metadata after should be null: {change:?}"
+    );
+}
+
 fn write_policy_with_occurrence_limit(fixture: &SourceTreeFixture, occurrence_limit: u32) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
@@ -1064,6 +1159,38 @@ path = "src/lib.rs"
 {owner}classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff owner-removal posture details covered."
 evidence = ["test:saved_diff_output_covers_owner_removal_details"]
+created = "2026-05-29"
+review_after = "2026-08-29"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    ));
+    fs::write(fixture.root.join("policy/allow.toml"), policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+}
+
+fn write_policy_with_optional_reason(fixture: &SourceTreeFixture, reason: Option<&str>) {
+    fixture.write_minimal_policy();
+    let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+    policy = policy.replace("reason_required = true", "reason_required = false");
+    let reason = reason
+        .map(|reason| format!("reason = \"{reason}\"\n"))
+        .unwrap_or_default();
+    policy.push_str(&format!(
+        r#"
+
+[[allow]]
+id = "allow-unwrap-reason"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core/tests"
+classification = "reviewed_fixture"
+{reason}evidence = ["test:saved_diff_output_covers_reason_removal_details"]
 created = "2026-05-29"
 review_after = "2026-08-29"
 
