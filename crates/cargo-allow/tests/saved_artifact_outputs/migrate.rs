@@ -282,6 +282,209 @@ fn saved_migrate_output_preserves_legacy_evidence_and_links() {
 }
 
 #[test]
+fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
+    let fixture = SourceTreeFixture::new("saved-migrate-policy-exception-evidence-matrix");
+    let legacy_dir = fixture.root.join("legacy-policy");
+    fs::create_dir_all(&legacy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+    write_fixture_doc(&fixture.root, "docs/ci.md");
+    write_fixture_doc(&fixture.root, "docs/dependencies.md");
+    write_fixture_doc(&fixture.root, "docs/release/process.md");
+    write_fixture_doc(&fixture.root, "docs/network.md");
+    fs::write(
+        legacy_dir.join("workflow-allowlist.toml"),
+        workflow_policy_with_evidence_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write workflow policy fixture: {err}")));
+    fs::write(
+        legacy_dir.join("dependency-surface-allowlist.toml"),
+        dependency_policy_with_evidence_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write dependency policy fixture: {err}")));
+    fs::write(
+        legacy_dir.join("process-allowlist.toml"),
+        process_policy_with_evidence_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write process policy fixture: {err}")));
+    fs::write(
+        legacy_dir.join("network-allowlist.toml"),
+        network_policy_with_evidence_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write network policy fixture: {err}")));
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let migrated_policy = artifact_dir.join("allow.migrated.toml");
+    let migrate_summary = artifact_dir.join("migrate-summary.json");
+
+    run_cargo_allow(&[
+        "migrate",
+        "--root",
+        fixture.root_str(),
+        "--repo-policy",
+        path_arg(&legacy_dir),
+        "--out",
+        path_arg(&migrated_policy),
+        "--summary-format",
+        "json",
+        "--summary-output",
+        path_arg(&migrate_summary),
+    ]);
+
+    assert_policy_output(&migrated_policy);
+    let value = assert_policy_migration_artifact_with_inventory(
+        &migrate_summary,
+        allow_report::MIGRATE_SCHEMA_ID,
+        "migrate",
+        "filesystem_fallback",
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/allow_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(5),
+        "migrate policy-exception evidence matrix allow entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/evidence_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(28),
+        "migrate policy-exception evidence matrix evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/entries_with_links")
+            .and_then(serde_json::Value::as_u64),
+        Some(5),
+        "migrate policy-exception evidence matrix link-entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/link_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(5),
+        "migrate policy-exception evidence matrix link count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/weak_evidence_references")
+            .and_then(serde_json::Value::as_u64),
+        Some(13),
+        "migrate policy-exception evidence matrix weak evidence count"
+    );
+    assert!(
+        value.pointer("/summary/broken_evidence_links").is_none(),
+        "fixture should preserve local doc evidence without broken links"
+    );
+    let queues = value
+        .pointer("/evidence_repair_queues")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("migrate summary should route weak evidence repair queues")
+        });
+    let weak = migrate_queue(queues, "weak_evidence_reference");
+    assert_eq!(
+        weak.get("count").and_then(serde_json::Value::as_u64),
+        Some(13),
+        "migrate policy-exception evidence matrix weak queue count"
+    );
+    assert_eq!(
+        weak.get("command").and_then(serde_json::Value::as_str),
+        Some("cargo-allow worklist --weak-evidence --format json"),
+        "migrate policy-exception evidence matrix weak queue command"
+    );
+
+    let cfg = allow_policy::load_policy(&migrated_policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "load migrated policy {}: {err}",
+            migrated_policy.display()
+        ))
+    });
+    let workflow = migrated_entry(&cfg, "workflow-file-github-workflows-release-yml");
+    assert_eq!(workflow.kind, allow_core::FindingKind::PolicyException);
+    assert_eq!(workflow.family.as_deref(), Some("github_workflow"));
+    assert_entry_evidence(
+        workflow,
+        &[
+            "doc:docs/ci.md",
+            "issue:#456",
+            "legacy-policy:workflow:.github/workflows/release.yml",
+            "permission:contents:read",
+            "secret:RELEASE_TOKEN",
+        ],
+    );
+    assert_entry_links(
+        workflow,
+        &["legacy-policy:workflow:.github/workflows/release.yml"],
+    );
+
+    let action = migrated_entry(
+        &cfg,
+        "workflow-action-github-workflows-release-yml--actions-checkout-v4",
+    );
+    assert_eq!(action.family.as_deref(), Some("workflow_external_action"));
+    assert_entry_evidence(
+        action,
+        &[
+            "doc:docs/ci.md",
+            "issue:#456",
+            "legacy-policy:workflow:.github/workflows/release.yml",
+            "external_action:actions/checkout@v4",
+        ],
+    );
+    assert_entry_links(
+        action,
+        &["legacy-policy:workflow:.github/workflows/release.yml"],
+    );
+
+    let dependency = migrated_entry(&cfg, "saved-dependency-evidence");
+    assert_eq!(dependency.family.as_deref(), Some("dependency_surface"));
+    assert_entry_evidence(
+        dependency,
+        &[
+            "doc:docs/dependencies.md",
+            "issue:#234",
+            "legacy-policy:saved-dependency-evidence",
+            "surface:workspace_manifest",
+            "dep_count_at_baseline:22",
+        ],
+    );
+    assert_entry_links(dependency, &["legacy-policy:saved-dependency-evidence"]);
+
+    let process = migrated_entry(&cfg, "saved-process-evidence");
+    assert_eq!(process.family.as_deref(), Some("process_spawn"));
+    assert_entry_evidence(
+        process,
+        &[
+            "doc:docs/release/process.md",
+            "issue:#789",
+            "legacy-policy:saved-process-evidence",
+            "binary:bash",
+            "argv_shape:scripts/release.sh",
+            "network_reach:false",
+            "called_by:.github/workflows/release.yml",
+        ],
+    );
+    assert_entry_links(process, &["legacy-policy:saved-process-evidence"]);
+
+    let network = migrated_entry(&cfg, "saved-network-evidence");
+    assert_eq!(network.family.as_deref(), Some("network_destination"));
+    assert_entry_evidence(
+        network,
+        &[
+            "doc:docs/network.md",
+            "issue:#345",
+            "legacy-policy:saved-network-evidence",
+            "destination:api.github.com",
+            "lane:release",
+            "auth_required:true",
+            "auth_secret:GITHUB_TOKEN",
+        ],
+    );
+    assert_entry_links(network, &["legacy-policy:saved-network-evidence"]);
+}
+
+#[test]
 fn saved_migrate_output_routes_baseline_debt_follow_up() {
     let fixture = SourceTreeFixture::new("saved-migrate-baseline-debt-follow-up");
     let legacy_dir = fixture.root.join("legacy-policy");
@@ -506,6 +709,95 @@ covered_by = "doc:docs/release/package.md"
 created = "2026-05-09"
 expires = "permanent"
 "#
+}
+
+fn workflow_policy_with_evidence_fixture_text() -> &'static str {
+    r#"schema_version = 1
+policy = "workflow-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[entry]]
+path = ".github/workflows/release.yml"
+owner = "release/ci"
+reason = "Release workflow fixture."
+permissions = ["contents:read"]
+secrets_used = ["RELEASE_TOKEN"]
+external_actions = ["actions/checkout@v4"]
+evidence = ["doc:docs/ci.md", "issue:#456"]
+created = "2026-05-09"
+expires = "permanent"
+"#
+}
+
+fn dependency_policy_with_evidence_fixture_text() -> &'static str {
+    r#"schema_version = 1
+policy = "dependency-surface-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "saved-dependency-evidence"
+path = "Cargo.toml"
+surface = "workspace_manifest"
+owner = "release"
+reason = "Workspace dependency block fixture."
+dep_count_at_baseline = 22
+evidence = ["doc:docs/dependencies.md", "issue:#234"]
+created = "2026-05-09"
+expires = "permanent"
+"#
+}
+
+fn process_policy_with_evidence_fixture_text() -> &'static str {
+    r#"schema_version = 1
+policy = "process-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "saved-process-evidence"
+binary = "bash"
+argv_shape = ["scripts/release.sh"]
+network_reach = false
+called_by = [".github/workflows/release.yml"]
+owner = "release"
+reason = "Release helper fixture."
+evidence = ["doc:docs/release/process.md", "issue:#789"]
+created = "2026-05-09"
+expires = "permanent"
+"#
+}
+
+fn network_policy_with_evidence_fixture_text() -> &'static str {
+    r#"schema_version = 1
+policy = "network-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "saved-network-evidence"
+destination = "api.github.com"
+auth_required = true
+auth_secret = "GITHUB_TOKEN"
+lane = "release"
+owner = "release/ci"
+reason = "Release API fixture."
+evidence = ["doc:docs/network.md", "issue:#345"]
+created = "2026-05-09"
+expires = "permanent"
+"#
+}
+
+fn write_fixture_doc(root: &Path, relative_path: &str) {
+    let path = root.join(relative_path);
+    let parent = path
+        .parent()
+        .unwrap_or_else(|| std::panic::panic_any(format!("fixture doc parent: {relative_path}")));
+    fs::create_dir_all(parent)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create fixture doc dir: {err}")));
+    fs::write(&path, "fixture evidence\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write fixture doc: {err}")));
 }
 
 fn migrated_entry<'a>(cfg: &'a allow_core::AllowConfig, id: &str) -> &'a allow_core::AllowEntry {
