@@ -3,6 +3,7 @@
 These documents define the product lane for the current source-tree exception
 ledger and the planned growth around it.
 
+- [Changelog](../CHANGELOG.md): curated user-facing release ledger.
 - [Design](design.md): cargo-allow's source-exception governance model.
 - [Claim boundaries](claim-boundaries.md): what current and future reports may
   claim.
