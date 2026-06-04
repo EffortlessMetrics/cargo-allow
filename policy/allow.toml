@@ -1888,7 +1888,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-0148"
+id = "allow-0149"
 kind = "non_rust_file"
 family = "documentation"
 path = "CHANGELOG.md"
