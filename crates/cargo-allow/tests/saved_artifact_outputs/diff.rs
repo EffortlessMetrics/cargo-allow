@@ -1429,6 +1429,96 @@ fn saved_diff_output_covers_classification_removal_details() {
     );
 }
 
+#[test]
+fn saved_diff_output_covers_classification_change_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-classification-changed");
+    fixture.write_panic_source();
+    write_policy_with_optional_classification(&fixture, Some("reviewed_fixture"));
+    commit_fixture_base(&fixture.root);
+    write_policy_with_optional_classification(&fixture, Some("audited_fixture"));
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("review-required"),
+        "diff classification change net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_review_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff classification change review item count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("classification_changed")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-classification")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected classification change policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("review"),
+        "classification change severity"
+    );
+    assert_eq!(
+        change
+            .pointer("/metadata/field")
+            .and_then(serde_json::Value::as_str),
+        Some("classification"),
+        "classification change metadata field"
+    );
+    assert_eq!(
+        change
+            .pointer("/metadata/before")
+            .and_then(serde_json::Value::as_str),
+        Some("reviewed_fixture"),
+        "classification change metadata before"
+    );
+    assert_eq!(
+        change
+            .pointer("/metadata/after")
+            .and_then(serde_json::Value::as_str),
+        Some("audited_fixture"),
+        "classification change metadata after"
+    );
+}
+
 fn write_policy_with_occurrence_limit(fixture: &SourceTreeFixture, occurrence_limit: u32) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
