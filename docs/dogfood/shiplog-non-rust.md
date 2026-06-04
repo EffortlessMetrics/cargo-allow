@@ -335,6 +335,118 @@ This keeps `--compat` as the migration and side-by-side validation bridge, while
 making the migrated canonical policy checkable for the same retained companion
 surfaces.
 
+## 2026-06-04 Non-Rust Closeout Refresh
+
+A fresh non-Rust-only migration closeout was run against the current local
+shiplog checkout:
+
+```text
+branch: xtask/promotion-body-post-merge-inference
+head: b2bf27a xtask: infer promoted swarm PRs from merge parent
+status: ahead 1, behind 1, no uncommitted files
+```
+
+This refresh did not modify shiplog. The generated policy, summary, check
+receipt, and worklist outputs were written under cargo-allow's local
+`target/cargo-allow/dogfood/shiplog/` scratch directory.
+
+The full policy-directory migration was not used for this refresh because the
+current checkout's `policy/no-panic-allowlist.toml` shape is outside the
+repo-policy migrator boundary:
+
+```text
+no-panic-allowlist missing allow entries
+```
+
+The refreshed proof therefore used a scratch policy directory containing only
+shiplog's `policy/non-rust-allowlist.toml` and ran the directory migrator for
+that one lane:
+
+```bash
+cargo-allow migrate \
+  --root H:\Code\Rust\shiplog \
+  --repo-policy <scratch-policy-non-rust> \
+  --out <scratch-non-rust-allow.toml> \
+  --summary-format json \
+  --summary-output <scratch-migrate-summary.json> \
+  --force
+```
+
+Observed migration summary:
+
+```text
+allow_entries:         500
+baseline_debt:          0
+entries_with_evidence: 500
+evidence_entries:      500
+entries_with_links:    500
+link_entries:          500
+follow_up_queues:      none
+evidence_repair_queues: none
+```
+
+The migrated policy passed the current non-Rust no-new check:
+
+```bash
+cargo-allow check \
+  --root H:\Code\Rust\shiplog \
+  --config <scratch-non-rust-allow.toml> \
+  --kind non-rust \
+  --mode no-new
+```
+
+Observed cargo-allow result:
+
+```text
+Findings scanned: 500
+files scanned:    799
+matched:          500
+new:                0
+stale:              0
+ambiguous:          0
+baseline_debt:      0
+```
+
+Closeout worklist queues were then inspected:
+
+```bash
+cargo-allow worklist \
+  --root H:\Code\Rust\shiplog \
+  --config <scratch-non-rust-allow.toml> \
+  --kind non-rust \
+  --item-kind baseline_debt \
+  --format json
+
+cargo-allow worklist \
+  --root H:\Code\Rust\shiplog \
+  --config <scratch-non-rust-allow.toml> \
+  --kind non-rust \
+  --item-kind broken_evidence_link \
+  --format json
+
+cargo-allow worklist \
+  --root H:\Code\Rust\shiplog \
+  --config <scratch-non-rust-allow.toml> \
+  --kind non-rust \
+  --item-kind weak_evidence_reference \
+  --format json
+```
+
+Observed worklist result:
+
+```text
+baseline_debt items:          0
+broken_evidence_link items:   0
+weak_evidence_reference items: 0
+```
+
+For contrast, a direct single-file migration from
+`policy/non-rust-allowlist.toml` preserved legacy glob scope and produced no new
+findings, but it left `30` ambiguous and `11` stale outcomes in the current
+checkout. The one-lane directory migration is the useful replacement proof
+because it expands legacy non-Rust globs into exact current-file receipts and
+removes the ambiguity/staleness class without weakening policy.
+
 ## No-Panic Baseline Migration Result
 
 The existing no-panic xtask gate passed:
