@@ -244,6 +244,35 @@ enum Token {
 }
 
 #[test]
+fn outer_lint_attributes_record_target_struct_field_container() {
+    let src = r#"
+struct Parser {
+    #[allow(dead_code)]
+    legacy: String,
+
+    #[allow(dead_code)]
+    rendered: String,
+}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let containers = findings
+        .iter()
+        .filter(|f| {
+            f.kind == FindingKind::LintException && f.family.as_deref() == Some("allow_attribute")
+        })
+        .map(|f| (f.identity.lint.as_deref(), f.identity.container.as_deref()))
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        containers,
+        vec![
+            (Some("dead_code"), Some("Parser::legacy")),
+            (Some("dead_code"), Some("Parser::rendered"))
+        ]
+    );
+}
+
+#[test]
 fn outer_lint_attributes_record_target_module_scope() {
     let src = r#"
 #[allow(dead_code)]
