@@ -447,6 +447,86 @@ checkout. The one-lane directory migration is the useful replacement proof
 because it expands legacy non-Rust globs into exact current-file receipts and
 removes the ambiguity/staleness class without weakening policy.
 
+## 2026-06-05 Non-Rust Closeout Refresh
+
+The one-lane non-Rust migration closeout was rerun against the current local
+shiplog checkout:
+
+```text
+branch: codex/share-explain-help-safety-handoff-20260605
+head: a435144f cli: teach runs diff comparison handoff in help
+status: branch tracks swarm/main; unrelated local changes were present in
+  apps/shiplog/src/main.rs
+  apps/shiplog/tests/cli_integration.rs
+```
+
+This refresh did not modify shiplog. The scratch legacy policy copy, migrated
+policy, summary, check receipt, and worklist outputs were written under
+cargo-allow's local `target/cargo-allow/dogfood/shiplog/` directory.
+
+The refresh again used a scratch policy directory containing only shiplog's
+`policy/non-rust-allowlist.toml`:
+
+```bash
+cargo-allow migrate \
+  --root H:\Code\Rust\shiplog \
+  --repo-policy <scratch-policy-non-rust> \
+  --out <scratch-non-rust-allow.toml> \
+  --summary-format json \
+  --summary-output <scratch-migrate-summary.json> \
+  --force
+```
+
+Observed migration summary:
+
+```text
+allow_entries:         501
+baseline_debt:          0
+entries_with_evidence: 501
+evidence_entries:      501
+entries_with_links:    501
+link_entries:          501
+files_scanned:         800
+follow_up_queues:      none
+evidence_repair_queues: none
+```
+
+The migrated policy passed the current non-Rust no-new check:
+
+```bash
+cargo-allow check \
+  --root H:\Code\Rust\shiplog \
+  --config <scratch-non-rust-allow.toml> \
+  --kind non-rust \
+  --mode no-new
+```
+
+Observed cargo-allow result:
+
+```text
+Findings scanned: 501
+files scanned:    800
+matched:          501
+new:                0
+stale:              0
+ambiguous:          0
+baseline_debt:      0
+```
+
+Closeout worklist queues were empty:
+
+```text
+baseline_debt items:          0
+broken_evidence_link items:   0
+weak_evidence_reference items: 0
+```
+
+The useful dogfood signal is unchanged: the one-lane directory migration turns
+Shiplog's retained non-Rust legacy policy into exact current-file receipts, and
+the migrated policy checks cleanly without introducing generated baseline debt
+or evidence-repair queues. The unrelated Shiplog source changes were outside
+this non-Rust migration proof.
+
 ## No-Panic Baseline Migration Result
 
 The existing no-panic xtask gate passed:
