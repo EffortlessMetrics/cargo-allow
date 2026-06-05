@@ -1293,6 +1293,109 @@ fn saved_diff_output_covers_explicit_head_missing_local_evidence_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_explicit_head_inventory_ignored_scopes() {
+    let fixture = SourceTreeFixture::new("saved-diff-explicit-head-inventory-ignored");
+    fixture.write_panic_source();
+    fs::create_dir_all(fixture.root.join("ignored"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create ignored dir: {err}")));
+    fs::write(
+        fixture.root.join("ignored/panic.rs"),
+        "pub fn ignored(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write ignored source: {err}")));
+    write_policy_with_workspace_ignored(&fixture, &["policy/**", "target/**"]);
+    commit_fixture_base(&fixture.root);
+    write_policy_with_workspace_ignored(&fixture, &["policy/**", "target/**", "ignored/**"]);
+    git_for_saved_diff(&fixture.root, &["add", "-A"]);
+    git_for_saved_diff(
+        &fixture.root,
+        &["commit", "-m", "ignore fixture source in head"],
+    );
+    git_for_saved_diff(&fixture.root, &["tag", "saved-head-ignored-inventory"]);
+    write_policy_with_workspace_ignored(&fixture, &["policy/**", "target/**"]);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--config",
+            "policy/allow.toml",
+            "--base",
+            "HEAD~1",
+            "--head",
+            "saved-head-ignored-inventory",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/inventory/files_scanned")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "explicit-head inventory count should apply head workspace.ignored scopes"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("worse"),
+        "explicit-head ignored-scope addition net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "explicit-head ignored-scope addition failure count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str)
+                == Some("workspace_ignored_added")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("workspace.ignored")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected explicit-head ignored-scope policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("fail"),
+        "explicit-head ignored-scope severity"
+    );
+    assert_eq!(
+        change
+            .pointer("/scope/after")
+            .and_then(serde_json::Value::as_str),
+        Some("ignored/**"),
+        "explicit-head ignored-scope added scope"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_redundant_segment_evidence_addition_details() {
     let fixture = SourceTreeFixture::new("saved-diff-redundant-segment-evidence-added");
     fixture.write_panic_source();
