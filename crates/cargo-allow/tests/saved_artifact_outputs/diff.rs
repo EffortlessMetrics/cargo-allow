@@ -3069,6 +3069,103 @@ fn saved_diff_output_covers_removed_allow_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_explicit_head_removed_policy_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-explicit-head-policy-removed");
+    fixture.write_panic_source();
+    write_policy_with_reviewed_allow(&fixture);
+    commit_fixture_base(&fixture.root);
+    git_for_saved_diff(&fixture.root, &["tag", "saved-base-policy"]);
+    fs::remove_file(fixture.root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove policy fixture: {err}")));
+    git_for_saved_diff(&fixture.root, &["add", "-A"]);
+    git_for_saved_diff(&fixture.root, &["commit", "-m", "remove policy"]);
+    git_for_saved_diff(&fixture.root, &["tag", "saved-head-no-policy"]);
+    git_for_saved_diff(
+        &fixture.root,
+        &["checkout", "saved-base-policy", "--", "policy/allow.toml"],
+    );
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--config",
+            "policy/allow.toml",
+            "--base",
+            "saved-base-policy",
+            "--head",
+            "saved-head-no-policy",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("worse"),
+        "explicit-head removed policy net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/current_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "explicit-head removed policy current failure count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(2),
+        "explicit-head removed policy improvement count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("removed_allow")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-added-review")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected explicit-head removed policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("improvement"),
+        "explicit-head removed policy severity"
+    );
+    assert!(
+        change
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("removed an allow entry")),
+        "explicit-head removed policy message should identify the removed receipt: {change:?}"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_added_baseline_debt_details() {
     let fixture = SourceTreeFixture::new("saved-diff-baseline-debt-added");
     fixture.write_panic_source();
