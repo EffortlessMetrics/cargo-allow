@@ -185,7 +185,7 @@ fn evidence_reference_is_invalid_local(reference: &str) -> bool {
     target.is_empty()
         || target.starts_with('/')
         || target.contains(':')
-        || target.split('/').any(|part| part == "..")
+        || target.split('/').any(|part| part == "." || part == "..")
         || target.chars().any(|ch| matches!(ch, '*' | '?'))
 }
 

@@ -507,7 +507,7 @@ fn local_evidence_reference(reference: &str) -> Option<LocalEvidenceReference> {
     if target.is_empty()
         || target.starts_with('/')
         || target.contains(':')
-        || target.split('/').any(|part| part == "..")
+        || target.split('/').any(|part| part == "." || part == "..")
         || target.chars().any(|ch| matches!(ch, '*' | '?'))
     {
         return Some(LocalEvidenceReference::InvalidLocalPath);
