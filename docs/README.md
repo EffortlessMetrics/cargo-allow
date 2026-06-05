@@ -5,6 +5,9 @@ ledger and the planned growth around it.
 
 - [Changelog](../CHANGELOG.md): curated user-facing release ledger.
 - [Design](design.md): cargo-allow's source-exception governance model.
+- [Repo style](REPO_STYLE.md): evidence-machine operating model for
+  source exceptions, static signals, runtime proof, receipts, CI economics,
+  and review-fast PRs.
 - [Claim boundaries](claim-boundaries.md): what current and future reports may
   claim.
 - [Contributing](../CONTRIBUTING.md): local development, product boundaries,
@@ -25,6 +28,13 @@ ledger and the planned growth around it.
   should move into cargo-allow.
 - [CI](ci.md): GitHub Actions examples for PR posture diffs and mainline
   checks.
+- [Cost and verification policy](ci/cost-and-verification-policy.md): CI
+  proof-per-cost posture.
+- [LEM budgeting](ci/lem-budgeting.md): Linux-equivalent minute planning for
+  routed validation.
+- [ripr](ci/ripr.md): static mutation-exposure role and artifact boundary.
+- [unsafe-review](ci/unsafe-review.md): unsafe-contract reviewability role and
+  artifact boundary.
 - [How-to guides](how-to/README.md): task guides for CI, explain, evidence
   repair, PR posture review, stale pruning, migration, migration evidence
   closeout, and agent worklists.
