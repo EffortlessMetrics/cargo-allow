@@ -485,6 +485,135 @@ fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
 }
 
 #[test]
+fn saved_migrate_output_preserves_source_exception_evidence_matrix() {
+    let fixture = SourceTreeFixture::new("saved-migrate-source-exception-evidence-matrix");
+    let legacy_dir = fixture.root.join("legacy-policy");
+    fs::create_dir_all(&legacy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+    write_fixture_doc(&fixture.root, "docs/evidence/unsafe/read.json");
+    fs::write(
+        legacy_dir.join("clippy-exceptions.toml"),
+        clippy_policy_with_evidence_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write clippy policy fixture: {err}")));
+    fs::write(
+        legacy_dir.join("no-panic-allowlist.toml"),
+        no_panic_allowlist_with_covered_by_fixture_text(),
+    )
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("write no-panic allowlist fixture: {err}"))
+    });
+    fs::write(
+        legacy_dir.join("unsafe-allowlist.toml"),
+        unsafe_policy_with_evidence_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write unsafe policy fixture: {err}")));
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let migrated_policy = artifact_dir.join("allow.migrated.toml");
+    let migrate_summary = artifact_dir.join("migrate-summary.json");
+
+    run_cargo_allow(&[
+        "migrate",
+        "--root",
+        fixture.root_str(),
+        "--repo-policy",
+        path_arg(&legacy_dir),
+        "--out",
+        path_arg(&migrated_policy),
+        "--summary-format",
+        "json",
+        "--summary-output",
+        path_arg(&migrate_summary),
+    ]);
+
+    assert_policy_output(&migrated_policy);
+    let value = assert_policy_migration_artifact_with_inventory(
+        &migrate_summary,
+        allow_report::MIGRATE_SCHEMA_ID,
+        "migrate",
+        "filesystem_fallback",
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/allow_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(3),
+        "migrate source-exception evidence matrix allow entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/unsafe_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate source-exception evidence matrix unsafe entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/entries_with_evidence")
+            .and_then(serde_json::Value::as_u64),
+        Some(3),
+        "migrate source-exception evidence matrix entries-with-evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/evidence_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(4),
+        "migrate source-exception evidence matrix evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/entries_with_links")
+            .and_then(serde_json::Value::as_u64),
+        Some(3),
+        "migrate source-exception evidence matrix link-entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/link_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(3),
+        "migrate source-exception evidence matrix link count"
+    );
+    assert!(
+        value.pointer("/summary/broken_evidence_links").is_none(),
+        "fixture should preserve source-exception local evidence without broken links"
+    );
+    assert!(
+        value.pointer("/summary/weak_evidence_references").is_none(),
+        "fixture should preserve source-exception evidence without weak references"
+    );
+
+    let cfg = allow_policy::load_policy(&migrated_policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "load migrated policy {}: {err}",
+            migrated_policy.display()
+        ))
+    });
+    let clippy = migrated_entry(&cfg, "saved-clippy-evidence");
+    assert_eq!(clippy.kind, allow_core::FindingKind::LintException);
+    assert_eq!(clippy.family.as_deref(), Some("expect_attribute"));
+    assert_entry_evidence(clippy, &["test:lint_policy_is_linked", "issue:#123"]);
+    assert_entry_links(clippy, &["legacy-policy:saved-clippy-evidence"]);
+
+    let no_panic = migrated_entry(&cfg, "saved-no-panic-covered");
+    assert_eq!(no_panic.kind, allow_core::FindingKind::Panic);
+    assert_eq!(no_panic.family.as_deref(), Some("unwrap"));
+    assert_entry_evidence(no_panic, &["test:parser_validates_optional_value"]);
+    assert_entry_links(no_panic, &["legacy-policy:no-panic-allowlist"]);
+
+    let unsafe_entry = migrated_entry(&cfg, "saved-unsafe-evidence");
+    assert_eq!(unsafe_entry.kind, allow_core::FindingKind::Unsafe);
+    assert_eq!(unsafe_entry.family.as_deref(), Some("unsafe_block"));
+    assert_entry_evidence(
+        unsafe_entry,
+        &["unsafe-review:docs/evidence/unsafe/read.json"],
+    );
+    assert_entry_links(unsafe_entry, &["legacy-policy:saved-unsafe-evidence"]);
+}
+
+#[test]
 fn saved_migrate_output_routes_baseline_debt_follow_up() {
     let fixture = SourceTreeFixture::new("saved-migrate-baseline-debt-follow-up");
     let legacy_dir = fixture.root.join("legacy-policy");
@@ -786,6 +915,72 @@ reason = "Release API fixture."
 evidence = ["doc:docs/network.md", "issue:#345"]
 created = "2026-05-09"
 expires = "permanent"
+"#
+}
+
+fn clippy_policy_with_evidence_fixture_text() -> &'static str {
+    r#"schema_version = 1
+policy = "clippy-exceptions"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "saved-clippy-evidence"
+path = "src/lib.rs"
+lint = "clippy::unwrap_used"
+owner = "runtime"
+classification = "reviewed_lint_exception"
+reason = "Intentional unwrap fixture for migration evidence parity."
+evidence = ["test:lint_policy_is_linked", "issue:#123"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+"#
+}
+
+fn no_panic_allowlist_with_covered_by_fixture_text() -> &'static str {
+    r#"schema_version = 1
+policy = "no-panic-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "saved-no-panic-covered"
+path = "src/lib.rs"
+family = "unwrap"
+owner = "runtime"
+classification = "reviewed_panic_exception"
+reason = "Parser validates optional value before unwrap."
+covered_by = "test:parser_validates_optional_value"
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "method-call"
+callee = "unwrap"
+container = "load"
+"#
+}
+
+fn unsafe_policy_with_evidence_fixture_text() -> &'static str {
+    r#"schema_version = 1
+policy = "unsafe-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "saved-unsafe-evidence"
+path = "src/lib.rs"
+family = "unsafe_block"
+owner = "runtime"
+classification = "reviewed_unsafe_boundary"
+reason = "Caller validates pointer before read."
+evidence = ["unsafe-review:docs/evidence/unsafe/read.json"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "unsafe-block"
+container = "read"
 "#
 }
 
