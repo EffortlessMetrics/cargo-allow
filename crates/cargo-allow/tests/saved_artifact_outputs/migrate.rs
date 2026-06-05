@@ -247,6 +247,15 @@ fn saved_migrate_output_preserves_legacy_evidence_and_links() {
     let generated = migrated_entry(&cfg, "saved-generated-evidence");
     assert_eq!(generated.kind, allow_core::FindingKind::GeneratedCode);
     assert_eq!(generated.family.as_deref(), Some("generated_code"));
+    assert_entry_metadata(
+        generated,
+        "policy",
+        "generated_code",
+        "Generated schema fixture.",
+        Some("2026-05-10"),
+        Some("2026-05-10"),
+        Some("never"),
+    );
     assert_eq!(
         generated.path.as_deref(),
         Some(Path::new("docs/generated/schema.json"))
@@ -266,6 +275,15 @@ fn saved_migrate_output_preserves_legacy_evidence_and_links() {
     let executable = migrated_entry(&cfg, "saved-executable-covered");
     assert_eq!(executable.kind, allow_core::FindingKind::PolicyException);
     assert_eq!(executable.family.as_deref(), Some("executable_file"));
+    assert_entry_metadata(
+        executable,
+        "release",
+        "executable_file",
+        "Package helper fixture.",
+        Some("2026-05-09"),
+        Some("2026-05-09"),
+        Some("never"),
+    );
     assert_eq!(
         executable.path.as_deref(),
         Some(Path::new("scripts/package.sh"))
@@ -403,6 +421,15 @@ fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
     let workflow = migrated_entry(&cfg, "workflow-file-github-workflows-release-yml");
     assert_eq!(workflow.kind, allow_core::FindingKind::PolicyException);
     assert_eq!(workflow.family.as_deref(), Some("github_workflow"));
+    assert_entry_metadata(
+        workflow,
+        "release/ci",
+        "github_workflow",
+        "Release workflow fixture.",
+        Some("2026-05-09"),
+        Some("2026-05-09"),
+        Some("never"),
+    );
     assert_entry_evidence(
         workflow,
         &[
@@ -423,6 +450,15 @@ fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
         "workflow-action-github-workflows-release-yml--actions-checkout-v4",
     );
     assert_eq!(action.family.as_deref(), Some("workflow_external_action"));
+    assert_entry_metadata(
+        action,
+        "release/ci",
+        "workflow_external_action",
+        "Release workflow fixture.",
+        Some("2026-05-09"),
+        Some("2026-05-09"),
+        Some("never"),
+    );
     assert_entry_evidence(
         action,
         &[
@@ -439,6 +475,15 @@ fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
 
     let dependency = migrated_entry(&cfg, "saved-dependency-evidence");
     assert_eq!(dependency.family.as_deref(), Some("dependency_surface"));
+    assert_entry_metadata(
+        dependency,
+        "release",
+        "workspace_manifest",
+        "Workspace dependency block fixture.",
+        Some("2026-05-09"),
+        Some("2026-05-09"),
+        Some("never"),
+    );
     assert_entry_evidence(
         dependency,
         &[
@@ -453,6 +498,15 @@ fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
 
     let process = migrated_entry(&cfg, "saved-process-evidence");
     assert_eq!(process.family.as_deref(), Some("process_spawn"));
+    assert_entry_metadata(
+        process,
+        "release",
+        "local_process",
+        "Release helper fixture.",
+        Some("2026-05-09"),
+        Some("2026-05-09"),
+        Some("never"),
+    );
     assert_entry_evidence(
         process,
         &[
@@ -469,6 +523,15 @@ fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
 
     let network = migrated_entry(&cfg, "saved-network-evidence");
     assert_eq!(network.family.as_deref(), Some("network_destination"));
+    assert_entry_metadata(
+        network,
+        "release/ci",
+        "authenticated_network",
+        "Release API fixture.",
+        Some("2026-05-09"),
+        Some("2026-05-09"),
+        Some("never"),
+    );
     assert_entry_evidence(
         network,
         &[
@@ -594,18 +657,45 @@ fn saved_migrate_output_preserves_source_exception_evidence_matrix() {
     let clippy = migrated_entry(&cfg, "saved-clippy-evidence");
     assert_eq!(clippy.kind, allow_core::FindingKind::LintException);
     assert_eq!(clippy.family.as_deref(), Some("expect_attribute"));
+    assert_entry_metadata(
+        clippy,
+        "runtime",
+        "reviewed_lint_exception",
+        "Intentional unwrap fixture for migration evidence parity.",
+        Some("2026-05-09"),
+        Some("2026-09-09"),
+        None,
+    );
     assert_entry_evidence(clippy, &["test:lint_policy_is_linked", "issue:#123"]);
     assert_entry_links(clippy, &["legacy-policy:saved-clippy-evidence"]);
 
     let no_panic = migrated_entry(&cfg, "saved-no-panic-covered");
     assert_eq!(no_panic.kind, allow_core::FindingKind::Panic);
     assert_eq!(no_panic.family.as_deref(), Some("unwrap"));
+    assert_entry_metadata(
+        no_panic,
+        "runtime",
+        "reviewed_panic_exception",
+        "Parser validates optional value before unwrap.",
+        Some("2026-05-09"),
+        Some("2026-09-09"),
+        None,
+    );
     assert_entry_evidence(no_panic, &["test:parser_validates_optional_value"]);
     assert_entry_links(no_panic, &["legacy-policy:no-panic-allowlist"]);
 
     let unsafe_entry = migrated_entry(&cfg, "saved-unsafe-evidence");
     assert_eq!(unsafe_entry.kind, allow_core::FindingKind::Unsafe);
     assert_eq!(unsafe_entry.family.as_deref(), Some("unsafe_block"));
+    assert_entry_metadata(
+        unsafe_entry,
+        "runtime",
+        "reviewed_unsafe_boundary",
+        "Caller validates pointer before read.",
+        Some("2026-05-09"),
+        Some("2026-09-09"),
+        None,
+    );
     assert_entry_evidence(
         unsafe_entry,
         &["unsafe-review:docs/evidence/unsafe/read.json"],
@@ -1011,6 +1101,48 @@ fn migrate_queue<'a>(queues: &'a [serde_json::Value], item_kind: &str) -> &'a se
                 "missing migrate evidence repair queue {item_kind}; got {queues:?}"
             ))
         })
+}
+
+fn assert_entry_metadata(
+    entry: &allow_core::AllowEntry,
+    owner: &str,
+    classification: &str,
+    reason_fragment: &str,
+    created: Option<&str>,
+    review_after: Option<&str>,
+    expires: Option<&str>,
+) {
+    assert_eq!(entry.owner, owner, "{} owner", entry.id);
+    assert_eq!(
+        entry.classification, classification,
+        "{} classification",
+        entry.id
+    );
+    assert!(
+        entry.reason.contains(reason_fragment),
+        "{} should preserve reason fragment `{}` in `{}`",
+        entry.id,
+        reason_fragment,
+        entry.reason
+    );
+    assert_eq!(
+        entry.lifecycle.created.as_deref(),
+        created,
+        "{} created",
+        entry.id
+    );
+    assert_eq!(
+        entry.lifecycle.review_after.as_deref(),
+        review_after,
+        "{} review_after",
+        entry.id
+    );
+    assert_eq!(
+        entry.lifecycle.expires.as_deref(),
+        expires,
+        "{} expires",
+        entry.id
+    );
 }
 
 fn assert_entry_evidence(entry: &allow_core::AllowEntry, expected: &[&str]) {
