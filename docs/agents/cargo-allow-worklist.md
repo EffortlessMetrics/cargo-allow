@@ -59,6 +59,16 @@ local evidence/link work should usually start with
 `cargo-allow list --broken-evidence --format json`; weak or untyped
 evidence/link work should usually start with
 `cargo-allow list --weak-evidence --format json`.
+For migration closeout, prefer the exact `command` and `unsafe_command` rows
+from the saved `cargo-allow.migrate.v1` summary. Common migration queues use
+`cargo-allow worklist --item-kind baseline_debt --format json`,
+`cargo-allow worklist --item-kind broken_evidence_link --format json`,
+`cargo-allow worklist --item-kind weak_evidence_reference --format json`,
+`cargo-allow worklist --kind unsafe --item-kind broken_evidence_link --format json`,
+and
+`cargo-allow worklist --kind unsafe --item-kind weak_evidence_reference --format json`.
+Use the unsafe-scoped routes first when the migration summary reports unsafe
+evidence debt.
 Saved worklist artifacts record the applied filters; preserve that context in
 handoffs.
 When `summary.item_kinds` is present, use it to understand the queue mix before
