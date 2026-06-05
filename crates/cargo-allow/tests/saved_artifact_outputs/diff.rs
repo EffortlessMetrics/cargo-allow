@@ -809,6 +809,204 @@ fn saved_diff_output_covers_selector_identity_change_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_exception_kind_change_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-kind-changed");
+    write_policy_with_exception_identity(&fixture, "panic", "unwrap");
+    commit_fixture_base(&fixture.root);
+    write_policy_with_exception_identity(&fixture, "unsafe", "unwrap");
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--config",
+            "policy/allow.toml",
+            "--base",
+            "HEAD",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("worse"),
+        "diff exception kind change net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff exception kind change failure count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("kind_changed")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-exception-identity")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected exception kind policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("fail"),
+        "exception kind change severity"
+    );
+    assert!(
+        change
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("changed governed exception kind")),
+        "exception kind change message should name governed kind movement: {change:?}"
+    );
+    assert_eq!(
+        change
+            .pointer("/exception_identity/field")
+            .and_then(serde_json::Value::as_str),
+        Some("kind"),
+        "exception kind identity field"
+    );
+    assert_eq!(
+        change
+            .pointer("/exception_identity/before")
+            .and_then(serde_json::Value::as_str),
+        Some("panic"),
+        "exception kind identity before"
+    );
+    assert_eq!(
+        change
+            .pointer("/exception_identity/after")
+            .and_then(serde_json::Value::as_str),
+        Some("unsafe"),
+        "exception kind identity after"
+    );
+}
+
+#[test]
+fn saved_diff_output_covers_exception_family_change_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-family-changed");
+    write_policy_with_exception_identity(&fixture, "panic", "unwrap");
+    commit_fixture_base(&fixture.root);
+    write_policy_with_exception_identity(&fixture, "panic", "panic_macro");
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--config",
+            "policy/allow.toml",
+            "--base",
+            "HEAD",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("worse"),
+        "diff exception family change net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff exception family change failure count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("family_changed")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-exception-identity")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected exception family policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("fail"),
+        "exception family change severity"
+    );
+    assert!(
+        change
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("changed governed exception family")),
+        "exception family change message should name governed family movement: {change:?}"
+    );
+    assert_eq!(
+        change
+            .pointer("/exception_identity/field")
+            .and_then(serde_json::Value::as_str),
+        Some("family"),
+        "exception family identity field"
+    );
+    assert_eq!(
+        change
+            .pointer("/exception_identity/before")
+            .and_then(serde_json::Value::as_str),
+        Some("unwrap"),
+        "exception family identity before"
+    );
+    assert_eq!(
+        change
+            .pointer("/exception_identity/after")
+            .and_then(serde_json::Value::as_str),
+        Some("panic_macro"),
+        "exception family identity after"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_evidence_removal_details() {
     let fixture = SourceTreeFixture::new("saved-diff-evidence-removed");
     fixture.write_panic_source();
@@ -6263,6 +6461,35 @@ ast_kind = "method_call"
 container = "load"
 callee = "unwrap"
 receiver_fingerprint = "{receiver}"
+"#
+    ));
+    fs::write(fixture.root.join("policy/allow.toml"), policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+}
+
+fn write_policy_with_exception_identity(fixture: &SourceTreeFixture, kind: &str, family: &str) {
+    fixture.write_minimal_policy();
+    let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+    policy.push_str(&format!(
+        r#"
+
+[[allow]]
+id = "allow-exception-identity"
+kind = "{kind}"
+family = "{family}"
+path = "src/lib.rs"
+owner = "core/tests"
+classification = "reviewed_fixture"
+reason = "Fixture keeps saved diff exception identity change details covered."
+evidence = ["test:saved_diff_output_covers_exception_identity_change_details"]
+created = "2026-05-29"
+review_after = "2026-08-29"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
