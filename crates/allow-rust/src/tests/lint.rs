@@ -216,6 +216,33 @@ mod rendered;
 }
 
 #[test]
+fn outer_lint_attributes_record_target_extern_block_container() {
+    let src = r#"
+#[allow(improper_ctypes)]
+extern "C" {
+    #[allow(dead_code)]
+    fn ffi();
+}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let containers = findings
+        .iter()
+        .filter(|f| {
+            f.kind == FindingKind::LintException && f.family.as_deref() == Some("allow_attribute")
+        })
+        .map(|f| (f.identity.lint.as_deref(), f.identity.container.as_deref()))
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        containers,
+        vec![
+            (Some("improper_ctypes"), Some("extern \"C\"")),
+            (Some("dead_code"), Some("extern \"C\"::ffi"))
+        ]
+    );
+}
+
+#[test]
 fn detects_spaced_lint_attribute_tokens_from_source_syntax() {
     let outer = r#"  # [ allow(dead_code) ]"#;
     let inner = r#"# ! [ expect(clippy::unwrap_used, reason = "policy:allow-lint") ]"#;
