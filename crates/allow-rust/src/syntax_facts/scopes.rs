@@ -119,6 +119,12 @@ fn collect_nested_line_scopes(
         record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
     }
 
+    if let Some(name) = macro_definition_container_name(node, source) {
+        record_container_scope(node, &name, &paths.module_path, scopes);
+        record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
+        record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
+    }
+
     visit_child_scopes(node, source, paths, scopes);
 }
 
@@ -139,6 +145,15 @@ fn use_declaration_container_name(node: Node<'_>, source: &str) -> Option<String
         return None;
     }
     node_text(source, node).and_then(normalize_item_text)
+}
+
+fn macro_definition_container_name(node: Node<'_>, source: &str) -> Option<String> {
+    if node.kind() != "macro_definition" {
+        return None;
+    }
+    node.child_by_field_name("name")
+        .and_then(|name| node_text(source, name))
+        .map(|name| format!("macro_rules! {name}"))
 }
 
 fn normalize_item_text(text: &str) -> Option<String> {
