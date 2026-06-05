@@ -1401,6 +1401,126 @@ fn saved_diff_output_covers_explicit_head_ignores_invalid_working_policy() {
 }
 
 #[test]
+fn saved_diff_output_covers_explicit_head_finds_policy_when_working_policy_missing() {
+    let fixture = SourceTreeFixture::new("saved-diff-explicit-head-missing-working-policy");
+    fixture.write_panic_source();
+    write_policy_with_optional_evidence(&fixture, None);
+    commit_fixture_base(&fixture.root);
+    write_policy_with_optional_evidence(
+        &fixture,
+        Some("test:saved-head-policy-path-is-revision-backed"),
+    );
+    git_for_saved_diff(&fixture.root, &["add", "."]);
+    git_for_saved_diff(
+        &fixture.root,
+        &["commit", "-m", "add traceability evidence"],
+    );
+    git_for_saved_diff(&fixture.root, &["tag", "saved-head-with-policy"]);
+    fs::remove_file(fixture.root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove working policy: {err}")));
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--base",
+        "HEAD~1",
+        "--head",
+        "saved-head-with-policy",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("improved"),
+        "explicit-head should find the policy path in compared revisions"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/new")
+            .and_then(serde_json::Value::as_u64),
+        Some(0),
+        "explicit-head revision policy should receipt current source findings"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/current_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(0),
+        "explicit-head missing working policy should not create current failures"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "explicit-head revision policy improvement count"
+    );
+    assert!(
+        value.pointer("/summary/broken_evidence_links").is_none(),
+        "explicit-head revision policy should not inherit missing working-tree policy diagnostics"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("evidence_added")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-evidence")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected explicit-head revision evidence addition; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("improvement"),
+        "explicit-head revision evidence severity"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/field")
+            .and_then(serde_json::Value::as_str),
+        Some("evidence"),
+        "explicit-head revision evidence field"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/added/0")
+            .and_then(serde_json::Value::as_str),
+        Some("test:saved-head-policy-path-is-revision-backed"),
+        "explicit-head revision evidence raw reference"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/removed")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "explicit-head revision evidence removed references"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_explicit_head_policy_path_move_details() {
     let fixture = SourceTreeFixture::new("saved-diff-explicit-head-policy-path-moved");
     fixture.write_panic_source();
