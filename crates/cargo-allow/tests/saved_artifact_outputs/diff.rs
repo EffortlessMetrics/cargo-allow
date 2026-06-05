@@ -3549,6 +3549,103 @@ fn saved_diff_output_covers_created_removal_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_created_change_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-created-changed");
+    fixture.write_panic_source();
+    write_policy_with_optional_created(&fixture, Some("2026-05-29"));
+    commit_fixture_base(&fixture.root);
+    write_policy_with_optional_created(&fixture, Some("2026-06-05"));
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("review-required"),
+        "diff created-change net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_review_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff created-change review item count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("created_changed")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-lifecycle")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected created-change policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("review"),
+        "created-change severity"
+    );
+    assert!(
+        change
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("created date changed")),
+        "created-change message should name provenance movement: {change:?}"
+    );
+    assert_eq!(
+        change
+            .pointer("/lifecycle/field")
+            .and_then(serde_json::Value::as_str),
+        Some("created"),
+        "created-change lifecycle field"
+    );
+    assert_eq!(
+        change
+            .pointer("/lifecycle/before")
+            .and_then(serde_json::Value::as_str),
+        Some("2026-05-29"),
+        "created-change lifecycle before"
+    );
+    assert_eq!(
+        change
+            .pointer("/lifecycle/after")
+            .and_then(serde_json::Value::as_str),
+        Some("2026-06-05"),
+        "created-change lifecycle after"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_baseline_debt_normalization_details() {
     let fixture = SourceTreeFixture::new("saved-diff-baseline-debt-normalized");
     fixture.write_panic_source();
