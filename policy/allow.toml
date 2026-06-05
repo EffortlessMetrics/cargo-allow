@@ -1909,3 +1909,26 @@ glob = "CHANGELOG.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0150"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/github/v0.1.6.md"
+owner = "core/release"
+classification = "release_notes"
+reason = "Provides GitHub Release-ready notes for the already published 0.1.6 patch release without changing scan or safety claims."
+created = "2026-06-04"
+review_after = "2026-11-01"
+evidence = ["doc:docs/release/0.1.6.md", "doc:docs/claim-boundaries.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/github/v0.1.6.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/release/github/v0.1.6.md"
+
+[allow.last_seen]
+line = 1
+column = 1
