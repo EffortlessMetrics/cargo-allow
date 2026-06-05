@@ -114,6 +114,18 @@ fn collect_nested_line_scopes(
         }
     }
 
+    if node.kind() == "enum_variant" {
+        if let Some(name) = enum_variant_container_name(node, source, paths) {
+            record_container_scope(node, &name, &paths.module_path, scopes);
+            record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
+            record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
+            paths.field_owner_path.push(name);
+            visit_child_scopes(node, source, paths, scopes);
+            paths.field_owner_path.pop();
+            return;
+        }
+    }
+
     if matches!(node.kind(), "function_item" | "function_signature_item") {
         if let Some(name) = node
             .child_by_field_name("name")
@@ -140,12 +152,6 @@ fn collect_nested_line_scopes(
     }
 
     if let Some(name) = named_item_container_name(node, source, paths) {
-        record_container_scope(node, &name, &paths.module_path, scopes);
-        record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
-        record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
-    }
-
-    if let Some(name) = enum_variant_container_name(node, source, paths) {
         record_container_scope(node, &name, &paths.module_path, scopes);
         record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
         record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
