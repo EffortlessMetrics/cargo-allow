@@ -918,6 +918,124 @@ fn saved_diff_output_covers_weak_evidence_addition_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_valid_local_evidence_addition_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-valid-local-evidence-added");
+    fixture.write_panic_source();
+    write_policy_with_optional_evidence(&fixture, None);
+    write_diff_evidence_fixture_doc(&fixture, "docs/safety.md");
+    append_evidence_doc_allow(&fixture, "docs/safety.md");
+    commit_fixture_base(&fixture.root);
+    write_policy_with_optional_evidence(&fixture, Some("doc:docs/safety.md"));
+    append_evidence_doc_allow(&fixture, "docs/safety.md");
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("improved"),
+        "diff valid local evidence addition net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff valid local evidence addition improvement count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/evidence_added")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "diff valid local evidence addition generic evidence count"
+    );
+    assert!(
+        value
+            .pointer("/diff/summary/broken_evidence_added")
+            .is_none(),
+        "valid local evidence addition should not emit a broken-evidence count"
+    );
+    assert!(
+        value.pointer("/summary/broken_evidence_links").is_none(),
+        "valid local evidence addition should not affect current evidence health"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("evidence_added")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-evidence")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected valid local evidence addition policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("improvement"),
+        "valid local evidence addition severity"
+    );
+    assert!(
+        change
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("evidence added")),
+        "valid local evidence addition message should identify evidence addition: {change:?}"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/field")
+            .and_then(serde_json::Value::as_str),
+        Some("evidence"),
+        "valid local evidence addition field"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/added/0")
+            .and_then(serde_json::Value::as_str),
+        Some("doc:docs/safety.md"),
+        "valid local evidence addition raw reference"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/removed")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "valid local evidence addition removed references"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_redundant_segment_evidence_addition_details() {
     let fixture = SourceTreeFixture::new("saved-diff-redundant-segment-evidence-added");
     fixture.write_panic_source();
@@ -4912,6 +5030,34 @@ review_after = "2026-08-29"
 ast_kind = "method_call"
 container = "load"
 callee = "unwrap"
+"#
+    ));
+    fs::write(fixture.root.join("policy/allow.toml"), policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+}
+
+fn append_evidence_doc_allow(fixture: &SourceTreeFixture, relative_path: &str) {
+    let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+    policy.push_str(&format!(
+        r#"
+
+[[allow]]
+id = "allow-evidence-doc"
+kind = "non_rust_file"
+family = "documentation"
+path = "{relative_path}"
+owner = "core/tests"
+classification = "reviewed_fixture"
+reason = "Fixture keeps local evidence documents receipted while diffing evidence posture."
+created = "2026-05-29"
+review_after = "2026-08-29"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "{relative_path}"
+target_fingerprint = "md"
+glob = "{relative_path}"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
