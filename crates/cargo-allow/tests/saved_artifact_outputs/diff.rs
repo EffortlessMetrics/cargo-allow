@@ -1036,6 +1036,123 @@ fn saved_diff_output_covers_valid_local_evidence_addition_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_include_untracked_local_evidence_addition_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-include-untracked-local-evidence-added");
+    fixture.write_panic_source();
+    write_policy_with_optional_evidence(&fixture, None);
+    commit_fixture_base(&fixture.root);
+    write_policy_with_optional_evidence(&fixture, Some("doc:policy/untracked-evidence.md"));
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow(&[
+        "diff",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        "policy/allow.toml",
+        "--base",
+        "HEAD",
+        "--include-untracked",
+        "--format",
+        "json",
+        "--output",
+        path_arg(&diff),
+    ]);
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "filesystem_include_untracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("improved"),
+        "include-untracked local evidence addition net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_improvements")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "include-untracked local evidence addition improvement count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/evidence_added")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "include-untracked local evidence addition generic evidence count"
+    );
+    assert!(
+        value
+            .pointer("/diff/summary/broken_evidence_added")
+            .is_none(),
+        "include-untracked local evidence addition should not emit a broken-evidence count"
+    );
+    assert!(
+        value.pointer("/summary/broken_evidence_links").is_none(),
+        "include-untracked local evidence addition should not affect current evidence health"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("evidence_added")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-evidence")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected include-untracked evidence addition policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("improvement"),
+        "include-untracked local evidence addition severity"
+    );
+    assert!(
+        !change
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("invalid local evidence added")
+                || message.contains("missing local evidence added")),
+        "include-untracked local evidence addition should not route broken evidence repair: {change:?}"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/field")
+            .and_then(serde_json::Value::as_str),
+        Some("evidence"),
+        "include-untracked local evidence addition field"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/added/0")
+            .and_then(serde_json::Value::as_str),
+        Some("doc:policy/untracked-evidence.md"),
+        "include-untracked local evidence addition raw reference"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/removed")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "include-untracked local evidence addition removed references"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_redundant_segment_evidence_addition_details() {
     let fixture = SourceTreeFixture::new("saved-diff-redundant-segment-evidence-added");
     fixture.write_panic_source();
