@@ -305,20 +305,19 @@ not source-code or runtime discovery.
 
 ## Legacy Inputs
 
-Compatibility adapters may support:
+Repo-policy directory migration currently accepts these legacy files:
 
-- `policy/no-panic-allowlist.toml` (initial legacy allowlist adapter exists)
-- `policy/no-panic-baseline.toml` (initial generated baseline adapter exists)
-- `policy/non-rust-allowlist.toml` (initial shiplog-style adapter exists)
-- `policy/generated-allowlist.toml` (initial shiplog-style adapter exists)
-- `policy/executable-allowlist.toml` (initial shiplog-style adapter exists)
-- `policy/workflow-allowlist.toml` (initial shiplog-style adapter exists)
-- `policy/dependency-surface-allowlist.toml` (initial shiplog-style adapter exists)
-- `policy/process-allowlist.toml` (initial shiplog-style adapter exists)
-- `policy/network-allowlist.toml` (initial shiplog-style adapter exists)
-- `policy/clippy-exceptions.toml` (initial legacy lint adapter exists)
-- `policy/unsafe-allowlist.toml` (initial legacy unsafe adapter exists)
-- `policy/ripr-suppressions.toml`
+- `policy/non-rust-allowlist.toml`
+- `policy/generated-allowlist.toml`
+- `policy/no-panic-allowlist.toml`
+- `policy/no-panic-baseline.toml`
+- `policy/clippy-exceptions.toml`
+- `policy/unsafe-allowlist.toml`
+- `policy/executable-allowlist.toml`
+- `policy/workflow-allowlist.toml`
+- `policy/dependency-surface-allowlist.toml`
+- `policy/process-allowlist.toml`
+- `policy/network-allowlist.toml`
 
 Adapters should normalize legacy fields into canonical allow entries instead of
 carrying old schemas forward indefinitely.
