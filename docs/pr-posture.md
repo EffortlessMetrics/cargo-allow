@@ -70,6 +70,21 @@ Common improvement signals include:
 - added owner, reason, classification, or lifecycle fields.
 - reduced generated `baseline_debt`.
 
+## Examples
+
+Use these examples to route review quickly:
+
+| PR change | Typical posture | Reviewer action |
+|---|---|---|
+| Evidence removed from `allow-0031` | `worse` | Restore typed evidence or explain why the receipt should remain without it. |
+| `allow-0042` changed from `path = "src/lib.rs"` to `glob = "src/**/*.rs"` | `worse` | Require a narrower scope or a reviewed reason for the broader source-tree surface. |
+| `allow-0017.expires` moved from `2026-07-01` to `2026-12-31` | `review-required` | Confirm the lifecycle extension was deliberate and documented. |
+| Selector fields were removed, such as `container` or `callee` | `worse` | Restore structural identity fields or justify the lower selector precision. |
+| Selector fields were added, such as `container`, `callee`, or snippet identity | `improved` | Keep the narrower receipt if it still matches the intended finding. |
+| A stale `allow-0020` entry was removed | `improved` | Confirm the removal is intentional and no current finding needs that receipt. |
+| Generated `baseline_debt` was removed because the finding was fixed | `improved` | Confirm the debt was reduced, not reclassified as reviewed approval. |
+| Generated `baseline_debt` was reclassified as reviewed policy | `worse` | Require real owner, reason, lifecycle, and evidence instead of laundering generated debt. |
+
 ## Claim Boundary
 
 `cargo-allow diff` scans repository files directly. It does not require Cargo
