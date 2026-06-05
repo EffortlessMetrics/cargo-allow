@@ -110,7 +110,7 @@ fn saved_migrate_output_covers_policy_migration_summary_contract() {
     );
     assert_eq!(
         broken.get("command").and_then(serde_json::Value::as_str),
-        Some("cargo-allow worklist --broken-evidence --format json"),
+        Some("cargo-allow worklist --item-kind broken_evidence_link --format json"),
         "migrate broken evidence queue command"
     );
     assert_eq!(
@@ -144,7 +144,7 @@ fn saved_migrate_output_covers_policy_migration_summary_contract() {
     );
     assert_eq!(
         weak.get("command").and_then(serde_json::Value::as_str),
-        Some("cargo-allow worklist --weak-evidence --format json"),
+        Some("cargo-allow worklist --item-kind weak_evidence_reference --format json"),
         "migrate weak evidence queue command"
     );
     assert_eq!(
@@ -390,7 +390,7 @@ fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
     );
     assert_eq!(
         weak.get("command").and_then(serde_json::Value::as_str),
-        Some("cargo-allow worklist --weak-evidence --format json"),
+        Some("cargo-allow worklist --item-kind weak_evidence_reference --format json"),
         "migrate policy-exception evidence matrix weak queue command"
     );
 
