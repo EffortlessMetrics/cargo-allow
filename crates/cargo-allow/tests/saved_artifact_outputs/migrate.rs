@@ -838,6 +838,242 @@ fn saved_migrate_output_preserves_source_exception_evidence_matrix() {
 }
 
 #[test]
+fn saved_migrate_output_routes_unsafe_baseline_debt_closeout() {
+    let fixture = SourceTreeFixture::new("saved-migrate-unsafe-baseline-debt-closeout");
+    let legacy_dir = fixture.root.join("legacy-policy");
+    fs::create_dir_all(&legacy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+    fs::write(
+        legacy_dir.join("unsafe-allowlist.toml"),
+        unsafe_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write unsafe policy fixture: {err}")));
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let migrated_policy = artifact_dir.join("allow.migrated.toml");
+    let migrate_summary = artifact_dir.join("migrate-summary.json");
+
+    run_cargo_allow(&[
+        "migrate",
+        "--root",
+        fixture.root_str(),
+        "--repo-policy",
+        path_arg(&legacy_dir),
+        "--out",
+        path_arg(&migrated_policy),
+        "--summary-format",
+        "json",
+        "--summary-output",
+        path_arg(&migrate_summary),
+    ]);
+
+    assert_policy_output(&migrated_policy);
+    let value = assert_policy_migration_artifact_with_inventory(
+        &migrate_summary,
+        allow_report::MIGRATE_SCHEMA_ID,
+        "migrate",
+        "filesystem_fallback",
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/allow_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate unsafe baseline-debt allow entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/baseline_debt")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate unsafe baseline-debt summary count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/unsafe_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate unsafe baseline-debt unsafe entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/evidence_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(2),
+        "migrate unsafe baseline-debt evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/entries_with_links")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate unsafe baseline-debt link-entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/link_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate unsafe baseline-debt link count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/broken_evidence_links")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate unsafe baseline-debt broken evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/unsafe_broken_evidence_links")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate unsafe baseline-debt unsafe broken evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/weak_evidence_references")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate unsafe baseline-debt weak evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/unsafe_weak_evidence_references")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate unsafe baseline-debt unsafe weak evidence count"
+    );
+
+    let follow_up_queues = value
+        .pointer("/follow_up_queues")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any(
+                "migrate summary should route unsafe baseline-debt follow-up queues",
+            )
+        });
+    let [baseline_debt] = follow_up_queues.as_slice() else {
+        std::panic::panic_any(format!(
+            "expected one migrate unsafe baseline-debt follow-up queue, got {}",
+            follow_up_queues.len()
+        ));
+    };
+    assert_eq!(
+        baseline_debt
+            .get("signal")
+            .and_then(serde_json::Value::as_str),
+        Some("baseline_debt"),
+        "migrate unsafe baseline-debt queue signal"
+    );
+    assert_eq!(
+        baseline_debt
+            .get("item_kind")
+            .and_then(serde_json::Value::as_str),
+        Some("baseline_debt"),
+        "migrate unsafe baseline-debt queue item kind"
+    );
+    assert_eq!(
+        baseline_debt
+            .get("count")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate unsafe baseline-debt queue count"
+    );
+    assert_eq!(
+        baseline_debt
+            .get("command")
+            .and_then(serde_json::Value::as_str),
+        Some("cargo-allow worklist --item-kind baseline_debt --format json"),
+        "migrate unsafe baseline-debt queue command"
+    );
+
+    let queues = value
+        .pointer("/evidence_repair_queues")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("migrate summary should route unsafe evidence repair queues")
+        });
+    let broken = migrate_queue(queues, "broken_evidence_link");
+    assert_eq!(
+        broken
+            .get("unsafe_count")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate unsafe baseline-debt broken queue unsafe count"
+    );
+    assert_eq!(
+        broken
+            .get("unsafe_command")
+            .and_then(serde_json::Value::as_str),
+        Some("cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json"),
+        "migrate unsafe baseline-debt broken queue unsafe command"
+    );
+    let weak = migrate_queue(queues, "weak_evidence_reference");
+    assert_eq!(
+        weak.get("unsafe_count").and_then(serde_json::Value::as_u64),
+        Some(1),
+        "migrate unsafe baseline-debt weak queue unsafe count"
+    );
+    assert_eq!(
+        weak.get("unsafe_command")
+            .and_then(serde_json::Value::as_str),
+        Some(
+            "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json"
+        ),
+        "migrate unsafe baseline-debt weak queue unsafe command"
+    );
+
+    let cfg = allow_policy::load_policy(&migrated_policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "load migrated policy {}: {err}",
+            migrated_policy.display()
+        ))
+    });
+    let unsafe_entry = migrated_entry(&cfg, "unsafe-ffi-boundary");
+    assert_eq!(unsafe_entry.kind, allow_core::FindingKind::Unsafe);
+    assert_eq!(unsafe_entry.family.as_deref(), Some("unsafe_fn"));
+    assert_eq!(unsafe_entry.owner, "unowned", "unsafe baseline-debt owner");
+    assert_eq!(
+        unsafe_entry.classification, "baseline_debt",
+        "unsafe baseline-debt classification"
+    );
+    assert!(
+        unsafe_entry
+            .reason
+            .contains("Generated from legacy unsafe allowlist; requires human review."),
+        "unsafe baseline-debt reason should preserve generated review marker: {}",
+        unsafe_entry.reason
+    );
+    assert!(
+        unsafe_entry.lifecycle.created.is_some(),
+        "unsafe baseline-debt migration should keep generated lifecycle creation date"
+    );
+    assert!(
+        unsafe_entry.lifecycle.review_after.is_none(),
+        "unsafe baseline-debt migration should not invent review_after"
+    );
+    assert!(
+        unsafe_entry.lifecycle.expires.is_some(),
+        "unsafe baseline-debt migration should keep generated expiry"
+    );
+    assert_eq!(unsafe_entry.path.as_deref(), Some(Path::new("src/lib.rs")));
+    assert_eq!(
+        unsafe_entry.selector.ast_kind.as_deref(),
+        Some("unsafe_fn"),
+        "unsafe baseline-debt selector ast kind"
+    );
+    assert_entry_evidence(
+        unsafe_entry,
+        &[
+            "doc:docs/safety/missing-ffi.md",
+            "TODO: add unsafe-review or boundary-test evidence",
+        ],
+    );
+    assert_entry_links(unsafe_entry, &["legacy-policy:unsafe-ffi-boundary"]);
+}
+
+#[test]
 fn saved_migrate_output_routes_baseline_debt_follow_up() {
     let fixture = SourceTreeFixture::new("saved-migrate-baseline-debt-follow-up");
     let legacy_dir = fixture.root.join("legacy-policy");
