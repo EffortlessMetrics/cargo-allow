@@ -1,5 +1,6 @@
 use super::*;
 use std::fs;
+use std::process::Command;
 
 #[test]
 fn saved_diff_output_covers_clean_posture_report_contract() {
@@ -1149,6 +1150,145 @@ fn saved_diff_output_covers_include_untracked_local_evidence_addition_details() 
             .map(Vec::len),
         Some(0),
         "include-untracked local evidence addition removed references"
+    );
+}
+
+#[test]
+fn saved_diff_output_covers_explicit_head_missing_local_evidence_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-explicit-head-missing-evidence-added");
+    fixture.write_panic_source();
+    write_policy_with_optional_evidence(&fixture, None);
+    commit_fixture_base(&fixture.root);
+    write_policy_with_missing_optional_evidence(&fixture, Some("doc:docs/head-only-missing.md"));
+    git_for_saved_diff(&fixture.root, &["add", "."]);
+    git_for_saved_diff(
+        &fixture.root,
+        &["commit", "-m", "add missing evidence reference"],
+    );
+    git_for_saved_diff(&fixture.root, &["tag", "saved-head-missing-evidence"]);
+    write_diff_evidence_fixture_doc(&fixture, "docs/head-only-missing.md");
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--config",
+            "policy/allow.toml",
+            "--base",
+            "HEAD~1",
+            "--head",
+            "saved-head-missing-evidence",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("worse"),
+        "explicit-head missing local evidence net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/broken_evidence_links")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "explicit-head missing local evidence should count broken evidence from the head revision"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/current_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "explicit-head current failures should use the head revision, not working-tree evidence"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "explicit-head missing local evidence policy failure count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/evidence_added")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "explicit-head missing local evidence generic evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/broken_evidence_added")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "explicit-head missing local evidence broken evidence count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("evidence_added")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap-evidence")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected explicit-head evidence addition policy change; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("fail"),
+        "explicit-head missing local evidence severity"
+    );
+    assert!(
+        change
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message
+                .contains("local evidence added outside compared source-tree inventory")),
+        "explicit-head missing local evidence should route revision inventory repair: {change:?}"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/field")
+            .and_then(serde_json::Value::as_str),
+        Some("evidence"),
+        "explicit-head missing local evidence field"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/added/0")
+            .and_then(serde_json::Value::as_str),
+        Some("doc:docs/head-only-missing.md"),
+        "explicit-head missing local evidence raw reference"
+    );
+    assert_eq!(
+        change
+            .pointer("/evidence/removed")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "explicit-head missing local evidence removed references"
     );
 }
 
@@ -5151,6 +5291,22 @@ fn write_diff_evidence_fixture_doc(fixture: &SourceTreeFixture, relative_path: &
     }
     fs::write(path, "# Safety evidence\n\nFixture evidence artifact.\n")
         .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence fixture: {err}")));
+}
+
+fn git_for_saved_diff(root: &std::path::Path, args: &[&str]) {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+    if !output.status.success() {
+        std::panic::panic_any(format!(
+            "git {args:?} failed: stdout=`{}` stderr=`{}`",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
 }
 
 fn write_diff_traceability_fixture_doc(fixture: &SourceTreeFixture, relative_path: &str) {
