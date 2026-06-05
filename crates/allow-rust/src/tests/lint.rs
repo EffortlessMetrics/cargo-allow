@@ -215,6 +215,35 @@ impl Parser {}
 }
 
 #[test]
+fn outer_lint_attributes_record_target_enum_variant_container() {
+    let src = r#"
+enum Token {
+    #[allow(non_camel_case_types)]
+    legacy,
+
+    #[allow(non_camel_case_types)]
+    rendered,
+}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let containers = findings
+        .iter()
+        .filter(|f| {
+            f.kind == FindingKind::LintException && f.family.as_deref() == Some("allow_attribute")
+        })
+        .map(|f| (f.identity.lint.as_deref(), f.identity.container.as_deref()))
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        containers,
+        vec![
+            (Some("non_camel_case_types"), Some("Token::legacy")),
+            (Some("non_camel_case_types"), Some("Token::rendered"))
+        ]
+    );
+}
+
+#[test]
 fn outer_lint_attributes_record_target_module_scope() {
     let src = r#"
 #[allow(dead_code)]

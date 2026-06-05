@@ -17,6 +17,7 @@ pub(super) fn collect_line_scopes(
 #[derive(Default)]
 struct ScopePaths {
     module_path: Vec<String>,
+    enum_path: Vec<String>,
     impl_path: Vec<String>,
     trait_path: Vec<String>,
     extern_path: Vec<String>,
@@ -52,6 +53,21 @@ fn collect_nested_line_scopes(
             paths.impl_path.push(name);
             visit_child_scopes(node, source, paths, scopes);
             paths.impl_path.pop();
+            return;
+        }
+    }
+
+    if node.kind() == "enum_item" {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| node_text(source, name))
+        {
+            record_container_scope(node, name, &paths.module_path, scopes);
+            record_attribute_line_scopes(outer_attribute_lines, name, &paths.module_path, scopes);
+            record_outer_attribute_scopes(node, name, &paths.module_path, scopes);
+            paths.enum_path.push(name.to_string());
+            visit_child_scopes(node, source, paths, scopes);
+            paths.enum_path.pop();
             return;
         }
     }
@@ -113,6 +129,12 @@ fn collect_nested_line_scopes(
         record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
     }
 
+    if let Some(name) = enum_variant_container_name(node, source, paths) {
+        record_container_scope(node, &name, &paths.module_path, scopes);
+        record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
+        record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
+    }
+
     if let Some(name) = use_declaration_container_name(node, source) {
         record_container_scope(node, &name, &paths.module_path, scopes);
         record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
@@ -132,7 +154,6 @@ fn named_item_container_name(node: Node<'_>, source: &str, paths: &ScopePaths) -
     if !matches!(
         node.kind(),
         "struct_item"
-            | "enum_item"
             | "union_item"
             | "type_item"
             | "associated_type"
@@ -152,6 +173,16 @@ fn named_item_container_name(node: Node<'_>, source: &str, paths: &ScopePaths) -
                 name.to_string()
             }
         })
+}
+
+fn enum_variant_container_name(node: Node<'_>, source: &str, paths: &ScopePaths) -> Option<String> {
+    if node.kind() != "enum_variant" {
+        return None;
+    }
+    let enum_name = paths.enum_path.last()?;
+    node.child_by_field_name("name")
+        .and_then(|name| node_text(source, name))
+        .map(|name| format!("{enum_name}::{name}"))
 }
 
 fn use_declaration_container_name(node: Node<'_>, source: &str) -> Option<String> {
