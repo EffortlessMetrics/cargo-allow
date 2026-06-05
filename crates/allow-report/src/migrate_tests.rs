@@ -69,8 +69,12 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(json.contains("\"signal\": \"weak_evidence_references\""));
     assert!(json.contains("\"label\": \"weak evidence references\""));
     assert!(json.contains("\"item_kind\": \"weak_evidence_reference\""));
-    assert!(json.contains("\"command\": \"cargo-allow worklist --broken-evidence --format json\""));
-    assert!(json.contains("\"command\": \"cargo-allow worklist --weak-evidence --format json\""));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
+    ));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind weak_evidence_reference --format json\""
+    ));
     assert!(json.contains(
         "\"unsafe_command\": \"cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json\""
     ));
@@ -133,7 +137,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
       "item_kind": "broken_evidence_link",
       "count": 3,
       "unsafe_count": 1,
-      "command": "cargo-allow worklist --broken-evidence --format json",
+      "command": "cargo-allow worklist --item-kind broken_evidence_link --format json",
       "unsafe_command": "cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json"
     }},
     {{
@@ -143,7 +147,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
       "item_kind": "weak_evidence_reference",
       "count": 2,
       "unsafe_count": 1,
-      "command": "cargo-allow worklist --weak-evidence --format json",
+      "command": "cargo-allow worklist --item-kind weak_evidence_reference --format json",
       "unsafe_command": "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json"
     }}
   ],
@@ -177,11 +181,13 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(text.contains("follow_up_queues:"));
     assert!(text.contains("cargo-allow worklist --item-kind baseline_debt --format json"));
     assert!(text.contains("evidence_repair_queues:"));
-    assert!(text.contains("cargo-allow worklist --broken-evidence --format json"));
+    assert!(text.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
     assert!(text.contains(
         "cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json"
     ));
-    assert!(text.contains("cargo-allow worklist --weak-evidence --format json"));
+    assert!(
+        text.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
+    );
     assert!(text.contains(
         "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json"
     ));
@@ -321,14 +327,16 @@ fn migrate_repair_queues_omit_unsafe_command_without_unsafe_count() {
         !json.contains("\"follow_up_queues\""),
         "migration JSON without baseline debt should not emit follow-up queues"
     );
-    assert!(json.contains("\"command\": \"cargo-allow worklist --broken-evidence --format json\""));
+    assert!(json.contains(
+        "\"command\": \"cargo-allow worklist --item-kind broken_evidence_link --format json\""
+    ));
     assert!(
         !json.contains("\"unsafe_command\""),
         "non-unsafe evidence repair queues should not emit unsafe-scoped routing"
     );
 
     let text = render_migrate_human(report);
-    assert!(text.contains("cargo-allow worklist --broken-evidence --format json"));
+    assert!(text.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
     assert!(
         !text.contains("--kind unsafe"),
         "non-unsafe human repair queues should not include unsafe-scoped routing"

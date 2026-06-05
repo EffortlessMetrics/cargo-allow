@@ -395,11 +395,15 @@ fn migrate_repo_policy_human_summary_routes_evidence_repair_queues() {
     assert!(summary.contains("weak_evidence_references: 1"));
     assert!(summary.contains("unsafe_weak_evidence_references: 1"));
     assert!(summary.contains("evidence_repair_queues:"));
-    assert!(summary.contains("cargo-allow worklist --broken-evidence --format json"));
+    assert!(
+        summary.contains("cargo-allow worklist --item-kind broken_evidence_link --format json")
+    );
     assert!(summary.contains(
         "cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json"
     ));
-    assert!(summary.contains("cargo-allow worklist --weak-evidence --format json"));
+    assert!(
+        summary.contains("cargo-allow worklist --item-kind weak_evidence_reference --format json")
+    );
     assert!(summary.contains(
         "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json"
     ));

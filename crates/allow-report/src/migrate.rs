@@ -1,14 +1,15 @@
 use crate::contracts::MIGRATE_ARTIFACT;
-use crate::evidence_repair::{
-    BROKEN_EVIDENCE_LINK_COMMAND, WEAK_EVIDENCE_REFERENCE_COMMAND,
-    evidence_repair_queues_from_counts,
-};
+use crate::evidence_repair::evidence_repair_queues_from_counts;
 use crate::json::{bool_json, push_json_fixed_artifact_preamble};
 use crate::{CLAIM_BOUNDARY_TEXT, MigrateReport};
 use allow_core::json_escape;
 
+const BROKEN_EVIDENCE_LINK_COMMAND: &str =
+    "cargo-allow worklist --item-kind broken_evidence_link --format json";
 const UNSAFE_BROKEN_EVIDENCE_LINK_COMMAND: &str =
     "cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json";
+const WEAK_EVIDENCE_REFERENCE_COMMAND: &str =
+    "cargo-allow worklist --item-kind weak_evidence_reference --format json";
 const UNSAFE_WEAK_EVIDENCE_REFERENCE_COMMAND: &str =
     "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json";
 const BASELINE_DEBT_COMMAND: &str = "cargo-allow worklist --item-kind baseline_debt --format json";
@@ -337,11 +338,19 @@ fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvide
             item_kind,
             count,
             unsafe_count,
-            command: queue.command,
+            command: migrate_evidence_repair_command(item_kind),
             unsafe_command,
         });
     }
     queues
+}
+
+fn migrate_evidence_repair_command(item_kind: &str) -> &'static str {
+    match item_kind {
+        "broken_evidence_link" => BROKEN_EVIDENCE_LINK_COMMAND,
+        "weak_evidence_reference" => WEAK_EVIDENCE_REFERENCE_COMMAND,
+        _ => "cargo-allow worklist --format json",
+    }
 }
 
 struct MigrateFollowUpQueue {
