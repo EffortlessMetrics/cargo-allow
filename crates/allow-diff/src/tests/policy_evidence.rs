@@ -435,3 +435,31 @@ fn detects_invalid_local_traceability_link_added_as_failure() {
     assert!(evidence.removed.is_empty());
     assert_eq!(evidence.added, vec!["doc:../outside.md".to_string()]);
 }
+
+#[test]
+fn detects_redundant_current_dir_local_traceability_link_added_as_failure() {
+    let mut base_entry = entry("allow-1");
+    base_entry.links = Vec::new();
+    let base = config_with(base_entry);
+    let mut head_entry = entry("allow-1");
+    head_entry.links = vec!["doc:docs/./safety.md".to_string()];
+    let head = config_with(head_entry);
+
+    let changes = policy_changes(&base, &head);
+
+    let change = changes
+        .iter()
+        .find(|change| change.kind == PolicyChangeKind::LinkAdded)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("redundant segment link addition should be reported")
+        });
+    assert_eq!(change.severity, PolicyChangeSeverity::Fail);
+    assert!(change.message.contains("invalid traceability link added"));
+    let evidence = change
+        .evidence
+        .as_ref()
+        .unwrap_or_else(|| std::panic::panic_any("link addition should include values"));
+    assert_eq!(evidence.field, EvidenceChangeField::Links);
+    assert!(evidence.removed.is_empty());
+    assert_eq!(evidence.added, vec!["doc:docs/./safety.md".to_string()]);
+}
