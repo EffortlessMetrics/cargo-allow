@@ -36,6 +36,8 @@ fn collect_nested_line_scopes(
         {
             paths.module_path.push(name.to_string());
             record_module_scope(node, &paths.module_path, scopes);
+            record_attribute_line_module_scopes(outer_attribute_lines, &paths.module_path, scopes);
+            record_outer_module_attribute_scopes(node, &paths.module_path, scopes);
             visit_child_scopes(node, source, paths, scopes);
             paths.module_path.pop();
             return;
@@ -155,6 +157,23 @@ fn record_module_scope(
     });
 }
 
+fn record_outer_module_attribute_scopes(
+    node: Node<'_>,
+    module_path: &[String],
+    scopes: &mut BTreeMap<u32, RustLineScope>,
+) {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "attribute_item" {
+            record_scope_lines(child, scopes, |span_len| RustLineScope {
+                container: None,
+                module_path: module_path.to_vec(),
+                span_len,
+            });
+        }
+    }
+}
+
 fn record_container_scope(
     node: Node<'_>,
     name: &str,
@@ -200,6 +219,27 @@ fn record_attribute_line_scopes(
                 line,
                 RustLineScope {
                     container: Some(name.to_string()),
+                    module_path: module_path.to_vec(),
+                    span_len,
+                },
+            );
+        }
+    }
+}
+
+fn record_attribute_line_module_scopes(
+    line_ranges: &[(u32, u32)],
+    module_path: &[String],
+    scopes: &mut BTreeMap<u32, RustLineScope>,
+) {
+    for (start, end) in line_ranges {
+        let span_len = end.saturating_sub(*start) + 1;
+        for line in *start..=*end {
+            merge_scope(
+                scopes,
+                line,
+                RustLineScope {
+                    container: None,
                     module_path: module_path.to_vec(),
                     span_len,
                 },
