@@ -18,6 +18,7 @@ pub(super) fn collect_line_scopes(
 struct ScopePaths {
     module_path: Vec<String>,
     enum_path: Vec<String>,
+    field_owner_path: Vec<String>,
     impl_path: Vec<String>,
     trait_path: Vec<String>,
     extern_path: Vec<String>,
@@ -68,6 +69,21 @@ fn collect_nested_line_scopes(
             paths.enum_path.push(name.to_string());
             visit_child_scopes(node, source, paths, scopes);
             paths.enum_path.pop();
+            return;
+        }
+    }
+
+    if matches!(node.kind(), "struct_item" | "union_item") {
+        if let Some(name) = node
+            .child_by_field_name("name")
+            .and_then(|name| node_text(source, name))
+        {
+            record_container_scope(node, name, &paths.module_path, scopes);
+            record_attribute_line_scopes(outer_attribute_lines, name, &paths.module_path, scopes);
+            record_outer_attribute_scopes(node, name, &paths.module_path, scopes);
+            paths.field_owner_path.push(name.to_string());
+            visit_child_scopes(node, source, paths, scopes);
+            paths.field_owner_path.pop();
             return;
         }
     }
@@ -135,6 +151,12 @@ fn collect_nested_line_scopes(
         record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
     }
 
+    if let Some(name) = field_declaration_container_name(node, source, paths) {
+        record_container_scope(node, &name, &paths.module_path, scopes);
+        record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
+        record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
+    }
+
     if let Some(name) = use_declaration_container_name(node, source) {
         record_container_scope(node, &name, &paths.module_path, scopes);
         record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
@@ -153,12 +175,7 @@ fn collect_nested_line_scopes(
 fn named_item_container_name(node: Node<'_>, source: &str, paths: &ScopePaths) -> Option<String> {
     if !matches!(
         node.kind(),
-        "struct_item"
-            | "union_item"
-            | "type_item"
-            | "associated_type"
-            | "const_item"
-            | "static_item"
+        "type_item" | "associated_type" | "const_item" | "static_item"
     ) {
         return None;
     }
@@ -183,6 +200,20 @@ fn enum_variant_container_name(node: Node<'_>, source: &str, paths: &ScopePaths)
     node.child_by_field_name("name")
         .and_then(|name| node_text(source, name))
         .map(|name| format!("{enum_name}::{name}"))
+}
+
+fn field_declaration_container_name(
+    node: Node<'_>,
+    source: &str,
+    paths: &ScopePaths,
+) -> Option<String> {
+    if node.kind() != "field_declaration" {
+        return None;
+    }
+    let owner = paths.field_owner_path.last()?;
+    node.child_by_field_name("name")
+        .and_then(|name| node_text(source, name))
+        .map(|name| format!("{owner}::{name}"))
 }
 
 fn use_declaration_container_name(node: Node<'_>, source: &str) -> Option<String> {
