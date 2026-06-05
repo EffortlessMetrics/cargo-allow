@@ -1558,6 +1558,72 @@ fn saved_diff_output_covers_traceability_link_change_details() {
 }
 
 #[test]
+fn saved_diff_output_covers_missing_retained_traceability_link_current_failure_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-missing-retained-traceability-link");
+    fixture.write_panic_source();
+    write_policy_with_traceability_links(&fixture, &["doc:docs/rationale.md"]);
+    commit_fixture_base(&fixture.root);
+    fs::remove_file(fixture.root.join("docs/rationale.md"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove traceability doc: {err}")));
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--config",
+            "policy/allow.toml",
+            "--base",
+            "HEAD",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("worse"),
+        "diff missing retained traceability link net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/broken_evidence_links")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "missing retained traceability link should count as broken evidence health"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/current_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "missing retained traceability link should affect current diff failures"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/policy_changes")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "retained traceability link failure should not be reported as a policy edit"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_broken_traceability_link_addition_details() {
     let fixture = SourceTreeFixture::new("saved-diff-broken-traceability-link-added");
     fixture.write_panic_source();
