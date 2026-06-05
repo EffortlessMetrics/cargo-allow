@@ -155,6 +155,36 @@ impl Parser {
 }
 
 #[test]
+fn outer_lint_attributes_record_target_associated_item_container() {
+    let src = r#"
+struct Parser;
+
+impl Parser {
+    #[allow(dead_code)]
+    const KIND: u8 = 0;
+}
+
+trait ParserApi {
+    #[allow(dead_code)]
+    type Output;
+}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let containers = findings
+        .iter()
+        .filter(|f| {
+            f.kind == FindingKind::LintException && f.family.as_deref() == Some("allow_attribute")
+        })
+        .map(|f| f.identity.container.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        containers,
+        vec![Some("Parser::KIND"), Some("ParserApi::Output")]
+    );
+}
+
+#[test]
 fn outer_lint_attributes_record_target_item_container() {
     let src = r#"
 #[allow(dead_code)]

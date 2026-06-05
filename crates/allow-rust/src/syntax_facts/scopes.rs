@@ -107,7 +107,7 @@ fn collect_nested_line_scopes(
         }
     }
 
-    if let Some(name) = named_item_container_name(node, source) {
+    if let Some(name) = named_item_container_name(node, source, paths) {
         record_container_scope(node, &name, &paths.module_path, scopes);
         record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
         record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
@@ -128,16 +128,30 @@ fn collect_nested_line_scopes(
     visit_child_scopes(node, source, paths, scopes);
 }
 
-fn named_item_container_name(node: Node<'_>, source: &str) -> Option<String> {
+fn named_item_container_name(node: Node<'_>, source: &str, paths: &ScopePaths) -> Option<String> {
     if !matches!(
         node.kind(),
-        "struct_item" | "enum_item" | "union_item" | "type_item" | "const_item" | "static_item"
+        "struct_item"
+            | "enum_item"
+            | "union_item"
+            | "type_item"
+            | "associated_type"
+            | "const_item"
+            | "static_item"
     ) {
         return None;
     }
     node.child_by_field_name("name")
         .and_then(|name| node_text(source, name))
-        .map(str::to_string)
+        .map(|name| {
+            if let Some(impl_name) = paths.impl_path.last() {
+                format!("{impl_name}::{name}")
+            } else if let Some(trait_name) = paths.trait_path.last() {
+                format!("{trait_name}::{name}")
+            } else {
+                name.to_string()
+            }
+        })
 }
 
 fn use_declaration_container_name(node: Node<'_>, source: &str) -> Option<String> {
@@ -317,9 +331,22 @@ fn merge_scope(scopes: &mut BTreeMap<u32, RustLineScope>, line: u32, candidate: 
             if (candidate_has_container && !existing_has_container)
                 || (candidate_has_container == existing_has_container
                     && candidate.span_len < existing.span_len)
+                || more_specific_container_scope(&candidate, existing)
             {
                 *existing = candidate.clone();
             }
         })
         .or_insert(candidate);
+}
+
+fn more_specific_container_scope(candidate: &RustLineScope, existing: &RustLineScope) -> bool {
+    let Some(candidate_container) = candidate.container.as_deref() else {
+        return false;
+    };
+    let Some(existing_container) = existing.container.as_deref() else {
+        return false;
+    };
+    candidate.span_len == existing.span_len
+        && candidate.module_path == existing.module_path
+        && candidate_container.starts_with(&format!("{existing_container}::"))
 }
