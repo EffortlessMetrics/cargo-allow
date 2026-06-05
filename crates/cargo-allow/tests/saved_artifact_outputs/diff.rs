@@ -1401,6 +1401,113 @@ fn saved_diff_output_covers_explicit_head_ignores_invalid_working_policy() {
 }
 
 #[test]
+fn saved_diff_output_covers_explicit_head_policy_path_move_details() {
+    let fixture = SourceTreeFixture::new("saved-diff-explicit-head-policy-path-moved");
+    fixture.write_panic_source();
+    fs::write(
+        fixture.root.join("policy/allow.toml"),
+        default_policy_with_optional_evidence(Some("test:saved-base-policy-path")),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write base default policy: {err}")));
+    commit_fixture_base(&fixture.root);
+    git_for_saved_diff(&fixture.root, &["tag", "saved-base-default-policy"]);
+    fs::remove_file(fixture.root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove base policy: {err}")));
+    fs::write(
+        fixture.root.join("allow.toml"),
+        root_policy_with_optional_evidence(Some("test:saved-head-policy-path")),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write head root policy: {err}")));
+    git_for_saved_diff(&fixture.root, &["add", "-A"]);
+    git_for_saved_diff(&fixture.root, &["commit", "-m", "move policy path"]);
+    git_for_saved_diff(&fixture.root, &["tag", "saved-head-root-policy"]);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let diff = artifact_dir.join("diff.json");
+
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--base",
+            "saved-base-default-policy",
+            "--head",
+            "saved-head-root-policy",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
+
+    let value = assert_source_syntax_artifact_with_inventory(
+        &diff,
+        allow_report::REPORT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/new")
+            .and_then(serde_json::Value::as_u64),
+        Some(0),
+        "explicit-head policy-path move should receipt source findings from the head policy path"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/current_failures")
+            .and_then(serde_json::Value::as_u64),
+        Some(0),
+        "explicit-head policy-path move should not inherit current failures from a base-only policy path"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/net_posture")
+            .and_then(serde_json::Value::as_str),
+        Some("worse"),
+        "explicit-head policy-path move net posture"
+    );
+    assert_eq!(
+        value
+            .pointer("/diff/summary/policy_review_items")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "explicit-head policy-path move review count"
+    );
+
+    let changes = value
+        .pointer("/diff/policy_changes")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"));
+    let change = changes
+        .iter()
+        .find(|change| {
+            change.get("kind").and_then(serde_json::Value::as_str) == Some("added_allow")
+                && change.get("allow_id").and_then(serde_json::Value::as_str)
+                    == Some("allow-unwrap")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "expected explicit-head policy-path added allow; got {changes:?}"
+            ))
+        });
+    assert_eq!(
+        change.get("severity").and_then(serde_json::Value::as_str),
+        Some("review"),
+        "explicit-head policy-path added allow severity"
+    );
+    assert!(
+        change
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|message| message.contains("added a new allow entry")),
+        "explicit-head policy-path move should identify the head policy receipt: {change:?}"
+    );
+}
+
+#[test]
 fn saved_diff_output_covers_explicit_head_inventory_ignored_scopes() {
     let fixture = SourceTreeFixture::new("saved-diff-explicit-head-inventory-ignored");
     fixture.write_panic_source();
@@ -5681,6 +5788,51 @@ callee = "unwrap"
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
         .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+}
+
+fn root_policy_with_optional_evidence(evidence: Option<&str>) -> String {
+    policy_with_optional_evidence_at_ignored_path(evidence, &["allow.toml", "policy/**"])
+}
+
+fn default_policy_with_optional_evidence(evidence: Option<&str>) -> String {
+    policy_with_optional_evidence_at_ignored_path(evidence, &["policy/**"])
+}
+
+fn policy_with_optional_evidence_at_ignored_path(
+    evidence: Option<&str>,
+    ignored: &[&str],
+) -> String {
+    let evidence = evidence
+        .map(|evidence| format!("evidence = [\"{evidence}\"]\n"))
+        .unwrap_or_default();
+    let ignored = ignored
+        .iter()
+        .map(|value| format!("\"{value}\""))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        r#"policy = "cargo-allow"
+
+[workspace]
+ignored = [{ignored}]
+
+[[allow]]
+id = "allow-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "fixture"
+{evidence}created = "2026-05-29"
+review_after = "2026-08-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    )
 }
 
 fn append_evidence_doc_allow(fixture: &SourceTreeFixture, relative_path: &str) {
