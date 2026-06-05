@@ -155,6 +155,36 @@ impl Parser {
 }
 
 #[test]
+fn outer_lint_attributes_record_target_item_container() {
+    let src = r#"
+#[allow(dead_code)]
+struct Parser;
+
+#[allow(dead_code)]
+enum Token {}
+
+#[allow(dead_code)]
+trait Parse {}
+
+#[allow(dead_code)]
+impl Parser {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let containers = findings
+        .iter()
+        .filter(|f| {
+            f.kind == FindingKind::LintException && f.family.as_deref() == Some("allow_attribute")
+        })
+        .map(|f| f.identity.container.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        containers,
+        vec![Some("Parser"), Some("Token"), Some("Parse"), Some("Parser")]
+    );
+}
+
+#[test]
 fn detects_spaced_lint_attribute_tokens_from_source_syntax() {
     let outer = r#"  # [ allow(dead_code) ]"#;
     let inner = r#"# ! [ expect(clippy::unwrap_used, reason = "policy:allow-lint") ]"#;

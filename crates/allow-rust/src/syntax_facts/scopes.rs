@@ -44,6 +44,9 @@ fn collect_nested_line_scopes(
 
     if node.kind() == "impl_item" {
         if let Some(name) = impl_container_name(node, source) {
+            record_container_scope(node, &name, &paths.module_path, scopes);
+            record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
+            record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
             paths.impl_path.push(name);
             visit_child_scopes(node, source, paths, scopes);
             paths.impl_path.pop();
@@ -56,6 +59,9 @@ fn collect_nested_line_scopes(
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
         {
+            record_container_scope(node, name, &paths.module_path, scopes);
+            record_attribute_line_scopes(outer_attribute_lines, name, &paths.module_path, scopes);
+            record_outer_attribute_scopes(node, name, &paths.module_path, scopes);
             paths.trait_path.push(name.to_string());
             visit_child_scopes(node, source, paths, scopes);
             paths.trait_path.pop();
@@ -98,7 +104,25 @@ fn collect_nested_line_scopes(
         }
     }
 
+    if let Some(name) = named_item_container_name(node, source) {
+        record_container_scope(node, &name, &paths.module_path, scopes);
+        record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
+        record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
+    }
+
     visit_child_scopes(node, source, paths, scopes);
+}
+
+fn named_item_container_name(node: Node<'_>, source: &str) -> Option<String> {
+    if !matches!(
+        node.kind(),
+        "struct_item" | "enum_item" | "union_item" | "type_item" | "const_item" | "static_item"
+    ) {
+        return None;
+    }
+    node.child_by_field_name("name")
+        .and_then(|name| node_text(source, name))
+        .map(str::to_string)
 }
 
 fn visit_child_scopes(
