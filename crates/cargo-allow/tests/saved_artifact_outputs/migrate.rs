@@ -300,6 +300,140 @@ fn saved_migrate_output_preserves_legacy_evidence_and_links() {
 }
 
 #[test]
+fn saved_migrate_output_preserves_non_rust_evidence_matrix() {
+    let fixture = SourceTreeFixture::new("saved-migrate-non-rust-evidence-matrix");
+    let legacy_dir = fixture.root.join("legacy-policy");
+    fs::create_dir_all(&legacy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+    write_fixture_doc(&fixture.root, "docs/source-exception-ledger.md");
+    write_fixture_doc(&fixture.root, "docs/source-exception-ledger-evidence.md");
+    write_fixture_doc(&fixture.root, "docs/source-exception-ledger-review.md");
+    write_fixture_doc(&fixture.root, "docs/ci-evidence.md");
+    write_fixture_doc(&fixture.root, ".github/workflows/ci.yml");
+    fs::write(
+        legacy_dir.join("non-rust-allowlist.toml"),
+        non_rust_policy_with_evidence_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write non-rust policy fixture: {err}")));
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let migrated_policy = artifact_dir.join("allow.migrated.toml");
+    let migrate_summary = artifact_dir.join("migrate-summary.json");
+
+    run_cargo_allow(&[
+        "migrate",
+        "--root",
+        fixture.root_str(),
+        "--repo-policy",
+        path_arg(&legacy_dir),
+        "--out",
+        path_arg(&migrated_policy),
+        "--summary-format",
+        "json",
+        "--summary-output",
+        path_arg(&migrate_summary),
+    ]);
+
+    assert_policy_output(&migrated_policy);
+    let value = assert_policy_migration_artifact_with_inventory(
+        &migrate_summary,
+        allow_report::MIGRATE_SCHEMA_ID,
+        "migrate",
+        "filesystem_fallback",
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/allow_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(2),
+        "migrate non-rust evidence matrix allow entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/entries_with_evidence")
+            .and_then(serde_json::Value::as_u64),
+        Some(2),
+        "migrate non-rust evidence matrix entries-with-evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/evidence_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(3),
+        "migrate non-rust evidence matrix evidence count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/entries_with_links")
+            .and_then(serde_json::Value::as_u64),
+        Some(2),
+        "migrate non-rust evidence matrix link-entry count"
+    );
+    assert_eq!(
+        value
+            .pointer("/summary/link_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(2),
+        "migrate non-rust evidence matrix link count"
+    );
+    assert!(
+        value.pointer("/summary/broken_evidence_links").is_none(),
+        "fixture should preserve non-rust local doc evidence without broken links"
+    );
+    assert!(
+        value.pointer("/summary/weak_evidence_references").is_none(),
+        "fixture should preserve non-rust evidence without weak references"
+    );
+
+    let cfg = allow_policy::load_policy(&migrated_policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "load migrated policy {}: {err}",
+            migrated_policy.display()
+        ))
+    });
+    let docs = migrated_entry_by_path(&cfg, Path::new("docs/source-exception-ledger.md"));
+    assert!(docs.id.starts_with("saved-non-rust-doc--"), "docs id");
+    assert_eq!(docs.kind, allow_core::FindingKind::NonRustFile);
+    assert_eq!(docs.family, None);
+    assert_entry_metadata(
+        docs,
+        "docs",
+        "documentation",
+        "Repository policy prose fixture.",
+        Some("2026-05-09"),
+        Some("2026-09-09"),
+        None,
+    );
+    assert_entry_evidence(
+        docs,
+        &[
+            "doc:docs/source-exception-ledger-evidence.md",
+            "doc:docs/source-exception-ledger-review.md",
+        ],
+    );
+    assert_entry_links(docs, &["legacy-policy:saved-non-rust-doc"]);
+
+    let workflow = migrated_entry_by_path(&cfg, Path::new(".github/workflows/ci.yml"));
+    assert!(
+        workflow.id.starts_with("saved-non-rust-workflow--"),
+        "workflow id"
+    );
+    assert_eq!(workflow.kind, allow_core::FindingKind::NonRustFile);
+    assert_eq!(workflow.family, None);
+    assert_entry_metadata(
+        workflow,
+        "release/ci",
+        "ci_declarative",
+        "Workflow file fixture.",
+        Some("2026-05-09"),
+        Some("2026-05-09"),
+        Some("never"),
+    );
+    assert_entry_evidence(workflow, &["doc:docs/ci-evidence.md"]);
+    assert_entry_links(workflow, &["legacy-policy:saved-non-rust-workflow"]);
+}
+
+#[test]
 fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
     let fixture = SourceTreeFixture::new("saved-migrate-policy-exception-evidence-matrix");
     let legacy_dir = fixture.root.join("legacy-policy");
@@ -1008,6 +1142,37 @@ expires = "permanent"
 "#
 }
 
+fn non_rust_policy_with_evidence_fixture_text() -> &'static str {
+    r#"schema_version = 1
+policy = "non-rust-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "saved-non-rust-doc"
+path = "docs/source-exception-ledger.md"
+category = "documentation"
+owner = "docs"
+reason = "Repository policy prose fixture."
+evidence = [
+  "doc:docs/source-exception-ledger-evidence.md",
+  "doc:docs/source-exception-ledger-review.md"
+]
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[[allow]]
+id = "saved-non-rust-workflow"
+path = ".github/workflows/ci.yml"
+category = "ci_declarative"
+owner = "release/ci"
+reason = "Workflow file fixture."
+covered_by = "doc:docs/ci-evidence.md"
+created = "2026-05-09"
+expires = "permanent"
+"#
+}
+
 fn clippy_policy_with_evidence_fixture_text() -> &'static str {
     r#"schema_version = 1
 policy = "clippy-exceptions"
@@ -1090,6 +1255,25 @@ fn migrated_entry<'a>(cfg: &'a allow_core::AllowConfig, id: &str) -> &'a allow_c
         .iter()
         .find(|entry| entry.id == id)
         .unwrap_or_else(|| std::panic::panic_any(format!("missing migrated entry {id}")))
+}
+
+fn migrated_entry_by_path<'a>(
+    cfg: &'a allow_core::AllowConfig,
+    path: &Path,
+) -> &'a allow_core::AllowEntry {
+    cfg.allow
+        .iter()
+        .find(|entry| entry.path.as_deref() == Some(path))
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "missing migrated entry for path {}; got {:?}",
+                path.display(),
+                cfg.allow
+                    .iter()
+                    .map(|entry| (&entry.id, entry.path.as_deref()))
+                    .collect::<Vec<_>>()
+            ))
+        })
 }
 
 fn migrate_queue<'a>(queues: &'a [serde_json::Value], item_kind: &str) -> &'a serde_json::Value {
