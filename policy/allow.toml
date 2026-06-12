@@ -2162,3 +2162,26 @@ glob = "docs/templates/pr-body.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0161"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md"
+owner = "core/policy"
+classification = "source_truth_proposal"
+reason = "Records the accepted product proposal for the planned opt-in spec-system source-of-truth profile."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/templates/proposal.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md"
+
+[allow.last_seen]
+line = 1
+column = 1
