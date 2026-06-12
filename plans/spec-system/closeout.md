@@ -45,6 +45,9 @@ not be treated as proof that the profile has landed.
   governance profile while preserving default source-exception behavior.
 - Draft preview release notes describe the opt-in spec-system profile without
   changing package versions, publishing crates, or claiming stable support.
+- The support-tier claim map has been reviewed after the preview-release draft;
+  `CARGO-ALLOW-SUPPORT-0001` remains advisory and `policy/spec-system.toml`
+  remains in shadow mode.
 
 ## Validation Evidence
 
@@ -59,7 +62,7 @@ not be treated as proof that the profile has landed.
 | Report/worklist output polish | passed locally | `spec_system_profile`, `spec_system_worklist`, and `artifact_schema` tests cover blocking-eligible/advisory summary counts and work-item posture fields. |
 | First-hour adoption and CI docs | passed locally | `docs/how-to/adopt-spec-system-profile.md` and `docs/how-to/run-spec-system-in-ci.md` document advisory/shadow adoption, safe structural blocking candidates, and the no-execution claim boundary. |
 | Preview release notes | passed locally | `CHANGELOG.md` and `docs/release/0.1.7.md` describe the opt-in spec-system preview and explicitly avoid stable-support, publication, and proof-execution claims. |
-| Final support-tier review | not final | `CARGO-ALLOW-SUPPORT-0001` remains advisory for the spec-system profile. |
+| Support-tier claim map review | passed locally | `cargo-allow check --profile spec-system --mode audit` and `worklist --profile spec-system --format json` reported `mode = shadow`, `status = passed`, 0 findings, and 0 work items. `CARGO-ALLOW-SUPPORT-0001` remains advisory, and no repo-local blocking promotion is included in this review. |
 
 ## Non-Goals
 
@@ -87,8 +90,8 @@ and governed as tracked source-tree files by `policy/allow.toml`.
 ## Remaining Work
 
 - Keep repo-local dogfood in shadow while blocking behavior burns in.
-- Review the support-tier claim map before any repo-local blocking promotion or
-  release authorization.
+- Review repo-local blocking-promotion readiness before changing
+  `policy/spec-system.toml` out of shadow.
 - Keep nuanced checks advisory until they prove low-noise.
 - Update this closeout with final dogfood evidence before closing the plan.
 
@@ -99,5 +102,5 @@ If the plan is withdrawn, remove this closeout placeholder, remove its
 
 ## Follow-Up Links
 
-- Next plan item: review the support-tier claim map before any repo-local
-  blocking promotion or release authorization.
+- Next plan item: review repo-local blocking-promotion readiness before changing
+  `policy/spec-system.toml` out of shadow.
