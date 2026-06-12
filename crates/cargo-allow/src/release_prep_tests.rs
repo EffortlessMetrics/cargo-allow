@@ -4,8 +4,10 @@ use std::path::{Path, PathBuf};
 
 const PUBLISHED_RELEASE_VERSION: &str = "0.1.6";
 const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.5";
+const RELEASE_CANDIDATE_VERSION: &str = "0.1.7";
 const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.6.md";
 const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.5.md";
+const RELEASE_CANDIDATE_DOC: &str = "docs/release/0.1.7.md";
 
 #[test]
 fn release_publish_order_matches_internal_dependency_graph() {
@@ -68,37 +70,37 @@ fn previous_release_record_keeps_completed_publication_evidence() {
 }
 
 #[test]
-fn release_record_versions_match_published_workspace() {
+fn release_candidate_versions_match_workspace() {
     let root = workspace_root();
-    let release_doc = read_workspace_file(&root, PUBLISHED_RELEASE_DOC);
+    let release_doc = read_workspace_file(&root, RELEASE_CANDIDATE_DOC);
     let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
     let lockfile = read_workspace_file(&root, "Cargo.lock");
     let package_manifests = workspace_package_manifests(&root);
     let workspace_version = workspace_package_version(&workspace_manifest);
 
     assert_eq!(
-        workspace_version, PUBLISHED_RELEASE_VERSION,
-        "{PUBLISHED_RELEASE_VERSION} release record should match the workspace package version"
-    );
-    assert!(
-        release_doc.contains(&format!("# {PUBLISHED_RELEASE_VERSION} Release Record")),
-        "release note should name itself as a completed release record"
+        workspace_version, RELEASE_CANDIDATE_VERSION,
+        "{RELEASE_CANDIDATE_VERSION} release candidate should match the workspace package version"
     );
     assert!(
         release_doc.contains(&format!(
-            "completed `{PUBLISHED_RELEASE_VERSION}` patch release"
+            "# {RELEASE_CANDIDATE_VERSION} Preview Release Notes"
         )),
-        "release note should document the completed patch release"
+        "release note should name itself as preview release notes"
     );
     assert!(
-        release_doc.contains("Published Registry State")
-            && release_doc.contains(&format!("cargo-allow {PUBLISHED_RELEASE_VERSION}")),
-        "release note should record published registry visibility"
+        release_doc.contains(&format!(
+            "Workspace package versions have been bumped to `{RELEASE_CANDIDATE_VERSION}`"
+        )),
+        "release note should document the release-candidate version bump"
     );
     assert!(
-        release_doc.contains("Final Verification")
-            && release_doc.contains(&format!("cargo-allow {PUBLISHED_RELEASE_VERSION}")),
-        "release note should record installed-binary verification"
+        release_doc.contains("No crate has been tagged, published, install-smoke verified"),
+        "release note should preserve the not-published boundary"
+    );
+    assert!(
+        release_doc.contains(&format!("published `{PUBLISHED_RELEASE_VERSION}` release")),
+        "release note should keep public install pins on the latest published release"
     );
 
     for (package, manifest) in &package_manifests {
@@ -124,7 +126,7 @@ fn release_record_versions_match_published_workspace() {
     for (dependency, version) in workspace_dependency_versions {
         assert_eq!(
             version, workspace_version,
-            "{dependency} workspace dependency should require the published release version"
+            "{dependency} workspace dependency should require the release-candidate version"
         );
     }
 
@@ -137,9 +139,36 @@ fn release_record_versions_match_published_workspace() {
     for (package, version) in lock_versions {
         assert_eq!(
             version, workspace_version,
-            "{package} lockfile entry should carry the published release version"
+            "{package} lockfile entry should carry the release-candidate version"
         );
     }
+}
+
+#[test]
+fn completed_release_record_versions_match_published_release() {
+    let root = workspace_root();
+    let release_doc = read_workspace_file(&root, PUBLISHED_RELEASE_DOC);
+
+    assert!(
+        release_doc.contains(&format!("# {PUBLISHED_RELEASE_VERSION} Release Record")),
+        "published release note should name itself as a completed release record"
+    );
+    assert!(
+        release_doc.contains(&format!(
+            "completed `{PUBLISHED_RELEASE_VERSION}` patch release"
+        )),
+        "published release note should document the completed patch release"
+    );
+    assert!(
+        release_doc.contains("Published Registry State")
+            && release_doc.contains(&format!("cargo-allow {PUBLISHED_RELEASE_VERSION}")),
+        "published release note should record registry visibility"
+    );
+    assert!(
+        release_doc.contains("Final Verification")
+            && release_doc.contains(&format!("cargo-allow {PUBLISHED_RELEASE_VERSION}")),
+        "published release note should record installed-binary verification"
+    );
 }
 
 #[test]
