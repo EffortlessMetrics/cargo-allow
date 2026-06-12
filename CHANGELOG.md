@@ -6,6 +6,36 @@ cargo-allow is a direct source-tree exception ledger for Rust repositories.
 Release notes preserve the claim boundary: cargo-allow scans source-tree
 inventory without executing repository code.
 
+## [Unreleased]
+
+### Spec-system preview
+
+- Added `spec-system` as an opt-in governance profile for static source-tree
+  graph validation across proposals, specs, support tiers, active goals,
+  implementation plans, closeouts, policy ledgers, and related proof-command
+  fields.
+- Added `cargo-allow check --profile spec-system`, `audit --profile
+  spec-system`, `worklist --profile spec-system --format json`, `doctor
+  --profile spec-system`, and `init --profile spec-system` preview surfaces.
+- Added the `cargo-allow.spec-system.v1` JSON report shape with artifacts,
+  links, findings, work items, setup readiness, scanner limitations, and the
+  structural source-tree claim boundary.
+- Dogfooded the profile in this repository with advisory CI artifacts, shadow
+  mode, clean shadow burn-in evidence, blocking-eligible structural finding
+  classification, and reviewer/agent-oriented report and worklist posture.
+- Added first-hour adoption and CI guidance for treating `spec-system` as one
+  opt-in governance profile, not default cargo-allow behavior.
+
+### Known limitations
+
+- The profile is a preview and remains opt-in.
+- The cargo-allow repo still runs the profile in shadow mode.
+- The profile validates structural graph relationships only; it does not
+  execute proof commands, call GitHub APIs, run Cargo, rustc, Clippy, build
+  scripts, proc macros, ripr, unsafe-review, coverage, or network checks.
+- The profile does not claim semantic correctness, proof execution, release
+  readiness, unsafe soundness, test adequacy, or coverage proof.
+
 ## [0.1.6] - 2026-06-03
 
 ### Migration

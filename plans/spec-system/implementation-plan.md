@@ -277,8 +277,9 @@ Current status: advisory artifacts, the first clean shadow mainline artifact,
 blocking behavior for selected safe structural findings, and output posture
 polish for spec-system reports/worklists are recorded in
 [closeout.md](closeout.md). First-hour adoption and CI usage docs have landed.
-The next implementation slice should prepare opt-in spec-system preview release
-notes while keeping this repo's profile config in shadow.
+Opt-in spec-system preview release notes have been drafted. The next
+implementation slice should review the support-tier claim map before any
+repo-local blocking promotion or release authorization.
 
 Rollback: demote profile mode or revert selected blocking checks.
 
