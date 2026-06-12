@@ -1,4 +1,4 @@
-use allow_core::CargoAllowResult;
+use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 use std::process;
 
@@ -7,13 +7,25 @@ mod check_args;
 pub(crate) use check_args::CheckArgs;
 
 use crate::{
-    EvidenceReportSummary, EvidenceValidationMode, ReportRenderArgs, SourceTreeReportContext,
-    evidence_inventory::current_evidence_source_tree_files, load_compat_world,
-    load_world_with_evidence_mode, policy_baseline_debt_entries, print_report, report_config,
-    write_file,
+    EvidenceReportSummary, EvidenceValidationMode, ProfileArg, ReportRenderArgs,
+    SourceTreeReportContext, evidence_inventory::current_evidence_source_tree_files,
+    load_compat_world, load_world_with_evidence_mode, policy_baseline_debt_entries, print_report,
+    report_config, spec_system, write_file,
 };
 
 pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
+    if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
+        reject_source_exception_options(args.compat, args.kind.as_deref(), args.include_untracked)?;
+        return spec_system::cmd_spec_system(spec_system::SpecSystemCommandArgs {
+            command: "check",
+            root: &args.root,
+            config: args.config.as_deref(),
+            format: args.format,
+            output: args.output.as_deref(),
+            receipt: args.receipt.as_deref(),
+        });
+    }
+
     let (root, cfg, findings, inventory_facts) = if args.compat {
         load_compat_world(
             args.root.root.as_deref(),
@@ -80,6 +92,29 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     }
     if failed {
         process::exit(1);
+    }
+    Ok(())
+}
+
+fn reject_source_exception_options(
+    compat: bool,
+    kind: Option<&str>,
+    include_untracked: bool,
+) -> CargoAllowResult<()> {
+    if compat {
+        return Err(CargoAllowError::new(
+            "--compat is not supported with --profile spec-system",
+        ));
+    }
+    if kind.is_some() {
+        return Err(CargoAllowError::new(
+            "--kind is not supported with --profile spec-system",
+        ));
+    }
+    if include_untracked {
+        return Err(CargoAllowError::new(
+            "--include-untracked is not supported with --profile spec-system",
+        ));
     }
     Ok(())
 }

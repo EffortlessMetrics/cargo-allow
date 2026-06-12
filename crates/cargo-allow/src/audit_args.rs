@@ -1,15 +1,18 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-use crate::{OutputFormat, RootArgs, parse_kind_filter_arg};
+use crate::{OutputFormat, ProfileArg, RootArgs, parse_kind_filter_arg};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ReportArgs {
     #[command(flatten)]
     pub(crate) root: RootArgs,
-    /// Policy config path.
+    /// Policy config path. With --profile spec-system, profile config path.
     #[arg(long)]
     pub(crate) config: Option<PathBuf>,
+    /// Opt-in profile to run instead of the default source-exception ledger.
+    #[arg(long, value_enum)]
+    pub(crate) profile: Option<ProfileArg>,
     /// Use a compatible legacy policy for the selected kind.
     #[arg(long)]
     pub(crate) compat: bool,

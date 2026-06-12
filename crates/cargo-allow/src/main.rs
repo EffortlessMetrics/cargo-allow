@@ -25,6 +25,7 @@ mod propose;
 mod prune;
 mod reporting;
 mod selector;
+mod spec_system;
 mod worklist;
 mod world;
 
@@ -123,3 +124,5 @@ mod report_config_tests;
 mod root_cli_compat_tests;
 #[cfg(test)]
 mod root_cli_tests;
+#[cfg(test)]
+mod spec_system_profile_tests;

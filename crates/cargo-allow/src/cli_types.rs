@@ -40,3 +40,9 @@ pub(crate) enum OutputFormat {
     #[value(alias = "md")]
     Markdown,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum ProfileArg {
+    #[value(name = "spec-system")]
+    SpecSystem,
+}
