@@ -167,6 +167,7 @@ Most users start from the surface they already own.
 | User type | First action | Main doc |
 | --- | --- | --- |
 | Maintainer | Run `cargo-allow doctor`, then `cargo-allow audit`. | [Getting started](docs/getting-started.md) |
+| New adopter | Choose the closest path: source exceptions, no-new, spec-system, CI, or cross-repo rollout. | [Onboarding](docs/onboarding.md) |
 | CI owner | Add `cargo-allow check --mode no-new` and upload the receipt. | [CI guide](docs/how-to/run-in-ci.md) |
 | Reviewer | Run `cargo-allow diff --base origin/main`. | [PR posture](docs/pr-posture.md) |
 | Auditor | Run `cargo-allow list` and `cargo-allow explain <id>`. | [Explain an allow](docs/how-to/explain-an-allow.md) |
@@ -351,6 +352,7 @@ pass CI.
 
 | Need | Doc |
 | --- | --- |
+| Choose an adoption path | [Onboarding](docs/onboarding.md) |
 | First hour | [Getting started](docs/getting-started.md) |
 | Claim boundaries | [Claim boundaries](docs/claim-boundaries.md) |
 | Run in CI | [CI guide](docs/how-to/run-in-ci.md) |

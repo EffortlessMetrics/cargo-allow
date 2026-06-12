@@ -534,20 +534,20 @@ column = 1
 id = "allow-0179"
 kind = "non_rust_file"
 family = "configuration"
-path = ".github/ISSUE_TEMPLATE/adoption_friction.yml"
+path = ".github/ISSUE_TEMPLATE/cargo-allow-adoption-friction.yml"
 owner = "core/community"
 classification = "github_issue_template"
-reason = "Collects structured adoption-friction reports for 0.1.7 spec-system preview portability, init, doctor, worklist, schema, and CI feedback."
+reason = "Collects structured adoption-friction reports for spec-system preview portability, init, doctor, worklist, schema, and CI feedback."
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/profiles.md", "doc:docs/how-to/adopt-cargo-allow-across-repos.md", "doc:docs/release/0.1.7.md"]
+evidence = ["doc:docs/profiles.md", "doc:docs/how-to/adopt-cargo-allow-across-repos.md", "doc:docs/release/0.1.8.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = ".github/ISSUE_TEMPLATE/adoption_friction.yml"
+symbol = ".github/ISSUE_TEMPLATE/cargo-allow-adoption-friction.yml"
 target_fingerprint = "yml"
 line_hint = 1
-glob = ".github/ISSUE_TEMPLATE/adoption_friction.yml"
+glob = ".github/ISSUE_TEMPLATE/cargo-allow-adoption-friction.yml"
 
 [allow.last_seen]
 line = 1
@@ -709,6 +709,29 @@ symbol = "docs/README.md"
 target_fingerprint = "md"
 line_hint = 1
 glob = "docs/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0183"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/onboarding.md"
+owner = "core/docs"
+classification = "product_onboarding"
+reason = "Provides a short front door that routes new users to source-exception, no-new, spec-system, CI, cross-repo adoption, and adoption-friction workflows."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:README.md", "doc:docs/README.md", "doc:docs/how-to/adopt-cargo-allow-across-repos.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/onboarding.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/onboarding.md"
 
 [allow.last_seen]
 line = 1
@@ -2262,7 +2285,7 @@ family = "documentation"
 path = "docs/release/0.1.7.md"
 owner = "core/release"
 classification = "release_runbook"
-reason = "Records the 0.1.7 preview release-candidate notes for the opt-in spec-system profile without publishing, tagging, or claiming stable support."
+reason = "Records the completed 0.1.7 spec-system preview release publication, registry verification, and rollback limits."
 created = "2026-06-12"
 review_after = "2026-11-01"
 evidence = ["doc:docs/release/0.1.6.md", "doc:docs/how-to/adopt-spec-system-profile.md", "doc:docs/claim-boundaries.md"]
@@ -2285,7 +2308,7 @@ family = "documentation"
 path = "docs/release/github/v0.1.7.md"
 owner = "core/release"
 classification = "release_notes"
-reason = "Prepares the public GitHub Release body for the future authorized v0.1.7 spec-system preview release without creating a tag or release."
+reason = "Prepares the public GitHub Release body for the v0.1.7 spec-system preview release."
 created = "2026-06-12"
 review_after = "2026-11-01"
 evidence = ["doc:docs/release/0.1.7.md", "doc:CHANGELOG.md", "doc:docs/claim-boundaries.md"]

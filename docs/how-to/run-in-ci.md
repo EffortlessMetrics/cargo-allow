@@ -32,6 +32,25 @@ cargo-allow check \
 Upload `target/cargo-allow/` on success and failure. The receipt is the durable
 source-tree claim for the run.
 
+Minimal GitHub Actions shape:
+
+```yaml
+- name: cargo-allow source exception check
+  run: |
+    mkdir -p target/cargo-allow
+    cargo-allow check \
+      --mode no-new \
+      --format markdown \
+      --receipt target/cargo-allow/check.receipt.json \
+      --output target/cargo-allow/check.md
+
+- uses: actions/upload-artifact@v7.0.1
+  if: always()
+  with:
+    name: cargo-allow
+    path: target/cargo-allow/
+```
+
 ## Claim Boundary
 
 The CI scan should not require the checked-out repository to build. It does not

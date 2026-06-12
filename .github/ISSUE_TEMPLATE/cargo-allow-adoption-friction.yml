@@ -1,12 +1,14 @@
 name: Adoption friction
 description: Report friction found while adopting cargo-allow or an opt-in profile in another repo.
 title: "adoption: "
-labels: [adoption, needs-triage]
+labels: [documentation]
 body:
   - type: markdown
     attributes:
       value: |
         Use this form when another repository exposes confusing init output, false positives, missing profile primitives, unclear worklist items, schema gaps, or CI friction.
+
+        Suggested triage labels after filing: `adoption`, `profile:spec-system`, `docs`, `worklist`, `doctor`, `init`, `schema`, or `ci`.
   - type: input
     id: repo
     attributes:
@@ -20,7 +22,7 @@ body:
     attributes:
       label: cargo-allow version
       description: Paste the version from `cargo-allow --version`.
-      placeholder: cargo-allow 0.1.7
+      placeholder: cargo-allow 0.1.8
     validations:
       required: true
   - type: textarea
