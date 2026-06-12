@@ -331,7 +331,10 @@ artifact_ledger = "policy/doc-artifacts.toml"
 ledger_required = true
 templates_required = true
 support_tiers_required = true
-active_goal_required = true
+# New repositories start with a placeholder active goal. Set this to true after
+# registering the proposal, spec, plan, support-tier, and active-goal artifacts
+# that the active goal should link to.
+active_goal_required = false
 closeout_required_for_done_items = true
 "#
     .to_string()
@@ -355,6 +358,9 @@ fn artifact_root_readme(title: &str, role: &str) -> String {
 fn active_goal_template() -> String {
     r#"schema_version = "1.0"
 
+# Placeholder execution state for the first adoption PR.
+# Register real proposal/spec/plan artifacts in policy/doc-artifacts.toml before
+# setting active_goal_required = true in policy/spec-system.toml.
 id = "spec-system-profile"
 title = "Spec-system profile"
 status = "active"
@@ -802,23 +808,37 @@ fn collect_spec_system_readiness(
 
     let active_goal = active_goal_manifest_source_path(cfg);
     let active_goal_path = root_relative_path(root, Path::new(&active_goal));
-    let active_goal_result = match &ledger_result {
-        Ok(ledger) => validate_active_goal_file(root, cfg, ledger).map_err(|err| err.to_string()),
-        Err(err) => Err(format!(
-            "active goal manifest cannot be validated until doc artifact ledger parses: {err}"
-        )),
-    };
-    let active_goal_valid = active_goal_result.is_ok();
-    checks.push(readiness_check(
-        "active_goal",
-        Some(active_goal.clone()),
-        active_goal_path.is_file(),
-        Some(active_goal_valid),
-        match active_goal_result {
-            Ok(()) => format!("active goal manifest {active_goal} parsed"),
-            Err(err) => err,
-        },
-    ));
+    if cfg.requirements.active_goal_required {
+        let active_goal_result = match &ledger_result {
+            Ok(ledger) => {
+                validate_active_goal_file(root, cfg, ledger).map_err(|err| err.to_string())
+            }
+            Err(err) => Err(format!(
+                "active goal manifest cannot be validated until doc artifact ledger parses: {err}"
+            )),
+        };
+        let active_goal_valid = active_goal_result.is_ok();
+        checks.push(readiness_check(
+            "active_goal",
+            Some(active_goal.clone()),
+            active_goal_path.is_file(),
+            Some(active_goal_valid),
+            match active_goal_result {
+                Ok(()) => format!("active goal manifest {active_goal} parsed"),
+                Err(err) => err,
+            },
+        ));
+    } else {
+        checks.push(SpecSystemReadinessCheck {
+            kind: "active_goal",
+            path: Some(active_goal.clone()),
+            found: active_goal_path.is_file(),
+            valid: None,
+            status: "ready",
+            message: "active goal validation is optional because active_goal_required = false"
+                .to_string(),
+        });
+    }
 
     let missing_templates = EXPECTED_TEMPLATE_FILES
         .iter()
@@ -1445,11 +1465,7 @@ fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
         "| Support-tier rows | {} |\n",
         report.support_tier_rows
     ));
-    text.push_str(&format!(
-        "| {} findings | {} |\n",
-        spec_system_mode_title(&report.mode),
-        report.findings.len()
-    ));
+    text.push_str(&format!("| Findings | {} |\n", report.findings.len()));
     text.push_str(&format!(
         "| Blocking-eligible findings | {} |\n",
         spec_system_blocking_finding_count(report)
@@ -1470,14 +1486,11 @@ fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
     text.push('\n');
     if report.findings.is_empty() {
         text.push_str(&format!(
-            "No spec-system {} findings.\n\n",
+            "No spec-system findings in `{}` mode.\n\n",
             spec_system_mode_name(&report.mode)
         ));
     } else {
-        text.push_str(&format!(
-            "## {} Findings\n\n",
-            spec_system_mode_title(&report.mode)
-        ));
+        text.push_str("## Findings\n\n");
         if spec_system_blocking_finding_count(report) > 0 {
             text.push_str("### Blocking-Eligible Findings\n\n");
             for finding in report
@@ -1969,14 +1982,6 @@ fn spec_system_mode_name(mode: &SpecSystemMode) -> &'static str {
         SpecSystemMode::Advisory => "advisory",
         SpecSystemMode::Shadow => "shadow",
         SpecSystemMode::Blocking => "blocking",
-    }
-}
-
-fn spec_system_mode_title(mode: &SpecSystemMode) -> &'static str {
-    match mode {
-        SpecSystemMode::Advisory => "Advisory",
-        SpecSystemMode::Shadow => "Shadow",
-        SpecSystemMode::Blocking => "Blocking",
     }
 }
 
