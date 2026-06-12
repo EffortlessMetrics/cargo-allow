@@ -850,7 +850,7 @@ fn work_items_from_artifact_files(
             }
             Ok(_) => {}
             Err(err) => items.push(artifact_work_item(
-                "artifact_file_missing",
+                "artifact_file_unreadable",
                 artifact,
                 format!("failed to read artifact file {}: {err}", artifact.path),
                 vec![
@@ -1164,7 +1164,23 @@ fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
         spec_system_mode_title(&report.mode),
         report.findings.len()
     ));
+    text.push_str(&format!(
+        "| Blocking-eligible findings | {} |\n",
+        spec_system_blocking_finding_count(report)
+    ));
+    text.push_str(&format!(
+        "| Advisory findings | {} |\n",
+        spec_system_advisory_finding_count(report)
+    ));
     text.push_str(&format!("| Work items | {} |\n", report.work_items.len()));
+    text.push_str(&format!(
+        "| Blocking-eligible work items | {} |\n",
+        spec_system_blocking_work_item_count(report)
+    ));
+    text.push_str(&format!(
+        "| Advisory work items | {} |\n",
+        spec_system_advisory_work_item_count(report)
+    ));
     text.push('\n');
     if report.findings.is_empty() {
         text.push_str(&format!(
@@ -1176,19 +1192,44 @@ fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
             "## {} Findings\n\n",
             spec_system_mode_title(&report.mode)
         ));
-        for finding in &report.findings {
-            let posture = finding.blocking_reason.unwrap_or("advisory");
-            text.push_str(&format!(
-                "- `{}` (`{}`): {}\n",
-                finding.kind, posture, finding.message
-            ));
+        if spec_system_blocking_finding_count(report) > 0 {
+            text.push_str("### Blocking-Eligible Findings\n\n");
+            for finding in report
+                .findings
+                .iter()
+                .filter(|finding| finding.blocking_eligible)
+            {
+                let posture = finding.blocking_reason.unwrap_or("blocking_eligible");
+                text.push_str(&format!(
+                    "- `{}` (`{}`): {}\n",
+                    finding.kind, posture, finding.message
+                ));
+            }
+            text.push('\n');
         }
-        text.push('\n');
+        if spec_system_advisory_finding_count(report) > 0 {
+            text.push_str("### Advisory Findings\n\n");
+            for finding in report
+                .findings
+                .iter()
+                .filter(|finding| !finding.blocking_eligible)
+            {
+                text.push_str(&format!(
+                    "- `{}` (`advisory`): {}\n",
+                    finding.kind, finding.message
+                ));
+            }
+            text.push('\n');
+        }
     }
     if !report.work_items.is_empty() {
         text.push_str("## Work Items\n\n");
         for item in &report.work_items {
-            text.push_str(&format!("- `{}`: {}\n", item.kind, item.message));
+            let posture = spec_system_work_item_blocking_reason(item).unwrap_or("advisory");
+            text.push_str(&format!(
+                "- `{}` (`{}`): {}\n",
+                item.kind, posture, item.message
+            ));
             if let Some(artifact_id) = &item.artifact_id {
                 text.push_str(&format!("  - Artifact: `{artifact_id}`\n"));
             }
@@ -1334,8 +1375,24 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
     ));
     text.push_str(&format!("    \"findings\": {},\n", report.findings.len()));
     text.push_str(&format!(
-        "    \"work_items\": {}\n",
+        "    \"blocking_eligible_findings\": {},\n",
+        spec_system_blocking_finding_count(report)
+    ));
+    text.push_str(&format!(
+        "    \"advisory_findings\": {},\n",
+        spec_system_advisory_finding_count(report)
+    ));
+    text.push_str(&format!(
+        "    \"work_items\": {},\n",
         report.work_items.len()
+    ));
+    text.push_str(&format!(
+        "    \"blocking_eligible_work_items\": {},\n",
+        spec_system_blocking_work_item_count(report)
+    ));
+    text.push_str(&format!(
+        "    \"advisory_work_items\": {}\n",
+        spec_system_advisory_work_item_count(report)
     ));
     text.push_str("  },\n");
     text.push_str("  \"artifacts\": [\n");
@@ -1432,6 +1489,21 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
         }
         if let Some(status) = &item.status {
             text.push_str(&format!(",\n      \"status\": \"{}\"", json_escape(status)));
+        }
+        let blocking_reason = spec_system_work_item_blocking_reason(item);
+        text.push_str(&format!(
+            ",\n      \"blocking_eligible\": {}",
+            if blocking_reason.is_some() {
+                "true"
+            } else {
+                "false"
+            }
+        ));
+        if let Some(reason) = blocking_reason {
+            text.push_str(&format!(
+                ",\n      \"blocking_reason\": \"{}\"",
+                json_escape(reason)
+            ));
         }
         text.push_str(&format!(
             ",\n      \"message\": \"{}\",\n",
@@ -1631,6 +1703,22 @@ fn spec_system_blocking_finding_count(report: &SpecSystemReport) -> usize {
         .count()
 }
 
+fn spec_system_advisory_finding_count(report: &SpecSystemReport) -> usize {
+    report.findings.len() - spec_system_blocking_finding_count(report)
+}
+
+fn spec_system_blocking_work_item_count(report: &SpecSystemReport) -> usize {
+    report
+        .work_items
+        .iter()
+        .filter(|item| spec_system_work_item_blocking_reason(item).is_some())
+        .count()
+}
+
+fn spec_system_advisory_work_item_count(report: &SpecSystemReport) -> usize {
+    report.work_items.len() - spec_system_blocking_work_item_count(report)
+}
+
 fn spec_system_report_status(report: &SpecSystemReport) -> &'static str {
     if spec_system_report_failed(report) {
         "failed"
@@ -1691,6 +1779,38 @@ fn artifact_link_blocking_reason(message: &str) -> Option<&'static str> {
     }
     if message.contains(" target ") && message.contains(" is not registered by id or path") {
         return Some("unknown_link_target");
+    }
+    None
+}
+
+fn spec_system_work_item_blocking_reason(item: &SpecSystemWorkItem) -> Option<&'static str> {
+    match item.kind {
+        "artifact_file_missing" => Some("artifact_file_missing"),
+        "artifact_file_unreadable" => Some("artifact_file_unreadable"),
+        "artifact_id_not_in_file" => Some("artifact_id_not_in_file"),
+        "unknown_link_target" => Some("unknown_link_target"),
+        "missing_node" => missing_node_work_item_blocking_reason(&item.message),
+        _ => None,
+    }
+}
+
+fn missing_node_work_item_blocking_reason(message: &str) -> Option<&'static str> {
+    if message.contains("spec-system profile config") && !message.contains("does not exist") {
+        return Some("profile_config_parse_failure");
+    }
+    if message.contains("doc artifact ledger") {
+        if message.contains("failed to read doc artifact ledger") {
+            return Some("doc_artifact_ledger_missing");
+        }
+        if message.contains("duplicate doc artifact id") {
+            return Some("duplicate_id");
+        }
+        if message.contains("failed to parse doc artifact ledger TOML") {
+            if message.contains("unknown variant") {
+                return Some("invalid_artifact_kind_or_status");
+            }
+            return Some("doc_artifact_ledger_parse_failure");
+        }
     }
     None
 }

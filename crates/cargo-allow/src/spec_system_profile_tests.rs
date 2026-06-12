@@ -143,6 +143,30 @@ fn check_spec_system_profile_does_not_require_allow_policy() {
             .and_then(Value::as_u64),
         Some(0)
     );
+    assert_eq!(
+        receipt_json
+            .pointer("/summary/blocking_eligible_findings")
+            .and_then(Value::as_u64),
+        Some(0)
+    );
+    assert_eq!(
+        receipt_json
+            .pointer("/summary/advisory_findings")
+            .and_then(Value::as_u64),
+        Some(0)
+    );
+    assert_eq!(
+        receipt_json
+            .pointer("/summary/blocking_eligible_work_items")
+            .and_then(Value::as_u64),
+        Some(0)
+    );
+    assert_eq!(
+        receipt_json
+            .pointer("/summary/advisory_work_items")
+            .and_then(Value::as_u64),
+        Some(0)
+    );
     assert!(
         receipt_json
             .get("work_items")
@@ -403,6 +427,16 @@ fn spec_system_profile_reports_shadow_mode_without_failing_command() {
         json.pointer("/summary/findings").and_then(Value::as_u64),
         Some(1)
     );
+    assert_eq!(
+        json.pointer("/summary/blocking_eligible_findings")
+            .and_then(Value::as_u64),
+        Some(0)
+    );
+    assert_eq!(
+        json.pointer("/summary/advisory_findings")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
 }
 
 #[test]
@@ -579,6 +613,16 @@ fn spec_system_blocking_mode_keeps_missing_required_edge_advisory() {
     assert_eq!(json.get("failed").and_then(Value::as_bool), Some(false));
     assert_eq!(
         json.pointer("/summary/findings").and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        json.pointer("/summary/blocking_eligible_findings")
+            .and_then(Value::as_u64),
+        Some(0)
+    );
+    assert_eq!(
+        json.pointer("/summary/advisory_findings")
+            .and_then(Value::as_u64),
         Some(1)
     );
     let finding = first_finding(&json);
@@ -914,6 +958,16 @@ fn assert_blocking_report(json: &Value, finding_kind: &str, blocking_reason: &st
     assert_eq!(
         json.pointer("/summary/findings").and_then(Value::as_u64),
         Some(1)
+    );
+    assert_eq!(
+        json.pointer("/summary/blocking_eligible_findings")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        json.pointer("/summary/advisory_findings")
+            .and_then(Value::as_u64),
+        Some(0)
     );
     assert_blocking_finding(json, finding_kind, blocking_reason);
 }

@@ -39,6 +39,8 @@ not be treated as proof that the profile has landed.
 - The first merged shadow mainline run uploaded a clean spec-system artifact.
 - Blocking mode now fails commands only for selected objective structural
   findings; cargo-allow's own repo profile remains in shadow.
+- Reports and worklists now separate blocking-eligible posture from advisory
+  lifecycle posture for reviewer and agent routing.
 
 ## Validation Evidence
 
@@ -50,6 +52,7 @@ not be treated as proof that the profile has landed.
 | First shadow CI artifact | passed | GitHub Actions run `27403356886`, `push` to `main` at `396f3298bc2dea95295ffd4e3bd5bf96fba4c477`, uploaded `cargo-allow-reports/spec-system.json` with `schema_id = cargo-allow.spec-system.v1`, `mode = shadow`, `status = passed`, `failed = false`, 6 artifacts, 17 links, 4 support-tier rows, 0 findings, and 0 work items. |
 | First shadow worklist posture | passed | The same mainline artifact reported 0 work items. Local follow-up `worklist --profile spec-system --format json` also reported `mode = shadow`, `status = passed`, `failed = false`, 0 findings, and 0 work items. |
 | Blocking-eligible classification | passed locally | `spec_system_profile` tests cover malformed profile config, duplicate artifact IDs, invalid artifact status/kind, missing registered artifact files, missing declared IDs, unknown links, and a non-blocking missing required edge. |
+| Report/worklist output polish | passed locally | `spec_system_profile`, `spec_system_worklist`, and `artifact_schema` tests cover blocking-eligible/advisory summary counts and work-item posture fields. |
 | Final support-tier review | not final | `CARGO-ALLOW-SUPPORT-0001` remains advisory for the spec-system profile. |
 
 ## Non-Goals
@@ -78,7 +81,7 @@ and governed as tracked source-tree files by `policy/allow.toml`.
 ## Remaining Work
 
 - Keep repo-local dogfood in shadow while blocking behavior burns in.
-- Polish report and worklist output before any repo-local blocking promotion.
+- Add first-hour adoption and CI usage docs before any repo-local blocking promotion.
 - Keep nuanced checks advisory until they prove low-noise.
 - Update this closeout with final dogfood evidence before closing the plan.
 
@@ -89,5 +92,5 @@ If the plan is withdrawn, remove this closeout placeholder, remove its
 
 ## Follow-Up Links
 
-- Next plan item: polish spec-system report and worklist output for reviewers
-  and agents without promoting the repo-local profile to blocking.
+- Next plan item: add first-hour adoption and CI usage docs for the spec-system
+  profile without promoting the repo-local profile to blocking.

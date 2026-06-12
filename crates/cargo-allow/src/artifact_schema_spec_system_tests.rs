@@ -68,6 +68,24 @@ fn spec_system_schema_locks_profile_commands_and_readiness() {
         &["ready", "missing", "invalid"],
     );
 
+    let summary = required_schema_pointer("spec-system", &schema, "/$defs/summary");
+    assert_eq!(
+        summary.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "spec-system summary should reject unknown fields"
+    );
+    assert_required_fields(
+        "spec-system summary",
+        summary,
+        &[
+            "artifacts",
+            "links",
+            "support_tier_rows",
+            "findings",
+            "work_items",
+        ],
+    );
+
     let finding = required_schema_pointer("spec-system", &schema, "/$defs/finding");
     assert_eq!(
         finding.get("additionalProperties").and_then(Value::as_bool),
@@ -93,6 +111,44 @@ fn spec_system_schema_locks_profile_commands_and_readiness() {
             "artifact_file_unreadable",
             "artifact_id_not_in_file",
             "unknown_link_target",
+        ],
+    );
+
+    let work_item = required_schema_pointer("spec-system", &schema, "/$defs/work_item");
+    assert_eq!(
+        work_item
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "spec-system work items should reject unknown fields"
+    );
+    assert_required_fields(
+        "spec-system work item",
+        work_item,
+        &["kind", "message", "suggested_actions", "proof_commands"],
+    );
+    assert_enum_equals(
+        "spec-system work item kind",
+        &schema,
+        "/$defs/work_item_kind/enum",
+        &[
+            "missing_node",
+            "missing_doc_artifact",
+            "artifact_file_missing",
+            "artifact_file_unreadable",
+            "artifact_id_not_in_file",
+            "invalid_artifact_status",
+            "missing_required_edge",
+            "missing_linked_proposal",
+            "unknown_link_target",
+            "unknown_linked_artifact",
+            "orphan_spec",
+            "missing_support_tier",
+            "missing_proof_command",
+            "claim_without_support_tier",
+            "stale_active_goal",
+            "missing_closeout",
+            "superseded_target_missing",
         ],
     );
 }

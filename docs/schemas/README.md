@@ -170,7 +170,12 @@ findings with `blocking_eligible = true`. The initial blocking-eligible classes
 are objective structural failures such as malformed explicit profile config,
 missing or invalid doc-artifact ledgers, duplicate artifact IDs, invalid
 artifact kinds or statuses, missing registered files, missing declared IDs, and
-unknown link targets. Judgment-heavy lifecycle checks remain advisory.
+unknown link targets. Current producers include optional summary counts that
+separate blocking-eligible and advisory findings and work items so reviewers can
+scan the safe structural subset without losing lifecycle context. Work items
+also include optional `blocking_eligible` and `blocking_reason` fields so agents
+can route objective repairs separately from judgment-heavy lifecycle checks,
+which remain advisory.
 Diff reports may include optional `diff.summary.broken_evidence_links`,
 `diff.summary.missing_evidence`, and `diff.summary.weak_evidence_references`
 when the compared head policy has evidence-health signals. These duplicate the

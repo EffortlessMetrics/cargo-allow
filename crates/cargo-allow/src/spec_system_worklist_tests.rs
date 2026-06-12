@@ -34,6 +34,16 @@ fn worklist_spec_system_profile_does_not_require_allow_policy() {
         json.pointer("/summary/work_items").and_then(Value::as_u64),
         Some(0)
     );
+    assert_eq!(
+        json.pointer("/summary/blocking_eligible_work_items")
+            .and_then(Value::as_u64),
+        Some(0)
+    );
+    assert_eq!(
+        json.pointer("/summary/advisory_work_items")
+            .and_then(Value::as_u64),
+        Some(0)
+    );
 }
 
 #[test]
@@ -91,6 +101,9 @@ fn worklist_spec_system_profile_reports_unknown_link_target() {
     assert!(
         work_items(&json).iter().any(|item| {
             item.get("artifact_id").and_then(Value::as_str) == Some("CARGO-ALLOW-SPEC-0001")
+                && item.get("blocking_eligible").and_then(Value::as_bool) == Some(true)
+                && item.get("blocking_reason").and_then(Value::as_str)
+                    == Some("unknown_link_target")
                 && item
                     .get("proof_commands")
                     .and_then(Value::as_array)
@@ -102,6 +115,16 @@ fn worklist_spec_system_profile_reports_unknown_link_target() {
                     })
         }),
         "unknown target should keep artifact context and proof commands: {report}"
+    );
+    assert_eq!(
+        json.pointer("/summary/blocking_eligible_work_items")
+            .and_then(Value::as_u64),
+        Some(5)
+    );
+    assert_eq!(
+        json.pointer("/summary/advisory_work_items")
+            .and_then(Value::as_u64),
+        Some(0)
     );
 }
 
@@ -131,6 +154,14 @@ fn worklist_spec_system_profile_reports_missing_closeout() {
         has_work_item_kind(&json, "missing_closeout"),
         "done plan without closeout should route a missing_closeout work item: {report}"
     );
+    assert!(
+        work_items(&json).iter().any(|item| {
+            item.get("kind").and_then(Value::as_str) == Some("missing_closeout")
+                && item.get("blocking_eligible").and_then(Value::as_bool) == Some(false)
+                && item.get("blocking_reason").is_none()
+        }),
+        "missing closeout should remain advisory: {report}"
+    );
 }
 
 #[test]
@@ -158,6 +189,14 @@ fn worklist_spec_system_profile_reports_missing_proof_command() {
     assert!(
         has_work_item_kind(&json, "missing_proof_command"),
         "stable claim without proof should route a missing_proof_command work item: {report}"
+    );
+    assert!(
+        work_items(&json).iter().any(|item| {
+            item.get("kind").and_then(Value::as_str) == Some("missing_proof_command")
+                && item.get("blocking_eligible").and_then(Value::as_bool) == Some(false)
+                && item.get("blocking_reason").is_none()
+        }),
+        "missing proof command should remain advisory: {report}"
     );
 }
 
