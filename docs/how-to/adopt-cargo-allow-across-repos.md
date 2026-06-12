@@ -11,6 +11,7 @@ target repository perfect in the first PR.
 
 Use the latest published cargo-allow release for normal adoption. The
 `spec-system` preview is available in the published `0.1.7` release and later.
+The first-hour bootstrap cleanup is available in `0.1.8` and later.
 
 ```bash
 cargo install cargo-allow --locked
@@ -19,7 +20,7 @@ cargo install cargo-allow --locked
 For a pinned published release with the `spec-system` preview:
 
 ```bash
-cargo install cargo-allow --version 0.1.7 --locked
+cargo install cargo-allow --version 0.1.8 --locked
 ```
 
 Do not pin a release-candidate version in another repository before it is
