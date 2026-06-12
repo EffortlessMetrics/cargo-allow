@@ -118,7 +118,7 @@ fn check_spec_system_profile_does_not_require_allow_policy() {
     let _ = fs::remove_dir_all(&root);
 
     assert!(report.contains("cargo-allow check --profile spec-system"));
-    assert!(report.contains("No spec-system advisory findings."));
+    assert!(report.contains("No spec-system findings in `advisory` mode."));
     let receipt_json = parse_spec_system_json("receipt", &receipt_text);
 
     assert_eq!(
@@ -212,7 +212,7 @@ fn check_spec_system_profile_reports_explicit_missing_config() {
 
     assert!(report.contains("profile_config"));
     assert!(report.contains("does not exist"));
-    assert!(!report.contains("No spec-system advisory findings."));
+    assert!(!report.contains("No spec-system findings in `advisory` mode."));
 }
 
 #[test]
@@ -730,8 +730,8 @@ fn spec_system_profile_renders_configured_shadow_mode_in_markdown() {
     assert!(report.contains("**Result:** shadow"));
     assert!(report.contains("Mode: `shadow`"));
     assert!(report.contains("Status: `passed`"));
-    assert!(report.contains("| Shadow findings | 0 |"));
-    assert!(report.contains("No spec-system shadow findings."));
+    assert!(report.contains("| Findings | 0 |"));
+    assert!(report.contains("No spec-system findings in `shadow` mode."));
 }
 
 fn argv(items: Vec<&str>) -> Vec<String> {

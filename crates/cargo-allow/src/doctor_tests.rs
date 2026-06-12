@@ -522,6 +522,82 @@ fn spec_system_doctor_reports_ready_when_bootstrap_files_exist() {
     remove_doctor_fixture_dir(root);
 }
 
+#[test]
+fn spec_system_doctor_treats_bootstrap_active_goal_as_optional() {
+    let root = doctor_fixture_dir();
+    write_valid_spec_system_readiness_fixture(&root);
+    fs::write(
+        root.join("policy/spec-system.toml"),
+        spec_system_config().replace(
+            "active_goal_required = true",
+            "active_goal_required = false",
+        ),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write spec-system config: {err}")));
+    fs::write(
+        root.join("policy/doc-artifacts.toml"),
+        r#"
+schema_version = "1.0"
+policy = "cargo-allow-doc-artifacts"
+owner = "repo-infra"
+status = "advisory"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write doc artifacts: {err}")));
+    fs::write(
+        root.join(".codex/goals/active.toml"),
+        r#"
+schema_version = "1.0"
+id = "spec-system-profile"
+title = "Spec-system profile"
+status = "active"
+owner = "codex"
+created = "YYYY-MM-DD"
+linked_plan = "plans/spec-system/implementation-plan.md"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write active goal: {err}")));
+    let output = root.join("doctor.json");
+
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        format: DoctorFormat::Json,
+        output: Some(output.clone()),
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("spec-system doctor should pass advisory: {err}"))
+    });
+
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    let value = parse_json_artifact(
+        "spec-system doctor",
+        &json,
+        allow_report::SPEC_SYSTEM_SCHEMA_ID,
+        "doctor",
+    );
+    assert_eq!(
+        value.pointer("/readiness/ready").and_then(Value::as_bool),
+        Some(true),
+        "optional bootstrap active goal should not make readiness fail: {json}"
+    );
+    assert!(
+        readiness_check(&value, "active_goal").is_some_and(|check| {
+            check.pointer("/status").and_then(Value::as_str) == Some("ready")
+                && check
+                    .pointer("/message")
+                    .and_then(Value::as_str)
+                    .is_some_and(|message| message.contains("active_goal_required = false"))
+        }),
+        "active goal readiness should explain optional validation: {json}"
+    );
+    remove_doctor_fixture_dir(root);
+}
+
 fn doctor_fixture_dir() -> std::path::PathBuf {
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

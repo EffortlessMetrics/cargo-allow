@@ -29,6 +29,13 @@ Check setup readiness:
 cargo-allow doctor --profile spec-system
 ```
 
+The generated profile starts in advisory mode and treats the bootstrap active
+goal as optional. That lets a new repository get a clean first-hour setup before
+it has registered real proposal, spec, plan, support-tier, and closeout
+artifacts. After the first source-of-truth graph is registered in
+`policy/doc-artifacts.toml`, set `active_goal_required = true` if the repository
+wants active-goal links to be enforced.
+
 Run the graph check in audit posture:
 
 ```bash

@@ -178,6 +178,10 @@ fn spec_system_init_bootstraps_profile_files() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("read profile config: {err}")));
     assert!(config.contains("profile = \"spec-system\""));
     assert!(config.contains("mode = \"advisory\""));
+    assert!(
+        config.contains("active_goal_required = false"),
+        "new repositories should not start with a self-invalidating active goal"
+    );
 
     remove_init_fixture_dir(root);
 }

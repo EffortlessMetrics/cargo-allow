@@ -8,7 +8,14 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Fixed
+
+- Made `cargo-allow init --profile spec-system` easier to adopt in new
+  repositories by starting bootstrap active-goal validation as optional until a
+  real proposal/spec/plan graph is registered, avoiding an immediate
+  self-invalidating first-hour `doctor --profile spec-system` result.
+- Simplified spec-system Markdown finding summaries so advisory reports use one
+  neutral `Findings` section instead of repeating `Advisory Findings`.
 
 ## [0.1.7] - 2026-06-12
 

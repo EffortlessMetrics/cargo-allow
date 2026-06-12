@@ -57,6 +57,12 @@ goals, and support-tier surfaces. If the generated layout is confusing or too
 cargo-allow-specific, file an adoption-friction issue instead of working around
 it silently in the target repo.
 
+The generated `policy/spec-system.toml` starts with
+`active_goal_required = false`. That is intentional for first-hour adoption:
+the bootstrap active goal is a placeholder until the target repo registers real
+proposal, spec, plan, support-tier, and closeout artifacts. Flip the setting to
+`true` after those links exist and the repo wants active-goal validation.
+
 ## 4. Bootstrap Advisory Profile State
 
 When the dry run is acceptable:
