@@ -65,6 +65,8 @@ Starter templates are in [proposal](../templates/proposal.md),
 and [PR body](../templates/pr-body.md).
 The first accepted proposal for this lane is
 [CARGO-ALLOW-PROP-0001](../proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md).
+The first accepted spec is
+[CARGO-ALLOW-SPEC-0001](../specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md).
 
 ## Claim Boundary
 
