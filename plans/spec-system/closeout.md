@@ -49,6 +49,9 @@ not be treated as proof that the profile has landed.
   `CARGO-ALLOW-SUPPORT-0001` remains advisory.
 - The repo-local profile has been promoted from shadow to blocking for selected
   objective structural findings only.
+- The opt-in preview release notes have been reviewed for release-authorization
+  readiness without changing versions, packaging, tagging, publishing, or
+  claiming stable support.
 
 ## Validation Evidence
 
@@ -65,6 +68,7 @@ not be treated as proof that the profile has landed.
 | Preview release notes | passed locally | `CHANGELOG.md` and `docs/release/0.1.7.md` describe the opt-in spec-system preview and explicitly avoid stable-support, publication, and proof-execution claims. |
 | Support-tier claim map review | passed locally | `cargo-allow check --profile spec-system --mode audit` and `worklist --profile spec-system --format json` reported `mode = shadow`, `status = passed`, 0 findings, and 0 work items. `CARGO-ALLOW-SUPPORT-0001` remains advisory, and no repo-local blocking promotion is included in this review. |
 | Repo-local blocking promotion | passed locally | `doctor --profile spec-system`, `check --profile spec-system --mode audit`, and `worklist --profile spec-system --format json` reported `mode = blocking`, `status = passed`, 0 findings, and 0 work items. The profile blocks only selected objective structural findings; nuanced lifecycle checks remain advisory. |
+| Preview release readiness review | passed locally | `docs/release/0.1.7.md` records current version/tag/release state, main CI run `27412948507`, spec-system blocking-mode checks, and the default no-new guard. No package, tag, publish, install-smoke, or stable-support claim is included. |
 
 ## Non-Goals
 
@@ -94,6 +98,8 @@ and governed as tracked source-tree files by `policy/allow.toml`.
 - Watch repo-local blocking mode during normal CI runs before treating it as
   stable support.
 - Keep nuanced checks advisory until they prove low-noise.
+- Obtain explicit release authorization before package, tag, publish,
+  install-smoke, public install-doc update, or release-record finalization work.
 - Update this closeout with final dogfood evidence before closing the plan.
 
 ## Rollback
@@ -103,5 +109,6 @@ If the plan is withdrawn, remove this closeout placeholder, remove its
 
 ## Follow-Up Links
 
-- Next plan item: review opt-in spec-system preview release readiness without
-  publishing or claiming stable support.
+- Next plan item: implement the single-artifact `explain <artifact-id>
+  --profile spec-system` view, or obtain explicit release authorization before
+  release work.
