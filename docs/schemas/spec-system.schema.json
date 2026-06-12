@@ -35,7 +35,7 @@
       "const": "cargo-allow"
     },
     "command": {
-      "enum": ["check", "audit", "worklist"],
+      "enum": ["check", "audit", "worklist", "doctor"],
       "description": "Profile command that produced this source-of-truth graph artifact."
     },
     "profile": {
@@ -82,6 +82,10 @@
       "type": "string",
       "minLength": 1,
       "description": "Profile configuration source, either a repo path or the built-in default root set."
+    },
+    "readiness": {
+      "$ref": "#/$defs/readiness",
+      "description": "Optional setup readiness emitted by doctor --profile spec-system."
     },
     "summary": {
       "$ref": "#/$defs/summary"
@@ -222,6 +226,59 @@
         "work_items": {
           "type": "integer",
           "minimum": 0
+        }
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ready", "mode", "checks"],
+      "properties": {
+        "ready": {
+          "type": "boolean"
+        },
+        "mode": {
+          "enum": ["advisory", "shadow", "blocking"]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/readiness_check"
+          }
+        }
+      }
+    },
+    "readiness_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "found", "valid", "status", "message"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "profile_config",
+            "artifact_root",
+            "artifact_ledger",
+            "support_tiers",
+            "active_goal",
+            "templates"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "found": {
+          "type": "boolean"
+        },
+        "valid": {
+          "type": ["boolean", "null"]
+        },
+        "status": {
+          "enum": ["ready", "missing", "invalid"]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },

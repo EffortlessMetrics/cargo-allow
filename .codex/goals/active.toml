@@ -26,18 +26,17 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-017"
+id = "spec-system-pr-018"
 status = "ready"
-title = "Support spec-system readiness in doctor and init"
+title = "Enable spec-system profile advisory"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
 proof_commands = [
   "rtk cargo test -p cargo-allow spec_system_profile",
   "rtk cargo test -p cargo-allow spec_system_doctor",
-  "rtk cargo test -p cargo-allow spec_system_init",
   "rtk cargo run -p cargo-allow -- doctor --profile spec-system --format json",
-  "rtk cargo run -p cargo-allow -- init --profile spec-system --dry-run",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit",
   "rtk git diff --cached --check",
   "rtk cargo fmt --all --check",
   "rtk cargo clippy --workspace --all-targets -- -D warnings",

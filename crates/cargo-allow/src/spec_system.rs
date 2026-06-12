@@ -18,6 +18,15 @@ const SPEC_SYSTEM_CHECK_PROOF_COMMAND: &str =
     "cargo-allow check --profile spec-system --mode audit";
 const SPEC_SYSTEM_WORKLIST_PROOF_COMMAND: &str =
     "cargo-allow worklist --profile spec-system --format json";
+const EXPECTED_TEMPLATE_FILES: [&str; 7] = [
+    "docs/templates/proposal.md",
+    "docs/templates/spec.md",
+    "docs/templates/adr.md",
+    "docs/templates/implementation-plan.md",
+    "docs/templates/plan-item.md",
+    "docs/templates/closeout.md",
+    "docs/templates/pr-body.md",
+];
 
 pub(crate) struct SpecSystemCommandArgs<'a> {
     pub(crate) command: &'a str,
@@ -29,7 +38,7 @@ pub(crate) struct SpecSystemCommandArgs<'a> {
 }
 
 pub(crate) fn cmd_spec_system(args: SpecSystemCommandArgs<'_>) -> CargoAllowResult<()> {
-    let report = build_spec_system_report(args.command, args.root, args.config, false)?;
+    let report = build_spec_system_report(args.command, args.root, args.config, false, false)?;
     let rendered = render_spec_system_report(&report, args.format);
     emit_text(args.output, &rendered)?;
     if let Some(path) = args.receipt {
@@ -48,13 +57,81 @@ pub(crate) struct SpecSystemWorklistCommandArgs<'a> {
 pub(crate) fn cmd_spec_system_worklist(
     args: SpecSystemWorklistCommandArgs<'_>,
 ) -> CargoAllowResult<()> {
-    let report = build_spec_system_report("worklist", args.root, args.config, true)?;
+    let report = build_spec_system_report("worklist", args.root, args.config, true, false)?;
     let rendered = if args.format_json {
         render_spec_system_json(&report)
     } else {
         render_spec_system_markdown(&report)
     };
     emit_text(args.output, &rendered)
+}
+
+pub(crate) struct SpecSystemDoctorCommandArgs<'a> {
+    pub(crate) root: &'a RootArgs,
+    pub(crate) config: Option<&'a Path>,
+    pub(crate) format_json: bool,
+    pub(crate) output: Option<&'a Path>,
+}
+
+pub(crate) fn cmd_spec_system_doctor(
+    args: SpecSystemDoctorCommandArgs<'_>,
+) -> CargoAllowResult<()> {
+    let report = build_spec_system_report("doctor", args.root, args.config, true, true)?;
+    let rendered = if args.format_json {
+        render_spec_system_json(&report)
+    } else {
+        render_spec_system_markdown(&report)
+    };
+    emit_text(args.output, &rendered)
+}
+
+pub(crate) struct SpecSystemInitCommandArgs<'a> {
+    pub(crate) root: &'a RootArgs,
+    pub(crate) config: Option<&'a Path>,
+    pub(crate) force: bool,
+    pub(crate) dry_run: bool,
+}
+
+pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> CargoAllowResult<()> {
+    let cwd =
+        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
+    let config_path = args
+        .config
+        .unwrap_or_else(|| Path::new(DEFAULT_PROFILE_CONFIG));
+    let files = spec_system_bootstrap_files(config_path);
+
+    for file in files {
+        let path = root_relative_path(&root, &file.path);
+        let display = root_relative_display(&root, &path);
+        if args.dry_run {
+            let action = if path.exists() && args.force {
+                "would overwrite"
+            } else if path.exists() {
+                "would keep"
+            } else {
+                "would create"
+            };
+            println!("{action} {display}");
+            continue;
+        }
+        if path.exists() && !args.force {
+            println!("kept {display}");
+            continue;
+        }
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| {
+                CargoAllowError::new(format!("failed to create {}: {e}", parent.display()))
+            })?;
+        }
+        fs::write(&path, file.contents).map_err(|e| {
+            CargoAllowError::new(format!("failed to write {}: {e}", path.display()))
+        })?;
+        let action = if args.force { "wrote" } else { "created" };
+        println!("{action} {display}");
+    }
+
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -67,6 +144,7 @@ struct SpecSystemReport {
     support_tier_rows: usize,
     findings: Vec<SpecSystemFinding>,
     work_items: Vec<SpecSystemWorkItem>,
+    readiness: Option<SpecSystemReadiness>,
 }
 
 #[derive(Debug)]
@@ -105,16 +183,237 @@ struct SpecSystemWorkItem {
     proof_commands: Vec<String>,
 }
 
+#[derive(Debug)]
+struct SpecSystemReadiness {
+    ready: bool,
+    mode: &'static str,
+    checks: Vec<SpecSystemReadinessCheck>,
+}
+
+#[derive(Debug)]
+struct SpecSystemReadinessCheck {
+    kind: &'static str,
+    path: Option<String>,
+    found: bool,
+    valid: Option<bool>,
+    status: &'static str,
+    message: String,
+}
+
+#[derive(Debug)]
+struct LoadedSpecSystemConfig {
+    cfg: SpecSystemConfig,
+    source: String,
+    path: String,
+    found: bool,
+    valid: Option<bool>,
+    diagnostic: Option<String>,
+}
+
+struct SpecSystemBootstrapFile {
+    path: PathBuf,
+    contents: String,
+}
+
+fn spec_system_bootstrap_files(config_path: &Path) -> Vec<SpecSystemBootstrapFile> {
+    let mut files = vec![
+        bootstrap_file(config_path, spec_system_config_template()),
+        bootstrap_file(
+            Path::new("policy/doc-artifacts.toml"),
+            doc_artifacts_template(),
+        ),
+        bootstrap_file(
+            Path::new("docs/proposals/README.md"),
+            artifact_root_readme("Proposals", "why work exists and what user value it serves"),
+        ),
+        bootstrap_file(
+            Path::new("docs/specs/README.md"),
+            artifact_root_readme("Specs", "required behavior, evidence, and claim boundaries"),
+        ),
+        bootstrap_file(
+            Path::new("docs/adr/README.md"),
+            artifact_root_readme("ADRs", "durable architecture decisions"),
+        ),
+        bootstrap_file(
+            Path::new("plans/README.md"),
+            artifact_root_readme("Plans", "PR-sized execution sequences and rollback notes"),
+        ),
+        bootstrap_file(
+            Path::new(".codex/goals/README.md"),
+            artifact_root_readme(
+                "Active Goals",
+                "agent execution state that points at repo truth",
+            ),
+        ),
+        bootstrap_file(
+            Path::new(".codex/goals/active.toml"),
+            active_goal_template(),
+        ),
+        bootstrap_file(Path::new(".codex/goals/archive/.gitkeep"), String::new()),
+        bootstrap_file(
+            Path::new("docs/status/SUPPORT_TIERS.md"),
+            support_tiers_template(),
+        ),
+    ];
+
+    files.extend(
+        EXPECTED_TEMPLATE_FILES
+            .iter()
+            .map(|path| bootstrap_file(Path::new(path), template_contents(path))),
+    );
+    files
+}
+
+fn bootstrap_file(path: &Path, contents: String) -> SpecSystemBootstrapFile {
+    SpecSystemBootstrapFile {
+        path: path.to_path_buf(),
+        contents,
+    }
+}
+
+fn spec_system_config_template() -> String {
+    r#"schema_version = "1.0"
+profile = "spec-system"
+mode = "advisory"
+
+[roots]
+proposals = "docs/proposals"
+specs = "docs/specs"
+adrs = "docs/adr"
+plans = "plans"
+goals = ".codex/goals"
+support_tiers = "docs/status/SUPPORT_TIERS.md"
+artifact_ledger = "policy/doc-artifacts.toml"
+
+[requirements]
+ledger_required = true
+templates_required = true
+support_tiers_required = true
+active_goal_required = true
+closeout_required_for_done_items = true
+"#
+    .to_string()
+}
+
+fn doc_artifacts_template() -> String {
+    r#"schema_version = "1.0"
+policy = "cargo-allow-doc-artifacts"
+owner = "repo-infra"
+status = "advisory"
+"#
+    .to_string()
+}
+
+fn artifact_root_readme(title: &str, role: &str) -> String {
+    format!(
+        "# {title}\n\nThis directory contains spec-system artifacts for {role}.\n\nRegister governed artifacts in `policy/doc-artifacts.toml` so `cargo-allow check --profile spec-system` can validate their source-tree graph links.\n"
+    )
+}
+
+fn active_goal_template() -> String {
+    r#"schema_version = "1.0"
+
+id = "spec-system-profile"
+title = "Spec-system profile"
+status = "active"
+owner = "codex"
+created = "YYYY-MM-DD"
+
+objective = """
+Keep proposals, specs, ADRs, implementation plans, active goals, support tiers,
+policy ledgers, and closeouts linked and linted.
+"""
+
+linked_plan = "plans/spec-system/implementation-plan.md"
+
+[[work_item]]
+id = "spec-system-pr-001"
+status = "ready"
+title = "Register source-of-truth artifacts"
+proof_commands = [
+  "cargo-allow check --profile spec-system --mode audit",
+  "cargo-allow worklist --profile spec-system --format json",
+]
+"#
+    .to_string()
+}
+
+fn support_tiers_template() -> String {
+    r#"# Support Tiers
+
+| Surface | Tier | Claim | Proof command | Notes |
+| --- | --- | --- | --- | --- |
+| Spec-system profile | Advisory | Source-of-truth graph artifacts can be linted. | cargo-allow check --profile spec-system --mode audit | Opt-in profile; structural validation only. |
+"#
+    .to_string()
+}
+
+fn template_contents(path: &str) -> String {
+    let (id, kind, title) = match path {
+        "docs/templates/proposal.md" => ("CARGO-ALLOW-PROP-0000", "proposal", "Proposal"),
+        "docs/templates/spec.md" => ("CARGO-ALLOW-SPEC-0000", "spec", "Spec"),
+        "docs/templates/adr.md" => ("CARGO-ALLOW-ADR-0000", "adr", "ADR"),
+        "docs/templates/implementation-plan.md" => (
+            "CARGO-ALLOW-PLAN-0000",
+            "implementation_plan",
+            "Implementation Plan",
+        ),
+        "docs/templates/plan-item.md" => ("CARGO-ALLOW-ITEM-0000", "plan_item", "Plan Item"),
+        "docs/templates/closeout.md" => ("CARGO-ALLOW-CLOSEOUT-0000", "closeout", "Closeout"),
+        "docs/templates/pr-body.md" => ("CARGO-ALLOW-PR-0000", "release_record", "PR Body"),
+        _ => ("CARGO-ALLOW-ARTIFACT-0000", "artifact", "Artifact"),
+    };
+    format!(
+        r#"---
+id: {id}
+kind: {kind}
+status: draft
+owner: repo-infra
+created: YYYY-MM-DD
+---
+
+# {title}: Title
+
+## Purpose
+
+State the artifact's job in the source-of-truth graph.
+
+## Links
+
+- Linked proposal:
+- Linked spec:
+- Linked plan:
+
+## Required Evidence
+
+- Proof command or artifact:
+
+## Claim Boundary
+
+Structural source-tree graph metadata only. This artifact does not prove command
+execution or semantic correctness by itself.
+
+## Rollback
+
+Describe how to supersede, withdraw, or close this artifact.
+"#
+    )
+}
+
 fn build_spec_system_report(
     command: &str,
     root_args: &RootArgs,
     config: Option<&Path>,
     include_work_items: bool,
+    include_readiness: bool,
 ) -> CargoAllowResult<SpecSystemReport> {
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = resolve_source_tree_root(root_args.root.as_deref(), cwd)?;
-    let (cfg, config_source, mut findings) = load_spec_system_config(&root, config);
+    let loaded_config = load_spec_system_config(&root, config);
+    let cfg = loaded_config.cfg.clone();
+    let config_source = loaded_config.source.clone();
+    let mut findings = profile_config_findings(&loaded_config, config.is_some());
     let mut artifacts = Vec::new();
     let mut links = Vec::new();
     let mut support_tier_rows = 0;
@@ -239,6 +538,11 @@ fn build_spec_system_report(
     if include_work_items {
         work_items.extend(work_items_from_config_findings(&findings));
     }
+    let readiness = if include_readiness {
+        Some(collect_spec_system_readiness(&root, &loaded_config))
+    } else {
+        None
+    };
 
     Ok(SpecSystemReport {
         command: command.to_string(),
@@ -249,59 +553,77 @@ fn build_spec_system_report(
         support_tier_rows,
         findings,
         work_items,
+        readiness,
     })
 }
-fn load_spec_system_config(
-    root: &Path,
-    config: Option<&Path>,
-) -> (SpecSystemConfig, String, Vec<SpecSystemFinding>) {
+
+fn load_spec_system_config(root: &Path, config: Option<&Path>) -> LoadedSpecSystemConfig {
     let config_path = config
         .map(|path| root_relative_path(root, path))
         .unwrap_or_else(|| root.join(DEFAULT_PROFILE_CONFIG));
+    let config_path_text = root_relative_display(root, &config_path);
 
     if !config_path.exists() {
-        let findings = if config.is_some() {
-            vec![SpecSystemFinding {
-                kind: "profile_config",
-                message: format!(
-                    "spec-system profile config {} does not exist",
-                    config_path.display()
-                ),
-            }]
-        } else {
-            Vec::new()
+        return LoadedSpecSystemConfig {
+            cfg: default_spec_system_config(),
+            source: "default spec-system roots".to_string(),
+            path: config_path_text.clone(),
+            found: false,
+            valid: None,
+            diagnostic: Some(format!(
+                "spec-system profile config {} does not exist",
+                config_path.display()
+            )),
         };
-        return (
-            default_spec_system_config(),
-            "default spec-system roots".to_string(),
-            findings,
-        );
     }
 
     match fs::read_to_string(&config_path) {
         Ok(text) => match parse_spec_system_config(&text) {
-            Ok(cfg) => (cfg, root_relative_display(root, &config_path), Vec::new()),
-            Err(err) => (
-                default_spec_system_config(),
-                "default spec-system roots".to_string(),
-                vec![SpecSystemFinding {
-                    kind: "profile_config",
-                    message: err.to_string(),
-                }],
-            ),
+            Ok(cfg) => LoadedSpecSystemConfig {
+                cfg,
+                source: config_path_text.clone(),
+                path: config_path_text,
+                found: true,
+                valid: Some(true),
+                diagnostic: None,
+            },
+            Err(err) => LoadedSpecSystemConfig {
+                cfg: default_spec_system_config(),
+                source: "default spec-system roots".to_string(),
+                path: config_path_text,
+                found: true,
+                valid: Some(false),
+                diagnostic: Some(err.to_string()),
+            },
         },
-        Err(err) => (
-            default_spec_system_config(),
-            "default spec-system roots".to_string(),
-            vec![SpecSystemFinding {
-                kind: "profile_config",
-                message: format!(
-                    "failed to read spec-system profile config {}: {err}",
-                    config_path.display()
-                ),
-            }],
-        ),
+        Err(err) => LoadedSpecSystemConfig {
+            cfg: default_spec_system_config(),
+            source: "default spec-system roots".to_string(),
+            path: config_path_text,
+            found: true,
+            valid: Some(false),
+            diagnostic: Some(format!(
+                "failed to read spec-system profile config {}: {err}",
+                config_path.display()
+            )),
+        },
     }
+}
+
+fn profile_config_findings(
+    loaded: &LoadedSpecSystemConfig,
+    explicit_config: bool,
+) -> Vec<SpecSystemFinding> {
+    if loaded.valid == Some(false) || (explicit_config && !loaded.found) {
+        return vec![SpecSystemFinding {
+            kind: "profile_config",
+            message: loaded
+                .diagnostic
+                .clone()
+                .unwrap_or_else(|| "spec-system profile config is invalid".to_string()),
+        }];
+    }
+    Vec::new()
 }
 
 fn default_spec_system_config() -> SpecSystemConfig {
@@ -338,6 +660,143 @@ fn collect_validation(
             kind,
             message: err.to_string(),
         });
+    }
+}
+
+fn collect_spec_system_readiness(
+    root: &Path,
+    loaded: &LoadedSpecSystemConfig,
+) -> SpecSystemReadiness {
+    let cfg = &loaded.cfg;
+    let mut checks = Vec::new();
+    checks.push(readiness_check(
+        "profile_config",
+        Some(loaded.path.clone()),
+        loaded.found,
+        loaded.valid,
+        loaded.diagnostic.clone().unwrap_or_else(|| {
+            if loaded.found {
+                "spec-system profile config parsed".to_string()
+            } else {
+                "spec-system profile config is missing; built-in roots are in use".to_string()
+            }
+        }),
+    ));
+
+    for (label, path) in [
+        ("artifact_root", cfg.roots.proposals.as_str()),
+        ("artifact_root", cfg.roots.specs.as_str()),
+        ("artifact_root", cfg.roots.adrs.as_str()),
+        ("artifact_root", cfg.roots.plans.as_str()),
+        ("artifact_root", cfg.roots.goals.as_str()),
+    ] {
+        let full_path = root_relative_path(root, Path::new(path));
+        checks.push(readiness_check(
+            label,
+            Some(path.to_string()),
+            full_path.is_dir(),
+            Some(full_path.is_dir()),
+            if full_path.is_dir() {
+                format!("artifact root {path} exists")
+            } else {
+                format!("artifact root {path} is missing")
+            },
+        ));
+    }
+
+    let ledger_path = root_relative_path(root, Path::new(&cfg.roots.artifact_ledger));
+    let ledger_result = load_doc_artifacts(&ledger_path);
+    checks.push(readiness_check(
+        "artifact_ledger",
+        Some(cfg.roots.artifact_ledger.clone()),
+        ledger_path.is_file(),
+        Some(ledger_result.is_ok()),
+        match ledger_result {
+            Ok(_) => format!("doc artifact ledger {} parsed", cfg.roots.artifact_ledger),
+            Err(err) => err.to_string(),
+        },
+    ));
+
+    let support_tiers_path = root_relative_path(root, Path::new(&cfg.roots.support_tiers));
+    let support_tiers_result = fs::read_to_string(&support_tiers_path)
+        .map_err(|err| {
+            format!(
+                "failed to read support-tier file {}: {err}",
+                cfg.roots.support_tiers
+            )
+        })
+        .and_then(|text| validate_support_tier_claims(&text).map_err(|err| err.to_string()));
+    checks.push(readiness_check(
+        "support_tiers",
+        Some(cfg.roots.support_tiers.clone()),
+        support_tiers_path.is_file(),
+        Some(support_tiers_result.is_ok()),
+        match support_tiers_result {
+            Ok(_) => format!("support-tier file {} parsed", cfg.roots.support_tiers),
+            Err(err) => err,
+        },
+    ));
+
+    let active_goal = format!("{}/active.toml", cfg.roots.goals.trim_end_matches('/'));
+    let active_goal_path = root_relative_path(root, Path::new(&active_goal));
+    checks.push(readiness_check(
+        "active_goal",
+        Some(active_goal.clone()),
+        active_goal_path.is_file(),
+        Some(active_goal_path.is_file()),
+        if active_goal_path.is_file() {
+            format!("active goal manifest {active_goal} exists")
+        } else {
+            format!("active goal manifest {active_goal} is missing")
+        },
+    ));
+
+    let missing_templates = EXPECTED_TEMPLATE_FILES
+        .iter()
+        .filter(|path| !root_relative_path(root, Path::new(path)).is_file())
+        .copied()
+        .collect::<Vec<_>>();
+    checks.push(readiness_check(
+        "templates",
+        Some("docs/templates".to_string()),
+        missing_templates.is_empty(),
+        Some(missing_templates.is_empty()),
+        if missing_templates.is_empty() {
+            "all spec-system templates exist".to_string()
+        } else {
+            format!(
+                "missing spec-system templates: {}",
+                missing_templates.join(", ")
+            )
+        },
+    ));
+
+    SpecSystemReadiness {
+        ready: checks.iter().all(|check| check.status == "ready"),
+        mode: spec_system_mode_name(&cfg.mode),
+        checks,
+    }
+}
+
+fn readiness_check(
+    kind: &'static str,
+    path: Option<String>,
+    found: bool,
+    valid: Option<bool>,
+    message: String,
+) -> SpecSystemReadinessCheck {
+    let status = match (found, valid) {
+        (false, _) => "missing",
+        (true, Some(false)) => "invalid",
+        (true, _) => "ready",
+    };
+    SpecSystemReadinessCheck {
+        kind,
+        path,
+        found,
+        valid,
+        status,
+        message,
     }
 }
 
@@ -658,6 +1117,20 @@ fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
         report.root.display()
     ));
     text.push_str(&format!("Config: `{}`\n\n", report.config_source));
+    if let Some(readiness) = &report.readiness {
+        text.push_str("## Setup Readiness\n\n");
+        text.push_str(&format!("Mode: `{}`\n\n", readiness.mode));
+        text.push_str(&format!("Ready: `{}`\n\n", readiness.ready));
+        text.push_str("| Check | Status | Path | Message |\n|---|---|---|---|\n");
+        for check in &readiness.checks {
+            let path = check.path.as_deref().unwrap_or("");
+            text.push_str(&format!(
+                "| `{}` | `{}` | `{}` | {} |\n",
+                check.kind, check.status, path, check.message
+            ));
+        }
+        text.push('\n');
+    }
     text.push_str("| Metric | Count |\n|---|---:|\n");
     text.push_str(&format!("| Artifacts | {} |\n", report.artifacts.len()));
     text.push_str(&format!("| Links | {} |\n", report.links.len()));
@@ -762,6 +1235,51 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
         "  \"config_source\": \"{}\",\n",
         json_escape(&report.config_source)
     ));
+    if let Some(readiness) = &report.readiness {
+        text.push_str("  \"readiness\": {\n");
+        text.push_str(&format!(
+            "    \"ready\": {},\n",
+            if readiness.ready { "true" } else { "false" }
+        ));
+        text.push_str(&format!(
+            "    \"mode\": \"{}\",\n",
+            json_escape(readiness.mode)
+        ));
+        text.push_str("    \"checks\": [\n");
+        for (index, check) in readiness.checks.iter().enumerate() {
+            text.push_str("      {\n");
+            text.push_str(&format!(
+                "        \"kind\": \"{}\",\n",
+                json_escape(check.kind)
+            ));
+            if let Some(path) = &check.path {
+                text.push_str(&format!("        \"path\": \"{}\",\n", json_escape(path)));
+            }
+            text.push_str(&format!(
+                "        \"found\": {},\n",
+                if check.found { "true" } else { "false" }
+            ));
+            text.push_str(&format!(
+                "        \"valid\": {},\n",
+                optional_bool_json(check.valid)
+            ));
+            text.push_str(&format!(
+                "        \"status\": \"{}\",\n",
+                json_escape(check.status)
+            ));
+            text.push_str(&format!(
+                "        \"message\": \"{}\"\n",
+                json_escape(&check.message)
+            ));
+            text.push_str("      }");
+            if index + 1 != readiness.checks.len() {
+                text.push(',');
+            }
+            text.push('\n');
+        }
+        text.push_str("    ]\n");
+        text.push_str("  },\n");
+    }
     text.push_str("  \"summary\": {\n");
     text.push_str(&format!("    \"artifacts\": {},\n", report.artifacts.len()));
     text.push_str(&format!("    \"links\": {},\n", report.links.len()));
@@ -1006,6 +1524,14 @@ fn artifact_status_name(status: ArtifactStatus) -> &'static str {
     }
 }
 
+fn spec_system_mode_name(mode: &SpecSystemMode) -> &'static str {
+    match mode {
+        SpecSystemMode::Advisory => "advisory",
+        SpecSystemMode::Shadow => "shadow",
+        SpecSystemMode::Blocking => "blocking",
+    }
+}
+
 fn support_tier_level_name(tier: SupportTierLevel) -> &'static str {
     match tier {
         SupportTierLevel::Stable => "stable",
@@ -1048,6 +1574,14 @@ fn json_escape(value: &str) -> String {
         }
     }
     escaped
+}
+
+fn optional_bool_json(value: Option<bool>) -> &'static str {
+    match value {
+        Some(true) => "true",
+        Some(false) => "false",
+        None => "null",
+    }
 }
 
 fn html_escape(value: &str) -> String {
@@ -1105,6 +1639,7 @@ pub(crate) fn sample_spec_system_json_for_contract_test() -> String {
             ],
             proof_commands: spec_system_proof_commands(),
         }],
+        readiness: None,
     };
     render_spec_system_json(&report)
 }

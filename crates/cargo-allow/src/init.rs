@@ -3,19 +3,47 @@ use allow_inventory::resolve_source_tree_root;
 use allow_policy::starter_policy;
 use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[path = "init_args.rs"]
 mod init_args;
 pub(crate) use init_args::InitArgs;
 
-use crate::root_relative_path;
+use crate::{ProfileArg, root_relative_path, spec_system};
+
+const DEFAULT_SOURCE_EXCEPTION_CONFIG: &str = "policy/allow.toml";
 
 pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
+    if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
+        if args.strict {
+            return Err(CargoAllowError::new(
+                "--strict is not supported with --profile spec-system",
+            ));
+        }
+        let config = spec_system_config_arg(&args.config);
+        return spec_system::cmd_spec_system_init(spec_system::SpecSystemInitCommandArgs {
+            root: &args.root,
+            config: config.as_deref(),
+            force: args.force,
+            dry_run: args.dry_run,
+        });
+    }
+
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
     let path = root_relative_path(&root, &args.config);
+    if args.dry_run {
+        let display = created_path_display(&root, &path);
+        if path.exists() && !args.force {
+            println!("would keep {display}");
+        } else if path.exists() {
+            println!("would overwrite {display}");
+        } else {
+            println!("would create {display}");
+        }
+        return Ok(());
+    }
     if path.exists() && !args.force {
         return Err(CargoAllowError::new(format!(
             "{} already exists; use --force to overwrite",
@@ -31,6 +59,14 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         .map_err(|e| CargoAllowError::new(format!("failed to write {}: {e}", path.display())))?;
     println!("created {}", created_path_display(&root, &path));
     Ok(())
+}
+
+fn spec_system_config_arg(config: &Path) -> Option<PathBuf> {
+    if config == Path::new(DEFAULT_SOURCE_EXCEPTION_CONFIG) {
+        None
+    } else {
+        Some(config.to_path_buf())
+    }
 }
 
 fn created_path_display(root: &Path, path: &Path) -> String {
