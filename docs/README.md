@@ -19,6 +19,8 @@ ledger and the planned growth around it.
 - [Source-of-truth templates](templates/proposal.md): starter templates for
   proposals, specs, ADRs, implementation plans, plan items, closeouts, and PR
   bodies.
+- [Spec-system profile proposal](proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md):
+  accepted product proposal for the planned opt-in source-of-truth profile.
 - [Getting started](getting-started.md): first-run tutorial for doctor, audit,
   init/propose, and no-new checks.
 - [Structural identity v1](identity.md): the source-syntax identity contract
