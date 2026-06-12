@@ -26,9 +26,9 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-020"
+id = "spec-system-pr-021"
 status = "ready"
-title = "Review first spec-system advisory burn-in"
+title = "Review shadow-mode candidates"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
