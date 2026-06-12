@@ -70,6 +70,8 @@ The first accepted spec is
 [CARGO-ALLOW-SPEC-0001](../specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md).
 The first support-tier map is
 [CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md).
+The current active goal manifest is
+[CARGO-ALLOW-GOAL-0001](../../.codex/goals/active.toml).
 
 ## Claim Boundary
 

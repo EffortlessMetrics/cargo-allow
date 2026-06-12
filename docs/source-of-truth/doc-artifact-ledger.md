@@ -16,12 +16,12 @@ profile:
 - `CARGO-ALLOW-PROP-0001`
 - `CARGO-ALLOW-SPEC-0001`
 - `CARGO-ALLOW-SUPPORT-0001`
+- `CARGO-ALLOW-GOAL-0001`
 
 Later source-of-truth artifacts should be added when they land:
 
 - ADRs.
 - implementation plans.
-- active goal manifests.
 - policy ledgers.
 - closeouts.
 - release records when they become governed artifacts.

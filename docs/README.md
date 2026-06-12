@@ -28,6 +28,8 @@ ledger and the planned growth around it.
   accepted behavior contract for the planned opt-in source-of-truth profile.
 - [Support tiers](status/SUPPORT_TIERS.md): claim-to-proof map for current
   cargo-allow surfaces and the planned advisory spec-system profile.
+- [Active goal manifest](../.codex/goals/README.md): current Codex execution
+  state for the planned source-of-truth profile.
 - [Getting started](getting-started.md): first-run tutorial for doctor, audit,
   init/propose, and no-new checks.
 - [Structural identity v1](identity.md): the source-syntax identity contract

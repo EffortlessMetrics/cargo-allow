@@ -71,6 +71,75 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0166"
+kind = "non_rust_file"
+family = "documentation"
+path = ".codex/goals/README.md"
+owner = "core/policy"
+classification = "active_goal_documentation"
+reason = "Explains the active-goal manifest boundary for the planned opt-in spec-system source-of-truth profile."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/source-of-truth/agent-operating-model.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".codex/goals/README.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = ".codex/goals/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0167"
+kind = "non_rust_file"
+family = "configuration"
+path = ".codex/goals/active.toml"
+owner = "core/policy"
+classification = "active_goal_manifest"
+reason = "Records the current Codex execution state for the planned opt-in spec-system source-of-truth profile."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:.codex/goals/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".codex/goals/active.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = ".codex/goals/active.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0168"
+kind = "non_rust_file"
+family = "unknown_non_rust"
+path = ".codex/goals/archive/.gitkeep"
+owner = "core/policy"
+classification = "active_goal_archive_placeholder"
+reason = "Keeps the active-goal archive directory present for future completed or superseded manifests."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:.codex/goals/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".codex/goals/archive/.gitkeep"
+target_fingerprint = ".gitkeep"
+line_hint = 1
+glob = ".codex/goals/archive/.gitkeep"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0165"
 kind = "non_rust_file"
 family = "documentation"

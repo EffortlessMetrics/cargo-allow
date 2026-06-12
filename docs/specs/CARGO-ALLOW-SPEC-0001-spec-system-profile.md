@@ -214,6 +214,8 @@ reliable. It must not lint prose quality or general Markdown style.
 - Linked implementation plan: planned for `plans/spec-system/implementation-plan.md`.
 - Linked support-tier surface:
   [CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md).
+- Linked active goal:
+  [CARGO-ALLOW-GOAL-0001](../../.codex/goals/active.toml).
 - Linked policy ledger: planned for `policy/doc-artifacts.toml` and
   `policy/spec-system.toml`; current tracked-file governance remains in
   `policy/allow.toml`.
@@ -343,8 +345,9 @@ fields. It does not duplicate support-tier rows or execute proof commands.
 
 ## Active Goal Impact
 
-The profile should support `.codex/goals/active.toml` as an active execution
-manifest when profile requirements enable active-goal checks.
+The profile should support
+[`CARGO-ALLOW-GOAL-0001`](../../.codex/goals/active.toml) as an active
+execution manifest when profile requirements enable active-goal checks.
 
 The active goal manifest should link to known proposal, spec, and plan
 artifacts. Work items should have IDs, titles, statuses, and proof-command
