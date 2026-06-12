@@ -2,12 +2,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const PUBLISHED_RELEASE_VERSION: &str = "0.1.7";
-const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.6";
-const RELEASE_CANDIDATE_VERSION: &str = "0.1.8";
-const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.7.md";
-const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.6.md";
-const RELEASE_CANDIDATE_DOC: &str = "docs/release/0.1.8.md";
+const PUBLISHED_RELEASE_VERSION: &str = "0.1.8";
+const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.7";
+const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.8.md";
+const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.7.md";
 
 #[test]
 fn release_publish_order_matches_internal_dependency_graph() {
@@ -70,37 +68,33 @@ fn previous_release_record_keeps_completed_publication_evidence() {
 }
 
 #[test]
-fn release_candidate_versions_match_workspace() {
+fn published_release_versions_match_workspace() {
     let root = workspace_root();
-    let release_doc = read_workspace_file(&root, RELEASE_CANDIDATE_DOC);
+    let release_doc = read_workspace_file(&root, PUBLISHED_RELEASE_DOC);
     let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
     let lockfile = read_workspace_file(&root, "Cargo.lock");
     let package_manifests = workspace_package_manifests(&root);
     let workspace_version = workspace_package_version(&workspace_manifest);
 
     assert_eq!(
-        workspace_version, RELEASE_CANDIDATE_VERSION,
-        "{RELEASE_CANDIDATE_VERSION} release candidate should match the workspace package version"
+        workspace_version, PUBLISHED_RELEASE_VERSION,
+        "{PUBLISHED_RELEASE_VERSION} published release should match the workspace package version"
+    );
+    assert!(
+        release_doc.contains(&format!("# {PUBLISHED_RELEASE_VERSION} Release Record")),
+        "release note should name itself as a completed release record"
     );
     assert!(
         release_doc.contains(&format!(
-            "# {RELEASE_CANDIDATE_VERSION} Preview Release Notes"
+            "Workspace package versions were bumped to `{PUBLISHED_RELEASE_VERSION}`"
         )),
-        "release note should name itself as preview release notes"
+        "release note should document the published version bump"
     );
     assert!(
         release_doc.contains(&format!(
-            "Workspace package versions have been bumped to `{RELEASE_CANDIDATE_VERSION}`"
+            "Public install examples now pin the published `{PUBLISHED_RELEASE_VERSION}` release"
         )),
-        "release note should document the release-candidate version bump"
-    );
-    assert!(
-        release_doc.contains("No crate has been tagged, published, install-smoke verified"),
-        "release note should preserve the not-published boundary"
-    );
-    assert!(
-        release_doc.contains(&format!("published `{PUBLISHED_RELEASE_VERSION}` release")),
-        "release note should keep public install pins on the latest published release"
+        "release note should record public install pin promotion"
     );
 
     for (package, manifest) in &package_manifests {
@@ -126,7 +120,7 @@ fn release_candidate_versions_match_workspace() {
     for (dependency, version) in workspace_dependency_versions {
         assert_eq!(
             version, workspace_version,
-            "{dependency} workspace dependency should require the release-candidate version"
+            "{dependency} workspace dependency should require the published version"
         );
     }
 
@@ -139,7 +133,7 @@ fn release_candidate_versions_match_workspace() {
     for (package, version) in lock_versions {
         assert_eq!(
             version, workspace_version,
-            "{package} lockfile entry should carry the release-candidate version"
+            "{package} lockfile entry should carry the published version"
         );
     }
 }
