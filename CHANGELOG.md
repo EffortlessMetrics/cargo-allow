@@ -8,7 +8,11 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
-### Fixed
+No unreleased changes yet.
+
+## [0.1.8] - 2026-06-12
+
+### Spec-system preview cleanup
 
 - Made `cargo-allow init --profile spec-system` easier to adopt in new
   repositories by starting bootstrap active-goal validation as optional until a

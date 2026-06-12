@@ -79,6 +79,10 @@ ledger and opt-in governance profiles around it.
   opt-in spec-system preview profile.
 - [0.1.7 GitHub Release body](release/github/v0.1.7.md): prepared public
   release notes for the `v0.1.7` GitHub Release.
+- [0.1.8 preview release notes](release/0.1.8.md): release-candidate notes
+  for spec-system first-hour adoption cleanup.
+- [0.1.8 GitHub Release body](release/github/v0.1.8.md): prepared public
+  release notes for the future authorized `v0.1.8` GitHub Release.
 - [Agent worklist prompt](agents/cargo-allow-worklist.md): bounded agent use of
   `cargo-allow worklist`.
 - [Schemas](schemas/README.md): JSON schemas for doctor, report, receipt,
