@@ -1909,3 +1909,95 @@ glob = "CHANGELOG.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0150"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/source-of-truth/README.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Defines the planned opt-in source-of-truth stack without changing cargo-allow's default source-exception scan."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/claim-boundaries.md", "doc:docs/roadmap.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/source-of-truth/README.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/source-of-truth/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0151"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/source-of-truth/artifact-taxonomy.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Defines distinct source-of-truth artifact responsibilities for future opt-in governance linting."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/claim-boundaries.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/source-of-truth/artifact-taxonomy.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/source-of-truth/artifact-taxonomy.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0152"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/source-of-truth/linking-model.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Documents the planned source-of-truth link graph and structural-only lint boundary."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/source-of-truth/linking-model.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/source-of-truth/linking-model.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0153"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/source-of-truth/agent-operating-model.md"
+owner = "core/policy"
+classification = "agent_guidance"
+reason = "Documents bounded agent use of the planned opt-in source-of-truth profile and its non-execution boundary."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/agents/cargo-allow-worklist.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/source-of-truth/agent-operating-model.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/source-of-truth/agent-operating-model.md"
+
+[allow.last_seen]
+line = 1
+column = 1

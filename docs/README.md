@@ -13,6 +13,9 @@ ledger and the planned growth around it.
   product.
 - [Source exception ledger](source-exception-ledger.md): the policy concepts and
   entry model.
+- [Source-of-truth stack](source-of-truth/README.md): planned opt-in
+  governance graph for proposals, specs, ADRs, plans, goals, support tiers,
+  policy ledgers, and closeouts.
 - [Getting started](getting-started.md): first-run tutorial for doctor, audit,
   init/propose, and no-new checks.
 - [Structural identity v1](identity.md): the source-syntax identity contract
