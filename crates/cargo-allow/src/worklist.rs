@@ -1,10 +1,10 @@
-use allow_core::CargoAllowResult;
+use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 
 use crate::evidence_inventory::current_evidence_source_tree_files;
 use crate::{
-    EvidenceValidationMode, SourceTreeReportContext, emit_text, load_world_with_evidence_mode,
-    report_config,
+    EvidenceValidationMode, ProfileArg, SourceTreeReportContext, emit_text,
+    load_world_with_evidence_mode, report_config, spec_system,
 };
 
 #[path = "worklist_actions.rs"]
@@ -53,6 +53,16 @@ use worklist_types::{WorkItem, WorkItemEvidenceReference, WorklistContext, Workl
 use allow_core::{AllowConfig, FindingKind, MatchOutcome, MatchStatus};
 
 pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
+    if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
+        reject_source_exception_options_for_profile(args)?;
+        return spec_system::cmd_spec_system_worklist(spec_system::SpecSystemWorklistCommandArgs {
+            root: &args.root,
+            config: args.config.as_deref(),
+            format_json: matches!(args.format, WorklistFormat::Json),
+            output: args.output.as_deref(),
+        });
+    }
+
     let (root, cfg, findings, inventory_facts) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
@@ -93,6 +103,67 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
+}
+
+fn reject_source_exception_options_for_profile(args: &WorklistArgs) -> CargoAllowResult<()> {
+    if args.kind.is_some() {
+        return profile_option_error("--kind");
+    }
+    if args.family.is_some() {
+        return profile_option_error("--family");
+    }
+    if args.item_kind.is_some() {
+        return profile_option_error("--item-kind");
+    }
+    if args.status.is_some() {
+        return profile_option_error("--status");
+    }
+    if args.allow_id.is_some() {
+        return profile_option_error("--allow-id");
+    }
+    if args.path.is_some() {
+        return profile_option_error("--path");
+    }
+    if args.source_package.is_some() {
+        return profile_option_error("--source-package");
+    }
+    if args.owner.is_some() {
+        return profile_option_error("--owner");
+    }
+    if args.classification.is_some() {
+        return profile_option_error("--classification");
+    }
+    if args.baseline_debt {
+        return profile_option_error("--baseline-debt");
+    }
+    if args.broad_scope {
+        return profile_option_error("--broad-scope");
+    }
+    if args.risk.is_some() {
+        return profile_option_error("--risk");
+    }
+    if args.difficulty.is_some() {
+        return profile_option_error("--difficulty");
+    }
+    if args.missing_evidence {
+        return profile_option_error("--missing-evidence");
+    }
+    if args.broken_evidence {
+        return profile_option_error("--broken-evidence");
+    }
+    if args.weak_evidence {
+        return profile_option_error("--weak-evidence");
+    }
+    if args.include_untracked {
+        return profile_option_error("--include-untracked");
+    }
+    Ok(())
+}
+
+fn profile_option_error<T>(option: &str) -> CargoAllowResult<T> {
+    Err(CargoAllowError::new(format!(
+        "{option} is not supported with --profile spec-system"
+    )))
 }
 
 #[cfg(test)]
@@ -173,6 +244,9 @@ mod render_context_tests;
 #[cfg(test)]
 #[path = "worklist_render_tests.rs"]
 mod render_tests;
+#[cfg(test)]
+#[path = "spec_system_worklist_tests.rs"]
+mod spec_system_worklist_tests;
 #[cfg(test)]
 #[path = "worklist_test_support.rs"]
 mod test_support;

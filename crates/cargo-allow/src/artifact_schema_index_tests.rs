@@ -83,7 +83,11 @@ fn schema_index_artifact_table_matches_registered_producers() {
         );
 
         if contract.schema_id == allow_report::SPEC_SYSTEM_SCHEMA_ID {
-            for command in ["check --profile spec-system", "audit --profile spec-system"] {
+            for command in [
+                "check --profile spec-system",
+                "audit --profile spec-system",
+                "worklist --profile spec-system",
+            ] {
                 let producer = format!("`cargo-allow {command}");
                 assert!(
                     row.contains(&producer),

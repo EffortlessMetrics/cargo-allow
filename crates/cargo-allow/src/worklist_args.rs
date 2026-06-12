@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::{RootArgs, parse_kind_filter};
+use crate::{ProfileArg, RootArgs, parse_kind_filter};
 
 use super::worklist_item_kind::parse_work_item_kind_filter;
 use super::worklist_types::WorklistFilters;
@@ -13,6 +13,9 @@ pub(crate) struct WorklistArgs {
     /// Policy config path.
     #[arg(long)]
     pub(super) config: Option<PathBuf>,
+    /// Optional governance profile to run instead of the source-exception worklist.
+    #[arg(long, value_enum)]
+    pub(super) profile: Option<ProfileArg>,
     /// Filter findings by kind.
     #[arg(long, value_parser = parse_worklist_kind_filter)]
     pub(super) kind: Option<String>,

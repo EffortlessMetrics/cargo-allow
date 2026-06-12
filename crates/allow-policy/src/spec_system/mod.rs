@@ -19,7 +19,9 @@ pub use doc_artifacts::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, load_doc_artifacts,
     parse_doc_artifact_ledger,
 };
-pub use support_tiers::{SupportTierLevel, SupportTierRow, validate_support_tier_claims};
+pub use support_tiers::{
+    SupportTierLevel, SupportTierRow, parse_support_tier_claims, validate_support_tier_claims,
+};
 pub use validate::{validate_doc_artifact_files, validate_doc_artifact_links};
 
 #[cfg(test)]
