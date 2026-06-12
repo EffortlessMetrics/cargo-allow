@@ -278,11 +278,14 @@ blocking behavior for selected safe structural findings, and output posture
 polish for spec-system reports/worklists are recorded in
 [closeout.md](closeout.md). First-hour adoption and CI usage docs have landed.
 Opt-in spec-system preview release notes have been drafted. The support-tier
-claim map has been reviewed and remains advisory. The next implementation slice
-should review repo-local blocking-promotion readiness before changing
-`policy/spec-system.toml` out of shadow.
+claim map has been reviewed and remains advisory. Repo-local dogfood now uses
+blocking mode for selected objective structural findings while nuanced lifecycle
+checks remain advisory. The next implementation slice should review opt-in
+preview release readiness without publishing, tagging, or claiming stable
+support.
 
-Rollback: demote profile mode or revert selected blocking checks.
+Rollback: demote `policy/spec-system.toml` to shadow or revert selected
+blocking checks.
 
 ## Support-Tier Updates
 

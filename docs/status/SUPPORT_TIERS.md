@@ -16,9 +16,9 @@ surfaces that support them.
 It is one governed artifact in the opt-in `spec-system` source-of-truth graph.
 That does not make `spec-system` a second default product path; it is one
 opt-in governance profile among possible future profiles. The profile is
-dogfooded in shadow posture in this repo and selected structural findings are
-blocking-eligible when a repo chooses blocking mode, but this support-tier row
-remains advisory until a stronger support claim is explicitly promoted.
+dogfooded in blocking posture in this repo for selected structural findings,
+but this support-tier row remains advisory until a stronger support claim is
+explicitly promoted.
 
 ## Tier Vocabulary
 
@@ -39,13 +39,14 @@ the source-tree state behind the claim.
 | Source exception ledger | Stable | `cargo-allow check --mode no-new` reports whether scanned source-tree findings are matched by `policy/allow.toml` without executing project code. | `cargo-allow check --mode no-new` | Source-tree and source-syntax only; see [claim boundaries](../claim-boundaries.md). |
 | PR posture | Stabilizing | `cargo-allow diff --base <base>` reports source-exception posture changes for a pull request. | `cargo-allow diff --base origin/main --format markdown` | Requires a meaningful base revision; does not prove build, test, coverage, or unsafe correctness. |
 | Worklist routing | Stabilizing | `cargo-allow worklist --format json` emits bounded source-exception repair items for humans and agents. | `cargo-allow worklist --format json` | Worklist proof commands are suggestions for authorized operators, not commands cargo-allow ran. |
-| Spec-system profile | Advisory | `cargo-allow check --profile spec-system --mode audit` validates registered source-of-truth graph artifacts and reports structural findings for configured profile roots without changing default cargo-allow behavior. | `cargo-allow check --profile spec-system --mode audit` | Opt-in governance profile; repo-local shadow mode; safe structural blocking behavior exists for blocking mode, but this row does not claim stable support or proof execution. |
+| Spec-system profile | Advisory | `cargo-allow check --profile spec-system --mode audit` validates registered source-of-truth graph artifacts and reports structural findings for configured profile roots without changing default cargo-allow behavior. | `cargo-allow check --profile spec-system --mode audit` | Opt-in governance profile; repo-local blocking mode covers selected structural findings only; this row does not claim stable support or proof execution. |
 
 ## Spec-System Review Notes
 
 - The current evidence supports an advisory preview claim for the opt-in
   `spec-system` governance profile.
-- `policy/spec-system.toml` remains in `mode = "shadow"` for this repository.
+- `policy/spec-system.toml` uses `mode = "blocking"` for this repository after
+  clean advisory and shadow burn-in.
 - A stronger support-tier claim requires an explicit promotion decision and
   refreshed evidence that the promoted posture is low-noise.
 

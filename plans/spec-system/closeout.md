@@ -33,12 +33,12 @@ not be treated as proof that the profile has landed.
   ledger are present.
 - Internal spec-system config, doc artifact ledger, artifact identity/link,
   support-tier, report, worklist, doctor, and init support has landed.
-- `policy/spec-system.toml` enables the profile in shadow mode for this repo.
-- CI uploads shadow-posture `spec-system.json` and `spec-system.md` artifacts through
-  the existing `target/cargo-allow/` report bundle.
+- `policy/spec-system.toml` enables the profile in blocking mode for this repo.
+- CI uploads `spec-system.json` and `spec-system.md` artifacts through the
+  existing `target/cargo-allow/` report bundle.
 - The first merged shadow mainline run uploaded a clean spec-system artifact.
 - Blocking mode now fails commands only for selected objective structural
-  findings; cargo-allow's own repo profile remains in shadow.
+  findings, and cargo-allow's own repo dogfoods that posture.
 - Reports and worklists now separate blocking-eligible posture from advisory
   lifecycle posture for reviewer and agent routing.
 - First-hour adoption and CI guides document the profile as one opt-in
@@ -46,8 +46,9 @@ not be treated as proof that the profile has landed.
 - Draft preview release notes describe the opt-in spec-system profile without
   changing package versions, publishing crates, or claiming stable support.
 - The support-tier claim map has been reviewed after the preview-release draft;
-  `CARGO-ALLOW-SUPPORT-0001` remains advisory and `policy/spec-system.toml`
-  remains in shadow mode.
+  `CARGO-ALLOW-SUPPORT-0001` remains advisory.
+- The repo-local profile has been promoted from shadow to blocking for selected
+  objective structural findings only.
 
 ## Validation Evidence
 
@@ -63,19 +64,20 @@ not be treated as proof that the profile has landed.
 | First-hour adoption and CI docs | passed locally | `docs/how-to/adopt-spec-system-profile.md` and `docs/how-to/run-spec-system-in-ci.md` document advisory/shadow adoption, safe structural blocking candidates, and the no-execution claim boundary. |
 | Preview release notes | passed locally | `CHANGELOG.md` and `docs/release/0.1.7.md` describe the opt-in spec-system preview and explicitly avoid stable-support, publication, and proof-execution claims. |
 | Support-tier claim map review | passed locally | `cargo-allow check --profile spec-system --mode audit` and `worklist --profile spec-system --format json` reported `mode = shadow`, `status = passed`, 0 findings, and 0 work items. `CARGO-ALLOW-SUPPORT-0001` remains advisory, and no repo-local blocking promotion is included in this review. |
+| Repo-local blocking promotion | passed locally | `doctor --profile spec-system`, `check --profile spec-system --mode audit`, and `worklist --profile spec-system --format json` reported `mode = blocking`, `status = passed`, 0 findings, and 0 work items. The profile blocks only selected objective structural findings; nuanced lifecycle checks remain advisory. |
 
 ## Non-Goals
 
 - Do not claim the implementation plan is complete.
-- Do not claim the profile has completed shadow or blocking burn-in.
+- Do not claim the profile has completed stable support or final blocking
+  burn-in.
 - Do not claim proof commands were executed by cargo-allow.
 
 ## Claim Boundary
 
-This draft closeout records interim advisory and shadow-promotion evidence. It
-does not prove final profile stability, shadow burn-in, blocking posture,
-semantic correctness, or
-proof-command execution.
+This draft closeout records interim advisory, shadow, and repo-local blocking
+promotion evidence. It does not prove final profile stability, stable support,
+semantic correctness, or proof-command execution.
 
 ## Support-Tier Updates
 
@@ -89,9 +91,8 @@ and governed as tracked source-tree files by `policy/allow.toml`.
 
 ## Remaining Work
 
-- Keep repo-local dogfood in shadow while blocking behavior burns in.
-- Review repo-local blocking-promotion readiness before changing
-  `policy/spec-system.toml` out of shadow.
+- Watch repo-local blocking mode during normal CI runs before treating it as
+  stable support.
 - Keep nuanced checks advisory until they prove low-noise.
 - Update this closeout with final dogfood evidence before closing the plan.
 
@@ -102,5 +103,5 @@ If the plan is withdrawn, remove this closeout placeholder, remove its
 
 ## Follow-Up Links
 
-- Next plan item: review repo-local blocking-promotion readiness before changing
-  `policy/spec-system.toml` out of shadow.
+- Next plan item: review opt-in spec-system preview release readiness without
+  publishing or claiming stable support.
