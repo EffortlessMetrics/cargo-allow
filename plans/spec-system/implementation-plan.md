@@ -261,14 +261,17 @@ Rollback: remove profile config and advisory CI/doc references.
 
 ### PR 19+: dogfood and burn-in
 
-Purpose: fix initial worklist categories, upload advisory artifacts, then
-promote low-risk structural checks after clean burn-in.
+Purpose: fix initial worklist categories, upload advisory artifacts, promote the
+repo-local profile to shadow after clean advisory evidence, then promote
+low-risk structural checks after shadow burn-in.
 
 Non-goals: do not block nuanced checks immediately.
 
-Validation: profile advisory check, worklist JSON, and standard baseline.
+Validation: configured profile check, worklist JSON, shadow CI artifact, and
+standard baseline.
 
-Claim boundary: block only safe structural invariants after evidence.
+Claim boundary: shadow posture reports failure posture without blocking; block
+only safe structural invariants after evidence.
 
 Rollback: demote profile mode or revert selected blocking checks.
 

@@ -26,9 +26,9 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-022"
+id = "spec-system-pr-023"
 status = "ready"
-title = "Promote spec-system profile to shadow"
+title = "Review shadow burn-in before blocking"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
@@ -43,4 +43,7 @@ proof_commands = [
   "rtk cargo clippy --workspace --all-targets -- -D warnings",
   "rtk cargo test --workspace",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Before marking this item done, inspect the mainline CI spec-system artifact and record mode=shadow, status=passed, failed=false.",
 ]

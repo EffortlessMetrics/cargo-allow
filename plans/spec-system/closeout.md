@@ -33,8 +33,8 @@ not be treated as proof that the profile has landed.
   ledger are present.
 - Internal spec-system config, doc artifact ledger, artifact identity/link,
   support-tier, report, worklist, doctor, and init support has landed.
-- `policy/spec-system.toml` enables the profile in advisory mode for this repo.
-- CI uploads advisory `spec-system.json` and `spec-system.md` artifacts through
+- `policy/spec-system.toml` enables the profile in shadow mode for this repo.
+- CI uploads shadow-posture `spec-system.json` and `spec-system.md` artifacts through
   the existing `target/cargo-allow/` report bundle.
 
 ## Validation Evidence
@@ -44,7 +44,7 @@ not be treated as proof that the profile has landed.
 | First advisory CI artifact | passed | GitHub Actions run `27401018305`, `push` to `main` at `81c41dea899c4a635206b075e293ddd61a3c88e3`, uploaded `cargo-allow-reports` containing `spec-system.json` and `spec-system.md`. |
 | First advisory spec-system JSON | passed | `spec-system.json` reported schema `cargo-allow.spec-system.v1`, `command = check`, `mode = advisory`, `status = passed`, `config_source = policy/spec-system.toml`, 6 artifacts, 17 links, 4 support-tier rows, 0 findings, and 0 work items. |
 | First advisory Markdown report | passed | `spec-system.md` reported advisory result, 0 findings, 0 work items, and the structural source-tree graph claim boundary. |
-| Final dogfood worklist | not final | Current advisory run reports 0 work items, but the profile has not completed shadow or blocking burn-in. |
+| First shadow dogfood worklist | pending | This PR promotes `policy/spec-system.toml` to shadow; final evidence should come from the merged mainline shadow run. |
 | Final support-tier review | not final | `CARGO-ALLOW-SUPPORT-0001` remains advisory for the spec-system profile. |
 
 ## Non-Goals
@@ -55,8 +55,9 @@ not be treated as proof that the profile has landed.
 
 ## Claim Boundary
 
-This draft closeout records interim advisory evidence. It does not prove final
-profile stability, shadow posture, blocking posture, semantic correctness, or
+This draft closeout records interim advisory and shadow-promotion evidence. It
+does not prove final profile stability, shadow burn-in, blocking posture,
+semantic correctness, or
 proof-command execution.
 
 ## Support-Tier Updates
@@ -71,8 +72,7 @@ and governed as tracked source-tree files by `policy/allow.toml`.
 
 ## Remaining Work
 
-- Review advisory burn-in over subsequent CI runs.
-- Decide whether low-risk structural checks should move to shadow mode.
+- Review shadow burn-in over subsequent CI runs.
 - Promote only safe structural checks after evidence supports it.
 - Keep nuanced checks advisory until they prove low-noise.
 - Update this closeout with final dogfood evidence before closing the plan.
@@ -84,4 +84,4 @@ If the plan is withdrawn, remove this closeout placeholder, remove its
 
 ## Follow-Up Links
 
-- Next plan item: review shadow-mode candidates after advisory burn-in.
+- Next plan item: review shadow burn-in before any blocking promotion.

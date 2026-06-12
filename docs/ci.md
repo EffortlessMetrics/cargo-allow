@@ -104,8 +104,8 @@ synthetic code-scanning results. When repair work exists, SARIF run properties
 may also include an `evidence_repair_queues` array with the matching
 `cargo-allow worklist ... --format json` commands.
 
-For cargo-allow's own repository, CI also emits the opt-in spec-system advisory
-artifact:
+For cargo-allow's own repository, CI also emits opt-in spec-system profile
+artifacts:
 
 ```bash
 cargo-allow check \
@@ -121,8 +121,10 @@ cargo-allow check \
   --output target/cargo-allow/spec-system.md
 ```
 
-This is dogfood for the repo's source-of-truth graph. It remains advisory and
-does not make spec-system validation part of default cargo-allow behavior.
+This is dogfood for the repo's source-of-truth graph. The profile currently
+runs in shadow posture for this repo: findings set failure posture in the
+spec-system artifacts, but they do not make spec-system validation part of
+default cargo-allow behavior or execute proof commands.
 
 ## Artifacts
 
