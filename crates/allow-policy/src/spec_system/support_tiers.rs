@@ -17,7 +17,7 @@ pub enum SupportTierLevel {
 }
 
 pub fn validate_support_tier_claims(input: &str) -> CargoAllowResult<Vec<SupportTierRow>> {
-    let rows = parse_support_tiers(input)?;
+    let rows = parse_support_tier_claims(input)?;
     for row in &rows {
         ensure_non_empty("support-tier surface", &row.surface)?;
         ensure_non_empty("support-tier claim", &row.claim)?;
@@ -31,7 +31,7 @@ pub fn validate_support_tier_claims(input: &str) -> CargoAllowResult<Vec<Support
     Ok(rows)
 }
 
-fn parse_support_tiers(input: &str) -> CargoAllowResult<Vec<SupportTierRow>> {
+pub fn parse_support_tier_claims(input: &str) -> CargoAllowResult<Vec<SupportTierRow>> {
     let mut lines = input.lines();
     while let Some(line) = lines.next() {
         let Some(header) = table_cells(line) else {

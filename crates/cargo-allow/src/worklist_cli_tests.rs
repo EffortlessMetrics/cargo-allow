@@ -1,5 +1,5 @@
 use super::*;
-use crate::{CargoAllowCli, CargoAllowCommand};
+use crate::{CargoAllowCli, CargoAllowCommand, ProfileArg};
 use clap::Parser;
 use std::path::Path;
 
@@ -109,6 +109,30 @@ fn clap_rejects_unknown_worklist_kind() {
         err.to_string().contains("unknown worklist kind"),
         "unexpected parse error: {err}"
     );
+}
+
+#[test]
+fn clap_parses_spec_system_profile_for_worklist() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "worklist",
+        "--profile",
+        "spec-system",
+        "--format",
+        "json",
+    ]))
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("CLI should parse spec-system worklist args: {err}"))
+    });
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::Worklist(WorklistArgs {
+            profile: Some(ProfileArg::SpecSystem),
+            format: WorklistFormat::Json,
+            ..
+        }))
+    ));
 }
 
 #[test]

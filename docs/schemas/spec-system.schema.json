@@ -35,7 +35,7 @@
       "const": "cargo-allow"
     },
     "command": {
-      "enum": ["check", "audit"],
+      "enum": ["check", "audit", "worklist"],
       "description": "Profile command that produced this source-of-truth graph artifact."
     },
     "profile": {
@@ -329,7 +329,8 @@
           "items": {
             "type": "string",
             "minLength": 1,
-            "description": "Suggested follow-up command string. cargo-allow records it but does not execute it."
+            "pattern": "^cargo-allow ",
+            "description": "Suggested standalone cargo-allow follow-up command. cargo-allow records it but does not execute it."
           }
         }
       }
