@@ -1,4 +1,5 @@
 use crate::{CargoAllowCli, CargoAllowCommand, OutputFormat, ProfileArg, RootArgs, audit, check};
+use allow_core::CargoAllowResult;
 use clap::Parser;
 use serde_json::Value;
 use std::fs;
@@ -405,6 +406,194 @@ fn spec_system_profile_reports_shadow_mode_without_failing_command() {
 }
 
 #[test]
+fn spec_system_blocking_mode_fails_missing_artifact_file_after_writing_report() {
+    let root = fixture_root("profile-blocking-missing-file");
+    write_valid_spec_system_fixture(&root);
+    write_file(
+        &root,
+        "policy/spec-system.toml",
+        &spec_system_config("blocking"),
+    );
+    let missing = root.join("docs/specs/CARGO-ALLOW-SPEC-0001-example.md");
+    let removed = fs::remove_file(&missing);
+    assert!(
+        removed.is_ok(),
+        "fixture artifact should be removed: {:?}",
+        removed.err()
+    );
+    let output = root.join("check.json");
+
+    let result = spec_system_check_json(&root, &output);
+
+    assert!(
+        result.is_err(),
+        "blocking missing artifact file should fail command"
+    );
+    let report = read_to_string(&output);
+    let _ = fs::remove_dir_all(&root);
+    let json = parse_spec_system_json_without_failed_assert("blocking missing file", &report);
+
+    assert_blocking_report(&json, "artifact_file", "artifact_file_missing");
+}
+
+#[test]
+fn spec_system_blocking_mode_fails_unknown_link_after_writing_report() {
+    let root = fixture_root("profile-blocking-unknown-link");
+    write_valid_spec_system_fixture(&root);
+    write_file(
+        &root,
+        "policy/spec-system.toml",
+        &spec_system_config("blocking"),
+    );
+    write_file(
+        &root,
+        "policy/doc-artifacts.toml",
+        &doc_artifact_ledger_with_unknown_spec_proposal(),
+    );
+    let output = root.join("check.json");
+
+    let result = spec_system_check_json(&root, &output);
+
+    assert!(result.is_err(), "blocking unknown link should fail command");
+    let report = read_to_string(&output);
+    let _ = fs::remove_dir_all(&root);
+    let json = parse_spec_system_json_without_failed_assert("blocking unknown link", &report);
+
+    assert_blocking_report(&json, "artifact_link", "unknown_link_target");
+}
+
+#[test]
+fn spec_system_blocking_mode_fails_duplicate_artifact_id_after_writing_report() {
+    let root = fixture_root("profile-blocking-duplicate-id");
+    write_valid_spec_system_fixture(&root);
+    write_file(
+        &root,
+        "policy/spec-system.toml",
+        &spec_system_config("blocking"),
+    );
+    write_file(
+        &root,
+        "policy/doc-artifacts.toml",
+        &doc_artifact_ledger_with_duplicate_id(),
+    );
+    let output = root.join("check.json");
+
+    let result = spec_system_check_json(&root, &output);
+
+    assert!(result.is_err(), "blocking duplicate id should fail command");
+    let report = read_to_string(&output);
+    let _ = fs::remove_dir_all(&root);
+    let json = parse_spec_system_json_without_failed_assert("blocking duplicate id", &report);
+
+    assert_blocking_report(&json, "doc_artifact_ledger", "duplicate_id");
+}
+
+#[test]
+fn spec_system_blocking_mode_fails_invalid_artifact_status_after_writing_report() {
+    let root = fixture_root("profile-blocking-invalid-status");
+    write_valid_spec_system_fixture(&root);
+    write_file(
+        &root,
+        "policy/spec-system.toml",
+        &spec_system_config("blocking"),
+    );
+    write_file(
+        &root,
+        "policy/doc-artifacts.toml",
+        &doc_artifact_ledger_with_invalid_status(),
+    );
+    let output = root.join("check.json");
+
+    let result = spec_system_check_json(&root, &output);
+
+    assert!(
+        result.is_err(),
+        "blocking invalid artifact status should fail command"
+    );
+    let report = read_to_string(&output);
+    let _ = fs::remove_dir_all(&root);
+    let json = parse_spec_system_json_without_failed_assert("blocking invalid status", &report);
+
+    assert_blocking_report(
+        &json,
+        "doc_artifact_ledger",
+        "invalid_artifact_kind_or_status",
+    );
+}
+
+#[test]
+fn spec_system_profile_malformed_config_fails_after_writing_report() {
+    let root = fixture_root("profile-malformed-config");
+    write_valid_spec_system_fixture(&root);
+    write_file(
+        &root,
+        "policy/spec-system.toml",
+        "schema_version = \"1.0\"\nprofile = \"spec-system\"\nmode = \"blocking\"\n[roots\n",
+    );
+    let output = root.join("check.json");
+
+    let result = spec_system_check_json(&root, &output);
+
+    assert!(
+        result.is_err(),
+        "malformed profile config should fail as a setup error"
+    );
+    let report = read_to_string(&output);
+    let _ = fs::remove_dir_all(&root);
+    let json = parse_spec_system_json_without_failed_assert("malformed config", &report);
+
+    assert_eq!(json.get("status").and_then(Value::as_str), Some("failed"));
+    assert_eq!(json.get("failed").and_then(Value::as_bool), Some(true));
+    assert_blocking_finding(&json, "profile_config", "profile_config_parse_failure");
+}
+
+#[test]
+fn spec_system_blocking_mode_keeps_missing_required_edge_advisory() {
+    let root = fixture_root("profile-blocking-missing-edge");
+    write_valid_spec_system_fixture(&root);
+    write_file(
+        &root,
+        "policy/spec-system.toml",
+        &spec_system_config("blocking"),
+    );
+    write_file(
+        &root,
+        "policy/doc-artifacts.toml",
+        &doc_artifact_ledger_without_spec_proposal(),
+    );
+    let output = root.join("check.json");
+
+    let result = spec_system_check_json(&root, &output);
+
+    assert!(
+        result.is_ok(),
+        "blocking mode should not command-block nuanced required-edge findings: {:?}",
+        result.err()
+    );
+    let report = read_to_string(&output);
+    let _ = fs::remove_dir_all(&root);
+    let json = parse_spec_system_json_without_failed_assert("blocking missing edge", &report);
+
+    assert_eq!(json.get("mode").and_then(Value::as_str), Some("blocking"));
+    assert_eq!(json.get("status").and_then(Value::as_str), Some("passed"));
+    assert_eq!(json.get("failed").and_then(Value::as_bool), Some(false));
+    assert_eq!(
+        json.pointer("/summary/findings").and_then(Value::as_u64),
+        Some(1)
+    );
+    let finding = first_finding(&json);
+    assert_eq!(
+        finding.get("kind").and_then(Value::as_str),
+        Some("artifact_link")
+    );
+    assert_eq!(
+        finding.get("blocking_eligible").and_then(Value::as_bool),
+        Some(false)
+    );
+    assert!(finding.get("blocking_reason").is_none());
+}
+
+#[test]
 fn spec_system_profile_renders_configured_shadow_mode_in_markdown() {
     let root = fixture_root("profile-shadow-markdown");
     write_valid_spec_system_fixture(&root);
@@ -492,6 +681,23 @@ fn write_valid_spec_system_fixture(root: &Path) {
         "plans/spec-system/closeout.md",
         "CARGO-ALLOW-CLOSEOUT-0001\n",
     );
+}
+
+fn spec_system_check_json(root: &Path, output: &Path) -> CargoAllowResult<()> {
+    check::cmd_check(&check::CheckArgs {
+        root: RootArgs {
+            root: Some(root.to_path_buf()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        compat: false,
+        kind: None,
+        include_untracked: false,
+        format: OutputFormat::Json,
+        output: Some(output.to_path_buf()),
+        receipt: None,
+        mode: None,
+    })
 }
 
 fn spec_system_config(mode: &str) -> String {
@@ -600,6 +806,25 @@ fn doc_artifact_ledger_without_spec_proposal() -> String {
         .replace("linked_proposal = \"CARGO-ALLOW-PROP-0001\"\n\n[[artifact]]\nid = \"CARGO-ALLOW-SUPPORT-0001\"", "\n[[artifact]]\nid = \"CARGO-ALLOW-SUPPORT-0001\"")
 }
 
+fn doc_artifact_ledger_with_unknown_spec_proposal() -> String {
+    valid_doc_artifact_ledger().replace(
+        "linked_proposal = \"CARGO-ALLOW-PROP-0001\"\n\n[[artifact]]\nid = \"CARGO-ALLOW-SUPPORT-0001\"",
+        "linked_proposal = \"CARGO-ALLOW-PROP-9999\"\n\n[[artifact]]\nid = \"CARGO-ALLOW-SUPPORT-0001\"",
+    )
+}
+
+fn doc_artifact_ledger_with_duplicate_id() -> String {
+    valid_doc_artifact_ledger().replacen(
+        "id = \"CARGO-ALLOW-SPEC-0001\"",
+        "id = \"CARGO-ALLOW-PROP-0001\"",
+        1,
+    )
+}
+
+fn doc_artifact_ledger_with_invalid_status() -> String {
+    valid_doc_artifact_ledger().replacen("status = \"accepted\"", "status = \"unknown\"", 1)
+}
+
 fn support_tiers() -> &'static str {
     r#"
 # Support Tiers
@@ -680,6 +905,48 @@ fn parse_spec_system_json_without_failed_assert(name: &str, text: &str) -> Value
         "{name} profile"
     );
     value
+}
+
+fn assert_blocking_report(json: &Value, finding_kind: &str, blocking_reason: &str) {
+    assert_eq!(json.get("mode").and_then(Value::as_str), Some("blocking"));
+    assert_eq!(json.get("status").and_then(Value::as_str), Some("failed"));
+    assert_eq!(json.get("failed").and_then(Value::as_bool), Some(true));
+    assert_eq!(
+        json.pointer("/summary/findings").and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_blocking_finding(json, finding_kind, blocking_reason);
+}
+
+fn assert_blocking_finding(json: &Value, finding_kind: &str, blocking_reason: &str) {
+    let finding = first_finding(json);
+    assert_eq!(
+        finding.get("kind").and_then(Value::as_str),
+        Some(finding_kind)
+    );
+    assert_eq!(
+        finding.get("blocking_eligible").and_then(Value::as_bool),
+        Some(true)
+    );
+    assert_eq!(
+        finding.get("blocking_reason").and_then(Value::as_str),
+        Some(blocking_reason)
+    );
+}
+
+fn first_finding(json: &Value) -> &Value {
+    let finding = json
+        .get("findings")
+        .and_then(Value::as_array)
+        .and_then(|findings| findings.first());
+    assert!(
+        finding.is_some(),
+        "spec-system report should include at least one finding"
+    );
+    let Some(finding) = finding else {
+        return json;
+    };
+    finding
 }
 
 fn unique_stamp() -> u128 {

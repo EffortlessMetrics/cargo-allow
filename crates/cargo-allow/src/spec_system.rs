@@ -44,6 +44,12 @@ pub(crate) fn cmd_spec_system(args: SpecSystemCommandArgs<'_>) -> CargoAllowResu
     if let Some(path) = args.receipt {
         write_file(path, &render_spec_system_json(&report))?;
     }
+    if spec_system_command_failed(&report) {
+        return Err(CargoAllowError::new(format!(
+            "spec-system blocking findings found: {}",
+            spec_system_blocking_finding_count(&report)
+        )));
+    }
     Ok(())
 }
 
@@ -170,6 +176,20 @@ struct SpecSystemLink {
 struct SpecSystemFinding {
     kind: &'static str,
     message: String,
+    blocking_eligible: bool,
+    blocking_reason: Option<&'static str>,
+}
+
+impl SpecSystemFinding {
+    fn new(kind: &'static str, message: String) -> Self {
+        let blocking_reason = spec_system_blocking_reason(kind, &message);
+        Self {
+            kind,
+            message,
+            blocking_eligible: blocking_reason.is_some(),
+            blocking_reason,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -446,10 +466,10 @@ fn build_spec_system_report(
         }
         Err(err) => {
             let message = err.to_string();
-            findings.push(SpecSystemFinding {
-                kind: "doc_artifact_ledger",
-                message: message.clone(),
-            });
+            findings.push(SpecSystemFinding::new(
+                "doc_artifact_ledger",
+                message.clone(),
+            ));
             if include_work_items && cfg.requirements.ledger_required {
                 work_items.push(missing_node_work_item(
                     "doc artifact ledger",
@@ -478,17 +498,11 @@ fn build_spec_system_report(
                     ));
                 }
                 if let Err(err) = validate_support_tier_claims(&text) {
-                    findings.push(SpecSystemFinding {
-                        kind: "support_tier",
-                        message: err.to_string(),
-                    });
+                    findings.push(SpecSystemFinding::new("support_tier", err.to_string()));
                 }
             }
             Err(err) => {
-                findings.push(SpecSystemFinding {
-                    kind: "support_tier",
-                    message: err.to_string(),
-                });
+                findings.push(SpecSystemFinding::new("support_tier", err.to_string()));
                 if include_work_items && cfg.requirements.support_tiers_required {
                     work_items.push(SpecSystemWorkItem {
                         kind: "missing_support_tier",
@@ -513,10 +527,7 @@ fn build_spec_system_report(
                 "failed to read support-tier file {}: {err}",
                 cfg.roots.support_tiers
             );
-            findings.push(SpecSystemFinding {
-                kind: "support_tier",
-                message: message.clone(),
-            });
+            findings.push(SpecSystemFinding::new("support_tier", message.clone()));
             if include_work_items && cfg.requirements.support_tiers_required {
                 work_items.push(SpecSystemWorkItem {
                     kind: "missing_support_tier",
@@ -617,13 +628,13 @@ fn profile_config_findings(
     explicit_config: bool,
 ) -> Vec<SpecSystemFinding> {
     if loaded.valid == Some(false) || (explicit_config && !loaded.found) {
-        return vec![SpecSystemFinding {
-            kind: "profile_config",
-            message: loaded
+        return vec![SpecSystemFinding::new(
+            "profile_config",
+            loaded
                 .diagnostic
                 .clone()
                 .unwrap_or_else(|| "spec-system profile config is invalid".to_string()),
-        }];
+        )];
     }
     Vec::new()
 }
@@ -658,10 +669,7 @@ fn collect_validation(
     result: CargoAllowResult<()>,
 ) {
     if let Err(err) = result {
-        findings.push(SpecSystemFinding {
-            kind,
-            message: err.to_string(),
-        });
+        findings.push(SpecSystemFinding::new(kind, err.to_string()));
     }
 }
 
@@ -1169,7 +1177,11 @@ fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
             spec_system_mode_title(&report.mode)
         ));
         for finding in &report.findings {
-            text.push_str(&format!("- `{}`: {}\n", finding.kind, finding.message));
+            let posture = finding.blocking_reason.unwrap_or("advisory");
+            text.push_str(&format!(
+                "- `{}` (`{}`): {}\n",
+                finding.kind, posture, finding.message
+            ));
         }
         text.push('\n');
     }
@@ -1378,9 +1390,23 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
         text.push_str("    {");
         text.push_str(&format!("\"kind\": \"{}\", ", json_escape(finding.kind)));
         text.push_str(&format!(
-            "\"message\": \"{}\"",
+            "\"message\": \"{}\", ",
             json_escape(&finding.message)
         ));
+        text.push_str(&format!(
+            "\"blocking_eligible\": {}",
+            if finding.blocking_eligible {
+                "true"
+            } else {
+                "false"
+            }
+        ));
+        if let Some(reason) = finding.blocking_reason {
+            text.push_str(&format!(
+                ", \"blocking_reason\": \"{}\"",
+                json_escape(reason)
+            ));
+        }
         text.push('}');
         if index + 1 != report.findings.len() {
             text.push(',');
@@ -1573,11 +1599,36 @@ fn spec_system_mode_title(mode: &SpecSystemMode) -> &'static str {
     }
 }
 
+fn spec_system_command_failed(report: &SpecSystemReport) -> bool {
+    spec_system_setup_failed(report)
+        || (report.mode == SpecSystemMode::Blocking
+            && spec_system_blocking_finding_count(report) > 0)
+}
+
 fn spec_system_report_failed(report: &SpecSystemReport) -> bool {
+    if spec_system_setup_failed(report) {
+        return true;
+    }
     match report.mode {
         SpecSystemMode::Advisory => false,
-        SpecSystemMode::Shadow | SpecSystemMode::Blocking => !report.findings.is_empty(),
+        SpecSystemMode::Shadow => !report.findings.is_empty(),
+        SpecSystemMode::Blocking => spec_system_blocking_finding_count(report) > 0,
     }
+}
+
+fn spec_system_setup_failed(report: &SpecSystemReport) -> bool {
+    report
+        .findings
+        .iter()
+        .any(|finding| finding.kind == "profile_config" && finding.blocking_eligible)
+}
+
+fn spec_system_blocking_finding_count(report: &SpecSystemReport) -> usize {
+    report
+        .findings
+        .iter()
+        .filter(|finding| finding.blocking_eligible)
+        .count()
 }
 
 fn spec_system_report_status(report: &SpecSystemReport) -> &'static str {
@@ -1586,6 +1637,62 @@ fn spec_system_report_status(report: &SpecSystemReport) -> &'static str {
     } else {
         "passed"
     }
+}
+
+fn spec_system_blocking_reason(kind: &str, message: &str) -> Option<&'static str> {
+    match kind {
+        "profile_config" => profile_config_blocking_reason(message),
+        "doc_artifact_ledger" => doc_artifact_ledger_blocking_reason(message),
+        "artifact_file" => artifact_file_blocking_reason(message),
+        "artifact_link" => artifact_link_blocking_reason(message),
+        _ => None,
+    }
+}
+
+fn profile_config_blocking_reason(message: &str) -> Option<&'static str> {
+    if message.contains("does not exist") {
+        return None;
+    }
+    Some("profile_config_parse_failure")
+}
+
+fn doc_artifact_ledger_blocking_reason(message: &str) -> Option<&'static str> {
+    if message.contains("failed to read doc artifact ledger") {
+        return Some("doc_artifact_ledger_missing");
+    }
+    if message.contains("failed to parse doc artifact ledger TOML") {
+        if message.contains("unknown variant") {
+            return Some("invalid_artifact_kind_or_status");
+        }
+        return Some("doc_artifact_ledger_parse_failure");
+    }
+    if message.contains("duplicate doc artifact id") {
+        return Some("duplicate_id");
+    }
+    None
+}
+
+fn artifact_file_blocking_reason(message: &str) -> Option<&'static str> {
+    if message.contains(" artifact file missing: ") {
+        return Some("artifact_file_missing");
+    }
+    if message.contains("failed to read artifact ") {
+        return Some("artifact_file_unreadable");
+    }
+    if message.contains(" not found in artifact file ") {
+        return Some("artifact_id_not_in_file");
+    }
+    None
+}
+
+fn artifact_link_blocking_reason(message: &str) -> Option<&'static str> {
+    if message.contains(" target ") && message.contains(" is not registered") {
+        return Some("unknown_link_target");
+    }
+    if message.contains(" target ") && message.contains(" is not registered by id or path") {
+        return Some("unknown_link_target");
+    }
+    None
 }
 
 fn support_tier_level_name(tier: SupportTierLevel) -> &'static str {
@@ -1679,10 +1786,10 @@ pub(crate) fn sample_spec_system_json_for_contract_test() -> String {
             target_kind: Some("proposal"),
         }],
         support_tier_rows: 1,
-        findings: vec![SpecSystemFinding {
-            kind: "artifact_link",
-            message: "example structural graph finding".to_string(),
-        }],
+        findings: vec![SpecSystemFinding::new(
+            "artifact_link",
+            "example structural graph finding".to_string(),
+        )],
         work_items: vec![SpecSystemWorkItem {
             kind: "unknown_link_target",
             artifact_id: Some("CARGO-ALLOW-SPEC-0001".to_string()),
