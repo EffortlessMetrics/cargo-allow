@@ -26,9 +26,9 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-027"
+id = "spec-system-pr-028"
 status = "ready"
-title = "Prepare opt-in spec-system preview release notes"
+title = "Review spec-system support-tier claim map"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
@@ -43,7 +43,7 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Keep policy/spec-system.toml in shadow while preparing release notes.",
-  "Frame spec-system as an opt-in preview governance profile, not default cargo-allow behavior.",
-  "Preserve the structural source-tree claim boundary and avoid release-stability claims.",
+  "Keep policy/spec-system.toml in shadow while reviewing support-tier claims.",
+  "Confirm CARGO-ALLOW-SUPPORT-0001 remains advisory unless stronger evidence supports promotion.",
+  "Avoid claiming release readiness, proof execution, or stable support for the spec-system profile.",
 ]
