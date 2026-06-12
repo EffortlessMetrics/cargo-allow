@@ -1,5 +1,6 @@
 use crate::{CargoAllowCli, CargoAllowCommand, OutputFormat, ProfileArg, RootArgs, audit, check};
 use clap::Parser;
+use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -117,8 +118,42 @@ fn check_spec_system_profile_does_not_require_allow_policy() {
 
     assert!(report.contains("cargo-allow check --profile spec-system"));
     assert!(report.contains("No spec-system advisory findings."));
-    assert!(receipt_text.contains("cargo-allow.spec-system.preview.v0"));
-    assert!(receipt_text.contains("\"failed\": false"));
+    let receipt_json = parse_spec_system_json("receipt", &receipt_text);
+
+    assert_eq!(
+        receipt_json.get("schema_id").and_then(Value::as_str),
+        Some(allow_report::SPEC_SYSTEM_SCHEMA_ID)
+    );
+    assert_eq!(
+        receipt_json
+            .pointer("/summary/artifacts")
+            .and_then(Value::as_u64),
+        Some(6)
+    );
+    assert_eq!(
+        receipt_json
+            .pointer("/summary/links")
+            .and_then(Value::as_u64),
+        Some(17)
+    );
+    assert_eq!(
+        receipt_json
+            .pointer("/summary/work_items")
+            .and_then(Value::as_u64),
+        Some(0)
+    );
+    assert!(
+        receipt_json
+            .get("work_items")
+            .and_then(Value::as_array)
+            .is_some_and(Vec::is_empty)
+    );
+    assert_eq!(
+        receipt_json
+            .pointer("/links/0/field")
+            .and_then(Value::as_str),
+        Some("linked_proposal")
+    );
 }
 
 #[test]
@@ -212,7 +247,74 @@ fn audit_spec_system_profile_does_not_require_allow_policy() {
 
     assert!(report.contains("\"command\": \"audit\""));
     assert!(report.contains("\"profile\": \"spec-system\""));
+    assert!(report.contains(allow_report::SPEC_SYSTEM_SCHEMA_ID));
     assert!(report.contains("\"findings\": 0"));
+}
+
+#[test]
+fn check_spec_system_profile_json_report_uses_v1_graph_artifact() {
+    let root = fixture_root("check-profile-json-v1");
+    write_valid_spec_system_fixture(&root);
+    let output = root.join("check.json");
+
+    let result = check::cmd_check(&check::CheckArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        compat: false,
+        kind: None,
+        include_untracked: false,
+        format: OutputFormat::Json,
+        output: Some(output.clone()),
+        receipt: None,
+        mode: Some("audit".to_string()),
+    });
+
+    assert!(
+        result.is_ok(),
+        "spec-system profile JSON check should pass: {:?}",
+        result.err()
+    );
+    let report = read_to_string(&output);
+    let _ = fs::remove_dir_all(&root);
+    let json = parse_spec_system_json("check report", &report);
+
+    assert_eq!(
+        json.get("schema_id").and_then(Value::as_str),
+        Some(allow_report::SPEC_SYSTEM_SCHEMA_ID)
+    );
+    assert_eq!(
+        json.pointer("/inventory/scanner").and_then(Value::as_str),
+        Some(allow_report::INVENTORY_SCANNER_SOURCE_TREE_GRAPH)
+    );
+    assert!(
+        json.get("claim_boundary")
+            .and_then(Value::as_array)
+            .is_some_and(|items| items
+                .iter()
+                .any(|item| { item.as_str() == Some("source_tree_graph_validation") }))
+    );
+    assert!(
+        json.get("scanner_limitations")
+            .and_then(Value::as_array)
+            .is_some_and(|items| items
+                .iter()
+                .any(|item| { item.as_str() == Some("proof_commands_not_executed") }))
+    );
+    assert_eq!(
+        json.pointer("/artifacts/1/id").and_then(Value::as_str),
+        Some("CARGO-ALLOW-SPEC-0001")
+    );
+    assert_eq!(
+        json.pointer("/artifacts/1/kind").and_then(Value::as_str),
+        Some("spec")
+    );
+    assert_eq!(
+        json.pointer("/links/0/target_kind").and_then(Value::as_str),
+        Some("proposal")
+    );
 }
 
 #[test]
@@ -424,6 +526,39 @@ fn read_to_string(path: &Path) -> String {
         return String::new();
     };
     text
+}
+
+fn parse_spec_system_json(name: &str, text: &str) -> Value {
+    let result = serde_json::from_str::<Value>(text);
+    assert!(
+        result.is_ok(),
+        "{name} should parse as JSON: {:?}\n{text}",
+        result.err()
+    );
+    let Ok(value) = result else {
+        return Value::Null;
+    };
+    assert_eq!(
+        value.get("schema_version").and_then(Value::as_u64),
+        Some(1),
+        "{name} schema_version"
+    );
+    assert_eq!(
+        value.get("tool").and_then(Value::as_str),
+        Some("cargo-allow"),
+        "{name} tool"
+    );
+    assert_eq!(
+        value.get("profile").and_then(Value::as_str),
+        Some("spec-system"),
+        "{name} profile"
+    );
+    assert_eq!(
+        value.get("failed").and_then(Value::as_bool),
+        Some(false),
+        "{name} failed"
+    );
+    value
 }
 
 fn unique_stamp() -> u128 {

@@ -1,0 +1,405 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/spec-system.v1.schema.json",
+  "title": "cargo-allow spec-system v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "command",
+    "profile",
+    "mode",
+    "status",
+    "failed",
+    "claim_boundary",
+    "scanner_limitations",
+    "inventory",
+    "source_tree_root",
+    "config_source",
+    "summary",
+    "artifacts",
+    "links",
+    "findings",
+    "work_items"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "schema_id": {
+      "const": "cargo-allow.spec-system.v1"
+    },
+    "tool": {
+      "const": "cargo-allow"
+    },
+    "command": {
+      "enum": ["check", "audit"],
+      "description": "Profile command that produced this source-of-truth graph artifact."
+    },
+    "profile": {
+      "const": "spec-system"
+    },
+    "mode": {
+      "enum": ["advisory", "shadow", "blocking"]
+    },
+    "status": {
+      "enum": ["passed", "failed"]
+    },
+    "failed": {
+      "type": "boolean"
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/claim_boundary_flag"
+      },
+      "contains": {
+        "const": "source_tree_graph_validation"
+      },
+      "description": "Profile-specific claim boundary for structural source-tree graph validation only."
+    },
+    "scanner_limitations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/scanner_limitation"
+      },
+      "contains": {
+        "const": "proof_commands_not_executed"
+      },
+      "description": "Execution and analyzer limitations for the spec-system graph scan."
+    },
+    "inventory": {
+      "$ref": "#/$defs/inventory"
+    },
+    "source_tree_root": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Local source-tree root used for this graph scan. This may be an absolute path in local artifacts."
+    },
+    "config_source": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Profile configuration source, either a repo path or the built-in default root set."
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/link"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "work_items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/work_item"
+      },
+      "description": "Reserved for profile repair items. PR 15 emits this array empty; PR 16 fills it."
+    }
+  },
+  "$defs": {
+    "claim_boundary_flag": {
+      "type": "string",
+      "enum": [
+        "source_tree_inventory",
+        "source_tree_graph_validation",
+        "proof_commands_not_executed",
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "external_evidence_tools_not_invoked",
+        "repository_code_not_executed",
+        "network_not_used",
+        "github_api_not_used"
+      ]
+    },
+    "scanner_limitation": {
+      "type": "string",
+      "enum": [
+        "proof_commands_not_executed",
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "external_evidence_tools_not_invoked",
+        "repository_code_not_executed",
+        "network_not_used",
+        "github_api_not_used"
+      ]
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "scanner", "source"],
+      "properties": {
+        "scope": {
+          "const": "source_tree"
+        },
+        "scanner": {
+          "const": "source_tree_graph"
+        },
+        "source": {
+          "enum": [
+            "unknown",
+            "git_tracked",
+            "filesystem_fallback",
+            "filesystem_include_untracked"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Local source-tree root used for this profile scan."
+        },
+        "files_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of source-tree files considered when a full inventory was collected."
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifacts",
+        "links",
+        "support_tier_rows",
+        "findings",
+        "work_items"
+      ],
+      "properties": {
+        "artifacts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "links": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "support_tier_rows": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "work_items": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "path", "status", "owner", "created"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "$ref": "#/$defs/artifact_kind"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "$ref": "#/$defs/artifact_status"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "field", "target"],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "field": {
+          "$ref": "#/$defs/link_field"
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_kind": {
+          "$ref": "#/$defs/artifact_kind"
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/finding_kind"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "work_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "message", "suggested_actions", "proof_commands"],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/work_item_kind"
+        },
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suggested_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "proof_commands": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Suggested follow-up command string. cargo-allow records it but does not execute it."
+          }
+        }
+      }
+    },
+    "artifact_kind": {
+      "enum": [
+        "proposal",
+        "spec",
+        "adr",
+        "implementation_plan",
+        "plan_item",
+        "active_goal",
+        "support_tier",
+        "policy_ledger",
+        "closeout",
+        "release_record"
+      ]
+    },
+    "artifact_status": {
+      "enum": [
+        "draft",
+        "proposed",
+        "accepted",
+        "active",
+        "done",
+        "superseded"
+      ]
+    },
+    "link_field": {
+      "enum": [
+        "linked_proposal",
+        "linked_spec",
+        "linked_adr",
+        "linked_plan",
+        "linked_goal",
+        "linked_support_tier",
+        "linked_closeout",
+        "supersedes",
+        "superseded_by",
+        "replaces"
+      ]
+    },
+    "finding_kind": {
+      "enum": [
+        "profile_config",
+        "doc_artifact_ledger",
+        "artifact_file",
+        "artifact_link",
+        "support_tier"
+      ]
+    },
+    "work_item_kind": {
+      "enum": [
+        "missing_node",
+        "missing_doc_artifact",
+        "artifact_file_missing",
+        "artifact_id_not_in_file",
+        "invalid_artifact_status",
+        "missing_required_edge",
+        "missing_linked_proposal",
+        "unknown_link_target",
+        "unknown_linked_artifact",
+        "orphan_spec",
+        "missing_support_tier",
+        "missing_proof_command",
+        "claim_without_support_tier",
+        "stale_active_goal",
+        "missing_closeout",
+        "superseded_target_missing"
+      ]
+    }
+  }
+}

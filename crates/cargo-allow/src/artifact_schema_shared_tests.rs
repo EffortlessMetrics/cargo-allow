@@ -53,13 +53,13 @@ fn schema_files_require_common_v1_source_tree_contract() {
             contract.name,
             &schema,
             "/$defs/claim_boundary_flag/enum",
-            allow_report::CLAIM_BOUNDARY,
+            allow_report::claim_boundary_for_schema_id(contract.schema_id),
         );
         assert_enum_equals(
             contract.name,
             &schema,
             "/$defs/scanner_limitation/enum",
-            allow_report::SCANNER_LIMITATIONS,
+            allow_report::scanner_limitations_for_schema_id(contract.schema_id),
         );
     }
 }

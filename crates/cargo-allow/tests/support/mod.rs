@@ -67,11 +67,16 @@ pub fn assert_saved_json_artifact(
         Some(expected_command),
         "{name} command"
     );
-    assert_json_string_array_eq(&value, "claim_boundary", allow_report::CLAIM_BOUNDARY, name);
+    assert_json_string_array_eq(
+        &value,
+        "claim_boundary",
+        allow_report::claim_boundary_for_schema_id(expected_schema_id),
+        name,
+    );
     assert_json_string_array_eq(
         &value,
         "scanner_limitations",
-        allow_report::SCANNER_LIMITATIONS,
+        allow_report::scanner_limitations_for_schema_id(expected_schema_id),
         name,
     );
     assert_eq!(

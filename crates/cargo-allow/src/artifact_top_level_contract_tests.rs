@@ -102,13 +102,13 @@ fn assert_artifact_contract(sample: &ArtifactSample) {
         sample.name,
         &value,
         "claim_boundary",
-        allow_report::CLAIM_BOUNDARY,
+        allow_report::claim_boundary_for_schema_id(contract.schema_id),
     );
     assert_string_array_eq(
         sample.name,
         &value,
         "scanner_limitations",
-        allow_report::SCANNER_LIMITATIONS,
+        allow_report::scanner_limitations_for_schema_id(contract.schema_id),
     );
 }
 

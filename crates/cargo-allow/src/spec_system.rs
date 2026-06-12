@@ -1,9 +1,9 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_inventory::resolve_source_tree_root;
 use allow_policy::spec_system::{
-    SpecSystemConfig, SpecSystemMode, SpecSystemRequirements, SpecSystemRoots, load_doc_artifacts,
-    parse_spec_system_config, validate_doc_artifact_files, validate_doc_artifact_links,
-    validate_support_tier_claims,
+    ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, SpecSystemConfig, SpecSystemMode,
+    SpecSystemRequirements, SpecSystemRoots, load_doc_artifacts, parse_spec_system_config,
+    validate_doc_artifact_files, validate_doc_artifact_links, validate_support_tier_claims,
 };
 use std::env;
 use std::fs;
@@ -38,9 +38,28 @@ struct SpecSystemReport {
     command: String,
     root: PathBuf,
     config_source: String,
-    artifacts: usize,
+    artifacts: Vec<SpecSystemArtifact>,
+    links: Vec<SpecSystemLink>,
     support_tier_rows: usize,
     findings: Vec<SpecSystemFinding>,
+}
+
+#[derive(Debug)]
+struct SpecSystemArtifact {
+    id: String,
+    kind: &'static str,
+    path: String,
+    status: &'static str,
+    owner: String,
+    created: String,
+}
+
+#[derive(Debug)]
+struct SpecSystemLink {
+    source_id: String,
+    field: &'static str,
+    target: String,
+    target_kind: Option<&'static str>,
 }
 
 #[derive(Debug)]
@@ -58,13 +77,15 @@ fn build_spec_system_report(
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = resolve_source_tree_root(root_args.root.as_deref(), cwd)?;
     let (cfg, config_source, mut findings) = load_spec_system_config(&root, config);
-    let mut artifacts = 0;
+    let mut artifacts = Vec::new();
+    let mut links = Vec::new();
     let mut support_tier_rows = 0;
 
     let ledger_path = root_relative_path(&root, Path::new(&cfg.roots.artifact_ledger));
     match load_doc_artifacts(&ledger_path) {
         Ok(ledger) => {
-            artifacts = ledger.artifact.len();
+            artifacts = collect_artifacts(&ledger);
+            links = collect_links(&ledger);
             collect_validation(
                 &mut findings,
                 "artifact_file",
@@ -107,6 +128,7 @@ fn build_spec_system_report(
         root,
         config_source,
         artifacts,
+        links,
         support_tier_rows,
         findings,
     })
@@ -228,7 +250,8 @@ fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
     ));
     text.push_str(&format!("Config: `{}`\n\n", report.config_source));
     text.push_str("| Metric | Count |\n|---|---:|\n");
-    text.push_str(&format!("| Artifacts | {} |\n", report.artifacts));
+    text.push_str(&format!("| Artifacts | {} |\n", report.artifacts.len()));
+    text.push_str(&format!("| Links | {} |\n", report.links.len()));
     text.push_str(&format!(
         "| Support-tier rows | {} |\n",
         report.support_tier_rows
@@ -254,8 +277,11 @@ fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
 fn render_spec_system_json(report: &SpecSystemReport) -> String {
     let mut text = String::new();
     text.push_str("{\n");
-    text.push_str("  \"schema_id\": \"cargo-allow.spec-system.preview.v0\",\n");
-    text.push_str("  \"schema_version\": 0,\n");
+    text.push_str("  \"schema_version\": 1,\n");
+    text.push_str(&format!(
+        "  \"schema_id\": \"{}\",\n",
+        allow_report::SPEC_SYSTEM_SCHEMA_ID
+    ));
     text.push_str("  \"tool\": \"cargo-allow\",\n");
     text.push_str(&format!(
         "  \"command\": \"{}\",\n",
@@ -263,8 +289,36 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
     ));
     text.push_str("  \"profile\": \"spec-system\",\n");
     text.push_str("  \"mode\": \"advisory\",\n");
+    text.push_str("  \"status\": \"passed\",\n");
     text.push_str("  \"failed\": false,\n");
-    text.push_str("  \"claim_boundary\": [\"structural_source_tree_graph_validation\", \"proof_commands_not_executed\", \"cargo_not_invoked\", \"rustc_not_invoked\", \"clippy_not_invoked\", \"network_not_used\", \"github_api_not_used\"],\n");
+    text.push_str("  \"claim_boundary\": ");
+    render_string_array(&mut text, allow_report::SPEC_SYSTEM_CLAIM_BOUNDARY, "  ");
+    text.push_str(",\n");
+    text.push_str("  \"scanner_limitations\": ");
+    render_string_array(
+        &mut text,
+        allow_report::SPEC_SYSTEM_SCANNER_LIMITATIONS,
+        "  ",
+    );
+    text.push_str(",\n");
+    text.push_str("  \"inventory\": {\n");
+    text.push_str(&format!(
+        "    \"scope\": \"{}\",\n",
+        allow_report::INVENTORY_SCOPE_SOURCE_TREE
+    ));
+    text.push_str(&format!(
+        "    \"scanner\": \"{}\",\n",
+        allow_report::INVENTORY_SCANNER_SOURCE_TREE_GRAPH
+    ));
+    text.push_str(&format!(
+        "    \"source\": \"{}\",\n",
+        allow_report::INVENTORY_SOURCE_UNKNOWN
+    ));
+    text.push_str(&format!(
+        "    \"root\": \"{}\"\n",
+        json_escape(&report.root.display().to_string())
+    ));
+    text.push_str("  },\n");
     text.push_str(&format!(
         "  \"source_tree_root\": \"{}\",\n",
         json_escape(&report.root.display().to_string())
@@ -274,13 +328,62 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
         json_escape(&report.config_source)
     ));
     text.push_str("  \"summary\": {\n");
-    text.push_str(&format!("    \"artifacts\": {},\n", report.artifacts));
+    text.push_str(&format!("    \"artifacts\": {},\n", report.artifacts.len()));
+    text.push_str(&format!("    \"links\": {},\n", report.links.len()));
     text.push_str(&format!(
         "    \"support_tier_rows\": {},\n",
         report.support_tier_rows
     ));
-    text.push_str(&format!("    \"findings\": {}\n", report.findings.len()));
+    text.push_str(&format!("    \"findings\": {},\n", report.findings.len()));
+    text.push_str("    \"work_items\": 0\n");
     text.push_str("  },\n");
+    text.push_str("  \"artifacts\": [\n");
+    for (index, artifact) in report.artifacts.iter().enumerate() {
+        text.push_str("    {\n");
+        text.push_str(&format!(
+            "      \"id\": \"{}\",\n",
+            json_escape(&artifact.id)
+        ));
+        text.push_str(&format!("      \"kind\": \"{}\",\n", artifact.kind));
+        text.push_str(&format!(
+            "      \"path\": \"{}\",\n",
+            json_escape(&artifact.path)
+        ));
+        text.push_str(&format!("      \"status\": \"{}\",\n", artifact.status));
+        text.push_str(&format!(
+            "      \"owner\": \"{}\",\n",
+            json_escape(&artifact.owner)
+        ));
+        text.push_str(&format!(
+            "      \"created\": \"{}\"\n",
+            json_escape(&artifact.created)
+        ));
+        text.push_str("    }");
+        if index + 1 != report.artifacts.len() {
+            text.push(',');
+        }
+        text.push('\n');
+    }
+    text.push_str("  ],\n");
+    text.push_str("  \"links\": [\n");
+    for (index, link) in report.links.iter().enumerate() {
+        text.push_str("    {");
+        text.push_str(&format!(
+            "\"source_id\": \"{}\", ",
+            json_escape(&link.source_id)
+        ));
+        text.push_str(&format!("\"field\": \"{}\", ", link.field));
+        text.push_str(&format!("\"target\": \"{}\"", json_escape(&link.target)));
+        if let Some(target_kind) = link.target_kind {
+            text.push_str(&format!(", \"target_kind\": \"{}\"", target_kind));
+        }
+        text.push('}');
+        if index + 1 != report.links.len() {
+            text.push(',');
+        }
+        text.push('\n');
+    }
+    text.push_str("  ],\n");
     text.push_str("  \"findings\": [\n");
     for (index, finding) in report.findings.iter().enumerate() {
         text.push_str("    {");
@@ -295,7 +398,8 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
         }
         text.push('\n');
     }
-    text.push_str("  ]\n");
+    text.push_str("  ],\n");
+    text.push_str("  \"work_items\": []\n");
     text.push_str("}\n");
     text
 }
@@ -334,6 +438,118 @@ fn root_relative_display(root: &Path, path: &Path) -> String {
         .unwrap_or_else(|_| path.display().to_string())
 }
 
+fn collect_artifacts(ledger: &DocArtifactLedger) -> Vec<SpecSystemArtifact> {
+    ledger
+        .artifact
+        .iter()
+        .map(|artifact| SpecSystemArtifact {
+            id: artifact.id.clone(),
+            kind: artifact_kind_name(artifact.kind),
+            path: artifact.path.clone(),
+            status: artifact_status_name(artifact.status),
+            owner: artifact.owner.clone(),
+            created: artifact.created.clone(),
+        })
+        .collect()
+}
+
+fn collect_links(ledger: &DocArtifactLedger) -> Vec<SpecSystemLink> {
+    let mut links = Vec::new();
+    for artifact in &ledger.artifact {
+        collect_link_fields(&mut links, artifact, ledger);
+    }
+    links
+}
+
+fn collect_link_fields(
+    links: &mut Vec<SpecSystemLink>,
+    artifact: &DocArtifact,
+    ledger: &DocArtifactLedger,
+) {
+    for (field, value) in [
+        ("linked_proposal", artifact.linked_proposal.as_deref()),
+        ("linked_spec", artifact.linked_spec.as_deref()),
+        ("linked_adr", artifact.linked_adr.as_deref()),
+        ("linked_plan", artifact.linked_plan.as_deref()),
+        ("linked_goal", artifact.linked_goal.as_deref()),
+        (
+            "linked_support_tier",
+            artifact.linked_support_tier.as_deref(),
+        ),
+        ("linked_closeout", artifact.linked_closeout.as_deref()),
+        ("supersedes", artifact.supersedes.as_deref()),
+        ("superseded_by", artifact.superseded_by.as_deref()),
+        ("replaces", artifact.replaces.as_deref()),
+    ] {
+        let Some(target) = value.filter(|target| !target.trim().is_empty()) else {
+            continue;
+        };
+        links.push(SpecSystemLink {
+            source_id: artifact.id.clone(),
+            field,
+            target: target.to_string(),
+            target_kind: resolve_target_kind(ledger, target),
+        });
+    }
+}
+
+fn resolve_target_kind(ledger: &DocArtifactLedger, target: &str) -> Option<&'static str> {
+    ledger
+        .artifact
+        .iter()
+        .find(|artifact| {
+            artifact.id == target
+                || normalize_source_path(&artifact.path) == normalize_source_path(target)
+        })
+        .map(|artifact| artifact_kind_name(artifact.kind))
+}
+
+fn artifact_kind_name(kind: ArtifactKind) -> &'static str {
+    match kind {
+        ArtifactKind::Proposal => "proposal",
+        ArtifactKind::Spec => "spec",
+        ArtifactKind::Adr => "adr",
+        ArtifactKind::ImplementationPlan => "implementation_plan",
+        ArtifactKind::PlanItem => "plan_item",
+        ArtifactKind::ActiveGoal => "active_goal",
+        ArtifactKind::SupportTier => "support_tier",
+        ArtifactKind::PolicyLedger => "policy_ledger",
+        ArtifactKind::Closeout => "closeout",
+        ArtifactKind::ReleaseRecord => "release_record",
+    }
+}
+
+fn artifact_status_name(status: ArtifactStatus) -> &'static str {
+    match status {
+        ArtifactStatus::Draft => "draft",
+        ArtifactStatus::Proposed => "proposed",
+        ArtifactStatus::Accepted => "accepted",
+        ArtifactStatus::Active => "active",
+        ArtifactStatus::Done => "done",
+        ArtifactStatus::Superseded => "superseded",
+    }
+}
+
+fn normalize_source_path(path: &str) -> String {
+    path.trim_matches('/').replace('\\', "/")
+}
+
+fn render_string_array(text: &mut String, values: &[&str], indent: &str) {
+    text.push_str("[\n");
+    for (index, value) in values.iter().enumerate() {
+        text.push_str(indent);
+        text.push_str("  \"");
+        text.push_str(&json_escape(value));
+        text.push('"');
+        if index + 1 != values.len() {
+            text.push(',');
+        }
+        text.push('\n');
+    }
+    text.push_str(indent);
+    text.push(']');
+}
+
 fn json_escape(value: &str) -> String {
     let mut escaped = String::new();
     for ch in value.chars() {
@@ -355,4 +571,43 @@ fn html_escape(value: &str) -> String {
         .replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
+}
+
+#[cfg(test)]
+pub(crate) fn sample_spec_system_json_for_contract_test() -> String {
+    let report = SpecSystemReport {
+        command: "check".to_string(),
+        root: PathBuf::from("H:/Code/Rust/cargo-allow"),
+        config_source: "policy/spec-system.toml".to_string(),
+        artifacts: vec![
+            SpecSystemArtifact {
+                id: "CARGO-ALLOW-PROP-0001".to_string(),
+                kind: "proposal",
+                path: "docs/proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md".to_string(),
+                status: "accepted",
+                owner: "repo-infra".to_string(),
+                created: "2026-06-12".to_string(),
+            },
+            SpecSystemArtifact {
+                id: "CARGO-ALLOW-SPEC-0001".to_string(),
+                kind: "spec",
+                path: "docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md".to_string(),
+                status: "accepted",
+                owner: "repo-infra".to_string(),
+                created: "2026-06-12".to_string(),
+            },
+        ],
+        links: vec![SpecSystemLink {
+            source_id: "CARGO-ALLOW-SPEC-0001".to_string(),
+            field: "linked_proposal",
+            target: "CARGO-ALLOW-PROP-0001".to_string(),
+            target_kind: Some("proposal"),
+        }],
+        support_tier_rows: 1,
+        findings: vec![SpecSystemFinding {
+            kind: "artifact_link",
+            message: "example structural graph finding".to_string(),
+        }],
+    };
+    render_spec_system_json(&report)
 }
