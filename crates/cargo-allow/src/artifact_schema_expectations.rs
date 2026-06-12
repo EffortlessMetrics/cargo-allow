@@ -289,6 +289,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "links",
                 "mode",
                 "profile",
+                "readiness",
                 "scanner_limitations",
                 "schema_id",
                 "schema_version",

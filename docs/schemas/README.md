@@ -15,7 +15,7 @@ macro-expansion, or proof-level coverage.
 | Baseline proposal summary | `cargo-allow.propose.v1` | `cargo-allow propose --summary-format json` |
 | Single-entry add summary | `cargo-allow.add.v1` | `cargo-allow add --summary-format json` |
 | Legacy migration summary | `cargo-allow.migrate.v1` | `cargo-allow migrate --summary-format json` |
-| Spec-system graph report | `cargo-allow.spec-system.v1` | `cargo-allow check --profile spec-system --format json`, `cargo-allow audit --profile spec-system --format json`, `cargo-allow worklist --profile spec-system --format json` |
+| Spec-system graph report | `cargo-allow.spec-system.v1` | `cargo-allow check --profile spec-system --format json`, `cargo-allow audit --profile spec-system --format json`, `cargo-allow worklist --profile spec-system --format json`, `cargo-allow doctor --profile spec-system --format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
 
 ## Files
@@ -158,7 +158,9 @@ is `source_tree_graph`, its claim boundary includes
 the source tree and does not execute proof commands or external services. When
 produced by `worklist --profile spec-system`, the same schema carries graph
 repair items for missing nodes, broken links, missing closeouts, and missing
-claim-to-proof commands.
+claim-to-proof commands. When produced by `doctor --profile spec-system`, it
+also carries setup readiness for profile config, artifact roots, the artifact
+ledger, support tiers, active goals, and templates.
 Diff reports may include optional `diff.summary.broken_evidence_links`,
 `diff.summary.missing_evidence`, and `diff.summary.weak_evidence_references`
 when the compared head policy has evidence-health signals. These duplicate the

@@ -11,14 +11,24 @@ pub(crate) use doctor_args::DoctorArgs;
 use doctor_args::DoctorFormat;
 
 use crate::{
-    InventoryFacts, SourceTreeReportContext, config_path, emit_text,
+    InventoryFacts, ProfileArg, SourceTreeReportContext, config_path, emit_text,
     evidence_inventory::{
         PolicyReferenceDiagnostic, current_evidence_source_tree_files,
         policy_reference_diagnostics_for_source_tree,
     },
+    spec_system,
 };
 
 pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
+    if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
+        return spec_system::cmd_spec_system_doctor(spec_system::SpecSystemDoctorCommandArgs {
+            root: &args.root,
+            config: args.config.as_deref(),
+            format_json: matches!(args.format, DoctorFormat::Json),
+            output: args.output.as_deref(),
+        });
+    }
+
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;

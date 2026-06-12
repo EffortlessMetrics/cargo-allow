@@ -1,6 +1,6 @@
 use super::*;
 use crate::artifact_contract_support::parse_json_artifact;
-use crate::{CargoAllowCli, CargoAllowCommand, RootArgs};
+use crate::{CargoAllowCli, CargoAllowCommand, ProfileArg, RootArgs};
 use clap::Parser;
 use serde_json::Value;
 use std::fs;
@@ -32,11 +32,36 @@ fn clap_parses_doctor_json_output() {
         Some(CargoAllowCommand::Doctor(DoctorArgs {
             root: RootArgs { root: Some(root) },
             config: Some(config),
+            profile: None,
             format: DoctorFormat::Json,
             output: Some(output),
         })) if root == Path::new(".")
             && config == Path::new("policy/custom.toml")
             && output == Path::new("target/doctor.json")
+    ));
+}
+
+#[test]
+fn clap_parses_spec_system_profile_for_doctor() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "doctor",
+        "--profile",
+        "spec-system",
+        "--format",
+        "json",
+    ]))
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("CLI should parse spec-system doctor: {err}"))
+    });
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::Doctor(DoctorArgs {
+            profile: Some(ProfileArg::SpecSystem),
+            format: DoctorFormat::Json,
+            ..
+        }))
     ));
 }
 
@@ -189,6 +214,7 @@ ignored = ["policy/**", "ignored/**"]
             root: Some(root.clone()),
         },
         config: Some(policy),
+        profile: None,
         format: DoctorFormat::Json,
         output: Some(output.clone()),
     })
@@ -245,6 +271,7 @@ ast_kind = "tracked_file"
             root: Some(root.clone()),
         },
         config: Some(policy),
+        profile: None,
         format: DoctorFormat::Json,
         output: Some(output.clone()),
     })
@@ -307,6 +334,7 @@ ast_kind = "tracked_file"
             root: Some(root.clone()),
         },
         config: Some(policy),
+        profile: None,
         format: DoctorFormat::Json,
         output: Some(output.clone()),
     })
@@ -372,6 +400,7 @@ fn doctor_reports_untracked_local_evidence_as_broken_by_default() {
             root: Some(root.clone()),
         },
         config: Some(policy),
+        profile: None,
         format: DoctorFormat::Json,
         output: Some(output.clone()),
     })
@@ -402,6 +431,97 @@ fn doctor_reports_untracked_local_evidence_as_broken_by_default() {
     remove_doctor_fixture_dir(root);
 }
 
+#[test]
+fn spec_system_doctor_reports_missing_readiness() {
+    let root = doctor_fixture_dir();
+    let output = root.join("doctor.json");
+
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        format: DoctorFormat::Json,
+        output: Some(output.clone()),
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("spec-system doctor should pass advisory: {err}"))
+    });
+
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    let value = parse_json_artifact(
+        "spec-system doctor",
+        &json,
+        allow_report::SPEC_SYSTEM_SCHEMA_ID,
+        "doctor",
+    );
+    assert_eq!(
+        value.pointer("/readiness/ready").and_then(Value::as_bool),
+        Some(false)
+    );
+    assert!(
+        readiness_check(&value, "profile_config")
+            .is_some_and(
+                |check| check.pointer("/status").and_then(Value::as_str) == Some("missing")
+            ),
+        "missing profile config should be reported: {json}"
+    );
+    assert!(
+        readiness_check(&value, "artifact_ledger")
+            .is_some_and(
+                |check| check.pointer("/status").and_then(Value::as_str) == Some("missing")
+            ),
+        "missing doc artifact ledger should be reported: {json}"
+    );
+    remove_doctor_fixture_dir(root);
+}
+
+#[test]
+fn spec_system_doctor_reports_ready_when_bootstrap_files_exist() {
+    let root = doctor_fixture_dir();
+    write_valid_spec_system_readiness_fixture(&root);
+    let output = root.join("doctor.json");
+
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        format: DoctorFormat::Json,
+        output: Some(output.clone()),
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("spec-system doctor should pass advisory: {err}"))
+    });
+
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    let value = parse_json_artifact(
+        "spec-system doctor",
+        &json,
+        allow_report::SPEC_SYSTEM_SCHEMA_ID,
+        "doctor",
+    );
+    assert_eq!(
+        value.pointer("/readiness/ready").and_then(Value::as_bool),
+        Some(true),
+        "complete profile bootstrap should be ready: {json}"
+    );
+    assert_eq!(
+        value.pointer("/readiness/mode").and_then(Value::as_str),
+        Some("advisory")
+    );
+    assert!(
+        readiness_check(&value, "templates")
+            .is_some_and(|check| check.pointer("/status").and_then(Value::as_str) == Some("ready")),
+        "templates should be ready: {json}"
+    );
+    remove_doctor_fixture_dir(root);
+}
+
 fn doctor_fixture_dir() -> std::path::PathBuf {
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -413,6 +533,99 @@ fn doctor_fixture_dir() -> std::path::PathBuf {
     fs::create_dir_all(&dir)
         .unwrap_or_else(|err| std::panic::panic_any(format!("create doctor fixture: {err}")));
     dir
+}
+
+fn readiness_check<'a>(value: &'a Value, kind: &str) -> Option<&'a Value> {
+    value
+        .pointer("/readiness/checks")
+        .and_then(Value::as_array)
+        .and_then(|checks| {
+            checks
+                .iter()
+                .find(|check| check.get("kind").and_then(Value::as_str) == Some(kind))
+        })
+}
+
+fn write_valid_spec_system_readiness_fixture(root: &Path) {
+    for dir in [
+        "docs/proposals",
+        "docs/specs",
+        "docs/adr",
+        "plans",
+        ".codex/goals",
+        "docs/templates",
+        "docs/status",
+        "policy",
+    ] {
+        fs::create_dir_all(root.join(dir))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create {dir}: {err}")));
+    }
+    fs::write(root.join("policy/spec-system.toml"), spec_system_config())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write spec-system config: {err}")));
+    fs::write(root.join("policy/doc-artifacts.toml"), doc_artifacts())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write doc artifacts: {err}")));
+    fs::write(root.join("docs/status/SUPPORT_TIERS.md"), support_tiers())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write support tiers: {err}")));
+    fs::write(
+        root.join(".codex/goals/active.toml"),
+        "schema_version = \"1.0\"\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write active goal: {err}")));
+    for path in [
+        "docs/templates/proposal.md",
+        "docs/templates/spec.md",
+        "docs/templates/adr.md",
+        "docs/templates/implementation-plan.md",
+        "docs/templates/plan-item.md",
+        "docs/templates/closeout.md",
+        "docs/templates/pr-body.md",
+    ] {
+        fs::write(root.join(path), "template\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write {path}: {err}")));
+    }
+}
+
+fn spec_system_config() -> &'static str {
+    r#"
+schema_version = "1.0"
+profile = "spec-system"
+mode = "advisory"
+
+[roots]
+proposals = "docs/proposals"
+specs = "docs/specs"
+adrs = "docs/adr"
+plans = "plans"
+goals = ".codex/goals"
+support_tiers = "docs/status/SUPPORT_TIERS.md"
+artifact_ledger = "policy/doc-artifacts.toml"
+
+[requirements]
+ledger_required = true
+templates_required = true
+support_tiers_required = true
+active_goal_required = true
+closeout_required_for_done_items = true
+"#
+}
+
+fn doc_artifacts() -> &'static str {
+    r#"
+schema_version = "1.0"
+policy = "cargo-allow-doc-artifacts"
+owner = "repo-infra"
+status = "advisory"
+"#
+}
+
+fn support_tiers() -> &'static str {
+    r#"
+# Support Tiers
+
+| Surface | Tier | Claim | Proof command | Notes |
+| --- | --- | --- | --- | --- |
+| Spec-system profile | Advisory | Source-of-truth graph artifacts can be linted. | cargo-allow check --profile spec-system --mode audit | Structural only. |
+"#
 }
 
 fn git(root: &std::path::Path, args: &[&str]) {
