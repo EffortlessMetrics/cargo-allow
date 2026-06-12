@@ -98,6 +98,20 @@ Run the default source-exception check separately from this opt-in profile:
 This shape keeps the default product path small while making the profile
 artifact available to reviewers and agents.
 
+Upload both default and profile artifacts together:
+
+```yaml
+- uses: actions/upload-artifact@v7.0.1
+  if: always()
+  with:
+    name: cargo-allow
+    path: target/cargo-allow/
+```
+
+The default no-new gate is the hard source-exception control. The spec-system
+artifact should start advisory or shadow unless the repository has already
+burned in objective structural checks.
+
 ## Claim Boundary
 
 The spec-system cargo-allow scan is structural source-tree graph validation. It

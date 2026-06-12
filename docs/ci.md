@@ -129,6 +129,28 @@ it does not execute proof commands.
 For adoption details, see
 [Run the spec-system profile in CI](how-to/run-spec-system-in-ci.md).
 
+Copy-paste shape for an optional profile artifact:
+
+```yaml
+- name: cargo-allow spec-system artifact
+  run: |
+    cargo-allow check \
+      --profile spec-system \
+      --mode audit \
+      --format json \
+      --output target/cargo-allow/spec-system.json
+    cargo-allow worklist \
+      --profile spec-system \
+      --format json \
+      --output target/cargo-allow/spec-system-worklist.json
+
+- uses: actions/upload-artifact@v7.0.1
+  if: always()
+  with:
+    name: cargo-allow
+    path: target/cargo-allow/
+```
+
 ## Artifacts
 
 Upload `target/cargo-allow/` even on failure. The report and receipt explain

@@ -1,27 +1,60 @@
-# cargo-allow docs
+# cargo-allow Docs
 
-These documents define the product lane for the current source-tree exception
-ledger and opt-in governance profiles around it.
+These documents define the default source-tree exception ledger and the opt-in
+governance profile model around it.
 
+## Start Here
+
+- [Onboarding](onboarding.md): choose the right first path: source exceptions,
+  no-new governance, spec-system, CI, cross-repo adoption, or friction filing.
+- [Getting started](getting-started.md): first-run tutorial for doctor, audit,
+  init/propose, and no-new checks.
 - [Changelog](../CHANGELOG.md): curated user-facing release ledger.
+- [Contributing](../CONTRIBUTING.md): local development, product boundaries,
+  and pull request expectations.
+
+## Understand The Model
+
 - [Design](design.md): cargo-allow's source-exception governance model.
 - [Claim boundaries](claim-boundaries.md): what current and future reports may
   claim.
-- [Contributing](../CONTRIBUTING.md): local development, product boundaries,
-  and pull request expectations.
-- [Roadmap](roadmap.md): the PR-sized path from source-tree ledger to mature
-  product.
 - [Source exception ledger](source-exception-ledger.md): the policy concepts and
   entry model.
+- [Structural identity v1](identity.md): the source-syntax identity contract
+  used by matching and diff posture.
+- [PR posture](pr-posture.md): reviewer-facing diff posture and net posture
+  semantics.
+- [Policy weakening](policy-weakening.md): policy edits that broaden, weaken,
+  or improve retained source exceptions.
+- [Roadmap](roadmap.md): the PR-sized path from source-tree ledger to mature
+  product.
+
+## Adopt cargo-allow
+
+- [Adopt no-new-debt](how-to/adopt-no-new-debt.md): move an existing repo toward
+  a no-new source-exception posture.
+- [Run in CI](how-to/run-in-ci.md): add default source-exception checks to CI.
+- [Review PR posture](how-to/review-pr-posture.md): use `cargo-allow diff` for
+  reviewer-facing posture.
+- [Explain an allow entry](how-to/explain-an-allow.md): inspect one retained
+  exception receipt.
+- [Fix broken evidence](how-to/fix-broken-evidence.md): repair local evidence
+  references.
+- [Prune stale allows](how-to/prune-stale-allows.md): remove expired or unused
+  receipts.
+- [Feed agent worklists](how-to/feed-agent-worklists.md): route bounded repair
+  work to humans and agents.
+
+## Use Opt-In Profiles
+
 - [Opt-in governance profiles](profiles.md): reusable profile architecture for
   source-tree config, structural validation, artifacts, worklists, doctor/init,
   and advisory/shadow/blocking rollout.
-- [Source-of-truth stack](source-of-truth/README.md): opt-in
-  governance graph for proposals, specs, ADRs, plans, goals, support tiers,
-  policy ledgers, and closeouts.
+- [Source-of-truth stack](source-of-truth/README.md): opt-in governance graph
+  for proposals, specs, ADRs, plans, goals, support tiers, policy ledgers, and
+  closeouts.
 - [Doc artifact ledger](source-of-truth/doc-artifact-ledger.md): advisory
-  registry for governed proposal/spec artifacts in the source-of-truth
-  graph.
+  registry for governed proposal/spec artifacts in the source-of-truth graph.
 - [Source-of-truth templates](templates/proposal.md): starter templates for
   proposals, specs, ADRs, implementation plans, plan items, closeouts, and PR
   bodies.
@@ -31,34 +64,31 @@ ledger and opt-in governance profiles around it.
   accepted behavior contract for the opt-in source-of-truth profile.
 - [Support tiers](status/SUPPORT_TIERS.md): claim-to-proof map for current
   cargo-allow surfaces and the opt-in spec-system profile.
-- [Active goal manifest](../.codex/goals/README.md): current Codex execution
-  state for the source-of-truth profile.
+- [Active goal manifest](../.codex/goals/README.md): Codex execution-state
+  model for the source-of-truth profile.
 - [Spec-system implementation plan](../plans/spec-system/implementation-plan.md):
   PR sequence for implementing the opt-in source-of-truth profile.
-- [Getting started](getting-started.md): first-run tutorial for doctor, audit,
-  init/propose, and no-new checks.
-- [Structural identity v1](identity.md): the source-syntax identity contract
-  used by matching and diff posture.
-- [PR posture](pr-posture.md): reviewer-facing diff posture and net posture
-  semantics.
-- [Policy weakening](policy-weakening.md): policy edits that broaden, weaken,
-  or improve retained source exceptions.
-- [Migration from xtask](migration-from-xtask.md): how bespoke allowlist tasks
-  should move into cargo-allow.
-- [CI](ci.md): GitHub Actions examples for PR posture diffs and mainline
-  checks.
-- [How-to guides](how-to/README.md): task guides for CI, explain, evidence
-  repair, PR posture review, stale pruning, migration, migration evidence
-  closeout, and agent worklists.
 - [Adopt the spec-system profile](how-to/adopt-spec-system-profile.md):
   first-hour setup for the opt-in source-of-truth graph profile.
 - [Run the spec-system profile in CI](how-to/run-spec-system-in-ci.md):
   advisory/shadow CI artifact guidance for this opt-in profile.
+
+## Move Repos And Migrate Legacy Policy
+
 - [Adopt cargo-allow across repos](how-to/adopt-cargo-allow-across-repos.md):
   migration playbook for default source-exception checks, opt-in profiles, CI
   artifacts, and adoption-friction issues.
-- [Crates](crates.md): workspace crate responsibilities and library namespace
-  policy.
+- [Migration from xtask](migration-from-xtask.md): how bespoke allowlist tasks
+  should move into cargo-allow.
+- [Migrate from xtask](how-to/migrate-from-xtask.md): task guide for legacy
+  policy migration.
+- [Migration evidence cookbook](how-to/migration-evidence-cookbook.md): examples
+  for preserving migration evidence.
+- [Close unsafe migration evidence](how-to/close-unsafe-migration-evidence.md):
+  close retained unsafe migration evidence.
+
+## Release And Publish
+
 - [0.1.0 release runbook](release/0.1.0.md): publish order, dry-run sequencing,
   and rollback limits.
 - [0.1.1 release record](release/0.1.1.md): completed patch release and
@@ -77,12 +107,21 @@ ledger and opt-in governance profiles around it.
   source-syntax identity hardening and legacy evidence preservation.
 - [0.1.7 release record](release/0.1.7.md): completed patch release for the
   opt-in spec-system preview profile.
-- [0.1.7 GitHub Release body](release/github/v0.1.7.md): prepared public
-  release notes for the `v0.1.7` GitHub Release.
+- [0.1.7 GitHub Release body](release/github/v0.1.7.md): public release notes
+  for the `v0.1.7` GitHub Release.
 - [0.1.8 release record](release/0.1.8.md): completed patch release for
   spec-system first-hour adoption cleanup.
-- [0.1.8 GitHub Release body](release/github/v0.1.8.md): prepared public
-  release notes for the `v0.1.8` GitHub Release.
+- [0.1.8 GitHub Release body](release/github/v0.1.8.md): public release notes
+  for the `v0.1.8` GitHub Release.
+
+## Reference
+
+- [How-to guides](how-to/README.md): task guide index.
+- [CI](ci.md): GitHub Actions examples for PR posture diffs, mainline checks,
+  and opt-in profile artifacts.
+- [Crates](crates.md): workspace crate responsibilities and library namespace
+  policy.
+- [Crate namespace](crate-namespace.md): first-party crate naming policy.
 - [Agent worklist prompt](agents/cargo-allow-worklist.md): bounded agent use of
   `cargo-allow worklist`.
 - [Schemas](schemas/README.md): JSON schemas for doctor, report, receipt,

@@ -36,6 +36,15 @@ artifacts. After the first source-of-truth graph is registered in
 `policy/doc-artifacts.toml`, set `active_goal_required = true` if the repository
 wants active-goal links to be enforced.
 
+Expected first-hour states:
+
+| State | Meaning | Next step |
+| --- | --- | --- |
+| `ready = true` | The profile files and configured roots are present enough for structural graph checks. | Run `check --profile spec-system --mode audit`. |
+| active goal optional | `active_goal_required = false`, so placeholder execution state does not fail setup. | Keep it false until real proposal/spec/plan links exist. |
+| empty worklist | No structural repair work was found in the current source-tree graph. | Register real artifacts or add CI artifact upload. |
+| non-empty worklist | The profile found bounded graph repair work. | Fix objective structural items first. |
+
 Run the graph check in audit posture:
 
 ```bash
@@ -54,6 +63,10 @@ cargo-allow worklist \
   --format json \
   --output target/cargo-allow/spec-system-worklist.json
 ```
+
+The JSON worklist is the agent-facing artifact. A useful item should name the
+finding kind, artifact ID when known, path, message, suggested actions, and the
+proof command to rerun the structural profile check.
 
 Inspect one registered artifact and its graph links:
 
@@ -93,6 +106,14 @@ making the profile part of default cargo-allow behavior.
 Promote only proven, low-noise structural checks later. The profile should not
 block on closeout freshness, support-tier completeness, or README claim coverage
 until those checks have enough local evidence to stay useful.
+
+Flip `active_goal_required = true` only after:
+
+- `policy/doc-artifacts.toml` registers the real proposal/spec/plan artifacts.
+- `.codex/goals/active.toml` points at those registered artifacts.
+- `cargo-allow check --profile spec-system --mode audit` has no unknown-link
+  findings for those edges.
+- the repository wants active-goal drift to become a setup/readiness signal.
 
 ## Claim Boundary
 
