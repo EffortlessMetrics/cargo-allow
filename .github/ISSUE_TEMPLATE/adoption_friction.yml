@@ -1,0 +1,95 @@
+name: Adoption friction
+description: Report friction found while adopting cargo-allow or an opt-in profile in another repo.
+title: "adoption: "
+labels: [adoption, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when another repository exposes confusing init output, false positives, missing profile primitives, unclear worklist items, schema gaps, or CI friction.
+  - type: input
+    id: repo
+    attributes:
+      label: Repository
+      description: Which repository were you adopting cargo-allow in?
+      placeholder: EffortlessMetrics/example-repo
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: cargo-allow version
+      description: Paste the version from `cargo-allow --version`.
+      placeholder: cargo-allow 0.1.7
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: Which command produced the issue?
+      render: shell
+      placeholder: cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Adoption area
+      description: Which part of adoption is involved?
+      options:
+        - init layout
+        - doctor readiness
+        - profile config
+        - doc artifact ledger
+        - graph validation
+        - worklist output
+        - report or JSON schema
+        - CI integration
+        - documentation
+        - Other or unknown
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+      description: What should cargo-allow have reported, generated, or explained?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: What did cargo-allow report, generate, or fail to explain?
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Why this matters
+      description: How does this block adoption or create unclear human or agent work?
+    validations:
+      required: true
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Relevant artifacts
+      description: Attach or paste focused snippets from reports, worklists, profile config, or ledgers.
+      value: |
+        - target/cargo-allow/spec-system.json:
+        - target/cargo-allow/spec-system-worklist.json:
+        - policy/spec-system.toml:
+        - policy/doc-artifacts.toml:
+    validations:
+      required: false
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Claim boundary
+      description: Confirm whether this is about static source-tree validation rather than proof execution.
+      value: |
+        This issue is about static source-tree validation. No proof-command execution, GitHub state validation, Cargo build, rustc, Clippy, coverage, ripr, unsafe-review, or network check is expected from cargo-allow's scan.
+    validations:
+      required: true

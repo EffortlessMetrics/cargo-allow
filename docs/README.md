@@ -13,6 +13,9 @@ ledger and opt-in governance profiles around it.
   product.
 - [Source exception ledger](source-exception-ledger.md): the policy concepts and
   entry model.
+- [Opt-in governance profiles](profiles.md): reusable profile architecture for
+  source-tree config, structural validation, artifacts, worklists, doctor/init,
+  and advisory/shadow/blocking rollout.
 - [Source-of-truth stack](source-of-truth/README.md): opt-in
   governance graph for proposals, specs, ADRs, plans, goals, support tiers,
   policy ledgers, and closeouts.
@@ -51,6 +54,9 @@ ledger and opt-in governance profiles around it.
   first-hour setup for the opt-in source-of-truth graph profile.
 - [Run the spec-system profile in CI](how-to/run-spec-system-in-ci.md):
   advisory/shadow CI artifact guidance for this opt-in profile.
+- [Adopt cargo-allow across repos](how-to/adopt-cargo-allow-across-repos.md):
+  migration playbook for default source-exception checks, opt-in profiles, CI
+  artifacts, and adoption-friction issues.
 - [Crates](crates.md): workspace crate responsibilities and library namespace
   policy.
 - [0.1.0 release runbook](release/0.1.0.md): publish order, dry-run sequencing,

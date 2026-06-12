@@ -27,6 +27,9 @@ inventory without executing repository code.
   and reviewer/agent-oriented report and worklist posture.
 - Added first-hour adoption and CI guidance for treating `spec-system` as one
   opt-in governance profile, not default cargo-allow behavior.
+- Added opt-in profile architecture and cross-repo adoption guidance so
+  spec-system portability issues can feed back into cargo-allow instead of
+  becoming per-repo workarounds.
 
 ### Known limitations
 
