@@ -67,4 +67,32 @@ fn spec_system_schema_locks_profile_commands_and_readiness() {
         "/$defs/readiness_check/properties/status/enum",
         &["ready", "missing", "invalid"],
     );
+
+    let finding = required_schema_pointer("spec-system", &schema, "/$defs/finding");
+    assert_eq!(
+        finding.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "spec-system findings should reject unknown fields"
+    );
+    assert_required_fields(
+        "spec-system finding",
+        finding,
+        &["kind", "message", "blocking_eligible"],
+    );
+    assert_enum_equals(
+        "spec-system blocking reason",
+        &schema,
+        "/$defs/blocking_reason/enum",
+        &[
+            "profile_config_parse_failure",
+            "doc_artifact_ledger_missing",
+            "doc_artifact_ledger_parse_failure",
+            "duplicate_id",
+            "invalid_artifact_kind_or_status",
+            "artifact_file_missing",
+            "artifact_file_unreadable",
+            "artifact_id_not_in_file",
+            "unknown_link_target",
+        ],
+    );
 }

@@ -164,10 +164,13 @@ ledger, support tiers, active goals, and templates. The root `mode` field
 comes from `policy/spec-system.toml` or the built-in advisory default. Advisory
 findings keep `status = "passed"` and `failed = false`; shadow findings set
 `status = "failed"` and `failed = true` so CI and agents can see failure posture
-without making the opt-in profile part of default cargo-allow behavior.
-Blocking mode uses the same artifact posture fields, but selected structural
-checks are not promoted to command-blocking behavior until a later profile
-promotion PR.
+without making this profile part of default cargo-allow behavior.
+Blocking mode uses the same artifact posture fields and only fails commands for
+findings with `blocking_eligible = true`. The initial blocking-eligible classes
+are objective structural failures such as malformed explicit profile config,
+missing or invalid doc-artifact ledgers, duplicate artifact IDs, invalid
+artifact kinds or statuses, missing registered files, missing declared IDs, and
+unknown link targets. Judgment-heavy lifecycle checks remain advisory.
 Diff reports may include optional `diff.summary.broken_evidence_links`,
 `diff.summary.missing_evidence`, and `diff.summary.weak_evidence_references`
 when the compared head policy has evidence-health signals. These duplicate the

@@ -26,17 +26,16 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-024"
+id = "spec-system-pr-025"
 status = "ready"
-title = "Implement blocking behavior for safe structural lints"
+title = "Polish spec-system report and worklist output"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
 proof_commands = [
-  "rtk cargo test -p allow-policy spec_system",
   "rtk cargo test -p cargo-allow spec_system_profile",
   "rtk cargo test -p cargo-allow spec_system_worklist",
-  "rtk cargo test -p cargo-allow spec_system_doctor",
+  "rtk cargo test -p cargo-allow artifact_schema",
   "rtk cargo run -p cargo-allow -- doctor --profile spec-system --format json",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
   "rtk cargo run -p cargo-allow -- worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json",
@@ -47,7 +46,7 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Keep policy/spec-system.toml in shadow while implementing blocking behavior.",
-  "Limit the first blocking behavior to safe structural failures: duplicate IDs, missing artifact files, invalid statuses or kinds, and unknown links.",
-  "Do not make nuanced checks such as stale active goals, missing closeouts, support-tier completeness, or README claim coverage command-blocking yet.",
+  "Keep policy/spec-system.toml in shadow while polishing output.",
+  "Make spec-system reports easier for reviewers to scan without turning them into Markdown formatting lint.",
+  "Make worklist repair items easier for agents to route without executing proof commands or broadening claim boundaries.",
 ]
