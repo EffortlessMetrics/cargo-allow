@@ -48,13 +48,23 @@ status = "accepted"
 owner = "repo-infra"
 created = "2026-06-12"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
+
+[[artifact]]
+id = "CARGO-ALLOW-SUPPORT-0001"
+kind = "support_tier"
+path = "docs/status/SUPPORT_TIERS.md"
+status = "active"
+owner = "repo-infra"
+created = "2026-06-12"
+linked_proposal = "CARGO-ALLOW-PROP-0001"
+linked_spec = "CARGO-ALLOW-SPEC-0001"
 ```
 
 The registry is the machine-readable index. Markdown documents remain the human
 explanation. The current advisory registry starts with the accepted
-`CARGO-ALLOW-PROP-0001` proposal and `CARGO-ALLOW-SPEC-0001` spec. Later PRs
-should add plans, active goals, support tiers, policy ledgers, and closeouts
-only as those artifacts land.
+`CARGO-ALLOW-PROP-0001` proposal, `CARGO-ALLOW-SPEC-0001` spec, and
+`CARGO-ALLOW-SUPPORT-0001` support-tier map. Later PRs should add plans, active
+goals, policy ledgers, and closeouts only as those artifacts land.
 
 ## Link Rules
 

@@ -10,18 +10,18 @@ items.
 
 ## Scope
 
-The initial ledger registers the accepted proposal and spec for the planned
+The initial ledger registers accepted source-of-truth artifacts for the planned
 profile:
 
 - `CARGO-ALLOW-PROP-0001`
 - `CARGO-ALLOW-SPEC-0001`
+- `CARGO-ALLOW-SUPPORT-0001`
 
 Later source-of-truth artifacts should be added when they land:
 
 - ADRs.
 - implementation plans.
 - active goal manifests.
-- support-tier maps.
 - policy ledgers.
 - closeouts.
 - release records when they become governed artifacts.
