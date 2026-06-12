@@ -160,8 +160,9 @@ graph scanner.
 
 ## Specs To Create
 
-- `CARGO-ALLOW-SPEC-0001`: spec-system profile behavior, config, artifact
-  ledger, lint outputs, worklist items, and source-tree claim boundary.
+- [CARGO-ALLOW-SPEC-0001](../specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md):
+  spec-system profile behavior, config, artifact ledger, lint outputs, worklist
+  items, and source-tree claim boundary.
 
 ## Support-Tier Impact
 
