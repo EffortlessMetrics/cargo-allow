@@ -2262,7 +2262,7 @@ family = "documentation"
 path = "docs/release/0.1.7.md"
 owner = "core/release"
 classification = "release_runbook"
-reason = "Prepares draft 0.1.7 preview release notes for the opt-in spec-system profile without publishing or changing package versions."
+reason = "Records the 0.1.7 preview release-candidate notes for the opt-in spec-system profile without publishing, tagging, or claiming stable support."
 created = "2026-06-12"
 review_after = "2026-11-01"
 evidence = ["doc:docs/release/0.1.6.md", "doc:docs/how-to/adopt-spec-system-profile.md", "doc:docs/claim-boundaries.md"]
@@ -2273,6 +2273,29 @@ symbol = "docs/release/0.1.7.md"
 target_fingerprint = "md"
 line_hint = 1
 glob = "docs/release/0.1.7.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0180"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/github/v0.1.7.md"
+owner = "core/release"
+classification = "release_notes"
+reason = "Prepares the public GitHub Release body for the future authorized v0.1.7 spec-system preview release without creating a tag or release."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/release/0.1.7.md", "doc:CHANGELOG.md", "doc:docs/claim-boundaries.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/github/v0.1.7.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/release/github/v0.1.7.md"
 
 [allow.last_seen]
 line = 1

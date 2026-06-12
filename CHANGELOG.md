@@ -8,6 +8,10 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [0.1.7] - 2026-06-12
+
 ### Spec-system preview
 
 - Added `spec-system` as an opt-in governance profile for static source-tree
