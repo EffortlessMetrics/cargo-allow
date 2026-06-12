@@ -9,18 +9,17 @@ target repository perfect in the first PR.
 
 ## 1. Pick The Version
 
-Use the latest published cargo-allow release for normal adoption. For the
-`spec-system` preview, use `0.1.7` only after the 0.1.7 release record says it
-has been published and install-smoke verified.
+Use the latest published cargo-allow release for normal adoption. The
+`spec-system` preview is available in the published `0.1.7` release and later.
 
 ```bash
 cargo install cargo-allow --locked
 ```
 
-For a pinned published release:
+For a pinned published release with the `spec-system` preview:
 
 ```bash
-cargo install cargo-allow --version <published-version> --locked
+cargo install cargo-allow --version 0.1.7 --locked
 ```
 
 Do not pin a release-candidate version in another repository before it is
