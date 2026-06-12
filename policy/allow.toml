@@ -71,6 +71,52 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0172"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/spec-system.toml"
+owner = "core/policy"
+classification = "spec_system_profile_config"
+reason = "Enables the opt-in spec-system profile in advisory mode for cargo-allow dogfood without changing default source-exception behavior."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["spec:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md", "doc:plans/spec-system/implementation-plan.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/spec-system.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "policy/spec-system.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0173"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/adr/README.md"
+owner = "core/policy"
+classification = "source_truth_adr_root"
+reason = "Creates the configured ADR root for the advisory spec-system source-of-truth graph."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/source-of-truth/artifact-taxonomy.md", "doc:docs/templates/adr.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/adr/README.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/adr/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0169"
 kind = "non_rust_file"
 family = "documentation"
