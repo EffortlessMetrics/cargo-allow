@@ -21,9 +21,9 @@ or a narrow PR, not an invented claim.
 
 ## Execution Boundary
 
-The planned `spec-system` profile is a structural scanner. It may read files,
-parse TOML, parse simple Markdown structures, compare IDs and paths, and emit
-reports, receipts, and worklists.
+The `spec-system` profile is a structural scanner. It may read files, parse
+TOML, parse simple Markdown structures, compare IDs and paths, and emit reports,
+receipts, and worklists.
 
 It must not:
 
@@ -42,7 +42,7 @@ cargo-allow's source-tree scan.
 
 ## Work Item Discipline
 
-Future `cargo-allow worklist --profile spec-system --format json` output should
+`cargo-allow worklist --profile spec-system --format json` output should
 produce bounded source-of-truth repairs.
 
 Good work items:
@@ -81,7 +81,7 @@ and eventually CLI support.
 The active goal manifest should describe the current agent lane, not product
 runtime state.
 
-Planned shape:
+Example active goal manifest:
 
 ```toml
 schema_version = "1.0"

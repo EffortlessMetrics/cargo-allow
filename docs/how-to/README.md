@@ -12,6 +12,8 @@ Use these guides when you already know the task you want to complete.
 - [Migration evidence cookbook](migration-evidence-cookbook.md)
 - [Close unsafe migration evidence](close-unsafe-migration-evidence.md)
 - [Feed agent worklists](feed-agent-worklists.md)
+- [Adopt the spec-system profile](adopt-spec-system-profile.md)
+- [Run the spec-system profile in CI](run-spec-system-in-ci.md)
 
 All guides keep the same claim boundary: cargo-allow scans repository files
 directly and does not execute repository code, Cargo metadata, rustc, Clippy,

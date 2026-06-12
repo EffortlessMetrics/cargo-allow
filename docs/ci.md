@@ -126,6 +126,9 @@ runs in shadow posture for this repo: findings set failure posture in the
 spec-system artifacts, but they do not make spec-system validation part of
 default cargo-allow behavior or execute proof commands.
 
+For adoption details, see
+[Run the spec-system profile in CI](how-to/run-spec-system-in-ci.md).
+
 ## Artifacts
 
 Upload `target/cargo-allow/` even on failure. The report and receipt explain

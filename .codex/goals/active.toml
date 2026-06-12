@@ -26,9 +26,9 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-026"
+id = "spec-system-pr-027"
 status = "ready"
-title = "Add first-hour spec-system adoption and CI docs"
+title = "Prepare opt-in spec-system preview release notes"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
@@ -43,7 +43,7 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Keep policy/spec-system.toml in shadow while documenting adoption.",
-  "Document first-hour use as one opt-in governance profile among possible future profiles, not as a default path.",
-  "Document CI usage as advisory/shadow artifact upload first, with blocking limited to proven structural checks later.",
+  "Keep policy/spec-system.toml in shadow while preparing release notes.",
+  "Frame spec-system as an opt-in preview governance profile, not default cargo-allow behavior.",
+  "Preserve the structural source-tree claim boundary and avoid release-stability claims.",
 ]

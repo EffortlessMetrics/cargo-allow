@@ -1,17 +1,15 @@
 # Doc Artifact Ledger
 
-`policy/doc-artifacts.toml` is the planned machine-readable registry for the
+`policy/doc-artifacts.toml` is the machine-readable registry for the
 `spec-system` source-of-truth graph.
 
-This ledger is advisory in this PR. Current cargo-allow releases do not read it
-or enforce it. It exists so later profile implementation PRs have a concrete
-source-tree policy artifact to parse, validate, report, and route into worklist
-items.
+This ledger is part of the spec-system profile. cargo-allow reads it only when
+a caller uses `--profile spec-system`; default source-exception checks continue
+to use `policy/allow.toml`.
 
 ## Scope
 
-The initial ledger registers accepted source-of-truth artifacts for the planned
-profile:
+The initial ledger registers accepted source-of-truth artifacts for the profile:
 
 - `CARGO-ALLOW-PROP-0001`
 - `CARGO-ALLOW-SPEC-0001`
@@ -58,8 +56,7 @@ edges. The initial spec row uses `linked_proposal` to connect
 
 ## Graph Checks
 
-Later `spec-system` implementation PRs should use this ledger to validate
-static graph structure:
+The `spec-system` profile uses this ledger to validate static graph structure:
 
 - artifact IDs are unique.
 - artifact paths exist.
