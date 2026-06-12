@@ -56,7 +56,8 @@ Each artifact owns one part of the repo's durable product story:
 
 The detailed artifact contract is in
 [artifact taxonomy](artifact-taxonomy.md). Link rules are in
-[linking model](linking-model.md). Agent use is in
+[linking model](linking-model.md). The initial machine-readable registry is
+[doc artifact ledger](doc-artifact-ledger.md). Agent use is in
 [agent operating model](agent-operating-model.md).
 Starter templates are in [proposal](../templates/proposal.md),
 [spec](../templates/spec.md), [ADR](../templates/adr.md),

@@ -24,7 +24,7 @@ These roots are planned. They are not required by the default cargo-allow scan.
 
 ## Registry
 
-A future `policy/doc-artifacts.toml` ledger should register governed artifacts:
+`policy/doc-artifacts.toml` registers governed source-of-truth artifacts:
 
 ```toml
 schema_version = "1.0"
@@ -51,7 +51,10 @@ linked_proposal = "CARGO-ALLOW-PROP-0001"
 ```
 
 The registry is the machine-readable index. Markdown documents remain the human
-explanation.
+explanation. The current advisory registry starts with the accepted
+`CARGO-ALLOW-PROP-0001` proposal and `CARGO-ALLOW-SPEC-0001` spec. Later PRs
+should add plans, active goals, support tiers, policy ledgers, and closeouts
+only as those artifacts land.
 
 ## Link Rules
 
