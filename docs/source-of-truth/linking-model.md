@@ -58,13 +58,27 @@ owner = "repo-infra"
 created = "2026-06-12"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
+
+[[artifact]]
+id = "CARGO-ALLOW-GOAL-0001"
+kind = "active_goal"
+path = ".codex/goals/active.toml"
+status = "active"
+owner = "codex"
+created = "2026-06-12"
+linked_proposal = "CARGO-ALLOW-PROP-0001"
+linked_spec = "CARGO-ALLOW-SPEC-0001"
+linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
+linked_plan = "plans/spec-system/implementation-plan.md"
+linked_plan_status = "planned"
 ```
 
 The registry is the machine-readable index. Markdown documents remain the human
 explanation. The current advisory registry starts with the accepted
 `CARGO-ALLOW-PROP-0001` proposal, `CARGO-ALLOW-SPEC-0001` spec, and
-`CARGO-ALLOW-SUPPORT-0001` support-tier map. Later PRs should add plans, active
-goals, policy ledgers, and closeouts only as those artifacts land.
+`CARGO-ALLOW-SUPPORT-0001` support-tier map, plus the active
+`CARGO-ALLOW-GOAL-0001` manifest. Later PRs should add plans, policy ledgers,
+and closeouts only as those artifacts land.
 
 ## Link Rules
 

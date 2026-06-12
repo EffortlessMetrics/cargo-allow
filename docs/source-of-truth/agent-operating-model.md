@@ -106,5 +106,7 @@ proof_commands = [
 ]
 ```
 
-This manifest becomes useful only after the proposal, spec, and implementation
-plan exist. It is not part of this documentation-only PR.
+The current manifest is
+[`CARGO-ALLOW-GOAL-0001`](../../.codex/goals/active.toml). Its
+`linked_plan` value points to the planned implementation plan path until the
+next source-of-truth PR adds that plan.

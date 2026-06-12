@@ -1,0 +1,41 @@
+schema_version = "1.0"
+
+id = "CARGO-ALLOW-GOAL-0001"
+title = "Spec-system profile"
+status = "active"
+owner = "codex"
+created = "2026-06-12"
+
+objective = """
+Build an opt-in spec-system profile into cargo-allow so repositories can govern
+their proposal, spec, ADR, implementation-plan, active-goal, support-tier,
+policy-ledger, and closeout graph without changing default source-exception
+behavior.
+"""
+
+linked_proposal = "CARGO-ALLOW-PROP-0001"
+linked_spec = "CARGO-ALLOW-SPEC-0001"
+linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
+linked_plan = "plans/spec-system/implementation-plan.md"
+linked_plan_status = "planned"
+
+claim_boundary = """
+This manifest is agent execution state. It does not implement spec-system
+linting, prove claims, execute proof commands, or replace the proposal, spec,
+support-tier map, implementation plan, policy ledgers, or closeouts.
+"""
+
+[[work_item]]
+id = "spec-system-pr-008"
+status = "ready"
+title = "Add spec-system implementation plan"
+linked_proposal = "CARGO-ALLOW-PROP-0001"
+linked_spec = "CARGO-ALLOW-SPEC-0001"
+linked_plan = "plans/spec-system/implementation-plan.md"
+proof_commands = [
+  "rtk git diff --cached --check",
+  "rtk cargo fmt --all --check",
+  "rtk cargo clippy --workspace --all-targets -- -D warnings",
+  "rtk cargo test --workspace",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]

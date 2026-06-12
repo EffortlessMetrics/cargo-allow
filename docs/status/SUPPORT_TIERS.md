@@ -36,7 +36,7 @@ the source-tree state behind the claim.
 | Source exception ledger | Stable | `cargo-allow check --mode no-new` reports whether scanned source-tree findings are matched by `policy/allow.toml` without executing project code. | `cargo-allow check --mode no-new` | Source-tree and source-syntax only; see [claim boundaries](../claim-boundaries.md). |
 | PR posture | Stabilizing | `cargo-allow diff --base <base>` reports source-exception posture changes for a pull request. | `cargo-allow diff --base origin/main --format markdown` | Requires a meaningful base revision; does not prove build, test, coverage, or unsafe correctness. |
 | Worklist routing | Stabilizing | `cargo-allow worklist --format json` emits bounded source-exception repair items for humans and agents. | `cargo-allow worklist --format json` | Worklist proof commands are suggestions for authorized operators, not commands cargo-allow ran. |
-| Spec-system profile | Advisory | The repo carries accepted proposal, spec, artifact-ledger, and support-tier artifacts for a planned opt-in source-of-truth graph profile. Current releases do not implement `--profile spec-system`. | `cargo-allow check --mode no-new` | This checks that the files are present in scanned source-tree inventory and matched by policy; it is not graph validation. |
+| Spec-system profile | Advisory | The repo carries accepted proposal, spec, artifact-ledger, support-tier, and active-goal artifacts for a planned opt-in source-of-truth graph profile. Current releases do not implement `--profile spec-system`. | `cargo-allow check --mode no-new` | This checks that the files are present in scanned source-tree inventory and matched by policy; it is not graph validation. |
 
 ## Claim Boundary
 
