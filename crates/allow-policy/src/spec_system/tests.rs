@@ -479,8 +479,747 @@ fn rejects_unknown_artifact_status() {
     assert!(err.to_string().contains("retired"));
 }
 
+#[test]
+fn validates_current_repository_artifact_files() {
+    let ledger_result =
+        parse_doc_artifact_ledger(include_str!("../../../../policy/doc-artifacts.toml"));
+    assert!(
+        ledger_result.is_ok(),
+        "ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(repo_root(), &ledger, &test_roots());
+
+    assert!(
+        result.is_ok(),
+        "repo artifacts validate: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn rejects_missing_artifact_file() {
+    let root = temp_root("missing-file");
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PROP-0001"
+            kind = "proposal"
+            path = "docs/proposals/CARGO-ALLOW-PROP-0001-missing.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("artifact file missing"));
+}
+
+#[test]
+fn rejects_id_missing_from_file() {
+    let root = temp_root("missing-id");
+    write_file(
+        &root,
+        "docs/proposals/CARGO-ALLOW-PROP-0001-missing-id.md",
+        "# Proposal\n\nNo visible artifact ID here.\n",
+    );
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PROP-0001"
+            kind = "proposal"
+            path = "docs/proposals/CARGO-ALLOW-PROP-0001-missing-id.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("not found in artifact file"));
+}
+
+#[test]
+fn rejects_kind_path_mismatch() {
+    let root = temp_root("kind-path-mismatch");
+    write_file(
+        &root,
+        "docs/proposals/CARGO-ALLOW-SPEC-0001-wrong-root.md",
+        "CARGO-ALLOW-SPEC-0001\n",
+    );
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/proposals/CARGO-ALLOW-SPEC-0001-wrong-root.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("does not match artifact path"));
+}
+
+#[test]
+fn rejects_artifact_path_with_parent_segment() {
+    let root = temp_root("parent-path");
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/../CARGO-ALLOW-SPEC-0001.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("must stay under the source tree"));
+}
+
+#[test]
+fn rejects_absolute_artifact_path() {
+    let root = temp_root("absolute-path");
+    let absolute = root
+        .join("docs/specs/CARGO-ALLOW-SPEC-0001.md")
+        .to_string_lossy()
+        .replace('\\', "\\\\");
+    let ledger_text = format!(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "{absolute}"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#
+    );
+    let ledger_result = parse_doc_artifact_ledger(&ledger_text);
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("must be relative"));
+}
+
+#[test]
+fn rejects_directory_at_artifact_path() {
+    let root = temp_root("directory-path");
+    let directory_result =
+        std::fs::create_dir_all(root.join("docs/specs/CARGO-ALLOW-SPEC-0001.md"));
+    assert!(
+        directory_result.is_ok(),
+        "artifact directory should be created: {:?}",
+        directory_result.err()
+    );
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("artifact file missing"));
+}
+
+#[test]
+fn rejects_artifact_id_substring_match() {
+    let root = temp_root("id-substring");
+    write_file(
+        &root,
+        "docs/specs/CARGO-ALLOW-SPEC-0001.md",
+        "CARGO-ALLOW-SPEC-00010\n",
+    );
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("not found in artifact file"));
+}
+
+#[test]
+fn rejects_support_tier_path_mismatch() {
+    let root = temp_root("support-tier-mismatch");
+    write_file(
+        &root,
+        "docs/status/CARGO-ALLOW-SUPPORT-0001.md",
+        "CARGO-ALLOW-SUPPORT-0001\n",
+    );
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SUPPORT-0001"
+            kind = "support_tier"
+            path = "docs/status/CARGO-ALLOW-SUPPORT-0001.md"
+            status = "active"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("does not match artifact path"));
+}
+
+#[test]
+fn rejects_active_goal_wrong_root() {
+    let root = temp_root("goal-wrong-root");
+    write_file(
+        &root,
+        "plans/CARGO-ALLOW-GOAL-0001.toml",
+        "CARGO-ALLOW-GOAL-0001\n",
+    );
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-GOAL-0001"
+            kind = "active_goal"
+            path = "plans/CARGO-ALLOW-GOAL-0001.toml"
+            status = "active"
+            owner = "codex"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("does not match artifact path"));
+}
+
+#[test]
+fn accepts_policy_ledger_under_policy_root() {
+    let root = temp_root("policy-ledger-root");
+    write_file(
+        &root,
+        "policy/spec-system.toml",
+        "CARGO-ALLOW-POLICY-0001\n",
+    );
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-POLICY-0001"
+            kind = "policy_ledger"
+            path = "policy/spec-system.toml"
+            status = "draft"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(
+        result.is_ok(),
+        "policy ledger should validate: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn accepts_superseded_with_replacement() {
+    let root = temp_root("superseded-ok");
+    write_file(
+        &root,
+        "docs/specs/CARGO-ALLOW-SPEC-0001-old.md",
+        "CARGO-ALLOW-SPEC-0001\n",
+    );
+    write_file(
+        &root,
+        "docs/specs/CARGO-ALLOW-SPEC-0002-new.md",
+        "CARGO-ALLOW-SPEC-0002\n",
+    );
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-old.md"
+            status = "superseded"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            superseded_by = "CARGO-ALLOW-SPEC-0002"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0002"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0002-new.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(
+        result.is_ok(),
+        "superseded replacement should validate: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn rejects_superseded_missing_replacement() {
+    let root = temp_root("superseded-missing");
+    write_file(
+        &root,
+        "docs/specs/CARGO-ALLOW-SPEC-0001-old.md",
+        "CARGO-ALLOW-SPEC-0001\n",
+    );
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-old.md"
+            status = "superseded"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            superseded_by = "CARGO-ALLOW-SPEC-9999"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("superseded_by target"));
+}
+
+#[test]
+fn rejects_superseded_without_replacement() {
+    let root = temp_root("superseded-none");
+    write_file(
+        &root,
+        "docs/specs/CARGO-ALLOW-SPEC-0001-old.md",
+        "CARGO-ALLOW-SPEC-0001\n",
+    );
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-old.md"
+            status = "superseded"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("requires superseded_by"));
+}
+
+#[test]
+fn rejects_superseded_self_replacement() {
+    let root = temp_root("superseded-self");
+    write_file(
+        &root,
+        "docs/specs/CARGO-ALLOW-SPEC-0001-old.md",
+        "CARGO-ALLOW-SPEC-0001\n",
+    );
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-old.md"
+            status = "superseded"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            superseded_by = "CARGO-ALLOW-SPEC-0001"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("must not supersede itself"));
+}
+
+#[test]
+fn rejects_superseded_replacement_that_is_also_superseded() {
+    let root = temp_root("superseded-chain");
+    write_file(
+        &root,
+        "docs/specs/CARGO-ALLOW-SPEC-0001-old.md",
+        "CARGO-ALLOW-SPEC-0001\n",
+    );
+    write_file(
+        &root,
+        "docs/specs/CARGO-ALLOW-SPEC-0002-old.md",
+        "CARGO-ALLOW-SPEC-0002\n",
+    );
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-old.md"
+            status = "superseded"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            superseded_by = "CARGO-ALLOW-SPEC-0002"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0002"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0002-old.md"
+            status = "superseded"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            superseded_by = "CARGO-ALLOW-SPEC-0003"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_files(&root, &ledger, &test_roots());
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("is also superseded"));
+}
+
 fn unique_stamp() -> u128 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |duration| duration.as_nanos())
+}
+
+fn repo_root() -> std::path::PathBuf {
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn temp_root(label: &str) -> std::path::PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-spec-system-{label}-{}-{}",
+        std::process::id(),
+        unique_stamp()
+    ));
+    let create_result = std::fs::create_dir_all(&root);
+    assert!(
+        create_result.is_ok(),
+        "temp root should be created: {:?}",
+        create_result.err()
+    );
+    root
+}
+
+fn write_file(root: &std::path::Path, relative_path: &str, text: &str) {
+    let path = root.join(relative_path);
+    if let Some(parent) = path.parent() {
+        let create_result = std::fs::create_dir_all(parent);
+        assert!(
+            create_result.is_ok(),
+            "artifact parent should be created: {:?}",
+            create_result.err()
+        );
+    }
+    let write_result = std::fs::write(&path, text);
+    assert!(
+        write_result.is_ok(),
+        "artifact file should be written: {:?}",
+        write_result.err()
+    );
+}
+
+fn test_roots() -> SpecSystemRoots {
+    SpecSystemRoots {
+        proposals: "docs/proposals".to_string(),
+        specs: "docs/specs".to_string(),
+        adrs: "docs/adr".to_string(),
+        plans: "plans".to_string(),
+        goals: ".codex/goals".to_string(),
+        support_tiers: "docs/status/SUPPORT_TIERS.md".to_string(),
+        artifact_ledger: "policy/doc-artifacts.toml".to_string(),
+    }
 }
