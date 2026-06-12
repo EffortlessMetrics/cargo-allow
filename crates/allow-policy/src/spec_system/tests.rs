@@ -502,6 +502,805 @@ fn validates_current_repository_artifact_files() {
 }
 
 #[test]
+fn validates_current_repository_artifact_links() {
+    let ledger_result =
+        parse_doc_artifact_ledger(include_str!("../../../../policy/doc-artifacts.toml"));
+    assert!(
+        ledger_result.is_ok(),
+        "ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(
+        result.is_ok(),
+        "repo artifact links validate: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn rejects_accepted_spec_without_proposal_or_standalone_reason() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("requires linked_proposal"));
+    assert!(err.to_string().contains("standalone_reason"));
+}
+
+#[test]
+fn accepts_standalone_spec_with_reason() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            standalone_reason = "Small internal contract that does not need a proposal."
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(
+        result.is_ok(),
+        "standalone spec should validate: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn rejects_blank_standalone_reason_for_accepted_spec() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            standalone_reason = "  "
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("requires linked_proposal"));
+}
+
+#[test]
+fn rejects_unknown_linked_spec_target() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SUPPORT-0001"
+            kind = "support_tier"
+            path = "docs/status/SUPPORT_TIERS.md"
+            status = "active"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            linked_spec = "CARGO-ALLOW-SPEC-9999"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("linked_spec target"));
+    assert!(err.to_string().contains("is not registered"));
+}
+
+#[test]
+fn rejects_linked_proposal_kind_mismatch() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            linked_proposal = "CARGO-ALLOW-SPEC-0002"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0002"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0002-target.md"
+            status = "draft"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("linked_proposal target"));
+    assert!(err.to_string().contains("expected Proposal"));
+}
+
+#[test]
+fn accepts_active_goal_linked_plan_by_path() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PROP-0001"
+            kind = "proposal"
+            path = "docs/proposals/CARGO-ALLOW-PROP-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            linked_proposal = "CARGO-ALLOW-PROP-0001"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PLAN-0001"
+            kind = "implementation_plan"
+            path = "plans/spec-system/implementation-plan.md"
+            status = "active"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            linked_spec = "CARGO-ALLOW-SPEC-0001"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-GOAL-0001"
+            kind = "active_goal"
+            path = ".codex/goals/active.toml"
+            status = "active"
+            owner = "codex"
+            created = "2026-06-12"
+            linked_proposal = "CARGO-ALLOW-PROP-0001"
+            linked_spec = "CARGO-ALLOW-SPEC-0001"
+            linked_plan = "plans/spec-system/implementation-plan.md"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(
+        result.is_ok(),
+        "active goal should resolve plan by path: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn rejects_active_goal_unknown_plan() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PROP-0001"
+            kind = "proposal"
+            path = "docs/proposals/CARGO-ALLOW-PROP-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            linked_proposal = "CARGO-ALLOW-PROP-0001"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-GOAL-0001"
+            kind = "active_goal"
+            path = ".codex/goals/active.toml"
+            status = "active"
+            owner = "codex"
+            created = "2026-06-12"
+            linked_proposal = "CARGO-ALLOW-PROP-0001"
+            linked_spec = "CARGO-ALLOW-SPEC-0001"
+            linked_plan = "plans/spec-system/missing.md"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("linked_plan target"));
+    assert!(err.to_string().contains("not registered by id or path"));
+}
+
+#[test]
+fn rejects_active_goal_missing_required_spec_link() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PROP-0001"
+            kind = "proposal"
+            path = "docs/proposals/CARGO-ALLOW-PROP-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PLAN-0001"
+            kind = "implementation_plan"
+            path = "plans/spec-system/implementation-plan.md"
+            status = "active"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            linked_proposal = "CARGO-ALLOW-PROP-0001"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-GOAL-0001"
+            kind = "active_goal"
+            path = ".codex/goals/active.toml"
+            status = "active"
+            owner = "codex"
+            created = "2026-06-12"
+            linked_proposal = "CARGO-ALLOW-PROP-0001"
+            linked_plan = "CARGO-ALLOW-PLAN-0001"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("requires linked_spec"));
+}
+
+#[test]
+fn rejects_active_plan_without_proposal_or_spec() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PLAN-0001"
+            kind = "implementation_plan"
+            path = "plans/spec-system/implementation-plan.md"
+            status = "active"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(
+        err.to_string()
+            .contains("active plan requires linked_proposal or linked_spec")
+    );
+}
+
+#[test]
+fn rejects_accepted_adr_without_spec_or_standalone_reason() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-ADR-0001"
+            kind = "adr"
+            path = "docs/adr/CARGO-ALLOW-ADR-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("requires linked_spec"));
+    assert!(err.to_string().contains("standalone_reason"));
+}
+
+#[test]
+fn accepts_standalone_adr_with_reason() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-ADR-0001"
+            kind = "adr"
+            path = "docs/adr/CARGO-ALLOW-ADR-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            standalone_reason = "Repository-wide architecture decision."
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(
+        result.is_ok(),
+        "standalone ADR should validate: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn rejects_closeout_without_linked_plan() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-CLOSEOUT-0001"
+            kind = "closeout"
+            path = "plans/spec-system/closeout.md"
+            status = "done"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("requires linked_plan"));
+}
+
+#[test]
+fn accepts_closeout_linked_plan_by_id() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PROP-0001"
+            kind = "proposal"
+            path = "docs/proposals/CARGO-ALLOW-PROP-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PLAN-0001"
+            kind = "implementation_plan"
+            path = "plans/spec-system/implementation-plan.md"
+            status = "active"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            linked_proposal = "CARGO-ALLOW-PROP-0001"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-CLOSEOUT-0001"
+            kind = "closeout"
+            path = "plans/spec-system/closeout.md"
+            status = "done"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            linked_plan = "CARGO-ALLOW-PLAN-0001"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(
+        result.is_ok(),
+        "closeout should resolve plan by id: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn rejects_replaces_unknown_target() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0002"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0002-example.md"
+            status = "draft"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            replaces = "CARGO-ALLOW-SPEC-0001"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("replaces target"));
+    assert!(err.to_string().contains("is not registered"));
+}
+
+#[test]
+fn rejects_lifecycle_self_reference() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-example.md"
+            status = "draft"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            replaces = "CARGO-ALLOW-SPEC-0001"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("must not reference itself"));
+}
+
+#[test]
+fn rejects_lifecycle_wrong_kind_target() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PROP-0001"
+            kind = "proposal"
+            path = "docs/proposals/CARGO-ALLOW-PROP-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-example.md"
+            status = "draft"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            supersedes = "CARGO-ALLOW-PROP-0001"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("supersedes target"));
+    assert!(err.to_string().contains("expected Spec"));
+}
+
+#[test]
+fn rejects_empty_link_field() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SUPPORT-0001"
+            kind = "support_tier"
+            path = "docs/status/SUPPORT_TIERS.md"
+            status = "active"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            linked_spec = ""
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("linked_spec must not be empty"));
+}
+
+#[test]
+fn rejects_duplicate_artifact_path_for_graph_links() {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PROP-0001"
+            kind = "proposal"
+            path = "docs/proposals/CARGO-ALLOW-DUPLICATE.md"
+            status = "draft"
+            owner = "repo-infra"
+            created = "2026-06-12"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PROP-0002"
+            kind = "proposal"
+            path = "docs/proposals/CARGO-ALLOW-DUPLICATE.md"
+            status = "draft"
+            owner = "repo-infra"
+            created = "2026-06-12"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_doc_artifact_links(&ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("duplicate doc artifact path"));
+}
+
+#[test]
 fn rejects_missing_artifact_file() {
     let root = temp_root("missing-file");
     let ledger_result = parse_doc_artifact_ledger(

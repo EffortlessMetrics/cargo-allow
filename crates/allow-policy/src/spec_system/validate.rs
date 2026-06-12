@@ -5,6 +5,18 @@ use std::path::{Component, Path, PathBuf};
 
 use super::{ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, SpecSystemRoots};
 
+pub fn validate_doc_artifact_links(ledger: &DocArtifactLedger) -> CargoAllowResult<()> {
+    let index = ArtifactIndex::new(ledger)?;
+
+    for artifact in &ledger.artifact {
+        validate_required_edges(artifact)?;
+        validate_artifact_links(artifact, &index)?;
+        validate_lifecycle_links(artifact, &index)?;
+    }
+
+    Ok(())
+}
+
 pub fn validate_doc_artifact_files(
     repo_root: impl AsRef<Path>,
     ledger: &DocArtifactLedger,
@@ -59,6 +71,298 @@ pub fn validate_doc_artifact_files(
     }
 
     Ok(())
+}
+
+struct ArtifactIndex<'a> {
+    by_id: HashMap<&'a str, &'a DocArtifact>,
+    by_path: HashMap<String, &'a DocArtifact>,
+}
+
+impl<'a> ArtifactIndex<'a> {
+    fn new(ledger: &'a DocArtifactLedger) -> CargoAllowResult<Self> {
+        let by_id = ledger
+            .artifact
+            .iter()
+            .map(|artifact| (artifact.id.as_str(), artifact))
+            .collect();
+        let mut by_path = HashMap::new();
+        for artifact in &ledger.artifact {
+            let path = normalize_source_path(&artifact.path);
+            if by_path.insert(path.clone(), artifact).is_some() {
+                return Err(CargoAllowError::new(format!(
+                    "duplicate doc artifact path {path}"
+                )));
+            }
+        }
+        Ok(Self { by_id, by_path })
+    }
+
+    fn resolve_id(&self, id: &str) -> Option<&'a DocArtifact> {
+        self.by_id.get(id).copied()
+    }
+
+    fn resolve_id_or_path(&self, value: &str) -> Option<&'a DocArtifact> {
+        self.resolve_id(value)
+            .or_else(|| self.by_path.get(&normalize_source_path(value)).copied())
+    }
+}
+
+fn validate_required_edges(artifact: &DocArtifact) -> CargoAllowResult<()> {
+    match artifact.kind {
+        ArtifactKind::Spec if artifact.status == ArtifactStatus::Accepted => {
+            require_link_or_reason(
+                artifact,
+                "linked_proposal",
+                artifact.linked_proposal.as_deref(),
+            )
+        }
+        ArtifactKind::Adr if artifact.status == ArtifactStatus::Accepted => {
+            require_link_or_reason(artifact, "linked_spec", artifact.linked_spec.as_deref())
+        }
+        ArtifactKind::ImplementationPlan | ArtifactKind::PlanItem
+            if artifact.status == ArtifactStatus::Active =>
+        {
+            if has_value(artifact.linked_proposal.as_deref())
+                || has_value(artifact.linked_spec.as_deref())
+            {
+                Ok(())
+            } else {
+                Err(CargoAllowError::new(format!(
+                    "{} active plan requires linked_proposal or linked_spec",
+                    artifact.id
+                )))
+            }
+        }
+        ArtifactKind::ActiveGoal if artifact.status == ArtifactStatus::Active => {
+            require_link(
+                artifact,
+                "linked_proposal",
+                artifact.linked_proposal.as_deref(),
+            )?;
+            require_link(artifact, "linked_spec", artifact.linked_spec.as_deref())?;
+            require_link(artifact, "linked_plan", artifact.linked_plan.as_deref())
+        }
+        ArtifactKind::Closeout => {
+            require_link(artifact, "linked_plan", artifact.linked_plan.as_deref())
+        }
+        _ => Ok(()),
+    }
+}
+
+fn validate_artifact_links(
+    artifact: &DocArtifact,
+    index: &ArtifactIndex<'_>,
+) -> CargoAllowResult<()> {
+    validate_id_link(
+        artifact,
+        "linked_proposal",
+        artifact.linked_proposal.as_deref(),
+        &[ArtifactKind::Proposal],
+        index,
+    )?;
+    validate_id_link(
+        artifact,
+        "linked_spec",
+        artifact.linked_spec.as_deref(),
+        &[ArtifactKind::Spec],
+        index,
+    )?;
+    validate_id_link(
+        artifact,
+        "linked_adr",
+        artifact.linked_adr.as_deref(),
+        &[ArtifactKind::Adr],
+        index,
+    )?;
+    validate_plan_link(artifact, artifact.linked_plan.as_deref(), index)?;
+    validate_id_link(
+        artifact,
+        "linked_goal",
+        artifact.linked_goal.as_deref(),
+        &[ArtifactKind::ActiveGoal],
+        index,
+    )?;
+    validate_id_link(
+        artifact,
+        "linked_support_tier",
+        artifact.linked_support_tier.as_deref(),
+        &[ArtifactKind::SupportTier],
+        index,
+    )?;
+    validate_id_link(
+        artifact,
+        "linked_closeout",
+        artifact.linked_closeout.as_deref(),
+        &[ArtifactKind::Closeout],
+        index,
+    )
+}
+
+fn validate_lifecycle_links(
+    artifact: &DocArtifact,
+    index: &ArtifactIndex<'_>,
+) -> CargoAllowResult<()> {
+    validate_same_kind_link(
+        artifact,
+        "supersedes",
+        artifact.supersedes.as_deref(),
+        index,
+    )?;
+    validate_same_kind_link(
+        artifact,
+        "superseded_by",
+        artifact.superseded_by.as_deref(),
+        index,
+    )?;
+    validate_same_kind_link(artifact, "replaces", artifact.replaces.as_deref(), index)
+}
+
+fn require_link_or_reason(
+    artifact: &DocArtifact,
+    field: &str,
+    value: Option<&str>,
+) -> CargoAllowResult<()> {
+    if has_value(value) || has_value(artifact.standalone_reason.as_deref()) {
+        return Ok(());
+    }
+
+    Err(CargoAllowError::new(format!(
+        "{} accepted {:?} requires {field} or standalone_reason",
+        artifact.id, artifact.kind
+    )))
+}
+
+fn require_link(artifact: &DocArtifact, field: &str, value: Option<&str>) -> CargoAllowResult<()> {
+    if has_value(value) {
+        return Ok(());
+    }
+
+    Err(CargoAllowError::new(format!(
+        "{} {:?} requires {field}",
+        artifact.id, artifact.kind
+    )))
+}
+
+fn validate_id_link(
+    artifact: &DocArtifact,
+    field: &str,
+    value: Option<&str>,
+    expected_kinds: &[ArtifactKind],
+    index: &ArtifactIndex<'_>,
+) -> CargoAllowResult<()> {
+    let Some(value) = optional_link_value(artifact, field, value)? else {
+        return Ok(());
+    };
+    let Some(target) = index.resolve_id(value) else {
+        return Err(unknown_target_error(artifact, field, value));
+    };
+    validate_target_kind(artifact, field, value, target.kind, expected_kinds)
+}
+
+fn validate_plan_link(
+    artifact: &DocArtifact,
+    value: Option<&str>,
+    index: &ArtifactIndex<'_>,
+) -> CargoAllowResult<()> {
+    let Some(value) = optional_link_value(artifact, "linked_plan", value)? else {
+        return Ok(());
+    };
+    let Some(target) = index.resolve_id_or_path(value) else {
+        return Err(CargoAllowError::new(format!(
+            "{} linked_plan target {} is not registered by id or path",
+            artifact.id, value
+        )));
+    };
+    validate_target_kind(
+        artifact,
+        "linked_plan",
+        value,
+        target.kind,
+        &[ArtifactKind::ImplementationPlan, ArtifactKind::PlanItem],
+    )
+}
+
+fn validate_same_kind_link(
+    artifact: &DocArtifact,
+    field: &str,
+    value: Option<&str>,
+    index: &ArtifactIndex<'_>,
+) -> CargoAllowResult<()> {
+    let Some(value) = optional_link_value(artifact, field, value)? else {
+        return Ok(());
+    };
+    if value == artifact.id {
+        return Err(CargoAllowError::new(format!(
+            "{} {field} must not reference itself",
+            artifact.id
+        )));
+    }
+    let Some(target) = index.resolve_id(value) else {
+        return Err(unknown_target_error(artifact, field, value));
+    };
+    validate_target_kind(artifact, field, value, target.kind, &[artifact.kind])
+}
+
+fn optional_link_value<'a>(
+    artifact: &DocArtifact,
+    field: &str,
+    value: Option<&'a str>,
+) -> CargoAllowResult<Option<&'a str>> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    if value.trim().is_empty() {
+        return Err(CargoAllowError::new(format!(
+            "{} {field} must not be empty",
+            artifact.id
+        )));
+    }
+    if value.trim() != value {
+        return Err(CargoAllowError::new(format!(
+            "{} {field} must not have leading or trailing whitespace",
+            artifact.id
+        )));
+    }
+    Ok(Some(value))
+}
+
+fn validate_target_kind(
+    artifact: &DocArtifact,
+    field: &str,
+    value: &str,
+    actual_kind: ArtifactKind,
+    expected_kinds: &[ArtifactKind],
+) -> CargoAllowResult<()> {
+    if expected_kinds.contains(&actual_kind) {
+        return Ok(());
+    }
+
+    Err(CargoAllowError::new(format!(
+        "{} {field} target {} has kind {:?}, expected {}",
+        artifact.id,
+        value,
+        actual_kind,
+        expected_kind_list(expected_kinds)
+    )))
+}
+
+fn unknown_target_error(artifact: &DocArtifact, field: &str, value: &str) -> CargoAllowError {
+    CargoAllowError::new(format!(
+        "{} {field} target {} is not registered",
+        artifact.id, value
+    ))
+}
+
+fn expected_kind_list(kinds: &[ArtifactKind]) -> String {
+    kinds
+        .iter()
+        .map(|kind| format!("{kind:?}"))
+        .collect::<Vec<_>>()
+        .join(" or ")
+}
+
+fn has_value(value: Option<&str>) -> bool {
+    value.is_some_and(|value| !value.trim().is_empty())
 }
 
 fn validate_artifact_source_path(
