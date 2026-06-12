@@ -75,10 +75,10 @@ ledger and opt-in governance profiles around it.
   evidence repair routes.
 - [0.1.6 release record](release/0.1.6.md): completed patch release for
   source-syntax identity hardening and legacy evidence preservation.
-- [0.1.7 preview release notes](release/0.1.7.md): release-candidate notes
-  for the opt-in spec-system preview profile.
+- [0.1.7 release record](release/0.1.7.md): completed patch release for the
+  opt-in spec-system preview profile.
 - [0.1.7 GitHub Release body](release/github/v0.1.7.md): prepared public
-  release notes for the future authorized `v0.1.7` GitHub Release.
+  release notes for the `v0.1.7` GitHub Release.
 - [Agent worklist prompt](agents/cargo-allow-worklist.md): bounded agent use of
   `cargo-allow worklist`.
 - [Schemas](schemas/README.md): JSON schemas for doctor, report, receipt,
