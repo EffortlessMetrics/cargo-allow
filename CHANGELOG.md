@@ -22,14 +22,17 @@ inventory without executing repository code.
   structural source-tree claim boundary.
 - Dogfooded the profile in this repository with advisory CI artifacts, shadow
   mode, clean shadow burn-in evidence, blocking-eligible structural finding
-  classification, and reviewer/agent-oriented report and worklist posture.
+  classification, repo-local blocking posture for selected structural findings,
+  and reviewer/agent-oriented report and worklist posture.
 - Added first-hour adoption and CI guidance for treating `spec-system` as one
   opt-in governance profile, not default cargo-allow behavior.
 
 ### Known limitations
 
 - The profile is a preview and remains opt-in.
-- The cargo-allow repo still runs the profile in shadow mode.
+- The cargo-allow repo runs the profile in blocking mode for selected
+  structural findings, while lifecycle and judgment-heavy checks remain
+  advisory.
 - The profile validates structural graph relationships only; it does not
   execute proof commands, call GitHub APIs, run Cargo, rustc, Clippy, build
   scripts, proc macros, ripr, unsafe-review, coverage, or network checks.

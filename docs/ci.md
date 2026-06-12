@@ -122,9 +122,9 @@ cargo-allow check \
 ```
 
 This is dogfood for the repo's source-of-truth graph. The profile currently
-runs in shadow posture for this repo: findings set failure posture in the
-spec-system artifacts, but they do not make spec-system validation part of
-default cargo-allow behavior or execute proof commands.
+runs in blocking posture for selected structural findings in this repo. That
+does not make spec-system validation part of default cargo-allow behavior, and
+it does not execute proof commands.
 
 For adoption details, see
 [Run the spec-system profile in CI](how-to/run-spec-system-in-ci.md).
