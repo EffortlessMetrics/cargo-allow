@@ -17,7 +17,7 @@ linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
-linked_plan_status = "planned"
+linked_plan_status = "active"
 
 claim_boundary = """
 This manifest is agent execution state. It does not implement spec-system
@@ -26,13 +26,14 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-008"
+id = "spec-system-pr-009"
 status = "ready"
-title = "Add spec-system implementation plan"
+title = "Add spec-system config model"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
 proof_commands = [
+  "rtk cargo test -p allow-policy spec_system",
   "rtk git diff --cached --check",
   "rtk cargo fmt --all --check",
   "rtk cargo clippy --workspace --all-targets -- -D warnings",

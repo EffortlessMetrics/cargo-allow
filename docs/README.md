@@ -30,6 +30,8 @@ ledger and the planned growth around it.
   cargo-allow surfaces and the planned advisory spec-system profile.
 - [Active goal manifest](../.codex/goals/README.md): current Codex execution
   state for the planned source-of-truth profile.
+- [Spec-system implementation plan](../plans/spec-system/implementation-plan.md):
+  PR sequence for implementing the opt-in source-of-truth profile.
 - [Getting started](getting-started.md): first-run tutorial for doctor, audit,
   init/propose, and no-new checks.
 - [Structural identity v1](identity.md): the source-syntax identity contract

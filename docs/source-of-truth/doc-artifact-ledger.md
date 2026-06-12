@@ -17,13 +17,13 @@ profile:
 - `CARGO-ALLOW-SPEC-0001`
 - `CARGO-ALLOW-SUPPORT-0001`
 - `CARGO-ALLOW-GOAL-0001`
+- `CARGO-ALLOW-PLAN-0001`
+- `CARGO-ALLOW-CLOSEOUT-0001`
 
 Later source-of-truth artifacts should be added when they land:
 
 - ADRs.
-- implementation plans.
 - policy ledgers.
-- closeouts.
 - release records when they become governed artifacts.
 
 The ledger should not replace the human-facing proposal, spec, plan, or
