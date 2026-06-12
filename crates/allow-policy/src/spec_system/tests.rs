@@ -524,6 +524,335 @@ fn validates_current_repository_artifact_links() {
 }
 
 #[test]
+fn validates_current_repository_support_tier_claims() {
+    let result =
+        validate_support_tier_claims(include_str!("../../../../docs/status/SUPPORT_TIERS.md"));
+
+    assert!(
+        result.is_ok(),
+        "support-tier claims should validate: {:?}",
+        result.err()
+    );
+    let Ok(rows) = result else {
+        return;
+    };
+
+    assert_eq!(rows.len(), 4);
+    assert!(rows.iter().any(|row| {
+        row.surface == "Spec-system profile" && row.tier == SupportTierLevel::Advisory
+    }));
+}
+
+#[test]
+fn accepts_advisory_support_tier_without_proof_command() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Planned profile | Advisory | The repo documents a planned opt-in profile. | | Current behavior is not implemented yet. |
+        "#,
+    );
+
+    assert!(
+        result.is_ok(),
+        "advisory rows may omit proof commands: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn parses_claims_table_after_other_tables() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Tier | Meaning |
+            | --- | --- |
+            | Stable | Current behavior with proof. |
+
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Source exception ledger | Stable | The scanner reports source-tree posture. | cargo-allow check --mode no-new | Claims table appears second. |
+        "#,
+    );
+
+    assert!(
+        result.is_ok(),
+        "claims table should be found after vocabulary table: {:?}",
+        result.err()
+    );
+    let Ok(rows) = result else {
+        return;
+    };
+    assert_eq!(rows.len(), 1);
+}
+
+#[test]
+fn accepts_support_tier_table_with_extra_columns_and_without_notes() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Surface | Tier | Claim | Proof command | Owner |
+            | --- | --- | --- | --- | --- |
+            | Source exception ledger | Stable | The scanner reports source-tree posture. | cargo-allow check --mode no-new | repo-infra |
+        "#,
+    );
+
+    assert!(
+        result.is_ok(),
+        "claims table should allow extra columns: {:?}",
+        result.err()
+    );
+    let Ok(rows) = result else {
+        return;
+    };
+    assert_eq!(rows.len(), 1);
+    let first = rows.first();
+    assert!(first.is_some());
+    let Some(row) = first else {
+        return;
+    };
+    assert_eq!(row.notes, "");
+}
+
+#[test]
+fn accepts_nonexistent_support_tier_proof_command_text_without_execution() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Fictional proof surface | Stable | A command string is recorded. | definitely-not-a-real-command --flag | Presence-only validation. |
+        "#,
+    );
+
+    assert!(
+        result.is_ok(),
+        "proof command strings are not executed or resolved: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn rejects_stable_support_tier_without_proof_command() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Source exception ledger | Stable | The scanner reports source-tree posture. | | Missing proof. |
+        "#,
+    );
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("proof command"));
+    assert!(err.to_string().contains("must not be empty"));
+}
+
+#[test]
+fn rejects_stabilizing_support_tier_without_proof_command() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | PR posture | Stabilizing | Pull request posture is reported. | | Missing proof. |
+        "#,
+    );
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("proof command"));
+    assert!(err.to_string().contains("must not be empty"));
+}
+
+#[test]
+fn rejects_support_tier_row_without_claim() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Worklist routing | Advisory | | cargo-allow worklist --format json | Missing claim. |
+        "#,
+    );
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("support-tier claim"));
+}
+
+#[test]
+fn rejects_support_tier_row_without_surface() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | | Advisory | Worklists exist. | cargo-allow worklist --format json | Missing surface. |
+        "#,
+    );
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("support-tier surface"));
+}
+
+#[test]
+fn rejects_support_tier_row_without_tier() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Worklist routing | | Worklists exist. | cargo-allow worklist --format json | Missing tier. |
+        "#,
+    );
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("support-tier tier"));
+}
+
+#[test]
+fn rejects_unknown_support_tier_level() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Worklist routing | Experimental | Worklists exist. | cargo-allow worklist --format json | Unknown tier. |
+        "#,
+    );
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("unknown support-tier level"));
+}
+
+#[test]
+fn rejects_missing_support_tier_claims_table() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            No support-tier claim table here.
+        "#,
+    );
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("claims table"));
+    assert!(err.to_string().contains("not found"));
+}
+
+#[test]
+fn rejects_support_tier_table_missing_required_column() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Surface | Tier | Claim | Notes |
+            | --- | --- | --- | --- |
+            | Worklist routing | Advisory | Worklists exist. | Missing proof-command column. |
+        "#,
+    );
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(
+        err.to_string()
+            .contains("missing required column Proof command")
+    );
+}
+
+#[test]
+fn rejects_support_tier_table_without_claim_rows() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+
+            ## Claim Boundary
+        "#,
+    );
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("at least one claim row"));
+}
+
+#[test]
+fn rejects_support_tier_row_with_wrong_cell_count() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Worklist routing | Advisory | Worklists exist. |
+        "#,
+    );
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("cells"));
+    assert!(err.to_string().contains("expected"));
+}
+
+#[test]
+fn rejects_support_tier_table_with_invalid_separator() {
+    let result = validate_support_tier_claims(
+        r#"
+            # Support Tiers
+
+            | Surface | Tier | Claim | Proof command | Notes |
+            | === | === | === | === | === |
+            | Worklist routing | Advisory | Worklists exist. | cargo-allow worklist --format json | Invalid separator. |
+        "#,
+    );
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("separator row is invalid"));
+}
+
+#[test]
 fn rejects_accepted_spec_without_proposal_or_standalone_reason() {
     let ledger_result = parse_doc_artifact_ledger(
         r#"

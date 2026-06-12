@@ -26,9 +26,9 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-013"
+id = "spec-system-pr-014"
 status = "ready"
-title = "Validate support-tier graph edges"
+title = "Add advisory profile check and audit"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
