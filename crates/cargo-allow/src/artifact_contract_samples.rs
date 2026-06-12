@@ -1,4 +1,4 @@
-use crate::{add, diff, doctor, explain, list, migrate, propose, prune, worklist};
+use crate::{add, diff, doctor, explain, list, migrate, propose, prune, spec_system, worklist};
 
 pub(crate) struct ArtifactSample {
     pub(crate) name: &'static str,
@@ -155,6 +155,32 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "scanner_limitations",
                 "schema_id",
                 "schema_version",
+                "summary",
+                "tool",
+                "work_items",
+            ],
+        },
+        ArtifactSample {
+            name: "spec_system",
+            schema_name: "spec-system",
+            json: spec_system::sample_spec_system_json_for_contract_test(),
+            expected_command: "check",
+            expected_top_level_keys: &[
+                "artifacts",
+                "claim_boundary",
+                "command",
+                "config_source",
+                "failed",
+                "findings",
+                "inventory",
+                "links",
+                "mode",
+                "profile",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "source_tree_root",
+                "status",
                 "summary",
                 "tool",
                 "work_items",

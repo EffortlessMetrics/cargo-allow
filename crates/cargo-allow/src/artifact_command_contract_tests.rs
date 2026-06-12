@@ -1,5 +1,5 @@
 use crate::artifact_contract_support::parse_json_artifact;
-use crate::{add, doctor, explain, list, migrate, propose, prune, worklist};
+use crate::{add, doctor, explain, list, migrate, propose, prune, spec_system, worklist};
 use serde_json::Value;
 
 #[test]
@@ -173,5 +173,27 @@ fn command_json_artifact_renderers_emit_parseable_v1_contracts() {
         doctor.pointer("/root/discovery").and_then(Value::as_str),
         Some("nearest_git_root"),
         "doctor root discovery"
+    );
+
+    let spec_system_json = spec_system::sample_spec_system_json_for_contract_test();
+    let spec_system = parse_json_artifact(
+        "spec-system",
+        &spec_system_json,
+        allow_report::SPEC_SYSTEM_SCHEMA_ID,
+        "check",
+    );
+    assert_eq!(
+        spec_system
+            .pointer("/summary/artifacts")
+            .and_then(Value::as_u64),
+        Some(2),
+        "spec-system artifact count"
+    );
+    assert_eq!(
+        spec_system
+            .pointer("/links/0/field")
+            .and_then(Value::as_str),
+        Some("linked_proposal"),
+        "spec-system graph link field"
     );
 }

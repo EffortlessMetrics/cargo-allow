@@ -32,7 +32,16 @@ fn artifact_contract_registry_covers_current_v1_artifacts() {
     assert_eq!(
         names,
         BTreeSet::from([
-            "add", "doctor", "explain", "list", "migrate", "propose", "prune", "receipt", "report",
+            "add",
+            "doctor",
+            "explain",
+            "list",
+            "migrate",
+            "propose",
+            "prune",
+            "receipt",
+            "report",
+            "spec-system",
             "worklist"
         ])
     );
@@ -53,6 +62,11 @@ fn artifact_contract_registry_covers_current_v1_artifacts() {
             assert_eq!(
                 contract.inventory_scanner, INVENTORY_SCANNER_POLICY_MIGRATION,
                 "migrate inventory scanner"
+            );
+        } else if contract.name == "spec-system" {
+            assert_eq!(
+                contract.inventory_scanner, INVENTORY_SCANNER_SOURCE_TREE_GRAPH,
+                "spec-system inventory scanner"
             );
         } else {
             assert_eq!(
@@ -76,6 +90,16 @@ fn scanner_limitations_are_subset_of_claim_boundary() {
     assert!(CLAIM_BOUNDARY.contains(&"source_syntax_only"));
     assert!(!SCANNER_LIMITATIONS.contains(&"source_tree_inventory"));
     assert!(!SCANNER_LIMITATIONS.contains(&"source_syntax_only"));
+    for limitation in SPEC_SYSTEM_SCANNER_LIMITATIONS {
+        assert!(
+            SPEC_SYSTEM_CLAIM_BOUNDARY.contains(limitation),
+            "spec-system scanner limitation `{limitation}` must also be present in the broader profile claim boundary"
+        );
+    }
+    assert!(SPEC_SYSTEM_CLAIM_BOUNDARY.contains(&"source_tree_graph_validation"));
+    assert!(SPEC_SYSTEM_CLAIM_BOUNDARY.contains(&"proof_commands_not_executed"));
+    assert!(!SPEC_SYSTEM_SCANNER_LIMITATIONS.contains(&"source_tree_inventory"));
+    assert!(!SPEC_SYSTEM_SCANNER_LIMITATIONS.contains(&"source_tree_graph_validation"));
 }
 
 #[test]
@@ -90,6 +114,7 @@ fn schemas_reference_current_contract_ids() {
     let propose_schema = include_str!("../../../docs/schemas/propose.schema.json");
     let add_schema = include_str!("../../../docs/schemas/add.schema.json");
     let migrate_schema = include_str!("../../../docs/schemas/migrate.schema.json");
+    let spec_system_schema = include_str!("../../../docs/schemas/spec-system.schema.json");
     assert!(report_schema.contains(REPORT_SCHEMA_ID));
     assert!(receipt_schema.contains(RECEIPT_SCHEMA_ID));
     assert!(worklist_schema.contains(WORKLIST_SCHEMA_ID));
@@ -100,6 +125,7 @@ fn schemas_reference_current_contract_ids() {
     assert!(propose_schema.contains(PROPOSE_SCHEMA_ID));
     assert!(add_schema.contains(ADD_SCHEMA_ID));
     assert!(migrate_schema.contains(MIGRATE_SCHEMA_ID));
+    assert!(spec_system_schema.contains(SPEC_SYSTEM_SCHEMA_ID));
     for command in REPORT_COMMANDS {
         assert!(
             report_schema.contains(&format!("\"{command}\"")),
@@ -119,6 +145,7 @@ fn schemas_reference_current_contract_ids() {
     assert!(propose_schema.contains("\"files_scanned\""));
     assert!(add_schema.contains("\"files_scanned\""));
     assert!(migrate_schema.contains("\"files_scanned\""));
+    assert!(spec_system_schema.contains("\"files_scanned\""));
     assert!(report_schema.contains("\"root\""));
     assert!(receipt_schema.contains("\"root\""));
     assert!(list_schema.contains("\"root\""));
@@ -128,6 +155,7 @@ fn schemas_reference_current_contract_ids() {
     assert!(propose_schema.contains("\"root\""));
     assert!(add_schema.contains("\"root\""));
     assert!(migrate_schema.contains("\"root\""));
+    assert!(spec_system_schema.contains("\"root\""));
     assert!(report_schema.contains("\"source_package\""));
     assert!(list_schema.contains("\"source_package\""));
     assert!(explain_schema.contains("\"source_package\""));
@@ -141,6 +169,7 @@ fn schemas_reference_current_contract_ids() {
     assert!(propose_schema.contains("\"scanner_limitation\""));
     assert!(add_schema.contains("\"scanner_limitation\""));
     assert!(migrate_schema.contains("\"scanner_limitation\""));
+    assert!(spec_system_schema.contains("\"scanner_limitation\""));
     assert!(report_schema.contains("\"repository_code_not_executed\""));
     assert!(receipt_schema.contains("\"repository_code_not_executed\""));
     assert!(list_schema.contains("\"repository_code_not_executed\""));
@@ -150,6 +179,7 @@ fn schemas_reference_current_contract_ids() {
     assert!(propose_schema.contains("\"repository_code_not_executed\""));
     assert!(add_schema.contains("\"repository_code_not_executed\""));
     assert!(migrate_schema.contains("\"repository_code_not_executed\""));
+    assert!(spec_system_schema.contains("\"repository_code_not_executed\""));
     for limitation in SCANNER_LIMITATIONS {
         assert!(report_schema.contains(limitation));
         assert!(receipt_schema.contains(limitation));
@@ -173,5 +203,11 @@ fn schemas_reference_current_contract_ids() {
         assert!(propose_schema.contains(claim));
         assert!(add_schema.contains(claim));
         assert!(migrate_schema.contains(claim));
+    }
+    for limitation in SPEC_SYSTEM_SCANNER_LIMITATIONS {
+        assert!(spec_system_schema.contains(limitation));
+    }
+    for claim in SPEC_SYSTEM_CLAIM_BOUNDARY {
+        assert!(spec_system_schema.contains(claim));
     }
 }

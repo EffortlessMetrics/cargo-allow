@@ -26,14 +26,15 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-015"
+id = "spec-system-pr-016"
 status = "ready"
-title = "Add spec-system JSON report artifact"
+title = "Emit spec-system repair work items"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
 proof_commands = [
-  "rtk cargo test -p allow-policy spec_system",
+  "rtk cargo test -p cargo-allow spec_system_profile",
+  "rtk cargo test -p cargo-allow spec_system_worklist",
   "rtk git diff --cached --check",
   "rtk cargo fmt --all --check",
   "rtk cargo clippy --workspace --all-targets -- -D warnings",

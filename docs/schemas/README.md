@@ -15,6 +15,7 @@ macro-expansion, or proof-level coverage.
 | Baseline proposal summary | `cargo-allow.propose.v1` | `cargo-allow propose --summary-format json` |
 | Single-entry add summary | `cargo-allow.add.v1` | `cargo-allow add --summary-format json` |
 | Legacy migration summary | `cargo-allow.migrate.v1` | `cargo-allow migrate --summary-format json` |
+| Spec-system graph report | `cargo-allow.spec-system.v1` | `cargo-allow check --profile spec-system --format json`, `cargo-allow audit --profile spec-system --format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
 
 ## Files
@@ -28,6 +29,7 @@ macro-expansion, or proof-level coverage.
 - [propose.schema.json](propose.schema.json)
 - [add.schema.json](add.schema.json)
 - [migrate.schema.json](migrate.schema.json)
+- [spec-system.schema.json](spec-system.schema.json)
 - [worklist.schema.json](worklist.schema.json)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
   tested vocabulary source for future schema consolidation. Artifact schemas
@@ -148,6 +150,12 @@ The shared report schema is emitted by `audit`, `check`, and `diff`, but the
 top-level `diff` posture extension is valid only on reports whose
 `command = "diff"`. Audit and check reports use the same base schema without
 the PR-posture extension.
+The spec-system profile emits its own `cargo-allow.spec-system.v1` graph report
+schema instead of the source-exception `report` schema. Its inventory scanner
+is `source_tree_graph`, its claim boundary includes
+`source_tree_graph_validation`, and its scanner limitations include
+`proof_commands_not_executed`; this profile records structural relationships in
+the source tree and does not execute proof commands or external services.
 Diff reports may include optional `diff.summary.broken_evidence_links`,
 `diff.summary.missing_evidence`, and `diff.summary.weak_evidence_references`
 when the compared head policy has evidence-health signals. These duplicate the
@@ -574,6 +582,8 @@ Use JSON artifacts for automation:
 - `add` for one finding-to-policy-entry proposal summary.
 - `migrate` for legacy-policy conversion receipts.
 - `prune` for stale-entry cleanup previews or write receipts.
+- `spec-system` for opt-in proposal/spec/ADR/plan/goal/support-tier/closeout
+  graph reports.
 
 Do not parse human, Markdown, SARIF, or HTML output as the primary contract when
 a JSON artifact exists for the same workflow. Markdown and HTML are review

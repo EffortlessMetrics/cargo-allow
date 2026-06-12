@@ -121,7 +121,7 @@ pub(crate) fn lifecycle_change_fields() -> Vec<&'static str> {
         .collect()
 }
 
-pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static [&'static str]); 10]
+pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static [&'static str]); 11]
 {
     [
         (
@@ -277,6 +277,29 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
             ],
         ),
         (
+            "spec-system",
+            &[
+                "artifacts",
+                "claim_boundary",
+                "command",
+                "config_source",
+                "failed",
+                "findings",
+                "inventory",
+                "links",
+                "mode",
+                "profile",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "source_tree_root",
+                "status",
+                "summary",
+                "tool",
+                "work_items",
+            ],
+        ),
+        (
             "worklist",
             &[
                 "claim_boundary",
@@ -294,7 +317,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
     ]
 }
 
-pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [&'static str]); 10]
+pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [&'static str]); 11]
 {
     [
         (
@@ -436,6 +459,29 @@ pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [
                 "status",
                 "summary",
                 "tool",
+            ],
+        ),
+        (
+            "spec-system",
+            &[
+                "artifacts",
+                "claim_boundary",
+                "command",
+                "config_source",
+                "failed",
+                "findings",
+                "inventory",
+                "links",
+                "mode",
+                "profile",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "source_tree_root",
+                "status",
+                "summary",
+                "tool",
+                "work_items",
             ],
         ),
         (
