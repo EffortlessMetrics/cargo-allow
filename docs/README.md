@@ -16,6 +16,9 @@ ledger and the planned growth around it.
 - [Source-of-truth stack](source-of-truth/README.md): planned opt-in
   governance graph for proposals, specs, ADRs, plans, goals, support tiers,
   policy ledgers, and closeouts.
+- [Source-of-truth templates](templates/proposal.md): starter templates for
+  proposals, specs, ADRs, implementation plans, plan items, closeouts, and PR
+  bodies.
 - [Getting started](getting-started.md): first-run tutorial for doctor, audit,
   init/propose, and no-new checks.
 - [Structural identity v1](identity.md): the source-syntax identity contract

@@ -101,8 +101,8 @@ id = "spec-system-pr-001"
 status = "ready"
 title = "Add doc artifact ledger parser"
 proof_commands = [
-  "cargo test -p allow-policy spec_system",
-  "cargo run -p cargo-allow -- check --mode no-new"
+  "rtk cargo test -p allow-policy spec_system",
+  "rtk cargo run -p cargo-allow -- check --mode no-new"
 ]
 ```
 
