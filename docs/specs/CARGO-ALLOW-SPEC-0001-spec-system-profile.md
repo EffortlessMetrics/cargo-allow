@@ -79,7 +79,7 @@ The system must not:
 | Output | Required | Notes |
 | --- | --- | --- |
 | Human or Markdown report | yes | Explains current source-of-truth posture for humans. |
-| JSON report or receipt | yes | Uses a future `cargo-allow.spec-system.v1` schema and records claim boundary and scanner limitations. |
+| JSON report or receipt | yes | Uses the `cargo-allow.spec-system.v1` schema and records claim boundary and scanner limitations. |
 | Worklist JSON | yes for worklist command | Emits bounded repair items for humans and agents. |
 | Doctor readiness report | yes for doctor command | Reports missing profile config, ledger, roots, support tiers, templates, and active-goal files. |
 | Exit status | yes | Respects advisory, shadow, and blocking posture without changing default non-profile behavior. |
@@ -215,8 +215,8 @@ reliable. It must not lint prose quality or general Markdown style.
   [CARGO-ALLOW-GOAL-0001](../../.codex/goals/active.toml).
 - Linked closeout:
   [CARGO-ALLOW-CLOSEOUT-0001](../../plans/spec-system/closeout.md).
-- Linked policy ledger: planned for `policy/doc-artifacts.toml` and
-  `policy/spec-system.toml`; current tracked-file governance remains in
+- Linked policy ledgers: this spec declares policy impact for
+  `policy/doc-artifacts.toml`, `policy/spec-system.toml`, and
   `policy/allow.toml`.
 
 ## Profile Config
@@ -334,7 +334,7 @@ support-tier rows.
 
 ## Support-Tier Impact
 
-The profile affects the planned advisory support-tier surface for
+The profile affects the advisory support-tier surface for
 source-of-truth graph linting:
 [CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md).
 
@@ -396,7 +396,7 @@ findings, extend lifecycle dates, or claim proof execution.
 
 ## Policy Impact
 
-The spec requires later policy work:
+The spec uses these policy surfaces:
 
 - `policy/doc-artifacts.toml` for artifact registration.
 - `policy/spec-system.toml` for profile roots and requirements.
@@ -408,8 +408,7 @@ exceptions.
 
 ## Required Evidence
 
-Before the profile implementation is considered complete, later PRs should
-provide:
+Profile implementation and ongoing maintenance evidence should include:
 
 - config parsing tests for `policy/spec-system.toml`.
 - artifact ledger parsing tests for `policy/doc-artifacts.toml`.
@@ -421,7 +420,7 @@ provide:
   `--profile spec-system`.
 - report, receipt, and worklist tests that include source-tree-only claim
   boundaries and scanner limitations.
-- cargo-allow dogfood evidence in advisory mode before any shadow or blocking
+- cargo-allow dogfood evidence in advisory and shadow modes before blocking
   promotion.
 
 ## Acceptance Examples
@@ -514,9 +513,9 @@ the profile may verify that the field is non-empty; it must not run the command 
 ## Claim Boundary
 
 This spec defines structural source-tree behavior for an opt-in profile. It does
-not implement that behavior by itself.
+not prove semantic correctness by itself.
 
-Future spec-system reports may claim:
+Spec-system reports may claim:
 
 - source-tree files were parsed.
 - configured ledgers and roots were read.
@@ -525,7 +524,7 @@ Future spec-system reports may claim:
 - active-goal and closeout references were present or missing.
 - worklist items were emitted for structural repair.
 
-Future spec-system reports must not claim:
+Spec-system reports must not claim:
 
 - proof commands ran.
 - tests passed.

@@ -1,11 +1,11 @@
 # Linking Model
 
-The planned source-of-truth stack is a linked graph, not a loose docs folder.
-Links should make artifact ownership and drift visible.
+The source-of-truth stack is a linked graph, not a loose docs folder. Links
+should make artifact ownership and drift visible.
 
-## Planned Roots
+## Profile Roots
 
-The mature stack is expected to use these source-tree roots:
+The `spec-system` profile uses these source-tree roots:
 
 ```text
 docs/proposals/
@@ -17,10 +17,11 @@ docs/status/SUPPORT_TIERS.md
 policy/doc-artifacts.toml
 policy/spec-system.toml
 policy/allow.toml
-docs/handoffs/ or plans/*/closeout.md
+plans/*/closeout.md
 ```
 
-These roots are planned. They are not required by the default cargo-allow scan.
+These roots belong to the opt-in profile. They are not required by the default
+cargo-allow source-exception scan.
 
 ## Registry
 
@@ -63,20 +64,20 @@ linked_spec = "CARGO-ALLOW-SPEC-0001"
 id = "CARGO-ALLOW-GOAL-0001"
 kind = "active_goal"
 path = ".codex/goals/active.toml"
-status = "active"
+status = "done"
 owner = "codex"
 created = "2026-06-12"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
-linked_plan_status = "active"
+linked_plan_status = "done"
 
 [[artifact]]
 id = "CARGO-ALLOW-PLAN-0001"
 kind = "implementation_plan"
 path = "plans/spec-system/implementation-plan.md"
-status = "active"
+status = "done"
 owner = "repo-infra"
 created = "2026-06-12"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
@@ -89,7 +90,7 @@ linked_closeout = "CARGO-ALLOW-CLOSEOUT-0001"
 id = "CARGO-ALLOW-CLOSEOUT-0001"
 kind = "closeout"
 path = "plans/spec-system/closeout.md"
-status = "draft"
+status = "done"
 owner = "repo-infra"
 created = "2026-06-12"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
@@ -102,15 +103,14 @@ linked_plan = "CARGO-ALLOW-PLAN-0001"
 The registry is the machine-readable index. Markdown documents remain the human
 explanation. The current advisory registry starts with the accepted
 `CARGO-ALLOW-PROP-0001` proposal, `CARGO-ALLOW-SPEC-0001` spec, and
-`CARGO-ALLOW-SUPPORT-0001` support-tier map, plus the active
+`CARGO-ALLOW-SUPPORT-0001` support-tier map, plus the completed
 `CARGO-ALLOW-GOAL-0001` manifest, `CARGO-ALLOW-PLAN-0001` implementation plan,
-and draft `CARGO-ALLOW-CLOSEOUT-0001`. Later PRs should add policy ledgers and
-release records only as those artifacts land.
+and `CARGO-ALLOW-CLOSEOUT-0001`. Future policy-ledger or release-record
+artifacts should be registered only as those governed artifacts land.
 
 ## Link Rules
 
-The planned `spec-system` profile should eventually check structural rules such
-as:
+The `spec-system` profile checks structural rules such as:
 
 - `schema_version` exists.
 - artifact IDs are unique.
@@ -130,8 +130,8 @@ correct or that the implementation satisfies the spec.
 
 ## Header Blocks
 
-Proposal, spec, ADR, plan, and closeout files should eventually use lightweight
-front matter or an equivalent visible header block:
+Proposal, spec, ADR, plan, and closeout files should use lightweight front
+matter or an equivalent visible header block:
 
 ```yaml
 ---
@@ -145,8 +145,9 @@ support_tier_impact: advisory
 ---
 ```
 
-The planned profile can then compare header fields with the registry. This
-helps catch copy/paste drift, renamed files, unknown links, and stale statuses.
+The profile can compare machine-readable fields with the registry as those
+checks are implemented. This helps catch copy/paste drift, renamed files,
+unknown links, and stale statuses.
 
 ## Support-Tier Links
 
@@ -154,7 +155,7 @@ Support tiers own user-facing claim to proof-command mapping. Specs should point
 to the support-tier surface they affect instead of duplicating the full claim
 map.
 
-Planned structural checks include:
+Structural checks include:
 
 - `docs/status/SUPPORT_TIERS.md` exists when the profile requires it.
 - stable and stabilizing claims have non-empty proof commands.
@@ -165,8 +166,8 @@ The profile must not execute proof commands or claim the proof passed.
 
 ## Failure Shape
 
-Broken links should become worklist items, not vague prose. Planned work item
-kinds include:
+Broken links should become worklist items, not vague prose. Work item kinds
+include:
 
 - `missing_doc_artifact`
 - `artifact_file_missing`

@@ -102,8 +102,9 @@ proof-command mapping.
 Policy ledgers record governed source-tree state.
 
 For current cargo-allow behavior, `policy/allow.toml` owns retained source
-exceptions. A future `policy/doc-artifacts.toml` can own registered governance
-artifacts, and a future `policy/spec-system.toml` can own profile requirements.
+exceptions. For the opt-in `spec-system` profile, `policy/doc-artifacts.toml`
+owns registered governance artifacts and `policy/spec-system.toml` owns profile
+requirements.
 
 Policy ledgers should be machine-readable and reviewed. They should not hide
 baseline debt, broaden policy silently, or auto-extend expiry.
