@@ -16,6 +16,9 @@ ledger and the planned growth around it.
 - [Source-of-truth stack](source-of-truth/README.md): planned opt-in
   governance graph for proposals, specs, ADRs, plans, goals, support tiers,
   policy ledgers, and closeouts.
+- [Doc artifact ledger](source-of-truth/doc-artifact-ledger.md): advisory
+  registry for governed proposal/spec artifacts in the planned source-of-truth
+  graph.
 - [Source-of-truth templates](templates/proposal.md): starter templates for
   proposals, specs, ADRs, implementation plans, plan items, closeouts, and PR
   bodies.
