@@ -139,6 +139,7 @@ struct SpecSystemReport {
     command: String,
     root: PathBuf,
     config_source: String,
+    mode: SpecSystemMode,
     artifacts: Vec<SpecSystemArtifact>,
     links: Vec<SpecSystemLink>,
     support_tier_rows: usize,
@@ -548,6 +549,7 @@ fn build_spec_system_report(
         command: command.to_string(),
         root,
         config_source,
+        mode: cfg.mode,
         artifacts,
         links,
         support_tier_rows,
@@ -1110,7 +1112,18 @@ fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
         "# cargo-allow {} --profile spec-system\n\n",
         report.command
     ));
-    text.push_str("**Result:** advisory\n\n");
+    text.push_str(&format!(
+        "**Result:** {}\n\n",
+        spec_system_mode_name(&report.mode)
+    ));
+    text.push_str(&format!(
+        "Mode: `{}`\n\n",
+        spec_system_mode_name(&report.mode)
+    ));
+    text.push_str(&format!(
+        "Status: `{}`\n\n",
+        spec_system_report_status(report)
+    ));
     text.push_str("Profile: `spec-system`\n\n");
     text.push_str(&format!(
         "Source tree root: `{}`\n\n",
@@ -1139,15 +1152,22 @@ fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
         report.support_tier_rows
     ));
     text.push_str(&format!(
-        "| Advisory findings | {} |\n",
+        "| {} findings | {} |\n",
+        spec_system_mode_title(&report.mode),
         report.findings.len()
     ));
     text.push_str(&format!("| Work items | {} |\n", report.work_items.len()));
     text.push('\n');
     if report.findings.is_empty() {
-        text.push_str("No spec-system advisory findings.\n\n");
+        text.push_str(&format!(
+            "No spec-system {} findings.\n\n",
+            spec_system_mode_name(&report.mode)
+        ));
     } else {
-        text.push_str("## Advisory Findings\n\n");
+        text.push_str(&format!(
+            "## {} Findings\n\n",
+            spec_system_mode_title(&report.mode)
+        ));
         for finding in &report.findings {
             text.push_str(&format!("- `{}`: {}\n", finding.kind, finding.message));
         }
@@ -1196,9 +1216,22 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
         json_escape(&report.command)
     ));
     text.push_str("  \"profile\": \"spec-system\",\n");
-    text.push_str("  \"mode\": \"advisory\",\n");
-    text.push_str("  \"status\": \"passed\",\n");
-    text.push_str("  \"failed\": false,\n");
+    text.push_str(&format!(
+        "  \"mode\": \"{}\",\n",
+        spec_system_mode_name(&report.mode)
+    ));
+    text.push_str(&format!(
+        "  \"status\": \"{}\",\n",
+        spec_system_report_status(report)
+    ));
+    text.push_str(&format!(
+        "  \"failed\": {},\n",
+        if spec_system_report_failed(report) {
+            "true"
+        } else {
+            "false"
+        }
+    ));
     text.push_str("  \"claim_boundary\": ");
     render_string_array(&mut text, allow_report::SPEC_SYSTEM_CLAIM_BOUNDARY, "  ");
     text.push_str(",\n");
@@ -1532,6 +1565,29 @@ fn spec_system_mode_name(mode: &SpecSystemMode) -> &'static str {
     }
 }
 
+fn spec_system_mode_title(mode: &SpecSystemMode) -> &'static str {
+    match mode {
+        SpecSystemMode::Advisory => "Advisory",
+        SpecSystemMode::Shadow => "Shadow",
+        SpecSystemMode::Blocking => "Blocking",
+    }
+}
+
+fn spec_system_report_failed(report: &SpecSystemReport) -> bool {
+    match report.mode {
+        SpecSystemMode::Advisory => false,
+        SpecSystemMode::Shadow | SpecSystemMode::Blocking => !report.findings.is_empty(),
+    }
+}
+
+fn spec_system_report_status(report: &SpecSystemReport) -> &'static str {
+    if spec_system_report_failed(report) {
+        "failed"
+    } else {
+        "passed"
+    }
+}
+
 fn support_tier_level_name(tier: SupportTierLevel) -> &'static str {
     match tier {
         SupportTierLevel::Stable => "stable",
@@ -1597,6 +1653,7 @@ pub(crate) fn sample_spec_system_json_for_contract_test() -> String {
         command: "check".to_string(),
         root: PathBuf::from("H:/Code/Rust/cargo-allow"),
         config_source: "policy/spec-system.toml".to_string(),
+        mode: SpecSystemMode::Advisory,
         artifacts: vec![
             SpecSystemArtifact {
                 id: "CARGO-ALLOW-PROP-0001".to_string(),

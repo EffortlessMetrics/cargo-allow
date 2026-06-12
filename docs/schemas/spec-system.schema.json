@@ -42,13 +42,16 @@
       "const": "spec-system"
     },
     "mode": {
-      "enum": ["advisory", "shadow", "blocking"]
+      "enum": ["advisory", "shadow", "blocking"],
+      "description": "Profile posture loaded from policy/spec-system.toml or the built-in advisory default."
     },
     "status": {
-      "enum": ["passed", "failed"]
+      "enum": ["passed", "failed"],
+      "description": "Artifact posture. Advisory findings leave status passed; shadow findings are reported as failed posture without changing default cargo-allow behavior."
     },
     "failed": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Machine-readable mirror of status = failed for consumers that route shadow or blocking posture."
     },
     "claim_boundary": {
       "type": "array",

@@ -355,6 +355,96 @@ fn spec_system_profile_reports_advisory_findings_without_failing() {
     assert!(report.contains("requires linked_proposal"));
 }
 
+#[test]
+fn spec_system_profile_reports_shadow_mode_without_failing_command() {
+    let root = fixture_root("profile-shadow-finding");
+    write_valid_spec_system_fixture(&root);
+    write_file(
+        &root,
+        "policy/spec-system.toml",
+        &spec_system_config("shadow"),
+    );
+    write_file(
+        &root,
+        "policy/doc-artifacts.toml",
+        &doc_artifact_ledger_without_spec_proposal(),
+    );
+    let output = root.join("check.json");
+
+    let result = check::cmd_check(&check::CheckArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        compat: false,
+        kind: None,
+        include_untracked: false,
+        format: OutputFormat::Json,
+        output: Some(output.clone()),
+        receipt: None,
+        mode: None,
+    });
+
+    assert!(
+        result.is_ok(),
+        "shadow spec-system findings should report posture without failing command: {:?}",
+        result.err()
+    );
+    let report = read_to_string(&output);
+    let _ = fs::remove_dir_all(&root);
+    let json = parse_spec_system_json_without_failed_assert("shadow report", &report);
+
+    assert_eq!(json.get("mode").and_then(Value::as_str), Some("shadow"));
+    assert_eq!(json.get("status").and_then(Value::as_str), Some("failed"));
+    assert_eq!(json.get("failed").and_then(Value::as_bool), Some(true));
+    assert_eq!(
+        json.pointer("/summary/findings").and_then(Value::as_u64),
+        Some(1)
+    );
+}
+
+#[test]
+fn spec_system_profile_renders_configured_shadow_mode_in_markdown() {
+    let root = fixture_root("profile-shadow-markdown");
+    write_valid_spec_system_fixture(&root);
+    write_file(
+        &root,
+        "policy/spec-system.toml",
+        &spec_system_config("shadow"),
+    );
+    let output = root.join("check.md");
+
+    let result = check::cmd_check(&check::CheckArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        compat: false,
+        kind: None,
+        include_untracked: false,
+        format: OutputFormat::Markdown,
+        output: Some(output.clone()),
+        receipt: None,
+        mode: Some("audit".to_string()),
+    });
+
+    assert!(
+        result.is_ok(),
+        "shadow spec-system clean report should pass: {:?}",
+        result.err()
+    );
+    let report = read_to_string(&output);
+    let _ = fs::remove_dir_all(&root);
+
+    assert!(report.contains("**Result:** shadow"));
+    assert!(report.contains("Mode: `shadow`"));
+    assert!(report.contains("Status: `passed`"));
+    assert!(report.contains("| Shadow findings | 0 |"));
+    assert!(report.contains("No spec-system shadow findings."));
+}
+
 fn argv(items: Vec<&str>) -> Vec<String> {
     items.into_iter().map(String::from).collect()
 }
@@ -402,6 +492,32 @@ fn write_valid_spec_system_fixture(root: &Path) {
         "plans/spec-system/closeout.md",
         "CARGO-ALLOW-CLOSEOUT-0001\n",
     );
+}
+
+fn spec_system_config(mode: &str) -> String {
+    format!(
+        r#"
+schema_version = "1.0"
+profile = "spec-system"
+mode = "{mode}"
+
+[roots]
+proposals = "docs/proposals"
+specs = "docs/specs"
+adrs = "docs/adr"
+plans = "plans"
+goals = ".codex/goals"
+support_tiers = "docs/status/SUPPORT_TIERS.md"
+artifact_ledger = "policy/doc-artifacts.toml"
+
+[requirements]
+ledger_required = true
+templates_required = true
+support_tiers_required = true
+active_goal_required = true
+closeout_required_for_done_items = true
+"#
+    )
 }
 
 fn valid_doc_artifact_ledger() -> String {
@@ -529,6 +645,16 @@ fn read_to_string(path: &Path) -> String {
 }
 
 fn parse_spec_system_json(name: &str, text: &str) -> Value {
+    let value = parse_spec_system_json_without_failed_assert(name, text);
+    assert_eq!(
+        value.get("failed").and_then(Value::as_bool),
+        Some(false),
+        "{name} failed"
+    );
+    value
+}
+
+fn parse_spec_system_json_without_failed_assert(name: &str, text: &str) -> Value {
     let result = serde_json::from_str::<Value>(text);
     assert!(
         result.is_ok(),
@@ -552,11 +678,6 @@ fn parse_spec_system_json(name: &str, text: &str) -> Value {
         value.get("profile").and_then(Value::as_str),
         Some("spec-system"),
         "{name} profile"
-    );
-    assert_eq!(
-        value.get("failed").and_then(Value::as_bool),
-        Some(false),
-        "{name} failed"
     );
     value
 }
