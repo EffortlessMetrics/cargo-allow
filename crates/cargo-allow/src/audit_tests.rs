@@ -68,6 +68,7 @@ fn audit_json_reports_broken_evidence_links_without_aborting() {
             root: Some(root.clone()),
         },
         config: Some(policy_path),
+        profile: None,
         compat: false,
         kind: None,
         include_untracked: false,

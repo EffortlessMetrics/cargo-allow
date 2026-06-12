@@ -1,4 +1,4 @@
-use allow_core::CargoAllowResult;
+use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 
 #[path = "audit_args.rs"]
@@ -6,12 +6,25 @@ mod audit_args;
 pub(crate) use audit_args::ReportArgs;
 
 use crate::{
-    EvidenceReportSummary, EvidenceValidationMode, ReportRenderArgs,
+    EvidenceReportSummary, EvidenceValidationMode, ProfileArg, ReportRenderArgs,
     evidence_inventory::current_evidence_source_tree_files, load_compat_world,
     load_world_with_evidence_mode, policy_baseline_debt_entries, print_report, report_config,
+    spec_system,
 };
 
 pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
+    if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
+        reject_source_exception_options(args.compat, args.kind.as_deref(), args.include_untracked)?;
+        return spec_system::cmd_spec_system(spec_system::SpecSystemCommandArgs {
+            command: "audit",
+            root: &args.root,
+            config: args.config.as_deref(),
+            format: args.format,
+            output: args.output.as_deref(),
+            receipt: None,
+        });
+    }
+
     let (root, cfg, findings, inventory_facts) = if args.compat {
         load_compat_world(
             args.root.root.as_deref(),
@@ -51,6 +64,29 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         root: &root,
         inventory_facts,
     })?;
+    Ok(())
+}
+
+fn reject_source_exception_options(
+    compat: bool,
+    kind: Option<&str>,
+    include_untracked: bool,
+) -> CargoAllowResult<()> {
+    if compat {
+        return Err(CargoAllowError::new(
+            "--compat is not supported with --profile spec-system",
+        ));
+    }
+    if kind.is_some() {
+        return Err(CargoAllowError::new(
+            "--kind is not supported with --profile spec-system",
+        ));
+    }
+    if include_untracked {
+        return Err(CargoAllowError::new(
+            "--include-untracked is not supported with --profile spec-system",
+        ));
+    }
     Ok(())
 }
 
