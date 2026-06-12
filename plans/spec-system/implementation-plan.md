@@ -1,7 +1,7 @@
 ---
 id: CARGO-ALLOW-PLAN-0001
 kind: implementation_plan
-status: active
+status: done
 owner: repo-infra
 created: 2026-06-12
 linked_proposal: CARGO-ALLOW-PROP-0001
@@ -273,24 +273,20 @@ standard baseline.
 Claim boundary: shadow posture reports failure posture without blocking; block
 only safe structural invariants after evidence.
 
-Current status: advisory artifacts, the first clean shadow mainline artifact,
-blocking behavior for selected safe structural findings, and output posture
-polish for spec-system reports/worklists are recorded in
-[closeout.md](closeout.md). First-hour adoption and CI usage docs have landed.
-Opt-in spec-system preview release notes have been drafted. The support-tier
-claim map has been reviewed and remains advisory. Repo-local dogfood now uses
-blocking mode for selected objective structural findings while nuanced lifecycle
-checks remain advisory. Opt-in preview release readiness has been reviewed
-without publishing, tagging, packaging, or claiming stable support. The next
-implementation slice landed the single-artifact
-`explain <artifact-id> --profile spec-system` view. Current audit found one
-remaining graph-validity gap: `.codex/goals/active.toml` was presence-checked
-but not parsed as active execution-state TOML. The current slice validates the
-active-goal manifest, linked artifacts, work-item proof-command fields, and
-done-item closeout references while keeping those lifecycle findings advisory
-for burn-in. After that lands, the next slice should complete the final
-spec-system profile audit and closeout unless explicit release authorization is
-granted first.
+Completion status: the opt-in `spec-system` governance profile preview is
+implemented and closed out in [closeout.md](closeout.md). The repo dogfoods the
+profile in blocking mode for selected objective structural findings while
+nuanced lifecycle checks remain advisory. The implementation includes docs,
+templates, proposal/spec/support-tier/active-goal/plan/closeout artifacts,
+profile config, doc-artifact ledger parsing, artifact identity and link
+validation, support-tier validation, active-goal TOML validation, JSON/Markdown
+reports, worklist repair items, doctor/init support, CI artifact upload,
+first-hour and CI adoption docs, preview release notes, and
+`explain <artifact-id> --profile spec-system`.
+
+The support-tier row remains advisory. Release authorization, package version
+bump, tagging, publishing, install-smoke checks, and stable-support promotion
+are explicitly out of scope for this plan closeout.
 
 Rollback: demote `policy/spec-system.toml` to shadow, revert selected blocking
 checks, remove the preview-readiness notes, or remove the profile-specific

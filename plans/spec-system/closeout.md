@@ -1,7 +1,7 @@
 ---
 id: CARGO-ALLOW-CLOSEOUT-0001
 kind: closeout
-status: draft
+status: done
 owner: repo-infra
 created: 2026-06-12
 linked_plan: CARGO-ALLOW-PLAN-0001
@@ -20,11 +20,15 @@ policy_impact:
 
 ## Summary
 
-Draft closeout for [CARGO-ALLOW-PLAN-0001](implementation-plan.md).
+Final closeout for [CARGO-ALLOW-PLAN-0001](implementation-plan.md).
 
-The plan is active and not complete. This file reserves the closeout location so
-later PRs have a stable target for completed work and final evidence. It must
-not be treated as proof that the profile has landed.
+The opt-in `spec-system` governance profile preview has landed in cargo-allow
+as source-tree graph validation for governed repo truth artifacts. Default
+cargo-allow behavior remains the source-exception ledger.
+
+This closeout records structural implementation and dogfood evidence only. It
+does not publish a release, promote the support tier beyond Advisory, or claim
+proof-command execution.
 
 ## Landed Changes
 
@@ -78,19 +82,20 @@ not be treated as proof that the profile has landed.
 | Preview release readiness review | passed locally | `docs/release/0.1.7.md` records current version/tag/release state, main CI run `27412948507`, spec-system blocking-mode checks, and the default no-new guard. No package, tag, publish, install-smoke, or stable-support claim is included. |
 | Single-artifact explain view | passed locally | `cargo-allow explain CARGO-ALLOW-SPEC-0001 --profile spec-system --format json` reported `command = explain`, `mode = blocking`, `status = passed`, one explained artifact, 5 related links, 0 findings, 0 work items, 3 proof commands, and the structural no-execution claim boundary. |
 | Active-goal TOML validation | passed locally | `cargo test -p allow-policy spec_system`, `cargo test -p cargo-allow spec_system_profile`, `cargo test -p cargo-allow spec_system_worklist`, and `cargo test -p cargo-allow artifact_schema_spec_system` passed. The tests cover the current repo active-goal manifest, unknown linked plans, missing work-item proof commands, done work items without closeouts, optional closeout links on non-done work items, advisory profile findings, advisory worklist routing, and schema enum coverage. |
+| Final closeout audit | passed locally | `doctor --profile spec-system`, `check --profile spec-system --mode audit`, `worklist --profile spec-system --format json`, and `explain CARGO-ALLOW-SPEC-0001 --profile spec-system --format json` reported `mode = blocking`, `status = passed`, 0 findings, and 0 work items. `git diff --check`, `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, and the default no-new guard passed. |
 
 ## Non-Goals
 
-- Do not claim the implementation plan is complete.
-- Do not claim the profile has completed stable support or final blocking
-  burn-in.
+- Do not claim stable support for the spec-system profile.
 - Do not claim proof commands were executed by cargo-allow.
+- Do not package, tag, publish, install-smoke, or finalize a release record.
 
 ## Claim Boundary
 
-This draft closeout records interim advisory, shadow, and repo-local blocking
-promotion evidence. It does not prove final profile stability, stable support,
-semantic correctness, or proof-command execution.
+This closeout records structural source-tree graph validation and repo-local
+dogfood evidence. It does not prove final profile stability across external
+repos, stable support, semantic correctness, release readiness, or
+proof-command execution.
 
 ## Support-Tier Updates
 
@@ -104,18 +109,20 @@ and governed as tracked source-tree files by `policy/allow.toml`.
 
 ## Remaining Work
 
+- No implementation work remains for the opt-in spec-system preview profile in
+  this plan.
 - Watch repo-local blocking mode during normal CI runs before treating it as
   stable support.
 - Keep nuanced checks advisory until they prove low-noise.
 - Obtain explicit release authorization before package, tag, publish,
   install-smoke, public install-doc update, or release-record finalization work.
-- Run the final completion audit before closing the plan.
 
 ## Rollback
 
-If the plan is withdrawn, remove this closeout placeholder, remove its
-`policy/doc-artifacts.toml` row, and remove its `policy/allow.toml` entry.
+If the plan is withdrawn, revert the profile-specific implementation and docs,
+demote or remove `policy/spec-system.toml`, mark the done artifacts superseded,
+and keep default cargo-allow source-exception behavior unchanged.
 
 ## Follow-Up Links
 
-- Next plan item: complete the final spec-system profile audit and closeout.
+- Future release work: `docs/release/0.1.7.md`.
