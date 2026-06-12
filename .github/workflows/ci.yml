@@ -18,6 +18,8 @@ jobs:
       - run: cargo test --workspace
       - run: cargo run -p cargo-allow -- audit --format json --output target/cargo-allow/audit.json
       - run: cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
+      - run: cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json
+      - run: cargo run -p cargo-allow -- check --profile spec-system --mode audit --format markdown --output target/cargo-allow/spec-system.md
       - uses: actions/upload-artifact@v7.0.1
         if: always()
         with:

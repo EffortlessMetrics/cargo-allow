@@ -104,6 +104,26 @@ synthetic code-scanning results. When repair work exists, SARIF run properties
 may also include an `evidence_repair_queues` array with the matching
 `cargo-allow worklist ... --format json` commands.
 
+For cargo-allow's own repository, CI also emits the opt-in spec-system advisory
+artifact:
+
+```bash
+cargo-allow check \
+  --profile spec-system \
+  --mode audit \
+  --format json \
+  --output target/cargo-allow/spec-system.json
+
+cargo-allow check \
+  --profile spec-system \
+  --mode audit \
+  --format markdown \
+  --output target/cargo-allow/spec-system.md
+```
+
+This is dogfood for the repo's source-of-truth graph. It remains advisory and
+does not make spec-system validation part of default cargo-allow behavior.
+
 ## Artifacts
 
 Upload `target/cargo-allow/` even on failure. The report and receipt explain
