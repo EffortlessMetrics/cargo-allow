@@ -14,8 +14,9 @@ This file maps cargo-allow user-facing claims to the proof commands or evidence
 surfaces that support them.
 
 It is part of the opt-in `spec-system` source-of-truth graph. The profile is
-advisory in this repo and validates structural graph links without executing
-proof commands.
+dogfooded in shadow posture in this repo, but this support-tier row remains
+advisory until shadow burn-in and selected blocking checks are proven useful.
+The profile validates structural graph links without executing proof commands.
 
 ## Tier Vocabulary
 
@@ -36,7 +37,7 @@ the source-tree state behind the claim.
 | Source exception ledger | Stable | `cargo-allow check --mode no-new` reports whether scanned source-tree findings are matched by `policy/allow.toml` without executing project code. | `cargo-allow check --mode no-new` | Source-tree and source-syntax only; see [claim boundaries](../claim-boundaries.md). |
 | PR posture | Stabilizing | `cargo-allow diff --base <base>` reports source-exception posture changes for a pull request. | `cargo-allow diff --base origin/main --format markdown` | Requires a meaningful base revision; does not prove build, test, coverage, or unsafe correctness. |
 | Worklist routing | Stabilizing | `cargo-allow worklist --format json` emits bounded source-exception repair items for humans and agents. | `cargo-allow worklist --format json` | Worklist proof commands are suggestions for authorized operators, not commands cargo-allow ran. |
-| Spec-system profile | Advisory | `cargo-allow check --profile spec-system --mode audit` validates registered proposal, spec, support-tier, active-goal, implementation-plan, closeout, and policy-ledger graph links when those artifacts are registered. | `cargo-allow check --profile spec-system --mode audit` | Opt-in profile; structural graph validation only. |
+| Spec-system profile | Advisory | `cargo-allow check --profile spec-system --mode audit` validates registered proposal, spec, support-tier, active-goal, implementation-plan, closeout, and policy-ledger graph links when those artifacts are registered. | `cargo-allow check --profile spec-system --mode audit` | Opt-in profile; shadow posture in this repo; structural graph validation only. |
 
 ## Claim Boundary
 

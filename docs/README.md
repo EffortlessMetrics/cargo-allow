@@ -27,7 +27,7 @@ ledger and the planned growth around it.
 - [Spec-system profile spec](specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md):
   accepted behavior contract for the planned opt-in source-of-truth profile.
 - [Support tiers](status/SUPPORT_TIERS.md): claim-to-proof map for current
-  cargo-allow surfaces and the planned advisory spec-system profile.
+  cargo-allow surfaces and the opt-in spec-system profile.
 - [Active goal manifest](../.codex/goals/README.md): current Codex execution
   state for the planned source-of-truth profile.
 - [Spec-system implementation plan](../plans/spec-system/implementation-plan.md):

@@ -1,6 +1,6 @@
 schema_version = "1.0"
 profile = "spec-system"
-mode = "advisory"
+mode = "shadow"
 
 [roots]
 proposals = "docs/proposals"
