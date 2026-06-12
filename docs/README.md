@@ -1,7 +1,7 @@
 # cargo-allow docs
 
 These documents define the product lane for the current source-tree exception
-ledger and the planned growth around it.
+ledger and opt-in governance profiles around it.
 
 - [Changelog](../CHANGELOG.md): curated user-facing release ledger.
 - [Design](design.md): cargo-allow's source-exception governance model.
@@ -13,23 +13,23 @@ ledger and the planned growth around it.
   product.
 - [Source exception ledger](source-exception-ledger.md): the policy concepts and
   entry model.
-- [Source-of-truth stack](source-of-truth/README.md): planned opt-in
+- [Source-of-truth stack](source-of-truth/README.md): opt-in
   governance graph for proposals, specs, ADRs, plans, goals, support tiers,
   policy ledgers, and closeouts.
 - [Doc artifact ledger](source-of-truth/doc-artifact-ledger.md): advisory
-  registry for governed proposal/spec artifacts in the planned source-of-truth
+  registry for governed proposal/spec artifacts in the source-of-truth
   graph.
 - [Source-of-truth templates](templates/proposal.md): starter templates for
   proposals, specs, ADRs, implementation plans, plan items, closeouts, and PR
   bodies.
 - [Spec-system profile proposal](proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md):
-  accepted product proposal for the planned opt-in source-of-truth profile.
+  accepted product proposal for the opt-in source-of-truth profile.
 - [Spec-system profile spec](specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md):
-  accepted behavior contract for the planned opt-in source-of-truth profile.
+  accepted behavior contract for the opt-in source-of-truth profile.
 - [Support tiers](status/SUPPORT_TIERS.md): claim-to-proof map for current
   cargo-allow surfaces and the opt-in spec-system profile.
 - [Active goal manifest](../.codex/goals/README.md): current Codex execution
-  state for the planned source-of-truth profile.
+  state for the source-of-truth profile.
 - [Spec-system implementation plan](../plans/spec-system/implementation-plan.md):
   PR sequence for implementing the opt-in source-of-truth profile.
 - [Getting started](getting-started.md): first-run tutorial for doctor, audit,
@@ -47,6 +47,10 @@ ledger and the planned growth around it.
 - [How-to guides](how-to/README.md): task guides for CI, explain, evidence
   repair, PR posture review, stale pruning, migration, migration evidence
   closeout, and agent worklists.
+- [Adopt the spec-system profile](how-to/adopt-spec-system-profile.md):
+  first-hour setup for the opt-in source-of-truth graph profile.
+- [Run the spec-system profile in CI](how-to/run-spec-system-in-ci.md):
+  advisory/shadow CI artifact guidance for this opt-in profile.
 - [Crates](crates.md): workspace crate responsibilities and library namespace
   policy.
 - [0.1.0 release runbook](release/0.1.0.md): publish order, dry-run sequencing,

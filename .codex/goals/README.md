@@ -1,6 +1,6 @@
 # Active Goals
 
-This directory records the current Codex execution surface for the planned
+This directory records the current Codex execution surface for the
 `spec-system` source-of-truth profile.
 
 The active goal manifest is execution state for agents. It points to the
@@ -8,9 +8,9 @@ proposal, spec, support-tier map, and implementation plan that define the work.
 It does not replace those artifacts and does not become product truth by
 itself.
 
-Current cargo-allow releases do not read or enforce `.codex/goals/active.toml`.
-The file exists so later `spec-system` profile implementation PRs have a
-repo-native active-goal artifact to parse and validate structurally.
+Default cargo-allow checks do not read or enforce `.codex/goals/active.toml`.
+The opt-in `spec-system` profile reads it as a repo-native active-goal artifact
+for structural graph validation.
 
 ## Files
 
@@ -36,8 +36,8 @@ exists.
 
 The manifest may list proof commands that a human or authorized agent should
 run for a work item. cargo-allow must not execute those commands as part of a
-future `spec-system` scan. The planned profile owns structural graph validation
-and worklist routing only.
+`spec-system` scan. The profile owns structural graph validation and worklist
+routing only.
 
 ## Maintenance
 

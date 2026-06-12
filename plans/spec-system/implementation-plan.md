@@ -20,8 +20,8 @@ policy_impact:
 
 ## Purpose
 
-Sequence the planned opt-in `spec-system` profile into PR-sized work that keeps
-default cargo-allow behavior unchanged.
+Sequence the opt-in `spec-system` profile into PR-sized work that keeps default
+cargo-allow behavior unchanged.
 
 The plan turns the accepted proposal and spec into a source-tree graph linter
 for governed repo truth: proposal, spec, ADR, implementation plan, active goal,
@@ -276,9 +276,9 @@ only safe structural invariants after evidence.
 Current status: advisory artifacts, the first clean shadow mainline artifact,
 blocking behavior for selected safe structural findings, and output posture
 polish for spec-system reports/worklists are recorded in
-[closeout.md](closeout.md). The next implementation slice should add a
-first-hour adoption guide and CI usage guide while keeping this repo's profile
-config in shadow.
+[closeout.md](closeout.md). First-hour adoption and CI usage docs have landed.
+The next implementation slice should prepare opt-in spec-system preview release
+notes while keeping this repo's profile config in shadow.
 
 Rollback: demote profile mode or revert selected blocking checks.
 
