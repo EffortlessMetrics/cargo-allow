@@ -54,6 +54,11 @@ not be treated as proof that the profile has landed.
   claiming stable support.
 - `explain <artifact-id> --profile spec-system` is implemented as a
   single-artifact graph view over the existing source-tree profile report.
+- Active-goal TOML validation now parses `.codex/goals/active.toml`, checks
+  manifest links against the doc-artifact ledger, requires proof commands on
+  ready/in-progress/done work items, resolves any provided closeout links,
+  requires closeouts for done work items, and routes those lifecycle findings
+  as advisory repair work.
 
 ## Validation Evidence
 
@@ -72,6 +77,7 @@ not be treated as proof that the profile has landed.
 | Repo-local blocking promotion | passed locally | `doctor --profile spec-system`, `check --profile spec-system --mode audit`, and `worklist --profile spec-system --format json` reported `mode = blocking`, `status = passed`, 0 findings, and 0 work items. The profile blocks only selected objective structural findings; nuanced lifecycle checks remain advisory. |
 | Preview release readiness review | passed locally | `docs/release/0.1.7.md` records current version/tag/release state, main CI run `27412948507`, spec-system blocking-mode checks, and the default no-new guard. No package, tag, publish, install-smoke, or stable-support claim is included. |
 | Single-artifact explain view | passed locally | `cargo-allow explain CARGO-ALLOW-SPEC-0001 --profile spec-system --format json` reported `command = explain`, `mode = blocking`, `status = passed`, one explained artifact, 5 related links, 0 findings, 0 work items, 3 proof commands, and the structural no-execution claim boundary. |
+| Active-goal TOML validation | passed locally | `cargo test -p allow-policy spec_system`, `cargo test -p cargo-allow spec_system_profile`, `cargo test -p cargo-allow spec_system_worklist`, and `cargo test -p cargo-allow artifact_schema_spec_system` passed. The tests cover the current repo active-goal manifest, unknown linked plans, missing work-item proof commands, done work items without closeouts, optional closeout links on non-done work items, advisory profile findings, advisory worklist routing, and schema enum coverage. |
 
 ## Non-Goals
 

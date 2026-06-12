@@ -28,11 +28,15 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 [[work_item]]
 id = "spec-system-pr-032"
 status = "ready"
-title = "Finalize spec-system profile closeout"
+title = "Validate active-goal TOML graph state"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
 proof_commands = [
+  "rtk cargo test -p allow-policy spec_system",
+  "rtk cargo test -p cargo-allow spec_system_profile",
+  "rtk cargo test -p cargo-allow spec_system_worklist",
+  "rtk cargo test -p cargo-allow artifact_schema_spec_system",
   "rtk cargo run -p cargo-allow -- doctor --profile spec-system --format json",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
   "rtk cargo run -p cargo-allow -- worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json",
@@ -43,8 +47,9 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Audit the objective against current source, docs, schemas, CLI behavior, and artifacts before closing.",
-  "Close plans/spec-system/closeout.md only if the opt-in profile end state is fully implemented and verified.",
+  "Close the gap where the profile presence-checked .codex/goals/active.toml without validating its TOML fields, links, work-item proof commands, and done-item closeout references.",
+  "Keep active-goal payload findings advisory during first burn-in; do not add them to the blocking-eligible set in this slice.",
+  "After this validation gap lands, run the final completion audit before closing plans/spec-system/closeout.md.",
   "Keep CARGO-ALLOW-SUPPORT-0001 advisory unless a separate support-tier promotion decision is made.",
   "Do not package, tag, publish, or claim stable support without explicit release authorization.",
 ]

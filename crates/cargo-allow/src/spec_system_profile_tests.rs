@@ -638,6 +638,62 @@ fn spec_system_blocking_mode_keeps_missing_required_edge_advisory() {
 }
 
 #[test]
+fn spec_system_blocking_mode_keeps_active_goal_manifest_findings_advisory() {
+    let root = fixture_root("profile-blocking-active-goal-advisory");
+    write_valid_spec_system_fixture(&root);
+    write_file(
+        &root,
+        "policy/spec-system.toml",
+        &spec_system_config("blocking"),
+    );
+    write_file(
+        &root,
+        ".codex/goals/active.toml",
+        &valid_active_goal_manifest().replace(
+            r#"proof_commands = [
+  "cargo-allow check --profile spec-system --mode audit",
+  "cargo-allow worklist --profile spec-system --format json",
+]"#,
+            "proof_commands = []",
+        ),
+    );
+    let output = root.join("check.json");
+
+    let result = spec_system_check_json(&root, &output);
+
+    assert!(
+        result.is_ok(),
+        "blocking mode should not command-block active-goal lifecycle findings: {:?}",
+        result.err()
+    );
+    let report = read_to_string(&output);
+    let _ = fs::remove_dir_all(&root);
+    let json = parse_spec_system_json_without_failed_assert("blocking active goal", &report);
+
+    assert_eq!(json.get("mode").and_then(Value::as_str), Some("blocking"));
+    assert_eq!(json.get("status").and_then(Value::as_str), Some("passed"));
+    assert_eq!(json.get("failed").and_then(Value::as_bool), Some(false));
+    assert_eq!(
+        json.pointer("/summary/findings").and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        json.pointer("/summary/blocking_eligible_findings")
+            .and_then(Value::as_u64),
+        Some(0)
+    );
+    let finding = first_finding(&json);
+    assert_eq!(
+        finding.get("kind").and_then(Value::as_str),
+        Some("active_goal")
+    );
+    assert_eq!(
+        finding.get("blocking_eligible").and_then(Value::as_bool),
+        Some(false)
+    );
+}
+
+#[test]
 fn spec_system_profile_renders_configured_shadow_mode_in_markdown() {
     let root = fixture_root("profile-shadow-markdown");
     write_valid_spec_system_fixture(&root);
@@ -714,7 +770,11 @@ fn write_valid_spec_system_fixture(root: &Path) {
         "CARGO-ALLOW-SPEC-0001\n",
     );
     write_file(root, "docs/status/SUPPORT_TIERS.md", support_tiers());
-    write_file(root, ".codex/goals/active.toml", "CARGO-ALLOW-GOAL-0001\n");
+    write_file(
+        root,
+        ".codex/goals/active.toml",
+        valid_active_goal_manifest(),
+    );
     write_file(
         root,
         "plans/spec-system/implementation-plan.md",
@@ -843,6 +903,33 @@ linked_goal = "CARGO-ALLOW-GOAL-0001"
 linked_plan = "CARGO-ALLOW-PLAN-0001"
 "#
     .to_string()
+}
+
+fn valid_active_goal_manifest() -> &'static str {
+    r#"
+schema_version = "1.0"
+id = "CARGO-ALLOW-GOAL-0001"
+title = "Spec-system profile"
+status = "active"
+owner = "codex"
+created = "2026-06-12"
+linked_proposal = "CARGO-ALLOW-PROP-0001"
+linked_spec = "CARGO-ALLOW-SPEC-0001"
+linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
+linked_plan = "plans/spec-system/implementation-plan.md"
+linked_plan_status = "active"
+
+[[work_item]]
+id = "spec-system-pr-001"
+status = "ready"
+title = "Keep spec-system graph valid"
+linked_spec = "CARGO-ALLOW-SPEC-0001"
+linked_plan = "plans/spec-system/implementation-plan.md"
+proof_commands = [
+  "cargo-allow check --profile spec-system --mode audit",
+  "cargo-allow worklist --profile spec-system --format json",
+]
+"#
 }
 
 fn doc_artifact_ledger_without_spec_proposal() -> String {

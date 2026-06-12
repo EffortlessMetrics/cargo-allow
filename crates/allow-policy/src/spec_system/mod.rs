@@ -1,16 +1,21 @@
 //! Internal model for the planned opt-in spec-system profile.
 //!
 //! This module parses source-tree configuration and artifact ledgers, then
-//! validates registered artifact file existence, roots, visible IDs, and
-//! ledger-resolvable graph links, and support-tier claim/proof fields. It does
-//! not validate active-goal TOML, execute proof commands, or affect default
+//! validates registered artifact file existence, roots, visible IDs,
+//! ledger-resolvable graph links, active-goal TOML references, and support-tier
+//! claim/proof fields. It does not execute proof commands or affect default
 //! cargo-allow behavior.
 
+mod active_goal;
 mod config;
 mod doc_artifacts;
 mod support_tiers;
 mod validate;
 
+pub use active_goal::{
+    ActiveGoalManifest, ActiveGoalStatus, ActiveGoalWorkItem, ActiveGoalWorkItemStatus,
+    parse_active_goal_manifest, validate_active_goal_manifest, validate_active_goal_manifest_text,
+};
 pub use config::{
     SpecSystemConfig, SpecSystemMode, SpecSystemRequirements, SpecSystemRoots,
     parse_spec_system_config,
