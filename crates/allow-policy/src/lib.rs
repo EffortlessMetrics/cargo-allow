@@ -27,6 +27,8 @@ mod render_toml;
 mod scope_validation;
 mod selector_validation;
 mod source_tree_scope;
+#[doc(hidden)]
+pub mod spec_system;
 mod starter;
 mod text_validation;
 mod toml_de;
