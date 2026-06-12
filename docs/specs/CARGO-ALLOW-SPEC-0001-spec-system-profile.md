@@ -211,11 +211,14 @@ reliable. It must not lint prose quality or general Markdown style.
 - Linked proposal:
   [CARGO-ALLOW-PROP-0001](../proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md)
 - Linked ADR: none yet.
-- Linked implementation plan: planned for `plans/spec-system/implementation-plan.md`.
+- Linked implementation plan:
+  [CARGO-ALLOW-PLAN-0001](../../plans/spec-system/implementation-plan.md).
 - Linked support-tier surface:
   [CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md).
 - Linked active goal:
   [CARGO-ALLOW-GOAL-0001](../../.codex/goals/active.toml).
+- Linked closeout:
+  [CARGO-ALLOW-CLOSEOUT-0001](../../plans/spec-system/closeout.md).
 - Linked policy ledger: planned for `policy/doc-artifacts.toml` and
   `policy/spec-system.toml`; current tracked-file governance remains in
   `policy/allow.toml`.

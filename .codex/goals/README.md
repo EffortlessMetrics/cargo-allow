@@ -26,11 +26,11 @@ The current manifest links to:
 - `CARGO-ALLOW-PROP-0001`
 - `CARGO-ALLOW-SPEC-0001`
 - `CARGO-ALLOW-SUPPORT-0001`
-- `plans/spec-system/implementation-plan.md`
+- `CARGO-ALLOW-PLAN-0001`
 
-The implementation plan path is intentionally forward-looking until the next
-PR adds that plan. The manifest should not be used to claim that the plan
-already exists.
+The active manifest should keep `linked_plan_status` current. It is `active`
+once [CARGO-ALLOW-PLAN-0001](../../plans/spec-system/implementation-plan.md)
+exists.
 
 ## Claim Boundary
 

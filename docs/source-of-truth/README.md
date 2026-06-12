@@ -72,6 +72,8 @@ The first support-tier map is
 [CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md).
 The current active goal manifest is
 [CARGO-ALLOW-GOAL-0001](../../.codex/goals/active.toml).
+The current implementation plan is
+[CARGO-ALLOW-PLAN-0001](../../plans/spec-system/implementation-plan.md).
 
 ## Claim Boundary
 
