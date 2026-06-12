@@ -1259,6 +1259,24 @@ fn rejects_active_goal_done_work_item_without_closeout() {
 }
 
 #[test]
+fn rejects_active_goal_ready_work_item_unknown_closeout() {
+    let ledger = active_goal_manifest_test_ledger();
+    let manifest = valid_active_goal_manifest_toml().replace(
+        "linked_plan = \"plans/spec-system/implementation-plan.md\"\nproof_commands",
+        "linked_plan = \"plans/spec-system/implementation-plan.md\"\nlinked_closeout = \"CARGO-ALLOW-CLOSEOUT-MISSING\"\nproof_commands",
+    );
+
+    let result = validate_active_goal_manifest_text(&manifest, &ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("linked_closeout target"));
+    assert!(err.to_string().contains("not registered by id or path"));
+}
+
+#[test]
 fn rejects_active_goal_missing_required_spec_link() {
     let ledger_result = parse_doc_artifact_ledger(
         r#"

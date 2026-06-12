@@ -173,6 +173,18 @@ fn validate_active_goal_work_item(
         item.linked_support_tier.as_deref(),
         &[ArtifactKind::SupportTier],
     )?;
+    let linked_closeout = resolve_optional_target(
+        ledger,
+        &format!("{} linked_closeout", item.id),
+        item.linked_closeout.as_deref(),
+        &[ArtifactKind::Closeout],
+    )?;
+    let closeout = resolve_optional_target(
+        ledger,
+        &format!("{} closeout", item.id),
+        item.closeout.as_deref(),
+        &[ArtifactKind::Closeout],
+    )?;
 
     match item.status {
         ActiveGoalWorkItemStatus::Ready
@@ -195,14 +207,14 @@ fn validate_active_goal_work_item(
         }
     }
 
-    if item.status == ActiveGoalWorkItemStatus::Done {
-        let closeout = item.linked_closeout.as_deref().or(item.closeout.as_deref());
-        resolve_required_target(
-            ledger,
-            &format!("{} linked_closeout", item.id),
-            closeout,
-            &[ArtifactKind::Closeout],
-        )?;
+    if item.status == ActiveGoalWorkItemStatus::Done
+        && linked_closeout.is_none()
+        && closeout.is_none()
+    {
+        return Err(CargoAllowError::new(format!(
+            "{} linked_closeout must not be empty",
+            item.id
+        )));
     }
 
     Ok(())
