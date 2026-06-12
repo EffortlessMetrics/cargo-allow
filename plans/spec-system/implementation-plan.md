@@ -280,12 +280,14 @@ polish for spec-system reports/worklists are recorded in
 Opt-in spec-system preview release notes have been drafted. The support-tier
 claim map has been reviewed and remains advisory. Repo-local dogfood now uses
 blocking mode for selected objective structural findings while nuanced lifecycle
-checks remain advisory. The next implementation slice should review opt-in
-preview release readiness without publishing, tagging, or claiming stable
-support.
+checks remain advisory. Opt-in preview release readiness has been reviewed
+without publishing, tagging, packaging, or claiming stable support. The next
+implementation slice should add the single-artifact
+`explain <artifact-id> --profile spec-system` view unless explicit release
+authorization is granted first.
 
-Rollback: demote `policy/spec-system.toml` to shadow or revert selected
-blocking checks.
+Rollback: demote `policy/spec-system.toml` to shadow, revert selected blocking
+checks, or remove the preview-readiness notes.
 
 ## Support-Tier Updates
 

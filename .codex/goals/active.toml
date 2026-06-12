@@ -26,9 +26,9 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-030"
+id = "spec-system-pr-031"
 status = "ready"
-title = "Review spec-system preview release readiness"
+title = "Implement spec-system explain artifact view"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
@@ -43,8 +43,8 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Do not package, tag, publish, or update public install claims without explicit release authorization.",
-  "Refresh release-candidate evidence before any 0.1.7 release decision.",
-  "Keep CARGO-ALLOW-SUPPORT-0001 advisory unless a separate promotion decision is made.",
-  "Avoid claiming proof execution, semantic correctness, or stable support for the spec-system profile.",
+  "Add explain <artifact-id> --profile spec-system as a source-tree graph view for one registered artifact.",
+  "Explain should report artifact metadata, incoming and outgoing links, current findings, work items, proof-command fields, and the structural claim boundary.",
+  "Do not execute proof commands, call GitHub APIs, run cargo/rustc/Clippy/build scripts/proc macros, or inspect network state from the explain path.",
+  "Keep default explain behavior unchanged unless --profile spec-system is selected.",
 ]
