@@ -277,17 +277,18 @@ Current status: advisory artifacts, the first clean shadow mainline artifact,
 blocking behavior for selected safe structural findings, and output posture
 polish for spec-system reports/worklists are recorded in
 [closeout.md](closeout.md). First-hour adoption and CI usage docs have landed.
-Opt-in spec-system preview release notes have been drafted. The next
-implementation slice should review the support-tier claim map before any
-repo-local blocking promotion or release authorization.
+Opt-in spec-system preview release notes have been drafted. The support-tier
+claim map has been reviewed and remains advisory. The next implementation slice
+should review repo-local blocking-promotion readiness before changing
+`policy/spec-system.toml` out of shadow.
 
 Rollback: demote profile mode or revert selected blocking checks.
 
 ## Support-Tier Updates
 
-`CARGO-ALLOW-SUPPORT-0001` currently records the `spec-system` profile as
-advisory. Later PRs should update that row only when implemented behavior makes
-a stronger claim true.
+`CARGO-ALLOW-SUPPORT-0001` records the `spec-system` profile as advisory. Later
+PRs should update that row only when implemented behavior and promotion evidence
+make a stronger claim true.
 
 ## Policy Updates
 

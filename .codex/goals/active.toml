@@ -26,9 +26,9 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-028"
+id = "spec-system-pr-029"
 status = "ready"
-title = "Review spec-system support-tier claim map"
+title = "Review spec-system blocking-promotion readiness"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
@@ -43,7 +43,8 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Keep policy/spec-system.toml in shadow while reviewing support-tier claims.",
-  "Confirm CARGO-ALLOW-SUPPORT-0001 remains advisory unless stronger evidence supports promotion.",
+  "Keep policy/spec-system.toml in shadow unless blocking-promotion review proves the promoted posture is low-noise.",
+  "Promote only objective structural failures such as duplicate IDs, missing registered files, invalid statuses or kinds, unknown links, missing declared IDs, and config or ledger parse failures.",
+  "Keep judgment-heavy checks advisory longer: stale active goals, missing closeouts, support-tier completeness, and README or release claim coverage.",
   "Avoid claiming release readiness, proof execution, or stable support for the spec-system profile.",
 ]
