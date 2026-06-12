@@ -48,6 +48,15 @@ cargo-allow worklist \
   --output target/cargo-allow/spec-system-worklist.json
 ```
 
+Inspect one registered artifact and its graph links:
+
+```bash
+cargo-allow explain CARGO-ALLOW-SPEC-0001 \
+  --profile spec-system \
+  --format json \
+  --output target/cargo-allow/spec-system-explain.json
+```
+
 ## What To Fix First
 
 Start with objective structural repairs:

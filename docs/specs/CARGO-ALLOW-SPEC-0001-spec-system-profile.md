@@ -93,11 +93,6 @@ cargo-allow check --profile spec-system
 cargo-allow audit --profile spec-system
 cargo-allow worklist --profile spec-system --format json
 cargo-allow doctor --profile spec-system
-```
-
-Later maturity commands should use the same explicit profile boundary:
-
-```bash
 cargo-allow init --profile spec-system
 cargo-allow explain CARGO-ALLOW-SPEC-0001 --profile spec-system
 ```
@@ -105,9 +100,10 @@ cargo-allow explain CARGO-ALLOW-SPEC-0001 --profile spec-system
 `check --profile spec-system` validates the source-of-truth graph structurally.
 `audit --profile spec-system` explains current posture. `worklist --profile
 spec-system` emits repair items. `doctor --profile spec-system` reports setup
-readiness. `init --profile spec-system` should bootstrap the profile files when
-implemented. `explain <artifact-id> --profile spec-system` should explain one
-artifact's links, proof obligations, and status when implemented.
+readiness. `init --profile spec-system` bootstraps the profile files. `explain
+<artifact-id> --profile spec-system` explains one registered artifact's
+metadata, incoming and outgoing links, current findings, work items, proof
+commands, and claim boundary.
 
 Commands without `--profile spec-system` must keep their source-exception
 behavior and must not require spec-system files.

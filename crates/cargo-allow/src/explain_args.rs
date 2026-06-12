@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::RootArgs;
+use crate::{ProfileArg, RootArgs};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ExplainArgs {
@@ -9,9 +9,12 @@ pub(crate) struct ExplainArgs {
     pub(super) id: String,
     #[command(flatten)]
     pub(super) root: RootArgs,
-    /// Policy config path.
+    /// Policy config path. With --profile spec-system, profile config path.
     #[arg(long)]
     pub(super) config: Option<PathBuf>,
+    /// Opt-in profile to explain instead of the default source-exception ledger.
+    #[arg(long, value_enum)]
+    pub(super) profile: Option<ProfileArg>,
     /// Include untracked files in addition to git-tracked files.
     #[arg(long)]
     pub(super) include_untracked: bool,

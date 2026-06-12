@@ -91,6 +91,27 @@ pub(crate) fn cmd_spec_system_doctor(
     emit_text(args.output, &rendered)
 }
 
+pub(crate) struct SpecSystemExplainCommandArgs<'a> {
+    pub(crate) artifact_id: &'a str,
+    pub(crate) root: &'a RootArgs,
+    pub(crate) config: Option<&'a Path>,
+    pub(crate) format_json: bool,
+    pub(crate) output: Option<&'a Path>,
+}
+
+pub(crate) fn cmd_spec_system_explain(
+    args: SpecSystemExplainCommandArgs<'_>,
+) -> CargoAllowResult<()> {
+    let report = build_spec_system_report("explain", args.root, args.config, true, false)?;
+    let report = filter_spec_system_report_for_artifact(&report, args.artifact_id)?;
+    let rendered = if args.format_json {
+        render_spec_system_json(&report)
+    } else {
+        render_spec_system_explain_markdown(&report)
+    };
+    emit_text(args.output, &rendered)
+}
+
 pub(crate) struct SpecSystemInitCommandArgs<'a> {
     pub(crate) root: &'a RootArgs,
     pub(crate) config: Option<&'a Path>,
@@ -154,7 +175,7 @@ struct SpecSystemReport {
     readiness: Option<SpecSystemReadiness>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct SpecSystemArtifact {
     id: String,
     kind: &'static str,
@@ -164,7 +185,7 @@ struct SpecSystemArtifact {
     created: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct SpecSystemLink {
     source_id: String,
     field: &'static str,
@@ -172,7 +193,7 @@ struct SpecSystemLink {
     target_kind: Option<&'static str>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct SpecSystemFinding {
     kind: &'static str,
     message: String,
@@ -192,7 +213,7 @@ impl SpecSystemFinding {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct SpecSystemWorkItem {
     kind: &'static str,
     artifact_id: Option<String>,
@@ -1114,6 +1135,188 @@ fn render_spec_system_report(report: &SpecSystemReport, format: OutputFormat) ->
     }
 }
 
+fn filter_spec_system_report_for_artifact(
+    report: &SpecSystemReport,
+    artifact_id: &str,
+) -> CargoAllowResult<SpecSystemReport> {
+    let artifact = report
+        .artifacts
+        .iter()
+        .find(|artifact| artifact.id == artifact_id)
+        .ok_or_else(|| CargoAllowError::new(format!("no spec-system artifact `{artifact_id}`")))?;
+    let links = report
+        .links
+        .iter()
+        .filter(|link| spec_system_link_touches_artifact(link, artifact))
+        .cloned()
+        .collect::<Vec<_>>();
+    let findings = report
+        .findings
+        .iter()
+        .filter(|finding| spec_system_message_mentions_artifact(&finding.message, artifact))
+        .cloned()
+        .collect::<Vec<_>>();
+    let work_items = report
+        .work_items
+        .iter()
+        .filter(|item| spec_system_work_item_touches_artifact(item, artifact))
+        .cloned()
+        .collect::<Vec<_>>();
+
+    Ok(SpecSystemReport {
+        command: report.command.clone(),
+        root: report.root.clone(),
+        config_source: report.config_source.clone(),
+        mode: report.mode.clone(),
+        artifacts: vec![artifact.clone()],
+        links,
+        support_tier_rows: report.support_tier_rows,
+        findings,
+        work_items,
+        readiness: None,
+    })
+}
+
+fn spec_system_link_touches_artifact(link: &SpecSystemLink, artifact: &SpecSystemArtifact) -> bool {
+    link.source_id == artifact.id || link.target == artifact.id || link.target == artifact.path
+}
+
+fn spec_system_work_item_touches_artifact(
+    item: &SpecSystemWorkItem,
+    artifact: &SpecSystemArtifact,
+) -> bool {
+    item.artifact_id.as_deref() == Some(artifact.id.as_str())
+        || item.path.as_deref() == Some(artifact.path.as_str())
+        || spec_system_message_mentions_artifact(&item.message, artifact)
+}
+
+fn spec_system_message_mentions_artifact(message: &str, artifact: &SpecSystemArtifact) -> bool {
+    message.contains(&artifact.id) || message.contains(&artifact.path)
+}
+
+fn render_spec_system_explain_markdown(report: &SpecSystemReport) -> String {
+    let Some(artifact) = report.artifacts.first() else {
+        return render_spec_system_markdown(report);
+    };
+    let mut text = String::new();
+    text.push_str(&format!(
+        "# cargo-allow explain {} --profile spec-system\n\n",
+        artifact.id
+    ));
+    text.push_str(&format!(
+        "**Result:** {}\n\n",
+        spec_system_mode_name(&report.mode)
+    ));
+    text.push_str(&format!(
+        "Mode: `{}`\n\n",
+        spec_system_mode_name(&report.mode)
+    ));
+    text.push_str(&format!(
+        "Status: `{}`\n\n",
+        spec_system_report_status(report)
+    ));
+    text.push_str("Profile: `spec-system`\n\n");
+    text.push_str(&format!(
+        "Source tree root: `{}`\n\n",
+        report.root.display()
+    ));
+    text.push_str(&format!("Config: `{}`\n\n", report.config_source));
+
+    text.push_str("## Artifact\n\n");
+    text.push_str("| Field | Value |\n|---|---|\n");
+    text.push_str(&format!("| ID | `{}` |\n", artifact.id));
+    text.push_str(&format!("| Kind | `{}` |\n", artifact.kind));
+    text.push_str(&format!("| Path | `{}` |\n", artifact.path));
+    text.push_str(&format!("| Status | `{}` |\n", artifact.status));
+    text.push_str(&format!("| Owner | `{}` |\n", artifact.owner));
+    text.push_str(&format!("| Created | `{}` |\n\n", artifact.created));
+
+    render_spec_system_link_section(&mut text, "Outgoing Links", report, artifact, true);
+    render_spec_system_link_section(&mut text, "Incoming Links", report, artifact, false);
+
+    text.push_str("## Current Findings\n\n");
+    if report.findings.is_empty() {
+        text.push_str("No findings for this artifact.\n\n");
+    } else {
+        for finding in &report.findings {
+            let posture = finding.blocking_reason.unwrap_or("advisory");
+            text.push_str(&format!(
+                "- `{}` (`{}`): {}\n",
+                finding.kind, posture, finding.message
+            ));
+        }
+        text.push('\n');
+    }
+
+    text.push_str("## Repair Work Items\n\n");
+    if report.work_items.is_empty() {
+        text.push_str("No work items for this artifact.\n\n");
+    } else {
+        for item in &report.work_items {
+            let posture = spec_system_work_item_blocking_reason(item).unwrap_or("advisory");
+            text.push_str(&format!(
+                "- `{}` (`{}`): {}\n",
+                item.kind, posture, item.message
+            ));
+            if !item.suggested_actions.is_empty() {
+                text.push_str("  - Suggested actions:\n");
+                for action in &item.suggested_actions {
+                    text.push_str(&format!("    - {action}\n"));
+                }
+            }
+            if !item.proof_commands.is_empty() {
+                text.push_str("  - Proof commands:\n");
+                for command in &item.proof_commands {
+                    text.push_str(&format!("    - `{command}`\n"));
+                }
+            }
+        }
+        text.push('\n');
+    }
+
+    text.push_str("## Proof Commands\n\n");
+    for command in spec_system_explain_proof_commands(&artifact.id) {
+        text.push_str(&format!("- `{command}`\n"));
+    }
+    text.push('\n');
+    text.push_str("> Claim boundary: structural source-tree graph validation only; cargo-allow did not execute proof commands, run tests, invoke Cargo, rustc, Clippy, build scripts, proc macros, external proof tools, network calls, or GitHub APIs.\n");
+    text
+}
+
+fn render_spec_system_link_section(
+    text: &mut String,
+    title: &str,
+    report: &SpecSystemReport,
+    artifact: &SpecSystemArtifact,
+    outgoing: bool,
+) {
+    let links = report
+        .links
+        .iter()
+        .filter(|link| {
+            if outgoing {
+                link.source_id == artifact.id
+            } else {
+                link.target == artifact.id || link.target == artifact.path
+            }
+        })
+        .collect::<Vec<_>>();
+    text.push_str(&format!("## {title}\n\n"));
+    if links.is_empty() {
+        text.push_str("None.\n\n");
+        return;
+    }
+    text.push_str("| Field | Source | Target | Target kind |\n|---|---|---|---|\n");
+    for link in links {
+        let target_kind = link.target_kind.unwrap_or("");
+        text.push_str(&format!(
+            "| `{}` | `{}` | `{}` | `{}` |\n",
+            link.field, link.source_id, link.target, target_kind
+        ));
+    }
+    text.push('\n');
+}
+
 fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
     let mut text = String::new();
     text.push_str(&format!(
@@ -1321,6 +1524,21 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
         "  \"config_source\": \"{}\",\n",
         json_escape(&report.config_source)
     ));
+    if report.command == "explain" {
+        if let Some(artifact) = report.artifacts.first() {
+            text.push_str(&format!(
+                "  \"explained_artifact_id\": \"{}\",\n",
+                json_escape(&artifact.id)
+            ));
+            text.push_str("  \"proof_commands\": ");
+            render_string_array(
+                &mut text,
+                &spec_system_explain_proof_commands(&artifact.id),
+                "  ",
+            );
+            text.push_str(",\n");
+        }
+    }
     if let Some(readiness) = &report.readiness {
         text.push_str("  \"readiness\": {\n");
         text.push_str(&format!(
@@ -1523,6 +1741,14 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
     text.push_str("  ]\n");
     text.push_str("}\n");
     text
+}
+
+fn spec_system_explain_proof_commands(artifact_id: &str) -> Vec<String> {
+    let mut commands = spec_system_proof_commands();
+    commands.push(format!(
+        "cargo-allow explain {artifact_id} --profile spec-system"
+    ));
+    commands
 }
 
 fn render_spec_system_sarif(report: &SpecSystemReport) -> String {

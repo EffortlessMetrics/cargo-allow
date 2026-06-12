@@ -282,12 +282,14 @@ claim map has been reviewed and remains advisory. Repo-local dogfood now uses
 blocking mode for selected objective structural findings while nuanced lifecycle
 checks remain advisory. Opt-in preview release readiness has been reviewed
 without publishing, tagging, packaging, or claiming stable support. The next
-implementation slice should add the single-artifact
-`explain <artifact-id> --profile spec-system` view unless explicit release
-authorization is granted first.
+implementation slice adds the single-artifact
+`explain <artifact-id> --profile spec-system` view. After that lands, the next
+slice should complete the final spec-system profile audit and closeout unless
+explicit release authorization is granted first.
 
 Rollback: demote `policy/spec-system.toml` to shadow, revert selected blocking
-checks, or remove the preview-readiness notes.
+checks, remove the preview-readiness notes, or remove the profile-specific
+explain path.
 
 ## Support-Tier Updates
 
