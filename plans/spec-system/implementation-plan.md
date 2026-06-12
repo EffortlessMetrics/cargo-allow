@@ -273,6 +273,11 @@ standard baseline.
 Claim boundary: shadow posture reports failure posture without blocking; block
 only safe structural invariants after evidence.
 
+Current status: advisory artifacts and the first clean shadow mainline artifact
+are recorded in [closeout.md](closeout.md). The next implementation slice should
+add blocking behavior for selected safe structural findings while keeping this
+repo's profile config in shadow.
+
 Rollback: demote profile mode or revert selected blocking checks.
 
 ## Support-Tier Updates

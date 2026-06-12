@@ -26,14 +26,16 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-023"
+id = "spec-system-pr-024"
 status = "ready"
-title = "Review shadow burn-in before blocking"
+title = "Implement blocking behavior for safe structural lints"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
 proof_commands = [
+  "rtk cargo test -p allow-policy spec_system",
   "rtk cargo test -p cargo-allow spec_system_profile",
+  "rtk cargo test -p cargo-allow spec_system_worklist",
   "rtk cargo test -p cargo-allow spec_system_doctor",
   "rtk cargo run -p cargo-allow -- doctor --profile spec-system --format json",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
@@ -45,5 +47,7 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Before marking this item done, inspect the mainline CI spec-system artifact and record mode=shadow, status=passed, failed=false.",
+  "Keep policy/spec-system.toml in shadow while implementing blocking behavior.",
+  "Limit the first blocking behavior to safe structural failures: duplicate IDs, missing artifact files, invalid statuses or kinds, and unknown links.",
+  "Do not make nuanced checks such as stale active goals, missing closeouts, support-tier completeness, or README claim coverage command-blocking yet.",
 ]
