@@ -12,7 +12,8 @@ pub use config::{
     parse_spec_system_config,
 };
 pub use doc_artifacts::{
-    ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, parse_doc_artifact_ledger,
+    ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, load_doc_artifacts,
+    parse_doc_artifact_ledger,
 };
 
 #[cfg(test)]
