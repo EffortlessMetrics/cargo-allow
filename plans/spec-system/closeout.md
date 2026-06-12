@@ -28,26 +28,36 @@ not be treated as proof that the profile has landed.
 
 ## Landed Changes
 
-- Not closed yet.
+- Source-of-truth graph docs, templates, proposal, spec, support-tier map,
+  active goal manifest, implementation plan, draft closeout, and artifact
+  ledger are present.
+- Internal spec-system config, doc artifact ledger, artifact identity/link,
+  support-tier, report, worklist, doctor, and init support has landed.
+- `policy/spec-system.toml` enables the profile in advisory mode for this repo.
+- CI uploads advisory `spec-system.json` and `spec-system.md` artifacts through
+  the existing `target/cargo-allow/` report bundle.
 
 ## Validation Evidence
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| Final spec-system advisory check | not run | Profile commands are not implemented yet. |
-| Final dogfood worklist | not run | Worklist support is not implemented yet. |
-| Final support-tier review | not run | The support-tier row remains advisory. |
+| First advisory CI artifact | passed | GitHub Actions run `27401018305`, `push` to `main` at `81c41dea899c4a635206b075e293ddd61a3c88e3`, uploaded `cargo-allow-reports` containing `spec-system.json` and `spec-system.md`. |
+| First advisory spec-system JSON | passed | `spec-system.json` reported schema `cargo-allow.spec-system.v1`, `command = check`, `mode = advisory`, `status = passed`, `config_source = policy/spec-system.toml`, 6 artifacts, 17 links, 4 support-tier rows, 0 findings, and 0 work items. |
+| First advisory Markdown report | passed | `spec-system.md` reported advisory result, 0 findings, 0 work items, and the structural source-tree graph claim boundary. |
+| Final dogfood worklist | not final | Current advisory run reports 0 work items, but the profile has not completed shadow or blocking burn-in. |
+| Final support-tier review | not final | `CARGO-ALLOW-SUPPORT-0001` remains advisory for the spec-system profile. |
 
 ## Non-Goals
 
 - Do not claim the implementation plan is complete.
-- Do not claim `--profile spec-system` is implemented.
+- Do not claim the profile has completed shadow or blocking burn-in.
 - Do not claim proof commands were executed by cargo-allow.
 
 ## Claim Boundary
 
-This draft closeout is a placeholder. It records where final evidence will go;
-it does not record final evidence yet.
+This draft closeout records interim advisory evidence. It does not prove final
+profile stability, shadow posture, blocking posture, semantic correctness, or
+proof-command execution.
 
 ## Support-Tier Updates
 
@@ -61,13 +71,11 @@ and governed as tracked source-tree files by `policy/allow.toml`.
 
 ## Remaining Work
 
-- Implement the config model.
-- Parse and validate the doc artifact ledger.
-- Validate graph identity and edges.
-- Validate support-tier proof-command fields.
-- Add explicit profile CLI behavior.
-- Emit reports, receipts, and worklists.
-- Dogfood advisory mode before any shadow or blocking promotion.
+- Review advisory burn-in over subsequent CI runs.
+- Decide whether low-risk structural checks should move to shadow mode.
+- Promote only safe structural checks after evidence supports it.
+- Keep nuanced checks advisory until they prove low-noise.
+- Update this closeout with final dogfood evidence before closing the plan.
 
 ## Rollback
 
@@ -76,4 +84,4 @@ If the plan is withdrawn, remove this closeout placeholder, remove its
 
 ## Follow-Up Links
 
-- Next plan item: PR 9, `policy: add spec-system config model`.
+- Next plan item: review shadow-mode candidates after advisory burn-in.
