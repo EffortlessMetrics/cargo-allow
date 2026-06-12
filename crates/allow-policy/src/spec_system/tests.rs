@@ -1170,6 +1170,95 @@ fn rejects_active_goal_unknown_plan() {
 }
 
 #[test]
+fn parses_current_repository_active_goal_manifest() {
+    let ledger_result =
+        parse_doc_artifact_ledger(include_str!("../../../../policy/doc-artifacts.toml"));
+    assert!(
+        ledger_result.is_ok(),
+        "ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let result = validate_active_goal_manifest_text(
+        include_str!("../../../../.codex/goals/active.toml"),
+        &ledger,
+    );
+
+    assert!(
+        result.is_ok(),
+        "active goal manifest should validate: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn validates_active_goal_toml_links_and_work_items() {
+    let ledger = active_goal_manifest_test_ledger();
+    let result = validate_active_goal_manifest_text(valid_active_goal_manifest_toml(), &ledger);
+
+    assert!(
+        result.is_ok(),
+        "active goal TOML should validate: {:?}",
+        result.err()
+    );
+}
+
+#[test]
+fn rejects_active_goal_toml_unknown_linked_plan() {
+    let ledger = active_goal_manifest_test_ledger();
+    let manifest = valid_active_goal_manifest_toml().replace(
+        "plans/spec-system/implementation-plan.md",
+        "plans/spec-system/missing.md",
+    );
+
+    let result = validate_active_goal_manifest_text(&manifest, &ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("active goal linked_plan target"));
+    assert!(err.to_string().contains("not registered by id or path"));
+}
+
+#[test]
+fn rejects_active_goal_ready_work_item_without_proof_commands() {
+    let ledger = active_goal_manifest_test_ledger();
+    let manifest = valid_active_goal_manifest_toml().replace(
+        r#"proof_commands = [
+  "cargo-allow check --profile spec-system --mode audit",
+]"#,
+        "proof_commands = []",
+    );
+
+    let result = validate_active_goal_manifest_text(&manifest, &ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("requires proof_commands"));
+}
+
+#[test]
+fn rejects_active_goal_done_work_item_without_closeout() {
+    let ledger = active_goal_manifest_test_ledger();
+    let manifest =
+        valid_active_goal_manifest_toml().replace("status = \"ready\"", "status = \"done\"");
+
+    let result = validate_active_goal_manifest_text(&manifest, &ledger);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("linked_closeout"));
+}
+
+#[test]
 fn rejects_active_goal_missing_required_spec_link() {
     let ledger_result = parse_doc_artifact_ledger(
         r#"
@@ -2301,6 +2390,118 @@ fn unique_stamp() -> u128 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |duration| duration.as_nanos())
+}
+
+fn active_goal_manifest_test_ledger() -> DocArtifactLedger {
+    let ledger_result = parse_doc_artifact_ledger(
+        r#"
+            schema_version = "1.0"
+            policy = "cargo-allow-doc-artifacts"
+            owner = "repo-infra"
+            status = "advisory"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PROP-0001"
+            kind = "proposal"
+            path = "docs/proposals/CARGO-ALLOW-PROP-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SPEC-0001"
+            kind = "spec"
+            path = "docs/specs/CARGO-ALLOW-SPEC-0001-example.md"
+            status = "accepted"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            linked_proposal = "CARGO-ALLOW-PROP-0001"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-SUPPORT-0001"
+            kind = "support_tier"
+            path = "docs/status/SUPPORT_TIERS.md"
+            status = "active"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            linked_proposal = "CARGO-ALLOW-PROP-0001"
+            linked_spec = "CARGO-ALLOW-SPEC-0001"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-GOAL-0001"
+            kind = "active_goal"
+            path = ".codex/goals/active.toml"
+            status = "active"
+            owner = "codex"
+            created = "2026-06-12"
+            linked_proposal = "CARGO-ALLOW-PROP-0001"
+            linked_spec = "CARGO-ALLOW-SPEC-0001"
+            linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
+            linked_plan = "plans/spec-system/implementation-plan.md"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-PLAN-0001"
+            kind = "implementation_plan"
+            path = "plans/spec-system/implementation-plan.md"
+            status = "active"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            linked_proposal = "CARGO-ALLOW-PROP-0001"
+            linked_spec = "CARGO-ALLOW-SPEC-0001"
+            linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
+            linked_goal = "CARGO-ALLOW-GOAL-0001"
+
+            [[artifact]]
+            id = "CARGO-ALLOW-CLOSEOUT-0001"
+            kind = "closeout"
+            path = "plans/spec-system/closeout.md"
+            status = "draft"
+            owner = "repo-infra"
+            created = "2026-06-12"
+            linked_plan = "CARGO-ALLOW-PLAN-0001"
+        "#,
+    );
+    assert!(
+        ledger_result.is_ok(),
+        "active goal fixture ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return DocArtifactLedger {
+            schema_version: String::new(),
+            policy: String::new(),
+            owner: String::new(),
+            status: SpecSystemMode::Advisory,
+            artifact: Vec::new(),
+        };
+    };
+    ledger
+}
+
+fn valid_active_goal_manifest_toml() -> &'static str {
+    r#"
+schema_version = "1.0"
+id = "CARGO-ALLOW-GOAL-0001"
+title = "Spec-system profile"
+status = "active"
+owner = "codex"
+created = "2026-06-12"
+linked_proposal = "CARGO-ALLOW-PROP-0001"
+linked_spec = "CARGO-ALLOW-SPEC-0001"
+linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
+linked_plan = "plans/spec-system/implementation-plan.md"
+linked_plan_status = "active"
+
+[[work_item]]
+id = "spec-system-pr-001"
+status = "ready"
+title = "Keep graph valid"
+linked_spec = "CARGO-ALLOW-SPEC-0001"
+linked_plan = "plans/spec-system/implementation-plan.md"
+proof_commands = [
+  "cargo-allow check --profile spec-system --mode audit",
+]
+"#
 }
 
 fn repo_root() -> std::path::PathBuf {

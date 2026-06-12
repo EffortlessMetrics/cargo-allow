@@ -488,6 +488,7 @@
         "doc_artifact_ledger",
         "artifact_file",
         "artifact_link",
+        "active_goal",
         "support_tier"
       ]
     },

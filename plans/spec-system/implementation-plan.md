@@ -282,10 +282,15 @@ claim map has been reviewed and remains advisory. Repo-local dogfood now uses
 blocking mode for selected objective structural findings while nuanced lifecycle
 checks remain advisory. Opt-in preview release readiness has been reviewed
 without publishing, tagging, packaging, or claiming stable support. The next
-implementation slice adds the single-artifact
-`explain <artifact-id> --profile spec-system` view. After that lands, the next
-slice should complete the final spec-system profile audit and closeout unless
-explicit release authorization is granted first.
+implementation slice landed the single-artifact
+`explain <artifact-id> --profile spec-system` view. Current audit found one
+remaining graph-validity gap: `.codex/goals/active.toml` was presence-checked
+but not parsed as active execution-state TOML. The current slice validates the
+active-goal manifest, linked artifacts, work-item proof-command fields, and
+done-item closeout references while keeping those lifecycle findings advisory
+for burn-in. After that lands, the next slice should complete the final
+spec-system profile audit and closeout unless explicit release authorization is
+granted first.
 
 Rollback: demote `policy/spec-system.toml` to shadow, revert selected blocking
 checks, remove the preview-readiness notes, or remove the profile-specific

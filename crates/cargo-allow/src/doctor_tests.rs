@@ -568,7 +568,7 @@ fn write_valid_spec_system_readiness_fixture(root: &Path) {
         .unwrap_or_else(|err| std::panic::panic_any(format!("write support tiers: {err}")));
     fs::write(
         root.join(".codex/goals/active.toml"),
-        "schema_version = \"1.0\"\n",
+        active_goal_manifest(),
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write active goal: {err}")));
     for path in [
@@ -615,6 +615,69 @@ schema_version = "1.0"
 policy = "cargo-allow-doc-artifacts"
 owner = "repo-infra"
 status = "advisory"
+
+[[artifact]]
+id = "CARGO-ALLOW-PROP-0001"
+kind = "proposal"
+path = "docs/proposals/CARGO-ALLOW-PROP-0001-example.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-06-12"
+
+[[artifact]]
+id = "CARGO-ALLOW-SPEC-0001"
+kind = "spec"
+path = "docs/specs/CARGO-ALLOW-SPEC-0001-example.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-06-12"
+linked_proposal = "CARGO-ALLOW-PROP-0001"
+
+[[artifact]]
+id = "CARGO-ALLOW-GOAL-0001"
+kind = "active_goal"
+path = ".codex/goals/active.toml"
+status = "active"
+owner = "codex"
+created = "2026-06-12"
+linked_proposal = "CARGO-ALLOW-PROP-0001"
+linked_spec = "CARGO-ALLOW-SPEC-0001"
+linked_plan = "plans/spec-system/implementation-plan.md"
+
+[[artifact]]
+id = "CARGO-ALLOW-PLAN-0001"
+kind = "implementation_plan"
+path = "plans/spec-system/implementation-plan.md"
+status = "active"
+owner = "repo-infra"
+created = "2026-06-12"
+linked_proposal = "CARGO-ALLOW-PROP-0001"
+linked_spec = "CARGO-ALLOW-SPEC-0001"
+"#
+}
+
+fn active_goal_manifest() -> &'static str {
+    r#"
+schema_version = "1.0"
+id = "CARGO-ALLOW-GOAL-0001"
+title = "Spec-system profile"
+status = "active"
+owner = "codex"
+created = "2026-06-12"
+linked_proposal = "CARGO-ALLOW-PROP-0001"
+linked_spec = "CARGO-ALLOW-SPEC-0001"
+linked_plan = "plans/spec-system/implementation-plan.md"
+linked_plan_status = "active"
+
+[[work_item]]
+id = "spec-system-pr-001"
+status = "ready"
+title = "Keep graph valid"
+linked_spec = "CARGO-ALLOW-SPEC-0001"
+linked_plan = "plans/spec-system/implementation-plan.md"
+proof_commands = [
+  "cargo-allow check --profile spec-system --mode audit",
+]
 "#
 }
 

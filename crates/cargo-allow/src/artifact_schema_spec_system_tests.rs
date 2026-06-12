@@ -113,6 +113,19 @@ fn spec_system_schema_locks_profile_commands_and_readiness() {
         &["kind", "message", "blocking_eligible"],
     );
     assert_enum_equals(
+        "spec-system finding kind",
+        &schema,
+        "/$defs/finding_kind/enum",
+        &[
+            "profile_config",
+            "doc_artifact_ledger",
+            "artifact_file",
+            "artifact_link",
+            "active_goal",
+            "support_tier",
+        ],
+    );
+    assert_enum_equals(
         "spec-system blocking reason",
         &schema,
         "/$defs/blocking_reason/enum",

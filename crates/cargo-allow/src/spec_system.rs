@@ -3,8 +3,8 @@ use allow_inventory::resolve_source_tree_root;
 use allow_policy::spec_system::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, SpecSystemConfig, SpecSystemMode,
     SpecSystemRequirements, SpecSystemRoots, SupportTierLevel, load_doc_artifacts,
-    parse_spec_system_config, parse_support_tier_claims, validate_doc_artifact_files,
-    validate_doc_artifact_links, validate_support_tier_claims,
+    parse_spec_system_config, parse_support_tier_claims, validate_active_goal_manifest_text,
+    validate_doc_artifact_files, validate_doc_artifact_links, validate_support_tier_claims,
 };
 use std::env;
 use std::fs;
@@ -484,6 +484,17 @@ fn build_spec_system_report(
                 "artifact_link",
                 validate_doc_artifact_links(&ledger),
             );
+            if cfg.requirements.active_goal_required {
+                let active_goal_path = active_goal_manifest_source_path(&cfg);
+                let active_goal_result = validate_active_goal_file(&root, &cfg, &ledger);
+                if let Err(err) = active_goal_result {
+                    let message = err.to_string();
+                    findings.push(SpecSystemFinding::new("active_goal", message.clone()));
+                    if include_work_items {
+                        work_items.push(active_goal_work_item(&active_goal_path, &message));
+                    }
+                }
+            }
         }
         Err(err) => {
             let message = err.to_string();
@@ -694,6 +705,26 @@ fn collect_validation(
     }
 }
 
+fn active_goal_manifest_source_path(cfg: &SpecSystemConfig) -> String {
+    let goals = cfg.roots.goals.trim_end_matches(['/', '\\']);
+    format!("{goals}/active.toml")
+}
+
+fn validate_active_goal_file(
+    root: &Path,
+    cfg: &SpecSystemConfig,
+    ledger: &DocArtifactLedger,
+) -> CargoAllowResult<()> {
+    let source_path = active_goal_manifest_source_path(cfg);
+    let active_goal_path = root_relative_path(root, Path::new(&source_path));
+    let text = fs::read_to_string(&active_goal_path).map_err(|err| {
+        CargoAllowError::new(format!(
+            "failed to read active goal manifest {source_path}: {err}"
+        ))
+    })?;
+    validate_active_goal_manifest_text(&text, ledger).map(|_| ())
+}
+
 fn collect_spec_system_readiness(
     root: &Path,
     loaded: &LoadedSpecSystemConfig,
@@ -737,12 +768,13 @@ fn collect_spec_system_readiness(
 
     let ledger_path = root_relative_path(root, Path::new(&cfg.roots.artifact_ledger));
     let ledger_result = load_doc_artifacts(&ledger_path);
+    let ledger_valid = ledger_result.is_ok();
     checks.push(readiness_check(
         "artifact_ledger",
         Some(cfg.roots.artifact_ledger.clone()),
         ledger_path.is_file(),
-        Some(ledger_result.is_ok()),
-        match ledger_result {
+        Some(ledger_valid),
+        match &ledger_result {
             Ok(_) => format!("doc artifact ledger {} parsed", cfg.roots.artifact_ledger),
             Err(err) => err.to_string(),
         },
@@ -768,17 +800,23 @@ fn collect_spec_system_readiness(
         },
     ));
 
-    let active_goal = format!("{}/active.toml", cfg.roots.goals.trim_end_matches('/'));
+    let active_goal = active_goal_manifest_source_path(cfg);
     let active_goal_path = root_relative_path(root, Path::new(&active_goal));
+    let active_goal_result = match &ledger_result {
+        Ok(ledger) => validate_active_goal_file(root, cfg, ledger).map_err(|err| err.to_string()),
+        Err(err) => Err(format!(
+            "active goal manifest cannot be validated until doc artifact ledger parses: {err}"
+        )),
+    };
+    let active_goal_valid = active_goal_result.is_ok();
     checks.push(readiness_check(
         "active_goal",
         Some(active_goal.clone()),
         active_goal_path.is_file(),
-        Some(active_goal_path.is_file()),
-        if active_goal_path.is_file() {
-            format!("active goal manifest {active_goal} exists")
-        } else {
-            format!("active goal manifest {active_goal} is missing")
+        Some(active_goal_valid),
+        match active_goal_result {
+            Ok(()) => format!("active goal manifest {active_goal} parsed"),
+            Err(err) => err,
         },
     ));
 
@@ -1058,6 +1096,51 @@ fn work_items_from_config_findings(findings: &[SpecSystemFinding]) -> Vec<SpecSy
             )
         })
         .collect()
+}
+
+fn active_goal_work_item(path: &str, message: &str) -> SpecSystemWorkItem {
+    let kind = active_goal_work_item_kind(message);
+    SpecSystemWorkItem {
+        kind,
+        artifact_id: None,
+        path: Some(path.to_string()),
+        owner: Some("codex".to_string()),
+        status: None,
+        message: format!("active goal manifest is missing or invalid: {message}"),
+        suggested_actions: active_goal_suggested_actions(kind),
+        proof_commands: spec_system_proof_commands(),
+    }
+}
+
+fn active_goal_work_item_kind(message: &str) -> &'static str {
+    if message.contains("proof_commands") || message.contains("proof command") {
+        return "missing_proof_command";
+    }
+    if message.contains("closeout") {
+        return "missing_closeout";
+    }
+    "stale_active_goal"
+}
+
+fn active_goal_suggested_actions(kind: &str) -> Vec<String> {
+    match kind {
+        "missing_proof_command" => vec![
+            "add non-empty proof_commands to ready, in_progress, or done active goal work items"
+                .to_string(),
+            "or move the work item to blocked with blocker_reason if proof cannot be named"
+                .to_string(),
+        ],
+        "missing_closeout" => vec![
+            "link done active goal work items to a registered closeout artifact".to_string(),
+            "or move the work item out of done until closeout evidence exists".to_string(),
+        ],
+        _ => vec![
+            "update .codex/goals/active.toml so its IDs, status, and links match policy/doc-artifacts.toml"
+                .to_string(),
+            "or register the intended active goal, linked plan, spec, proposal, and support tier in policy/doc-artifacts.toml"
+                .to_string(),
+        ],
+    }
 }
 
 fn missing_required_edge_work_item(
