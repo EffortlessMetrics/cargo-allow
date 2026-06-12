@@ -71,10 +71,10 @@ Source-of-truth work should land in narrow PRs. Each PR should state:
 - claim boundary.
 - rollback path.
 
-For example, the first source-of-truth PR can add only this documentation front
-door. Later PRs can add templates, a proposal, a spec, a doc artifact ledger,
-support tiers, an active goal manifest, an implementation plan, profile config,
-and eventually CLI support.
+For example, a source-of-truth PR can update one artifact family, close one
+broken graph edge, or repair one worklist class. The implemented profile already
+has templates, a proposal, a spec, a doc artifact ledger, support tiers, an
+active goal manifest, an implementation plan, profile config, and CLI support.
 
 ## Active Goal Manifest
 

@@ -1,4 +1,4 @@
-//! Internal model for the planned opt-in spec-system profile.
+//! Internal model for the opt-in spec-system profile.
 //!
 //! This module parses source-tree configuration and artifact ledgers, then
 //! validates registered artifact file existence, roots, visible IDs,

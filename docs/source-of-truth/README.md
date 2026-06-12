@@ -36,7 +36,7 @@ reviewers, and agents to use without relying on chat history:
 - A new contributor can find why work exists.
 - Codex and other agents can find the next ready slice.
 - Reviewers can see claim boundaries and proof commands.
-- CI can eventually detect broken governance links.
+- CI can detect broken governance links for opted-in profiles.
 - Worklists can point to bounded source-of-truth repairs.
 
 This is not a generic Markdown linting lane. The profile is about the governance

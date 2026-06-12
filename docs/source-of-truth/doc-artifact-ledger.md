@@ -71,9 +71,9 @@ run Cargo, or prove that a claim is semantically true.
 
 ## Claim Boundary
 
-This ledger may support future claims that source-tree artifacts were parsed,
-registered, and linked. It must not be used to claim proof execution, test
-adequacy, release readiness, GitHub state, support-tier truth, or semantic
+This ledger supports claims that source-tree artifacts were parsed, registered,
+and linked by the opt-in profile. It must not be used to claim proof execution,
+test adequacy, release readiness, GitHub state, support-tier truth, or semantic
 correctness.
 
 ## Rollback
