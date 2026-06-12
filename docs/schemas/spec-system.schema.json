@@ -226,9 +226,29 @@
           "type": "integer",
           "minimum": 0
         },
+        "blocking_eligible_findings": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Findings from objective structural classes that blocking mode may fail on."
+        },
+        "advisory_findings": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Findings that remain advisory even when this profile is configured for blocking mode."
+        },
         "work_items": {
           "type": "integer",
           "minimum": 0
+        },
+        "blocking_eligible_work_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Work items associated with objective structural findings that blocking mode may fail on."
+        },
+        "advisory_work_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Work items associated with lifecycle or judgment-heavy checks that remain advisory."
         }
       }
     },
@@ -380,6 +400,13 @@
           "type": "string",
           "minLength": 1
         },
+        "blocking_eligible": {
+          "type": "boolean",
+          "description": "True when this repair item corresponds to an objective structural class that blocking mode may fail on."
+        },
+        "blocking_reason": {
+          "$ref": "#/$defs/blocking_reason"
+        },
         "message": {
           "type": "string",
           "minLength": 1
@@ -467,6 +494,7 @@
         "missing_node",
         "missing_doc_artifact",
         "artifact_file_missing",
+        "artifact_file_unreadable",
         "artifact_id_not_in_file",
         "invalid_artifact_status",
         "missing_required_edge",

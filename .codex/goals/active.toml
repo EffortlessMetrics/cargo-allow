@@ -26,16 +26,13 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-025"
+id = "spec-system-pr-026"
 status = "ready"
-title = "Polish spec-system report and worklist output"
+title = "Add first-hour spec-system adoption and CI docs"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
 proof_commands = [
-  "rtk cargo test -p cargo-allow spec_system_profile",
-  "rtk cargo test -p cargo-allow spec_system_worklist",
-  "rtk cargo test -p cargo-allow artifact_schema",
   "rtk cargo run -p cargo-allow -- doctor --profile spec-system --format json",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
   "rtk cargo run -p cargo-allow -- worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json",
@@ -46,7 +43,7 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Keep policy/spec-system.toml in shadow while polishing output.",
-  "Make spec-system reports easier for reviewers to scan without turning them into Markdown formatting lint.",
-  "Make worklist repair items easier for agents to route without executing proof commands or broadening claim boundaries.",
+  "Keep policy/spec-system.toml in shadow while documenting adoption.",
+  "Document first-hour use as one opt-in governance profile among possible future profiles, not as a default path.",
+  "Document CI usage as advisory/shadow artifact upload first, with blocking limited to proven structural checks later.",
 ]
