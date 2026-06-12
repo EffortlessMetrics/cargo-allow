@@ -16,10 +16,11 @@ inventory without executing repository code.
   fields.
 - Added `cargo-allow check --profile spec-system`, `audit --profile
   spec-system`, `worklist --profile spec-system --format json`, `doctor
-  --profile spec-system`, and `init --profile spec-system` preview surfaces.
+  --profile spec-system`, `init --profile spec-system`, and `explain
+  <artifact-id> --profile spec-system` preview surfaces.
 - Added the `cargo-allow.spec-system.v1` JSON report shape with artifacts,
-  links, findings, work items, setup readiness, scanner limitations, and the
-  structural source-tree claim boundary.
+  links, findings, work items, setup readiness, single-artifact explanation,
+  scanner limitations, and the structural source-tree claim boundary.
 - Dogfooded the profile in this repository with advisory CI artifacts, shadow
   mode, clean shadow burn-in evidence, blocking-eligible structural finding
   classification, repo-local blocking posture for selected structural findings,

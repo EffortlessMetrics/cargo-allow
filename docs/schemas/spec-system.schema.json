@@ -35,7 +35,7 @@
       "const": "cargo-allow"
     },
     "command": {
-      "enum": ["check", "audit", "worklist", "doctor"],
+      "enum": ["check", "audit", "worklist", "doctor", "explain"],
       "description": "Profile command that produced this source-of-truth graph artifact."
     },
     "profile": {
@@ -85,6 +85,21 @@
       "type": "string",
       "minLength": 1,
       "description": "Profile configuration source, either a repo path or the built-in default root set."
+    },
+    "explained_artifact_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Artifact ID explained by explain <artifact-id> --profile spec-system."
+    },
+    "proof_commands": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^cargo-allow ",
+        "description": "Suggested standalone cargo-allow follow-up command. cargo-allow records it but does not execute it."
+      },
+      "description": "Explain-only follow-up commands for rechecking the artifact view. These commands are not executed by cargo-allow."
     },
     "readiness": {
       "$ref": "#/$defs/readiness",

@@ -5,8 +5,9 @@ use allow_match::{CheckMode, evaluate, score_match};
 use std::path::Path;
 
 use crate::{
-    EvidenceValidationMode, SourceTreeReportContext, emit_text,
+    EvidenceValidationMode, ProfileArg, SourceTreeReportContext, emit_text,
     evidence_inventory::current_evidence_source_tree_files, load_world_with_evidence_mode,
+    spec_system,
 };
 
 #[path = "explain_args.rs"]
@@ -23,6 +24,21 @@ use explain_render::{render_explain_entry, render_explain_entry_json};
 pub(super) use explain_types::ExplainContext;
 
 pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
+    if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
+        if args.include_untracked {
+            return Err(CargoAllowError::new(
+                "--include-untracked is not supported with --profile spec-system",
+            ));
+        }
+        return spec_system::cmd_spec_system_explain(spec_system::SpecSystemExplainCommandArgs {
+            artifact_id: &args.id,
+            root: &args.root,
+            config: args.config.as_deref(),
+            format_json: matches!(args.format, ExplainFormat::Json),
+            output: args.output.as_deref(),
+        });
+    }
+
     let (root, cfg, findings, inventory_facts) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),

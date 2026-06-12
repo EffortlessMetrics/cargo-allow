@@ -88,6 +88,7 @@ fn schema_index_artifact_table_matches_registered_producers() {
                 "audit --profile spec-system",
                 "worklist --profile spec-system",
                 "doctor --profile spec-system",
+                "explain <artifact-id> --profile spec-system",
             ] {
                 let producer = format!("`cargo-allow {command}");
                 assert!(

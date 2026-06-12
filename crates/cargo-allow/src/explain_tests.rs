@@ -1,8 +1,9 @@
 use super::test_support::{test_entry, test_finding};
 use super::*;
-use crate::{CargoAllowCli, CargoAllowCommand};
+use crate::{CargoAllowCli, CargoAllowCommand, ProfileArg, RootArgs};
 use allow_core::FindingKind;
 use clap::Parser;
+use serde_json::Value;
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -41,6 +42,224 @@ fn clap_parses_explain_id_and_config() {
             && config.as_deref() == Some(Path::new("policy/custom.toml"))
             && output.as_deref() == Some(Path::new("target/explain.json"))
     ));
+}
+
+#[test]
+fn clap_parses_spec_system_profile_for_explain() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "explain",
+        "CARGO-ALLOW-SPEC-0001",
+        "--profile",
+        "spec-system",
+        "--format",
+        "json",
+        "--output",
+        "target/spec-system-explain.json",
+    ]))
+    .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::Explain(ExplainArgs {
+            id,
+            profile: Some(ProfileArg::SpecSystem),
+            format: ExplainFormat::Json,
+            output,
+            ..
+        })) if id == "CARGO-ALLOW-SPEC-0001"
+            && output.as_deref() == Some(Path::new("target/spec-system-explain.json"))
+    ));
+}
+
+#[test]
+fn explain_spec_system_profile_json_reports_one_artifact() {
+    let root = spec_system_fixture_dir();
+    write_spec_system_fixture(&root);
+    let output = root.join("spec-system-explain.json");
+
+    let result = cmd_explain(&ExplainArgs {
+        id: "CARGO-ALLOW-SPEC-0001".to_string(),
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        include_untracked: false,
+        format: ExplainFormat::Json,
+        output: Some(output.clone()),
+    });
+
+    assert!(
+        result.is_ok(),
+        "spec-system explain should pass: {:?}",
+        result.err()
+    );
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read explain JSON: {err}")));
+    let value = serde_json::from_str::<Value>(&json)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse explain JSON: {err}\n{json}")));
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+
+    assert_eq!(
+        value.get("schema_id").and_then(Value::as_str),
+        Some(allow_report::SPEC_SYSTEM_SCHEMA_ID)
+    );
+    assert_eq!(
+        value.get("command").and_then(Value::as_str),
+        Some("explain")
+    );
+    assert_eq!(
+        value.get("profile").and_then(Value::as_str),
+        Some("spec-system")
+    );
+    assert_eq!(
+        value.get("explained_artifact_id").and_then(Value::as_str),
+        Some("CARGO-ALLOW-SPEC-0001")
+    );
+    assert_eq!(
+        value.pointer("/summary/artifacts").and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        value.pointer("/artifacts/0/id").and_then(Value::as_str),
+        Some("CARGO-ALLOW-SPEC-0001")
+    );
+    let links = value
+        .get("links")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("spec-system explain should include links"));
+    assert!(
+        links.iter().any(|link| {
+            link.get("source_id").and_then(Value::as_str) == Some("CARGO-ALLOW-SPEC-0001")
+                && link.get("field").and_then(Value::as_str) == Some("linked_proposal")
+        }),
+        "spec-system explain should include outgoing links: {json}"
+    );
+    assert!(
+        links.iter().any(|link| {
+            link.get("target").and_then(Value::as_str) == Some("CARGO-ALLOW-SPEC-0001")
+                && link.get("source_id").and_then(Value::as_str) == Some("CARGO-ALLOW-SUPPORT-0001")
+        }),
+        "spec-system explain should include incoming links: {json}"
+    );
+    let proof_commands = value
+        .get("proof_commands")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("spec-system explain should include proof commands")
+        });
+    assert!(proof_commands.iter().any(|command| {
+        command.as_str() == Some("cargo-allow explain CARGO-ALLOW-SPEC-0001 --profile spec-system")
+    }));
+    let claim_boundary = value
+        .get("claim_boundary")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("spec-system explain should include claim boundary")
+        });
+    assert!(
+        claim_boundary
+            .iter()
+            .any(|flag| { flag.as_str() == Some("proof_commands_not_executed") })
+    );
+}
+
+#[test]
+fn explain_spec_system_profile_human_reports_artifact_links_and_boundary() {
+    let root = spec_system_fixture_dir();
+    write_spec_system_fixture(&root);
+    let output = root.join("spec-system-explain.md");
+
+    let result = cmd_explain(&ExplainArgs {
+        id: "CARGO-ALLOW-SPEC-0001".to_string(),
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        include_untracked: false,
+        format: ExplainFormat::Human,
+        output: Some(output.clone()),
+    });
+
+    assert!(
+        result.is_ok(),
+        "spec-system explain should pass: {:?}",
+        result.err()
+    );
+    let text = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read explain text: {err}")));
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+
+    assert!(text.contains("# cargo-allow explain CARGO-ALLOW-SPEC-0001 --profile spec-system"));
+    assert!(text.contains("## Artifact"));
+    assert!(text.contains("## Outgoing Links"));
+    assert!(text.contains("## Incoming Links"));
+    assert!(text.contains("CARGO-ALLOW-SUPPORT-0001"));
+    assert!(text.contains("## Proof Commands"));
+    assert!(text.contains("proof commands"));
+    assert!(text.contains("did not execute proof commands"));
+}
+
+#[test]
+fn explain_spec_system_profile_rejects_include_untracked() {
+    let root = spec_system_fixture_dir();
+    write_spec_system_fixture(&root);
+
+    let result = cmd_explain(&ExplainArgs {
+        id: "CARGO-ALLOW-SPEC-0001".to_string(),
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        include_untracked: true,
+        format: ExplainFormat::Human,
+        output: None,
+    });
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(
+        err.to_string()
+            .contains("--include-untracked is not supported with --profile spec-system")
+    );
+}
+
+#[test]
+fn explain_spec_system_profile_rejects_unknown_artifact() {
+    let root = spec_system_fixture_dir();
+    write_spec_system_fixture(&root);
+
+    let result = cmd_explain(&ExplainArgs {
+        id: "CARGO-ALLOW-SPEC-9999".to_string(),
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        include_untracked: false,
+        format: ExplainFormat::Human,
+        output: None,
+    });
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(
+        err.to_string()
+            .contains("no spec-system artifact `CARGO-ALLOW-SPEC-9999`")
+    );
 }
 
 #[test]
@@ -355,4 +574,118 @@ fn migrate_fixture_dir() -> PathBuf {
     fs::create_dir_all(&dir)
         .unwrap_or_else(|err| std::panic::panic_any(format!("fixture dir: {err}")));
     dir
+}
+
+fn spec_system_fixture_dir() -> PathBuf {
+    let dir = migrate_fixture_dir();
+    fs::create_dir_all(&dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("fixture dir: {err}")));
+    dir
+}
+
+fn write_spec_system_fixture(root: &Path) {
+    write_explain_fixture_file(root, "policy/spec-system.toml", spec_system_config());
+    write_explain_fixture_file(
+        root,
+        "policy/doc-artifacts.toml",
+        spec_system_doc_artifacts(),
+    );
+    write_explain_fixture_file(
+        root,
+        "docs/proposals/CARGO-ALLOW-PROP-0001-example.md",
+        "CARGO-ALLOW-PROP-0001\n",
+    );
+    write_explain_fixture_file(
+        root,
+        "docs/specs/CARGO-ALLOW-SPEC-0001-example.md",
+        "CARGO-ALLOW-SPEC-0001\n",
+    );
+    write_explain_fixture_file(
+        root,
+        "docs/status/SUPPORT_TIERS.md",
+        spec_system_support_tiers(),
+    );
+}
+
+fn write_explain_fixture_file(root: &Path, relative_path: &str, contents: &str) {
+    let path = root.join(relative_path);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("fixture parent: {err}")));
+    }
+    fs::write(&path, contents)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("fixture file: {err}")));
+}
+
+fn spec_system_config() -> &'static str {
+    r#"
+schema_version = "1.0"
+profile = "spec-system"
+mode = "blocking"
+
+[roots]
+proposals = "docs/proposals"
+specs = "docs/specs"
+adrs = "docs/adr"
+plans = "plans"
+goals = ".codex/goals"
+support_tiers = "docs/status/SUPPORT_TIERS.md"
+artifact_ledger = "policy/doc-artifacts.toml"
+
+[requirements]
+ledger_required = true
+templates_required = false
+support_tiers_required = true
+active_goal_required = false
+closeout_required_for_done_items = false
+"#
+}
+
+fn spec_system_doc_artifacts() -> &'static str {
+    r#"
+schema_version = "1.0"
+policy = "cargo-allow-doc-artifacts"
+owner = "repo-infra"
+status = "advisory"
+
+[[artifact]]
+id = "CARGO-ALLOW-PROP-0001"
+kind = "proposal"
+path = "docs/proposals/CARGO-ALLOW-PROP-0001-example.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-06-12"
+
+[[artifact]]
+id = "CARGO-ALLOW-SPEC-0001"
+kind = "spec"
+path = "docs/specs/CARGO-ALLOW-SPEC-0001-example.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-06-12"
+linked_proposal = "CARGO-ALLOW-PROP-0001"
+
+[[artifact]]
+id = "CARGO-ALLOW-SUPPORT-0001"
+kind = "support_tier"
+path = "docs/status/SUPPORT_TIERS.md"
+status = "active"
+owner = "repo-infra"
+created = "2026-06-12"
+linked_proposal = "CARGO-ALLOW-PROP-0001"
+linked_spec = "CARGO-ALLOW-SPEC-0001"
+"#
+}
+
+fn spec_system_support_tiers() -> &'static str {
+    r#"
+# Support Tiers
+
+CARGO-ALLOW-SUPPORT-0001
+
+| Surface | Tier | Claim | Proof command | Notes |
+| --- | --- | --- | --- | --- |
+| Source exception ledger | Stable | Source-tree findings are checked against policy. | cargo-allow check --mode no-new | Source-tree only. |
+| Spec-system profile | Advisory | The repo carries graph artifacts. | cargo-allow check --profile spec-system --mode audit | Structural only. |
+"#
 }

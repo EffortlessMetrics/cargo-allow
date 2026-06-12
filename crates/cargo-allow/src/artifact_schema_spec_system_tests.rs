@@ -14,7 +14,22 @@ fn spec_system_schema_locks_profile_commands_and_readiness() {
         "spec-system command",
         &schema,
         "/properties/command/enum",
-        &["check", "audit", "worklist", "doctor"],
+        &["check", "audit", "worklist", "doctor", "explain"],
+    );
+
+    let explained_artifact_id =
+        required_schema_pointer("spec-system", &schema, "/properties/explained_artifact_id");
+    assert_eq!(
+        explained_artifact_id.get("type").and_then(Value::as_str),
+        Some("string"),
+        "spec-system explain artifact id should be optional string"
+    );
+    let proof_commands =
+        required_schema_pointer("spec-system", &schema, "/properties/proof_commands");
+    assert_eq!(
+        proof_commands.get("type").and_then(Value::as_str),
+        Some("array"),
+        "spec-system explain proof commands should be optional array"
     );
 
     let readiness = required_schema_pointer("spec-system", &schema, "/$defs/readiness");

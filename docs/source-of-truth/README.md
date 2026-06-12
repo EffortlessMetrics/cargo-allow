@@ -21,6 +21,7 @@ cargo-allow audit --profile spec-system
 cargo-allow worklist --profile spec-system --format json
 cargo-allow doctor --profile spec-system
 cargo-allow init --profile spec-system
+cargo-allow explain <artifact-id> --profile spec-system
 ```
 
 This profile is heavier than the default source-exception ledger, so adoption
