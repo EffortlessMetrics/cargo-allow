@@ -2001,3 +2001,164 @@ glob = "docs/source-of-truth/agent-operating-model.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0154"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/templates/proposal.md"
+owner = "core/policy"
+classification = "source_truth_template"
+reason = "Provides the proposal starter template for the planned opt-in source-of-truth stack."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/templates/proposal.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/templates/proposal.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0155"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/templates/spec.md"
+owner = "core/policy"
+classification = "source_truth_template"
+reason = "Provides the spec starter template for behavior contracts in the planned opt-in source-of-truth stack."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/templates/spec.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/templates/spec.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0156"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/templates/adr.md"
+owner = "core/policy"
+classification = "source_truth_template"
+reason = "Provides the ADR starter template for durable decisions in the planned opt-in source-of-truth stack."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/templates/adr.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/templates/adr.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0157"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/templates/implementation-plan.md"
+owner = "core/policy"
+classification = "source_truth_template"
+reason = "Provides the implementation-plan starter template for PR-sized sequencing in the planned opt-in source-of-truth stack."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/templates/implementation-plan.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/templates/implementation-plan.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0158"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/templates/plan-item.md"
+owner = "core/policy"
+classification = "source_truth_template"
+reason = "Provides the plan-item starter template for bounded agent and maintainer work in the planned opt-in source-of-truth stack."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/source-of-truth/agent-operating-model.md", "doc:docs/source-of-truth/linking-model.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/templates/plan-item.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/templates/plan-item.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0159"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/templates/closeout.md"
+owner = "core/policy"
+classification = "source_truth_template"
+reason = "Provides the closeout starter template for recording landed work, validation evidence, and remaining gaps."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/source-of-truth/artifact-taxonomy.md", "doc:docs/source-of-truth/linking-model.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/templates/closeout.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/templates/closeout.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0160"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/templates/pr-body.md"
+owner = "core/policy"
+classification = "source_truth_template"
+reason = "Provides the pull-request body starter template for source-of-truth and policy-governance PRs."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/source-of-truth/agent-operating-model.md", "doc:docs/agents/cargo-allow-worklist.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/templates/pr-body.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/templates/pr-body.md"
+
+[allow.last_seen]
+line = 1
+column = 1

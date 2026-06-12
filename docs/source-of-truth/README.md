@@ -58,6 +58,11 @@ The detailed artifact contract is in
 [artifact taxonomy](artifact-taxonomy.md). Link rules are in
 [linking model](linking-model.md). Agent use is in
 [agent operating model](agent-operating-model.md).
+Starter templates are in [proposal](../templates/proposal.md),
+[spec](../templates/spec.md), [ADR](../templates/adr.md),
+[implementation plan](../templates/implementation-plan.md),
+[plan item](../templates/plan-item.md), [closeout](../templates/closeout.md),
+and [PR body](../templates/pr-body.md).
 
 ## Claim Boundary
 
@@ -94,6 +99,6 @@ Level 2: opt-in spec-system profile.
 Level 3: integrated work routing, receipts, and repair queues.
 ```
 
-This first documentation slice defines the stack only. Templates, ledgers,
+This documentation defines the stack and starter templates only. Ledgers,
 profile config, CLI support, JSON reports, worklists, doctor, init, CI, and
 dogfood promotion belong in later PRs.
