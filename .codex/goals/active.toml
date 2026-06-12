@@ -26,9 +26,9 @@ support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-018"
+id = "spec-system-pr-019"
 status = "ready"
-title = "Enable spec-system profile advisory"
+title = "Add spec-system advisory CI artifact"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
 linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
@@ -36,7 +36,7 @@ proof_commands = [
   "rtk cargo test -p cargo-allow spec_system_profile",
   "rtk cargo test -p cargo-allow spec_system_doctor",
   "rtk cargo run -p cargo-allow -- doctor --profile spec-system --format json",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
   "rtk git diff --cached --check",
   "rtk cargo fmt --all --check",
   "rtk cargo clippy --workspace --all-targets -- -D warnings",
