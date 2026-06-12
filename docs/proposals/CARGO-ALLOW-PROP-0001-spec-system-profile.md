@@ -169,6 +169,8 @@ graph scanner.
 The profile should add an advisory support-tier surface for source-of-truth
 graph linting. Support tiers should own the user-facing claim to proof-command
 mapping. Specs should link to that surface instead of duplicating the claim map.
+The initial support-tier map is
+[CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md).
 
 ## Policy Impact
 

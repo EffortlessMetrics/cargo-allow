@@ -19,3 +19,13 @@ status = "accepted"
 owner = "repo-infra"
 created = "2026-06-12"
 linked_proposal = "CARGO-ALLOW-PROP-0001"
+
+[[artifact]]
+id = "CARGO-ALLOW-SUPPORT-0001"
+kind = "support_tier"
+path = "docs/status/SUPPORT_TIERS.md"
+status = "active"
+owner = "repo-infra"
+created = "2026-06-12"
+linked_proposal = "CARGO-ALLOW-PROP-0001"
+linked_spec = "CARGO-ALLOW-SPEC-0001"

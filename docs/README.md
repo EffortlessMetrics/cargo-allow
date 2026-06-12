@@ -26,6 +26,8 @@ ledger and the planned growth around it.
   accepted product proposal for the planned opt-in source-of-truth profile.
 - [Spec-system profile spec](specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md):
   accepted behavior contract for the planned opt-in source-of-truth profile.
+- [Support tiers](status/SUPPORT_TIERS.md): claim-to-proof map for current
+  cargo-allow surfaces and the planned advisory spec-system profile.
 - [Getting started](getting-started.md): first-run tutorial for doctor, audit,
   init/propose, and no-new checks.
 - [Structural identity v1](identity.md): the source-syntax identity contract

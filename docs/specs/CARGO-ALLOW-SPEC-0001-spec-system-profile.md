@@ -212,7 +212,8 @@ reliable. It must not lint prose quality or general Markdown style.
   [CARGO-ALLOW-PROP-0001](../proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md)
 - Linked ADR: none yet.
 - Linked implementation plan: planned for `plans/spec-system/implementation-plan.md`.
-- Linked support-tier surface: planned for `docs/status/SUPPORT_TIERS.md`.
+- Linked support-tier surface:
+  [CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md).
 - Linked policy ledger: planned for `policy/doc-artifacts.toml` and
   `policy/spec-system.toml`; current tracked-file governance remains in
   `policy/allow.toml`.
@@ -333,7 +334,8 @@ support-tier rows.
 ## Support-Tier Impact
 
 The profile affects the planned advisory support-tier surface for
-source-of-truth graph linting.
+source-of-truth graph linting:
+[CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md).
 
 Support tiers own user-facing claim to proof-command mapping. This spec defines
 that the profile can structurally check the support-tier file and proof-command

@@ -68,6 +68,8 @@ The first accepted proposal for this lane is
 [CARGO-ALLOW-PROP-0001](../proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md).
 The first accepted spec is
 [CARGO-ALLOW-SPEC-0001](../specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md).
+The first support-tier map is
+[CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md).
 
 ## Claim Boundary
 
