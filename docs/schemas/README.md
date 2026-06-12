@@ -160,7 +160,14 @@ produced by `worklist --profile spec-system`, the same schema carries graph
 repair items for missing nodes, broken links, missing closeouts, and missing
 claim-to-proof commands. When produced by `doctor --profile spec-system`, it
 also carries setup readiness for profile config, artifact roots, the artifact
-ledger, support tiers, active goals, and templates.
+ledger, support tiers, active goals, and templates. The root `mode` field
+comes from `policy/spec-system.toml` or the built-in advisory default. Advisory
+findings keep `status = "passed"` and `failed = false`; shadow findings set
+`status = "failed"` and `failed = true` so CI and agents can see failure posture
+without making the opt-in profile part of default cargo-allow behavior.
+Blocking mode uses the same artifact posture fields, but selected structural
+checks are not promoted to command-blocking behavior until a later profile
+promotion PR.
 Diff reports may include optional `diff.summary.broken_evidence_links`,
 `diff.summary.missing_evidence`, and `diff.summary.weak_evidence_references`
 when the compared head policy has evidence-health signals. These duplicate the
