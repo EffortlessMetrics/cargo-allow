@@ -2302,6 +2302,52 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0181"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/0.1.8.md"
+owner = "core/release"
+classification = "release_runbook"
+reason = "Prepares the 0.1.8 spec-system preview cleanup release-candidate notes without publishing, tagging, or claiming stable profile support."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/release/0.1.7.md", "doc:docs/how-to/adopt-spec-system-profile.md", "doc:docs/claim-boundaries.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/0.1.8.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/release/0.1.8.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0182"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/github/v0.1.8.md"
+owner = "core/release"
+classification = "release_notes"
+reason = "Prepares the public GitHub Release body for a future authorized v0.1.8 spec-system preview cleanup release without creating a tag or release."
+created = "2026-06-12"
+review_after = "2026-11-01"
+evidence = ["doc:docs/release/0.1.8.md", "doc:CHANGELOG.md", "doc:docs/claim-boundaries.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/github/v0.1.8.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/release/github/v0.1.8.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0149"
 kind = "non_rust_file"
 family = "documentation"
