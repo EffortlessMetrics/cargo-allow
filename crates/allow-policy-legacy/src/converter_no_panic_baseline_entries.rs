@@ -47,3 +47,106 @@ pub(crate) fn entry_from_no_panic_baseline_entry(rule: &LegacyNoPanicBaselineEnt
         last_seen: None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn no_panic_baseline_method_entry_preserves_count_and_selector_identity() {
+        let rule = LegacyNoPanicBaselineEntry {
+            index: 7,
+            path: "src\\parser.rs".to_string(),
+            family: "expect".to_string(),
+            selector_kind: "method-call".to_string(),
+            selector_callee: "core::result::Result::expect".to_string(),
+            snippet: " value\n    .expect(\"validated\") ".to_string(),
+            count: 3,
+        };
+
+        let entry = entry_from_no_panic_baseline_entry(&rule);
+
+        assert_eq!(entry.id, "panic-baseline-0008");
+        assert_eq!(entry.kind, FindingKind::Panic);
+        assert_eq!(entry.family.as_deref(), Some("expect"));
+        assert_eq!(entry.path, Some(PathBuf::from("src/parser.rs")));
+        assert_eq!(entry.glob, None);
+        assert_eq!(entry.owner, "unowned");
+        assert_eq!(entry.classification, "baseline_debt");
+        assert_eq!(
+            entry.reason,
+            "Generated from legacy no-panic baseline; requires human review."
+        );
+        assert_eq!(
+            entry.evidence,
+            vec![
+                "legacy_policy:no-panic-baseline".to_string(),
+                "legacy_selector_callee:core::result::Result::expect".to_string(),
+                "baseline_count:3".to_string(),
+            ]
+        );
+        assert_eq!(
+            entry.links,
+            vec!["legacy-policy:no-panic-baseline".to_string()]
+        );
+        assert_eq!(entry.occurrence_limit, Some(3));
+        assert_eq!(
+            entry.lifecycle.created.as_deref(),
+            Some(default_baseline_created().as_str())
+        );
+        assert_eq!(entry.lifecycle.review_after, None);
+        assert_eq!(
+            entry.lifecycle.expires.as_deref(),
+            Some(default_baseline_expires().as_str())
+        );
+        assert_eq!(entry.selector.ast_kind.as_deref(), Some("method_call"));
+        assert_eq!(entry.selector.callee.as_deref(), Some("expect"));
+        assert_eq!(entry.selector.macro_name, None);
+        assert_eq!(
+            entry.selector.normalized_snippet_hash,
+            Some(stable_hash_hex(&normalize_snippet(&rule.snippet)))
+        );
+        assert_eq!(entry.selector.glob.as_deref(), Some("src/parser.rs"));
+        assert!(entry.last_seen.is_none());
+    }
+
+    #[test]
+    fn no_panic_baseline_macro_entry_normalizes_panic_family_and_macro_name() {
+        let rule = LegacyNoPanicBaselineEntry {
+            index: 0,
+            path: "src\\panic_path.rs".to_string(),
+            family: "panic".to_string(),
+            selector_kind: "macro-call".to_string(),
+            selector_callee: "panic".to_string(),
+            snippet: "panic!(\"invalid state\")".to_string(),
+            count: 1,
+        };
+
+        let entry = entry_from_no_panic_baseline_entry(&rule);
+
+        assert_eq!(entry.id, "panic-baseline-0001");
+        assert_eq!(entry.kind, FindingKind::Panic);
+        assert_eq!(entry.family.as_deref(), Some("panic_macro"));
+        assert_eq!(entry.path, Some(PathBuf::from("src/panic_path.rs")));
+        assert_eq!(entry.owner, "unowned");
+        assert_eq!(entry.classification, "baseline_debt");
+        assert_eq!(
+            entry.evidence,
+            vec![
+                "legacy_policy:no-panic-baseline".to_string(),
+                "legacy_selector_callee:panic".to_string(),
+                "baseline_count:1".to_string(),
+            ]
+        );
+        assert_eq!(entry.occurrence_limit, Some(1));
+        assert_eq!(entry.selector.ast_kind.as_deref(), Some("macro_call"));
+        assert_eq!(entry.selector.callee, None);
+        assert_eq!(entry.selector.macro_name.as_deref(), Some("panic"));
+        assert_eq!(
+            entry.selector.normalized_snippet_hash,
+            Some(stable_hash_hex(&normalize_snippet(&rule.snippet)))
+        );
+        assert_eq!(entry.selector.glob.as_deref(), Some("src/panic_path.rs"));
+        assert!(entry.last_seen.is_none());
+    }
+}
