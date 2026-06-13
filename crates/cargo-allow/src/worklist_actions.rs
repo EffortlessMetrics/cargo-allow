@@ -334,3 +334,242 @@ fn policy_exception_kind_arg(family: Option<&str>) -> Option<&'static str> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use allow_core::{
+        AllowEntry, Finding, FindingKind, Lifecycle, Selector, Span, StructuralIdentity,
+    };
+    use std::path::PathBuf;
+
+    use super::*;
+
+    fn entry(kind: FindingKind, family: Option<&str>) -> AllowEntry {
+        AllowEntry {
+            id: "allow-test".to_string(),
+            kind,
+            family: family.map(str::to_string),
+            path: Some(PathBuf::from("src/lib.rs")),
+            glob: None,
+            owner: "repo-infra".to_string(),
+            classification: "reviewed".to_string(),
+            reason: "fixture reason".to_string(),
+            evidence: Vec::new(),
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle::empty(),
+            selector: Selector {
+                ast_kind: Some("call".to_string()),
+                ..Selector::default()
+            },
+            last_seen: None,
+        }
+    }
+
+    fn finding(kind: FindingKind, family: Option<&str>) -> Finding {
+        Finding {
+            kind,
+            family: family.map(str::to_string),
+            path: PathBuf::from("src/lib.rs"),
+            span: Some(Span { line: 1, column: 1 }),
+            identity: StructuralIdentity::new("rust", "call"),
+            message: "fixture finding".to_string(),
+        }
+    }
+
+    #[test]
+    fn context_actions_route_high_risk_and_unsafe_evidence_guidance() {
+        let process = finding(FindingKind::PolicyException, Some("process_spawn"));
+        assert_eq!(
+            suggested_actions_for_context(MISSING_EVIDENCE, Some(&process), None),
+            vec![
+                "add typed evidence for the policy_exception.process_spawn exception".to_string(),
+                "review whether the policy exception can be removed or narrowed before retaining it"
+                    .to_string(),
+            ]
+        );
+
+        let network = entry(FindingKind::PolicyException, Some("network_destination"));
+        assert_eq!(
+            suggested_actions_for_context(WEAK_EVIDENCE_REFERENCE, None, Some(&network)),
+            vec![
+                "replace weak evidence with typed evidence for policy_exception.network_destination"
+                    .to_string(),
+                "keep custom legacy facts only as supporting context after a typed receipt exists"
+                    .to_string(),
+                "review whether the policy exception can be removed or narrowed before retaining it"
+                    .to_string(),
+            ]
+        );
+
+        let unsafe_finding = finding(FindingKind::Unsafe, None);
+        assert_eq!(
+            suggested_actions_for_context(WEAK_EVIDENCE_REFERENCE, Some(&unsafe_finding), None),
+            vec![
+                "replace weak evidence with unsafe-review, test, spec, or boundary evidence for the unsafe exception".to_string(),
+                "keep weak legacy notes only as supporting context after typed unsafe evidence exists".to_string(),
+                "keep the selector scoped to the reviewed unsafe boundary".to_string(),
+            ]
+        );
+
+        assert_eq!(
+            suggested_actions_for_context(MISSING_EVIDENCE, None, None),
+            suggested_actions(MISSING_EVIDENCE)
+        );
+    }
+
+    #[test]
+    fn link_actions_route_traceability_guidance_by_context() {
+        let process = entry(FindingKind::PolicyException, Some("process_spawn"));
+        assert_eq!(
+            suggested_link_actions_for_context(WEAK_EVIDENCE_REFERENCE, None, Some(&process)),
+            vec![
+                "replace weak traceability with typed traceability for policy_exception.process_spawn"
+                    .to_string(),
+                "keep custom legacy notes only as supporting context after a typed traceability reference exists"
+                    .to_string(),
+                "review whether the policy exception can be removed or narrowed before retaining it"
+                    .to_string(),
+            ]
+        );
+
+        assert_eq!(
+            suggested_link_actions_for_context(BROKEN_EVIDENCE_LINK, None, None),
+            vec![
+                "restore or commit the referenced local traceability file".to_string(),
+                "or update the link reference to a valid source-tree-relative path".to_string(),
+            ]
+        );
+
+        let generic_weak = suggested_link_actions_for_context(WEAK_EVIDENCE_REFERENCE, None, None);
+        assert_eq!(
+            generic_weak.first().map(String::as_str),
+            Some("replace the weak link string with a typed traceability reference")
+        );
+        assert_eq!(
+            suggested_link_actions_for_context(REVIEW_DUE, None, None),
+            suggested_actions(REVIEW_DUE)
+        );
+    }
+
+    #[test]
+    fn high_risk_policy_family_uses_finding_before_entry_and_filters_other_kinds() {
+        let process_finding = finding(FindingKind::PolicyException, Some("process_spawn"));
+        let network_entry = entry(FindingKind::PolicyException, Some("network_destination"));
+        assert_eq!(
+            high_risk_policy_exception_family(Some(&process_finding), Some(&network_entry)),
+            Some("process_spawn")
+        );
+
+        let dependency = finding(FindingKind::PolicyException, Some("dependency_surface"));
+        assert_eq!(
+            high_risk_policy_exception_family(Some(&dependency), Some(&network_entry)),
+            None
+        );
+
+        let unsafe_entry = entry(FindingKind::Unsafe, Some("process_spawn"));
+        assert_eq!(
+            high_risk_policy_exception_family(None, Some(&unsafe_entry)),
+            None
+        );
+    }
+
+    #[test]
+    fn unsafe_exception_detects_finding_or_entry_kind() {
+        let unsafe_finding = finding(FindingKind::Unsafe, None);
+        let panic_entry = entry(FindingKind::Panic, None);
+        assert!(unsafe_exception(Some(&unsafe_finding), Some(&panic_entry)));
+
+        let unsafe_entry = entry(FindingKind::Unsafe, None);
+        assert!(unsafe_exception(None, Some(&unsafe_entry)));
+
+        let panic_finding = finding(FindingKind::Panic, None);
+        assert!(!unsafe_exception(Some(&panic_finding), Some(&unsafe_entry)));
+        assert!(!unsafe_exception(None, None));
+    }
+
+    #[test]
+    fn list_shortcut_arg_maps_all_listing_shortcuts_and_unknowns() {
+        let cases = [
+            (EXPIRED_ALLOW, Some("expired")),
+            (STALE_ALLOW, Some("stale")),
+            (BASELINE_DEBT, Some("baseline-debt")),
+            (REVIEW_DUE, Some("review-due")),
+            (BROAD_SCOPE, Some("broad-scope")),
+            (MISSING_EVIDENCE, Some("missing-evidence")),
+            (UNSAFE_MISSING_EVIDENCE, Some("missing-evidence")),
+            (BROKEN_EVIDENCE_LINK, Some("broken-evidence")),
+            (WEAK_EVIDENCE_REFERENCE, Some("weak-evidence")),
+            (NEW_UNRECEIPTED_FINDING, None),
+            ("future_kind", None),
+        ];
+
+        for (kind, expected) in cases {
+            assert_eq!(list_shortcut_arg(kind), expected, "{kind}");
+        }
+    }
+
+    #[test]
+    fn worklist_shortcut_arg_maps_actionable_shortcuts_and_unknowns() {
+        let cases = [
+            (BASELINE_DEBT, Some("baseline-debt")),
+            (BROAD_SCOPE, Some("broad-scope")),
+            (MISSING_EVIDENCE, Some("missing-evidence")),
+            (UNSAFE_MISSING_EVIDENCE, Some("missing-evidence")),
+            (BROKEN_EVIDENCE_LINK, Some("broken-evidence")),
+            (WEAK_EVIDENCE_REFERENCE, Some("weak-evidence")),
+            (EXPIRED_ALLOW, None),
+            (STALE_ALLOW, None),
+            ("future_kind", None),
+        ];
+
+        for (kind, expected) in cases {
+            assert_eq!(worklist_shortcut_arg(kind), expected, "{kind}");
+        }
+    }
+
+    #[test]
+    fn worklist_kind_arg_maps_source_finding_kinds_and_absent_context() {
+        let cases = [
+            (FindingKind::Panic, None, Some("panic")),
+            (FindingKind::Unsafe, None, Some("unsafe")),
+            (FindingKind::LintException, None, Some("lint-exception")),
+            (FindingKind::NonRustFile, None, Some("non-rust")),
+            (FindingKind::GeneratedCode, None, Some("generated")),
+            (
+                FindingKind::PolicyException,
+                Some("dependency_surface"),
+                Some("dependency-surface"),
+            ),
+            (FindingKind::PolicyException, Some("unknown"), None),
+        ];
+
+        for (kind, family, expected) in cases {
+            let finding = finding(kind, family);
+            assert_eq!(worklist_kind_arg(Some(&finding), None), expected);
+
+            let entry = entry(kind, family);
+            assert_eq!(worklist_kind_arg(None, Some(&entry)), expected);
+        }
+
+        assert_eq!(worklist_kind_arg(None, None), None);
+    }
+
+    #[test]
+    fn policy_exception_kind_arg_maps_known_policy_families() {
+        let cases = [
+            (Some("executable_file"), Some("executable")),
+            (Some("github_workflow"), Some("workflow")),
+            (Some("workflow_external_action"), Some("workflow")),
+            (Some("dependency_surface"), Some("dependency-surface")),
+            (Some("process_spawn"), Some("process")),
+            (Some("network_destination"), Some("network")),
+            (Some("other_policy"), None),
+            (None, None),
+        ];
+
+        for (family, expected) in cases {
+            assert_eq!(policy_exception_kind_arg(family), expected, "{family:?}");
+        }
+    }
+}
