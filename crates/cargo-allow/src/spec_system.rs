@@ -2241,3 +2241,412 @@ pub(crate) fn sample_spec_system_json_for_contract_test() -> String {
     };
     render_spec_system_json(&report)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn spec_system_name_helpers_cover_all_variants() {
+        assert_eq!(artifact_kind_name(ArtifactKind::Proposal), "proposal");
+        assert_eq!(artifact_kind_name(ArtifactKind::Spec), "spec");
+        assert_eq!(artifact_kind_name(ArtifactKind::Adr), "adr");
+        assert_eq!(
+            artifact_kind_name(ArtifactKind::ImplementationPlan),
+            "implementation_plan"
+        );
+        assert_eq!(artifact_kind_name(ArtifactKind::PlanItem), "plan_item");
+        assert_eq!(artifact_kind_name(ArtifactKind::ActiveGoal), "active_goal");
+        assert_eq!(
+            artifact_kind_name(ArtifactKind::SupportTier),
+            "support_tier"
+        );
+        assert_eq!(
+            artifact_kind_name(ArtifactKind::PolicyLedger),
+            "policy_ledger"
+        );
+        assert_eq!(artifact_kind_name(ArtifactKind::Closeout), "closeout");
+        assert_eq!(
+            artifact_kind_name(ArtifactKind::ReleaseRecord),
+            "release_record"
+        );
+
+        assert_eq!(artifact_status_name(ArtifactStatus::Draft), "draft");
+        assert_eq!(artifact_status_name(ArtifactStatus::Proposed), "proposed");
+        assert_eq!(artifact_status_name(ArtifactStatus::Accepted), "accepted");
+        assert_eq!(artifact_status_name(ArtifactStatus::Active), "active");
+        assert_eq!(artifact_status_name(ArtifactStatus::Done), "done");
+        assert_eq!(
+            artifact_status_name(ArtifactStatus::Superseded),
+            "superseded"
+        );
+
+        assert_eq!(spec_system_mode_name(&SpecSystemMode::Advisory), "advisory");
+        assert_eq!(spec_system_mode_name(&SpecSystemMode::Shadow), "shadow");
+        assert_eq!(spec_system_mode_name(&SpecSystemMode::Blocking), "blocking");
+
+        assert_eq!(support_tier_level_name(SupportTierLevel::Stable), "stable");
+        assert_eq!(
+            support_tier_level_name(SupportTierLevel::Stabilizing),
+            "stabilizing"
+        );
+        assert_eq!(
+            support_tier_level_name(SupportTierLevel::Advisory),
+            "advisory"
+        );
+    }
+
+    #[test]
+    fn spec_system_json_helpers_escape_values_and_optional_bools() {
+        assert_eq!(
+            json_escape("quote: \" slash: \\ newline:\n tab:\t return:\r bell:\u{0007}"),
+            "quote: \\\" slash: \\\\ newline:\\n tab:\\t return:\\r bell: "
+        );
+        assert_eq!(json_escape("plain"), "plain");
+
+        assert_eq!(optional_bool_json(Some(true)), "true");
+        assert_eq!(optional_bool_json(Some(false)), "false");
+        assert_eq!(optional_bool_json(None), "null");
+    }
+
+    #[test]
+    fn spec_system_finding_blocking_reasons_are_discriminated() {
+        assert_eq!(
+            spec_system_blocking_reason("profile_config", "failed to parse profile config"),
+            Some("profile_config_parse_failure")
+        );
+        assert_eq!(
+            spec_system_blocking_reason("profile_config", "policy/spec-system.toml does not exist"),
+            None
+        );
+
+        assert_eq!(
+            spec_system_blocking_reason(
+                "doc_artifact_ledger",
+                "failed to read doc artifact ledger"
+            ),
+            Some("doc_artifact_ledger_missing")
+        );
+        assert_eq!(
+            spec_system_blocking_reason(
+                "doc_artifact_ledger",
+                "failed to parse doc artifact ledger TOML: unknown variant `bad_kind`"
+            ),
+            Some("invalid_artifact_kind_or_status")
+        );
+        assert_eq!(
+            spec_system_blocking_reason(
+                "doc_artifact_ledger",
+                "failed to parse doc artifact ledger TOML"
+            ),
+            Some("doc_artifact_ledger_parse_failure")
+        );
+        assert_eq!(
+            spec_system_blocking_reason(
+                "doc_artifact_ledger",
+                "duplicate doc artifact id CARGO-ALLOW-SPEC-0001"
+            ),
+            Some("duplicate_id")
+        );
+
+        assert_eq!(
+            spec_system_blocking_reason(
+                "artifact_file",
+                "CARGO-ALLOW-SPEC-0001 artifact file missing: docs/specs/missing.md"
+            ),
+            Some("artifact_file_missing")
+        );
+        assert_eq!(
+            spec_system_blocking_reason("artifact_file", "failed to read artifact CARGO"),
+            Some("artifact_file_unreadable")
+        );
+        assert_eq!(
+            spec_system_blocking_reason(
+                "artifact_file",
+                "CARGO-ALLOW-SPEC-0001 not found in artifact file docs/specs/spec.md"
+            ),
+            Some("artifact_id_not_in_file")
+        );
+
+        assert_eq!(
+            spec_system_blocking_reason(
+                "artifact_link",
+                "CARGO-ALLOW-SPEC-0001 linked_proposal target CARGO-ALLOW-PROP-9999 is not registered"
+            ),
+            Some("unknown_link_target")
+        );
+        assert_eq!(
+            spec_system_blocking_reason("active_goal", "stale goal"),
+            None
+        );
+    }
+
+    #[test]
+    fn spec_system_work_item_blocking_reasons_are_discriminated() {
+        assert_eq!(
+            spec_system_work_item_blocking_reason(&work_item(
+                "artifact_file_missing",
+                "registered artifact file is missing"
+            )),
+            Some("artifact_file_missing")
+        );
+        assert_eq!(
+            spec_system_work_item_blocking_reason(&work_item(
+                "artifact_file_unreadable",
+                "registered artifact file is unreadable"
+            )),
+            Some("artifact_file_unreadable")
+        );
+        assert_eq!(
+            spec_system_work_item_blocking_reason(&work_item(
+                "artifact_id_not_in_file",
+                "registered artifact file does not contain its id"
+            )),
+            Some("artifact_id_not_in_file")
+        );
+        assert_eq!(
+            spec_system_work_item_blocking_reason(&work_item(
+                "unknown_link_target",
+                "linked target is unknown"
+            )),
+            Some("unknown_link_target")
+        );
+        assert_eq!(
+            spec_system_work_item_blocking_reason(&work_item(
+                "missing_node",
+                "spec-system profile config failed to parse"
+            )),
+            Some("profile_config_parse_failure")
+        );
+        assert_eq!(
+            spec_system_work_item_blocking_reason(&work_item(
+                "missing_node",
+                "doc artifact ledger failed to parse doc artifact ledger TOML: unknown variant"
+            )),
+            Some("invalid_artifact_kind_or_status")
+        );
+        assert_eq!(
+            spec_system_work_item_blocking_reason(&work_item(
+                "missing_node",
+                "doc artifact ledger duplicate doc artifact id CARGO-ALLOW-SPEC-0001"
+            )),
+            Some("duplicate_id")
+        );
+        assert_eq!(
+            spec_system_work_item_blocking_reason(&work_item(
+                "missing_closeout",
+                "done work item has no closeout"
+            )),
+            None
+        );
+    }
+
+    #[test]
+    fn validate_active_goal_file_reports_source_path_read_errors() -> std::io::Result<()> {
+        let root = temp_root("missing-active-goal")?;
+        let cfg = default_spec_system_config();
+        let ledger = empty_doc_artifact_ledger();
+
+        let err = match validate_active_goal_file(&root, &cfg, &ledger) {
+            Ok(()) => {
+                return Err(std::io::Error::other(
+                    "missing active goal file should be reported",
+                ));
+            }
+            Err(err) => err,
+        };
+        let _ = std::fs::remove_dir_all(&root);
+
+        assert!(
+            err.to_string()
+                .contains("failed to read active goal manifest .codex/goals/active.toml"),
+            "unexpected active goal read error: {err}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn collect_spec_system_readiness_discriminates_invalid_inputs() -> std::io::Result<()> {
+        let root = temp_root("invalid-readiness")?;
+        let cfg = default_spec_system_config();
+        for path in [
+            cfg.roots.proposals.as_str(),
+            cfg.roots.specs.as_str(),
+            cfg.roots.adrs.as_str(),
+            cfg.roots.plans.as_str(),
+            cfg.roots.goals.as_str(),
+        ] {
+            std::fs::create_dir_all(root.join(path))?;
+        }
+        write_fixture_file(&root, &cfg.roots.artifact_ledger, "not = valid = toml")?;
+
+        let readiness = collect_spec_system_readiness(
+            &root,
+            &LoadedSpecSystemConfig {
+                cfg,
+                source: "built-in".to_string(),
+                path: DEFAULT_PROFILE_CONFIG.to_string(),
+                found: true,
+                valid: Some(true),
+                diagnostic: None,
+            },
+        );
+        let _ = std::fs::remove_dir_all(&root);
+
+        let ledger = readiness_check_by_kind(&readiness, "artifact_ledger");
+        assert!(
+            ledger.is_some(),
+            "missing artifact_ledger check: {readiness:?}"
+        );
+        let Some(ledger) = ledger else {
+            return Ok(());
+        };
+        assert!(ledger.found);
+        assert_eq!(ledger.valid, Some(false));
+        assert_eq!(ledger.status, "invalid");
+        assert!(
+            ledger
+                .message
+                .contains("failed to parse doc artifact ledger TOML"),
+            "unexpected ledger message: {}",
+            ledger.message
+        );
+
+        let support_tiers = readiness_check_by_kind(&readiness, "support_tiers");
+        assert!(
+            support_tiers.is_some(),
+            "missing support_tiers check: {readiness:?}"
+        );
+        let Some(support_tiers) = support_tiers else {
+            return Ok(());
+        };
+        assert!(!support_tiers.found);
+        assert_eq!(support_tiers.valid, Some(false));
+        assert_eq!(support_tiers.status, "missing");
+        assert!(
+            support_tiers
+                .message
+                .contains("failed to read support-tier file docs/status/SUPPORT_TIERS.md"),
+            "unexpected support-tier message: {}",
+            support_tiers.message
+        );
+
+        let active_goal = readiness_check_by_kind(&readiness, "active_goal");
+        assert!(
+            active_goal.is_some(),
+            "missing active_goal check: {readiness:?}"
+        );
+        let Some(active_goal) = active_goal else {
+            return Ok(());
+        };
+        assert!(!active_goal.found);
+        assert_eq!(active_goal.valid, Some(false));
+        assert_eq!(active_goal.status, "missing");
+        assert!(
+            active_goal.message.contains(
+                "active goal manifest cannot be validated until doc artifact ledger parses"
+            ),
+            "unexpected active-goal message: {}",
+            active_goal.message
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn collect_spec_system_readiness_discriminates_invalid_active_goal() -> std::io::Result<()> {
+        let root = temp_root("invalid-active-goal")?;
+        for file in spec_system_bootstrap_files(Path::new(DEFAULT_PROFILE_CONFIG)) {
+            write_fixture_file(&root, &file.path.display().to_string(), &file.contents)?;
+        }
+        write_fixture_file(
+            &root,
+            ".codex/goals/active.toml",
+            "schema_version = 1\nstatus = []\n",
+        )?;
+
+        let readiness = collect_spec_system_readiness(
+            &root,
+            &LoadedSpecSystemConfig {
+                cfg: default_spec_system_config(),
+                source: "built-in".to_string(),
+                path: DEFAULT_PROFILE_CONFIG.to_string(),
+                found: true,
+                valid: Some(true),
+                diagnostic: None,
+            },
+        );
+        let _ = std::fs::remove_dir_all(&root);
+
+        let active_goal = readiness_check_by_kind(&readiness, "active_goal");
+        assert!(
+            active_goal.is_some(),
+            "missing active_goal check: {readiness:?}"
+        );
+        let Some(active_goal) = active_goal else {
+            return Ok(());
+        };
+        assert!(active_goal.found);
+        assert_eq!(active_goal.valid, Some(false));
+        assert_eq!(active_goal.status, "invalid");
+        assert!(
+            active_goal.message.contains("active goal")
+                || active_goal.message.contains("failed to parse"),
+            "unexpected active-goal message: {}",
+            active_goal.message
+        );
+        Ok(())
+    }
+
+    fn work_item(kind: &'static str, message: &'static str) -> SpecSystemWorkItem {
+        SpecSystemWorkItem {
+            kind,
+            artifact_id: None,
+            path: None,
+            owner: None,
+            status: None,
+            message: message.to_string(),
+            suggested_actions: Vec::new(),
+            proof_commands: Vec::new(),
+        }
+    }
+
+    fn empty_doc_artifact_ledger() -> DocArtifactLedger {
+        DocArtifactLedger {
+            schema_version: "1.0".to_string(),
+            policy: "cargo-allow-doc-artifacts".to_string(),
+            owner: "repo-infra".to_string(),
+            status: SpecSystemMode::Advisory,
+            artifact: Vec::new(),
+        }
+    }
+
+    fn readiness_check_by_kind<'a>(
+        readiness: &'a SpecSystemReadiness,
+        kind: &str,
+    ) -> Option<&'a SpecSystemReadinessCheck> {
+        readiness.checks.iter().find(|check| check.kind == kind)
+    }
+
+    fn temp_root(name: &str) -> std::io::Result<PathBuf> {
+        let mut root = std::env::temp_dir();
+        let nanos = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+            Ok(duration) => duration.as_nanos(),
+            Err(_) => 0,
+        };
+        root.push(format!(
+            "cargo-allow-spec-system-{name}-{}-{}",
+            std::process::id(),
+            nanos
+        ));
+        std::fs::create_dir_all(&root)?;
+        Ok(root)
+    }
+
+    fn write_fixture_file(root: &Path, relative: &str, contents: &str) -> std::io::Result<()> {
+        let path = root_relative_path(root, Path::new(relative));
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(path, contents)
+    }
+}
