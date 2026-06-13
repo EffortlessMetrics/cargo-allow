@@ -1308,6 +1308,58 @@ Largest remaining file concentrations:
 | `crates/allow-files/src/families.rs` | 26 |
 | `crates/allow-report/src/report_json.rs` | 26 |
 
+## Twenty-Third Burn-Down Slice
+
+The twenty-third focused slice added same-module coverage for
+`crates/allow-files/src/families.rs`:
+
+- family classifier precedence across generated files, CI workflows, editor
+  extensions, package metadata, fixtures, release scripts, documentation,
+  language tools, and unknown non-Rust files.
+- documentation path and extension detection.
+- extension-based family mapping for shell, Python, JavaScript/TypeScript,
+  configuration, dotfile configuration, and unknown extensions.
+- editor-extension, package-metadata, fixture, release-script, and
+  configuration-file helper boundaries.
+
+After regenerating repo exposure and the gap decision ledger:
+
+```bash
+ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-families.repo-exposure.json
+ripr reports gap-ledger --repo-exposure target/ripr/reports/after-families.repo-exposure.json --out target/ripr/reports/after-families.gap-decision-ledger.json --out-md target/ripr/reports/after-families.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 1663
+ripr zero target count = 1663
+ripr plus target count = 1663
+crates/allow-files/src/families.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `1689` to `1663`
+and cleared `crates/allow-files/src/families.rs` from the repairable file list.
+
+Remaining repairable classes:
+
+| Class | Count |
+| --- | ---: |
+| `MissingSideEffectObserver` | 1182 |
+| `MissingErrorDiscriminator` | 235 |
+| `MissingBoundaryAssertion` | 138 |
+| `MissingValueAssertion` | 108 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-policy/src/spec_system/validate.rs` | 38 |
+| `crates/allow-policy/src/entry_validation.rs` | 36 |
+| `crates/allow-policy-legacy/src/parser_no_panic_allowlist_entries.rs` | 30 |
+| `crates/allow-report/src/report_json.rs` | 26 |
+| `crates/allow-policy-legacy/src/parser_clippy_entries.rs` | 26 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -1323,7 +1375,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 1689` means the current repo does not yet meet the requested
+`ripr+ = 1663` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -1340,7 +1392,8 @@ Start with one high-volume, low-judgment class:
 
 1. inspect a pure parser, path, or rendering target such as
    `crates/allow-policy-legacy/src/parser_no_panic_allowlist_entries.rs`,
-   `crates/allow-files/src/families.rs`, or `crates/allow-report/src/report_json.rs`.
+   `crates/allow-report/src/report_json.rs`, or
+   `crates/allow-policy-legacy/src/parser_clippy_entries.rs`.
 2. choose one `MissingBoundaryAssertion`, `MissingValueAssertion`, or
    `MissingSideEffectObserver` group with direct behavior assertions.
 3. add or tighten a focused test.
