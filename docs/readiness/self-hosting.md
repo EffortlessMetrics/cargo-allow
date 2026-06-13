@@ -27,7 +27,7 @@ Recorded: 2026-06-13
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `2034` `ripr` targets and `2034` `ripr+` targets after the twelfth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `1990` `ripr` targets and `1990` `ripr+` targets after the thirteenth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -788,6 +788,61 @@ Largest remaining file concentrations:
 | `crates/allow-policy/src/entry_validation.rs` | 36 |
 | `crates/cargo-allow/src/worklist_evidence.rs` | 36 |
 
+## Thirteenth Burn-Down Slice
+
+The thirteenth focused slice added same-module unit coverage for
+`crates/allow-policy-legacy/src/parser_non_rust_entries.rs`:
+
+- path entries with both `path` and `glob`, proving path selection wins.
+- broad glob entries with required non-empty `broad_glob_reason`.
+- generated legacy IDs for entries without explicit IDs.
+- owner, category/classification, reason, evidence, created, review-after, and
+  normalized expires field preservation.
+- `covered_by` evidence fallback.
+- reason composition for reason-only, scope-only, combined, and empty reason
+  cases.
+- missing allow entries, non-table entries, missing path/glob, missing broad
+  glob reason, and empty broad-glob reason errors.
+
+After regenerating repo exposure and the gap decision ledger:
+
+```bash
+ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-parser-non-rust.repo-exposure.json
+ripr reports gap-ledger --repo-exposure target/ripr/reports/after-parser-non-rust.repo-exposure.json --out target/ripr/reports/after-parser-non-rust.gap-decision-ledger.json --out-md target/ripr/reports/after-parser-non-rust.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 1990
+ripr zero target count = 1990
+ripr plus target count = 1990
+crates/allow-policy-legacy/src/parser_non_rust_entries.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `2034` to `1990`
+and reduced `crates/allow-policy-legacy/src/parser_non_rust_entries.rs` from
+`39` repairable targets to `0`.
+
+Remaining repairable classes:
+
+| Class | Count |
+| --- | ---: |
+| `MissingSideEffectObserver` | 1429 |
+| `MissingErrorDiscriminator` | 235 |
+| `MissingBoundaryAssertion` | 196 |
+| `MissingValueAssertion` | 130 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-policy-legacy/src/loader_legacy_dispatch.rs` | 39 |
+| `crates/allow-policy/src/spec_system/validate.rs` | 38 |
+| `crates/cargo-allow/src/worklist_evidence.rs` | 36 |
+| `crates/allow-policy/src/entry_validation.rs` | 36 |
+| `crates/allow-policy/src/render_toml.rs` | 35 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -803,7 +858,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 2034` means the current repo does not yet meet the requested
+`ripr+ = 1990` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -818,7 +873,7 @@ evidence: reduce or scope cargo-allow ripr+ readiness
 
 Start with one high-volume, low-judgment class:
 
-1. inspect `crates/allow-policy-legacy/src/parser_non_rust_entries.rs`.
+1. inspect `crates/allow-policy-legacy/src/loader_legacy_dispatch.rs`.
 2. choose one `MissingBoundaryAssertion`, `MissingValueAssertion`, or
    `MissingSideEffectObserver` group.
 3. add or tighten a focused test.
