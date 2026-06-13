@@ -108,6 +108,15 @@ For cargo-allow's own repository, CI also emits opt-in spec-system profile
 artifacts:
 
 ```bash
+cargo test --doc --workspace
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+```
+
+These docs gates are part of cargo-allow's self-hosting proof surface. They
+verify crate documentation and rustdoc warnings, but they do not broaden the
+source-tree scan or make cargo-allow execute proof providers.
+
+```bash
 cargo-allow check \
   --profile spec-system \
   --mode audit \
