@@ -1,6 +1,84 @@
 use allow_core::AllowConfig;
 
+use crate::render_sections::{render_policy_header, render_requirements, render_workspace};
 use crate::{parse_policy, render_policy};
+
+#[test]
+fn render_policy_header_call_presence_observer() {
+    let mut cfg = AllowConfig::empty();
+    cfg.schema_version = "0.1".to_string();
+    cfg.policy = "cargo-allow".to_string();
+    cfg.owner = Some("core/\"policy\"".to_string());
+    cfg.status = Some("shadow\\mode".to_string());
+    let mut rendered = String::new();
+
+    render_policy_header(&mut rendered, &cfg);
+
+    assert_eq!(
+        rendered,
+        "schema_version = \"0.1\"\n\
+policy = \"cargo-allow\"\n\
+owner = \"core/\\\"policy\\\"\"\n\
+status = \"shadow\\\\mode\"\n\n"
+    );
+}
+
+#[test]
+fn render_workspace_call_presence_observer() {
+    let mut cfg = AllowConfig::empty();
+    cfg.workspace.root = "fixtures/source tree".to_string();
+    cfg.workspace.inventory = "git-tracked".to_string();
+    cfg.workspace.default_mode = "no-new".to_string();
+    cfg.workspace.ignored = vec!["target/**".to_string(), "vendor/\"old\"/**".to_string()];
+    cfg.workspace.generated = vec!["generated/**".to_string(), "snapshots\\tmp/**".to_string()];
+    let mut rendered = String::new();
+
+    render_workspace(&mut rendered, &cfg.workspace);
+
+    assert_eq!(
+        rendered,
+        "[workspace]\n\
+root = \"fixtures/source tree\"\n\
+inventory = \"git-tracked\"\n\
+default_mode = \"no-new\"\n\
+ignored = [\"target/**\", \"vendor/\\\"old\\\"/**\"]\n\
+generated = [\"generated/**\", \"snapshots\\\\tmp/**\"]\n\n"
+    );
+}
+
+#[test]
+fn render_requirements_call_presence_observer() {
+    let mut cfg = AllowConfig::empty();
+    cfg.requirements.owner_required = true;
+    cfg.requirements.reason_required = true;
+    cfg.requirements.classification_required = true;
+    cfg.requirements.evidence_required = true;
+    cfg.requirements.expires_or_review_after_required = true;
+    cfg.requirements.allow_bare_allow_attributes = true;
+    cfg.requirements.lint_policy_id_required = true;
+    cfg.requirements.stale_entries_fail = true;
+    cfg.requirements.unsafe_evidence_required = true;
+    cfg.requirements.unsafe_safety_comment_required = true;
+    let mut rendered = String::new();
+
+    render_requirements(&mut rendered, &cfg.requirements);
+
+    assert_eq!(
+        rendered,
+        "[requirements]\n\
+owner_required = true\n\
+reason_required = true\n\
+classification_required = true\n\
+evidence_required = true\n\
+expires_or_review_after_required = true\n\
+allow_bare_allow_attributes = true\n\
+lint_policy_id_required = true\n\
+stale_entries_fail = true\n\n\
+[requirements.unsafe]\n\
+evidence_required = true\n\
+safety_comment_required = true\n"
+    );
+}
 
 #[test]
 fn renders_and_parses_general_evidence_requirement() {
