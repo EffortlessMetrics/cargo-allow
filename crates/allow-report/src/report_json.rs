@@ -282,3 +282,125 @@ fn render_trend_fields(summary: &Summary, context: ReportContext<'_>, indent: &s
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn audit_remediation_json_returns_for_non_audit_and_clean_audit() {
+        let summary = Summary::from_outcomes(&[test_outcome(MatchStatus::New)]);
+        let mut non_audit = String::new();
+
+        append_audit_remediation_roadmap_json(
+            "check",
+            &summary,
+            ReportContext::default(),
+            &mut non_audit,
+        );
+
+        assert_eq!(non_audit, "");
+
+        let clean_summary = Summary::default();
+        let mut clean_audit = String::new();
+        append_audit_remediation_roadmap_json(
+            "audit",
+            &clean_summary,
+            ReportContext::default(),
+            &mut clean_audit,
+        );
+
+        assert_eq!(clean_audit, "");
+    }
+
+    #[test]
+    fn audit_remediation_json_writes_multiple_route_shapes() {
+        let outcomes = [
+            test_outcome(MatchStatus::New),
+            test_outcome(MatchStatus::Stale),
+            test_outcome(MatchStatus::EvidenceMissing),
+        ];
+        let summary = Summary::from_outcomes(&outcomes);
+        let mut context = ReportContext::source_syntax("git_tracked", None, None, Some(2));
+        context.policy_missing_evidence_entries = Some(4);
+        context.broken_evidence_links = Some(1);
+        context.weak_evidence_references = Some(3);
+        let mut out = String::new();
+
+        append_audit_remediation_roadmap_json("audit", &summary, context, &mut out);
+
+        assert!(out.starts_with("  \"audit_remediation_roadmap\": [\n"));
+        assert!(out.ends_with("\n  ],\n"));
+        assert!(out.contains("    },\n    {\n"));
+        assert!(out.contains("\"signal\": \"new_unreceipted\""));
+        assert!(out.contains("\"route_kind\": \"worklist_status\""));
+        assert!(out.contains("\"item_kind\": \"new_unreceipted_finding\""));
+        assert!(out.contains("\"worklist_status\": \"new\""));
+        assert!(out.contains("\"signal\": \"stale\""));
+        assert!(out.contains("\"route_kind\": \"prune_stale\""));
+        assert!(out.contains("\"item_kind\": \"stale_allow\""));
+        assert!(out.contains("\"signal\": \"missing_evidence\""));
+        assert!(out.contains("\"route_kind\": \"worklist_filter\""));
+        assert!(out.contains("\"worklist_filter\": \"missing_evidence\""));
+        assert!(out.contains("\"count\": 4"));
+        assert!(out.contains("cargo-allow worklist --missing-evidence --format json"));
+        assert!(out.contains("\"signal\": \"broken_evidence_links\""));
+        assert!(out.contains("\"count\": 1"));
+        assert!(out.contains("\"signal\": \"weak_evidence_references\""));
+        assert!(out.contains("\"count\": 3"));
+        assert!(out.contains("\"signal\": \"baseline_debt\""));
+        assert!(out.contains("\"count\": 2"));
+    }
+
+    #[test]
+    fn trend_fields_include_optional_evidence_signals_when_nonzero() {
+        let outcomes = [
+            test_outcome(MatchStatus::Matched),
+            test_outcome(MatchStatus::New),
+            test_outcome(MatchStatus::Expired),
+            test_outcome(MatchStatus::ReviewDue),
+            test_outcome(MatchStatus::Stale),
+            test_outcome(MatchStatus::Ambiguous),
+            test_outcome(MatchStatus::InvalidSelector),
+            test_outcome(MatchStatus::MissingRequiredField),
+            test_outcome(MatchStatus::EvidenceMissing),
+            test_outcome(MatchStatus::BaselineDebt),
+        ];
+        let summary = Summary::from_outcomes(&outcomes);
+        let mut context = ReportContext::source_syntax("git_tracked", None, None, Some(5));
+        context.policy_missing_evidence_entries = Some(4);
+        context.broken_evidence_links = Some(2);
+        context.weak_evidence_references = Some(3);
+
+        let fields = render_trend_fields(&summary, context, "    ");
+
+        for expected in [
+            "\"review_items\": 21,",
+            "\"new\": 1,",
+            "\"expired\": 1,",
+            "\"review_due\": 1,",
+            "\"stale\": 1,",
+            "\"ambiguous\": 1,",
+            "\"invalid_selector\": 1,",
+            "\"missing_required_field\": 1,",
+            "\"evidence_missing\": 1,",
+            "\"baseline_debt\": 5,",
+            "\"policy_missing_evidence\": 4,",
+            "\"broken_evidence_links\": 2,",
+            "\"weak_evidence_references\": 3",
+        ] {
+            assert!(fields.contains(expected), "{expected}\n{fields}");
+        }
+        assert!(!fields.contains("\"weak_evidence_references\": 3,"));
+    }
+
+    fn test_outcome(status: MatchStatus) -> MatchOutcome {
+        MatchOutcome {
+            status,
+            allow_id: None,
+            finding_index: None,
+            message: status.as_str().to_string(),
+            score: 100,
+        }
+    }
+}
