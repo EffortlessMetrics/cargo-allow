@@ -27,7 +27,7 @@ Recorded: 2026-06-13
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `1778` `ripr` targets and `1778` `ripr+` targets after the nineteenth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `1746` `ripr` targets and `1746` `ripr+` targets after the twentieth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -1150,6 +1150,56 @@ Largest remaining file concentrations:
 | `crates/allow-policy-legacy/src/parser_no_panic_allowlist_entries.rs` | 30 |
 | `crates/allow-files/src/path_rules.rs` | 28 |
 
+## Twentieth Burn-Down Slice
+
+The twentieth focused slice added same-module coverage for
+`crates/allow-diff/src/policy_entry_metadata.rs`:
+
+- baseline-debt classification normalization and introduction.
+- owner removed, unassigned, changed, and added transitions.
+- reason removed, changed, and added transitions.
+- classification removed, changed, and added transitions.
+- normalized optional text trimming for absent, empty, and present values.
+
+After regenerating repo exposure and the gap decision ledger:
+
+```bash
+ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-policy-entry-metadata.repo-exposure.json
+ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-entry-metadata.repo-exposure.json --out target/ripr/reports/after-policy-entry-metadata.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-entry-metadata.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 1746
+ripr zero target count = 1746
+ripr plus target count = 1746
+crates/allow-diff/src/policy_entry_metadata.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `1778` to `1746`
+and cleared `crates/allow-diff/src/policy_entry_metadata.rs` from the
+repairable file list.
+
+Remaining repairable classes:
+
+| Class | Count |
+| --- | ---: |
+| `MissingSideEffectObserver` | 1251 |
+| `MissingErrorDiscriminator` | 235 |
+| `MissingBoundaryAssertion` | 151 |
+| `MissingValueAssertion` | 109 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-policy/src/spec_system/validate.rs` | 38 |
+| `crates/allow-policy/src/entry_validation.rs` | 36 |
+| `crates/allow-policy-legacy/src/parser_no_panic_allowlist_entries.rs` | 30 |
+| `crates/allow-files/src/path_rules.rs` | 28 |
+| `crates/cargo-allow/src/diff_render.rs` | 27 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -1165,7 +1215,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 1778` means the current repo does not yet meet the requested
+`ripr+ = 1746` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -1180,8 +1230,10 @@ evidence: reduce or scope cargo-allow ripr+ readiness
 
 Start with one high-volume, low-judgment class:
 
-1. inspect a pure reporting or metadata target such as
-   `crates/allow-diff/src/policy_entry_metadata.rs`.
+1. inspect a pure parser, path, or rendering target such as
+   `crates/allow-policy-legacy/src/parser_no_panic_allowlist_entries.rs`,
+   `crates/allow-files/src/path_rules.rs`, or
+   `crates/cargo-allow/src/diff_render.rs`.
 2. choose one `MissingBoundaryAssertion`, `MissingValueAssertion`, or
    `MissingSideEffectObserver` group with direct behavior assertions.
 3. add or tighten a focused test.
