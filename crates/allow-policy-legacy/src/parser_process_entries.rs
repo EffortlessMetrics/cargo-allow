@@ -39,3 +39,172 @@ fn parse_process_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyPro
         id,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_table(input: &str) -> toml::Table {
+        toml::from_str::<toml::Table>(input)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("test TOML parses: {err}")))
+    }
+
+    #[test]
+    fn parse_process_rules_preserves_local_and_network_process_fields() {
+        let table = parse_table(
+            r#"
+[[allow]]
+id = "proc-cargo-fmt"
+binary = "cargo"
+argv_shape = ["fmt", "--all", "--check"]
+network_reach = false
+owner = "build"
+reason = "Formatting check runs locally."
+evidence = ["doc:docs/ci.md"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+expires = "permanent"
+
+[[allow]]
+id = "proc-download-tool"
+binary = "pwsh"
+argv_shape = ["-NoProfile", "-Command", "Invoke-WebRequest"]
+network_reach = true
+called_by = ["scripts\\fetch.ps1", ".github/workflows/ci.yml"]
+owner = "ci"
+reason = "CI fetches a pinned tool."
+covered_by = "test:tool_download_is_pinned"
+created = "2026-05-10"
+"#,
+        );
+
+        let mut rules = parse_process_rules(&table).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("process allow entries parse: {err}"))
+        });
+
+        assert_eq!(rules.len(), 2);
+        let local = rules.remove(0);
+        assert_eq!(local.id, "proc-cargo-fmt");
+        assert_eq!(local.binary, "cargo");
+        assert_eq!(
+            local.argv_shape,
+            vec![
+                "fmt".to_string(),
+                "--all".to_string(),
+                "--check".to_string()
+            ]
+        );
+        assert!(!local.network_reach);
+        assert!(local.called_by.is_empty());
+        assert_eq!(local.owner, "build");
+        assert_eq!(local.reason, "Formatting check runs locally.");
+        assert_eq!(local.evidence, vec!["doc:docs/ci.md".to_string()]);
+        assert_eq!(local.created.as_deref(), Some("2026-05-09"));
+        assert_eq!(local.review_after.as_deref(), Some("2026-09-09"));
+        assert_eq!(local.expires.as_deref(), Some("never"));
+
+        let network = rules.remove(0);
+        assert_eq!(network.id, "proc-download-tool");
+        assert_eq!(network.binary, "pwsh");
+        assert_eq!(
+            network.argv_shape,
+            vec![
+                "-NoProfile".to_string(),
+                "-Command".to_string(),
+                "Invoke-WebRequest".to_string(),
+            ]
+        );
+        assert!(network.network_reach);
+        assert_eq!(
+            network.called_by,
+            vec![
+                "scripts\\fetch.ps1".to_string(),
+                ".github/workflows/ci.yml".to_string(),
+            ]
+        );
+        assert_eq!(network.owner, "ci");
+        assert_eq!(network.reason, "CI fetches a pinned tool.");
+        assert_eq!(
+            network.evidence,
+            vec!["test:tool_download_is_pinned".to_string()]
+        );
+        assert_eq!(network.created.as_deref(), Some("2026-05-10"));
+        assert!(network.review_after.is_none());
+        assert!(network.expires.is_none());
+    }
+
+    #[test]
+    fn parse_process_rules_reports_expected_errors() {
+        let missing_entries = parse_table("policy = \"process-allowlist\"");
+        let err = parse_process_rules(&missing_entries)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("entries are required"));
+        assert!(
+            err.to_string()
+                .contains("process-allowlist missing allow entries")
+        );
+
+        let non_table = parse_table("allow = [\"not a table\"]");
+        let err = parse_process_rules(&non_table)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("entry must be a table"));
+        assert!(
+            err.to_string()
+                .contains("process allow entry 0 is not a table")
+        );
+
+        let missing_id = parse_table(
+            r#"
+[[allow]]
+binary = "cargo"
+argv_shape = ["fmt"]
+network_reach = false
+owner = "build"
+reason = "Formatting check runs locally."
+created = "2026-05-09"
+"#,
+        );
+        let err = parse_process_rules(&missing_id)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("id is required"));
+        assert!(err.to_string().contains("process allow entry 0 missing id"));
+
+        let missing_argv_shape = parse_table(
+            r#"
+[[allow]]
+id = "proc-missing-argv"
+binary = "cargo"
+network_reach = false
+owner = "build"
+reason = "Formatting check runs locally."
+created = "2026-05-09"
+"#,
+        );
+        let err = parse_process_rules(&missing_argv_shape)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("argv_shape is required"));
+        assert!(
+            err.to_string()
+                .contains("proc-missing-argv missing argv_shape")
+        );
+
+        let missing_network_reach = parse_table(
+            r#"
+[[allow]]
+id = "proc-missing-network"
+binary = "cargo"
+argv_shape = ["fmt"]
+owner = "build"
+reason = "Formatting check runs locally."
+created = "2026-05-09"
+"#,
+        );
+        let err = parse_process_rules(&missing_network_reach)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("network_reach is required"));
+        assert!(
+            err.to_string()
+                .contains("proc-missing-network missing network_reach")
+        );
+    }
+}
