@@ -50,3 +50,184 @@ fn parse_clippy_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyClip
         id,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::SimpleDate;
+
+    fn parse_table(input: &str) -> toml::Table {
+        toml::from_str::<toml::Table>(input)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("test TOML parses: {err}")))
+    }
+
+    #[test]
+    fn parse_clippy_rules_accepts_allow_entries_and_preserves_fields() {
+        let table = parse_table(
+            r#"
+[[allow]]
+id = "clippy-unwrap-policy"
+path = "src/lib.rs"
+lint = "clippy::unwrap_used"
+attribute = "expect"
+owner = "lint"
+classification = "reviewed_lint_exception"
+reason = "Fixture keeps an explicit lint suppression linked to policy."
+evidence = ["test:lint_policy_is_linked", "issue:#123"]
+symbol = "parse_optional"
+policy_id = "clippy-unwrap-policy"
+created = "2026-05-09"
+review_after = "2026-09-09"
+expires = "permanent"
+
+[[allow]]
+path = "src/legacy.rs"
+lint = "clippy::panic"
+family = "allow-attribute"
+covered_by = "test:legacy_panic_policy"
+"#,
+        );
+
+        let mut rules = parse_clippy_rules(&table).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("clippy allow entries parse: {err}"))
+        });
+
+        assert_eq!(rules.len(), 2);
+        let reviewed = rules.remove(0);
+        assert_eq!(reviewed.id, "clippy-unwrap-policy");
+        assert_eq!(reviewed.path, "src/lib.rs");
+        assert_eq!(reviewed.lint, "clippy::unwrap_used");
+        assert_eq!(reviewed.family, "expect_attribute");
+        assert_eq!(reviewed.owner, "lint");
+        assert_eq!(reviewed.classification, "reviewed_lint_exception");
+        assert_eq!(
+            reviewed.reason,
+            "Fixture keeps an explicit lint suppression linked to policy."
+        );
+        assert_eq!(
+            reviewed.evidence,
+            vec![
+                "test:lint_policy_is_linked".to_string(),
+                "issue:#123".to_string(),
+            ]
+        );
+        assert_eq!(reviewed.symbol.as_deref(), Some("parse_optional"));
+        assert_eq!(
+            reviewed.target_fingerprint.as_deref(),
+            Some("policy:clippy-unwrap-policy")
+        );
+        assert_eq!(reviewed.created.as_deref(), Some("2026-05-09"));
+        assert_eq!(reviewed.review_after.as_deref(), Some("2026-09-09"));
+        assert_eq!(reviewed.expires.as_deref(), Some("never"));
+
+        let generated = rules.remove(0);
+        assert_eq!(generated.id, "legacy-clippy-0001");
+        assert_eq!(generated.path, "src/legacy.rs");
+        assert_eq!(generated.lint, "clippy::panic");
+        assert_eq!(generated.family, "allow_attribute");
+        assert_eq!(generated.owner, "unowned");
+        assert_eq!(generated.classification, "baseline_debt");
+        assert!(generated.reason.contains("legacy Clippy exceptions policy"));
+        assert_eq!(
+            generated.evidence,
+            vec!["test:legacy_panic_policy".to_string()]
+        );
+        assert_eq!(generated.symbol, None);
+        assert_eq!(generated.target_fingerprint, None);
+        assert!(
+            generated
+                .created
+                .as_deref()
+                .and_then(SimpleDate::parse)
+                .is_some()
+        );
+        assert!(generated.review_after.is_none());
+        assert!(
+            generated
+                .expires
+                .as_deref()
+                .and_then(SimpleDate::parse)
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn parse_clippy_rules_accepts_entry_root_and_target_fingerprint_precedence() {
+        let table = parse_table(
+            r#"
+[[entry]]
+id = "clippy-debug"
+path = "src/debug.rs"
+lint = "clippy::dbg_macro"
+family = "expect-attribute"
+target_fingerprint = "fingerprint:explicit"
+policy_id = "ignored-policy-id"
+created = "2026-05-09"
+review_after = "2026-09-09"
+"#,
+        );
+
+        let mut rules = parse_clippy_rules(&table).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("entry-root clippy rules parse: {err}"))
+        });
+
+        assert_eq!(rules.len(), 1);
+        let rule = rules.remove(0);
+        assert_eq!(rule.id, "clippy-debug");
+        assert_eq!(rule.path, "src/debug.rs");
+        assert_eq!(rule.lint, "clippy::dbg_macro");
+        assert_eq!(rule.family, "expect_attribute");
+        assert_eq!(
+            rule.target_fingerprint.as_deref(),
+            Some("fingerprint:explicit")
+        );
+        assert_eq!(rule.created.as_deref(), Some("2026-05-09"));
+        assert_eq!(rule.review_after.as_deref(), Some("2026-09-09"));
+        assert!(rule.expires.is_none());
+    }
+
+    #[test]
+    fn parse_clippy_rules_reports_expected_errors() {
+        let missing_entries = parse_table("policy = \"clippy-exceptions\"");
+        let err = parse_clippy_rules(&missing_entries)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("entries are required"));
+        assert!(
+            err.to_string()
+                .contains("clippy-exceptions missing allow entries")
+        );
+
+        let non_table = parse_table("allow = [\"not a table\"]");
+        let err = parse_clippy_rules(&non_table)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("entry must be a table"));
+        assert!(
+            err.to_string()
+                .contains("clippy exception entry 0 is not a table")
+        );
+
+        let missing_path = parse_table(
+            r#"
+[[allow]]
+id = "clippy-missing-path"
+lint = "clippy::unwrap_used"
+"#,
+        );
+        let err = parse_clippy_rules(&missing_path)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("path is required"));
+        assert!(err.to_string().contains("clippy-missing-path missing path"));
+
+        let missing_lint = parse_table(
+            r#"
+[[allow]]
+id = "clippy-missing-lint"
+path = "src/lib.rs"
+"#,
+        );
+        let err = parse_clippy_rules(&missing_lint)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("lint is required"));
+        assert!(err.to_string().contains("clippy-missing-lint missing lint"));
+    }
+}
