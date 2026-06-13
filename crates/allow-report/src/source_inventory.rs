@@ -248,3 +248,224 @@ fn finding_family_key(finding: &Finding) -> SourceInventoryFamilyKey {
             .to_string(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{FindingKind, Span, StructuralIdentity};
+    use std::path::PathBuf;
+
+    fn finding(kind: FindingKind, family: Option<&str>, path: &str) -> Finding {
+        Finding {
+            kind,
+            family: family.map(str::to_string),
+            path: PathBuf::from(path),
+            span: Some(Span { line: 1, column: 1 }),
+            identity: StructuralIdentity::new("test", "source_inventory"),
+            message: "source inventory fixture".to_string(),
+        }
+    }
+
+    fn outcome(status: MatchStatus, finding_index: Option<usize>) -> MatchOutcome {
+        MatchOutcome {
+            status,
+            allow_id: None,
+            finding_index,
+            message: status.as_str().to_string(),
+            score: 0,
+        }
+    }
+
+    fn inventory_fixture() -> (Vec<Finding>, Vec<MatchOutcome>) {
+        let findings = vec![
+            finding(FindingKind::Unsafe, Some(" unsafe_block "), "src/ffi.rs"),
+            finding(FindingKind::Unsafe, None, "src/raw.rs"),
+            finding(FindingKind::Panic, Some(""), "src/lib.rs"),
+        ];
+        let outcomes = vec![
+            outcome(MatchStatus::Matched, Some(0)),
+            outcome(MatchStatus::ReviewDue, Some(0)),
+            outcome(MatchStatus::New, Some(1)),
+            outcome(MatchStatus::Stale, Some(2)),
+            outcome(MatchStatus::New, Some(99)),
+            outcome(MatchStatus::New, None),
+        ];
+        (findings, outcomes)
+    }
+
+    #[test]
+    fn source_inventory_counts_statuses_by_kind_and_family() {
+        let (findings, outcomes) = inventory_fixture();
+
+        let inventory = SourceInventory::from_report(&findings, &outcomes);
+
+        assert_eq!(inventory.total, 3);
+        assert!(inventory.has_findings());
+        assert_eq!(
+            inventory.by_kind.get("unsafe").map(|row| (
+                row.total,
+                row.matched,
+                row.new,
+                row.review_items
+            )),
+            Some((2, 1, 1, 2))
+        );
+        assert_eq!(
+            inventory.by_kind.get("panic").map(|row| (
+                row.total,
+                row.matched,
+                row.new,
+                row.review_items
+            )),
+            Some((1, 0, 0, 1))
+        );
+        assert_eq!(
+            inventory
+                .by_family
+                .get(&SourceInventoryFamilyKey {
+                    kind: "unsafe".to_string(),
+                    family: "unsafe_block".to_string(),
+                })
+                .map(|row| (row.total, row.matched, row.new, row.review_items)),
+            Some((1, 1, 0, 1))
+        );
+        assert_eq!(
+            inventory
+                .by_family
+                .get(&SourceInventoryFamilyKey {
+                    kind: "unsafe".to_string(),
+                    family: "unknown".to_string(),
+                })
+                .map(|row| (row.total, row.matched, row.new, row.review_items)),
+            Some((1, 0, 1, 1))
+        );
+        assert_eq!(
+            inventory
+                .by_family
+                .get(&SourceInventoryFamilyKey {
+                    kind: "panic".to_string(),
+                    family: "unknown".to_string(),
+                })
+                .map(|row| (row.total, row.matched, row.new, row.review_items)),
+            Some((1, 0, 0, 1))
+        );
+    }
+
+    #[test]
+    fn source_inventory_renderers_skip_empty_inventory() {
+        let mut out = String::from("prefix");
+
+        render_source_inventory_human(&[], &[], &mut out);
+        assert_eq!(out, "prefix");
+
+        render_source_inventory_markdown(&[], &[], &mut out);
+        assert_eq!(out, "prefix");
+
+        render_source_inventory_html(&[], &[], &mut out);
+        assert_eq!(out, "prefix");
+
+        assert_eq!(render_source_inventory_json(&[], &[], "  "), None);
+    }
+
+    #[test]
+    fn source_inventory_human_and_markdown_render_counts() {
+        let (findings, outcomes) = inventory_fixture();
+        let mut human = String::new();
+        let mut markdown = String::new();
+
+        render_source_inventory_human(&findings, &outcomes, &mut human);
+        render_source_inventory_markdown(&findings, &outcomes, &mut markdown);
+
+        assert!(human.contains("Source exception inventory:"));
+        assert!(human.contains("findings                 3"));
+        assert!(human.contains("unsafe                   total=2 matched=1 new=1 review_items=2"));
+        assert!(human.contains("panic                    total=1 matched=0 new=0 review_items=1"));
+        assert!(human.contains("unsafe.unsafe_block      total=1 matched=1 new=0 review_items=1"));
+        assert!(human.contains("unsafe.unknown           total=1 matched=0 new=1 review_items=1"));
+        assert!(human.contains("panic.unknown            total=1 matched=0 new=0 review_items=1"));
+
+        assert!(markdown.contains("## Source Exception Inventory"));
+        assert!(markdown.contains("Findings inventoried: `3`"));
+        assert!(markdown.contains("| `unsafe` | 2 | 1 | 1 | 2 |"));
+        assert!(markdown.contains("| `panic` | 1 | 0 | 0 | 1 |"));
+        assert!(markdown.contains("| `unsafe.unsafe_block` | 1 | 1 | 0 | 1 |"));
+        assert!(markdown.contains("| `unsafe.unknown` | 1 | 0 | 1 | 1 |"));
+        assert!(markdown.contains("| `panic.unknown` | 1 | 0 | 0 | 1 |"));
+    }
+
+    #[test]
+    fn source_inventory_html_and_json_render_counts() {
+        let (findings, outcomes) = inventory_fixture();
+        let mut html = String::new();
+
+        render_source_inventory_html(&findings, &outcomes, &mut html);
+        let json = render_source_inventory_json(&findings, &outcomes, "  ");
+
+        assert!(html.contains("<h2>Source Exception Inventory</h2>"));
+        assert!(html.contains("<p>Findings inventoried: <code>3</code></p>"));
+        assert!(html.contains("<code class=\"kind\">unsafe</code>"));
+        assert!(html.contains("<code class=\"kind\">panic</code>"));
+        assert!(html.contains("<code class=\"family\">unsafe.unsafe_block</code>"));
+        assert!(html.contains("<code class=\"family\">unsafe.unknown</code>"));
+        assert!(html.contains("<code class=\"family\">panic.unknown</code>"));
+        assert!(html.contains("<td class=\"count\">2</td><td class=\"count\">1</td><td class=\"count\">1</td><td class=\"count\">2</td>"));
+
+        assert!(json.as_deref().is_some_and(|text| {
+            text.contains("\"findings\": 3")
+                && text.contains(
+                    "{\"kind\": \"unsafe\", \"total\": 2, \"matched\": 1, \"new\": 1, \"review_items\": 2}"
+                )
+                && text.contains(
+                    "{\"kind\": \"panic\", \"family\": \"unknown\", \"label\": \"panic.unknown\", \"total\": 1, \"matched\": 0, \"new\": 0, \"review_items\": 1}"
+                )
+        }));
+    }
+
+    #[test]
+    fn source_inventory_renderers_escape_family_labels() {
+        let findings = vec![finding(
+            FindingKind::Unsafe,
+            Some("ffi|unsafe`<tag>&\""),
+            "src/ffi.rs",
+        )];
+        let outcomes = vec![outcome(MatchStatus::New, Some(0))];
+        let mut markdown = String::new();
+        let mut html = String::new();
+
+        render_source_inventory_markdown(&findings, &outcomes, &mut markdown);
+        render_source_inventory_html(&findings, &outcomes, &mut html);
+        let json = render_source_inventory_json(&findings, &outcomes, "  ");
+
+        assert!(markdown.contains("`unsafe.ffi\\|unsafe\\`<tag>&\"`"));
+        assert!(html.contains("unsafe.ffi|unsafe`&lt;tag&gt;&amp;&quot;"));
+        assert!(
+            json.as_deref()
+                .is_some_and(|text| text.contains("\"label\": \"unsafe.ffi|unsafe`<tag>&\\\"\""))
+        );
+    }
+
+    #[test]
+    fn source_inventory_row_add_status_routes_review_items() {
+        let mut row = SourceInventoryRow::default();
+
+        row.add_status(MatchStatus::Matched);
+        row.add_status(MatchStatus::New);
+        row.add_status(MatchStatus::ReviewDue);
+        row.add_status(MatchStatus::EvidenceMissing);
+
+        assert_eq!(row.matched, 1);
+        assert_eq!(row.new, 1);
+        assert_eq!(row.review_items, 3);
+    }
+
+    #[test]
+    fn source_inventory_row_treats_non_matched_status_as_review_item() {
+        let mut row = SourceInventoryRow::default();
+
+        row.add_status(MatchStatus::Stale);
+
+        assert_eq!(row.matched, 0);
+        assert_eq!(row.new, 0);
+        assert_eq!(row.review_items, 1);
+    }
+}
