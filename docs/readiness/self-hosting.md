@@ -27,7 +27,7 @@ Recorded: 2026-06-13
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `1746` `ripr` targets and `1746` `ripr+` targets after the twentieth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `1716` `ripr` targets and `1716` `ripr+` targets after the twenty-first burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -1200,6 +1200,59 @@ Largest remaining file concentrations:
 | `crates/allow-files/src/path_rules.rs` | 28 |
 | `crates/cargo-allow/src/diff_render.rs` | 27 |
 
+## Twenty-First Burn-Down Slice
+
+The twenty-first focused slice added same-module coverage for
+`crates/allow-files/src/path_rules.rs`:
+
+- scannable non-Rust file classification for Rust sources, built-in allowed
+  files, crate README files, and ordinary docs.
+- Rust source extension matching, including case and suffix boundaries.
+- built-in allowlist root-file and crate README boundaries, including Windows
+  separator normalization.
+- generated path matching through configured globs, generated path segments,
+  `gen` path segments, and generated file-name markers.
+- lowercased extension and file-name helpers.
+
+After regenerating repo exposure and the gap decision ledger:
+
+```bash
+ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-path-rules.repo-exposure.json
+ripr reports gap-ledger --repo-exposure target/ripr/reports/after-path-rules.repo-exposure.json --out target/ripr/reports/after-path-rules.gap-decision-ledger.json --out-md target/ripr/reports/after-path-rules.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 1716
+ripr zero target count = 1716
+ripr plus target count = 1716
+crates/allow-files/src/path_rules.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `1746` to `1716`
+and cleared `crates/allow-files/src/path_rules.rs` from the repairable file
+list.
+
+Remaining repairable classes:
+
+| Class | Count |
+| --- | ---: |
+| `MissingSideEffectObserver` | 1225 |
+| `MissingErrorDiscriminator` | 235 |
+| `MissingBoundaryAssertion` | 148 |
+| `MissingValueAssertion` | 108 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-policy/src/spec_system/validate.rs` | 38 |
+| `crates/allow-policy/src/entry_validation.rs` | 36 |
+| `crates/allow-policy-legacy/src/parser_no_panic_allowlist_entries.rs` | 30 |
+| `crates/cargo-allow/src/diff_render.rs` | 27 |
+| `crates/allow-report/src/report_json.rs` | 26 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -1215,7 +1268,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 1746` means the current repo does not yet meet the requested
+`ripr+ = 1716` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -1232,8 +1285,8 @@ Start with one high-volume, low-judgment class:
 
 1. inspect a pure parser, path, or rendering target such as
    `crates/allow-policy-legacy/src/parser_no_panic_allowlist_entries.rs`,
-   `crates/allow-files/src/path_rules.rs`, or
-   `crates/cargo-allow/src/diff_render.rs`.
+   `crates/cargo-allow/src/diff_render.rs`, or
+   `crates/allow-report/src/report_json.rs`.
 2. choose one `MissingBoundaryAssertion`, `MissingValueAssertion`, or
    `MissingSideEffectObserver` group with direct behavior assertions.
 3. add or tighten a focused test.
