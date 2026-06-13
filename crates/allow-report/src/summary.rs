@@ -222,3 +222,200 @@ pub(crate) fn audit_review_queue(outcomes: &[MatchOutcome]) -> Vec<&MatchOutcome
         .take(20)
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector};
+    use std::path::PathBuf;
+
+    fn outcome(status: MatchStatus, allow_id: Option<&str>) -> MatchOutcome {
+        MatchOutcome {
+            status,
+            allow_id: allow_id.map(str::to_string),
+            finding_index: None,
+            message: status.as_str().to_string(),
+            score: 0,
+        }
+    }
+
+    fn entry(id: &str, classification: &str, evidence: &[&str]) -> AllowEntry {
+        AllowEntry {
+            id: id.to_string(),
+            kind: FindingKind::PolicyException,
+            family: None,
+            path: Some(PathBuf::from("src/lib.rs")),
+            glob: None,
+            owner: "owner".to_string(),
+            classification: classification.to_string(),
+            reason: "reason".to_string(),
+            evidence: evidence.iter().map(|item| (*item).to_string()).collect(),
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle::empty(),
+            selector: Selector::default(),
+            last_seen: None,
+        }
+    }
+
+    #[test]
+    fn summary_counts_each_match_status_and_defaults_missing_statuses_to_zero() {
+        let outcomes = vec![
+            outcome(MatchStatus::Matched, Some("matched")),
+            outcome(MatchStatus::Matched, Some("matched-again")),
+            outcome(MatchStatus::New, Some("new")),
+            outcome(MatchStatus::Expired, Some("expired")),
+            outcome(MatchStatus::ReviewDue, Some("review")),
+            outcome(MatchStatus::Stale, Some("stale")),
+            outcome(MatchStatus::Ambiguous, Some("ambiguous")),
+            outcome(MatchStatus::InvalidSelector, Some("invalid")),
+            outcome(MatchStatus::EvidenceMissing, Some("evidence")),
+            outcome(MatchStatus::MissingRequiredField, Some("missing")),
+        ];
+
+        let summary = Summary::from_outcomes(&outcomes);
+
+        assert_eq!(summary.total, 10);
+        assert_eq!(summary.count(MatchStatus::Matched), 2);
+        assert_eq!(summary.count(MatchStatus::New), 1);
+        assert_eq!(summary.count(MatchStatus::Expired), 1);
+        assert_eq!(summary.count(MatchStatus::ReviewDue), 1);
+        assert_eq!(summary.count(MatchStatus::Stale), 1);
+        assert_eq!(summary.count(MatchStatus::Ambiguous), 1);
+        assert_eq!(summary.count(MatchStatus::InvalidSelector), 1);
+        assert_eq!(summary.count(MatchStatus::EvidenceMissing), 1);
+        assert_eq!(summary.count(MatchStatus::MissingRequiredField), 1);
+        assert_eq!(summary.count(MatchStatus::BaselineDebt), 0);
+    }
+
+    #[test]
+    fn review_signals_combine_summary_counts_and_policy_context() {
+        let summary = Summary::from_outcomes(&[
+            outcome(MatchStatus::New, Some("new")),
+            outcome(MatchStatus::Expired, Some("expired")),
+            outcome(MatchStatus::EvidenceMissing, Some("missing-evidence")),
+            outcome(MatchStatus::BaselineDebt, Some("baseline")),
+        ]);
+        let mut context = ReportContext::source_syntax("git_tracked", None, None, Some(3));
+        context.policy_missing_evidence_entries = Some(5);
+        context.broken_evidence_links = Some(2);
+        context.weak_evidence_references = Some(1);
+
+        let signals = ReviewSignals::from_summary(&summary, context);
+
+        assert_eq!(
+            signals,
+            ReviewSignals {
+                baseline_debt: 3,
+                policy_missing_evidence: 5,
+                broken_evidence_links: 2,
+                weak_evidence_references: 1,
+                review_items: 13,
+            }
+        );
+        assert_eq!(review_item_count_with_baseline(&summary, 3, 5, 2, 1), 13);
+    }
+
+    #[test]
+    fn render_count_fields_lists_statuses_and_policy_context_excess() {
+        let summary = Summary::from_outcomes(&[
+            outcome(MatchStatus::Matched, Some("matched")),
+            outcome(MatchStatus::EvidenceMissing, Some("missing-evidence")),
+            outcome(MatchStatus::BaselineDebt, Some("baseline")),
+        ]);
+
+        let rendered = render_count_fields_with_policy_context(
+            &summary,
+            Some(3),
+            Some(4),
+            Some(2),
+            Some(1),
+            "  ",
+        );
+
+        assert!(rendered.contains("  \"matched\": 1,"));
+        assert!(rendered.contains("  \"new\": 0,"));
+        assert!(rendered.contains("  \"evidence_missing\": 1,"));
+        assert!(rendered.contains("  \"baseline_debt\": 1,"));
+        assert!(rendered.contains("  \"policy_baseline_debt\": 3,"));
+        assert!(rendered.contains("  \"policy_missing_evidence\": 4,"));
+        assert!(rendered.contains("  \"broken_evidence_links\": 2,"));
+        assert!(rendered.contains("  \"weak_evidence_references\": 1\n"));
+
+        let without_excess = render_count_fields_with_policy_context(
+            &summary,
+            Some(1),
+            Some(1),
+            Some(0),
+            Some(0),
+            "",
+        );
+        assert!(!without_excess.contains("policy_baseline_debt"));
+        assert!(!without_excess.contains("policy_missing_evidence"));
+        assert!(!without_excess.contains("broken_evidence_links"));
+        assert!(!without_excess.contains("weak_evidence_references"));
+        assert!(without_excess.ends_with("\"baseline_debt\": 1\n"));
+    }
+
+    #[test]
+    fn context_count_helpers_use_context_override_or_summary_fallback() {
+        let summary = Summary::from_outcomes(&[
+            outcome(MatchStatus::EvidenceMissing, Some("missing-evidence")),
+            outcome(MatchStatus::BaselineDebt, Some("baseline")),
+        ]);
+        let mut context = ReportContext::default();
+
+        assert_eq!(baseline_debt_count(&summary, context), 1);
+        assert_eq!(policy_missing_evidence_count(&summary, context), 1);
+        assert_eq!(broken_evidence_link_count(context), 0);
+        assert_eq!(weak_evidence_reference_count(context), 0);
+
+        context.baseline_debt_entries = Some(4);
+        context.policy_missing_evidence_entries = Some(5);
+        context.broken_evidence_links = Some(2);
+        context.weak_evidence_references = Some(3);
+
+        assert_eq!(baseline_debt_count(&summary, context), 4);
+        assert_eq!(policy_missing_evidence_count(&summary, context), 5);
+        assert_eq!(broken_evidence_link_count(context), 2);
+        assert_eq!(weak_evidence_reference_count(context), 3);
+    }
+
+    #[test]
+    fn policy_entry_helpers_count_baseline_and_matched_missing_evidence() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(entry("matched-missing", "reviewed", &[]));
+        cfg.allow
+            .push(entry("matched-evidenced", "reviewed", &["test:covered"]));
+        cfg.allow.push(entry("stale-missing", "reviewed", &[]));
+        cfg.allow
+            .push(entry("baseline-missing", "baseline_debt", &[]));
+        let outcomes = vec![
+            outcome(MatchStatus::Matched, Some("matched-missing")),
+            outcome(MatchStatus::Matched, Some("matched-evidenced")),
+            outcome(MatchStatus::Stale, Some("stale-missing")),
+            outcome(MatchStatus::Matched, Some("baseline-missing")),
+            outcome(MatchStatus::Matched, None),
+        ];
+
+        assert_eq!(policy_baseline_debt_entries(&cfg), 1);
+        assert_eq!(policy_missing_evidence_entries(&cfg), 3);
+        assert_eq!(matched_policy_missing_evidence_entries(&cfg, &outcomes), 1);
+    }
+
+    #[test]
+    fn audit_review_queue_keeps_first_twenty_non_matched_outcomes() {
+        let mut outcomes = vec![outcome(MatchStatus::Matched, Some("matched"))];
+        outcomes.extend((0..25).map(|index| {
+            let id = format!("new-{index}");
+            outcome(MatchStatus::New, Some(&id))
+        }));
+
+        let queue = audit_review_queue(&outcomes);
+
+        assert_eq!(queue.len(), 20);
+        assert!(queue.iter().all(|item| item.status != MatchStatus::Matched));
+        assert_eq!(queue[0].allow_id.as_deref(), Some("new-0"));
+        assert_eq!(queue[19].allow_id.as_deref(), Some("new-19"));
+    }
+}
