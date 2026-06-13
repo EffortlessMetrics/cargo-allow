@@ -43,3 +43,66 @@ pub(crate) fn render_bool_field(out: &mut String, name: &str, value: bool) {
     out.push_str(if value { "true" } else { "false" });
     out.push('\n');
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn escape_toml_observes_each_escape_branch() {
+        assert_eq!(escape_toml("plain"), "plain");
+        assert_eq!(escape_toml("\u{08}"), "\\b");
+        assert_eq!(escape_toml("\t"), "\\t");
+        assert_eq!(escape_toml("\n"), "\\n");
+        assert_eq!(escape_toml("\u{0C}"), "\\f");
+        assert_eq!(escape_toml("\r"), "\\r");
+        assert_eq!(escape_toml("\""), "\\\"");
+        assert_eq!(escape_toml("\\"), "\\\\");
+        assert_eq!(escape_toml("\u{01}"), "\\u0001");
+        assert_eq!(
+            escape_toml("a\u{08}\t\n\u{0C}\r\"\\\u{01}z"),
+            "a\\b\\t\\n\\f\\r\\\"\\\\\\u0001z"
+        );
+    }
+
+    #[test]
+    fn render_array_quotes_and_escapes_each_value() {
+        let values = vec![
+            "plain".to_string(),
+            "needs \"quote\"".to_string(),
+            "line\nbreak".to_string(),
+            "slash\\value".to_string(),
+        ];
+
+        let rendered = render_array(&values);
+
+        assert_eq!(
+            rendered,
+            "\"plain\", \"needs \\\"quote\\\"\", \"line\\nbreak\", \"slash\\\\value\""
+        );
+    }
+
+    #[test]
+    fn render_string_and_optional_fields_append_expected_lines() {
+        let mut out = String::new();
+
+        render_string_field(&mut out, "reason", "line\n\"quoted\"");
+        render_optional_string_field(&mut out, "owner", Some("repo\\team"));
+        render_optional_string_field(&mut out, "empty", None);
+
+        assert_eq!(
+            out,
+            "reason = \"line\\n\\\"quoted\\\"\"\nowner = \"repo\\\\team\"\n"
+        );
+    }
+
+    #[test]
+    fn render_bool_field_appends_true_and_false_lines() {
+        let mut out = String::new();
+
+        render_bool_field(&mut out, "owner_required", true);
+        render_bool_field(&mut out, "evidence_required", false);
+
+        assert_eq!(out, "owner_required = true\nevidence_required = false\n");
+    }
+}
