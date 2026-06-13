@@ -27,7 +27,7 @@ Recorded: 2026-06-13
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `2317` `ripr` targets and `2317` `ripr+` targets after the seventh burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `2261` `ripr` targets and `2261` `ripr+` targets after the eighth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -513,6 +513,67 @@ Largest remaining file concentrations:
 | `crates/allow-diff/src/policy_compare.rs` | 43 |
 | `crates/allow-diff/src/policy_entry_metadata.rs` | 40 |
 
+## Eighth Burn-Down Slice
+
+The eighth focused slice added same-module unit coverage for
+`crates/allow-policy/src/source_tree_scope.rs`:
+
+- Windows separator normalization.
+- accepted source-tree-relative path and glob scopes.
+- empty, whitespace-padded, absolute, drive-qualified, parent-segment,
+  current-segment, empty-segment, and wildcard path rejection.
+- unsupported glob token, unsupported `**` placement, and repository-wide glob
+  rejection.
+- direct syntax-helper error assertions for wildcard paths and unsupported glob
+  syntax.
+- source-tree-wide glob boundary detection.
+- path-versus-glob diagnostic message wording.
+
+After regenerating repo exposure and the gap decision ledger:
+
+```bash
+ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-source-tree-scope.repo-exposure.json
+ripr reports gap-ledger --repo-exposure target/ripr/reports/after-source-tree-scope.repo-exposure.json --out target/ripr/reports/after-source-tree-scope.gap-decision-ledger.json --out-md target/ripr/reports/after-source-tree-scope.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 2261
+ripr zero target count = 2261
+ripr plus target count = 2261
+crates/allow-policy/src/source_tree_scope.rs repairable targets = 12
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `2317` to `2261`
+and reduced `crates/allow-policy/src/source_tree_scope.rs` from `58`
+repairable targets to `12`.
+
+The remaining `source_tree_scope.rs` targets are tracked as provider friction in
+`EffortlessMetrics/ripr#1435`: the residual `MissingErrorDiscriminator` group
+persists after direct same-module assertions inspect the exact helper error
+strings for wildcard path errors, repository-wide glob errors, unsupported glob
+token errors, and invalid `**` placement errors.
+
+Remaining repairable classes:
+
+| Class | Count |
+| --- | ---: |
+| `MissingSideEffectObserver` | 1569 |
+| `MissingBoundaryAssertion` | 284 |
+| `MissingErrorDiscriminator` | 235 |
+| `MissingValueAssertion` | 173 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-report/src/diff_posture.rs` | 44 |
+| `crates/allow-diff/src/policy_compare.rs` | 43 |
+| `crates/allow-report/src/worklist_json.rs` | 43 |
+| `crates/allow-policy-legacy/src/parser_unsafe_entries.rs` | 40 |
+| `crates/allow-diff/src/policy_entry_metadata.rs` | 40 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -528,7 +589,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 2317` means the current repo does not yet meet the requested
+`ripr+ = 2261` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -543,7 +604,7 @@ evidence: reduce or scope cargo-allow ripr+ readiness
 
 Start with one high-volume, low-judgment class:
 
-1. inspect `crates/allow-policy/src/source_tree_scope.rs`.
+1. inspect `crates/allow-report/src/diff_posture.rs`.
 2. choose one `MissingBoundaryAssertion`, `MissingValueAssertion`, or
    `MissingSideEffectObserver` group.
 3. add or tighten a focused test.
