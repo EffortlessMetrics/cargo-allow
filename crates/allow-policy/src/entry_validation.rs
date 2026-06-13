@@ -196,3 +196,480 @@ fn validate_local_link_scopes(entry: &AllowEntry) -> CargoAllowResult<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{Lifecycle, Selector};
+    use std::path::PathBuf;
+
+    fn entry(id: &str) -> AllowEntry {
+        AllowEntry {
+            id: id.to_string(),
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            path: Some(PathBuf::from("src/lib.rs")),
+            glob: None,
+            owner: "repo-infra".to_string(),
+            classification: "reviewed".to_string(),
+            reason: "fixture reason".to_string(),
+            evidence: vec!["test:panic_path_is_covered".to_string()],
+            links: vec!["issue:123".to_string()],
+            occurrence_limit: Some(1),
+            lifecycle: Lifecycle::empty(),
+            selector: Selector::default(),
+            last_seen: None,
+        }
+    }
+
+    fn err_text(result: CargoAllowResult<()>) -> String {
+        result.err().map(|err| err.to_string()).unwrap_or_default()
+    }
+
+    fn required() -> Requirements {
+        Requirements::default()
+    }
+
+    #[test]
+    fn validate_allow_entry_identity_accepts_unique_id_and_rejects_duplicates() {
+        let mut ids = BTreeSet::new();
+        let first = entry("allow-1");
+        let duplicate = entry("allow-1");
+
+        assert!(validate_allow_entry_identity(&first, &mut ids).is_ok());
+        assert!(ids.contains("allow-1"));
+
+        let message = err_text(validate_allow_entry_identity(&duplicate, &mut ids));
+        assert!(message.contains("duplicate allow id `allow-1`"));
+    }
+
+    #[test]
+    fn validate_allow_entry_identity_checks_id_and_family_text() {
+        let mut ids = BTreeSet::new();
+        let blank_id = entry("");
+        let mut padded_id = entry(" allow-1 ");
+        let mut invalid_id = entry("allow:1");
+        let mut blank_family = entry("allow-blank-family");
+        blank_family.family = Some("   ".to_string());
+
+        assert!(
+            err_text(validate_allow_entry_identity(&blank_id, &mut ids))
+                .contains("allow entry has empty id")
+        );
+        assert!(
+            err_text(validate_allow_entry_identity(&padded_id, &mut ids))
+                .contains("must not have leading or trailing whitespace")
+        );
+        assert!(
+            err_text(validate_allow_entry_identity(&invalid_id, &mut ids))
+                .contains("may contain only ASCII letters")
+        );
+        assert!(
+            err_text(validate_allow_entry_identity(&blank_family, &mut ids))
+                .contains("allow-blank-family family must not be empty")
+        );
+
+        padded_id.id = "allow_1-ok".to_string();
+        invalid_id.id = "allow-2".to_string();
+        assert!(validate_allow_entry_identity(&padded_id, &mut ids).is_ok());
+        assert!(validate_allow_entry_identity(&invalid_id, &mut ids).is_ok());
+    }
+
+    #[test]
+    fn validate_allow_entry_requirements_enforces_required_owner_reason_and_classification() {
+        let requirements = required();
+        let mut missing_owner = entry("missing-owner");
+        let mut unowned_reviewed = entry("unowned-reviewed");
+        let mut unowned_baseline = entry("unowned-baseline");
+        let mut missing_reason = entry("missing-reason");
+        let mut missing_classification = entry("missing-classification");
+
+        missing_owner.owner.clear();
+        unowned_reviewed.owner = "unowned".to_string();
+        unowned_baseline.owner = "unowned".to_string();
+        unowned_baseline.classification = "baseline_debt".to_string();
+        missing_reason.reason.clear();
+        missing_classification.classification.clear();
+
+        assert!(
+            err_text(validate_allow_entry_requirements(
+                &missing_owner,
+                &requirements,
+                LinkScopeValidation::Strict
+            ))
+            .contains("missing-owner missing owner")
+        );
+        assert!(
+            err_text(validate_allow_entry_requirements(
+                &unowned_reviewed,
+                &requirements,
+                LinkScopeValidation::Strict
+            ))
+            .contains("unowned-reviewed missing concrete owner")
+        );
+        assert!(
+            validate_allow_entry_requirements(
+                &unowned_baseline,
+                &requirements,
+                LinkScopeValidation::Strict
+            )
+            .is_ok()
+        );
+        assert!(
+            err_text(validate_allow_entry_requirements(
+                &missing_reason,
+                &requirements,
+                LinkScopeValidation::Strict
+            ))
+            .contains("missing-reason missing reason")
+        );
+        assert!(
+            err_text(validate_allow_entry_requirements(
+                &missing_classification,
+                &requirements,
+                LinkScopeValidation::Strict
+            ))
+            .contains("missing-classification missing classification")
+        );
+    }
+
+    #[test]
+    fn validate_allow_entry_requirements_checks_whitespace_duplicates_and_link_scope_mode() {
+        let requirements = required();
+        let mut padded = entry("padded-fields");
+        let mut duplicate_values = entry("duplicate-values");
+        let mut invalid_local_link = entry("invalid-local-link");
+
+        padded.owner = " repo ".to_string();
+        assert!(
+            err_text(validate_allow_entry_requirements(
+                &padded,
+                &requirements,
+                LinkScopeValidation::Strict
+            ))
+            .contains("padded-fields owner must not have leading or trailing whitespace")
+        );
+
+        duplicate_values.evidence = vec!["test:a".to_string(), "test:a".to_string()];
+        duplicate_values.links = vec!["issue:1".to_string(), "issue:1".to_string()];
+        assert!(
+            err_text(validate_allow_entry_requirements(
+                &duplicate_values,
+                &requirements,
+                LinkScopeValidation::Strict
+            ))
+            .contains("duplicate evidence entry `test:a` at position 2")
+        );
+
+        duplicate_values.evidence = vec!["test:a".to_string()];
+        assert!(
+            err_text(validate_allow_entry_requirements(
+                &duplicate_values,
+                &requirements,
+                LinkScopeValidation::Strict
+            ))
+            .contains("duplicate link entry `issue:1` at position 2")
+        );
+
+        invalid_local_link.links = vec!["doc:docs/../safety.md".to_string()];
+        assert!(
+            err_text(validate_allow_entry_requirements(
+                &invalid_local_link,
+                &requirements,
+                LinkScopeValidation::Strict
+            ))
+            .contains(
+                "invalid-local-link link entry 1 path must not contain parent directory segments"
+            )
+        );
+        assert!(
+            validate_allow_entry_requirements(
+                &invalid_local_link,
+                &requirements,
+                LinkScopeValidation::ReportOnly
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn validate_allow_entry_evidence_and_limit_checks_required_evidence_and_limits() {
+        let requirements = required();
+        let mut unsafe_missing = entry("unsafe-missing");
+        let mut unsafe_weak = entry("unsafe-weak");
+        let mut unsafe_typed = entry("unsafe-typed");
+        let mut evidence_required = entry("missing-general-evidence");
+        let mut zero_limit = entry("zero-limit");
+        let mut strict_requirements = required();
+
+        unsafe_missing.kind = FindingKind::Unsafe;
+        unsafe_missing.evidence.clear();
+        unsafe_weak.kind = FindingKind::Unsafe;
+        unsafe_weak.evidence = vec!["TODO add proof".to_string()];
+        unsafe_typed.kind = FindingKind::Unsafe;
+        unsafe_typed.evidence = vec!["test:unsafe_path_is_covered".to_string()];
+        evidence_required.evidence.clear();
+        zero_limit.occurrence_limit = Some(0);
+        strict_requirements.unsafe_evidence_required = false;
+        strict_requirements.evidence_required = true;
+
+        assert!(
+            err_text(validate_allow_entry_evidence_and_limit(
+                &unsafe_missing,
+                &requirements
+            ))
+            .contains("unsafe-missing unsafe entry missing evidence")
+        );
+        assert!(
+            err_text(validate_allow_entry_evidence_and_limit(
+                &unsafe_weak,
+                &requirements
+            ))
+            .contains("unsafe-weak unsafe entry requires at least one typed evidence reference")
+        );
+        assert!(validate_allow_entry_evidence_and_limit(&unsafe_typed, &requirements).is_ok());
+        assert!(
+            err_text(validate_allow_entry_evidence_and_limit(
+                &evidence_required,
+                &strict_requirements
+            ))
+            .contains("missing-general-evidence missing evidence")
+        );
+        assert!(
+            err_text(validate_allow_entry_evidence_and_limit(
+                &zero_limit,
+                &requirements
+            ))
+            .contains("zero-limit occurrence_limit must be greater than zero")
+        );
+    }
+
+    #[test]
+    fn typed_evidence_required_label_identifies_sensitive_entry_types() {
+        let mut baseline = entry("baseline");
+        let mut unsafe_entry = entry("unsafe-entry");
+        let mut process_entry = entry("process-entry");
+        let mut network_entry = entry("network-entry");
+        let normal = entry("normal");
+
+        baseline.kind = FindingKind::Unsafe;
+        baseline.classification = "baseline_debt".to_string();
+        unsafe_entry.kind = FindingKind::Unsafe;
+        process_entry.kind = FindingKind::PolicyException;
+        process_entry.family = Some("process_spawn".to_string());
+        network_entry.kind = FindingKind::PolicyException;
+        network_entry.family = Some("network_destination".to_string());
+
+        assert_eq!(typed_evidence_required_label(&baseline), None);
+        assert_eq!(
+            typed_evidence_required_label(&unsafe_entry).as_deref(),
+            Some("unsafe")
+        );
+        assert_eq!(
+            typed_evidence_required_label(&process_entry).as_deref(),
+            Some("policy_exception.process_spawn")
+        );
+        assert_eq!(
+            typed_evidence_required_label(&network_entry).as_deref(),
+            Some("policy_exception.network_destination")
+        );
+        assert_eq!(typed_evidence_required_label(&normal), None);
+    }
+
+    #[test]
+    fn evidence_is_typed_requires_recognized_prefix_and_non_empty_target() {
+        assert!(evidence_is_typed("test:panic_path_is_covered"));
+        assert!(evidence_is_typed(" doc : docs/safety.md "));
+        assert!(!evidence_is_typed("test:"));
+        assert!(!evidence_is_typed("unknown:target"));
+        assert!(!evidence_is_typed("manual review note"));
+    }
+
+    #[test]
+    fn low_level_value_validators_report_positioned_errors() {
+        assert!(validate_allow_id("allow_test-1").is_ok());
+        assert!(err_text(validate_allow_id("")).contains("allow entry has empty id"));
+        assert!(
+            err_text(validate_allow_id(" allow-1 "))
+                .contains("must not have leading or trailing whitespace")
+        );
+        assert!(err_text(validate_allow_id("allow:1")).contains("may contain only ASCII letters"));
+
+        assert!(
+            err_text(validate_non_empty_values(
+                "allow-1",
+                "evidence",
+                &["".to_string()]
+            ))
+            .contains("allow-1 evidence entry 1 must not be empty")
+        );
+        assert!(
+            err_text(validate_unique_values(
+                "allow-1",
+                "link",
+                &["issue:1".to_string(), "issue:1".to_string()]
+            ))
+            .contains("allow-1 duplicate link entry `issue:1` at position 2")
+        );
+    }
+
+    #[test]
+    fn direct_error_discriminators_match_entry_validation_messages() {
+        let requirements = required();
+        let mut ids = BTreeSet::new();
+        let first = entry("duplicate-id");
+        let duplicate = entry("duplicate-id");
+        assert!(validate_allow_entry_identity(&first, &mut ids).is_ok());
+        assert_eq!(
+            validate_allow_entry_identity(&duplicate, &mut ids)
+                .err()
+                .map(|err| err.to_string())
+                .as_deref(),
+            Some("duplicate allow id `duplicate-id`")
+        );
+
+        let mut missing_owner = entry("missing-owner");
+        missing_owner.owner.clear();
+        assert_eq!(
+            validate_allow_entry_requirements(
+                &missing_owner,
+                &requirements,
+                LinkScopeValidation::Strict
+            )
+            .err()
+            .map(|err| err.to_string())
+            .as_deref(),
+            Some("missing-owner missing owner")
+        );
+
+        let mut unowned_reviewed = entry("unowned-reviewed");
+        unowned_reviewed.owner = "unowned".to_string();
+        assert_eq!(
+            validate_allow_entry_requirements(
+                &unowned_reviewed,
+                &requirements,
+                LinkScopeValidation::Strict
+            )
+            .err()
+            .map(|err| err.to_string())
+            .as_deref(),
+            Some("unowned-reviewed missing concrete owner")
+        );
+
+        let mut missing_reason = entry("missing-reason");
+        missing_reason.reason.clear();
+        assert_eq!(
+            validate_allow_entry_requirements(
+                &missing_reason,
+                &requirements,
+                LinkScopeValidation::Strict
+            )
+            .err()
+            .map(|err| err.to_string())
+            .as_deref(),
+            Some("missing-reason missing reason")
+        );
+
+        let mut missing_classification = entry("missing-classification");
+        missing_classification.classification.clear();
+        assert_eq!(
+            validate_allow_entry_requirements(
+                &missing_classification,
+                &requirements,
+                LinkScopeValidation::Strict
+            )
+            .err()
+            .map(|err| err.to_string())
+            .as_deref(),
+            Some("missing-classification missing classification")
+        );
+
+        let mut unsafe_missing = entry("unsafe-missing");
+        unsafe_missing.kind = FindingKind::Unsafe;
+        unsafe_missing.evidence.clear();
+        assert_eq!(
+            validate_allow_entry_evidence_and_limit(&unsafe_missing, &requirements)
+                .err()
+                .map(|err| err.to_string())
+                .as_deref(),
+            Some("unsafe-missing unsafe entry missing evidence")
+        );
+
+        let mut unsafe_weak = entry("unsafe-weak");
+        unsafe_weak.kind = FindingKind::Unsafe;
+        unsafe_weak.evidence = vec!["TODO add proof".to_string()];
+        assert_eq!(
+            validate_allow_entry_evidence_and_limit(&unsafe_weak, &requirements)
+                .err()
+                .map(|err| err.to_string())
+                .as_deref(),
+            Some("unsafe-weak unsafe entry requires at least one typed evidence reference")
+        );
+
+        let mut evidence_required = entry("missing-general-evidence");
+        let mut strict_requirements = required();
+        strict_requirements.unsafe_evidence_required = false;
+        strict_requirements.evidence_required = true;
+        evidence_required.evidence.clear();
+        assert_eq!(
+            validate_allow_entry_evidence_and_limit(&evidence_required, &strict_requirements)
+                .err()
+                .map(|err| err.to_string())
+                .as_deref(),
+            Some("missing-general-evidence missing evidence")
+        );
+
+        let mut zero_limit = entry("zero-limit");
+        zero_limit.occurrence_limit = Some(0);
+        assert_eq!(
+            validate_allow_entry_evidence_and_limit(&zero_limit, &requirements)
+                .err()
+                .map(|err| err.to_string())
+                .as_deref(),
+            Some("zero-limit occurrence_limit must be greater than zero")
+        );
+
+        assert_eq!(
+            validate_allow_id("")
+                .err()
+                .map(|err| err.to_string())
+                .as_deref(),
+            Some("allow entry has empty id")
+        );
+        assert_eq!(
+            validate_allow_id(" allow-1 ")
+                .err()
+                .map(|err| err.to_string())
+                .as_deref(),
+            Some("allow id ` allow-1 ` must not have leading or trailing whitespace")
+        );
+        assert_eq!(
+            validate_unique_values(
+                "allow-1",
+                "link",
+                &["issue:1".to_string(), "issue:1".to_string()]
+            )
+            .err()
+            .map(|err| err.to_string())
+            .as_deref(),
+            Some("allow-1 duplicate link entry `issue:1` at position 2")
+        );
+    }
+
+    #[test]
+    fn validate_local_link_scopes_only_checks_local_file_links() {
+        let mut entry = entry("links");
+        entry.links = vec![
+            "issue:123".to_string(),
+            "not typed".to_string(),
+            "doc:docs/safety.md".to_string(),
+        ];
+        assert!(validate_local_link_scopes(&entry).is_ok());
+
+        entry.links = vec!["issue:123".to_string(), "doc:/absolute.md".to_string()];
+        assert!(
+            err_text(validate_local_link_scopes(&entry))
+                .contains("links link entry 2 path must be source-tree-relative")
+        );
+    }
+}
