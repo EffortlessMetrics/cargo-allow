@@ -27,7 +27,7 @@ Recorded: 2026-06-13
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `1990` `ripr` targets and `1990` `ripr+` targets after the thirteenth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `1965` `ripr` targets and `1965` `ripr+` targets after the fourteenth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -843,6 +843,60 @@ Largest remaining file concentrations:
 | `crates/allow-policy/src/entry_validation.rs` | 36 |
 | `crates/allow-policy/src/render_toml.rs` | 35 |
 
+## Fourteenth Burn-Down Slice
+
+The fourteenth focused slice added same-module unit coverage for
+`crates/allow-policy-legacy/src/loader_legacy_dispatch.rs`:
+
+- direct dispatch assertions for every supported legacy policy branch.
+- the `_ if is_clippy_exceptions_policy(table)` branch.
+- converted output assertions for file, panic, source, policy, process, and
+  network policy tables.
+- unsupported policy values and missing `policy` returning `None`.
+
+After regenerating repo exposure and the gap decision ledger:
+
+```bash
+ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-loader-dispatch.repo-exposure.json
+ripr reports gap-ledger --repo-exposure target/ripr/reports/after-loader-dispatch.repo-exposure.json --out target/ripr/reports/after-loader-dispatch.gap-decision-ledger.json --out-md target/ripr/reports/after-loader-dispatch.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 1965
+ripr zero target count = 1965
+ripr plus target count = 1965
+crates/allow-policy-legacy/src/loader_legacy_dispatch.rs repairable targets = 14
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `1990` to `1965`
+and reduced `crates/allow-policy-legacy/src/loader_legacy_dispatch.rs` from
+`39` repairable targets to `14`.
+
+The remaining `loader_legacy_dispatch.rs` findings stayed after direct branch
+coverage and are tracked as provider friction in
+`EffortlessMetrics/ripr#1436`.
+
+Remaining repairable classes:
+
+| Class | Count |
+| --- | ---: |
+| `MissingSideEffectObserver` | 1404 |
+| `MissingErrorDiscriminator` | 235 |
+| `MissingBoundaryAssertion` | 196 |
+| `MissingValueAssertion` | 130 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-policy/src/spec_system/validate.rs` | 38 |
+| `crates/allow-policy/src/entry_validation.rs` | 36 |
+| `crates/cargo-allow/src/worklist_evidence.rs` | 36 |
+| `crates/allow-policy/src/render_toml.rs` | 35 |
+| `crates/allow-report/src/non_rust.rs` | 32 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -858,7 +912,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 1990` means the current repo does not yet meet the requested
+`ripr+ = 1965` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -873,7 +927,7 @@ evidence: reduce or scope cargo-allow ripr+ readiness
 
 Start with one high-volume, low-judgment class:
 
-1. inspect `crates/allow-policy-legacy/src/loader_legacy_dispatch.rs`.
+1. inspect `crates/allow-policy/src/spec_system/validate.rs`.
 2. choose one `MissingBoundaryAssertion`, `MissingValueAssertion`, or
    `MissingSideEffectObserver` group.
 3. add or tighten a focused test.
