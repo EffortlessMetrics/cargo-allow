@@ -20,7 +20,7 @@ tiers, policy ledgers, proof-command fields, release records, and closeouts.
 | try spec-system | `cargo-allow init --profile spec-system --dry-run` | [Adopt the spec-system profile](how-to/adopt-spec-system-profile.md) |
 | add CI | `cargo-allow check --mode no-new` | [Run in CI](how-to/run-in-ci.md) |
 | move another repo | start with one repository and upload artifacts | [Adopt cargo-allow across repos](how-to/adopt-cargo-allow-across-repos.md) |
-| file adoption friction | use the adoption-friction issue template | [Cross-repo feedback loop](how-to/adopt-cargo-allow-across-repos.md#7-file-cargo-allow-issues-for-friction) |
+| file adoption friction | use the adoption-friction issue template | [Cross-repo feedback loop](how-to/adopt-cargo-allow-across-repos.md#7-file-cargo-allow-issues-for-friction) and [issue template](../.github/ISSUE_TEMPLATE/cargo-allow-adoption-friction.yml) |
 
 ## Audit Source Exceptions
 
@@ -151,6 +151,10 @@ first, then promote only after burn-in.
 Next: [Adopt cargo-allow across repos](how-to/adopt-cargo-allow-across-repos.md).
 
 ## File Adoption Friction
+
+Use the
+[adoption-friction issue template](../.github/ISSUE_TEMPLATE/cargo-allow-adoption-friction.yml)
+when another repository exposes a cargo-allow portability or onboarding gap.
 
 File a cargo-allow issue when adoption exposes:
 

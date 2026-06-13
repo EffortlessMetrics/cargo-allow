@@ -137,7 +137,9 @@ File issues in cargo-allow when adoption exposes:
 - CI integration friction.
 - documentation gaps.
 
-Use the `cargo-allow-adoption-friction` issue template and attach the relevant snippets from
+Use the
+[cargo-allow-adoption-friction issue template](../../.github/ISSUE_TEMPLATE/cargo-allow-adoption-friction.yml)
+and attach the relevant snippets from
 `target/cargo-allow/spec-system.json`,
 `target/cargo-allow/spec-system-worklist.json`,
 `policy/spec-system.toml`, and `policy/doc-artifacts.toml`.

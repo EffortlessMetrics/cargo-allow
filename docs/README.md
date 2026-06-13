@@ -78,6 +78,9 @@ governance profile model around it.
 - [Adopt cargo-allow across repos](how-to/adopt-cargo-allow-across-repos.md):
   migration playbook for default source-exception checks, opt-in profiles, CI
   artifacts, and adoption-friction issues.
+- [ripr spec-system adoption handoff](../plans/external-dogfood/ripr-spec-system-adoption.md):
+  first external-dogfood plan for adopting the spec-system preview without
+  making it a hard gate immediately.
 - [Migration from xtask](migration-from-xtask.md): how bespoke allowlist tasks
   should move into cargo-allow.
 - [Migrate from xtask](how-to/migrate-from-xtask.md): task guide for legacy

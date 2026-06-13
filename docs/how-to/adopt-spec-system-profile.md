@@ -127,3 +127,12 @@ network checks. It does not prove semantic correctness, release readiness,
 unsafe soundness, test adequacy, or coverage.
 
 Reference: [source-of-truth stack](../source-of-truth/README.md).
+
+## Adoption Friction
+
+File a cargo-allow issue when first-hour adoption exposes a portability problem
+instead of adding a target-repo workaround. Use the
+[adoption-friction issue template](../../.github/ISSUE_TEMPLATE/cargo-allow-adoption-friction.yml)
+for confusing init output, non-portable defaults, false-positive graph
+findings, unclear doctor readiness, vague worklist messages, schema gaps, CI
+friction, or missing artifact kinds and edge types.
