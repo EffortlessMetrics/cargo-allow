@@ -27,7 +27,7 @@ Recorded: 2026-06-13
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `1842` `ripr` targets and `1842` `ripr+` targets after the seventeenth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `1810` `ripr` targets and `1810` `ripr+` targets after the eighteenth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -1047,6 +1047,57 @@ Largest remaining file concentrations:
 | `crates/allow-diff/src/policy_entry_metadata.rs` | 31 |
 | `crates/allow-rust/src/syntax_kinds.rs` | 31 |
 
+## Eighteenth Burn-Down Slice
+
+The eighteenth focused slice added same-module coverage for
+`crates/allow-rust/src/syntax_kinds.rs`:
+
+- unsafe syntax kind priority ordering.
+- unsafe syntax kind family and AST-kind strings.
+- panic macro accepted and rejected names.
+- panic macro displayed names and family strings.
+- panic method accepted and rejected names.
+- panic method family strings.
+
+After regenerating repo exposure and the gap decision ledger:
+
+```bash
+ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-syntax-kinds.repo-exposure.json
+ripr reports gap-ledger --repo-exposure target/ripr/reports/after-syntax-kinds.repo-exposure.json --out target/ripr/reports/after-syntax-kinds.gap-decision-ledger.json --out-md target/ripr/reports/after-syntax-kinds.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 1810
+ripr zero target count = 1810
+ripr plus target count = 1810
+crates/allow-rust/src/syntax_kinds.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `1842` to `1810`
+and cleared `crates/allow-rust/src/syntax_kinds.rs` from the repairable file
+list.
+
+Remaining repairable classes:
+
+| Class | Count |
+| --- | ---: |
+| `MissingSideEffectObserver` | 1305 |
+| `MissingErrorDiscriminator` | 235 |
+| `MissingBoundaryAssertion` | 161 |
+| `MissingValueAssertion` | 109 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-policy/src/spec_system/validate.rs` | 38 |
+| `crates/allow-policy/src/entry_validation.rs` | 36 |
+| `crates/allow-report/src/explain_human.rs` | 32 |
+| `crates/allow-diff/src/policy_entry_metadata.rs` | 31 |
+| `crates/allow-policy-legacy/src/parser_no_panic_allowlist_entries.rs` | 30 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -1062,7 +1113,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 1842` means the current repo does not yet meet the requested
+`ripr+ = 1810` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -1077,13 +1128,22 @@ evidence: reduce or scope cargo-allow ripr+ readiness
 
 Start with one high-volume, low-judgment class:
 
-1. inspect `crates/allow-policy/src/spec_system/validate.rs`.
+1. inspect a pure reporting or metadata target such as
+   `crates/allow-report/src/explain_human.rs` or
+   `crates/allow-diff/src/policy_entry_metadata.rs`.
 2. choose one `MissingBoundaryAssertion`, `MissingValueAssertion`, or
-   `MissingSideEffectObserver` group.
+   `MissingSideEffectObserver` group with direct behavior assertions.
 3. add or tighten a focused test.
 4. regenerate `target/ripr/reports/repo-exposure.json`.
 5. regenerate `target/ripr/reports/gap-decision-ledger.json`.
 6. verify the `ripr+` target count moves down.
+
+The largest remaining files,
+`crates/allow-policy/src/spec_system/validate.rs` and
+`crates/allow-policy/src/entry_validation.rs`, are concentrated in
+`MissingErrorDiscriminator` findings and have shown provider-sensitive
+behavior in earlier slices. Prefer lower-risk pure helper coverage unless a
+slice intentionally targets that provider behavior.
 
 If provider behavior is noisy or non-portable, file a ripr issue with:
 
