@@ -418,3 +418,170 @@ fn more_specific_container_scope(candidate: &RustLineScope, existing: &RustLineS
         && candidate.module_path == existing.module_path
         && candidate_container.starts_with(&format!("{existing_container}::"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::syntax_tree::parse_rust_syntax;
+    use allow_core::CargoAllowResult;
+
+    #[test]
+    fn collect_line_scopes_records_declaration_scope_map() -> CargoAllowResult<()> {
+        let source = r#"
+#[allow(dead_code)]
+mod parser {
+    #[allow(dead_code)]
+    type Alias = usize;
+
+    #[allow(dead_code)]
+    const LIMIT: usize = 1;
+
+    #[allow(unused_imports)]
+    use crate::{Parser, Renderer};
+
+    #[allow(unused_macros)]
+    macro_rules! parse_token {
+        () => {};
+    }
+
+    struct Packet {
+        #[allow(dead_code)]
+        packet_raw: usize,
+    }
+
+    union Choice {
+        #[allow(dead_code)]
+        choice_raw: usize,
+    }
+
+    enum Token {
+        #[allow(non_camel_case_types)]
+        legacy,
+        Rendered {
+            #[allow(dead_code)]
+            rendered_raw: usize,
+        },
+    }
+}
+"#;
+        let scopes = collect_scopes(source)?;
+
+        assert_scope(source, &scopes, "mod parser", None, &["parser"]);
+        assert_scope(source, &scopes, "type Alias", Some("Alias"), &["parser"]);
+        assert_scope(source, &scopes, "const LIMIT", Some("LIMIT"), &["parser"]);
+        assert_scope(
+            source,
+            &scopes,
+            "use crate::{Parser, Renderer}",
+            Some("use crate::{Parser, Renderer}"),
+            &["parser"],
+        );
+        assert_scope(
+            source,
+            &scopes,
+            "macro_rules! parse_token",
+            Some("macro_rules! parse_token"),
+            &["parser"],
+        );
+        assert_scope(
+            source,
+            &scopes,
+            "packet_raw",
+            Some("Packet::packet_raw"),
+            &["parser"],
+        );
+        assert_scope(
+            source,
+            &scopes,
+            "choice_raw",
+            Some("Choice::choice_raw"),
+            &["parser"],
+        );
+        assert_scope(
+            source,
+            &scopes,
+            "legacy",
+            Some("Token::legacy"),
+            &["parser"],
+        );
+        assert_scope(
+            source,
+            &scopes,
+            "rendered_raw",
+            Some("Token::Rendered::rendered_raw"),
+            &["parser"],
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn merge_scope_prefers_more_specific_equal_span_container() {
+        let mut scopes = BTreeMap::new();
+        merge_scope(
+            &mut scopes,
+            7,
+            RustLineScope {
+                container: Some("Token::Rendered".to_string()),
+                module_path: vec!["parser".to_string()],
+                span_len: 3,
+            },
+        );
+        merge_scope(
+            &mut scopes,
+            7,
+            RustLineScope {
+                container: Some("Token::Rendered::rendered_raw".to_string()),
+                module_path: vec!["parser".to_string()],
+                span_len: 3,
+            },
+        );
+
+        assert_eq!(
+            scope_parts(scopes.get(&7)),
+            Some((
+                Some("Token::Rendered::rendered_raw".to_string()),
+                vec!["parser".to_string()]
+            ))
+        );
+    }
+
+    fn collect_scopes(source: &str) -> CargoAllowResult<BTreeMap<u32, RustLineScope>> {
+        let tree = parse_rust_syntax(source)?;
+        let mut scopes = BTreeMap::new();
+        collect_line_scopes(tree.tree.root_node(), source, &mut scopes);
+        Ok(scopes)
+    }
+
+    fn assert_scope(
+        source: &str,
+        scopes: &BTreeMap<u32, RustLineScope>,
+        needle: &str,
+        container: Option<&str>,
+        module_path: &[&str],
+    ) {
+        let line = line_containing(source, needle);
+        assert!(line.is_some(), "missing source line containing {needle}");
+        let Some(line) = line else {
+            return;
+        };
+        assert_eq!(
+            scope_parts(scopes.get(&line)),
+            Some((
+                container.map(str::to_string),
+                module_path.iter().map(|part| (*part).to_string()).collect()
+            )),
+            "unexpected scope for line {line} containing {needle}"
+        );
+    }
+
+    fn line_containing(source: &str, needle: &str) -> Option<u32> {
+        source
+            .lines()
+            .position(|line| line.contains(needle))
+            .map(|index| index as u32 + 1)
+    }
+
+    fn scope_parts(scope: Option<&RustLineScope>) -> Option<(Option<String>, Vec<String>)> {
+        scope.map(|scope| (scope.container.clone(), scope.module_path.clone()))
+    }
+}
