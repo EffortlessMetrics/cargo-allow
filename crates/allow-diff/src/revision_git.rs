@@ -115,6 +115,11 @@ pub(crate) fn parse_git_ls_tree_file_entries_z(stdout: &[u8]) -> Vec<GitTreeFile
         .collect()
 }
 
+#[cfg(test)]
+pub(crate) fn parse_git_ls_tree_record_for_test(record: &[u8]) -> Option<GitTreeFile> {
+    parse_git_ls_tree_record(record)
+}
+
 fn parse_git_ls_tree_record(record: &[u8]) -> Option<GitTreeFile> {
     let record = String::from_utf8_lossy(record);
     let (metadata, path) = record.split_once('\t')?;
