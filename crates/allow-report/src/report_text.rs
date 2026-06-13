@@ -551,3 +551,231 @@ fn policy_missing_evidence_note(summary: &Summary, context: ReportContext<'_>) -
     (policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing))
         .then_some(policy_missing_evidence)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn outcome(status: MatchStatus, message: &str) -> MatchOutcome {
+        MatchOutcome {
+            status,
+            allow_id: None,
+            finding_index: None,
+            message: message.to_string(),
+            score: 0,
+        }
+    }
+
+    fn audit_queue_outcomes(count: usize) -> Vec<MatchOutcome> {
+        (0..count)
+            .map(|index| outcome(MatchStatus::New, &format!("new source exception {index}")))
+            .collect()
+    }
+
+    fn review_outcomes() -> Vec<MatchOutcome> {
+        vec![
+            outcome(MatchStatus::New, "new source exception"),
+            outcome(MatchStatus::Expired, "expired policy entry"),
+            outcome(MatchStatus::ReviewDue, "policy entry review is due"),
+            outcome(MatchStatus::Stale, "stale policy entry"),
+            outcome(MatchStatus::Ambiguous, "ambiguous policy selector"),
+            outcome(MatchStatus::InvalidSelector, "invalid selector"),
+            outcome(MatchStatus::MissingRequiredField, "missing owner field"),
+            outcome(MatchStatus::EvidenceMissing, "missing evidence reference"),
+        ]
+    }
+
+    fn evidence_context() -> ReportContext<'static> {
+        let mut context = ReportContext::source_syntax("git_tracked", None, None, Some(3));
+        context.policy_missing_evidence_entries = Some(4);
+        context.broken_evidence_links = Some(2);
+        context.weak_evidence_references = Some(1);
+        context
+    }
+
+    fn review_signals(
+        baseline_debt: usize,
+        policy_missing_evidence: usize,
+        broken_evidence_links: usize,
+        weak_evidence_references: usize,
+        review_items: usize,
+    ) -> ReviewSignals {
+        ReviewSignals {
+            baseline_debt,
+            policy_missing_evidence,
+            broken_evidence_links,
+            weak_evidence_references,
+            review_items,
+        }
+    }
+
+    #[test]
+    fn audit_summary_human_lists_review_counts_and_repair_routes() {
+        let outcomes = review_outcomes();
+        let summary = Summary::from_outcomes(&outcomes);
+        let mut out = String::new();
+
+        render_audit_summary_human(&summary, &outcomes, evidence_context(), &mut out);
+
+        assert!(out.contains("Audit summary:"));
+        assert!(out.contains("match_outcomes"));
+        assert!(out.contains("review_items"));
+        assert!(out.contains("new_unreceipted"));
+        assert!(out.contains("expired"));
+        assert!(out.contains("review_due"));
+        assert!(out.contains("stale"));
+        assert!(out.contains("ambiguous"));
+        assert!(out.contains("invalid_selector"));
+        assert!(out.contains("missing_required_field"));
+        assert!(out.contains("evidence_gaps"));
+        assert!(out.contains("policy_missing_evidence"));
+        assert!(out.contains("broken_evidence_links"));
+        assert!(out.contains("weak_evidence_references"));
+        assert!(out.contains("baseline_debt"));
+        assert!(out.contains("Recommended next step: review the queue below"));
+        assert!(out.contains("Audit remediation roadmap:"));
+        assert!(out.contains("cargo-allow worklist --status new --format json"));
+        assert!(out.contains("cargo-allow prune --stale --dry-run --format json"));
+        assert!(out.contains("cargo-allow worklist --broken-evidence --format json"));
+        assert!(out.contains("Evidence repair queues:"));
+        assert!(out.contains("cargo-allow worklist --missing-evidence --format json"));
+        assert!(out.contains("cargo-allow worklist --weak-evidence --format json"));
+        assert!(out.contains("Audit review queue:"));
+        assert!(out.contains("new: new source exception"));
+    }
+
+    #[test]
+    fn audit_summary_markdown_lists_review_counts_and_repair_routes() {
+        let outcomes = review_outcomes();
+        let summary = Summary::from_outcomes(&outcomes);
+        let mut out = String::new();
+
+        render_audit_summary_markdown(&summary, &outcomes, evidence_context(), &mut out);
+
+        assert!(out.contains("## Audit Summary"));
+        assert!(out.contains("| Match outcomes | 8 |"));
+        assert!(out.contains("| Review items | 17 |"));
+        assert!(out.contains("| New unreceipted | 1 |"));
+        assert!(out.contains("| Expired | 1 |"));
+        assert!(out.contains("| Review due | 1 |"));
+        assert!(out.contains("| Stale | 1 |"));
+        assert!(out.contains("| Ambiguous | 1 |"));
+        assert!(out.contains("| Invalid selectors | 1 |"));
+        assert!(out.contains("| Missing required fields | 1 |"));
+        assert!(out.contains("| Evidence gaps | 1 |"));
+        assert!(out.contains("| Policy missing evidence | 4 |"));
+        assert!(out.contains("| Broken evidence links | 2 |"));
+        assert!(out.contains("| Weak evidence/link references | 1 |"));
+        assert!(out.contains("| Baseline debt | 3 |"));
+        assert!(out.contains("## Audit Remediation Roadmap"));
+        assert!(
+            out.contains("| new unreceipted | `cargo-allow worklist --status new --format json` |")
+        );
+        assert!(out.contains(
+            "| broken evidence links | `cargo-allow worklist --broken-evidence --format json` |"
+        ));
+        assert!(out.contains("### Evidence Repair Queues"));
+        assert!(out.contains("- `cargo-allow worklist --missing-evidence --format json`"));
+        assert!(out.contains("## Audit Review Queue"));
+        assert!(out.contains("- `new`: new source exception"));
+    }
+
+    #[test]
+    fn audit_recommended_next_step_routes_empty_queue_evidence_signals() {
+        let summary = Summary::from_outcomes(&[]);
+
+        assert_eq!(
+            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 0, 0), true),
+            "\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n"
+        );
+        assert_eq!(
+            audit_recommended_next_step(&summary, review_signals(0, 0, 1, 0, 1), true),
+            "\nRecommended next step: run `cargo-allow worklist --broken-evidence --format json` to repair broken local evidence/link references.\n"
+        );
+        assert_eq!(
+            audit_recommended_next_step(&summary, review_signals(0, 1, 0, 0, 1), true),
+            "\nRecommended next step: run `cargo-allow worklist --format json` to route retained entries with no evidence references; add `--missing-evidence` to focus that queue.\n"
+        );
+        assert_eq!(
+            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 1, 1), true),
+            "\nRecommended next step: run `cargo-allow worklist --weak-evidence --format json` to replace unstructured or unknown-prefix evidence/link references.\n"
+        );
+        assert_eq!(
+            audit_recommended_next_step(&summary, review_signals(1, 0, 0, 0, 1), true),
+            "\nRecommended next step: run `cargo-allow worklist --format json` to review generated baseline debt.\n"
+        );
+        assert_eq!(
+            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 0, 1), false),
+            "\nRecommended next step: review the queue below before tightening policy.\n"
+        );
+    }
+
+    #[test]
+    fn omitted_review_queue_notes_report_extra_items() {
+        let mut human = String::new();
+        append_human_omitted_review_queue_note(&mut human, AUDIT_REVIEW_QUEUE_LIMIT + 2);
+        assert!(human.contains("2 additional audit review items omitted from this queue"));
+
+        let mut markdown = String::new();
+        append_markdown_omitted_review_queue_note(&mut markdown, AUDIT_REVIEW_QUEUE_LIMIT + 1);
+        assert!(markdown.contains("1 additional audit review item omitted from this queue."));
+    }
+
+    #[test]
+    fn omitted_non_matched_notes_report_extra_items() {
+        let mut human = String::new();
+        append_human_omitted_outcome_note(&mut human, HUMAN_NON_MATCHED_OUTCOME_LIMIT + 1);
+        assert!(human.contains("1 additional non-matched outcome omitted from this listing"));
+
+        let mut markdown = String::new();
+        append_markdown_omitted_outcome_note(&mut markdown, MARKDOWN_NON_MATCHED_OUTCOME_LIMIT + 2);
+        assert!(markdown.contains("2 additional non-matched outcomes omitted from this listing."));
+    }
+
+    #[test]
+    fn audit_summary_omits_review_queue_only_when_queue_is_empty() {
+        let outcomes = audit_queue_outcomes(AUDIT_REVIEW_QUEUE_LIMIT + 1);
+        let summary = Summary::from_outcomes(&outcomes);
+        let mut human = String::new();
+        let mut markdown = String::new();
+
+        render_audit_summary_human(&summary, &outcomes, ReportContext::default(), &mut human);
+        render_audit_summary_markdown(&summary, &outcomes, ReportContext::default(), &mut markdown);
+
+        assert!(human.contains("Audit review queue:"));
+        assert!(human.contains("1 additional audit review item omitted from this queue"));
+        assert!(markdown.contains("## Audit Review Queue"));
+        assert!(markdown.contains("1 additional audit review item omitted from this queue."));
+
+        let empty_summary = Summary::from_outcomes(&[]);
+        let mut empty = String::new();
+        render_audit_summary_human(&empty_summary, &[], ReportContext::default(), &mut empty);
+        assert!(!empty.contains("Audit review queue:"));
+    }
+
+    #[test]
+    fn policy_context_notes_only_report_policy_excess() {
+        let outcomes = vec![
+            outcome(
+                MatchStatus::EvidenceMissing,
+                "matched entry has no evidence",
+            ),
+            outcome(MatchStatus::BaselineDebt, "generated baseline debt"),
+        ];
+        let summary = Summary::from_outcomes(&outcomes);
+        let mut context = ReportContext::source_syntax("git_tracked", None, None, Some(3));
+        context.policy_missing_evidence_entries = Some(4);
+
+        assert_eq!(policy_baseline_debt_note(&summary, context), Some(3));
+        assert_eq!(policy_missing_evidence_note(&summary, context), Some(4));
+
+        let mut matching_context = ReportContext::source_syntax("git_tracked", None, None, Some(1));
+        matching_context.policy_missing_evidence_entries = Some(1);
+
+        assert_eq!(policy_baseline_debt_note(&summary, matching_context), None);
+        assert_eq!(
+            policy_missing_evidence_note(&summary, matching_context),
+            None
+        );
+    }
+}
