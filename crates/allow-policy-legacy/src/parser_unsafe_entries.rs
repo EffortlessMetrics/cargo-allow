@@ -70,3 +70,196 @@ fn parse_unsafe_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyUnsa
         last_seen,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::SimpleDate;
+
+    fn parse_table(input: &str) -> toml::Table {
+        toml::from_str::<toml::Table>(input)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("test TOML parses: {err}")))
+    }
+
+    #[test]
+    fn parse_unsafe_rules_accepts_allow_entries_and_preserves_fields() {
+        let table = parse_table(
+            r#"
+[[allow]]
+id = "unsafe-read"
+path = "src/lib.rs"
+family = "unsafe-block"
+owner = "runtime"
+classification = "reviewed_unsafe_boundary"
+reason = "Caller checks pointer."
+evidence = ["unsafe-review:read.json"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+expires = "permanent"
+
+[allow.selector]
+kind = "unsafe-fn"
+container = "read"
+line_hint = 12
+
+[allow.last_seen]
+line = 14
+column = 3
+
+[[allow]]
+path = "src/ffi.rs"
+covered_by = "test:ffi_boundaries"
+
+[allow.selector]
+ast_kind = "unsafe extern block"
+line_hint = 0
+
+[allow.last_seen]
+line = 22
+"#,
+        );
+
+        let mut rules = parse_unsafe_rules(&table).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("unsafe allow entries parse: {err}"))
+        });
+
+        assert_eq!(rules.len(), 2);
+        let reviewed = rules.remove(0);
+        assert_eq!(reviewed.id, "unsafe-read");
+        assert_eq!(reviewed.path, "src/lib.rs");
+        assert_eq!(reviewed.family, "unsafe_block");
+        assert_eq!(reviewed.selector_kind, "unsafe_fn");
+        assert_eq!(reviewed.selector_container.as_deref(), Some("read"));
+        assert_eq!(reviewed.owner, "runtime");
+        assert_eq!(reviewed.classification, "reviewed_unsafe_boundary");
+        assert_eq!(reviewed.reason, "Caller checks pointer.");
+        assert_eq!(
+            reviewed.evidence,
+            vec!["unsafe-review:read.json".to_string()]
+        );
+        assert_eq!(reviewed.created.as_deref(), Some("2026-05-09"));
+        assert_eq!(reviewed.review_after.as_deref(), Some("2026-09-09"));
+        assert_eq!(reviewed.expires.as_deref(), Some("never"));
+        assert_eq!(reviewed.line_hint, Some(12));
+        assert_eq!(
+            reviewed
+                .last_seen
+                .as_ref()
+                .map(|seen| (seen.line, seen.column)),
+            Some((14, 3))
+        );
+
+        let generated = rules.remove(0);
+        assert_eq!(generated.id, "legacy-unsafe-0001");
+        assert_eq!(generated.path, "src/ffi.rs");
+        assert_eq!(generated.family, "unsafe_extern_block");
+        assert_eq!(generated.selector_kind, "unsafe_extern_block");
+        assert_eq!(generated.selector_container, None);
+        assert_eq!(generated.owner, "unowned");
+        assert_eq!(generated.classification, "baseline_debt");
+        assert!(generated.reason.contains("legacy unsafe allowlist"));
+        assert_eq!(generated.evidence, vec!["test:ffi_boundaries".to_string()]);
+        assert!(
+            generated
+                .created
+                .as_deref()
+                .and_then(SimpleDate::parse)
+                .is_some()
+        );
+        assert!(generated.review_after.is_none());
+        assert!(
+            generated
+                .expires
+                .as_deref()
+                .and_then(SimpleDate::parse)
+                .is_some()
+        );
+        assert_eq!(generated.line_hint, Some(22));
+        assert_eq!(
+            generated
+                .last_seen
+                .as_ref()
+                .map(|seen| (seen.line, seen.column)),
+            Some((22, 1))
+        );
+    }
+
+    #[test]
+    fn parse_unsafe_rules_accepts_entry_root_and_family_fallback() {
+        let table = parse_table(
+            r#"
+[[entry]]
+path = "src/trait.rs"
+family = "unsafe-trait"
+explanation = "Trait contract is reviewed."
+created = "2026-05-09"
+review_after = "2026-09-09"
+"#,
+        );
+
+        let mut rules = parse_unsafe_rules(&table).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("entry-root unsafe rules parse: {err}"))
+        });
+
+        assert_eq!(rules.len(), 1);
+        let rule = rules.remove(0);
+        assert_eq!(rule.id, "legacy-unsafe-0000");
+        assert_eq!(rule.path, "src/trait.rs");
+        assert_eq!(rule.family, "unsafe_trait");
+        assert_eq!(rule.selector_kind, "unsafe_trait");
+        assert_eq!(rule.reason, "Trait contract is reviewed.");
+        assert_eq!(rule.created.as_deref(), Some("2026-05-09"));
+        assert_eq!(rule.review_after.as_deref(), Some("2026-09-09"));
+        assert!(rule.expires.is_none());
+        assert!(rule.last_seen.is_none());
+        assert!(rule.line_hint.is_none());
+    }
+
+    #[test]
+    fn parse_unsafe_rule_reports_expected_errors() {
+        let missing_entries = parse_table("policy = \"unsafe-allowlist\"");
+        let err = parse_unsafe_rules(&missing_entries)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("entries are required"));
+        assert!(
+            err.to_string()
+                .contains("unsafe-allowlist missing allow entries")
+        );
+
+        let non_table = parse_table("allow = [\"not a table\"]");
+        let err = parse_unsafe_rules(&non_table)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("entry must be a table"));
+        assert!(
+            err.to_string()
+                .contains("unsafe allow entry 0 is not a table")
+        );
+
+        let missing_family = parse_table(
+            r#"
+[[allow]]
+id = "unsafe-missing-family"
+path = "src/lib.rs"
+"#,
+        );
+        let err = parse_unsafe_rules(&missing_family)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("family is required"));
+        assert!(
+            err.to_string()
+                .contains("unsafe-missing-family missing family or selector.kind")
+        );
+
+        let missing_path = parse_table(
+            r#"
+[[allow]]
+id = "unsafe-missing-path"
+family = "unsafe-block"
+"#,
+        );
+        let err = parse_unsafe_rules(&missing_path)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("path is required"));
+        assert!(err.to_string().contains("unsafe-missing-path missing path"));
+    }
+}
