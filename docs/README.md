@@ -92,6 +92,8 @@ governance profile model around it.
 
 ## Release And Publish
 
+- [Self-hosting readiness](readiness/self-hosting.md): current proof-stack
+  record for docs, cargo-allow no-new, spec-system, ripr+, and unsafe-review+.
 - [0.1.0 release runbook](release/0.1.0.md): publish order, dry-run sequencing,
   and rollback limits.
 - [0.1.1 release record](release/0.1.1.md): completed patch release and

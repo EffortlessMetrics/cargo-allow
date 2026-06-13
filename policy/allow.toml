@@ -761,6 +761,29 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0185"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/readiness/self-hosting.md"
+owner = "core/release"
+classification = "readiness_record"
+reason = "Records the current cargo-allow self-hosting proof-stack state and the ripr+ readiness blocker without claiming proof execution or external adoption readiness."
+created = "2026-06-13"
+review_after = "2026-11-01"
+evidence = ["doc:docs/ci.md", "doc:docs/release/0.1.8.md", "doc:docs/claim-boundaries.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/readiness/self-hosting.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/readiness/self-hosting.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0140"
 kind = "non_rust_file"
 family = "documentation"
