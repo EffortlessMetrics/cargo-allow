@@ -238,3 +238,158 @@ fn outcome_summary(outcomes: &[MatchOutcome]) -> String {
         parts.join(", ")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{FindingKind, Lifecycle, Selector};
+    use std::path::PathBuf;
+
+    #[test]
+    fn explain_kind_label_call_presence_observer() {
+        let entry = allow_entry(FindingKind::Unsafe, Some("unsafe_block"));
+        assert_eq!(explain_kind_label(&entry), "unsafe.unsafe_block");
+
+        let entry = allow_entry(FindingKind::Panic, None);
+        assert_eq!(explain_kind_label(&entry), "panic");
+    }
+
+    #[test]
+    fn empty_as_none_boundary_discriminator() {
+        assert_eq!(empty_as_none("owner"), "owner");
+        assert_eq!(empty_as_none(""), "none");
+        assert_eq!(empty_as_none("   "), "none");
+    }
+
+    #[test]
+    fn list_or_none_boundary_discriminator() {
+        assert_eq!(list_or_none(&[]), "none");
+        assert_eq!(list_or_none(&["doc:one".to_string()]), "doc:one");
+        assert_eq!(
+            list_or_none(&["doc:one".to_string(), "issue:two".to_string()]),
+            "doc:one, issue:two"
+        );
+    }
+
+    #[test]
+    fn evidence_reference_summary_call_presence_observer() {
+        let reference = EvidenceReference {
+            raw: "doc:docs/safety.md",
+            prefix: Some("doc"),
+            target: Some("docs/safety.md"),
+            status: "local_file_missing",
+            category: "missing",
+            message: "local evidence file is missing",
+        };
+
+        assert_eq!(
+            evidence_reference_summary(&reference),
+            "missing: doc:docs/safety.md (status=local_file_missing, prefix=doc, target=docs/safety.md)"
+        );
+    }
+
+    #[test]
+    fn evidence_reference_summary_uses_fallbacks_for_missing_prefix_and_target() {
+        let reference = EvidenceReference {
+            raw: "README.md",
+            prefix: None,
+            target: None,
+            status: "weak_reference",
+            category: "untyped",
+            message: "reference is weak",
+        };
+
+        assert_eq!(
+            evidence_reference_summary(&reference),
+            "weak: README.md (status=weak_reference, prefix=-, target=-)"
+        );
+    }
+
+    #[test]
+    fn selector_summary_boundary_discriminator() {
+        let entry = allow_entry(FindingKind::Unsafe, Some("unsafe_block"));
+        assert_eq!(selector_summary(&entry), "none");
+
+        let entry = allow_entry_with_selector(Selector {
+            ast_kind: Some("unsafe_block".to_string()),
+            container: Some("read_byte".to_string()),
+            callee: Some("read".to_string()),
+            macro_name: Some("panic".to_string()),
+            lint: Some("clippy::unwrap_used".to_string()),
+            symbol: Some("read_byte".to_string()),
+            receiver_fingerprint: Some("reader".to_string()),
+            target_fingerprint: Some("ptr".to_string()),
+            normalized_snippet_hash: Some("fnv1a64:abc".to_string()),
+            line_hint: Some(42),
+            glob: Some("src/**/*.rs".to_string()),
+        });
+
+        assert_eq!(
+            selector_summary(&entry),
+            "ast_kind=unsafe_block, container=read_byte, callee=read, macro_name=panic, lint=clippy::unwrap_used, symbol=read_byte, receiver=reader, target=ptr, normalized_snippet_hash=fnv1a64:abc, line_hint=42, glob=src/**/*.rs"
+        );
+    }
+
+    #[test]
+    fn outcome_summary_call_presence_observer() {
+        let outcomes = vec![
+            outcome(MatchStatus::Matched),
+            outcome(MatchStatus::New),
+            outcome(MatchStatus::New),
+            outcome(MatchStatus::Expired),
+            outcome(MatchStatus::ReviewDue),
+            outcome(MatchStatus::Stale),
+            outcome(MatchStatus::Ambiguous),
+            outcome(MatchStatus::InvalidSelector),
+            outcome(MatchStatus::MissingRequiredField),
+            outcome(MatchStatus::EvidenceMissing),
+            outcome(MatchStatus::BaselineDebt),
+        ];
+
+        assert_eq!(
+            outcome_summary(&outcomes),
+            "matched=1, new=2, expired=1, review_due=1, stale=1, ambiguous=1, invalid_selector=1, missing_required_field=1, evidence_missing=1, baseline_debt=1"
+        );
+    }
+
+    #[test]
+    fn outcome_summary_boundary_discriminator() {
+        assert_eq!(outcome_summary(&[]), "none");
+    }
+
+    fn allow_entry(kind: FindingKind, family: Option<&str>) -> AllowEntry {
+        let mut entry = allow_entry_with_selector(Selector::default());
+        entry.kind = kind;
+        entry.family = family.map(str::to_string);
+        entry
+    }
+
+    fn allow_entry_with_selector(selector: Selector) -> AllowEntry {
+        AllowEntry {
+            id: "allow-test".to_string(),
+            kind: FindingKind::Unsafe,
+            family: Some("unsafe_block".to_string()),
+            path: Some(PathBuf::from("src/lib.rs")),
+            glob: None,
+            owner: "owner".to_string(),
+            classification: "classification".to_string(),
+            reason: "reason".to_string(),
+            evidence: Vec::new(),
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle::empty(),
+            selector,
+            last_seen: None,
+        }
+    }
+
+    fn outcome(status: MatchStatus) -> MatchOutcome {
+        MatchOutcome {
+            status,
+            allow_id: None,
+            finding_index: None,
+            message: String::new(),
+            score: 0,
+        }
+    }
+}
