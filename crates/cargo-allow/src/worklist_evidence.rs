@@ -177,3 +177,236 @@ fn outside_inventory_actions(source: ReferenceSource) -> Vec<String> {
         ],
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{FindingKind, Lifecycle, Selector};
+    use allow_policy::{EvidenceReferenceCategory, EvidenceReferenceStatus};
+    use std::path::PathBuf;
+
+    fn entry(id: &str, kind: FindingKind) -> AllowEntry {
+        AllowEntry {
+            id: id.to_string(),
+            kind,
+            family: Some("network_destination".to_string()),
+            path: Some(PathBuf::from("src/lib.rs")),
+            glob: None,
+            owner: "security".to_string(),
+            classification: "reviewed".to_string(),
+            reason: "Network exception is reviewed.".to_string(),
+            evidence: vec!["doc:docs/evidence.md".to_string()],
+            links: vec!["doc:docs/trace.md".to_string()],
+            occurrence_limit: Some(1),
+            lifecycle: Lifecycle {
+                created: Some("2026-06-13".to_string()),
+                review_after: Some("2026-07-13".to_string()),
+                expires: Some("2026-08-13".to_string()),
+            },
+            selector: Selector {
+                ast_kind: Some("function".to_string()),
+                ..Selector::default()
+            },
+            last_seen: None,
+        }
+    }
+
+    fn diagnostic(
+        raw: &str,
+        prefix: Option<&str>,
+        target: Option<&str>,
+        status: EvidenceReferenceStatus,
+        category: EvidenceReferenceCategory,
+        message: &str,
+    ) -> EvidenceReferenceDiagnostic {
+        EvidenceReferenceDiagnostic {
+            raw: raw.to_string(),
+            prefix: prefix.map(str::to_string),
+            target: target.map(PathBuf::from),
+            status,
+            category,
+            message: message.to_string(),
+        }
+    }
+
+    #[test]
+    fn work_item_from_evidence_diagnostic_observes_broken_evidence_fields() {
+        let entry = entry("allow-network", FindingKind::PolicyException);
+        let diagnostic = diagnostic(
+            "doc:docs/missing.md",
+            Some("doc"),
+            Some("docs/missing.md"),
+            EvidenceReferenceStatus::LocalFileMissing,
+            EvidenceReferenceCategory::Missing,
+            "local evidence file is missing",
+        );
+
+        let item =
+            work_item_from_evidence_diagnostic(&entry, diagnostic, 7, ReferenceSource::Evidence);
+
+        assert_eq!(item.id, "work-broken-evidence-link-0007");
+        assert_eq!(item.kind, "broken_evidence_link");
+        assert_eq!(item.exception_kind.as_deref(), Some("policy_exception"));
+        assert_eq!(item.family.as_deref(), Some("network_destination"));
+        assert_eq!(item.owner.as_deref(), Some("security"));
+        assert_eq!(item.classification.as_deref(), Some("reviewed"));
+        assert_eq!(
+            item.reason.as_deref(),
+            Some("Network exception is reviewed.")
+        );
+        assert_eq!(item.created.as_deref(), Some("2026-06-13"));
+        assert_eq!(item.review_after.as_deref(), Some("2026-07-13"));
+        assert_eq!(item.expires.as_deref(), Some("2026-08-13"));
+        assert_eq!(item.evidence_count, Some(1));
+        assert_eq!(item.risk, "high");
+        assert_eq!(item.difficulty, "small");
+        assert_eq!(item.status, MatchStatus::EvidenceMissing);
+        assert_eq!(item.allow_id.as_deref(), Some("allow-network"));
+        assert_eq!(item.finding_index, None);
+        assert_eq!(item.path.as_deref(), Some("docs/missing.md"));
+        assert_eq!(item.source_package, None);
+        assert!(item.selector_precision.is_some());
+        assert!(
+            item.message
+                .contains("allow-network evidence `doc:docs/missing.md`")
+        );
+        assert!(item.message.contains("local evidence file is missing"));
+
+        let Some(reference) = item.evidence_reference.as_ref() else {
+            return;
+        };
+        assert_eq!(reference.raw, "doc:docs/missing.md");
+        assert_eq!(reference.prefix.as_deref(), Some("doc"));
+        assert_eq!(reference.target.as_deref(), Some("docs/missing.md"));
+        assert_eq!(reference.status, "local_file_missing");
+        assert_eq!(reference.category, "missing");
+        assert!(reference.message.contains("local evidence file is missing"));
+        assert!(
+            item.suggested_actions
+                .iter()
+                .any(|action| action.contains("referenced local evidence artifact"))
+        );
+        assert!(
+            item.proof_commands
+                .iter()
+                .any(|command| command == "cargo-allow explain allow-network")
+        );
+        assert!(
+            item.proof_commands
+                .iter()
+                .any(|command| command == "cargo-allow list --broken-evidence --format json")
+        );
+    }
+
+    #[test]
+    fn work_item_from_evidence_diagnostic_observes_link_and_weak_routes() {
+        let entry = entry("allow-network", FindingKind::PolicyException);
+        let broken_link = diagnostic(
+            "doc:docs/missing-link.md",
+            Some("doc"),
+            Some("docs/missing-link.md"),
+            EvidenceReferenceStatus::LocalFileMissing,
+            EvidenceReferenceCategory::Missing,
+            "local link file is missing",
+        );
+
+        let link_item =
+            work_item_from_evidence_diagnostic(&entry, broken_link, 3, ReferenceSource::Link);
+
+        assert_eq!(link_item.id, "work-broken-evidence-link-0003");
+        assert_eq!(link_item.kind, "broken_evidence_link");
+        assert_eq!(link_item.path.as_deref(), Some("docs/missing-link.md"));
+        assert!(
+            link_item
+                .message
+                .contains("allow-network link `doc:docs/missing-link.md`")
+        );
+        assert!(link_item.message.contains("local link file is missing"));
+        let Some(reference) = link_item.evidence_reference.as_ref() else {
+            return;
+        };
+        assert!(reference.message.contains("local link file is missing"));
+        assert!(
+            link_item
+                .suggested_actions
+                .iter()
+                .any(|action| action.contains("traceability"))
+        );
+
+        let weak_evidence = diagnostic(
+            "spreadsheet:manual-review",
+            Some("spreadsheet"),
+            Some("manual-review"),
+            EvidenceReferenceStatus::Unstructured,
+            EvidenceReferenceCategory::UnknownPrefix,
+            "unrecognized evidence prefix",
+        );
+
+        let weak_item =
+            work_item_from_evidence_diagnostic(&entry, weak_evidence, 4, ReferenceSource::Evidence);
+
+        assert_eq!(weak_item.id, "work-weak-evidence-reference-0004");
+        assert_eq!(weak_item.kind, "weak_evidence_reference");
+        assert_eq!(weak_item.path, None);
+        assert!(weak_item.message.contains("unrecognized evidence prefix"));
+        let Some(reference) = weak_item.evidence_reference.as_ref() else {
+            return;
+        };
+        assert_eq!(reference.raw, "spreadsheet:manual-review");
+        assert_eq!(reference.prefix.as_deref(), Some("spreadsheet"));
+        assert_eq!(reference.target.as_deref(), Some("manual-review"));
+        assert_eq!(reference.status, "unstructured");
+        assert_eq!(reference.category, "unknown_prefix");
+        assert!(
+            weak_item
+                .suggested_actions
+                .iter()
+                .any(|action| action.contains("policy_exception.network_destination"))
+        );
+        assert!(
+            weak_item
+                .proof_commands
+                .iter()
+                .any(|command| command == "cargo-allow worklist --weak-evidence --format json")
+        );
+    }
+
+    #[test]
+    fn outside_inventory_diagnostics_add_include_untracked_routes() {
+        let entry = entry("allow-network", FindingKind::PolicyException);
+        let diagnostic = diagnostic(
+            "doc:docs/untracked.md",
+            Some("doc"),
+            Some("docs/untracked.md"),
+            EvidenceReferenceStatus::LocalFileMissing,
+            EvidenceReferenceCategory::Missing,
+            DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE,
+        );
+
+        let item =
+            work_item_from_evidence_diagnostic(&entry, diagnostic, 5, ReferenceSource::Evidence);
+
+        assert_eq!(item.kind, "broken_evidence_link");
+        assert_eq!(item.path.as_deref(), Some("docs/untracked.md"));
+        assert!(
+            item.suggested_actions
+                .iter()
+                .any(|action| action.contains("commit the referenced evidence file"))
+        );
+        assert!(
+            item.suggested_actions
+                .iter()
+                .any(|action| action.contains("--include-untracked"))
+        );
+        assert!(
+            item.proof_commands
+                .iter()
+                .any(|command| command == "cargo-allow explain allow-network --include-untracked")
+        );
+        assert!(
+            item.proof_commands
+                .iter()
+                .any(|command| command == "cargo-allow check --include-untracked --mode no-new")
+        );
+    }
+}
