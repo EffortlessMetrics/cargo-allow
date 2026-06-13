@@ -193,3 +193,193 @@ pub(crate) fn non_rust_file_rows(findings: &[Finding], outcomes: &[MatchOutcome]
     });
     rows
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{Span, StructuralIdentity};
+    use std::path::PathBuf;
+
+    #[test]
+    fn render_non_rust_human_reports_file_inventory_and_rows() {
+        let findings = vec![
+            file_finding(FindingKind::NonRustFile, "policy", "policy/allow.toml"),
+            file_finding(FindingKind::GeneratedCode, "generated", "src/generated.rs"),
+            file_finding(FindingKind::Panic, "panic", "src/lib.rs"),
+        ];
+        let outcomes = vec![
+            outcome(MatchStatus::Matched, Some(0)),
+            outcome(MatchStatus::New, Some(1)),
+            outcome(MatchStatus::Matched, Some(2)),
+        ];
+        let mut out = String::new();
+
+        render_non_rust_human(&findings, &outcomes, &mut out);
+
+        assert!(out.contains("Non-Rust file inventory:"));
+        assert!(out.contains("  files scanned              2"));
+        assert!(out.contains("  matched                    1"));
+        assert!(out.contains("  new                        1"));
+        assert!(out.contains("  generated                  1"));
+        assert!(out.contains("    generated                1"));
+        assert!(out.contains("    policy                   1"));
+        assert!(out.contains("    matched      policy                   policy/allow.toml"));
+        assert!(out.contains("    new          generated                src/generated.rs"));
+        assert!(!out.contains("src/lib.rs"));
+    }
+
+    #[test]
+    fn render_non_rust_human_leaves_output_unchanged_without_file_findings() {
+        let findings = vec![file_finding(FindingKind::Panic, "panic", "src/lib.rs")];
+        let outcomes = vec![outcome(MatchStatus::New, Some(0))];
+        let mut out = String::from("prefix");
+
+        render_non_rust_human(&findings, &outcomes, &mut out);
+
+        assert_eq!(out, "prefix");
+    }
+
+    #[test]
+    fn render_non_rust_markdown_call_presence_observer() {
+        let findings = vec![
+            file_finding(FindingKind::NonRustFile, "docs|guide", "docs/guide.md"),
+            file_finding(FindingKind::GeneratedCode, "generated", "src/generated.rs"),
+        ];
+        let outcomes = vec![
+            outcome(MatchStatus::Matched, Some(0)),
+            outcome(MatchStatus::New, Some(1)),
+        ];
+        let mut out = String::new();
+
+        render_non_rust_markdown(&findings, &outcomes, &mut out);
+
+        assert!(out.contains("## Non-Rust File Inventory"));
+        assert!(out.contains("| Files scanned | 2 |"));
+        assert!(out.contains("| Matched | 1 |"));
+        assert!(out.contains("| New | 1 |"));
+        assert!(out.contains("| Generated | 1 |"));
+        assert!(out.contains("| `docs\\|guide` | 1 |"));
+        assert!(out.contains("| `generated` | 1 |"));
+        assert!(out.contains("| `matched` | `docs\\|guide` | `docs/guide.md` |"));
+        assert!(out.contains("| `new` | `generated` | `src/generated.rs` |"));
+    }
+
+    #[test]
+    fn render_non_rust_markdown_return_value_discriminator() {
+        let findings = Vec::new();
+        let outcomes = Vec::new();
+        let mut out = String::from("existing");
+
+        render_non_rust_markdown(&findings, &outcomes, &mut out);
+
+        assert_eq!(out, "existing");
+    }
+
+    #[test]
+    fn append_human_omitted_file_note_boundary_discriminator() {
+        let mut at_limit = String::new();
+        append_human_omitted_file_note(&mut at_limit, HUMAN_FILE_ROW_LIMIT);
+        assert_eq!(at_limit, "");
+
+        let mut one_over = String::new();
+        append_human_omitted_file_note(&mut one_over, HUMAN_FILE_ROW_LIMIT + 1);
+        assert_eq!(
+            one_over,
+            "    ... 1 additional non-Rust file omitted from this listing\n"
+        );
+
+        let mut two_over = String::new();
+        append_human_omitted_file_note(&mut two_over, HUMAN_FILE_ROW_LIMIT + 2);
+        assert_eq!(
+            two_over,
+            "    ... 2 additional non-Rust files omitted from this listing\n"
+        );
+    }
+
+    #[test]
+    fn append_human_omitted_file_note_call_presence_observer() {
+        let mut out = String::from("files:\n");
+
+        append_human_omitted_file_note(&mut out, HUMAN_FILE_ROW_LIMIT + 1);
+
+        assert!(out.ends_with("additional non-Rust file omitted from this listing\n"));
+    }
+
+    #[test]
+    fn append_markdown_omitted_file_note_boundary_discriminator() {
+        let mut at_limit = String::new();
+        append_markdown_omitted_file_note(&mut at_limit, MARKDOWN_FILE_ROW_LIMIT);
+        assert_eq!(at_limit, "");
+
+        let mut one_over = String::new();
+        append_markdown_omitted_file_note(&mut one_over, MARKDOWN_FILE_ROW_LIMIT + 1);
+        assert_eq!(
+            one_over,
+            "\n1 additional non-Rust file omitted from this listing.\n"
+        );
+
+        let mut two_over = String::new();
+        append_markdown_omitted_file_note(&mut two_over, MARKDOWN_FILE_ROW_LIMIT + 2);
+        assert_eq!(
+            two_over,
+            "\n2 additional non-Rust files omitted from this listing.\n"
+        );
+    }
+
+    #[test]
+    fn append_markdown_omitted_file_note_call_presence_observer() {
+        let mut out = String::from("| Status | Family | Path |\n");
+
+        append_markdown_omitted_file_note(&mut out, MARKDOWN_FILE_ROW_LIMIT + 1);
+
+        assert!(out.ends_with("additional non-Rust file omitted from this listing.\n"));
+    }
+
+    #[test]
+    fn non_rust_file_rows_call_presence_observer() {
+        let findings = vec![
+            file_finding(FindingKind::Panic, "panic", "src/lib.rs"),
+            file_finding(FindingKind::GeneratedCode, "generated", "src/generated.rs"),
+            file_finding(FindingKind::NonRustFile, "docs", "docs/guide.md"),
+            file_finding(FindingKind::NonRustFile, "docs", "docs/readme.md"),
+        ];
+        let outcomes = vec![
+            outcome(MatchStatus::Matched, Some(2)),
+            outcome(MatchStatus::New, Some(1)),
+        ];
+
+        let rows = non_rust_file_rows(&findings, &outcomes);
+
+        assert_eq!(rows.len(), 3);
+        assert_eq!(rows[0].path, "docs/guide.md");
+        assert_eq!(rows[0].family, "docs");
+        assert_eq!(rows[0].status, "matched");
+        assert_eq!(rows[1].path, "docs/readme.md");
+        assert_eq!(rows[1].family, "docs");
+        assert_eq!(rows[1].status, "unmatched");
+        assert_eq!(rows[2].path, "src/generated.rs");
+        assert_eq!(rows[2].family, "generated");
+        assert_eq!(rows[2].status, "new");
+    }
+
+    fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
+        Finding {
+            kind,
+            family: Some(family.to_string()),
+            path: PathBuf::from(path),
+            span: Some(Span { line: 1, column: 1 }),
+            identity: StructuralIdentity::new("file", "tracked_file"),
+            message: "tracked file".to_string(),
+        }
+    }
+
+    fn outcome(status: MatchStatus, finding_index: Option<usize>) -> MatchOutcome {
+        MatchOutcome {
+            status,
+            allow_id: None,
+            finding_index,
+            message: String::new(),
+            score: 0,
+        }
+    }
+}
