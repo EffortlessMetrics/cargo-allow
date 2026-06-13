@@ -244,3 +244,212 @@ fn render_worklist_filters_json(filters: WorklistFilters<'_>, indent: &str) -> S
     out.push_str(&format!("{indent}}}"));
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn work_item<'a>(
+        suggested_actions: &'a [String],
+        proof_commands: &'a [String],
+    ) -> WorklistItem<'a> {
+        WorklistItem {
+            id: "work-0001",
+            kind: "missing_evidence",
+            exception_kind: Some("unsafe"),
+            family: Some("unsafe_block"),
+            owner: Some("runtime"),
+            classification: Some("reviewed"),
+            reason: Some("fixture reason"),
+            created: Some("2026-06-01"),
+            review_after: Some("2026-07-01"),
+            expires: Some("2026-08-01"),
+            evidence_count: Some(2),
+            selector_precision: Some(9),
+            risk: "high",
+            difficulty: "small",
+            status: "evidence_missing",
+            allow_id: Some("allow-0001"),
+            finding_index: Some(3),
+            path: Some("src/lib.rs"),
+            evidence_reference: Some(crate::EvidenceReference {
+                raw: "test:unsafe_fixture",
+                prefix: Some("test"),
+                target: Some("unsafe_fixture"),
+                status: "present",
+                category: "typed",
+                message: "evidence exists",
+            }),
+            source_package: Some("allow-report"),
+            message: "missing evidence",
+            suggested_actions,
+            proof_commands,
+        }
+    }
+
+    #[test]
+    fn work_item_fixture_sets_expected_optional_fields() {
+        let suggested_actions = vec!["add typed evidence".to_string()];
+        let proof_commands = vec!["cargo-allow explain allow-0001".to_string()];
+        let item = work_item(&suggested_actions, &proof_commands);
+
+        assert_eq!(item.classification, Some("reviewed"));
+        assert_eq!(item.reason, Some("fixture reason"));
+        assert_eq!(item.evidence_count, Some(2));
+        assert_eq!(item.selector_precision, Some(9));
+        assert_eq!(item.finding_index, Some(3));
+        let reference = item.evidence_reference.as_ref();
+        assert_eq!(
+            reference.map(|reference| reference.prefix),
+            Some(Some("test"))
+        );
+        assert_eq!(
+            reference.map(|reference| reference.target),
+            Some(Some("unsafe_fixture"))
+        );
+        assert_eq!(reference.map(|reference| reference.category), Some("typed"));
+    }
+
+    #[test]
+    fn render_work_item_json_includes_all_optional_fields_and_arrays() {
+        let suggested_actions = vec![
+            "add typed evidence".to_string(),
+            "narrow the selector".to_string(),
+        ];
+        let proof_commands = vec![
+            "cargo-allow explain allow-0001".to_string(),
+            "cargo-allow check --mode no-new".to_string(),
+        ];
+        let json = render_work_item_json(&work_item(&suggested_actions, &proof_commands));
+
+        for expected in [
+            "\"id\": \"work-0001\"",
+            "\"kind\": \"missing_evidence\"",
+            "\"exception_kind\": \"unsafe\"",
+            "\"family\": \"unsafe_block\"",
+            "\"owner\": \"runtime\"",
+            "\"classification\": \"reviewed\"",
+            "\"reason\": \"fixture reason\"",
+            "\"created\": \"2026-06-01\"",
+            "\"review_after\": \"2026-07-01\"",
+            "\"expires\": \"2026-08-01\"",
+            "\"evidence_count\": 2",
+            "\"selector_precision\": 9",
+            "\"risk\": \"high\"",
+            "\"difficulty\": \"small\"",
+            "\"status\": \"evidence_missing\"",
+            "\"allow_id\": \"allow-0001\"",
+            "\"finding_index\": 3",
+            "\"path\": \"src/lib.rs\"",
+            "\"evidence_reference\": {",
+            "\"raw\": \"test:unsafe_fixture\"",
+            "\"prefix\": \"test\"",
+            "\"target\": \"unsafe_fixture\"",
+            "\"status\": \"present\"",
+            "\"category\": \"typed\"",
+            "\"message\": \"evidence exists\"",
+            "\"source_package\": \"allow-report\"",
+            "\"message\": \"missing evidence\"",
+            "\"suggested_actions\": [\"add typed evidence\", \"narrow the selector\"]",
+            "\"proof_commands\": [\"cargo-allow explain allow-0001\", \"cargo-allow check --mode no-new\"]",
+        ] {
+            assert!(json.contains(expected), "{expected}");
+        }
+    }
+
+    #[test]
+    fn render_work_item_json_uses_nulls_and_omits_absent_optional_objects() {
+        let suggested_actions = Vec::new();
+        let proof_commands = Vec::new();
+        let item = WorklistItem {
+            exception_kind: None,
+            family: None,
+            owner: None,
+            classification: None,
+            reason: None,
+            created: None,
+            review_after: None,
+            expires: None,
+            evidence_count: None,
+            selector_precision: None,
+            allow_id: None,
+            finding_index: None,
+            path: None,
+            evidence_reference: None,
+            source_package: None,
+            suggested_actions: &suggested_actions,
+            proof_commands: &proof_commands,
+            ..work_item(&suggested_actions, &proof_commands)
+        };
+
+        let json = render_work_item_json(&item);
+
+        for expected in [
+            "\"exception_kind\": null",
+            "\"family\": null",
+            "\"owner\": null",
+            "\"classification\": null",
+            "\"reason\": null",
+            "\"created\": null",
+            "\"review_after\": null",
+            "\"expires\": null",
+            "\"evidence_count\": null",
+            "\"allow_id\": null",
+            "\"finding_index\": null",
+            "\"path\": null",
+            "\"source_package\": null",
+            "\"suggested_actions\": []",
+            "\"proof_commands\": []",
+        ] {
+            assert!(json.contains(expected), "{expected}");
+        }
+        assert!(!json.contains("\"selector_precision\""));
+        assert!(!json.contains("\"evidence_reference\""));
+    }
+
+    #[test]
+    fn render_worklist_filters_json_records_every_filter_field() {
+        let json = render_worklist_filters_json(
+            WorklistFilters {
+                kind: Some("unsafe"),
+                family: Some("unsafe_block"),
+                item_kind: Some("missing_evidence"),
+                status: Some("evidence_missing"),
+                allow_id: Some("allow-0001"),
+                path: Some("src/lib.rs"),
+                source_package: Some("allow-report"),
+                owner: Some("runtime"),
+                classification: Some("reviewed"),
+                baseline_debt: true,
+                broad_scope: true,
+                risk: Some("high"),
+                difficulty: Some("small"),
+                missing_evidence: true,
+                broken_evidence: true,
+                weak_evidence: true,
+            },
+            "    ",
+        );
+
+        for expected in [
+            "\"kind\": \"unsafe\"",
+            "\"family\": \"unsafe_block\"",
+            "\"item_kind\": \"missing_evidence\"",
+            "\"status\": \"evidence_missing\"",
+            "\"allow_id\": \"allow-0001\"",
+            "\"path\": \"src/lib.rs\"",
+            "\"source_package\": \"allow-report\"",
+            "\"owner\": \"runtime\"",
+            "\"classification\": \"reviewed\"",
+            "\"baseline_debt\": true",
+            "\"broad_scope\": true",
+            "\"risk\": \"high\"",
+            "\"difficulty\": \"small\"",
+            "\"missing_evidence\": true",
+            "\"broken_evidence\": true",
+            "\"weak_evidence\": true",
+        ] {
+            assert!(json.contains(expected), "{expected}");
+        }
+    }
+}

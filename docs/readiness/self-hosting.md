@@ -27,7 +27,7 @@ Recorded: 2026-06-13
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `2207` `ripr` targets and `2207` `ripr+` targets after the ninth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `2162` `ripr` targets and `2162` `ripr+` targets after the tenth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -626,6 +626,59 @@ Largest remaining file concentrations:
 | `crates/allow-policy-legacy/src/parser_unsafe_entries.rs` | 40 |
 | `crates/allow-policy-legacy/src/parser_non_rust_entries.rs` | 39 |
 
+## Tenth Burn-Down Slice
+
+The tenth focused slice added same-module unit coverage for
+`crates/allow-report/src/worklist_json.rs`:
+
+- fully populated work item JSON rendering, including optional scalar fields,
+  selector precision, evidence references, suggested actions, and proof
+  commands.
+- minimal work item JSON rendering, including `null` fields and omitted optional
+  object fields.
+- worklist filter JSON rendering for every filter field.
+- fixture-shape assertions so the test fixture values themselves are covered by
+  direct value assertions.
+
+After regenerating repo exposure and the gap decision ledger:
+
+```bash
+ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-worklist-json.repo-exposure.json
+ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-json.repo-exposure.json --out target/ripr/reports/after-worklist-json.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-json.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 2162
+ripr zero target count = 2162
+ripr plus target count = 2162
+crates/allow-report/src/worklist_json.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `2207` to `2162`
+and reduced `crates/allow-report/src/worklist_json.rs` from `43` repairable
+targets to `0`.
+
+Remaining repairable classes:
+
+| Class | Count |
+| --- | ---: |
+| `MissingSideEffectObserver` | 1519 |
+| `MissingBoundaryAssertion` | 242 |
+| `MissingErrorDiscriminator` | 235 |
+| `MissingValueAssertion` | 166 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-diff/src/policy_compare.rs` | 43 |
+| `crates/allow-policy-legacy/src/parser_unsafe_entries.rs` | 40 |
+| `crates/allow-diff/src/policy_entry_metadata.rs` | 40 |
+| `crates/allow-policy-legacy/src/loader_legacy_dispatch.rs` | 39 |
+| `crates/allow-policy-legacy/src/parser_non_rust_entries.rs` | 39 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -641,7 +694,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 2207` means the current repo does not yet meet the requested
+`ripr+ = 2162` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -656,8 +709,7 @@ evidence: reduce or scope cargo-allow ripr+ readiness
 
 Start with one high-volume, low-judgment class:
 
-1. inspect `crates/allow-report/src/worklist_json.rs` or
-   `crates/allow-diff/src/policy_compare.rs`.
+1. inspect `crates/allow-diff/src/policy_compare.rs`.
 2. choose one `MissingBoundaryAssertion`, `MissingValueAssertion`, or
    `MissingSideEffectObserver` group.
 3. add or tighten a focused test.
