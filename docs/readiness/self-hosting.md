@@ -22,12 +22,12 @@ Recorded: 2026-06-13
 | Surface | Status | Evidence |
 | --- | --- | --- |
 | docs gate | passed | `cargo test --doc --workspace`; `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`; CI run `27455099250` passed both steps on `main`. |
-| workspace fmt/clippy/tests | passed | `cargo fmt --all --check`; `cargo clippy --workspace --all-targets -- -D warnings`; `cargo test --workspace` reported `1403 passed`. |
+| workspace fmt/clippy/tests | passed | `cargo fmt --all --check`; `cargo clippy --workspace --all-targets -- -D warnings`; `cargo test --workspace` reported `1405 passed`. |
 | default cargo-allow no-new | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md` reported `625` scanned files, `118` matched findings, `0` new findings, and `0` stale receipts. |
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `1122` `ripr` targets and `1122` `ripr+` targets after the forty-fourth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `1103` `ripr` targets and `1103` `ripr+` targets after the forty-fifth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -2501,6 +2501,59 @@ Largest remaining file concentrations:
 | `crates/cargo-allow/src/migrate_load.rs` | 22 |
 | `crates/cargo-allow/src/explain_steps.rs` | 22 |
 
+## Forty-Fifth Burn-Down Slice
+
+The forty-fifth focused slice added direct helper coverage for
+`crates/allow-rust/src/finding_builder.rs`:
+
+- finding construction preserves the kind, family, path, span, and message.
+- identity construction records language, AST kind, line, column, container,
+  module stack, and normalized snippet hash.
+- enrichment callbacks can add lint and policy-reference identity fields.
+- empty container and module-stack inputs leave optional scope fields empty.
+
+After regenerating repo exposure and the gap decision ledger:
+
+```bash
+ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-finding-builder.repo-exposure.json
+ripr reports gap-ledger --repo-exposure target/ripr/reports/after-finding-builder.repo-exposure.json --out target/ripr/reports/after-finding-builder.gap-decision-ledger.json --out-md target/ripr/reports/after-finding-builder.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 1103
+ripr zero target count = 1103
+ripr plus target count = 1103
+crates/allow-rust/src/finding_builder.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `1122` to `1103`
+and cleared `crates/allow-rust/src/finding_builder.rs` from `16` repairable
+targets to `0`.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `call_presence` | 683 |
+| `error_variant` | 235 |
+| `match_arm` | 77 |
+| `return_value` | 46 |
+| `predicate_boundary` | 32 |
+| `field_construction` | 27 |
+| `side_effect` | 3 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-policy/src/spec_system/validate.rs` | 38 |
+| `crates/allow-policy/src/entry_validation.rs` | 36 |
+| `crates/cargo-allow/src/artifact_sample_schema_support.rs` | 24 |
+| `crates/cargo-allow/src/policy_config.rs` | 22 |
+| `crates/cargo-allow/src/explain_steps.rs` | 22 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -2516,7 +2569,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 1122` means the current repo does not yet meet the requested
+`ripr+ = 1103` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -2533,7 +2586,7 @@ Start with one high-volume, low-judgment class:
 
 1. inspect a pure parser, path, or rendering target such as
    `crates/allow-policy-legacy/src/parser_support.rs` or
-   `crates/allow-rust/src/finding_builder.rs`.
+   `crates/allow-policy-legacy/src/converter_workflow_file_entries.rs`.
 2. choose one `MissingBoundaryAssertion`, `MissingValueAssertion`, or
    `MissingSideEffectObserver` group with direct behavior assertions.
 3. add or tighten a focused test.

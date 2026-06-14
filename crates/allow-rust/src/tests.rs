@@ -2,6 +2,7 @@ use allow_core::FindingKind;
 
 use super::*;
 
+mod finding_builder;
 mod indexing;
 mod lint;
 mod package;
