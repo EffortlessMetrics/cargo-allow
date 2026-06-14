@@ -97,3 +97,155 @@ fn validate_unique_workspace_globs(label: &str, patterns: &[String]) -> CargoAll
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{FindingKind, Lifecycle, Selector};
+    use std::path::PathBuf;
+
+    fn err_text(result: CargoAllowResult<()>) -> String {
+        match result {
+            Ok(()) => String::new(),
+            Err(err) => err.to_string(),
+        }
+    }
+
+    fn entry(id: &str) -> AllowEntry {
+        AllowEntry {
+            id: id.to_string(),
+            kind: FindingKind::NonRustFile,
+            family: Some("documentation".to_string()),
+            path: Some(PathBuf::from("docs/policy.md")),
+            glob: None,
+            owner: "docs".to_string(),
+            classification: "documentation".to_string(),
+            reason: "Policy doc is tracked for review.".to_string(),
+            evidence: Vec::new(),
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle::empty(),
+            selector: Selector::default(),
+            last_seen: None,
+        }
+    }
+
+    #[test]
+    fn validate_workspace_accepts_supported_modes_and_unique_globs() {
+        let workspace = WorkspaceConfig {
+            root: ".".to_string(),
+            inventory: "git-tracked".to_string(),
+            ignored: vec!["target/**".to_string(), ".git/**".to_string()],
+            generated: vec!["vendor/**".to_string(), "target/generated/**".to_string()],
+            default_mode: "no-new".to_string(),
+        };
+
+        assert_eq!(validate_workspace(&workspace), Ok(()));
+
+        for default_mode in ["audit", "strict", "release"] {
+            let workspace = WorkspaceConfig {
+                default_mode: default_mode.to_string(),
+                ..workspace.clone()
+            };
+            assert_eq!(validate_workspace(&workspace), Ok(()), "{default_mode}");
+        }
+    }
+
+    #[test]
+    fn validate_workspace_rejects_unsupported_inventory_and_default_mode() {
+        let workspace = WorkspaceConfig {
+            inventory: "filesystem".to_string(),
+            ..WorkspaceConfig::default()
+        };
+        assert_eq!(
+            err_text(validate_workspace(&workspace)),
+            "unsupported workspace inventory `filesystem`"
+        );
+
+        let workspace = WorkspaceConfig {
+            default_mode: "permissive".to_string(),
+            ..WorkspaceConfig::default()
+        };
+        assert_eq!(
+            err_text(validate_workspace(&workspace)),
+            "unsupported workspace default_mode `permissive`"
+        );
+    }
+
+    #[test]
+    fn validate_allow_entry_scope_accepts_path_glob_and_selector_glob_forms() {
+        let path_entry = entry("path-entry");
+        assert_eq!(validate_allow_entry_scope(&path_entry), Ok(()));
+
+        let mut matching_path_selector = entry("path-selector");
+        matching_path_selector.selector.glob = Some(r"docs\policy.md".to_string());
+        assert_eq!(validate_allow_entry_scope(&matching_path_selector), Ok(()));
+
+        let mut glob_entry = entry("glob-entry");
+        glob_entry.path = None;
+        glob_entry.glob = Some(r"docs\**".to_string());
+        glob_entry.selector.glob = Some("docs/**".to_string());
+        assert_eq!(validate_allow_entry_scope(&glob_entry), Ok(()));
+    }
+
+    #[test]
+    fn validate_allow_entry_scope_rejects_missing_and_invalid_scope() {
+        let mut missing = entry("missing-scope");
+        missing.path = None;
+        missing.glob = None;
+        missing.selector.glob = None;
+        assert_eq!(
+            err_text(validate_allow_entry_scope(&missing)),
+            "missing-scope has no path or glob"
+        );
+
+        let mut invalid_path = entry("invalid-path");
+        invalid_path.path = Some(PathBuf::from("../outside.md"));
+        assert_eq!(
+            err_text(validate_allow_entry_scope(&invalid_path)),
+            "invalid-path path must not contain parent directory segments"
+        );
+    }
+
+    #[test]
+    fn validate_scope_consistency_rejects_conflicts_and_accepts_normalized_matches() {
+        let mut path_and_glob = entry("path-and-glob");
+        path_and_glob.glob = Some("docs/**".to_string());
+        assert_eq!(
+            err_text(validate_scope_consistency(&path_and_glob)),
+            "path-and-glob must not define both path and glob"
+        );
+
+        let mut path_selector_mismatch = entry("path-selector-mismatch");
+        path_selector_mismatch.selector.glob = Some("docs/**".to_string());
+        assert_eq!(
+            err_text(validate_scope_consistency(&path_selector_mismatch)),
+            "path-selector-mismatch selector glob `docs/**` must match path `docs/policy.md` or omit one scope"
+        );
+
+        let mut glob_selector_mismatch = entry("glob-selector-mismatch");
+        glob_selector_mismatch.path = None;
+        glob_selector_mismatch.glob = Some("docs/**".to_string());
+        glob_selector_mismatch.selector.glob = Some("scripts/**".to_string());
+        assert_eq!(
+            err_text(validate_scope_consistency(&glob_selector_mismatch)),
+            "glob-selector-mismatch selector glob `scripts/**` must match glob `docs/**` or omit one scope"
+        );
+
+        let mut normalized_match = entry("normalized-match");
+        normalized_match.selector.glob = Some(r"docs\policy.md".to_string());
+        assert_eq!(validate_scope_consistency(&normalized_match), Ok(()));
+    }
+
+    #[test]
+    fn validate_unique_workspace_globs_accepts_unique_and_reports_normalized_duplicates() {
+        let unique = vec!["target/**".to_string(), "vendor/**".to_string()];
+        assert_eq!(validate_unique_workspace_globs("ignored", &unique), Ok(()));
+
+        let duplicate = vec!["vendor/**".to_string(), r"vendor\**".to_string()];
+        assert_eq!(
+            err_text(validate_unique_workspace_globs("generated", &duplicate)),
+            "duplicate generated `vendor/**` at position 2"
+        );
+    }
+}
