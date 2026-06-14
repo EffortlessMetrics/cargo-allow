@@ -52,3 +52,70 @@ fn canonical_start_dir(start: &Path) -> CargoAllowResult<PathBuf> {
         Ok(canonical)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use super::*;
+
+    #[test]
+    fn canonical_dir_accepts_existing_directory_and_rejects_files()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = temp_root("canonical-dir")?;
+        let marker = root.join("Cargo.toml");
+        fs::write(&marker, "[workspace]\n")?;
+
+        let canonical = canonical_dir(&root)?;
+        let err = canonical_dir(&marker)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("file root should fail"));
+
+        assert_eq!(canonical, root.canonicalize()?);
+        assert!(
+            err.to_string()
+                .contains("source tree root is not a directory"),
+            "unexpected error: {err}"
+        );
+        fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn canonical_start_dir_uses_file_parent_and_preserves_directory_starts()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = temp_root("canonical-start")?;
+        let nested = root.join("src").join("nested");
+        fs::create_dir_all(&nested)?;
+        let file = nested.join("lib.rs");
+        fs::write(&file, "pub fn demo() {}\n")?;
+
+        let from_file = canonical_start_dir(&file)?;
+        let from_dir = canonical_start_dir(&nested)?;
+        let err = canonical_start_dir(&root.join("missing"))
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("missing start should fail"));
+
+        assert_eq!(from_file, nested.canonicalize()?);
+        assert_eq!(from_dir, nested.canonicalize()?);
+        assert!(
+            err.to_string()
+                .contains("failed to canonicalize start path"),
+            "unexpected error: {err}"
+        );
+        fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    fn temp_root(label: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-root-{label}-{}-{unique}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root)?;
+        Ok(root)
+    }
+}
