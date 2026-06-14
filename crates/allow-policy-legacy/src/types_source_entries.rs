@@ -39,6 +39,60 @@ impl LegacyNonRustRule {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{Span, StructuralIdentity};
+    use std::path::PathBuf;
+
+    #[test]
+    fn non_rust_rule_matches_file_findings_by_path_or_glob() {
+        let path_rule = legacy_rule("README.md", true);
+        let glob_rule = legacy_rule("docs/**", false);
+
+        assert!(path_rule.matches(&finding(FindingKind::NonRustFile, "README.md")));
+        assert!(glob_rule.matches(&finding(FindingKind::GeneratedCode, "docs/schema.json")));
+        assert!(!path_rule.matches(&finding(FindingKind::NonRustFile, "docs/README.md")));
+        assert!(!glob_rule.matches(&finding(FindingKind::Panic, "docs/panic.md")));
+    }
+
+    #[test]
+    fn non_rust_rule_specificity_prefers_paths_over_equal_globs() {
+        let path_specificity = legacy_rule("docs/guide.md", true).specificity();
+        let glob_specificity = legacy_rule("docs/guide.md", false).specificity();
+        let broader_glob_specificity = legacy_rule("docs/**", false).specificity();
+
+        assert!(path_specificity > glob_specificity);
+        assert!(glob_specificity > broader_glob_specificity);
+    }
+
+    fn legacy_rule(pattern: &str, is_path: bool) -> LegacyNonRustRule {
+        LegacyNonRustRule {
+            id: "non-rust-doc".to_string(),
+            pattern: pattern.to_string(),
+            is_path,
+            owner: "docs".to_string(),
+            classification: "documentation".to_string(),
+            reason: "Documentation files are intentionally tracked.".to_string(),
+            evidence: Vec::new(),
+            created: Some("2026-05-09".to_string()),
+            review_after: Some("2026-09-09".to_string()),
+            expires: Some("never".to_string()),
+        }
+    }
+
+    fn finding(kind: FindingKind, path: &str) -> Finding {
+        Finding {
+            kind,
+            family: Some(kind.as_str().to_string()),
+            path: PathBuf::from(path),
+            span: Some(Span { line: 1, column: 1 }),
+            identity: StructuralIdentity::new("file", "tracked_file"),
+            message: format!("tracked file: {path}"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct LegacyGeneratedRule {
     pub(crate) id: String,
