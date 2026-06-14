@@ -8,6 +8,7 @@ mod package;
 mod panic;
 mod scope;
 mod syntax_tree;
+mod text;
 mod unsafe_scan;
 
 #[test]
