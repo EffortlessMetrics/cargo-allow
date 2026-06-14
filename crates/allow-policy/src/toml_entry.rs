@@ -59,3 +59,105 @@ impl AllowEntryToml {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn into_allow_entry_call_presence_observer() {
+        let raw = toml::from_str::<AllowEntryToml>(
+            r#"
+kind = "panic"
+family = "panic_macro"
+path = "src/lib.rs"
+glob = "src/**/*.rs"
+evidence = ["test:entry_conversion"]
+links = ["doc:docs/policy.md"]
+count = 3
+created = "2026-01-01"
+review_after = "2026-07-01"
+expires = "2027-01-01"
+
+[selector]
+kind = "macro_call"
+macro = "panic"
+line_hint = 41
+
+[last_seen]
+line = 42
+column = 9
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("TOML entry parses: {err}")));
+
+        let entry = raw
+            .into_allow_entry(0)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("TOML entry converts: {err}")));
+
+        assert_eq!(entry.id, "allow-0001");
+        assert_eq!(entry.kind.as_str(), "panic");
+        assert_eq!(entry.family.as_deref(), Some("panic_macro"));
+        assert_eq!(
+            entry.path.as_deref(),
+            Some(std::path::Path::new("src/lib.rs"))
+        );
+        assert_eq!(entry.glob.as_deref(), Some("src/**/*.rs"));
+        assert_eq!(entry.owner, "");
+        assert_eq!(entry.classification, "");
+        assert_eq!(entry.reason, "");
+        assert_eq!(entry.evidence, vec!["test:entry_conversion"]);
+        assert_eq!(entry.links, vec!["doc:docs/policy.md"]);
+        assert_eq!(entry.occurrence_limit, Some(3));
+        assert_eq!(entry.lifecycle.created.as_deref(), Some("2026-01-01"));
+        assert_eq!(entry.lifecycle.review_after.as_deref(), Some("2026-07-01"));
+        assert_eq!(entry.lifecycle.expires.as_deref(), Some("2027-01-01"));
+        assert_eq!(entry.selector.ast_kind.as_deref(), Some("macro_call"));
+        assert_eq!(entry.selector.macro_name.as_deref(), Some("panic"));
+        assert_eq!(entry.selector.line_hint, Some(41));
+        assert_eq!(
+            entry
+                .last_seen
+                .as_ref()
+                .map(|last_seen| (last_seen.line, last_seen.column)),
+            Some((42, 9))
+        );
+    }
+
+    #[test]
+    fn into_allow_entry_field_discriminator() {
+        let explicit = toml::from_str::<AllowEntryToml>(
+            r#"
+id = "allow-explicit"
+kind = "unsafe"
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("explicit entry parses: {err}")))
+        .into_allow_entry(1)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("explicit entry converts: {err}")));
+
+        assert_eq!(explicit.id, "allow-explicit");
+        assert_eq!(explicit.kind.as_str(), "unsafe");
+
+        let generated = toml::from_str::<AllowEntryToml>(
+            r#"
+kind = "generated_code"
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("generated entry parses: {err}")))
+        .into_allow_entry(1)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("generated entry converts: {err}")));
+
+        assert_eq!(generated.id, "allow-0002");
+        assert_eq!(generated.kind.as_str(), "generated_code");
+
+        let err = toml::from_str::<AllowEntryToml>("owner = \"policy\"\n")
+            .unwrap_or_else(|err| {
+                std::panic::panic_any(format!("missing-kind entry parses: {err}"))
+            })
+            .into_allow_entry(1)
+            .expect_err("missing kind should fail entry conversion");
+
+        assert!(err.to_string().contains("allow-0002 missing kind"));
+    }
+}
