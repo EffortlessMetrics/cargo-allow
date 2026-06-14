@@ -22,3 +22,58 @@ impl LastSeenToml {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn into_last_seen_returns_coordinates_when_line_and_column_are_present() {
+        let actual = LastSeenToml {
+            line: Some(42),
+            column: Some(7),
+        }
+        .into_last_seen("allow-id");
+
+        assert!(matches!(
+            actual,
+            Ok(Some(LastSeen {
+                line: 42,
+                column: 7
+            }))
+        ));
+    }
+
+    #[test]
+    fn into_last_seen_returns_none_when_line_and_column_are_absent() {
+        let actual = LastSeenToml {
+            line: None,
+            column: None,
+        }
+        .into_last_seen("allow-id");
+
+        assert!(matches!(actual, Ok(None)));
+    }
+
+    #[test]
+    fn into_last_seen_rejects_partial_coordinates() {
+        for partial in [
+            LastSeenToml {
+                line: Some(42),
+                column: None,
+            },
+            LastSeenToml {
+                line: None,
+                column: Some(7),
+            },
+        ] {
+            let message = partial
+                .into_last_seen("allow-id")
+                .err()
+                .map(|err| err.to_string())
+                .unwrap_or_default();
+
+            assert!(message.contains("allow-id last_seen must include both line and column"));
+        }
+    }
+}
