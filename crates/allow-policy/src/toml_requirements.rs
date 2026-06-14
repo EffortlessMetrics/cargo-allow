@@ -66,3 +66,50 @@ impl RequirementsToml {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn into_requirements_preserves_defaults_for_omitted_fields() {
+        let requirements = RequirementsToml::default().into_requirements();
+
+        assert_eq!(requirements, Requirements::default());
+    }
+
+    #[test]
+    fn into_requirements_maps_explicit_requirement_fields() {
+        let requirements = RequirementsToml {
+            owner_required: Some(false),
+            reason_required: Some(false),
+            classification_required: Some(false),
+            evidence_required: Some(true),
+            expires_or_review_after_required: Some(false),
+            allow_bare_allow_attributes: Some(true),
+            lint_policy_id_required: Some(true),
+            stale_entries_fail: Some(true),
+            unsafe_requirements: UnsafeRequirementsToml {
+                evidence_required: Some(false),
+                safety_comment_required: Some(true),
+            },
+        }
+        .into_requirements();
+
+        assert_eq!(
+            requirements,
+            Requirements {
+                owner_required: false,
+                reason_required: false,
+                classification_required: false,
+                evidence_required: true,
+                expires_or_review_after_required: false,
+                allow_bare_allow_attributes: true,
+                lint_policy_id_required: true,
+                stale_entries_fail: true,
+                unsafe_evidence_required: false,
+                unsafe_safety_comment_required: true,
+            }
+        );
+    }
+}
