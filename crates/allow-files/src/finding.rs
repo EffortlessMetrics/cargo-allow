@@ -27,3 +27,56 @@ fn file_fingerprint(path: &Path) -> Option<String> {
         (!file_name.is_empty()).then_some(file_name)
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn build_file_finding_call_presence_observer() {
+        let finding = build_file_finding(
+            Path::new(r"docs\Guide.MD"),
+            "documentation".to_string(),
+            false,
+        );
+
+        assert_eq!(finding.kind, FindingKind::NonRustFile);
+        assert_eq!(finding.family.as_deref(), Some("documentation"));
+        assert_eq!(finding.path, Path::new(r"docs\Guide.MD"));
+        assert_eq!(finding.span, Some(Span { line: 1, column: 1 }));
+        assert_eq!(finding.identity.language, "file");
+        assert_eq!(finding.identity.ast_kind, "tracked_file");
+        assert_eq!(finding.identity.symbol.as_deref(), Some("docs/Guide.MD"));
+        assert_eq!(finding.identity.target_fingerprint.as_deref(), Some("md"));
+        assert_eq!(
+            finding.message,
+            "tracked non-Rust file classified as documentation"
+        );
+
+        let generated = build_file_finding(
+            Path::new("target/generated/bindings.rs"),
+            "generated_code".to_string(),
+            true,
+        );
+
+        assert_eq!(generated.kind, FindingKind::GeneratedCode);
+        assert_eq!(generated.family.as_deref(), Some("generated_code"));
+    }
+
+    #[test]
+    fn file_fingerprint_call_presence_observer() {
+        assert_eq!(
+            file_fingerprint(Path::new("tools/Build.PS1")),
+            Some("ps1".to_string())
+        );
+        assert_eq!(
+            file_fingerprint(Path::new("config/.ENV")),
+            Some(".env".to_string())
+        );
+        assert_eq!(
+            file_fingerprint(Path::new("bin/TOOL")),
+            Some("tool".to_string())
+        );
+        assert_eq!(file_fingerprint(Path::new("")), None);
+    }
+}
