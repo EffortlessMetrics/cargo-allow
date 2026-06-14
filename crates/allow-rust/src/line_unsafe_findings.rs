@@ -54,3 +54,160 @@ pub(crate) struct UnsafeLineContext<'a> {
     pub(crate) line: LineContext<'a>,
     pub(crate) safety_comment_nearby: bool,
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::*;
+
+    #[test]
+    fn scan_unsafe_constructs_projects_construct_families_and_identity() {
+        let container = Some("read".to_string());
+        let modules = vec!["ffi".to_string()];
+        let context = unsafe_context(&container, &modules, true);
+        let constructs = [
+            unsafe_construct(9, UnsafeSyntaxKind::Fn, Some("read")),
+            unsafe_construct(17, UnsafeSyntaxKind::Block, Some("unsafe block")),
+        ];
+        let mut findings = Vec::new();
+
+        scan_unsafe_constructs(context, &constructs, &[], &mut findings);
+
+        assert_eq!(findings.len(), 2);
+        let unsafe_fn = finding_with_family(&findings, "unsafe_fn");
+        assert_eq!(unsafe_fn.kind, FindingKind::Unsafe);
+        assert_eq!(unsafe_fn.path, Path::new("src/lib.rs"));
+        assert_eq!(unsafe_fn.identity.ast_kind, "unsafe_fn");
+        assert_eq!(unsafe_fn.identity.symbol.as_deref(), Some("read"));
+        assert_eq!(unsafe_fn.identity.container.as_deref(), Some("read"));
+        assert_eq!(unsafe_fn.identity.module.as_deref(), Some("ffi"));
+        assert_eq!(unsafe_fn.identity.line_hint, Some(42));
+        assert_eq!(unsafe_fn.identity.column_hint, Some(9));
+        assert_eq!(
+            unsafe_fn.identity.target_fingerprint.as_deref(),
+            Some("safety-comment:present")
+        );
+
+        let unsafe_block = finding_with_family(&findings, "unsafe_block");
+        assert_eq!(unsafe_block.identity.ast_kind, "unsafe_block");
+        assert_eq!(
+            unsafe_block.identity.symbol.as_deref(),
+            Some("unsafe block")
+        );
+        assert_eq!(unsafe_block.identity.column_hint, Some(17));
+        assert_eq!(
+            unsafe_block.identity.target_fingerprint.as_deref(),
+            Some("safety-comment:present")
+        );
+    }
+
+    #[test]
+    fn scan_unsafe_constructs_uses_impl_and_trait_symbols_as_container_fallbacks() {
+        let container = None;
+        let modules = Vec::new();
+        let context = unsafe_context(&container, &modules, false);
+        let constructs = [
+            unsafe_construct(5, UnsafeSyntaxKind::Impl, Some("<Handle as Send>")),
+            unsafe_construct(11, UnsafeSyntaxKind::Trait, Some("Marker")),
+        ];
+        let mut findings = Vec::new();
+
+        scan_unsafe_constructs(context, &constructs, &[], &mut findings);
+
+        let unsafe_impl = finding_with_family(&findings, "unsafe_impl");
+        assert_eq!(
+            unsafe_impl.identity.container.as_deref(),
+            Some("<Handle as Send>")
+        );
+        assert_eq!(
+            unsafe_impl.identity.symbol.as_deref(),
+            Some("<Handle as Send>")
+        );
+        assert_eq!(unsafe_impl.identity.target_fingerprint, None);
+
+        let unsafe_trait = finding_with_family(&findings, "unsafe_trait");
+        assert_eq!(unsafe_trait.identity.container.as_deref(), Some("Marker"));
+        assert_eq!(unsafe_trait.identity.symbol.as_deref(), Some("Marker"));
+        assert_eq!(unsafe_trait.identity.target_fingerprint, None);
+    }
+
+    #[test]
+    fn scan_unsafe_constructs_projects_unsafe_attributes_and_empty_inputs() {
+        let container = Some("export".to_string());
+        let modules = vec!["ffi".to_string(), "symbols".to_string()];
+        let context = unsafe_context(&container, &modules, true);
+        let attributes = [
+            UnsafeAttribute {
+                column: 3,
+                symbol: Some("no_mangle".to_string()),
+            },
+            UnsafeAttribute {
+                column: 19,
+                symbol: Some("export_name".to_string()),
+            },
+        ];
+        let mut findings = Vec::new();
+
+        scan_unsafe_constructs(context, &[], &[], &mut findings);
+        assert!(findings.is_empty());
+
+        scan_unsafe_constructs(
+            unsafe_context(&container, &modules, true),
+            &[],
+            &attributes,
+            &mut findings,
+        );
+
+        assert_eq!(findings.len(), 2);
+        let symbols = findings
+            .iter()
+            .map(|finding| finding.identity.symbol.as_deref())
+            .collect::<Vec<_>>();
+        assert_eq!(symbols, vec![Some("no_mangle"), Some("export_name")]);
+        assert!(findings.iter().all(|finding| {
+            finding.kind == FindingKind::Unsafe
+                && finding.family.as_deref() == Some("unsafe_attr")
+                && finding.identity.ast_kind == "unsafe_attr"
+                && finding.identity.container.as_deref() == Some("export")
+                && finding.identity.module.as_deref() == Some("ffi::symbols")
+                && finding.identity.target_fingerprint.as_deref() == Some("safety-comment:present")
+        }));
+    }
+
+    fn unsafe_context<'a>(
+        container: &'a Option<String>,
+        module_stack: &'a [String],
+        safety_comment_nearby: bool,
+    ) -> UnsafeLineContext<'a> {
+        UnsafeLineContext {
+            line: LineContext {
+                path: Path::new("src/lib.rs"),
+                line: "    unsafe fn read() { unsafe { core::ptr::read(ptr) } }",
+                line_no: 42,
+                container,
+                module_stack,
+            },
+            safety_comment_nearby,
+        }
+    }
+
+    fn unsafe_construct(
+        column: u32,
+        kind: UnsafeSyntaxKind,
+        symbol: Option<&str>,
+    ) -> UnsafeSyntaxConstruct {
+        UnsafeSyntaxConstruct {
+            kind,
+            column,
+            symbol: symbol.map(str::to_string),
+        }
+    }
+
+    fn finding_with_family<'a>(findings: &'a [Finding], family: &str) -> &'a Finding {
+        findings
+            .iter()
+            .find(|finding| finding.family.as_deref() == Some(family))
+            .unwrap_or_else(|| std::panic::panic_any(format!("expected {family} finding")))
+    }
+}
