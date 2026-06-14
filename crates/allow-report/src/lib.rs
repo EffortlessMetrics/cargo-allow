@@ -28,6 +28,8 @@ mod doctor;
 mod doctor_tests;
 mod evidence_reference_human;
 mod evidence_repair;
+#[cfg(test)]
+mod evidence_repair_tests;
 mod explain;
 mod explain_common;
 mod explain_human;
