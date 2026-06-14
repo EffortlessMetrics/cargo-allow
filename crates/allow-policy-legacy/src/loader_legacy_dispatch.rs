@@ -90,6 +90,325 @@ mod tests {
     }
 
     #[test]
+    fn config_from_legacy_table_dispatches_each_policy_to_expected_entry_shape() {
+        for case in dispatch_cases() {
+            let config = migrated_config(case.policy);
+            let entry = config
+                .allow
+                .iter()
+                .find(|entry| entry.id == case.entry_id)
+                .unwrap_or_else(|| {
+                    std::panic::panic_any(format!(
+                        "{} dispatch should emit entry {}",
+                        case.label, case.entry_id
+                    ))
+                });
+
+            assert_eq!(entry.kind, case.kind, "{} kind", case.label);
+            assert_eq!(
+                entry.family.as_deref(),
+                case.family,
+                "{} family",
+                case.label
+            );
+            assert_eq!(
+                entry.path.as_deref(),
+                case.path.map(Path::new),
+                "{} path",
+                case.label
+            );
+        }
+    }
+
+    #[test]
+    fn config_from_legacy_table_returns_none_for_unrecognized_policy_values() {
+        for input in [
+            "policy = \"unknown-policy\"",
+            "policy = \"\"",
+            "owner = \"repo\"",
+        ] {
+            let table = parse_table(input);
+            let result = config_from_legacy_table(&table).unwrap_or_else(|err| {
+                std::panic::panic_any(format!("unrecognized policy checks cleanly: {err}"))
+            });
+
+            assert!(result.is_none(), "{input} should not dispatch");
+        }
+    }
+
+    struct DispatchCase {
+        label: &'static str,
+        policy: &'static str,
+        entry_id: &'static str,
+        kind: FindingKind,
+        family: Option<&'static str>,
+        path: Option<&'static str>,
+    }
+
+    fn dispatch_cases() -> [DispatchCase; 11] {
+        [
+            DispatchCase {
+                label: "non-rust",
+                policy: r#"
+policy = "non-rust-allowlist"
+owner = "repo"
+status = "advisory"
+
+[[allow]]
+id = "non-rust-readme"
+path = "README.md"
+owner = "docs"
+classification = "documentation"
+reason = "Front door docs."
+evidence = ["doc:README.md"]
+created = "2026-05-09"
+expires = "permanent"
+"#,
+                entry_id: "non-rust-readme",
+                kind: FindingKind::NonRustFile,
+                family: None,
+                path: Some("README.md"),
+            },
+            DispatchCase {
+                label: "generated",
+                policy: r#"
+policy = "generated-allowlist"
+owner = "repo"
+status = "advisory"
+
+[[allow]]
+id = "generated-policy"
+path = "policy/generated.toml"
+owner = "release"
+reason = "Generated fixture."
+evidence = ["test:generated_policy"]
+created = "2026-05-09"
+expires = "permanent"
+"#,
+                entry_id: "generated-policy",
+                kind: FindingKind::GeneratedCode,
+                family: Some("generated_code"),
+                path: Some("policy/generated.toml"),
+            },
+            DispatchCase {
+                label: "no-panic allowlist",
+                policy: r#"
+policy = "no-panic-allowlist"
+owner = "repo"
+status = "advisory"
+
+[[allow]]
+id = "panic-unwrap"
+path = "src/lib.rs"
+family = "unwrap"
+owner = "runtime"
+classification = "reviewed_panic_exception"
+reason = "Input was checked."
+evidence = ["test:panic_coverage"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "method-call"
+callee = "unwrap"
+"#,
+                entry_id: "panic-unwrap",
+                kind: FindingKind::Panic,
+                family: Some("unwrap"),
+                path: Some("src/lib.rs"),
+            },
+            DispatchCase {
+                label: "no-panic baseline",
+                policy: r#"
+policy = "no-panic-baseline"
+owner = "repo"
+status = "advisory"
+
+[[entry]]
+path = "src/lib.rs"
+family = "panic"
+selector_kind = "macro-call"
+selector_callee = "panic"
+snippet = "panic!(\"bad\")"
+count = 2
+"#,
+                entry_id: "panic-baseline-0001",
+                kind: FindingKind::Panic,
+                family: Some("panic_macro"),
+                path: Some("src/lib.rs"),
+            },
+            DispatchCase {
+                label: "clippy",
+                policy: r#"
+policy = "clippy-exceptions"
+owner = "repo"
+status = "advisory"
+
+[[allow]]
+id = "clippy-unwrap"
+path = "src/lib.rs"
+lint = "clippy::unwrap_used"
+family = "expect"
+owner = "lint"
+classification = "reviewed_lint_exception"
+reason = "Intentional suppression."
+evidence = ["test:lint_coverage"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+"#,
+                entry_id: "clippy-unwrap",
+                kind: FindingKind::LintException,
+                family: Some("expect_attribute"),
+                path: Some("src/lib.rs"),
+            },
+            DispatchCase {
+                label: "unsafe",
+                policy: r#"
+policy = "unsafe-allowlist"
+owner = "repo"
+status = "advisory"
+
+[[allow]]
+id = "unsafe-read"
+path = "src/lib.rs"
+family = "unsafe-block"
+owner = "runtime"
+classification = "reviewed_unsafe_boundary"
+reason = "Caller checks pointer."
+evidence = ["unsafe-review:read.json"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "unsafe-block"
+container = "read"
+"#,
+                entry_id: "unsafe-read",
+                kind: FindingKind::Unsafe,
+                family: Some("unsafe_block"),
+                path: Some("src/lib.rs"),
+            },
+            DispatchCase {
+                label: "executable",
+                policy: r#"
+policy = "executable-allowlist"
+owner = "repo"
+status = "advisory"
+
+[[allow]]
+id = "exec-script"
+path = "scripts/package-proof.sh"
+interpreter = "bash"
+owner = "release"
+reason = "Release helper."
+evidence = ["test:executable_policy"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+"#,
+                entry_id: "exec-script",
+                kind: FindingKind::PolicyException,
+                family: Some("executable_file"),
+                path: Some("scripts/package-proof.sh"),
+            },
+            DispatchCase {
+                label: "workflow",
+                policy: r#"
+policy = "workflow-allowlist"
+owner = "repo"
+status = "advisory"
+
+[[entry]]
+path = ".github/workflows/ci.yml"
+owner = "release/ci"
+reason = "Primary CI lane."
+permissions = ["contents:read"]
+secrets_used = []
+external_actions = ["actions/checkout@v6.0.2"]
+evidence = ["doc:docs/ci.md"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+"#,
+                entry_id: "workflow-file-github-workflows-ci-yml",
+                kind: FindingKind::PolicyException,
+                family: Some("github_workflow"),
+                path: Some(".github/workflows/ci.yml"),
+            },
+            DispatchCase {
+                label: "dependency",
+                policy: r#"
+policy = "dependency-surface-allowlist"
+owner = "repo"
+status = "advisory"
+
+[[allow]]
+id = "workspace-manifest"
+path = "Cargo.toml"
+surface = "dependency_surface"
+owner = "deps"
+reason = "Workspace manifest owns dependency declarations."
+evidence = ["test:dependency_surface"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+dep_count_at_baseline = 4
+"#,
+                entry_id: "workspace-manifest",
+                kind: FindingKind::PolicyException,
+                family: Some("dependency_surface"),
+                path: Some("Cargo.toml"),
+            },
+            DispatchCase {
+                label: "process",
+                policy: r#"
+policy = "process-allowlist"
+owner = "repo"
+status = "advisory"
+
+[[allow]]
+id = "cargo-test-process"
+binary = "cargo"
+argv_shape = ["cargo", "test"]
+network_reach = false
+called_by = ["ci"]
+owner = "release/ci"
+reason = "CI executes workspace tests."
+evidence = ["doc:docs/ci.md"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+expires = "permanent"
+"#,
+                entry_id: "cargo-test-process",
+                kind: FindingKind::PolicyException,
+                family: Some("process_spawn"),
+                path: Some("ci"),
+            },
+            DispatchCase {
+                label: "network",
+                policy: r#"
+policy = "network-allowlist"
+owner = "repo"
+status = "advisory"
+
+[[allow]]
+id = "crates-io-publish"
+destination = "crates.io"
+auth_required = true
+auth_secret = "CARGO_REGISTRY_TOKEN"
+lane = "release"
+owner = "release"
+reason = "Publish release artifacts."
+evidence = ["doc:docs/release.md"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+"#,
+                entry_id: "crates-io-publish",
+                kind: FindingKind::PolicyException,
+                family: Some("network_destination"),
+                path: Some("policy/network-allowlist.toml"),
+            },
+        ]
+    }
+
+    #[test]
     fn dispatch_boundary_returns_some_for_each_supported_policy() {
         let non_rust = parse_table(
             r#"
