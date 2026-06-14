@@ -44,3 +44,102 @@ pub(crate) fn normalize_lint_attribute_family(family: &str) -> String {
         other => other.to_string(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalizes_unsafe_family_aliases_and_fallbacks() {
+        let cases = [
+            (" unsafe-block ", "unsafe_block"),
+            ("unsafe block", "unsafe_block"),
+            ("unsafe-fn", "unsafe_fn"),
+            ("unsafe function", "unsafe_fn"),
+            ("unsafe_fn", "unsafe_fn"),
+            ("unsafe-impl", "unsafe_impl"),
+            ("unsafe impl", "unsafe_impl"),
+            ("unsafe-trait", "unsafe_trait"),
+            ("unsafe trait", "unsafe_trait"),
+            ("unsafe-extern", "unsafe_extern_block"),
+            ("unsafe extern", "unsafe_extern_block"),
+            ("unsafe-extern-block", "unsafe_extern_block"),
+            ("unsafe extern block", "unsafe_extern_block"),
+            ("unsafe-attr", "unsafe_attr"),
+            ("unsafe attribute", "unsafe_attr"),
+            ("unsafe-attribute", "unsafe_attr"),
+            ("custom-family", "custom_family"),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(normalize_unsafe_family(input), expected);
+        }
+    }
+
+    #[test]
+    fn detects_glob_meta_characters() {
+        for input in [
+            "src/*.rs",
+            "src/file?.rs",
+            "src/[ab].rs",
+            "src/file].rs",
+            "src/{lib,main}.rs",
+            "src/file}.rs",
+            "src/lib.rs,src/main.rs",
+        ] {
+            assert!(has_glob_meta(input));
+        }
+
+        assert!(!has_glob_meta("src/lib.rs"));
+        assert!(!has_glob_meta("src/path-with-dashes.rs"));
+    }
+
+    #[test]
+    fn normalizes_legacy_permanent_expiry_only() {
+        assert_eq!(
+            normalize_legacy_expires(Some("permanent".to_string())),
+            Some("never".to_string())
+        );
+        assert_eq!(
+            normalize_legacy_expires(Some("2026-12-31".to_string())),
+            Some("2026-12-31".to_string())
+        );
+        assert_eq!(normalize_legacy_expires(None), None);
+    }
+
+    #[test]
+    fn recognizes_clippy_exception_policy_aliases() {
+        for policy in [
+            "clippy-exceptions",
+            "clippy-exception-allowlist",
+            "clippy-allowlist",
+        ] {
+            let mut table = toml::Table::new();
+            table.insert("policy".to_string(), Value::String(policy.to_string()));
+
+            assert!(is_clippy_exceptions_policy(&table));
+        }
+
+        let mut table = toml::Table::new();
+        table.insert("policy".to_string(), Value::String("other".to_string()));
+        assert!(!is_clippy_exceptions_policy(&table));
+        assert!(!is_clippy_exceptions_policy(&toml::Table::new()));
+    }
+
+    #[test]
+    fn normalizes_lint_attribute_family_aliases_and_fallbacks() {
+        let cases = [
+            (" allow ", "allow_attribute"),
+            ("allow-attribute", "allow_attribute"),
+            ("allow_attribute", "allow_attribute"),
+            ("expect", "expect_attribute"),
+            ("expect-attribute", "expect_attribute"),
+            ("expect_attribute", "expect_attribute"),
+            ("custom", "custom"),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(normalize_lint_attribute_family(input), expected);
+        }
+    }
+}
