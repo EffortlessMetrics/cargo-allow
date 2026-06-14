@@ -46,3 +46,12 @@ fn visit(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> CargoAllowResult<()
     }
     Ok(())
 }
+
+#[cfg(test)]
+pub(crate) fn visit_for_test(
+    root: &Path,
+    dir: &Path,
+    out: &mut Vec<PathBuf>,
+) -> CargoAllowResult<()> {
+    visit(root, dir, out)
+}

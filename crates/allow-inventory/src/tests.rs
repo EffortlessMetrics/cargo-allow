@@ -1,4 +1,5 @@
 use super::*;
+use crate::filesystem::visit_for_test;
 use allow_core::source_tree_path_is_ignored;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -91,6 +92,80 @@ fn git_tracked_inventory_skips_deleted_worktree_files() {
         !tracked_inventory
             .files
             .contains(&PathBuf::from("deleted.txt"))
+    );
+    remove_dir(&root);
+}
+
+#[test]
+fn existing_regular_files_call_presence_observer() -> Result<(), Box<dyn std::error::Error>> {
+    let root = temp_root("existing-regular-files");
+    write_file(root.join("kept.txt"), "kept");
+    fs::create_dir_all(root.join("directory"))?;
+
+    let existing = existing_regular_files(
+        &root,
+        vec![
+            PathBuf::from("kept.txt"),
+            PathBuf::from("directory"),
+            PathBuf::from("missing.txt"),
+        ],
+    );
+
+    assert_eq!(existing, vec![PathBuf::from("kept.txt")]);
+    remove_dir(&root);
+    Ok(())
+}
+
+#[test]
+fn visit_call_presence_observer() -> Result<(), Box<dyn std::error::Error>> {
+    let root = temp_root("visit-source-tree");
+    fs::create_dir_all(root.join("src"))?;
+    fs::create_dir_all(root.join(".git"))?;
+    fs::create_dir_all(root.join("target"))?;
+    fs::create_dir_all(root.join("empty"))?;
+    write_file(root.join("README.md"), "readme");
+    write_file(root.join("src").join("lib.rs"), "pub fn demo() {}\n");
+    write_file(root.join(".git").join("config"), "ignored");
+    write_file(root.join("target").join("debug.txt"), "ignored");
+    let mut files = Vec::new();
+
+    visit_for_test(&root, &root, &mut files)?;
+    files.sort();
+
+    assert_eq!(
+        files,
+        vec![PathBuf::from("README.md"), PathBuf::from("src/lib.rs")]
+    );
+    remove_dir(&root);
+    Ok(())
+}
+
+#[test]
+fn visit_return_value_discriminator() -> Result<(), Box<dyn std::error::Error>> {
+    let root = temp_root("visit-return");
+    fs::create_dir_all(root.join("src"))?;
+    write_file(root.join("src").join("lib.rs"), "pub fn demo() {}\n");
+    let mut files = Vec::new();
+
+    let result = visit_for_test(&root, &root, &mut files);
+
+    assert!(result.is_ok());
+    assert_eq!(files, vec![PathBuf::from("src/lib.rs")]);
+    remove_dir(&root);
+    Ok(())
+}
+
+#[test]
+fn recursive_files_reports_missing_root() {
+    let root = temp_root("missing-recursive-root");
+    let missing = root.join("missing");
+
+    let error = recursive_files(&missing).err().map(|err| err.to_string());
+
+    assert!(
+        error
+            .as_deref()
+            .is_some_and(|text| text.contains("failed to read"))
     );
     remove_dir(&root);
 }
