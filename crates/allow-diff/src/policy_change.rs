@@ -99,3 +99,115 @@ impl PolicyChange {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn base_change() -> PolicyChange {
+        PolicyChange::new(
+            "allow-test",
+            PolicyChangeKind::ScopeChanged,
+            PolicyChangeSeverity::Review,
+            "policy changed",
+        )
+    }
+
+    #[test]
+    fn new_policy_change_initializes_base_fields_without_details() {
+        let change = base_change();
+
+        assert_eq!(change.allow_id, "allow-test");
+        assert_eq!(change.kind, PolicyChangeKind::ScopeChanged);
+        assert_eq!(change.severity, PolicyChangeSeverity::Review);
+        assert_eq!(change.message, "policy changed");
+        assert_eq!(change.exception_identity, None);
+        assert_eq!(change.selector_identity, None);
+        assert_eq!(change.selector_precision, None);
+        assert_eq!(change.scope, None);
+        assert_eq!(change.occurrence_limit, None);
+        assert_eq!(change.lifecycle, None);
+        assert_eq!(change.evidence, None);
+        assert_eq!(change.metadata, None);
+        assert_eq!(change.requirement, None);
+        assert_eq!(change.policy_status, None);
+    }
+
+    #[test]
+    fn policy_change_builders_attach_each_detail_without_changing_base_fields() {
+        let selector_precision = SelectorPrecisionChange {
+            before: 3,
+            after: 2,
+            removed_fields: vec!["path"],
+            added_fields: vec!["selector.glob"],
+        };
+        let exception_identity = ExceptionIdentityChange {
+            field: ExceptionIdentityChangeField::Kind,
+            before: Some("unsafe".to_string()),
+            after: Some("panic".to_string()),
+        };
+        let selector_identity = SelectorIdentityChange {
+            changed_fields: vec!["selector.glob", "code"],
+        };
+        let scope = ScopeChange {
+            field: ScopeChangeField::Path,
+            before: Some("src/lib.rs".to_string()),
+            after: Some("src/main.rs".to_string()),
+        };
+        let occurrence_limit = OccurrenceLimitChange {
+            before: Some(1),
+            after: Some(2),
+        };
+        let lifecycle = LifecycleChange {
+            field: LifecycleChangeField::ReviewAfter,
+            before: Some("2026-06-01".to_string()),
+            after: Some("2026-07-01".to_string()),
+        };
+        let evidence = EvidenceChange {
+            field: EvidenceChangeField::Evidence,
+            removed: vec!["old receipt".to_string()],
+            added: vec!["new receipt".to_string()],
+        };
+        let metadata = MetadataChange {
+            field: MetadataChangeField::Reason,
+            before: Some("old reason".to_string()),
+            after: Some("new reason".to_string()),
+        };
+        let requirement = RequirementChange {
+            field: RequirementChangeField::EvidenceRequired,
+            before: false,
+            after: true,
+        };
+        let policy_status = PolicyStatusChange {
+            before: Some("audit".to_string()),
+            after: Some("blocking".to_string()),
+        };
+
+        let change = base_change()
+            .with_selector_precision(selector_precision.clone())
+            .with_exception_identity(exception_identity.clone())
+            .with_selector_identity(selector_identity.clone())
+            .with_scope(scope.clone())
+            .with_occurrence_limit(occurrence_limit.clone())
+            .with_lifecycle(lifecycle.clone())
+            .with_evidence(evidence.clone())
+            .with_metadata(metadata.clone())
+            .with_requirement(requirement.clone())
+            .with_policy_status(policy_status.clone());
+
+        assert_eq!(change.allow_id, "allow-test");
+        assert_eq!(change.kind, PolicyChangeKind::ScopeChanged);
+        assert_eq!(change.severity, PolicyChangeSeverity::Review);
+        assert_eq!(change.message, "policy changed");
+        assert_eq!(change.selector_precision, Some(selector_precision));
+        assert_eq!(change.exception_identity, Some(exception_identity));
+        assert_eq!(change.selector_identity, Some(selector_identity));
+        assert_eq!(change.scope, Some(scope));
+        assert_eq!(change.occurrence_limit, Some(occurrence_limit));
+        assert_eq!(change.lifecycle, Some(lifecycle));
+        assert_eq!(change.evidence, Some(evidence));
+        assert_eq!(change.metadata, Some(metadata));
+        assert_eq!(change.requirement, Some(requirement));
+        assert_eq!(change.policy_status, Some(policy_status));
+    }
+}
