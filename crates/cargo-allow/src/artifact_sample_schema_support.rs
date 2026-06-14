@@ -333,6 +333,139 @@ mod tests {
     }
 
     #[test]
+    fn artifact_sample_validator_reports_object_shape_errors() {
+        let any_of_schema = json_value(r#"{"anyOf":[{"const":"allow"},{"const":"audit"}]}"#);
+        assert_eq!(
+            schema_covers_sample_value(&any_of_schema, &any_of_schema, &json_value(r#""check""#), "$.mode"),
+            Err("$.mode did not match any anyOf branch: $.mode has value \"check\", expected const \"allow\"; $.mode has value \"check\", expected const \"audit\"".to_string())
+        );
+
+        let required_schema = json_value(r#"{"type":"object","required":["name","kind"]}"#);
+        assert_eq!(
+            schema_covers_sample_value(
+                &required_schema,
+                &required_schema,
+                &json_value(r#"{"kind":"audit"}"#),
+                "$"
+            ),
+            Err("$ is missing schema-required keys: name".to_string())
+        );
+
+        let additional_properties_schema = json_value(
+            r#"{
+                "type":"object",
+                "properties":{"known":{"type":"string"}},
+                "additionalProperties":false
+            }"#,
+        );
+        assert_eq!(
+            schema_covers_sample_value(
+                &additional_properties_schema,
+                &additional_properties_schema,
+                &json_value(r#"{"known":"ok","extra":true}"#),
+                "$"
+            ),
+            Err("$ has keys absent from schema properties: extra".to_string())
+        );
+
+        let no_properties_schema = json_value(r#"{"type":"object","additionalProperties":false}"#);
+        assert_eq!(
+            schema_covers_sample_value(
+                &no_properties_schema,
+                &no_properties_schema,
+                &json_value(r#"{"extra":true}"#),
+                "$"
+            ),
+            Err("$ has object keys but schema allows no properties".to_string())
+        );
+    }
+
+    #[test]
+    fn artifact_sample_validator_reports_array_and_scalar_constraint_errors() {
+        let contains_schema = json_value(r#"{"type":"array","contains":{"const":"required"}}"#);
+        assert_eq!(
+            schema_covers_sample_value(
+                &contains_schema,
+                &contains_schema,
+                &json_value(r#"["other"]"#),
+                "$"
+            ),
+            Err("$ did not contain a value matching contains".to_string())
+        );
+
+        let const_schema = json_value(r#"{"const":"expected"}"#);
+        assert_eq!(
+            schema_covers_sample_value(
+                &const_schema,
+                &const_schema,
+                &json_value(r#""actual""#),
+                "$.command"
+            ),
+            Err("$.command has value \"actual\", expected const \"expected\"".to_string())
+        );
+
+        let enum_schema = json_value(r#"{"enum":["audit","check"]}"#);
+        assert_eq!(
+            schema_covers_sample_value(
+                &enum_schema,
+                &enum_schema,
+                &json_value(r#""doctor""#),
+                "$.mode"
+            ),
+            Err("$.mode has value \"doctor\", outside schema enum".to_string())
+        );
+
+        let type_schema = json_value(r#"{"type":"string"}"#);
+        assert_eq!(
+            schema_covers_sample_value(&type_schema, &type_schema, &json_value(r#"42"#), "$.id"),
+            Err("$.id has JSON type integer, outside schema type".to_string())
+        );
+
+        let minimum_schema = json_value(r#"{"type":"number","minimum":10}"#);
+        assert_eq!(
+            schema_covers_sample_value(
+                &minimum_schema,
+                &minimum_schema,
+                &json_value(r#"3"#),
+                "$.count"
+            ),
+            Err("$.count has numeric value 3, below minimum 10".to_string())
+        );
+
+        let min_length_schema = json_value(r#"{"type":"string","minLength":4}"#);
+        assert_eq!(
+            schema_covers_sample_value(
+                &min_length_schema,
+                &min_length_schema,
+                &json_value(r#""abc""#),
+                "$.id"
+            ),
+            Err("$.id has string shorter than minLength 4".to_string())
+        );
+
+        let pattern_schema = json_value(r#"{"type":"string","pattern":"^cargo-allow "}"#);
+        assert_eq!(
+            schema_covers_sample_value(
+                &pattern_schema,
+                &pattern_schema,
+                &json_value(r#""cargo check""#),
+                "$.command"
+            ),
+            Err("$.command has string \"cargo check\", outside supported schema pattern \"^cargo-allow \"".to_string())
+        );
+    }
+
+    #[test]
+    fn artifact_sample_validator_reports_non_local_refs() {
+        let schema = json_value(r#"{"$ref":"https://example.test/schema.json"}"#);
+
+        assert_eq!(
+            schema_covers_sample_value(&schema, &schema, &json_value(r#"null"#), "$"),
+            Err("$ schema uses non-local ref https://example.test/schema.json".to_string())
+        );
+    }
+
+    #[test]
     fn artifact_sample_validator_covers_every_schema_pattern() {
         let mut actual = BTreeSet::new();
         for contract in schema_contracts() {
