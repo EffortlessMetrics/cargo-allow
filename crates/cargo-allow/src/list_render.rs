@@ -84,3 +84,82 @@ fn report_list_filters<'a>(
         weak_evidence: filters.weak_evidence,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{FindingKind, MatchStatus};
+
+    fn filters() -> ListFilters<'static> {
+        ListFilters {
+            kind: None,
+            family: None,
+            owner: None,
+            classification: None,
+            path: None,
+            source_package: None,
+            allow_id: Some("allow-keep"),
+            status: None,
+            expired: false,
+            review_due: false,
+            stale: false,
+            baseline_debt: false,
+            broad_scope: false,
+            missing_evidence: false,
+            broken_evidence: false,
+            weak_evidence: false,
+        }
+    }
+
+    fn row(id: &str) -> ListRow {
+        ListRow {
+            id: id.to_string(),
+            status: MatchStatus::Matched,
+            matches: 2,
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            owner: "parser".to_string(),
+            classification: "approved".to_string(),
+            scope: "src/lib.rs".to_string(),
+            source_package: Some("allow-core".to_string()),
+            evidence_count: 3,
+            broken_evidence_references: 1,
+            weak_evidence_references: 2,
+            selector_precision: 7,
+            broad_scope: true,
+            review_after: "-".to_string(),
+            expires: "2026-12-01".to_string(),
+            reason: "reason".to_string(),
+        }
+    }
+
+    #[test]
+    fn report_list_rows_filters_and_projects_all_report_fields() {
+        let rows = [row("allow-keep"), row("allow-skip")];
+
+        let report_rows = report_list_rows(&rows, &filters());
+
+        assert_eq!(report_rows.len(), 1);
+        let row = report_rows
+            .first()
+            .copied()
+            .unwrap_or_else(|| std::panic::panic_any("expected one projected list row"));
+        assert_eq!(row.id, "allow-keep");
+        assert_eq!(row.status, "matched");
+        assert_eq!(row.matches, 2);
+        assert_eq!(row.kind, "panic");
+        assert_eq!(row.family, Some("unwrap"));
+        assert_eq!(row.owner, "parser");
+        assert_eq!(row.classification, "approved");
+        assert_eq!(row.scope, "src/lib.rs");
+        assert_eq!(row.source_package, Some("allow-core"));
+        assert_eq!(row.evidence_count, 3);
+        assert_eq!(row.broken_evidence_references, 1);
+        assert_eq!(row.weak_evidence_references, 2);
+        assert_eq!(row.selector_precision, 7);
+        assert!(row.broad_scope);
+        assert_eq!(row.review_after, None);
+        assert_eq!(row.expires, Some("2026-12-01"));
+        assert_eq!(row.reason, "reason");
+    }
+}
