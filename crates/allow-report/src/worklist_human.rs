@@ -191,3 +191,44 @@ fn worklist_filters_human(filters: WorklistFilters<'_>) -> String {
         format!("Filters: {}\n", parts.join(", "))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::worklist_filters_human;
+    use crate::WorklistFilters;
+
+    #[test]
+    fn worklist_filters_human_records_every_filter_field() {
+        let text = worklist_filters_human(WorklistFilters {
+            kind: Some("unsafe"),
+            family: Some("unsafe_block"),
+            item_kind: Some("missing_evidence"),
+            status: Some("evidence_missing"),
+            allow_id: Some("allow-0001"),
+            path: Some("src/lib.rs"),
+            source_package: Some("allow-report"),
+            owner: Some("runtime"),
+            classification: Some("reviewed"),
+            baseline_debt: true,
+            broad_scope: true,
+            risk: Some("high"),
+            difficulty: Some("small"),
+            missing_evidence: true,
+            broken_evidence: true,
+            weak_evidence: true,
+        });
+
+        assert_eq!(
+            text,
+            "Filters: kind=unsafe, family=unsafe_block, item_kind=missing_evidence, status=evidence_missing, allow_id=allow-0001, path=src/lib.rs, source_package=allow-report, owner=runtime, classification=reviewed, baseline_debt=true, broad_scope=true, risk=high, difficulty=small, missing_evidence=true, broken_evidence=true, weak_evidence=true\n"
+        );
+    }
+
+    #[test]
+    fn worklist_filters_human_reports_none_when_no_filters_are_set() {
+        assert_eq!(
+            worklist_filters_human(WorklistFilters::default()),
+            "Filters: none\n"
+        );
+    }
+}
