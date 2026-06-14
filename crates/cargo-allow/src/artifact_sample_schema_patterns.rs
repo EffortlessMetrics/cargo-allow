@@ -49,3 +49,67 @@ pub(crate) fn collect_schema_patterns(value: &Value, patterns: &mut BTreeSet<Str
         _ => {}
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn work_item_id_samples_accept_supported_kind_and_number_shape() {
+        let accepted = true;
+
+        assert_eq!(
+            sample_string_matches_work_item_id("work-spec-0001"),
+            accepted
+        );
+        assert_eq!(sample_string_matches_work_item_id("work-a-0001"), accepted);
+        assert_eq!(sample_string_matches_work_item_id("work-1-0001"), accepted);
+        assert_eq!(
+            sample_string_matches_work_item_id("work-spec-2-0001"),
+            accepted
+        );
+    }
+
+    #[test]
+    fn work_item_id_samples_reject_missing_prefix_or_split() {
+        let accepted = false;
+
+        assert_eq!(
+            sample_string_matches_work_item_id("task-spec-0001"),
+            accepted
+        );
+        assert_eq!(
+            sample_string_matches_work_item_id("work-spec0001"),
+            accepted
+        );
+    }
+
+    #[test]
+    fn work_item_id_samples_reject_empty_or_unsupported_kind() {
+        let accepted = false;
+
+        assert_eq!(sample_string_matches_work_item_id("work--0001"), accepted);
+        assert_eq!(
+            sample_string_matches_work_item_id("work-SPEC-0001"),
+            accepted
+        );
+        assert_eq!(
+            sample_string_matches_work_item_id("work-spec_system-0001"),
+            accepted
+        );
+    }
+
+    #[test]
+    fn work_item_id_samples_require_four_digit_numbers() {
+        let accepted = false;
+
+        assert_eq!(
+            sample_string_matches_work_item_id("work-spec-001"),
+            accepted
+        );
+        assert_eq!(
+            sample_string_matches_work_item_id("work-spec-000x"),
+            accepted
+        );
+    }
+}
