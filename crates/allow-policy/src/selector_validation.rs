@@ -64,3 +64,111 @@ pub(crate) fn validate_source_hints(entry: &AllowEntry) -> CargoAllowResult<()> 
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{FindingKind, LastSeen, Lifecycle, Selector};
+    use std::path::PathBuf;
+
+    #[test]
+    fn validate_selector_call_presence_observer() {
+        let mut source = entry("source", FindingKind::Panic);
+        source.selector.ast_kind = Some("method_call".to_string());
+        source.selector.callee = Some("unwrap".to_string());
+        assert_eq!(validate_selector(&source), Ok(()));
+
+        source.selector.normalized_snippet_hash = Some("   ".to_string());
+        let blank = validate_selector(&source)
+            .expect_err("blank selector identity field should be rejected");
+        assert!(
+            blank
+                .to_string()
+                .contains("source selector normalized_snippet_hash must not be empty")
+        );
+
+        let mut scope_only_source = entry("scope-only-source", FindingKind::Panic);
+        scope_only_source.selector.glob = Some("src/lib.rs".to_string());
+        let err = validate_selector(&scope_only_source)
+            .expect_err("source-code selector needs structural identity");
+        assert!(
+            err.to_string().contains(
+                "scope-only-source source-code selector must include structural identity"
+            )
+        );
+    }
+
+    #[test]
+    fn validate_selector_return_value_discriminator() {
+        let mut non_source = entry("non-source", FindingKind::NonRustFile);
+        non_source.selector.glob = Some("docs/**".to_string());
+
+        assert_eq!(validate_selector(&non_source), Ok(()));
+    }
+
+    #[test]
+    fn validate_source_hints_call_presence_observer() {
+        let mut line_zero = entry("line-zero", FindingKind::Panic);
+        line_zero.selector.ast_kind = Some("unsafe_block".to_string());
+        line_zero.selector.line_hint = Some(0);
+        let err = validate_source_hints(&line_zero).expect_err("zero line_hint should be rejected");
+        assert!(
+            err.to_string()
+                .contains("line-zero line_hint must be greater than zero")
+        );
+
+        let mut last_seen_line_zero = entry("last-seen-line-zero", FindingKind::Panic);
+        last_seen_line_zero.last_seen = Some(LastSeen { line: 0, column: 1 });
+        let err = validate_source_hints(&last_seen_line_zero)
+            .expect_err("zero last_seen line should be rejected");
+        assert!(
+            err.to_string()
+                .contains("last-seen-line-zero last_seen line must be greater than zero")
+        );
+
+        let mut last_seen_column_zero = entry("last-seen-column-zero", FindingKind::Panic);
+        last_seen_column_zero.last_seen = Some(LastSeen { line: 1, column: 0 });
+        let err = validate_source_hints(&last_seen_column_zero)
+            .expect_err("zero last_seen column should be rejected");
+        assert!(
+            err.to_string()
+                .contains("last-seen-column-zero last_seen column must be greater than zero")
+        );
+    }
+
+    #[test]
+    fn validate_source_hints_return_value_discriminator() {
+        let mut hinted = entry("hinted", FindingKind::Unsafe);
+        hinted.selector.ast_kind = Some("unsafe_block".to_string());
+        hinted.selector.line_hint = Some(12);
+        hinted.last_seen = Some(LastSeen {
+            line: 34,
+            column: 5,
+        });
+
+        assert_eq!(validate_source_hints(&hinted), Ok(()));
+        assert_eq!(
+            validate_source_hints(&entry("empty", FindingKind::NonRustFile)),
+            Ok(())
+        );
+    }
+
+    fn entry(id: &str, kind: FindingKind) -> AllowEntry {
+        AllowEntry {
+            id: id.to_string(),
+            kind,
+            family: None,
+            path: Some(PathBuf::from("src/lib.rs")),
+            glob: None,
+            owner: "policy".to_string(),
+            classification: "reviewed".to_string(),
+            reason: "fixture".to_string(),
+            evidence: Vec::new(),
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle::empty(),
+            selector: Selector::default(),
+            last_seen: None,
+        }
+    }
+}
