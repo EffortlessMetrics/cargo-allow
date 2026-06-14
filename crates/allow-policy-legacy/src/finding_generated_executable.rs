@@ -125,3 +125,102 @@ pub(crate) fn file_fingerprint(path: &Path) -> Option<String> {
                 .map(|name| name.to_ascii_lowercase())
         })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{FindingKind, Span};
+
+    #[test]
+    fn generated_gitattributes_text_keeps_only_generated_paths() {
+        let findings = generated_findings_from_gitattributes_text(
+            "\
+# generated outputs
+generated/schema.json linguist-generated=true
+README.md linguist-documentation=true
+ dist/bundle.js   filter=lfs   linguist-generated=true
+empty-marker linguist-generated=false
+",
+        );
+
+        let paths: Vec<PathBuf> = findings.into_iter().map(|finding| finding.path).collect();
+        assert_eq!(
+            paths,
+            vec![
+                PathBuf::from("generated/schema.json"),
+                PathBuf::from("dist/bundle.js"),
+            ]
+        );
+    }
+
+    #[test]
+    fn generated_finding_records_generated_file_identity() {
+        let finding = generated_finding(PathBuf::from("generated\\schema.JSON"));
+
+        assert_eq!(finding.kind, FindingKind::GeneratedCode);
+        assert_eq!(finding.family.as_deref(), Some("generated_code"));
+        assert_eq!(finding.path, PathBuf::from("generated\\schema.JSON"));
+        assert_eq!(finding.span, Some(Span { line: 1, column: 1 }));
+        assert_eq!(finding.identity.language, "file");
+        assert_eq!(finding.identity.ast_kind, "tracked_file");
+        assert_eq!(
+            finding.identity.symbol.as_deref(),
+            Some("generated/schema.JSON")
+        );
+        assert_eq!(finding.identity.target_fingerprint.as_deref(), Some("json"));
+        assert_eq!(
+            finding.message,
+            "tracked generated file from .gitattributes"
+        );
+    }
+
+    #[test]
+    fn executable_git_stage_keeps_only_executable_file_paths() {
+        let findings = executable_findings_from_git_stage(
+            "\
+100644 abc123 0\tREADME.md
+100755 def456 0\tscripts/package-proof.sh
+100755 ghi789 0\t
+120000 jkl012 0\tscripts/link
+malformed without tab
+",
+        );
+
+        let paths: Vec<PathBuf> = findings.into_iter().map(|finding| finding.path).collect();
+        assert_eq!(paths, vec![PathBuf::from("scripts/package-proof.sh")]);
+    }
+
+    #[test]
+    fn executable_finding_records_executable_file_identity() {
+        let finding = executable_finding(PathBuf::from("scripts\\package-proof.sh"));
+
+        assert_eq!(finding.kind, FindingKind::PolicyException);
+        assert_eq!(finding.family.as_deref(), Some("executable_file"));
+        assert_eq!(finding.path, PathBuf::from("scripts\\package-proof.sh"));
+        assert_eq!(finding.span, Some(Span { line: 1, column: 1 }));
+        assert_eq!(finding.identity.language, "file");
+        assert_eq!(finding.identity.ast_kind, "git_executable_file");
+        assert_eq!(
+            finding.identity.symbol.as_deref(),
+            Some("scripts/package-proof.sh")
+        );
+        assert_eq!(
+            finding.identity.target_fingerprint.as_deref(),
+            Some("git-mode:100755")
+        );
+        assert_eq!(finding.message, "tracked file has git executable bit");
+    }
+
+    #[test]
+    fn file_fingerprint_prefers_lowercase_extension_then_filename() {
+        assert_eq!(
+            file_fingerprint(Path::new("generated/schema.JSON")).as_deref(),
+            Some("json")
+        );
+        assert_eq!(
+            file_fingerprint(Path::new("Makefile")).as_deref(),
+            Some("makefile")
+        );
+        assert_eq!(file_fingerprint(Path::new("")).as_deref(), None);
+    }
+}
