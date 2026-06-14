@@ -93,3 +93,162 @@ pub(crate) fn classify_matched(
         format!("{} matched with structural score {score}", entry.id),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::classify_matched;
+    use crate::CheckMode;
+    use allow_core::{
+        AllowConfig, AllowEntry, Finding, FindingKind, Lifecycle, MatchStatus, Selector,
+        SimpleDate, Span, StructuralIdentity,
+    };
+    use std::path::PathBuf;
+
+    fn today() -> SimpleDate {
+        SimpleDate {
+            year: 2026,
+            month: 6,
+            day: 14,
+        }
+    }
+
+    fn entry(kind: FindingKind) -> AllowEntry {
+        AllowEntry {
+            id: "allow-1".to_string(),
+            kind,
+            family: Some("unsafe_fn".to_string()),
+            path: Some(PathBuf::from("src/lib.rs")),
+            glob: None,
+            owner: "core".to_string(),
+            classification: "reviewed_exception".to_string(),
+            reason: "fixture".to_string(),
+            evidence: vec!["test:fixture".to_string()],
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle {
+                created: None,
+                review_after: None,
+                expires: Some("2026-12-31".to_string()),
+            },
+            selector: Selector::default(),
+            last_seen: None,
+        }
+    }
+
+    fn test_finding(kind: FindingKind) -> Finding {
+        Finding {
+            kind,
+            family: Some("unsafe_fn".to_string()),
+            path: PathBuf::from("src/lib.rs"),
+            span: Some(Span {
+                line: 50,
+                column: 12,
+            }),
+            identity: StructuralIdentity::new("rust", "unsafe_fn"),
+            message: String::new(),
+        }
+    }
+
+    #[test]
+    fn classify_matched_reports_expiry_and_unsafe_evidence_requirements() {
+        let cfg = AllowConfig::empty();
+        let finding = test_finding(FindingKind::Unsafe);
+        let mut expired = entry(FindingKind::Unsafe);
+        expired.lifecycle.expires = Some("2020-01-01".to_string());
+        let (status, message) =
+            classify_matched(&expired, &finding, 98, today(), &cfg, CheckMode::NoNew);
+        assert_eq!(status, MatchStatus::Expired);
+        assert!(message.contains("expired on 2020-01-01"));
+
+        let mut missing_evidence = entry(FindingKind::Unsafe);
+        missing_evidence.evidence.clear();
+        let (status, message) = classify_matched(
+            &missing_evidence,
+            &finding,
+            98,
+            today(),
+            &cfg,
+            CheckMode::NoNew,
+        );
+        assert_eq!(status, MatchStatus::EvidenceMissing);
+        assert!(message.contains("has no evidence"));
+
+        let mut safety_cfg = AllowConfig::empty();
+        safety_cfg.requirements.unsafe_safety_comment_required = true;
+        let (status, message) = classify_matched(
+            &entry(FindingKind::Unsafe),
+            &finding,
+            98,
+            today(),
+            &safety_cfg,
+            CheckMode::NoNew,
+        );
+        assert_eq!(status, MatchStatus::EvidenceMissing);
+        assert!(message.contains("no nearby SAFETY comment"));
+
+        let mut safe_finding = test_finding(FindingKind::Unsafe);
+        safe_finding.identity.target_fingerprint = Some("safety-comment:present".to_string());
+        let (status, message) = classify_matched(
+            &entry(FindingKind::Unsafe),
+            &safe_finding,
+            98,
+            today(),
+            &safety_cfg,
+            CheckMode::NoNew,
+        );
+        assert_eq!(status, MatchStatus::Matched);
+        assert!(message.contains("matched with structural score 98"));
+    }
+
+    #[test]
+    fn classify_matched_reports_lint_policy_requirement_failures() {
+        let mut cfg = AllowConfig::empty();
+        cfg.requirements.allow_bare_allow_attributes = false;
+        cfg.requirements.lint_policy_id_required = true;
+        let entry = entry(FindingKind::LintException);
+        let mut finding = test_finding(FindingKind::LintException);
+        finding.family = Some("allow_attribute".to_string());
+
+        let (status, message) =
+            classify_matched(&entry, &finding, 87, today(), &cfg, CheckMode::NoNew);
+        assert_eq!(status, MatchStatus::InvalidSelector);
+        assert!(message.contains("allow_bare_allow_attributes=false"));
+
+        finding.family = Some("expect_attribute".to_string());
+        let (status, message) =
+            classify_matched(&entry, &finding, 87, today(), &cfg, CheckMode::NoNew);
+        assert_eq!(status, MatchStatus::InvalidSelector);
+        assert!(message.contains("without required policy:<allow-id> reference"));
+
+        finding.identity.target_fingerprint = Some("policy:allow-other".to_string());
+        let (status, message) =
+            classify_matched(&entry, &finding, 87, today(), &cfg, CheckMode::NoNew);
+        assert_eq!(status, MatchStatus::InvalidSelector);
+        assert!(message.contains("policy:allow-other"));
+
+        finding.identity.target_fingerprint = Some("policy:allow-1".to_string());
+        let (status, message) =
+            classify_matched(&entry, &finding, 87, today(), &cfg, CheckMode::NoNew);
+        assert_eq!(status, MatchStatus::Matched);
+        assert!(message.contains("matched with structural score 87"));
+    }
+
+    #[test]
+    fn classify_matched_reports_release_baseline_debt_and_regular_match() {
+        let cfg = AllowConfig::empty();
+        let finding = test_finding(FindingKind::Panic);
+        let mut baseline = entry(FindingKind::Panic);
+        baseline.classification = "baseline_debt".to_string();
+        let (status, message) =
+            classify_matched(&baseline, &finding, 91, today(), &cfg, CheckMode::Release);
+        assert_eq!(status, MatchStatus::BaselineDebt);
+        assert!(message.contains("cannot pass release mode"));
+
+        let mut never = entry(FindingKind::Panic);
+        never.lifecycle.expires = Some("never".to_string());
+        let (status, message) =
+            classify_matched(&never, &finding, 91, today(), &cfg, CheckMode::NoNew);
+        assert_eq!(status, MatchStatus::Matched);
+        assert!(message.contains("matched with structural score 91"));
+    }
+}
