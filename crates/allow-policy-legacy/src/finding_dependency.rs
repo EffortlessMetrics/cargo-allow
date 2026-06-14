@@ -100,3 +100,172 @@ fn dependency_entry_matches_path(entry: &AllowEntry, path: &Path) -> bool {
             .as_ref()
             .is_some_and(|glob| glob_matches(glob, path))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{Lifecycle, Selector, WorkspaceConfig};
+
+    #[test]
+    fn dependency_surface_finding_preserves_family_identity_and_message() {
+        let finding = dependency_surface_finding(PathBuf::from("crates\\core\\Cargo.toml"));
+
+        assert_eq!(finding.kind, FindingKind::PolicyException);
+        assert_eq!(finding.family.as_deref(), Some("dependency_surface"));
+        assert_eq!(finding.path, PathBuf::from("crates\\core\\Cargo.toml"));
+        assert_eq!(
+            finding.span.as_ref().map(|span| (span.line, span.column)),
+            Some((1, 1))
+        );
+        assert_eq!(finding.identity.language, "file");
+        assert_eq!(finding.identity.ast_kind, "dependency_surface");
+        assert_eq!(
+            finding.identity.symbol.as_deref(),
+            Some("crates/core/Cargo.toml")
+        );
+        assert_eq!(
+            finding.identity.target_fingerprint.as_deref(),
+            Some("crate_manifest")
+        );
+        assert_eq!(
+            finding.message,
+            "tracked dependency surface crates/core/Cargo.toml"
+        );
+    }
+
+    #[test]
+    fn dependency_surface_family_classifies_known_paths() {
+        assert_eq!(
+            dependency_surface_family(Path::new("Cargo.toml")),
+            "workspace_manifest"
+        );
+        assert_eq!(
+            dependency_surface_family(Path::new("Cargo.lock")),
+            "workspace_lockfile"
+        );
+        assert_eq!(
+            dependency_surface_family(Path::new("rust-toolchain.toml")),
+            "toolchain_pin"
+        );
+        assert_eq!(
+            dependency_surface_family(Path::new("deny.toml")),
+            "policy_config"
+        );
+        assert_eq!(
+            dependency_surface_family(Path::new("crates/core/Cargo.toml")),
+            "crate_manifest"
+        );
+        assert_eq!(
+            dependency_surface_family(Path::new("crates/core/Cargo.lock")),
+            "lockfile"
+        );
+        assert_eq!(
+            dependency_surface_family(Path::new("crates/core/rust-toolchain.toml")),
+            "toolchain_pin"
+        );
+        assert_eq!(
+            dependency_surface_family(Path::new("docs/dependencies.md")),
+            "dependency_surface"
+        );
+    }
+
+    #[test]
+    fn dependency_entry_matches_direct_path_glob_or_selector_glob() {
+        let mut path_entry = dependency_entry();
+        path_entry.path = Some(PathBuf::from("Cargo.toml"));
+
+        let mut glob_entry = dependency_entry();
+        glob_entry.glob = Some("crates/*/Cargo.toml".to_string());
+
+        let mut selector_entry = dependency_entry();
+        selector_entry.selector = Selector {
+            glob: Some("tools/**/Cargo.toml".to_string()),
+            ..Selector::default()
+        };
+
+        assert!(dependency_entry_matches_path(
+            &path_entry,
+            Path::new("Cargo.toml")
+        ));
+        assert!(!dependency_entry_matches_path(
+            &path_entry,
+            Path::new("Cargo.lock")
+        ));
+        assert!(dependency_entry_matches_path(
+            &glob_entry,
+            Path::new("crates/core/Cargo.toml")
+        ));
+        assert!(dependency_entry_matches_path(
+            &selector_entry,
+            Path::new("tools/xtask/Cargo.toml")
+        ));
+        assert!(!dependency_entry_matches_path(
+            &selector_entry,
+            Path::new("docs/Cargo.toml")
+        ));
+    }
+
+    #[test]
+    fn dependency_surface_findings_filter_policy_entries_and_sort_paths() {
+        let cfg = AllowConfig {
+            schema_version: "0.1".to_string(),
+            policy: "cargo-allow".to_string(),
+            owner: None,
+            status: None,
+            workspace: WorkspaceConfig::default(),
+            requirements: Default::default(),
+            allow: vec![
+                dependency_entry_with_glob("crates/*/Cargo.toml"),
+                non_dependency_entry(),
+            ],
+        };
+        let paths = vec![
+            PathBuf::from("README.md"),
+            PathBuf::from("crates/zeta/Cargo.toml"),
+            PathBuf::from("crates/alpha/Cargo.toml"),
+        ];
+
+        let findings = dependency_surface_findings_from_paths(&paths, &cfg);
+
+        assert_eq!(
+            findings
+                .iter()
+                .map(|finding| normalize_path(&finding.path))
+                .collect::<Vec<_>>(),
+            vec!["crates/alpha/Cargo.toml", "crates/zeta/Cargo.toml"]
+        );
+    }
+
+    fn dependency_entry() -> AllowEntry {
+        AllowEntry {
+            id: "dependency-surface".to_string(),
+            kind: FindingKind::PolicyException,
+            family: Some("dependency_surface".to_string()),
+            path: None,
+            glob: None,
+            owner: "release".to_string(),
+            classification: "dependency_surface".to_string(),
+            reason: "Dependency surface is governed.".to_string(),
+            evidence: vec!["doc:docs/dependencies.md".to_string()],
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle::empty(),
+            selector: Selector::default(),
+            last_seen: None,
+        }
+    }
+
+    fn dependency_entry_with_glob(glob: &str) -> AllowEntry {
+        let mut entry = dependency_entry();
+        entry.glob = Some(glob.to_string());
+        entry
+    }
+
+    fn non_dependency_entry() -> AllowEntry {
+        let mut entry = dependency_entry();
+        entry.id = "other-policy".to_string();
+        entry.family = Some("github_workflow".to_string());
+        entry.glob = Some(".github/workflows/*.yml".to_string());
+        entry
+    }
+}

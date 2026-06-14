@@ -123,3 +123,87 @@ fn is_workflow_path(path: &Path) -> bool {
         Some("yml" | "yaml")
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn workflow_file_finding_preserves_normalized_identity() {
+        let finding = workflow_file_finding(PathBuf::from(".github\\workflows\\ci.yml"));
+
+        assert_eq!(finding.kind, FindingKind::PolicyException);
+        assert_eq!(finding.family.as_deref(), Some("github_workflow"));
+        assert_eq!(finding.path, PathBuf::from(".github\\workflows\\ci.yml"));
+        assert_eq!(
+            finding.span.as_ref().map(|span| (span.line, span.column)),
+            Some((1, 1))
+        );
+        assert_eq!(finding.identity.language, "workflow");
+        assert_eq!(finding.identity.ast_kind, "github_workflow");
+        assert_eq!(
+            finding.identity.symbol.as_deref(),
+            Some(".github/workflows/ci.yml")
+        );
+        assert_eq!(finding.message, "GitHub Actions workflow file");
+    }
+
+    #[test]
+    fn workflow_action_finding_preserves_action_identity() {
+        let finding = workflow_action_finding(
+            PathBuf::from(".github\\workflows\\ci.yml"),
+            "actions/checkout@v6.0.2".to_string(),
+        );
+
+        assert_eq!(finding.kind, FindingKind::PolicyException);
+        assert_eq!(finding.family.as_deref(), Some("workflow_external_action"));
+        assert_eq!(finding.identity.language, "workflow");
+        assert_eq!(finding.identity.ast_kind, "github_action_uses");
+        assert_eq!(
+            finding.identity.symbol.as_deref(),
+            Some(".github/workflows/ci.yml uses actions/checkout@v6.0.2")
+        );
+        assert_eq!(
+            finding.identity.target_fingerprint.as_deref(),
+            Some("action:actions/checkout@v6.0.2")
+        );
+        assert_eq!(
+            finding.message,
+            "GitHub Actions workflow uses external action actions/checkout@v6.0.2"
+        );
+    }
+
+    #[test]
+    fn extract_workflow_uses_trims_yaml_prefixes_and_comments() {
+        assert_eq!(
+            extract_workflow_uses("  - uses: actions/checkout@v4 # checkout"),
+            Some("actions/checkout@v4".to_string())
+        );
+        assert_eq!(
+            extract_workflow_uses("uses: dtolnay/rust-toolchain@stable"),
+            Some("dtolnay/rust-toolchain@stable".to_string())
+        );
+        assert_eq!(extract_workflow_uses("  - name: build"), None);
+        assert_eq!(
+            extract_workflow_uses("  - uses:   # empty after comment"),
+            None
+        );
+        assert_eq!(extract_workflow_uses("  - uses:"), None);
+    }
+
+    #[test]
+    fn workflow_action_symbol_and_path_filter_are_stable() {
+        assert_eq!(
+            workflow_action_symbol(".github/workflows/ci.yml", "actions/checkout@v4"),
+            ".github/workflows/ci.yml uses actions/checkout@v4"
+        );
+        assert!(is_workflow_path(Path::new(".github/workflows/ci.yml")));
+        assert!(is_workflow_path(Path::new(
+            ".github/workflows/release.yaml"
+        )));
+        assert!(!is_workflow_path(Path::new(".github/workflows/readme.md")));
+        assert!(!is_workflow_path(Path::new(
+            ".github/workflows/no-extension"
+        )));
+    }
+}
