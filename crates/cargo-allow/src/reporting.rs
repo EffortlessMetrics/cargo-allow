@@ -175,3 +175,185 @@ pub(crate) fn report_config(
     filtered.allow.retain(|entry| parsed.matches_entry(entry));
     Ok(filtered)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{AllowEntry, FindingKind, Lifecycle, MatchStatus, Selector};
+    use allow_inventory::InventorySource;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    fn outcome(status: MatchStatus, allow_id: Option<&str>) -> MatchOutcome {
+        MatchOutcome {
+            status,
+            allow_id: allow_id.map(str::to_string),
+            finding_index: None,
+            message: status.as_str().to_string(),
+            score: 0,
+        }
+    }
+
+    fn entry(id: &str, evidence: Vec<String>) -> AllowEntry {
+        AllowEntry {
+            id: id.to_string(),
+            kind: FindingKind::NonRustFile,
+            family: Some("documentation".to_string()),
+            path: Some(PathBuf::from("docs/source.md")),
+            glob: None,
+            owner: "docs".to_string(),
+            classification: "reviewed_exception".to_string(),
+            reason: "Reporting test entry.".to_string(),
+            evidence,
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle::empty(),
+            selector: Selector {
+                ast_kind: Some("tracked_file".to_string()),
+                ..Selector::default()
+            },
+            last_seen: None,
+        }
+    }
+
+    #[test]
+    fn evidence_report_summary_counts_policy_and_reference_diagnostics() {
+        let root = temp_root("evidence-summary");
+        let docs = root.join("docs");
+        fs::create_dir_all(&docs)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("docs dir: {err}")));
+        fs::write(docs.join("present.md"), "present evidence")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("present evidence: {err}")));
+        fs::write(docs.join("not-in-source-tree.md"), "untracked evidence")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("untracked evidence: {err}")));
+
+        let mut cfg = AllowConfig::empty();
+        cfg.allow
+            .push(entry("matched-missing-evidence", Vec::new()));
+        cfg.allow.push(entry(
+            "matched-evidence-diagnostics",
+            vec![
+                "doc:docs/present.md".to_string(),
+                "doc:docs/not-in-source-tree.md".to_string(),
+                "doc:docs/missing.md".to_string(),
+                "loose manual note".to_string(),
+            ],
+        ));
+        cfg.allow
+            .push(entry("unmatched-missing-evidence", Vec::new()));
+        let outcomes = vec![
+            outcome(MatchStatus::Matched, Some("matched-missing-evidence")),
+            outcome(MatchStatus::Matched, Some("matched-evidence-diagnostics")),
+            outcome(MatchStatus::Stale, Some("unmatched-missing-evidence")),
+        ];
+        let source_tree_files = BTreeSet::from(["docs/present.md".to_string()]);
+
+        let summary = EvidenceReportSummary::from_policy_with_source_tree_files(
+            &root,
+            &cfg,
+            &outcomes,
+            Some(&source_tree_files),
+        );
+
+        assert_eq!(summary.policy_missing_evidence_entries, 1);
+        assert_eq!(summary.broken_evidence_links, 2);
+        assert_eq!(summary.weak_evidence_references, 1);
+        assert!(summary.has_broken_evidence_links());
+
+        fs::remove_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture: {err}")));
+    }
+
+    #[test]
+    fn evidence_report_summary_apply_to_sets_only_positive_counts() {
+        let mut empty_context =
+            allow_report::ReportContext::source_syntax("git_tracked", None, None, None);
+        EvidenceReportSummary::default().apply_to(&mut empty_context);
+
+        assert_eq!(empty_context.policy_missing_evidence_entries, None);
+        assert_eq!(empty_context.broken_evidence_links, None);
+        assert_eq!(empty_context.weak_evidence_references, None);
+
+        let mut populated_context =
+            allow_report::ReportContext::source_syntax("git_tracked", None, None, None);
+        EvidenceReportSummary {
+            policy_missing_evidence_entries: 3,
+            broken_evidence_links: 2,
+            weak_evidence_references: 1,
+        }
+        .apply_to(&mut populated_context);
+
+        assert_eq!(populated_context.policy_missing_evidence_entries, Some(3));
+        assert_eq!(populated_context.broken_evidence_links, Some(2));
+        assert_eq!(populated_context.weak_evidence_references, Some(1));
+    }
+
+    #[test]
+    fn print_report_dispatches_all_formats_and_writes_outputs() {
+        let root = temp_root("print-report");
+        let cases = [
+            (OutputFormat::Human, "human.txt", "cargo-allow audit"),
+            (
+                OutputFormat::Json,
+                "report.json",
+                "\"schema_id\": \"cargo-allow.report.v1\"",
+            ),
+            (OutputFormat::Html, "report.html", "<!doctype html>"),
+            (
+                OutputFormat::Sarif,
+                "report.sarif",
+                "\"version\": \"2.1.0\"",
+            ),
+            (OutputFormat::Markdown, "report.md", "# cargo-allow audit"),
+        ];
+
+        for (format, file_name, marker) in cases {
+            let output = root.join(file_name);
+            print_report(ReportRenderArgs {
+                command: "audit",
+                format,
+                baseline_debt_entries: 0,
+                evidence: EvidenceReportSummary {
+                    policy_missing_evidence_entries: 1,
+                    broken_evidence_links: 1,
+                    weak_evidence_references: 1,
+                },
+                findings: &[],
+                outcomes: &[],
+                failed: false,
+                output: Some(&output),
+                root: &root,
+                inventory_facts: InventoryFacts::scanned(InventorySource::GitTracked, 7),
+            })
+            .unwrap_or_else(|err| std::panic::panic_any(format!("print {file_name}: {err}")));
+
+            let text = fs::read_to_string(&output)
+                .unwrap_or_else(|err| std::panic::panic_any(format!("read {file_name}: {err}")));
+            assert!(
+                text.contains(marker),
+                "{file_name} should contain marker {marker}; got {text}"
+            );
+        }
+
+        fs::remove_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture: {err}")));
+    }
+
+    static NEXT_TEMP_ROOT: AtomicUsize = AtomicUsize::new(0);
+
+    fn temp_root(label: &str) -> PathBuf {
+        let id = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-reporting-{label}-{}-{stamp}-{id}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("temp root: {err}")));
+        root
+    }
+}
