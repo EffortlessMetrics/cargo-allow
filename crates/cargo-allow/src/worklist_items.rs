@@ -80,3 +80,113 @@ fn work_item_exception_kind(
         .or_else(|| entry.map(|entry| entry.kind.as_str()))
         .map(ToOwned::to_owned)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::test_support::{test_entry, test_finding, test_outcome};
+    use super::work_item_from_outcome;
+    use allow_core::{AllowConfig, FindingKind, Lifecycle, MatchStatus};
+    use std::path::PathBuf;
+
+    #[test]
+    fn work_item_from_outcome_carries_entry_metadata_and_finding_context() {
+        let mut cfg = AllowConfig::empty();
+        let mut entry = test_entry("allow-process", FindingKind::PolicyException);
+        entry.family = Some("process_spawn".to_string());
+        entry.path = Some(PathBuf::from(".github/workflows/ci.yml"));
+        entry.owner = "security".to_string();
+        entry.classification = "reviewed_exception".to_string();
+        entry.reason = "CI workflow needs a process policy exception.".to_string();
+        entry.evidence = vec![
+            "spec:CARGO-ALLOW-SPEC-0001".to_string(),
+            "test:ci-policy".to_string(),
+        ];
+        entry.lifecycle = Lifecycle {
+            created: Some("2026-06-01".to_string()),
+            review_after: Some("2026-07-01".to_string()),
+            expires: Some("2026-09-01".to_string()),
+        };
+        cfg.allow.push(entry);
+
+        let mut finding = test_finding(
+            FindingKind::PolicyException,
+            Some("process_spawn"),
+            ".github/workflows/ci.yml",
+            "process_spawn",
+        );
+        finding.identity.crate_name = Some("workflow".to_string());
+        let findings = vec![finding];
+        let outcome = test_outcome(
+            MatchStatus::EvidenceMissing,
+            Some("allow-process"),
+            Some(0),
+            "allow-process is missing typed evidence",
+        );
+
+        let item = work_item_from_outcome(7, &cfg, &findings, &outcome);
+
+        assert_eq!(item.id, "work-missing-evidence-0007");
+        assert_eq!(item.kind, "missing_evidence");
+        assert_eq!(item.exception_kind.as_deref(), Some("policy_exception"));
+        assert_eq!(item.family.as_deref(), Some("process_spawn"));
+        assert_eq!(item.owner.as_deref(), Some("security"));
+        assert_eq!(item.classification.as_deref(), Some("reviewed_exception"));
+        assert_eq!(
+            item.reason.as_deref(),
+            Some("CI workflow needs a process policy exception.")
+        );
+        assert_eq!(item.created.as_deref(), Some("2026-06-01"));
+        assert_eq!(item.review_after.as_deref(), Some("2026-07-01"));
+        assert_eq!(item.expires.as_deref(), Some("2026-09-01"));
+        assert_eq!(item.evidence_count, Some(2));
+        assert_eq!(item.risk, "high");
+        assert_eq!(item.difficulty, "small");
+        assert_eq!(item.status, MatchStatus::EvidenceMissing);
+        assert_eq!(item.allow_id.as_deref(), Some("allow-process"));
+        assert_eq!(item.finding_index, Some(0));
+        assert_eq!(item.path.as_deref(), Some(".github/workflows/ci.yml"));
+        assert_eq!(item.source_package.as_deref(), Some("workflow"));
+        assert_eq!(item.message, "allow-process is missing typed evidence");
+        assert!(
+            item.suggested_actions
+                .iter()
+                .any(|action| action.contains("policy_exception.process_spawn"))
+        );
+        assert!(
+            item.suggested_actions
+                .iter()
+                .any(|action| action.contains("package `workflow`"))
+        );
+    }
+
+    #[test]
+    fn work_item_from_outcome_uses_entry_path_when_finding_is_absent() {
+        let mut cfg = AllowConfig::empty();
+        let mut entry = test_entry("allow-stale", FindingKind::GeneratedCode);
+        entry.family = Some("checked_in_fixture".to_string());
+        entry.path = None;
+        entry.glob = Some("fixtures/generated/**".to_string());
+        cfg.allow.push(entry);
+        let outcome = test_outcome(
+            MatchStatus::Stale,
+            Some("allow-stale"),
+            None,
+            "allow-stale is stale",
+        );
+
+        let item = work_item_from_outcome(2, &cfg, &[], &outcome);
+
+        assert_eq!(item.id, "work-stale-allow-0002");
+        assert_eq!(item.kind, "stale_allow");
+        assert_eq!(item.exception_kind.as_deref(), Some("generated_code"));
+        assert_eq!(item.family.as_deref(), Some("checked_in_fixture"));
+        assert_eq!(item.risk, "low");
+        assert_eq!(item.difficulty, "small");
+        assert_eq!(item.status, MatchStatus::Stale);
+        assert_eq!(item.allow_id.as_deref(), Some("allow-stale"));
+        assert_eq!(item.finding_index, None);
+        assert_eq!(item.path.as_deref(), Some("fixtures/generated/**"));
+        assert_eq!(item.source_package, None);
+        assert_eq!(item.message, "allow-stale is stale");
+    }
+}
