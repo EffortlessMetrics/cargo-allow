@@ -19,3 +19,86 @@ pub(crate) fn selector_from_finding(finding: &Finding) -> Selector {
         .then(|| normalize_path(&finding.path)),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::selector_from_finding;
+    use allow_core::{Finding, FindingKind, Selector, Span, StructuralIdentity};
+    use std::path::PathBuf;
+
+    fn finding(kind: FindingKind, path: &str, identity: StructuralIdentity) -> Finding {
+        Finding {
+            kind,
+            family: Some("fixture".to_string()),
+            path: PathBuf::from(path),
+            span: Some(Span {
+                line: 42,
+                column: 7,
+            }),
+            identity,
+            message: "fixture".to_string(),
+        }
+    }
+
+    #[test]
+    fn selector_from_finding_preserves_structural_identity_fields() {
+        let mut identity = StructuralIdentity::new("rust", "method_call");
+        identity.container = Some("Parser::parse".to_string());
+        identity.callee = Some("unwrap".to_string());
+        identity.macro_name = Some("debug_assert".to_string());
+        identity.lint = Some("clippy::unwrap_used".to_string());
+        identity.symbol = Some("value.unwrap()".to_string());
+        identity.receiver_fingerprint = Some("recv:value".to_string());
+        identity.target_fingerprint = Some("target:policy".to_string());
+        identity.normalized_snippet_hash = Some("fnv1a64:abc".to_string());
+        identity.line_hint = Some(41);
+
+        let selector = selector_from_finding(&finding(FindingKind::Panic, "src/lib.rs", identity));
+
+        assert_eq!(
+            selector,
+            Selector {
+                ast_kind: Some("method_call".to_string()),
+                container: Some("Parser::parse".to_string()),
+                callee: Some("unwrap".to_string()),
+                macro_name: Some("debug_assert".to_string()),
+                lint: Some("clippy::unwrap_used".to_string()),
+                symbol: Some("value.unwrap()".to_string()),
+                receiver_fingerprint: Some("recv:value".to_string()),
+                target_fingerprint: Some("target:policy".to_string()),
+                normalized_snippet_hash: Some("fnv1a64:abc".to_string()),
+                line_hint: Some(42),
+                glob: None,
+            }
+        );
+    }
+
+    #[test]
+    fn selector_from_finding_adds_glob_only_for_file_inventory_findings() {
+        let cases = [
+            (
+                FindingKind::NonRustFile,
+                "docs/README.md",
+                Some("docs/README.md"),
+            ),
+            (
+                FindingKind::GeneratedCode,
+                "target/generated.rs",
+                Some("target/generated.rs"),
+            ),
+            (FindingKind::Unsafe, "src/lib.rs", None),
+        ];
+
+        for (kind, path, expected_glob) in cases {
+            let selector = selector_from_finding(&finding(
+                kind,
+                path,
+                StructuralIdentity::new("rust", "file"),
+            ));
+
+            assert_eq!(selector.ast_kind.as_deref(), Some("file"));
+            assert_eq!(selector.line_hint, Some(42));
+            assert_eq!(selector.glob.as_deref(), expected_glob);
+        }
+    }
+}
