@@ -1,4 +1,4 @@
-use super::test_support::{row_status, test_entry, test_finding, test_outcome};
+use super::test_support::{list_row, row_status, test_entry, test_finding, test_outcome};
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand};
 use clap::Parser;
@@ -386,6 +386,139 @@ fn render_list_rows_json_records_context_filters_and_rows() {
             .pointer("/filters/weak_evidence")
             .and_then(Value::as_bool),
         Some(true)
+    );
+}
+
+#[test]
+fn render_list_rows_with_context_filters_rows_and_reports_inventory() {
+    let rows = vec![
+        list_row("allow-keep", FindingKind::Panic, "parser", "approved"),
+        list_row("allow-skip", FindingKind::Unsafe, "runtime", "approved"),
+    ];
+    let filters = ListFilters {
+        kind: Some(
+            parse_kind_filter("panic")
+                .unwrap_or_else(|err| std::panic::panic_any(format!("kind filter: {err}"))),
+        ),
+        family: None,
+        owner: Some("parser"),
+        classification: None,
+        path: None,
+        source_package: None,
+        allow_id: None,
+        status: None,
+        expired: false,
+        review_due: false,
+        stale: false,
+        baseline_debt: false,
+        broad_scope: false,
+        missing_evidence: false,
+        broken_evidence: false,
+        weak_evidence: false,
+    };
+    let context = ListContext {
+        inventory: allow_report::InventoryContext::source_syntax(
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(2),
+        ),
+        kind_arg: Some("panic"),
+    };
+
+    let text = render_list_rows_with_context(&rows, &filters, context);
+
+    assert!(
+        text.contains("inventory: source_tree/source_syntax via git_tracked; files scanned: 2")
+    );
+    assert!(text.contains("source_tree_root: H:/Code/Rust/cargo-allow"));
+    assert!(text.contains("allow-keep\tmatched\t1\tpanic"));
+    assert!(!text.contains("allow-skip"));
+}
+
+#[test]
+fn render_list_rows_json_projects_rows_filters_and_dash_lifecycle_fields() {
+    let mut keep = list_row("allow-keep", FindingKind::Panic, "parser", "approved");
+    keep.family = Some("unwrap".to_string());
+    keep.source_package = Some("allow-core".to_string());
+    keep.evidence_count = 2;
+    keep.broken_evidence_references = 1;
+    keep.weak_evidence_references = 1;
+    keep.selector_precision = 7;
+    keep.broad_scope = true;
+    keep.expires = "2026-12-01".to_string();
+    let skip = list_row("allow-skip", FindingKind::Unsafe, "runtime", "approved");
+    let filters = ListFilters {
+        kind: Some(
+            parse_kind_filter("panic")
+                .unwrap_or_else(|err| std::panic::panic_any(format!("kind filter: {err}"))),
+        ),
+        family: Some("unwrap"),
+        owner: Some("parser"),
+        classification: Some("approved"),
+        path: Some("src/lib.rs"),
+        source_package: Some("allow-core"),
+        allow_id: Some("allow-keep"),
+        status: Some("matched"),
+        expired: false,
+        review_due: false,
+        stale: false,
+        baseline_debt: false,
+        broad_scope: true,
+        missing_evidence: false,
+        broken_evidence: true,
+        weak_evidence: true,
+    };
+    let context = ListContext {
+        inventory: allow_report::InventoryContext::source_syntax("git_tracked", None, Some(2)),
+        kind_arg: Some("panic"),
+    };
+
+    let json = render_list_rows_json(&[keep, skip], &filters, context);
+    let value = parse_json("list render rows json", &json);
+
+    assert_eq!(
+        value.pointer("/summary/allow_entries"),
+        Some(&Value::from(1))
+    );
+    assert_eq!(
+        value.pointer("/allow_entries/0/id").and_then(Value::as_str),
+        Some("allow-keep")
+    );
+    assert_eq!(
+        value.pointer("/filters/kind").and_then(Value::as_str),
+        Some("panic")
+    );
+    assert_eq!(
+        value.pointer("/filters/allow_id").and_then(Value::as_str),
+        Some("allow-keep")
+    );
+    assert_eq!(
+        value
+            .pointer("/allow_entries/0/source_package")
+            .and_then(Value::as_str),
+        Some("allow-core")
+    );
+    assert_eq!(
+        value
+            .pointer("/allow_entries/0/review_after")
+            .unwrap_or_else(|| std::panic::panic_any("review_after field should exist")),
+        &Value::Null
+    );
+    assert_eq!(
+        value
+            .pointer("/allow_entries/0/expires")
+            .and_then(Value::as_str),
+        Some("2026-12-01")
+    );
+    assert_eq!(
+        value
+            .pointer("/allow_entries/0/broken_evidence_references")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
+    assert!(
+        !json.contains("allow-skip"),
+        "filtered rows should not be projected into list JSON"
     );
 }
 
