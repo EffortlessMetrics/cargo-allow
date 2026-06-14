@@ -192,3 +192,112 @@ fn parses_current_repository_policy() {
         );
     }
 }
+
+#[test]
+fn find_config_walks_up_to_nearest_supported_policy_file() -> std::io::Result<()> {
+    let root = TempRoot::new("find-config-nearest")?;
+    let workspace = root.path().join("workspace");
+    let start = workspace.join("member/src");
+    let root_policy = root.path().join("policy/allow.toml");
+    let workspace_policy = workspace.join(".cargo/allow.toml");
+    std::fs::create_dir_all(&start)?;
+    write_fixture_file(&root_policy)?;
+    write_fixture_file(&workspace_policy)?;
+
+    let found = find_config(&start).unwrap_or_else(|| {
+        std::panic::panic_any(format!("expected config for {}", start.display()))
+    });
+
+    assert_eq!(found.canonicalize()?, workspace_policy.canonicalize()?);
+    Ok(())
+}
+
+#[test]
+fn find_config_returns_none_when_no_supported_policy_file_exists() -> std::io::Result<()> {
+    let root = TempRoot::new("find-config-none")?;
+    let start = root.path().join("member/src");
+    std::fs::create_dir_all(&start)?;
+
+    assert_eq!(find_config(&start), None);
+    Ok(())
+}
+
+#[test]
+fn load_policy_with_reportable_evidence_reads_file_and_keeps_invalid_links() -> std::io::Result<()>
+{
+    let root = TempRoot::new("load-reportable-evidence")?;
+    let policy_path = root.path().join("policy/allow.toml");
+    write_fixture_file_with_contents(
+        &policy_path,
+        r#"
+                policy = "cargo-allow"
+
+                [[allow]]
+                id = "allow-invalid-link"
+                kind = "unsafe"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["test:load_reportable"]
+                links = ["doc:docs/./safety.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "unsafe_block"
+                container = "load"
+            "#,
+    )?;
+
+    let cfg = load_policy_with_reportable_evidence(&policy_path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("reportable policy load should parse: {err}"))
+    });
+
+    assert_eq!(cfg.allow.len(), 1);
+    assert_eq!(cfg.allow[0].id, "allow-invalid-link");
+    assert_eq!(cfg.allow[0].links, vec!["doc:docs/./safety.md"]);
+    Ok(())
+}
+
+struct TempRoot {
+    path: std::path::PathBuf,
+}
+
+impl TempRoot {
+    fn new(label: &str) -> std::io::Result<Self> {
+        let unique = format!(
+            "cargo-allow-policy-{label}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_else(|err| {
+                    std::panic::panic_any(format!("system time before epoch: {err}"))
+                })
+                .as_nanos()
+        );
+        let path = std::env::temp_dir().join(unique);
+        let _ = std::fs::remove_dir_all(&path);
+        std::fs::create_dir_all(&path)?;
+        Ok(Self { path })
+    }
+
+    fn path(&self) -> &std::path::Path {
+        &self.path
+    }
+}
+
+impl Drop for TempRoot {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.path);
+    }
+}
+
+fn write_fixture_file(path: &std::path::Path) -> std::io::Result<()> {
+    write_fixture_file_with_contents(path, "policy = \"cargo-allow\"\n")
+}
+
+fn write_fixture_file_with_contents(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(path, contents)
+}
