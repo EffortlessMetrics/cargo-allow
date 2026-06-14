@@ -94,3 +94,112 @@ fn escape_toml_basic(value: &str) -> String {
     }
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::FindingKind;
+
+    #[test]
+    fn allow_blocks_call_presence_observer() {
+        let rendered = r#"schema_version = "0.1"
+
+[[allow]]
+id = "allow-one"
+reason = "first"
+
+[[allow]]
+id = "allow-two"
+reason = "second"
+"#;
+
+        let blocks = allow_blocks(rendered);
+
+        assert_eq!(blocks.len(), 2);
+        assert_eq!(
+            blocks.first().copied(),
+            Some("[[allow]]\nid = \"allow-one\"\nreason = \"first\"")
+        );
+        assert_eq!(
+            blocks.get(1).copied(),
+            Some("[[allow]]\nid = \"allow-two\"\nreason = \"second\"")
+        );
+    }
+
+    #[test]
+    fn block_contains_allow_id_call_presence_observer() {
+        let block = "[[allow]]\nid = \"allow-\\\"quoted\\\"\"\nreason = \"fixture\"";
+
+        assert!(block_contains_allow_id(block, "allow-\"quoted\""));
+        assert!(!block_contains_allow_id(block, "allow-quoted"));
+        assert!(!block_contains_allow_id(
+            "[[allow]]\n# id = \"allow-\\\"quoted\\\"\"",
+            "allow-\"quoted\""
+        ));
+    }
+
+    #[test]
+    fn escape_toml_basic_call_presence_observer() {
+        assert_eq!(
+            escape_toml_basic("slash\\quote\"newline\nreturn\rtab\tplain"),
+            "slash\\\\quote\\\"newline\\nreturn\\rtab\\tplain"
+        );
+    }
+
+    #[test]
+    fn escape_toml_basic_match_arm_observer() {
+        let cases = [
+            ('\\', "\\\\"),
+            ('"', "\\\""),
+            ('\n', "\\n"),
+            ('\r', "\\r"),
+            ('\t', "\\t"),
+            ('x', "x"),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(escape_toml_basic(&input.to_string()), expected);
+        }
+    }
+
+    #[test]
+    fn removed_toml_blocks_call_presence_observer() {
+        let rendered = r#"schema_version = "0.1"
+
+[[allow]]
+id = "allow-keep"
+path = "docs/keep.md"
+
+[[allow]]
+id = "allow-remove"
+path = "docs/remove.md"
+
+[[allow]]
+id = "allow-remove-suffix"
+path = "docs/suffix.md"
+"#;
+        let candidates = vec![prune_candidate("allow-remove")];
+
+        let blocks = removed_toml_blocks(rendered, &candidates);
+
+        assert_eq!(blocks.len(), 1);
+        let block = blocks
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("expected removed block"));
+        assert!(block.contains("id = \"allow-remove\""));
+        assert!(!block.contains("allow-keep"));
+        assert!(!block.contains("allow-remove-suffix"));
+    }
+
+    fn prune_candidate(id: &str) -> PruneCandidate {
+        PruneCandidate {
+            id: id.to_string(),
+            kind: FindingKind::NonRustFile,
+            family: Some("documentation".to_string()),
+            owner: "docs".to_string(),
+            classification: "reviewed".to_string(),
+            scope: "docs/remove.md".to_string(),
+            reason: "fixture".to_string(),
+        }
+    }
+}
