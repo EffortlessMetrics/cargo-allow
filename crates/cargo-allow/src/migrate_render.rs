@@ -86,3 +86,151 @@ fn unsafe_broken_evidence_link_count(root: &Path, cfg: &AllowConfig) -> usize {
         .filter(|reference| reference.diagnostic.status.is_broken_local_link())
         .count()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{AllowEntry, Lifecycle, Selector};
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn migrate_report_call_presence_observer() {
+        let root = unique_test_dir("migrate-report-evidence-counts");
+        fs::create_dir_all(root.join("docs"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+        fs::write(root.join("docs/present.md"), "retained evidence")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence: {err}")));
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(allow_entry(
+            "allow-unsafe",
+            FindingKind::Unsafe,
+            &[
+                "doc:docs/missing-unsafe.md",
+                "TODO: add unsafe-review evidence",
+            ],
+            &["doc:docs/missing-unsafe-link.md", "ticket:unsafe-123"],
+        ));
+        cfg.allow.push(allow_entry(
+            "allow-panic",
+            FindingKind::Panic,
+            &["doc:docs/missing-panic.md", "ticket:panic-123"],
+            &["doc:docs/present.md"],
+        ));
+        let context = migrate_context(Some(root.display().to_string()));
+
+        let report = migrate_report(&cfg, &context, "policy/allow.toml", true);
+
+        assert_eq!(report.allow_entries, 2);
+        assert_eq!(report.unsafe_entries, 1);
+        assert_eq!(report.input_kind, "from");
+        assert_eq!(report.input_path, "policy/legacy.toml");
+        assert_eq!(report.output_path, "policy/allow.toml");
+        assert!(report.force);
+        assert_eq!(report.broken_evidence_links, Some(3));
+        assert_eq!(report.unsafe_broken_evidence_links, Some(2));
+        assert_eq!(report.weak_evidence_references, Some(3));
+        assert_eq!(report.unsafe_weak_evidence_references, Some(2));
+        assert!(report.notes.contains("legacy"));
+        remove_test_dir(&root);
+    }
+
+    #[test]
+    fn evidence_diagnostic_root_call_presence_observer() {
+        let explicit = migrate_context(Some("fixture-root".to_string()));
+        let implicit = migrate_context(None);
+
+        assert_eq!(
+            evidence_diagnostic_root(&explicit),
+            PathBuf::from("fixture-root")
+        );
+        assert_eq!(evidence_diagnostic_root(&implicit), PathBuf::from("."));
+    }
+
+    #[test]
+    fn unsafe_weak_evidence_reference_count_call_presence_observer() {
+        let root = unique_test_dir("migrate-render-unsafe-weak");
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(allow_entry(
+            "allow-unsafe",
+            FindingKind::Unsafe,
+            &["ticket:unsafe-123", "TODO: add unsafe evidence"],
+            &["spreadsheet:manual"],
+        ));
+        cfg.allow.push(allow_entry(
+            "allow-panic",
+            FindingKind::Panic,
+            &["ticket:panic-123"],
+            &["doc:docs/missing-panic.md"],
+        ));
+
+        assert_eq!(unsafe_weak_evidence_reference_count(&root, &cfg), 3);
+        remove_test_dir(&root);
+    }
+
+    #[test]
+    fn unsafe_broken_evidence_link_count_call_presence_observer() {
+        let root = unique_test_dir("migrate-render-unsafe-broken");
+        fs::create_dir_all(root.join("docs"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+        fs::write(root.join("docs/present.md"), "retained evidence")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence: {err}")));
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(allow_entry(
+            "allow-unsafe",
+            FindingKind::Unsafe,
+            &["doc:docs/missing-unsafe.md", "doc:docs/present.md"],
+            &["doc:docs/missing-unsafe-link.md", "ticket:unsafe-123"],
+        ));
+        cfg.allow.push(allow_entry(
+            "allow-panic",
+            FindingKind::Panic,
+            &["doc:docs/missing-panic.md"],
+            &["doc:docs/present.md"],
+        ));
+
+        assert_eq!(unsafe_broken_evidence_link_count(&root, &cfg), 2);
+        remove_test_dir(&root);
+    }
+
+    fn migrate_context(source_tree_root: Option<String>) -> MigrateContext {
+        MigrateContext {
+            inventory_source: "git_tracked".to_string(),
+            source_tree_root,
+            inventory_files: Some(7),
+            input_kind: "from".to_string(),
+            input_path: "policy/legacy.toml".to_string(),
+        }
+    }
+
+    fn allow_entry(id: &str, kind: FindingKind, evidence: &[&str], links: &[&str]) -> AllowEntry {
+        AllowEntry {
+            id: id.to_string(),
+            kind,
+            family: Some("fixture".to_string()),
+            path: Some(PathBuf::from("src/lib.rs")),
+            glob: None,
+            owner: "test".to_string(),
+            classification: "reviewed".to_string(),
+            reason: "fixture".to_string(),
+            evidence: evidence.iter().map(|item| item.to_string()).collect(),
+            links: links.iter().map(|item| item.to_string()).collect(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle::empty(),
+            selector: Selector::default(),
+            last_seen: None,
+        }
+    }
+
+    fn unique_test_dir(slug: &str) -> PathBuf {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        std::env::temp_dir().join(format!("cargo-allow-{slug}-{}-{stamp}", std::process::id()))
+    }
+
+    fn remove_test_dir(path: &Path) {
+        let _ = fs::remove_dir_all(path);
+    }
+}
