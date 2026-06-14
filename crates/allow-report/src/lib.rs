@@ -16,6 +16,8 @@ mod audit_remediation;
 mod contracts;
 mod diff;
 mod diff_finding_detail;
+#[cfg(test)]
+mod diff_finding_detail_tests;
 mod diff_human;
 mod diff_json;
 mod diff_markdown;
