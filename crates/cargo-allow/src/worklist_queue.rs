@@ -139,3 +139,132 @@ pub(super) fn renumber_work_items(items: &mut [WorkItem]) {
         item.id = format!("work-{}-{:04}", item.kind.replace('_', "-"), index + 1);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        item_kind_matches, kind_matches, selector_precision_rank, work_item_path_matches_filter,
+        work_item_risk_rank,
+    };
+    use crate::worklist::{
+        WorkItem, WorkItemEvidenceReference,
+        worklist_item_kind::BROKEN_EVIDENCE_LINK,
+        worklist_priority::{RISK_HIGH, RISK_LOW, RISK_MEDIUM},
+    };
+    use allow_core::MatchStatus;
+
+    fn queue_item(path: Option<&str>) -> WorkItem {
+        WorkItem {
+            id: "work-fixture".to_string(),
+            kind: "new_unreceipted_finding".to_string(),
+            exception_kind: Some("panic".to_string()),
+            family: Some("unwrap".to_string()),
+            owner: Some("owner".to_string()),
+            classification: Some("classification".to_string()),
+            reason: Some("reason".to_string()),
+            created: None,
+            review_after: None,
+            expires: None,
+            evidence_count: Some(1),
+            selector_precision: Some(10),
+            risk: RISK_LOW,
+            difficulty: "small",
+            status: MatchStatus::New,
+            allow_id: Some("allow-1".to_string()),
+            finding_index: Some(0),
+            path: path.map(str::to_string),
+            evidence_reference: None,
+            source_package: None,
+            message: "message".to_string(),
+            suggested_actions: Vec::new(),
+            proof_commands: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn work_item_path_matches_invalid_evidence_exactly_and_source_scope_filters() {
+        let missing_path = queue_item(None);
+        assert!(!work_item_path_matches_filter(
+            &missing_path,
+            "docs/README.md"
+        ));
+
+        let mut invalid_evidence = queue_item(Some(r"evidence\missing.md"));
+        invalid_evidence.evidence_reference = Some(WorkItemEvidenceReference {
+            raw: "file:evidence\\missing.md".to_string(),
+            prefix: Some("file".to_string()),
+            target: Some(r"evidence\missing.md".to_string()),
+            status: "invalid_local_path".to_string(),
+            category: "missing".to_string(),
+            message: "missing file".to_string(),
+        });
+        assert!(work_item_path_matches_filter(
+            &invalid_evidence,
+            "evidence/missing.md"
+        ));
+        assert!(!work_item_path_matches_filter(
+            &invalid_evidence,
+            "evidence/other.md"
+        ));
+
+        let source_scope = queue_item(Some("docs/**/*.md"));
+        assert!(work_item_path_matches_filter(
+            &source_scope,
+            "docs/guide.md"
+        ));
+        assert!(!work_item_path_matches_filter(
+            &source_scope,
+            "src/guide.md"
+        ));
+    }
+
+    #[test]
+    fn item_kind_and_exception_kind_filters_handle_aliases_and_invalid_input() {
+        let accepted = true;
+        let rejected = false;
+
+        assert_eq!(
+            item_kind_matches("broken_evidence_link", "broken_evidence_link"),
+            accepted
+        );
+        let hyphen_filter = "broken-evidence-link";
+        let normalized_item_kind = hyphen_filter.replace('-', "_");
+        assert_eq!(normalized_item_kind, "broken_evidence_link");
+        assert_eq!(
+            item_kind_matches(&normalized_item_kind, hyphen_filter),
+            accepted
+        );
+        assert_eq!(
+            item_kind_matches(
+                "broken-evidence-link".replace('-', "_").as_str(),
+                "broken-evidence-link"
+            ),
+            accepted
+        );
+        assert_eq!(
+            item_kind_matches(BROKEN_EVIDENCE_LINK, "weak-evidence"),
+            rejected
+        );
+
+        let panic_item = queue_item(Some("src/lib.rs"));
+        assert!(kind_matches(&panic_item, None));
+        assert!(kind_matches(&panic_item, Some("panic")));
+        assert!(!kind_matches(&panic_item, Some("unsafe")));
+        assert!(!kind_matches(&panic_item, Some("not-a-kind")));
+    }
+
+    #[test]
+    fn risk_and_selector_precision_rankers_keep_sort_contract() {
+        assert_eq!(work_item_risk_rank(RISK_HIGH), 0);
+        assert_eq!(work_item_risk_rank(RISK_MEDIUM), 1);
+        assert_eq!(work_item_risk_rank(RISK_LOW), 2);
+        assert_eq!(work_item_risk_rank("unknown"), 3);
+
+        let precise = queue_item(Some("src/lib.rs"));
+        assert_eq!(selector_precision_rank(&precise), 10);
+
+        let mut missing_precision = queue_item(Some("src/lib.rs"));
+        missing_precision.selector_precision = None;
+        assert_eq!(selector_precision_rank(&missing_precision), u32::MAX);
+    }
+}
