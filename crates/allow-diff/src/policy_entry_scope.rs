@@ -103,3 +103,7 @@ fn effective_scope(entry: &AllowEntry) -> Option<String> {
 fn normalize_scope_text(scope: &str) -> String {
     scope.replace('\\', "/")
 }
+
+#[cfg(test)]
+#[path = "policy_entry_scope_tests.rs"]
+mod tests;
