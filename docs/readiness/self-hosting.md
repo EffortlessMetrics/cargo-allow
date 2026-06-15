@@ -28,7 +28,7 @@ Recorded: 2026-06-15
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
 | ripr+ repo readiness | blocked (provider-tracked) | `ripr` explicit gap-ledger projection still reports `6` `ripr+` targets after the hundred-forty-second slice, but all six remaining `predicate_boundary` anchors are filed as provider friction (`ripr#1432`, `#1433`, `#1440`–`#1443`). |
-| unsafe-review+ readiness | not run | Next external-readiness lane after the `predicate_boundary` tail is fully provider-tracked. |
+| unsafe-review+ readiness | blocked (provider-tracked) | `unsafe-review repo` reports `50` open gaps; `unsafe-review badges` reports `unsafe-review+ = 33` (`30 contract / 3 guard / 0 witness`). Initial triage filed `EffortlessMetrics/unsafe-review#541` after `40 / 50` cards anchored in tests/fixtures and the remaining nine non-fixture cards were false positives on safe scanner code or test string literals. |
 
 ## RIPR Evidence
 
@@ -7920,6 +7920,82 @@ Remaining repairable evidence classes:
 
 All six remaining `predicate_boundary` anchors are provider-tracked.
 
+## Unsafe-Review Evidence
+
+There is no separate `unsafe-review+` binary. Discovery used the installed
+`unsafe-review` CLI help surface:
+
+```bash
+unsafe-review --help
+unsafe-review doctor --root .
+```
+
+`unsafe-review+` readiness is rendered from `unsafe-review badges` as
+`target/unsafe-review/reports/badges.json/unsafe-review-plus.json`.
+
+Installed provider:
+
+```text
+unsafe-review 0.1.0
+```
+
+Initial repo-scoped commands:
+
+```bash
+rtk unsafe-review doctor --root .
+rtk unsafe-review repo --root . --format json --out target/unsafe-review/reports/repo.json
+rtk unsafe-review badges --root . --out target/unsafe-review/reports/badges.json
+rtk unsafe-review policy report --root . --format json --out target/unsafe-review/reports/policy-report.json
+rtk unsafe-review receipt validate --root .
+rtk unsafe-review receipt audit --root . --format json --out target/unsafe-review/reports/receipt-audit.json
+rtk unsafe-review check --root . --base origin/main --format json --out target/unsafe-review/reports/check.json
+```
+
+Observed repo scope (`target/unsafe-review/reports/repo.json`):
+
+```text
+rust_files = 530
+unsafe_sites = 50
+cards = 50
+open_actionable_gaps = 50
+contract_missing = 30
+guard_missing = 3
+guarded_unwitnessed = 0
+requires_loom = 5
+miri_unsupported = 12
+trust_boundary = Static unsafe contract review only; not a proof of memory safety
+```
+
+Observed badge projection:
+
+```text
+unsafe-review: 50 open gaps
+unsafe-review+: 30 contract / 3 guard / 0 witness
+```
+
+`unsafe-review+` therefore starts at `33` actionable gaps (`contract_missing` +
+`guard_missing` + `guarded_unwitnessed`), excluding `requires_loom` and
+`miri_unsupported` from the plus badge.
+
+Diff scope on a clean `main` tree (`target/unsafe-review/reports/check.json`)
+reported `0` cards. Witness receipt inventory is empty
+(`receipt validate`: `0 valid`; `receipt audit`: `0` receipts).
+
+Initial triage:
+
+- `40 / 50` cards anchor in tests or intentional fixtures, including
+  `crates/allow-rust/src/tests/unsafe_scan.rs` (`36` cards) and
+  `fixtures/unsafe/src/lib.rs`.
+- the remaining nine non-fixture cards are false positives on safe scanner code
+  or illustrative test string literals, including
+  `crates/allow-rust/src/safety_comments.rs:34` and `:38` (`unsafe { load(ptr) }`
+  inside a `#[test]` source string) and
+  `crates/allow-rust/src/line_unsafe_findings.rs:14` (`push_finding(...)` helper
+  misclassified as `unsafe_fn_call`).
+
+Provider friction filed as `EffortlessMetrics/unsafe-review#541`. Do not add
+witness receipts or `SAFETY:` padding to test fixtures solely to clear the badge.
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -7941,6 +8017,14 @@ and filed provider issues for all six. Do not move `ripr` or other external
 repositories onto cargo-allow/spec-system as a readiness claim until ripr clears
 the ledger or the readiness bar is explicitly revised.
 
+`unsafe-review+ = 33` means the installed unsafe-review badge still reports
+thirty-three contract/guard/witness gaps on a repo-scoped scan. cargo-allow's
+initial triage found no production unsafe-contract debt requiring witness import;
+the projection is filed as provider friction in `unsafe-review#541`.
+
+cargo-allow did not execute `unsafe-review` as part of its own scan. The
+unsafe-review results above are external readiness evidence.
+
 ## Next Work
 
 Recommended next lane:
@@ -7949,10 +8033,12 @@ Recommended next lane:
 evidence: unsafe-review+ external readiness
 ```
 
-1. inspect `unsafe-review --help` and record the provider contract.
-2. run the provider against this repository.
-3. capture receipts under `target/unsafe-review/reports/`.
-4. update this record with `unsafe-review+` before/after counts.
+1. wait for `unsafe-review#541` triage or a provider rule that excludes
+   test/fixture cards and misclassified safe call sites.
+2. regenerate `target/unsafe-review/reports/repo.json` and badge artifacts.
+3. re-check whether repo-scoped `unsafe-review+` has reached `0`.
+4. if the provider closes the issue without ledger movement, record the residual
+   count honestly and revise the readiness bar only with explicit user approval.
 
 Do not start `.allow` ledger edits as part of the external-readiness lane.
 
