@@ -45,3 +45,7 @@ pub struct Inventory {
     pub files: Vec<PathBuf>,
     pub source: InventorySource,
 }
+
+#[cfg(test)]
+#[path = "options_tests.rs"]
+mod tests;
