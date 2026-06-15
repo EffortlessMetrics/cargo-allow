@@ -74,9 +74,21 @@ fn push_audit_remediation_item_if_call_presence_observer() {
     let summary = Summary::from_outcomes(&[outcome(MatchStatus::Expired)]);
     let items = audit_remediation_items(&summary, empty_signals());
 
-    assert_eq!(items.len(), 1);
-    assert_eq!(items[0].signal, "expired");
-    assert_eq!(items[0].count, 1);
+    assert_eq!(
+        items,
+        vec![AuditRemediationItem {
+            signal: "expired",
+            label: "expired",
+            route: AuditRemediationRoute {
+                route_kind: "worklist_status",
+                item_kind: Some("expired_allow"),
+                worklist_status: Some("expired"),
+                worklist_filter: None,
+            },
+            count: 1,
+            command: "cargo-allow worklist --status expired --format json",
+        }]
+    );
 
     let empty = audit_remediation_items(&Summary::default(), empty_signals());
     assert_eq!(empty, Vec::new());
