@@ -133,3 +133,7 @@ fn date_is_due(date: Option<&str>, today: SimpleDate) -> bool {
         .map(|date| date <= today)
         .unwrap_or(false)
 }
+
+#[cfg(test)]
+#[path = "list_rows_tests.rs"]
+mod tests;
