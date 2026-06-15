@@ -105,3 +105,7 @@ fn apply_source_tree_inventory_to_diagnostic(
     diagnostic.category = EvidenceReferenceCategory::Missing;
     diagnostic.message = DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE.to_string();
 }
+
+#[cfg(test)]
+#[path = "evidence_inventory_tests.rs"]
+mod tests;

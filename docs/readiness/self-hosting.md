@@ -17,7 +17,7 @@ Current state: **not ready for external migration**.
 
 ## Current Result
 
-Recorded: 2026-06-14
+Recorded: 2026-06-15
 
 | Surface | Status | Evidence |
 | --- | --- | --- |
@@ -27,7 +27,7 @@ Recorded: 2026-06-14
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `106` `ripr` targets and `106` `ripr+` targets after the hundred-tenth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `100` `ripr` targets and `100` `ripr+` targets after the hundred-eleventh burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -6228,6 +6228,65 @@ Largest remaining file concentrations:
 | `crates/allow-diff/src/revision.rs` | 5 |
 | `crates/cargo-allow/src/companion.rs` | 5 |
 
+## Hundred-Eleventh Burn-Down Slice
+
+The hundred-eleventh focused slice added same-module source-tree evidence
+inventory coverage for `crates/cargo-allow/src/evidence_inventory.rs`.
+
+The new tests prove that:
+
+- `evidence_reference_diagnostics_for_source_tree` downgrades present local
+  evidence files to missing when they are outside the default git-tracked
+  inventory, preserves present status for inventory members, and skips inventory
+  filtering when the inventory is unavailable.
+- `policy_reference_diagnostics_for_source_tree` applies the same inventory
+  downgrade to link references.
+- `validate_evidence_references_for_source_tree` returns `Ok(())` when all
+  references are inventory-clean and returns structured errors for missing local
+  files and for present-but-untracked evidence.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-evidence-inventory.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-evidence-inventory.repo-exposure.json --out target/ripr/reports/after-evidence-inventory.gap-decision-ledger.json --out-md target/ripr/reports/after-evidence-inventory.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 100
+ripr zero target count = 100
+ripr plus target count = 100
+crates/cargo-allow/src/evidence_inventory.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `106` to `100` and
+reduced `crates/cargo-allow/src/evidence_inventory.rs` from `6` repairable
+targets to `0`.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `call_presence` | 57 |
+| `error_variant` | 22 |
+| `predicate_boundary` | 7 |
+| `return_value` | 5 |
+| `match_arm` | 5 |
+| `field_construction` | 4 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-policy/src/entries_validation.rs` | 6 |
+| `crates/cargo-allow/src/init.rs` | 6 |
+| `crates/allow-diff/src/revision.rs` | 5 |
+| `crates/cargo-allow/src/companion.rs` | 5 |
+| `crates/allow-diff/src/policy_entry_identity.rs` | 4 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -6243,7 +6302,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 106` means the current repo does not yet meet the requested
+`ripr+ = 100` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -6268,10 +6327,9 @@ Start with one high-volume, low-judgment class:
 6. verify the `ripr+` target count moves down.
 
 The largest remaining files are concentrated in cargo-allow command adapter,
-policy validation, evidence inventory, and git revision helpers such as
-`evidence_inventory.rs`, `init.rs`, `entries_validation.rs`, `revision.rs`, and
-`companion.rs`. Prefer one low-risk helper group with direct behavior assertions
-per slice.
+policy validation, init/bootstrap, and git revision helpers such as
+`entries_validation.rs`, `init.rs`, `revision.rs`, and `companion.rs`. Prefer
+one low-risk helper group with direct behavior assertions per slice.
 
 If provider behavior is noisy or non-portable, file a ripr issue with:
 
