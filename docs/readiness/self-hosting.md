@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `41` `ripr` targets and `41` `ripr+` targets after the hundred-twenty-first burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `37` `ripr` targets and `37` `ripr+` targets after the hundred-twenty-second burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -6846,6 +6846,60 @@ Largest remaining file concentrations:
 | `crates/cargo-allow/src/worklist_item_kind.rs` | 3 |
 | `crates/allow-policy/src/evidence_validation.rs` | 2 |
 
+## Hundred-Twenty-Second Burn-Down Slice
+
+The hundred-twenty-second focused slice added audit remediation route coverage
+for `crates/allow-report/src/audit_remediation.rs`.
+
+The new tests prove that:
+
+- `audit_remediation_items` builds `worklist_status` routes with populated
+  `item_kind` and `worklist_status` fields for new findings.
+- `audit_remediation_items` builds `prune_stale` routes with the
+  `stale_allow` item kind for stale findings.
+- `push_audit_remediation_item_if` only appends remediation rows when the count
+  is non-zero.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-audit-remediation.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-audit-remediation.repo-exposure.json --out target/ripr/reports/after-audit-remediation.gap-decision-ledger.json --out-md target/ripr/reports/after-audit-remediation.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 37
+ripr zero target count = 37
+ripr plus target count = 37
+crates/allow-report/src/audit_remediation.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `41` to `37` and
+reduced `crates/allow-report/src/audit_remediation.rs` from `4` repairable targets to `0`.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `call_presence` | 21 |
+| `predicate_boundary` | 7 |
+| `field_construction` | 4 |
+| `return_value` | 3 |
+| `match_arm` | 2 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-report/src/worklist_summary.rs` | 3 |
+| `crates/cargo-allow/src/propose_args.rs` | 3 |
+| `crates/cargo-allow/src/worklist_item_kind.rs` | 3 |
+| `crates/allow-policy/src/evidence_validation.rs` | 2 |
+| `crates/allow-rust/src/line_context.rs` | 2 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -6861,7 +6915,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 41` means the current repo does not yet meet the requested
+`ripr+ = 37` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -6885,10 +6939,10 @@ Start with one high-volume, low-judgment class:
 5. regenerate `target/ripr/reports/gap-decision-ledger.json`.
 6. verify the `ripr+` target count moves down.
 
-The largest remaining files are concentrated in allow-report remediation and
-worklist helpers and cargo-allow command adapter paths such as
-`audit_remediation.rs`, `worklist_summary.rs`, and `propose_args.rs`. Prefer one
-low-risk helper group with direct behavior assertions per slice.
+The largest remaining files are concentrated in allow-report worklist helpers
+and cargo-allow command adapter paths such as `worklist_summary.rs`,
+`propose_args.rs`, and `worklist_item_kind.rs`. Prefer one low-risk helper group
+with direct behavior assertions per slice.
 
 If provider behavior is noisy or non-portable, file a ripr issue with:
 

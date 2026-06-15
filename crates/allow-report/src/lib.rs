@@ -13,6 +13,8 @@ mod allow_entry_json;
 mod allow_entry_json_tests;
 mod artifacts;
 mod audit_remediation;
+#[cfg(test)]
+mod audit_remediation_tests;
 mod contracts;
 mod diff;
 mod diff_finding_detail;
