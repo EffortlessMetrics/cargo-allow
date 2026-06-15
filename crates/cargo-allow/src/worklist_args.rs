@@ -121,3 +121,7 @@ pub(super) fn worklist_filters(args: &WorklistArgs) -> WorklistFilters<'_> {
         weak_evidence: args.weak_evidence,
     }
 }
+
+#[cfg(test)]
+#[path = "worklist_args_tests.rs"]
+mod tests;
