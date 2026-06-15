@@ -52,7 +52,9 @@ fn evidence_reference_diagnostics_for_source_tree_downgrades_present_file_outsid
         evidence_reference_diagnostics_for_source_tree(&root, &entry, Some(&source_tree_files));
 
     assert_eq!(diagnostics.len(), 1);
-    let diagnostic = &diagnostics[0];
+    let diagnostic = diagnostics
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one evidence diagnostic"));
     assert_eq!(diagnostic.raw, "doc:docs/untracked.md");
     assert_eq!(diagnostic.status, EvidenceReferenceStatus::LocalFileMissing);
     assert_eq!(diagnostic.category, EvidenceReferenceCategory::Missing);
@@ -83,7 +85,9 @@ fn evidence_reference_diagnostics_for_source_tree_preserves_inventory_members() 
         evidence_reference_diagnostics_for_source_tree(&root, &entry, Some(&source_tree_files));
 
     assert_eq!(diagnostics.len(), 1);
-    let diagnostic = &diagnostics[0];
+    let diagnostic = diagnostics
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one evidence diagnostic"));
     assert_eq!(diagnostic.status, EvidenceReferenceStatus::LocalFilePresent);
     assert_eq!(diagnostic.category, EvidenceReferenceCategory::Present);
     assert_eq!(diagnostic.message, "local evidence file exists");
@@ -103,7 +107,9 @@ fn evidence_reference_diagnostics_for_source_tree_skips_inventory_when_unavailab
     let diagnostics = evidence_reference_diagnostics_for_source_tree(&root, &entry, None);
 
     assert_eq!(diagnostics.len(), 1);
-    let diagnostic = &diagnostics[0];
+    let diagnostic = diagnostics
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one evidence diagnostic"));
     assert_eq!(diagnostic.status, EvidenceReferenceStatus::LocalFilePresent);
     assert_eq!(diagnostic.category, EvidenceReferenceCategory::Present);
     fs::remove_dir_all(&root)
@@ -124,7 +130,9 @@ fn policy_reference_diagnostics_for_source_tree_applies_inventory_to_links() {
         policy_reference_diagnostics_for_source_tree(&root, &entry, Some(&source_tree_files));
 
     assert_eq!(references.len(), 1);
-    let reference = &references[0];
+    let reference = references
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one policy reference"));
     assert_eq!(reference.source, ReferenceSource::Link);
     assert_eq!(
         reference.diagnostic.status,
