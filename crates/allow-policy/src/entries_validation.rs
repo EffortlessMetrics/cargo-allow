@@ -49,3 +49,7 @@ fn validate_allow_entries_with_link_scope_validation(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "entries_validation_tests.rs"]
+mod tests;
