@@ -63,3 +63,7 @@ pub(crate) fn extend_unique_findings(findings: &mut Vec<Finding>, additional: Ve
 fn same_finding_identity(left: &Finding, right: &Finding) -> bool {
     allow_core::finding_identity_key(left) == allow_core::finding_identity_key(right)
 }
+
+#[cfg(test)]
+#[path = "companion_helpers_tests.rs"]
+mod tests;

@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `86` `ripr` targets and `86` `ripr+` targets after the hundred-fourteenth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `81` `ripr` targets and `81` `ripr+` targets after the hundred-fifteenth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -6458,6 +6458,60 @@ Largest remaining file concentrations:
 | `crates/allow-policy/src/toml_workspace.rs` | 4 |
 | `crates/allow-report/src/audit_remediation.rs` | 4 |
 
+## Hundred-Fifteenth Burn-Down Slice
+
+The hundred-fifteenth focused slice added same-module companion helper coverage
+for `crates/cargo-allow/src/companion.rs`.
+
+The new tests prove that:
+
+- `has_policy_family` returns true when the config includes a matching
+  `PolicyException` family and false for unrelated families.
+- `has_allow_family` matches on both `FindingKind` and family name.
+- `same_finding_identity` compares findings through `finding_identity_key` and
+  distinguishes distinct paths.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-companion.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-companion.repo-exposure.json --out target/ripr/reports/after-companion.gap-decision-ledger.json --out-md target/ripr/reports/after-companion.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 81
+ripr zero target count = 81
+ripr plus target count = 81
+crates/cargo-allow/src/companion.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `86` to `81` and
+reduced `crates/cargo-allow/src/companion.rs` from `5` repairable targets to `0`.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `call_presence` | 43 |
+| `error_variant` | 19 |
+| `predicate_boundary` | 7 |
+| `match_arm` | 5 |
+| `field_construction` | 4 |
+| `return_value` | 3 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-policy/src/validation.rs` | 4 |
+| `crates/allow-diff/src/policy_entry_scope.rs` | 4 |
+| `crates/allow-policy/src/toml_workspace.rs` | 4 |
+| `crates/cargo-allow/src/add_entry.rs` | 4 |
+| `crates/allow-diff/src/policy_entry_identity.rs` | 4 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -6473,7 +6527,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 86` means the current repo does not yet meet the requested
+`ripr+ = 81` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
