@@ -59,3 +59,7 @@ fn parse_propose_expires_arg(value: &str) -> Result<String, String> {
     }
     Ok(value.to_string())
 }
+
+#[cfg(test)]
+#[path = "propose_args_tests.rs"]
+mod tests;
