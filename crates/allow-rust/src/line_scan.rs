@@ -64,3 +64,7 @@ pub(crate) fn scan_source_lines(
 
     findings
 }
+
+#[cfg(test)]
+#[path = "line_scan_tests.rs"]
+mod tests;
