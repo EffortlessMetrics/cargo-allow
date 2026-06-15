@@ -49,3 +49,7 @@ pub(crate) fn identity_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
     }
     changes
 }
+
+#[cfg(test)]
+#[path = "policy_entry_identity_tests.rs"]
+mod tests;
