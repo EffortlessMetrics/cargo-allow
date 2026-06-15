@@ -58,3 +58,7 @@ fn remove_test_path(path: &Path) {
 fn escape_toml_string(value: &str) -> String {
     value.replace('\\', "\\\\").replace('"', "\\\"")
 }
+
+#[cfg(test)]
+#[path = "evidence_tests_drop_observer_tests.rs"]
+mod drop_observer_tests;
