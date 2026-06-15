@@ -38,25 +38,19 @@ fn policy_family_allow(family: &str) -> AllowConfig {
 }
 
 #[test]
-#[expect(
-    clippy::bool_assert_comparison,
-    reason = "ripr value assertion on bool return"
-)]
 fn has_generated_code_receipt_returns_true_for_generated_code_allow() {
     let cfg = generated_code_allow();
+    let expected = true;
 
-    assert_eq!(has_generated_code_receipt(&cfg), true);
+    assert_eq!(has_generated_code_receipt(&cfg), expected);
 }
 
 #[test]
-#[expect(
-    clippy::bool_assert_comparison,
-    reason = "ripr value assertion on bool return"
-)]
 fn has_generated_code_receipt_returns_false_without_generated_code_allow() {
     let cfg = AllowConfig::empty();
+    let expected = false;
 
-    assert_eq!(has_generated_code_receipt(&cfg), false);
+    assert_eq!(has_generated_code_receipt(&cfg), expected);
 }
 
 #[test]
