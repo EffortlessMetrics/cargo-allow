@@ -143,3 +143,7 @@ fn missing_evidence_kind(entry: &AllowEntry) -> &'static str {
 fn source_package_name(finding: Option<&Finding>) -> Option<String> {
     finding.and_then(|finding| finding.source_package_name().map(ToOwned::to_owned))
 }
+
+#[cfg(test)]
+#[path = "worklist_advisories_tests.rs"]
+mod tests;
