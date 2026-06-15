@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `10` `ripr` targets and `10` `ripr+` targets after the hundred-thirty-seventh burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `8` `ripr` targets and `8` `ripr+` targets after the hundred-thirty-eighth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -7672,6 +7672,56 @@ Largest remaining file concentrations:
 | `crates/allow-rust/src/safety_comments.rs` | 1 |
 | `crates/allow-diff/src/policy_entry_evidence.rs` | 1 |
 
+## Hundred-Thirty-Eighth Burn-Down Slice
+
+The hundred-thirty-eighth focused slice added diff policy change helper field
+construction coverage for `crates/allow-report/src/diff_human_tests.rs`.
+
+The new test proves that:
+
+- `bare_policy_change` sets severity, allow ID, kind, and message fields and
+  leaves optional nested change fields unset.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-diff-human.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-diff-human.repo-exposure.json --out target/ripr/reports/after-diff-human.gap-decision-ledger.json --out-md target/ripr/reports/after-diff-human.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 8
+ripr zero target count = 8
+ripr plus target count = 8
+crates/allow-report/src/diff_human_tests.rs repairable targets = 0
+crates/allow-report/src/diff_markdown_tests.rs repairable targets = 0
+field_construction repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `10` to `8` and
+cleared the remaining repo-scoped `field_construction` class, including the
+collateral `diff_markdown_tests.rs` helper gap.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `predicate_boundary` | 7 |
+| `match_arm` | 1 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-core/src/source_tree_path.rs` | 1 |
+| `crates/allow-diff/src/policy_entry_evidence.rs` | 1 |
+| `crates/allow-inventory/src/options.rs` | 1 |
+| `crates/allow-match/src/scoring.rs` | 1 |
+| `crates/allow-report/src/source_inventory.rs` | 1 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -7687,7 +7737,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 10` means the current repo does not yet meet the requested
+`ripr+ = 8` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -7711,9 +7761,9 @@ Start with one high-volume, low-judgment class:
 5. regenerate `target/ripr/reports/gap-decision-ledger.json`.
 6. verify the `ripr+` target count moves down.
 
-The largest remaining files are now spread across allow-core helper modules and
-single-gap adapter paths. Continue with `field_construction` and `match_arm`
-singles before tackling `predicate_boundary` groups.
+The largest remaining files are now the final `match_arm` single and seven
+`predicate_boundary` groups spread across allow-core, allow-report, and
+cargo-allow adapter paths.
 Prefer one low-risk helper group with direct behavior assertions per slice.
 
 If provider behavior is noisy or non-portable, file a ripr issue with:
