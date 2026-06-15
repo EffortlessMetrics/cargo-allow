@@ -22,3 +22,7 @@ impl fmt::Display for CargoAllowError {
 impl std::error::Error for CargoAllowError {}
 
 pub type CargoAllowResult<T> = Result<T, CargoAllowError>;
+
+#[cfg(test)]
+#[path = "error_tests.rs"]
+mod tests;

@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `12` `ripr` targets and `12` `ripr+` targets after the hundred-thirty-fifth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `11` `ripr` targets and `11` `ripr+` targets after the hundred-thirty-sixth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -7574,6 +7574,55 @@ Largest remaining file concentrations:
 | `crates/allow-rust/src/safety_comments.rs` | 1 |
 | `crates/cargo-allow/src/worklist_queue.rs` | 1 |
 
+## Hundred-Thirty-Sixth Burn-Down Slice
+
+The hundred-thirty-sixth focused slice added error display return-value coverage
+for `crates/allow-core/src/error.rs`.
+
+The new test proves that:
+
+- `fmt::Display for CargoAllowError` returns the stored message string through
+  `format!` and `to_string`.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-error.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-error.repo-exposure.json --out target/ripr/reports/after-error.gap-decision-ledger.json --out-md target/ripr/reports/after-error.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 11
+ripr zero target count = 11
+ripr plus target count = 11
+crates/allow-core/src/error.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `12` to `11` and
+reduced `crates/allow-core/src/error.rs` from `1` repairable target to `0`.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `predicate_boundary` | 7 |
+| `field_construction` | 2 |
+| `match_arm` | 1 |
+| `return_value` | 1 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-core/src/source_tree_path.rs` | 1 |
+| `crates/cargo-allow/src/add_entry.rs` | 1 |
+| `crates/cargo-allow/src/prune_render_tests.rs` | 1 |
+| `crates/cargo-allow/src/worklist_queue.rs` | 1 |
+| `crates/allow-rust/src/safety_comments.rs` | 1 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -7589,7 +7638,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 12` means the current repo does not yet meet the requested
+`ripr+ = 11` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
