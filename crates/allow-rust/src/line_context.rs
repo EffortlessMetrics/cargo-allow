@@ -23,3 +23,7 @@ impl<'a> LineContext<'a> {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "line_context_tests.rs"]
+mod tests;
