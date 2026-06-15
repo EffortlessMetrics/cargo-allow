@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `73` `ripr` targets and `73` `ripr+` targets after the hundred-seventeenth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `69` `ripr` targets and `69` `ripr+` targets after the hundred-eighteenth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -6621,6 +6621,62 @@ Largest remaining file concentrations:
 | `crates/cargo-allow/src/add_entry.rs` | 4 |
 | `crates/allow-diff/src/policy_entry_identity.rs` | 4 |
 
+## Hundred-Eighteenth Burn-Down Slice
+
+The hundred-eighteenth focused slice added policy entry scope diff coverage for
+`crates/allow-diff/src/policy_entry_scope.rs`.
+
+The new tests prove that:
+
+- `scope_policy_changes` reports scope broadening when a path-scoped entry gains
+  a wider glob.
+- `scope_policy_changes` reports scope narrowing when a glob-scoped entry
+  tightens back to a path.
+- `scope_policy_changes` reports review-required scope changes for sibling glob
+  retargets that are neither broadened nor narrowed.
+- `normalize_scope_text` normalizes Windows-style backslashes to forward slashes.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-policy-entry-scope.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-entry-scope.repo-exposure.json --out target/ripr/reports/after-policy-entry-scope.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-entry-scope.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 69
+ripr zero target count = 69
+ripr plus target count = 69
+crates/allow-diff/src/policy_entry_scope.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `73` to `69` and
+reduced `crates/allow-diff/src/policy_entry_scope.rs` from `4` repairable targets to `0`.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `call_presence` | 31 |
+| `error_variant` | 19 |
+| `predicate_boundary` | 7 |
+| `match_arm` | 5 |
+| `field_construction` | 4 |
+| `return_value` | 3 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-diff/src/policy_entry_identity.rs` | 4 |
+| `crates/allow-report/src/explain_common.rs` | 4 |
+| `crates/allow-report/src/audit_remediation.rs` | 4 |
+| `crates/cargo-allow/src/add_entry.rs` | 4 |
+| `crates/cargo-allow/src/prune.rs` | 3 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -6636,7 +6692,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 73` means the current repo does not yet meet the requested
+`ripr+ = 69` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
