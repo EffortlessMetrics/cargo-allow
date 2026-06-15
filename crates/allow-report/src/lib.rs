@@ -32,6 +32,8 @@ mod evidence_repair;
 mod evidence_repair_tests;
 mod explain;
 mod explain_common;
+#[cfg(test)]
+mod explain_common_tests;
 mod explain_human;
 mod explain_json;
 #[cfg(test)]
