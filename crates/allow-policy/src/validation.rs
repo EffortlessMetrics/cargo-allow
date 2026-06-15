@@ -17,3 +17,7 @@ pub(crate) fn validate_policy_with_reportable_evidence(cfg: &AllowConfig) -> Car
     validate_workspace(&cfg.workspace)?;
     validate_allow_entries_with_reportable_evidence(&cfg.allow, &cfg.requirements)
 }
+
+#[cfg(test)]
+#[path = "validation_orchestration_tests.rs"]
+mod tests;

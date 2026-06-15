@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `81` `ripr` targets and `81` `ripr+` targets after the hundred-fifteenth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `77` `ripr` targets and `77` `ripr+` targets after the hundred-sixteenth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -6512,6 +6512,61 @@ Largest remaining file concentrations:
 | `crates/cargo-allow/src/add_entry.rs` | 4 |
 | `crates/allow-diff/src/policy_entry_identity.rs` | 4 |
 
+## Hundred-Sixteenth Burn-Down Slice
+
+The hundred-sixteenth focused slice added policy orchestration coverage for
+`crates/allow-policy/src/validation.rs`.
+
+The new tests prove that:
+
+- `validate_policy` returns `Ok(())` for a valid policy and rejects unsupported
+  schema versions through the header validator.
+- `validate_policy` rejects duplicate allow ids through the strict allow-entry
+  orchestration path.
+- `validate_policy_with_reportable_evidence` keeps invalid local links
+  reportable instead of failing validation.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-validation.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-validation.repo-exposure.json --out target/ripr/reports/after-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-validation.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 77
+ripr zero target count = 77
+ripr plus target count = 77
+crates/allow-policy/src/validation.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `81` to `77` and
+reduced `crates/allow-policy/src/validation.rs` from `4` repairable targets to `0`.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `call_presence` | 39 |
+| `error_variant` | 19 |
+| `predicate_boundary` | 7 |
+| `match_arm` | 5 |
+| `field_construction` | 4 |
+| `return_value` | 3 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-policy/src/toml_workspace.rs` | 4 |
+| `crates/allow-diff/src/policy_entry_scope.rs` | 4 |
+| `crates/allow-report/src/audit_remediation.rs` | 4 |
+| `crates/allow-report/src/explain_common.rs` | 4 |
+| `crates/allow-diff/src/policy_entry_identity.rs` | 4 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -6527,7 +6582,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 81` means the current repo does not yet meet the requested
+`ripr+ = 77` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
