@@ -122,6 +122,16 @@ fn render_prune_stale_result_reports_write_mode_with_no_candidates() {
     assert!(!text.contains("TOML removal preview:"));
 }
 
+#[test]
+fn test_prune_context_return_value_observer() {
+    let context = test_prune_context();
+    assert_eq!(context.inventory.scope, "source_tree");
+    assert_eq!(context.inventory.scanner, "source_syntax");
+    assert_eq!(context.inventory.source, "git_tracked");
+    assert_eq!(context.inventory.root, Some("H:/Code/Rust/cargo-allow"));
+    assert_eq!(context.inventory.files_scanned, Some(49));
+}
+
 fn test_prune_context() -> PruneContext<'static> {
     PruneContext {
         inventory: allow_report::InventoryContext::source_syntax(

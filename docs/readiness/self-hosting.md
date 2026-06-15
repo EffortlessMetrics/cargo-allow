@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `11` `ripr` targets and `11` `ripr+` targets after the hundred-thirty-sixth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `10` `ripr` targets and `10` `ripr+` targets after the hundred-thirty-seventh burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -7623,6 +7623,55 @@ Largest remaining file concentrations:
 | `crates/cargo-allow/src/worklist_queue.rs` | 1 |
 | `crates/allow-rust/src/safety_comments.rs` | 1 |
 
+## Hundred-Thirty-Seventh Burn-Down Slice
+
+The hundred-thirty-seventh focused slice added prune render test helper
+return-value coverage for `crates/cargo-allow/src/prune_render_tests.rs`.
+
+The new test proves that:
+
+- `test_prune_context` returns the expected `PruneContext` inventory fields,
+  including `files_scanned: Some(49)`.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-prune-render.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-prune-render.repo-exposure.json --out target/ripr/reports/after-prune-render.gap-decision-ledger.json --out-md target/ripr/reports/after-prune-render.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 10
+ripr zero target count = 10
+ripr plus target count = 10
+crates/cargo-allow/src/prune_render_tests.rs repairable targets = 0
+return_value repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `11` to `10` and
+cleared the remaining repo-scoped `return_value` class.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `predicate_boundary` | 7 |
+| `field_construction` | 2 |
+| `match_arm` | 1 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-core/src/source_tree_path.rs` | 1 |
+| `crates/cargo-allow/src/add_entry.rs` | 1 |
+| `crates/cargo-allow/src/worklist_queue.rs` | 1 |
+| `crates/allow-rust/src/safety_comments.rs` | 1 |
+| `crates/allow-diff/src/policy_entry_evidence.rs` | 1 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -7638,7 +7687,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 11` means the current repo does not yet meet the requested
+`ripr+ = 10` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -7663,8 +7712,8 @@ Start with one high-volume, low-judgment class:
 6. verify the `ripr+` target count moves down.
 
 The largest remaining files are now spread across allow-core helper modules and
-single-gap cargo-allow adapter paths. Continue with `return_value` and
-`field_construction` singles before tackling `predicate_boundary` groups.
+single-gap adapter paths. Continue with `field_construction` and `match_arm`
+singles before tackling `predicate_boundary` groups.
 Prefer one low-risk helper group with direct behavior assertions per slice.
 
 If provider behavior is noisy or non-portable, file a ripr issue with:
