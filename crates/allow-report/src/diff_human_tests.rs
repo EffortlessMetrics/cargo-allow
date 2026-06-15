@@ -460,6 +460,25 @@ fn diff_posture_human_summary_reports_evidence_delta_counts() {
     assert!(text.contains("link_removal_improvements: 1"));
 }
 
+#[test]
+fn bare_policy_change_field_construction_observer() {
+    let change = bare_policy_change("fail", "allow-test", "scope_broadened");
+    assert_eq!(change.severity, "fail");
+    assert_eq!(change.allow_id, "allow-test");
+    assert_eq!(change.kind, "scope_broadened");
+    assert_eq!(change.message, "policy posture changed");
+    assert!(change.exception_identity.is_none());
+    assert!(change.selector_identity.is_none());
+    assert!(change.selector_precision.is_none());
+    assert!(change.scope.is_none());
+    assert!(change.occurrence_limit.is_none());
+    assert!(change.lifecycle.is_none());
+    assert!(change.evidence.is_none());
+    assert!(change.metadata.is_none());
+    assert!(change.requirement.is_none());
+    assert!(change.policy_status.is_none());
+}
+
 fn bare_policy_change(
     severity: &'static str,
     allow_id: &'static str,
