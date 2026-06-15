@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `94` `ripr` targets and `94` `ripr+` targets after the hundred-twelfth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `91` `ripr` targets and `91` `ripr+` targets after the hundred-thirteenth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -6342,6 +6342,67 @@ Largest remaining file concentrations:
 | `crates/allow-diff/src/policy_entry_identity.rs` | 4 |
 | `crates/allow-policy/src/entry_validation.rs` | 4 |
 
+## Hundred-Thirteenth Burn-Down Slice
+
+The hundred-thirteenth focused slice added `cmd_init` error-path coverage in
+`crates/cargo-allow/src/init_tests.rs` using the same `CargoAllowError` payload
+pattern as the ninety-third `io.rs` slice.
+
+The new and tightened tests prove that:
+
+- `cmd_init` returns `Ok(())` for successful writes and dry-run paths.
+- `cmd_init` rejects an existing policy file without `--force` with the exact
+  `CargoAllowError` payload.
+- `cmd_init` reports parent-creation and policy-write failures with the target
+  path and platform source error in the `CargoAllowError` payload.
+- spec-system init rejects `--strict` with the exact unsupported-option error.
+
+After regenerating repo exposure and the gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-init.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-init.repo-exposure.json --out target/ripr/reports/after-init.gap-decision-ledger.json --out-md target/ripr/reports/after-init.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 91
+ripr zero target count = 91
+ripr plus target count = 91
+crates/cargo-allow/src/init.rs repairable targets = 3
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `94` to `91` and
+reduced `crates/cargo-allow/src/init.rs` from `6` repairable targets to `3`.
+The remaining `init.rs` targets are `MissingErrorDiscriminator` rows for the
+`failed to read cwd`, `failed to create`, and `failed to write` branches. The
+create/write branches now have exact `CargoAllowError` assertions mirroring the
+`io.rs` pattern; the cwd branch is not practically triggerable without mocking
+`env::current_dir`, and ripr still reports the create/write discriminator rows
+as actionable provider noise.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `call_presence` | 52 |
+| `error_variant` | 19 |
+| `predicate_boundary` | 7 |
+| `match_arm` | 5 |
+| `return_value` | 4 |
+| `field_construction` | 4 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-diff/src/revision.rs` | 5 |
+| `crates/cargo-allow/src/companion.rs` | 5 |
+| `crates/allow-diff/src/policy_entry_identity.rs` | 4 |
+| `crates/allow-policy/src/entry_validation.rs` | 4 |
+| `crates/cargo-allow/src/init.rs` | 3 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -6357,7 +6418,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 94` means the current repo does not yet meet the requested
+`ripr+ = 91` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -6382,9 +6443,9 @@ Start with one high-volume, low-judgment class:
 6. verify the `ripr+` target count moves down.
 
 The largest remaining files are concentrated in cargo-allow command adapter,
-policy validation, init/bootstrap, and git revision helpers such as
-`init.rs`, `revision.rs`, and `companion.rs`. Prefer one low-risk helper group
-with direct behavior assertions per slice.
+policy validation, git revision helpers, and companion/bootstrap paths such as
+`revision.rs`, `companion.rs`, and `entry_validation.rs`. Prefer one low-risk
+helper group with direct behavior assertions per slice.
 
 If provider behavior is noisy or non-portable, file a ripr issue with:
 

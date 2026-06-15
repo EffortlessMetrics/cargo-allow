@@ -1,5 +1,7 @@
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand, ProfileArg, RootArgs};
+use allow_core::CargoAllowError;
+use allow_policy::starter_policy;
 use clap::Parser;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -60,7 +62,7 @@ fn cmd_init_writes_relative_config_under_explicit_root() {
     let root = init_fixture_dir();
     let policy = root.join("policy/allow.toml");
 
-    cmd_init(&InitArgs {
+    let result = cmd_init(&InitArgs {
         root: RootArgs {
             root: Some(root.clone()),
         },
@@ -69,9 +71,9 @@ fn cmd_init_writes_relative_config_under_explicit_root() {
         dry_run: false,
         force: false,
         config: PathBuf::from("policy/allow.toml"),
-    })
-    .unwrap_or_else(|err| std::panic::panic_any(format!("init should write policy: {err}")));
+    });
 
+    assert_eq!(result, Ok(()));
     assert!(
         policy.exists(),
         "init should resolve relative config paths under the source-tree root"
@@ -81,10 +83,121 @@ fn cmd_init_writes_relative_config_under_explicit_root() {
 }
 
 #[test]
+fn cmd_init_rejects_existing_policy_without_force() {
+    let root = init_fixture_dir();
+    let canonical_root = root
+        .canonicalize()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("canonicalize fixture root: {err}")));
+    let policy = canonical_root.join("policy/allow.toml");
+    fs::create_dir_all(
+        policy
+            .parent()
+            .unwrap_or_else(|| std::panic::panic_any("fixture policy parent should exist")),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("create policy parent: {err}")));
+    fs::write(&policy, "policy = \"cargo-allow\"\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("seed existing policy: {err}")));
+
+    let err = cmd_init(&InitArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        strict: false,
+        profile: None,
+        dry_run: false,
+        force: false,
+        config: PathBuf::from("policy/allow.toml"),
+    })
+    .expect_err("existing policy should fail without --force");
+
+    assert_eq!(
+        err,
+        CargoAllowError::new(format!(
+            "{} already exists; use --force to overwrite",
+            policy.display()
+        ))
+    );
+
+    remove_init_fixture_dir(root);
+}
+
+#[test]
+fn cmd_init_reports_parent_creation_errors() {
+    let root = init_fixture_dir();
+    let canonical_root = root
+        .canonicalize()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("canonicalize fixture root: {err}")));
+    let policy_parent = canonical_root.join("policy");
+    fs::write(&policy_parent, "not a directory").unwrap_or_else(|err| {
+        std::panic::panic_any(format!("create policy parent file blocker: {err}"))
+    });
+    let source_error = fs::create_dir_all(&policy_parent)
+        .expect_err("creating a directory over a file should fail");
+
+    let err = cmd_init(&InitArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        strict: false,
+        profile: None,
+        dry_run: false,
+        force: false,
+        config: PathBuf::from("policy/allow.toml"),
+    })
+    .expect_err("file parent should fail directory creation");
+
+    assert_eq!(
+        err,
+        CargoAllowError::new(format!(
+            "failed to create {}: {source_error}",
+            policy_parent.display()
+        ))
+    );
+
+    remove_init_fixture_dir(root);
+}
+
+#[test]
+fn cmd_init_reports_policy_write_errors() {
+    let root = init_fixture_dir();
+    let canonical_root = root
+        .canonicalize()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("canonicalize fixture root: {err}")));
+    let policy = canonical_root.join("policy/allow.toml");
+    fs::create_dir_all(&policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("create policy directory target: {err}"))
+    });
+    let source_error = fs::write(&policy, starter_policy(false))
+        .expect_err("writing starter policy to a directory should fail");
+
+    let err = cmd_init(&InitArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        strict: false,
+        profile: None,
+        dry_run: false,
+        force: true,
+        config: PathBuf::from("policy/allow.toml"),
+    })
+    .expect_err("directory policy target should fail policy write");
+
+    assert_eq!(
+        err,
+        CargoAllowError::new(format!(
+            "failed to write {}: {source_error}",
+            policy.display()
+        ))
+    );
+
+    remove_init_fixture_dir(root);
+}
+
+#[test]
 fn cmd_init_dry_run_does_not_write_default_policy() {
     let root = init_fixture_dir();
 
-    cmd_init(&InitArgs {
+    let result = cmd_init(&InitArgs {
         root: RootArgs {
             root: Some(root.clone()),
         },
@@ -93,9 +206,9 @@ fn cmd_init_dry_run_does_not_write_default_policy() {
         dry_run: true,
         force: false,
         config: PathBuf::from("policy/allow.toml"),
-    })
-    .unwrap_or_else(|err| std::panic::panic_any(format!("init dry-run should pass: {err}")));
+    });
 
+    assert_eq!(result, Ok(()));
     assert!(
         !root.join("policy/allow.toml").exists(),
         "default init dry-run should not write policy/allow.toml"
@@ -201,11 +314,11 @@ fn spec_system_init_rejects_strict_source_policy_option() {
         config: PathBuf::from("policy/allow.toml"),
     });
 
-    assert!(result.is_err());
-    let Err(err) = result else {
-        return;
-    };
-    assert!(err.to_string().contains("--strict is not supported"));
+    let err = result.expect_err("strict spec-system init should fail");
+    assert_eq!(
+        err,
+        CargoAllowError::new("--strict is not supported with --profile spec-system")
+    );
 
     remove_init_fixture_dir(root);
 }
