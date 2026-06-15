@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `22` `ripr` targets and `22` `ripr+` targets after the hundred-twenty-eighth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `20` `ripr` targets and `20` `ripr+` targets after the hundred-twenty-ninth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -7215,6 +7215,58 @@ Largest remaining file concentrations:
 | `crates/allow-core/src/error.rs` | 1 |
 | `crates/allow-core/src/finding.rs` | 1 |
 
+## Hundred-Twenty-Ninth Burn-Down Slice
+
+The hundred-twenty-ninth focused slice added artifact contract helper coverage
+for `crates/cargo-allow/src/artifact_contract_support.rs`.
+
+The new tests prove that:
+
+- `parse_json_artifact` resolves inventory scanner values through
+  `artifact_contract_for_schema_id`.
+- `parse_json_artifact` validates `claim_boundary` and `scanner_limitations`
+  arrays through `assert_json_array_eq`.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-artifact-contract-support.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-artifact-contract-support.repo-exposure.json --out target/ripr/reports/after-artifact-contract-support.gap-decision-ledger.json --out-md target/ripr/reports/after-artifact-contract-support.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 20
+ripr zero target count = 20
+ripr plus target count = 20
+crates/cargo-allow/src/artifact_contract_support.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `22` to `20` and
+reduced `crates/cargo-allow/src/artifact_contract_support.rs` from `2` repairable targets to `0`.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `call_presence` | 8 |
+| `predicate_boundary` | 7 |
+| `field_construction` | 2 |
+| `return_value` | 2 |
+| `match_arm` | 1 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/cargo-allow/src/list_rows.rs` | 2 |
+| `crates/cargo-allow/src/worklist_advisories.rs` | 2 |
+| `crates/allow-core/src/error.rs` | 1 |
+| `crates/allow-core/src/finding.rs` | 1 |
+| `crates/allow-core/src/source_tree_path.rs` | 1 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -7230,7 +7282,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 22` means the current repo does not yet meet the requested
+`ripr+ = 20` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -7255,9 +7307,8 @@ Start with one high-volume, low-judgment class:
 6. verify the `ripr+` target count moves down.
 
 The largest remaining files are concentrated in cargo-allow adapter paths such
-as `artifact_contract_support.rs`, `list_rows.rs`, and `worklist_advisories.rs`,
-plus allow-core helper modules. Prefer one low-risk helper group with direct
-behavior assertions per slice.
+as `list_rows.rs` and `worklist_advisories.rs`, plus allow-core helper modules.
+Prefer one low-risk helper group with direct behavior assertions per slice.
 
 If provider behavior is noisy or non-portable, file a ripr issue with:
 

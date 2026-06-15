@@ -45,6 +45,8 @@ mod artifact_contract_samples;
 #[cfg(test)]
 mod artifact_contract_support;
 #[cfg(test)]
+mod artifact_contract_support_tests;
+#[cfg(test)]
 mod artifact_contract_tests;
 #[cfg(test)]
 mod artifact_sample_schema_patterns;
