@@ -107,3 +107,298 @@ pub(super) fn exception_family<'a>(
         .and_then(|finding| finding.family.as_deref())
         .or_else(|| entry.and_then(|entry| entry.family.as_deref()))
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use allow_core::{Lifecycle, Selector, Span, StructuralIdentity};
+
+    use super::*;
+
+    #[test]
+    fn work_item_kind_maps_status_and_unsafe_evidence_cases() {
+        let cases = vec![
+            (outcome(MatchStatus::Matched, None), None, None, MATCHED),
+            (
+                outcome(MatchStatus::New, None),
+                None,
+                None,
+                NEW_UNRECEIPTED_FINDING,
+            ),
+            (
+                outcome(MatchStatus::New, Some("allow-limit")),
+                None,
+                None,
+                OCCURRENCE_LIMIT_EXCEEDED,
+            ),
+            (
+                outcome(MatchStatus::Expired, Some("allow-expired")),
+                None,
+                None,
+                EXPIRED_ALLOW,
+            ),
+            (
+                outcome(MatchStatus::Stale, Some("allow-stale")),
+                None,
+                None,
+                STALE_ALLOW,
+            ),
+            (
+                outcome(MatchStatus::Ambiguous, Some("allow-ambiguous")),
+                None,
+                None,
+                AMBIGUOUS_SELECTOR,
+            ),
+            (
+                outcome(MatchStatus::InvalidSelector, Some("allow-invalid")),
+                None,
+                None,
+                INVALID_SELECTOR,
+            ),
+            (
+                outcome(MatchStatus::MissingRequiredField, Some("allow-missing")),
+                None,
+                None,
+                MISSING_REQUIRED_FIELD,
+            ),
+            (
+                outcome(MatchStatus::BaselineDebt, Some("allow-baseline")),
+                None,
+                None,
+                BASELINE_DEBT,
+            ),
+            (
+                outcome(MatchStatus::ReviewDue, Some("allow-review")),
+                None,
+                None,
+                REVIEW_DUE,
+            ),
+            (
+                outcome(MatchStatus::EvidenceMissing, Some("allow-panic")),
+                Some(finding(FindingKind::Panic, Some("unwrap"))),
+                None,
+                MISSING_EVIDENCE,
+            ),
+            (
+                outcome(MatchStatus::EvidenceMissing, Some("allow-unsafe")),
+                Some(finding(FindingKind::Unsafe, Some("unsafe_fn"))),
+                None,
+                UNSAFE_MISSING_EVIDENCE,
+            ),
+            (
+                outcome(MatchStatus::EvidenceMissing, Some("allow-entry-unsafe")),
+                None,
+                Some(entry(FindingKind::Unsafe, Some("unsafe_block"))),
+                UNSAFE_MISSING_EVIDENCE,
+            ),
+        ];
+
+        for (outcome, finding, entry, expected) in cases {
+            assert_eq!(
+                work_item_kind(&outcome, finding.as_ref(), entry.as_ref()),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn work_item_risk_follows_status_and_exception_boundaries() {
+        let process = finding(FindingKind::PolicyException, Some("process_spawn"));
+        let network = entry(FindingKind::PolicyException, Some("network_destination"));
+        let unsafe_finding = finding(FindingKind::Unsafe, Some("unsafe_fn"));
+        let panic = finding(FindingKind::Panic, Some("unwrap"));
+
+        let cases = vec![
+            (
+                NEW_UNRECEIPTED_FINDING,
+                MatchStatus::Stale,
+                Some(unsafe_finding.clone()),
+                None,
+                RISK_LOW,
+            ),
+            (
+                NEW_UNRECEIPTED_FINDING,
+                MatchStatus::New,
+                Some(process),
+                None,
+                RISK_HIGH,
+            ),
+            (
+                NEW_UNRECEIPTED_FINDING,
+                MatchStatus::New,
+                None,
+                Some(network),
+                RISK_HIGH,
+            ),
+            (
+                NEW_UNRECEIPTED_FINDING,
+                MatchStatus::New,
+                Some(unsafe_finding),
+                None,
+                RISK_HIGH,
+            ),
+            (
+                AMBIGUOUS_SELECTOR,
+                MatchStatus::Ambiguous,
+                Some(panic.clone()),
+                None,
+                RISK_HIGH,
+            ),
+            (
+                EXPIRED_ALLOW,
+                MatchStatus::Expired,
+                None,
+                Some(entry(FindingKind::Panic, Some("unwrap"))),
+                RISK_HIGH,
+            ),
+            (
+                NEW_UNRECEIPTED_FINDING,
+                MatchStatus::New,
+                Some(panic.clone()),
+                None,
+                RISK_MEDIUM,
+            ),
+            (
+                OCCURRENCE_LIMIT_EXCEEDED,
+                MatchStatus::New,
+                Some(panic.clone()),
+                None,
+                RISK_MEDIUM,
+            ),
+            (
+                MISSING_REQUIRED_FIELD,
+                MatchStatus::MissingRequiredField,
+                None,
+                Some(entry(FindingKind::Panic, Some("unwrap"))),
+                RISK_MEDIUM,
+            ),
+            (
+                STALE_ALLOW,
+                MatchStatus::Stale,
+                None,
+                Some(entry(FindingKind::Panic, Some("unwrap"))),
+                RISK_LOW,
+            ),
+            (
+                MATCHED,
+                MatchStatus::Matched,
+                Some(panic),
+                None,
+                RISK_MEDIUM,
+            ),
+        ];
+
+        for (kind, status, finding, entry, expected) in cases {
+            assert_eq!(
+                work_item_risk(kind, status, finding.as_ref(), entry.as_ref()),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn work_item_difficulty_tracks_kind_and_exception_size() {
+        let non_rust = finding(FindingKind::NonRustFile, Some("shell_script"));
+        let generated = entry(FindingKind::GeneratedCode, Some("generated_code"));
+        let panic = finding(FindingKind::Panic, Some("unwrap"));
+
+        let cases = vec![
+            (STALE_ALLOW, None, None, DIFFICULTY_SMALL),
+            (AMBIGUOUS_SELECTOR, None, None, DIFFICULTY_SMALL),
+            (INVALID_SELECTOR, None, None, DIFFICULTY_SMALL),
+            (MISSING_REQUIRED_FIELD, None, None, DIFFICULTY_SMALL),
+            (MISSING_EVIDENCE, None, None, DIFFICULTY_SMALL),
+            (REVIEW_DUE, None, None, DIFFICULTY_MEDIUM),
+            (BASELINE_DEBT, None, None, DIFFICULTY_MEDIUM),
+            (UNSAFE_MISSING_EVIDENCE, None, None, DIFFICULTY_MEDIUM),
+            (
+                NEW_UNRECEIPTED_FINDING,
+                Some(non_rust),
+                None,
+                DIFFICULTY_SMALL,
+            ),
+            (
+                NEW_UNRECEIPTED_FINDING,
+                None,
+                Some(generated),
+                DIFFICULTY_SMALL,
+            ),
+            (
+                NEW_UNRECEIPTED_FINDING,
+                Some(panic),
+                None,
+                DIFFICULTY_MEDIUM,
+            ),
+            (OCCURRENCE_LIMIT_EXCEEDED, None, None, DIFFICULTY_MEDIUM),
+        ];
+
+        for (kind, finding, entry, expected) in cases {
+            assert_eq!(
+                work_item_difficulty(kind, finding.as_ref(), entry.as_ref()),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn exception_family_prefers_current_finding_and_falls_back_to_entry() {
+        let current = finding(FindingKind::Panic, Some("expect"));
+        let policy = entry(FindingKind::Panic, Some("unwrap"));
+        let missing_family = finding(FindingKind::Panic, None);
+
+        assert_eq!(
+            exception_family(Some(&current), Some(&policy)),
+            Some("expect")
+        );
+        assert_eq!(
+            exception_family(Some(&missing_family), Some(&policy)),
+            Some("unwrap")
+        );
+        assert_eq!(exception_family(None, Some(&policy)), Some("unwrap"));
+        assert_eq!(exception_family(Some(&missing_family), None), None);
+    }
+
+    fn outcome(status: MatchStatus, allow_id: Option<&str>) -> MatchOutcome {
+        MatchOutcome {
+            status,
+            allow_id: allow_id.map(str::to_string),
+            finding_index: None,
+            message: "test outcome".to_string(),
+            score: 100,
+        }
+    }
+
+    fn finding(kind: FindingKind, family: Option<&str>) -> Finding {
+        Finding {
+            kind,
+            family: family.map(str::to_string),
+            path: PathBuf::from("src/lib.rs"),
+            span: Some(Span { line: 1, column: 1 }),
+            identity: StructuralIdentity::new("rust", "method_call"),
+            message: "test finding".to_string(),
+        }
+    }
+
+    fn entry(kind: FindingKind, family: Option<&str>) -> AllowEntry {
+        AllowEntry {
+            id: "allow-test".to_string(),
+            kind,
+            family: family.map(str::to_string),
+            path: Some(PathBuf::from("src/lib.rs")),
+            glob: None,
+            owner: "owner".to_string(),
+            classification: "reviewed_exception".to_string(),
+            reason: "test policy entry".to_string(),
+            evidence: Vec::new(),
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle::empty(),
+            selector: Selector {
+                ast_kind: Some("method_call".to_string()),
+                ..Selector::default()
+            },
+            last_seen: None,
+        }
+    }
+}
