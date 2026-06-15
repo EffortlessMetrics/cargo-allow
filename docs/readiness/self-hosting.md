@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `65` `ripr` targets and `65` `ripr+` targets after the hundred-nineteenth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `45` `ripr` targets and `45` `ripr+` targets after the hundred-twentieth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -6732,6 +6732,68 @@ Largest remaining file concentrations:
 | `crates/cargo-allow/src/prune.rs` | 3 |
 | `crates/cargo-allow/src/io.rs` | 3 |
 
+## Hundred-Twentieth Burn-Down Slice
+
+The hundred-twentieth focused slice added same-module add-entry helper coverage
+for `crates/cargo-allow/src/add_entry.rs`.
+
+The new tests prove that:
+
+- `ensure_addable_outcome` returns `Ok(())` for `MatchStatus::New`.
+- `ensure_addable_outcome` rejects `MatchStatus::Matched` and
+  `MatchStatus::Stale` with the exact `CargoAllowError` payload.
+- `next_allow_id` returns `allow-0001` for an empty config and skips occupied
+  ids.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-add-entry.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-add-entry.repo-exposure.json --out target/ripr/reports/after-add-entry.gap-decision-ledger.json --out-md target/ripr/reports/after-add-entry.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 45
+ripr zero target count = 45
+ripr plus target count = 45
+crates/cargo-allow/src/add_entry.rs repairable targets = 1
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `65` to `45` and
+reduced `crates/cargo-allow/src/add_entry.rs` from `4` repairable targets to `1`.
+The remaining `add_entry.rs` target is a `MissingBoundaryAssertion` row on the
+`status == MatchStatus::New` branch even though
+`ensure_addable_outcome_boundary_accepts_new_status` already uses the exact
+`assert_eq!(ensure_addable_outcome(MatchStatus::New), Ok(()))` shape ripr
+suggests; treat it as actionable provider noise.
+
+Ledger regeneration also attributed collateral clearance to adjacent
+`cargo-allow` helper modules (`prune.rs`, `io.rs`, `init.rs`, and others)
+without dedicated tests in this slice.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `call_presence` | 26 |
+| `predicate_boundary` | 7 |
+| `match_arm` | 5 |
+| `field_construction` | 4 |
+| `return_value` | 3 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-report/src/audit_remediation.rs` | 4 |
+| `crates/allow-report/src/explain_common.rs` | 4 |
+| `crates/allow-report/src/worklist_summary.rs` | 3 |
+| `crates/cargo-allow/src/propose_args.rs` | 3 |
+| `crates/cargo-allow/src/worklist_item_kind.rs` | 3 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -6747,7 +6809,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 65` means the current repo does not yet meet the requested
+`ripr+ = 45` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -6771,10 +6833,10 @@ Start with one high-volume, low-judgment class:
 5. regenerate `target/ripr/reports/gap-decision-ledger.json`.
 6. verify the `ripr+` target count moves down.
 
-The largest remaining files are concentrated in cargo-allow command adapter,
-policy validation, git revision helpers, and companion/bootstrap paths such as
-`revision.rs`, `companion.rs`, and `entry_validation.rs`. Prefer one low-risk
-helper group with direct behavior assertions per slice.
+The largest remaining files are concentrated in allow-report explain/remediation
+helpers and cargo-allow command adapter paths such as
+`explain_common.rs`, `audit_remediation.rs`, and `propose_args.rs`. Prefer one
+low-risk helper group with direct behavior assertions per slice.
 
 If provider behavior is noisy or non-portable, file a ripr issue with:
 

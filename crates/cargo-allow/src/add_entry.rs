@@ -103,3 +103,7 @@ pub(super) fn next_allow_id(cfg: &AllowConfig) -> String {
         index += 1;
     }
 }
+
+#[cfg(test)]
+#[path = "add_entry_tests.rs"]
+mod tests;
