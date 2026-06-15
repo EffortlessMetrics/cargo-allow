@@ -186,3 +186,7 @@ fn stable_identity_key_from_parts(parts: Vec<(&'static str, String)>) -> String 
         .collect::<Vec<_>>()
         .join("|")
 }
+
+#[cfg(test)]
+#[path = "finding_tests.rs"]
+mod tests;
