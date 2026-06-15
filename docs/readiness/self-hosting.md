@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `7` `ripr` targets and `7` `ripr+` targets after the hundred-thirty-ninth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `6` `ripr` targets and `6` `ripr+` targets after the hundred-fortieth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -7769,6 +7769,52 @@ Largest remaining file concentrations:
 | `crates/allow-report/src/source_inventory.rs` | 1 |
 | `crates/allow-rust/src/safety_comments.rs` | 1 |
 
+## Hundred-Fortieth Burn-Down Slice
+
+The hundred-fortieth focused slice added source-tree path filter exact-equality
+boundary coverage for `crates/allow-core/src/source_tree_path.rs`.
+
+The new test proves that:
+
+- `source_tree_path_matches_filter` returns true only when normalized item and
+  filter paths are exactly equal, and false for different paths.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-source-tree-path.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-source-tree-path.repo-exposure.json --out target/ripr/reports/after-source-tree-path.gap-decision-ledger.json --out-md target/ripr/reports/after-source-tree-path.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 6
+ripr zero target count = 6
+ripr plus target count = 6
+crates/allow-core/src/source_tree_path.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `7` to `6` and
+reduced `crates/allow-core/src/source_tree_path.rs` from `1` repairable target to `0`.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `predicate_boundary` | 6 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-diff/src/policy_entry_evidence.rs` | 1 |
+| `crates/allow-match/src/scoring.rs` | 1 |
+| `crates/allow-report/src/source_inventory.rs` | 1 |
+| `crates/allow-rust/src/safety_comments.rs` | 1 |
+| `crates/cargo-allow/src/add_entry.rs` | 1 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -7784,7 +7830,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 7` means the current repo does not yet meet the requested
+`ripr+ = 6` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -7808,10 +7854,8 @@ Start with one high-volume, low-judgment class:
 5. regenerate `target/ripr/reports/gap-decision-ledger.json`.
 6. verify the `ripr+` target count moves down.
 
-Only seven `predicate_boundary` gaps remain across allow-core, allow-diff,
-allow-match, allow-report, allow-rust, and cargo-allow adapter paths. Prefer one
-low-risk helper group with direct behavior assertions per slice, or file a ripr
-provider issue when a gap is non-portable noise.
+Six `predicate_boundary` gaps remain across allow-diff, allow-match,
+allow-report, allow-rust, and cargo-allow adapter paths.
 Prefer one low-risk helper group with direct behavior assertions per slice.
 
 If provider behavior is noisy or non-portable, file a ripr issue with:

@@ -20,6 +20,22 @@ fn glob_supports_double_star() {
 }
 
 #[test]
+fn source_tree_path_matches_filter_exact_equality_boundary_discriminator() {
+    let item_path = "docs/policy.md";
+    let exact_filter = "docs/policy.md";
+    let different_filter = "docs/other.md";
+
+    assert_eq!(
+        source_tree_path_matches_filter(item_path, exact_filter),
+        true
+    );
+    assert_eq!(
+        source_tree_path_matches_filter(item_path, different_filter),
+        false
+    );
+}
+
+#[test]
 fn source_tree_path_filter_matches_exact_subtree_and_glob_scope() {
     assert!(source_tree_path_matches_filter(
         "crates/allow-core/src/lib.rs",
