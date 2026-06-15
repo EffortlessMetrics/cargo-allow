@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `6` `ripr` targets and `6` `ripr+` targets after the hundred-fortieth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `6` `ripr` targets and `6` `ripr+` targets after the hundred-forty-first burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -7814,6 +7814,59 @@ Largest remaining file concentrations:
 | `crates/allow-report/src/source_inventory.rs` | 1 |
 | `crates/allow-rust/src/safety_comments.rs` | 1 |
 | `crates/cargo-allow/src/add_entry.rs` | 1 |
+
+## Hundred-Forty-First Burn-Down Slice
+
+The hundred-forty-first focused slice revalidated the remaining
+`crates/allow-diff/src/policy_entry_evidence.rs` `predicate_boundary` target on
+`removed_evidence_message` (`severity != PolicyChangeSeverity::Fail`).
+
+Existing coverage already includes:
+
+- `message_helpers_follow_severity_and_local_removed_state` with
+  `PolicyChangeSeverity::Review` and `PolicyChangeSeverity::Improvement` inputs.
+- `removed_evidence_message_treats_improvement_as_non_fail_boundary` with the
+  exact non-fail severity boundary shape ripr suggests.
+
+A follow-up variable-backed boundary assertion was attempted locally and did not
+move the ledger; `cargo test -p allow-diff policy_entry_evidence::tests` passes.
+
+After regenerating repo exposure and the gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-policy-entry-evidence-retry.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-entry-evidence-retry.repo-exposure.json --out target/ripr/reports/after-policy-entry-evidence-retry.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-entry-evidence-retry.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 6
+ripr zero target count = 6
+ripr plus target count = 6
+crates/allow-diff/src/policy_entry_evidence.rs repairable targets = 1
+```
+
+Repo-scoped `ripr+` remained at `6`. The remaining `policy_entry_evidence.rs`
+target is tracked as provider friction in `EffortlessMetrics/ripr#1432`; do not
+add low-value padding tests for this anchor.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `predicate_boundary` | 6 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-diff/src/policy_entry_evidence.rs` | 1 |
+| `crates/allow-match/src/scoring.rs` | 1 |
+| `crates/allow-report/src/source_inventory.rs` | 1 |
+| `crates/allow-rust/src/safety_comments.rs` | 1 |
+| `crates/cargo-allow/src/add_entry.rs` | 1 |
+| `crates/cargo-allow/src/worklist_queue.rs` | 1 |
 
 ## Claim Boundary
 
