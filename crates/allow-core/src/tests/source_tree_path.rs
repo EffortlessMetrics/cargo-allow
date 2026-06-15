@@ -25,14 +25,11 @@ fn source_tree_path_matches_filter_exact_equality_boundary_discriminator() {
     let exact_filter = "docs/policy.md";
     let different_filter = "docs/other.md";
 
-    assert_eq!(
-        source_tree_path_matches_filter(item_path, exact_filter),
-        true
-    );
-    assert_eq!(
-        source_tree_path_matches_filter(item_path, different_filter),
-        false
-    );
+    assert!(source_tree_path_matches_filter(item_path, exact_filter));
+    assert!(!source_tree_path_matches_filter(
+        item_path,
+        different_filter
+    ));
 }
 
 #[test]
