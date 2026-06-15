@@ -107,3 +107,7 @@ fn is_workflow_path(path: &Path) -> bool {
             Some("yml" | "yaml")
         )
 }
+
+#[cfg(test)]
+#[path = "revision_helpers_tests.rs"]
+mod tests;
