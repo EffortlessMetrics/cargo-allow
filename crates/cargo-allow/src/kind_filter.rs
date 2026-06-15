@@ -186,3 +186,7 @@ pub(crate) fn is_network_compat_kind(kind: &str) -> bool {
         "network" | "net" | "network-policy" | "network_destination" | "network-destination"
     )
 }
+
+#[cfg(test)]
+#[path = "kind_filter_tests.rs"]
+mod tests;

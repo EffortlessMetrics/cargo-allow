@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `16` `ripr` targets and `16` `ripr+` targets after the hundred-thirty-first burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `15` `ripr` targets and `15` `ripr+` targets after the hundred-thirty-second burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -7371,6 +7371,56 @@ Largest remaining file concentrations:
 | `crates/cargo-allow/src/kind_filter.rs` | 1 |
 | `crates/cargo-allow/src/add_entry.rs` | 1 |
 
+## Hundred-Thirty-Second Burn-Down Slice
+
+The hundred-thirty-second focused slice added kind filter CLI parser coverage for
+`crates/cargo-allow/src/kind_filter.rs`.
+
+The new test proves that:
+
+- `parse_kind_filter_arg` delegates to `parse_kind_filter` and returns the
+  original kind string on success or a closed `unknown kind` error on failure.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-kind-filter.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-kind-filter.repo-exposure.json --out target/ripr/reports/after-kind-filter.gap-decision-ledger.json --out-md target/ripr/reports/after-kind-filter.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 15
+ripr zero target count = 15
+ripr plus target count = 15
+crates/cargo-allow/src/kind_filter.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `16` to `15` and
+reduced `crates/cargo-allow/src/kind_filter.rs` from `1` repairable target to `0`.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `predicate_boundary` | 7 |
+| `call_presence` | 3 |
+| `return_value` | 2 |
+| `field_construction` | 2 |
+| `match_arm` | 1 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-core/src/error.rs` | 1 |
+| `crates/allow-core/src/finding.rs` | 1 |
+| `crates/allow-core/src/source_tree_path.rs` | 1 |
+| `crates/cargo-allow/src/add_entry.rs` | 1 |
+| `crates/cargo-allow/src/worklist_args.rs` | 1 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -7386,7 +7436,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 16` means the current repo does not yet meet the requested
+`ripr+ = 15` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -7411,7 +7461,8 @@ Start with one high-volume, low-judgment class:
 6. verify the `ripr+` target count moves down.
 
 The largest remaining files are now spread across allow-core helper modules and
-single-gap cargo-allow adapter paths such as `kind_filter.rs` and `add_entry.rs`.
+single-gap cargo-allow adapter paths. Continue clearing remaining `call_presence`
+singles before tackling `predicate_boundary` groups.
 Prefer one low-risk helper group with direct behavior assertions per slice.
 
 If provider behavior is noisy or non-portable, file a ripr issue with:
