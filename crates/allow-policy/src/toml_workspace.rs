@@ -45,3 +45,7 @@ fn normalize_inventory(inventory: String) -> String {
         inventory
     }
 }
+
+#[cfg(test)]
+#[path = "toml_workspace_tests.rs"]
+mod tests;
