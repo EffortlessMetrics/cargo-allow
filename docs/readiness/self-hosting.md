@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `100` `ripr` targets and `100` `ripr+` targets after the hundred-eleventh burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `94` `ripr` targets and `94` `ripr+` targets after the hundred-twelfth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -6287,6 +6287,61 @@ Largest remaining file concentrations:
 | `crates/cargo-allow/src/companion.rs` | 5 |
 | `crates/allow-diff/src/policy_entry_identity.rs` | 4 |
 
+## Hundred-Twelfth Burn-Down Slice
+
+The hundred-twelfth focused slice added same-module allow-entry orchestration
+coverage for `crates/allow-policy/src/entries_validation.rs`.
+
+The new tests prove that:
+
+- `validate_allow_entries` returns `Ok(())` for a valid multi-entry batch and
+  rejects duplicate allow ids through the strict link-scope path.
+- `validate_allow_entries` rejects invalid local link paths under strict mode.
+- `validate_allow_entries_with_reportable_evidence` keeps invalid local links
+  reportable instead of failing validation.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-entries-validation.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-entries-validation.repo-exposure.json --out target/ripr/reports/after-entries-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-entries-validation.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 94
+ripr zero target count = 94
+ripr plus target count = 94
+crates/allow-policy/src/entries_validation.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `100` to `94` and
+reduced `crates/allow-policy/src/entries_validation.rs` from `6` repairable
+targets to `0`.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `call_presence` | 52 |
+| `error_variant` | 22 |
+| `predicate_boundary` | 7 |
+| `return_value` | 4 |
+| `match_arm` | 5 |
+| `field_construction` | 4 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/cargo-allow/src/init.rs` | 6 |
+| `crates/allow-diff/src/revision.rs` | 5 |
+| `crates/cargo-allow/src/companion.rs` | 5 |
+| `crates/allow-diff/src/policy_entry_identity.rs` | 4 |
+| `crates/allow-policy/src/entry_validation.rs` | 4 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -6302,7 +6357,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 100` means the current repo does not yet meet the requested
+`ripr+ = 94` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -6328,8 +6383,8 @@ Start with one high-volume, low-judgment class:
 
 The largest remaining files are concentrated in cargo-allow command adapter,
 policy validation, init/bootstrap, and git revision helpers such as
-`entries_validation.rs`, `init.rs`, `revision.rs`, and `companion.rs`. Prefer
-one low-risk helper group with direct behavior assertions per slice.
+`init.rs`, `revision.rs`, and `companion.rs`. Prefer one low-risk helper group
+with direct behavior assertions per slice.
 
 If provider behavior is noisy or non-portable, file a ripr issue with:
 
