@@ -27,8 +27,8 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `6` `ripr` targets and `6` `ripr+` targets after the hundred-forty-first burn-down slice. |
-| unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
+| ripr+ repo readiness | blocked (provider-tracked) | `ripr` explicit gap-ledger projection still reports `6` `ripr+` targets after the hundred-forty-second slice, but all six remaining `predicate_boundary` anchors are filed as provider friction (`ripr#1432`, `#1433`, `#1440`–`#1443`). |
+| unsafe-review+ readiness | not run | Next external-readiness lane after the `predicate_boundary` tail is fully provider-tracked. |
 
 ## RIPR Evidence
 
@@ -7868,6 +7868,58 @@ Largest remaining file concentrations:
 | `crates/cargo-allow/src/add_entry.rs` | 1 |
 | `crates/cargo-allow/src/worklist_queue.rs` | 1 |
 
+## Hundred-Forty-Second Burn-Down Slice
+
+The hundred-forty-second focused slice closed the remaining `predicate_boundary`
+tail by revalidating `crates/allow-match/src/scoring.rs` and filing provider
+issues for every still-actionable anchor.
+
+For `scoring.rs` (`entry.kind != finding.kind` at line 6):
+
+- existing coverage includes `scoring_rejects_kind_family_and_path_mismatches`
+  with `assert_eq!(score_match(&entry, &finding), None)` after setting
+  `entry.kind = FindingKind::Panic` against an `Unsafe` finding fixture.
+- a follow-up variable-backed `score_match_kind_boundary_discriminator` test was
+  attempted locally and did not move the ledger.
+- provider friction filed as `EffortlessMetrics/ripr#1440`.
+
+Batch provider filing for the other unnumbered tail anchors:
+
+| Path | Anchor | Issue |
+| --- | --- | --- |
+| `crates/allow-diff/src/policy_entry_evidence.rs` | `removed_evidence_message` / `severity != Fail` | `EffortlessMetrics/ripr#1432` |
+| `crates/allow-report/src/source_inventory.rs` | `SourceInventoryRow::add_status` / `status != Matched` | `EffortlessMetrics/ripr#1433` |
+| `crates/allow-rust/src/safety_comments.rs` | `is_safety_comment` prefix discriminator | `EffortlessMetrics/ripr#1441` |
+| `crates/cargo-allow/src/add_entry.rs` | `ensure_addable_outcome` / `status == New` | `EffortlessMetrics/ripr#1442` |
+| `crates/cargo-allow/src/worklist_queue.rs` | `item_kind_matches` hyphen alias | `EffortlessMetrics/ripr#1443` |
+
+After regenerating repo exposure and the gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/session.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/session.repo-exposure.json --out target/ripr/reports/session.gap-decision-ledger.json --out-md target/ripr/reports/session.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 6
+ripr zero target count = 6
+ripr plus target count = 6
+```
+
+Repo-scoped `ripr+` remained at `6`. No further test padding is warranted for
+these anchors; cargo-allow's honest readiness position is that the remaining
+projection is provider noise until ripr clears or revises the ledger.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `predicate_boundary` | 6 |
+
+All six remaining `predicate_boundary` anchors are provider-tracked.
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -7883,38 +7935,27 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 6` means the current repo does not yet meet the requested
-self-hosting readiness bar. Do not move `ripr` or other external repositories
-onto cargo-allow/spec-system as a readiness claim until this is resolved or the
-readiness bar is explicitly revised.
+`ripr+ = 6` means the installed ripr ledger still reports six actionable
+targets. cargo-allow has revalidated direct boundary coverage for each anchor
+and filed provider issues for all six. Do not move `ripr` or other external
+repositories onto cargo-allow/spec-system as a readiness claim until ripr clears
+the ledger or the readiness bar is explicitly revised.
 
 ## Next Work
 
 Recommended next lane:
 
 ```text
-evidence: reduce or scope cargo-allow ripr+ readiness
+evidence: unsafe-review+ external readiness
 ```
 
-Start with one high-volume, low-judgment class:
+1. inspect `unsafe-review --help` and record the provider contract.
+2. run the provider against this repository.
+3. capture receipts under `target/unsafe-review/reports/`.
+4. update this record with `unsafe-review+` before/after counts.
 
-1. inspect a pure parser, path, or rendering target such as another remaining
-   converter/parser helper with direct field-mapping behavior.
-2. choose one `MissingBoundaryAssertion`, `MissingValueAssertion`, or
-   `MissingSideEffectObserver` group with direct behavior assertions.
-3. add or tighten a focused test.
-4. regenerate `target/ripr/reports/repo-exposure.json`.
-5. regenerate `target/ripr/reports/gap-decision-ledger.json`.
-6. verify the `ripr+` target count moves down.
+Do not start `.allow` ledger edits as part of the external-readiness lane.
 
-Six `predicate_boundary` gaps remain across allow-diff, allow-match,
-allow-report, allow-rust, and cargo-allow adapter paths.
-Prefer one low-risk helper group with direct behavior assertions per slice.
-
-If provider behavior is noisy or non-portable, file a ripr issue with:
-
-- `ripr --version`.
-- the exact command.
-- the relevant excerpt from `target/ripr/reports/gap-decision-ledger.json`.
-- why the finding blocks cargo-allow self-hosting adoption.
-- the claim boundary above.
+If ripr provider issues `#1432`, `#1433`, or `#1440`–`#1443` close, regenerate
+`target/ripr/reports/gap-decision-ledger.json` and re-check whether
+repo-scoped `ripr+` has reached `0`.
