@@ -52,3 +52,7 @@ fn reference_validation_error(
         ))),
     }
 }
+
+#[cfg(test)]
+#[path = "evidence_validation_tests.rs"]
+mod tests;
