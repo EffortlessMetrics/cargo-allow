@@ -27,7 +27,7 @@ Recorded: 2026-06-15
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `31` `ripr` targets and `31` `ripr+` targets after the hundred-twenty-fourth burn-down slice. |
+| ripr+ repo readiness | blocked | `ripr` explicit gap-ledger projection reported `28` `ripr` targets and `28` `ripr+` targets after the hundred-twenty-fifth burn-down slice. |
 | unsafe-review+ readiness | not run | Deferred until the `ripr+` readiness blocker is resolved. |
 
 ## RIPR Evidence
@@ -7005,6 +7005,58 @@ Largest remaining file concentrations:
 | `crates/allow-rust/src/line_scan.rs` | 2 |
 | `crates/cargo-allow/src/artifact_contract_support.rs` | 2 |
 
+## Hundred-Twenty-Fifth Burn-Down Slice
+
+The hundred-twenty-fifth focused slice added work item kind filter coverage for
+`crates/cargo-allow/src/worklist_item_kind.rs`.
+
+The new tests prove that:
+
+- `parse_work_item_kind_filter` accepts canonical kinds from `WORK_ITEM_KINDS`.
+- `parse_work_item_kind_filter` normalizes hyphenated aliases to underscores.
+- `parse_work_item_kind_filter` rejects unknown kinds with the exact error
+  payload.
+
+After committing the focused test change and regenerating repo exposure and the
+gap decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-worklist-item-kind.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-item-kind.repo-exposure.json --out target/ripr/reports/after-worklist-item-kind.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-item-kind.gap-decision-ledger.md
+```
+
+Observed:
+
+```text
+repairable = 28
+ripr zero target count = 28
+ripr plus target count = 28
+crates/cargo-allow/src/worklist_item_kind.rs repairable targets = 0
+```
+
+The focused slice reduced repo-scoped `ripr+` targets from `31` to `28` and
+reduced `crates/cargo-allow/src/worklist_item_kind.rs` from `3` repairable targets to `0`.
+
+Remaining repairable evidence classes:
+
+| Evidence class | Count |
+| --- | ---: |
+| `call_presence` | 13 |
+| `predicate_boundary` | 7 |
+| `field_construction` | 4 |
+| `return_value` | 2 |
+| `match_arm` | 2 |
+
+Largest remaining file concentrations:
+
+| Path | Count |
+| --- | ---: |
+| `crates/allow-policy/src/evidence_validation.rs` | 2 |
+| `crates/allow-rust/src/line_context.rs` | 2 |
+| `crates/allow-rust/src/line_scan.rs` | 2 |
+| `crates/cargo-allow/src/artifact_contract_support.rs` | 2 |
+| `crates/cargo-allow/src/list_rows.rs` | 2 |
+
 ## Claim Boundary
 
 cargo-allow did not execute `ripr` as part of its own scan. The `ripr` results
@@ -7020,7 +7072,7 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 31` means the current repo does not yet meet the requested
+`ripr+ = 28` means the current repo does not yet meet the requested
 self-hosting readiness bar. Do not move `ripr` or other external repositories
 onto cargo-allow/spec-system as a readiness claim until this is resolved or the
 readiness bar is explicitly revised.
@@ -7044,10 +7096,10 @@ Start with one high-volume, low-judgment class:
 5. regenerate `target/ripr/reports/gap-decision-ledger.json`.
 6. verify the `ripr+` target count moves down.
 
-The largest remaining files are concentrated in cargo-allow command adapter
-paths such as `worklist_item_kind.rs` and `artifact_contract_support.rs`, plus
-allow-policy and allow-rust scanner helpers. Prefer one low-risk helper group
-with direct behavior assertions per slice.
+The largest remaining files are concentrated in allow-policy evidence validation,
+allow-rust scanner helpers, and cargo-allow adapter paths such as
+`artifact_contract_support.rs` and `list_rows.rs`. Prefer one low-risk helper
+group with direct behavior assertions per slice.
 
 If provider behavior is noisy or non-portable, file a ripr issue with:
 

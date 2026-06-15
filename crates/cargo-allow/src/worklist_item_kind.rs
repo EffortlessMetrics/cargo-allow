@@ -39,3 +39,7 @@ pub(crate) fn parse_work_item_kind_filter(value: &str) -> Result<String, String>
     }
     Err(format!("unknown work item kind `{value}`"))
 }
+
+#[cfg(test)]
+#[path = "worklist_item_kind_tests.rs"]
+mod tests;
