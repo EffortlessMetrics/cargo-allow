@@ -1,6 +1,6 @@
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand};
-use allow_core::{AllowEntry, Lifecycle, Selector};
+use allow_core::{AllowEntry, CargoAllowError, Lifecycle, Selector};
 use allow_policy::load_policy;
 use clap::Parser;
 use std::fs;
@@ -172,6 +172,33 @@ fn removed_toml_blocks_ignore_allow_headers_inside_string_values() {
     assert!(block.contains("[allow.selector]"));
     assert!(block.contains("path = \"docs/stale.md\""));
     assert!(!block.contains("allow-live"));
+}
+
+#[test]
+fn cmd_prune_write_reports_missing_policy_config_with_exact_error() {
+    let root = prune_fixture_dir();
+
+    let err = cmd_prune(&PruneArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        stale: true,
+        dry_run: false,
+        write: true,
+        include_untracked: false,
+        format: PruneFormat::Human,
+        output: None,
+    })
+    .expect_err("prune write without policy config should fail");
+
+    assert_eq!(
+        err,
+        CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
+    );
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
 
 #[test]
