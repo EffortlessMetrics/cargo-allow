@@ -1,4 +1,6 @@
-use allow_core::{CargoAllowError, CargoAllowResult, Finding, FindingKind, SimpleDate};
+use allow_core::{
+    CargoAllowError, CargoAllowResult, Finding, FindingKind, MatchOutcome, SimpleDate,
+};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 
@@ -46,10 +48,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
     let (finding_index, finding) =
         select_add_finding(&findings, parsed_kind, &args.path, args.line)?;
-    let selected_outcome = outcomes
-        .iter()
-        .find(|outcome| outcome.finding_index == Some(finding_index))
-        .ok_or_else(|| CargoAllowError::new("selected finding did not produce a match outcome"))?;
+    let selected_outcome = selected_add_outcome(&outcomes, finding_index)?;
     ensure_addable_outcome(selected_outcome.status)?;
     require_add_evidence(finding, &args.evidence)?;
     let id = args.id.clone().unwrap_or_else(|| next_allow_id(&cfg));
@@ -96,6 +95,16 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     }
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())
+}
+
+fn selected_add_outcome<'a>(
+    outcomes: &'a [MatchOutcome],
+    finding_index: usize,
+) -> CargoAllowResult<&'a MatchOutcome> {
+    outcomes
+        .iter()
+        .find(|outcome| outcome.finding_index == Some(finding_index))
+        .ok_or_else(|| CargoAllowError::new("selected finding did not produce a match outcome"))
 }
 
 fn require_add_evidence(finding: &Finding, evidence: &[String]) -> CargoAllowResult<()> {
