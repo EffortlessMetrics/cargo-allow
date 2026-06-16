@@ -243,9 +243,7 @@ fn add_evidence_requirement_covers_high_risk_policy_exceptions() {
         require_add_evidence(&unsafe_finding, &[]).expect_err("unsafe add should require evidence");
     assert_eq!(
         unsafe_err,
-        CargoAllowError::new(
-            "unsafe allow entries require at least one --evidence reference"
-        )
+        CargoAllowError::new("unsafe allow entries require at least one --evidence reference")
     );
     let process_err = require_add_evidence(&process_finding, &[])
         .expect_err("process policy add should require evidence");
@@ -338,8 +336,8 @@ fn selected_add_outcome_errors_when_finding_index_missing() {
         score: 0,
     }];
 
-    let err = selected_add_outcome(&outcomes, 0)
-        .expect_err("missing finding_index should fail closed");
+    let err =
+        selected_add_outcome(&outcomes, 0).expect_err("missing finding_index should fail closed");
 
     assert_eq!(
         err,
