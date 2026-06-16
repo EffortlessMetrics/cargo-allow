@@ -17,10 +17,7 @@ fn release_workflow_exists_and_lists_publish_order() {
     let root = workspace_root();
     let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
     let release_doc = read_workspace_file(&root, RELEASE_DOC);
-    let publish_order = parse_publish_order(&read_workspace_file(
-        &root,
-        PUBLISHED_RELEASE_DOC,
-    ));
+    let publish_order = parse_publish_order(&read_workspace_file(&root, PUBLISHED_RELEASE_DOC));
 
     assert!(
         workflow.contains("on:") && workflow.contains("tags:") && workflow.contains("v*"),
