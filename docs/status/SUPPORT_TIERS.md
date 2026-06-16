@@ -40,6 +40,7 @@ the source-tree state behind the claim.
 | PR posture | Stabilizing | `cargo-allow diff --base <base>` reports source-exception posture changes for a pull request. | `cargo-allow diff --base origin/main --format markdown` | Requires a meaningful base revision; does not prove build, test, coverage, or unsafe correctness. |
 | Worklist routing | Stabilizing | `cargo-allow worklist --format json` emits bounded source-exception repair items for humans and agents. | `cargo-allow worklist --format json` | Worklist proof commands are suggestions for authorized operators, not commands cargo-allow ran. |
 | Spec-system profile | Advisory | `cargo-allow check --profile spec-system --mode audit` validates registered source-of-truth graph artifacts and reports structural findings for configured profile roots without changing default cargo-allow behavior. | `cargo-allow check --profile spec-system --mode audit` | Opt-in governance profile; repo-local blocking mode covers selected structural findings only; this row does not claim stable support or proof execution. |
+| Migration compat lanes | Advisory | `cargo-allow check --compat --kind <kind>` supports side-by-side proof against legacy xtask policy files without claiming full xtask replacement. | `cargo-allow check --compat --kind non-rust` | Compat bridges only; see [CARGO-ALLOW-SPEC-0002](../specs/CARGO-ALLOW-SPEC-0002-migration-parity.md) and [migration guide](../migration-from-xtask.md). |
 
 ## Spec-System Review Notes
 

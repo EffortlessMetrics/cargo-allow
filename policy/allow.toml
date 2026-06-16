@@ -192,7 +192,7 @@ family = "configuration"
 path = ".codex/goals/active.toml"
 owner = "core/policy"
 classification = "active_goal_manifest"
-reason = "Records the completed Codex execution state for the opt-in spec-system source-of-truth profile preview."
+reason = "Records the active Codex execution state for the migration and evidence parity lane toward 0.2.0."
 created = "2026-06-12"
 review_after = "2026-11-01"
 evidence = ["doc:.codex/goals/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
@@ -2825,6 +2825,98 @@ symbol = "docs/release/README.md"
 target_fingerprint = "md"
 line_hint = 1
 glob = "docs/release/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0190"
+kind = "non_rust_file"
+family = "configuration"
+path = ".codex/goals/archive/CARGO-ALLOW-GOAL-0001-spec-system-profile.toml"
+owner = "core/policy"
+classification = "active_goal_manifest"
+reason = "Archives the completed spec-system profile active goal manifest for structural graph validation."
+created = "2026-06-16"
+review_after = "2026-11-01"
+evidence = ["doc:.codex/goals/README.md", "doc:plans/spec-system/closeout.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".codex/goals/archive/CARGO-ALLOW-GOAL-0001-spec-system-profile.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = ".codex/goals/archive/CARGO-ALLOW-GOAL-0001-spec-system-profile.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0191"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/proposals/CARGO-ALLOW-PROP-0002-migration-parity.md"
+owner = "core/policy"
+classification = "source_truth_proposal"
+reason = "Registers the accepted migration and evidence parity proposal for the 0.2.0 execution lane."
+created = "2026-06-16"
+review_after = "2026-11-01"
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md", "doc:docs/migration-from-xtask.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/proposals/CARGO-ALLOW-PROP-0002-migration-parity.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/proposals/CARGO-ALLOW-PROP-0002-migration-parity.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0192"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md"
+owner = "core/policy"
+classification = "source_truth_spec"
+reason = "Defines the migration and evidence parity behavior contract for the 0.2.0 execution lane."
+created = "2026-06-16"
+review_after = "2026-11-01"
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0002-migration-parity.md", "doc:docs/migration-from-xtask.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0193"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/migration-parity/implementation-plan.md"
+owner = "core/policy"
+classification = "source_truth_implementation_plan"
+reason = "Sequences PR-sized migration parity work toward the 0.2.0 milestone claim."
+created = "2026-06-16"
+review_after = "2026-11-01"
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0002-migration-parity.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/migration-parity/implementation-plan.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/migration-parity/implementation-plan.md"
 
 [allow.last_seen]
 line = 1

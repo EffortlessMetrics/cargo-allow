@@ -538,9 +538,12 @@ fn validates_current_repository_support_tier_claims() {
         return;
     };
 
-    assert_eq!(rows.len(), 4);
+    assert_eq!(rows.len(), 5);
     assert!(rows.iter().any(|row| {
         row.surface == "Spec-system profile" && row.tier == SupportTierLevel::Advisory
+    }));
+    assert!(rows.iter().any(|row| {
+        row.surface == "Migration compat lanes" && row.tier == SupportTierLevel::Advisory
     }));
 }
 

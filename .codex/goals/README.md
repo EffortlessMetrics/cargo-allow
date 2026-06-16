@@ -1,7 +1,7 @@
 # Active Goals
 
-This directory records the current Codex execution surface for the
-`spec-system` source-of-truth profile.
+This directory records the current Codex execution surface for governed
+source-of-truth work.
 
 The active goal manifest is execution state for agents. It points to the
 proposal, spec, support-tier map, and implementation plan that define the work.
@@ -17,19 +17,19 @@ for structural graph validation.
 | Path | Purpose |
 | --- | --- |
 | `active.toml` | Current source-of-truth execution goal for Codex and agents. |
-| `archive/` | Future home for completed or superseded goal manifests. |
+| `archive/` | Completed or superseded goal manifests. |
 
 ## Link Boundary
 
 The current manifest links to:
 
-- `CARGO-ALLOW-PROP-0001`
-- `CARGO-ALLOW-SPEC-0001`
+- `CARGO-ALLOW-PROP-0002`
+- `CARGO-ALLOW-SPEC-0002`
 - `CARGO-ALLOW-SUPPORT-0001`
-- `CARGO-ALLOW-PLAN-0001`
+- `CARGO-ALLOW-PLAN-0002`
 
 The active manifest should keep `linked_plan_status` current. It is `active`
-once [CARGO-ALLOW-PLAN-0001](../../plans/spec-system/implementation-plan.md)
+once [CARGO-ALLOW-PLAN-0002](../../plans/migration-parity/implementation-plan.md)
 exists.
 
 ## Claim Boundary
@@ -42,4 +42,4 @@ routing only.
 ## Maintenance
 
 Keep `active.toml` focused on the current execution lane. Archive completed or
-superseded manifests under `archive/` when a later PR adds that workflow.
+superseded manifests under `archive/` when a later goal succeeds them.
