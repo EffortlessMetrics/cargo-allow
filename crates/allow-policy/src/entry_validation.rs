@@ -652,9 +652,9 @@ mod tests {
         .expect_err("duplicate link values should fail validation");
         assert_eq!(
             err,
-            CargoAllowError::new(format!(
-                "allow-1 duplicate link entry `issue:1` at position 2"
-            ))
+            CargoAllowError::new(
+                "allow-1 duplicate link entry `issue:1` at position 2".to_string()
+            )
         );
     }
 
