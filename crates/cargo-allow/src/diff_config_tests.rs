@@ -34,6 +34,34 @@ fn cmd_diff_with_explicit_head_reports_missing_default_policy_config_with_exact_
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
 
+#[test]
+fn cmd_diff_with_explicit_head_rejects_missing_explicit_config_path_with_exact_error() {
+    let root = diff_fixture_dir();
+    init_git_repo_with_policy(&root);
+
+    let err = cmd_diff(&DiffArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(PathBuf::from("missing-policy.toml")),
+        kind: None,
+        include_untracked: false,
+        format: OutputFormat::Human,
+        output: None,
+        base: "HEAD~1".to_string(),
+        head: Some("HEAD".to_string()),
+    })
+    .expect_err("diff with missing explicit --config in compared revisions should fail");
+
+    assert_eq!(
+        err,
+        CargoAllowError::new("policy config missing-policy.toml not found in compared revisions")
+    );
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
 static NEXT_DIFF_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
 fn diff_fixture_dir() -> PathBuf {
@@ -56,6 +84,66 @@ fn init_git_repo_without_policy(root: &Path) {
         .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
     fs::write(root.join("src/lib.rs"), "fn base() {}\n")
         .unwrap_or_else(|err| std::panic::panic_any(format!("write base source: {err}")));
+    git(root, &["init"]);
+    git(
+        root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(root, &["config", "user.name", "cargo-allow test"]);
+    git(root, &["add", "."]);
+    git(root, &["commit", "-m", "base"]);
+    fs::write(root.join("src/lib.rs"), "fn head() {}\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write head source: {err}")));
+    git(root, &["add", "."]);
+    git(root, &["commit", "-m", "head"]);
+}
+
+fn init_git_repo_with_policy(root: &Path) {
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(root.join("src/lib.rs"), "fn base() {}\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write base source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+owner = "core/policy"
+status = "active"
+
+[workspace]
+root = "."
+inventory = "git-tracked"
+default_mode = "no-new"
+ignored = ["policy/**", "target/**"]
+generated = ["target/**", "vendor/**"]
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+stale_entries_fail = false
+
+[[allow]]
+id = "allow-base"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/allow.toml"
+owner = "core"
+classification = "fixture"
+reason = "fixture policy file"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     git(root, &["init"]);
     git(
         root,
