@@ -8,7 +8,15 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Testing
+
+- Harden `add` load, validate, and write error paths (#1685).
+- Add exact diff missing-policy config discriminator coverage (#1681).
+- Cover explicit `diff --config` missing behavior in revisions (#1683).
+
+### CI
+
+- Add tag-triggered release workflow (#1684).
 
 ## [0.1.9] - 2026-06-16
 
