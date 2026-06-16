@@ -1,4 +1,5 @@
 use super::*;
+use allow_core::CargoAllowError;
 
 #[test]
 fn parses_minimal_spec_system_config() {
@@ -850,6 +851,171 @@ fn rejects_support_tier_table_with_invalid_separator() {
         return;
     };
     assert!(err.to_string().contains("separator row is invalid"));
+}
+
+#[test]
+fn direct_error_discriminators_match_support_tier_parse_messages() {
+    let err = parse_support_tier_claims("No support-tier claim table here.")
+        .expect_err("missing claims table should fail parsing");
+    assert_eq!(
+        err,
+        CargoAllowError::new(
+            "support-tier claims table with Surface, Tier, Claim, Proof command, and Notes columns not found"
+        )
+    );
+
+    let err = parse_support_tier_claims(
+        r#"
+            | Surface | Tier | Claim | Notes |
+            | --- | --- | --- | --- |
+            | Worklist routing | Advisory | Worklists exist. | Missing proof-command column. |
+        "#,
+    )
+    .expect_err("missing proof-command column should fail parsing");
+    assert_eq!(
+        err,
+        CargoAllowError::new("support-tier claims table missing required column Proof command")
+    );
+
+    let err = parse_support_tier_claims("| Surface | Tier | Claim | Proof command | Notes |")
+        .expect_err("header without separator should fail parsing");
+    assert_eq!(
+        err,
+        CargoAllowError::new("support-tier claims table missing separator row")
+    );
+
+    let err = parse_support_tier_claims(
+        r#"
+            | Surface | Tier | Claim | Proof command | Notes |
+            | === | === | === | === | === |
+            | Worklist routing | Advisory | Worklists exist. | cargo-allow worklist --format json | Invalid separator. |
+        "#,
+    )
+    .expect_err("invalid separator should fail parsing");
+    assert_eq!(
+        err,
+        CargoAllowError::new("support-tier claims table separator row is invalid")
+    );
+
+    let err = parse_support_tier_claims(
+        r#"
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Worklist routing | Advisory | Worklists exist. |
+        "#,
+    )
+    .expect_err("short row should fail parsing");
+    assert_eq!(
+        err,
+        CargoAllowError::new("support-tier claims row has 3 cells; expected at least 4")
+    );
+
+    let err = parse_support_tier_claims(
+        r#"
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+
+            ## Claim Boundary
+        "#,
+    )
+    .expect_err("empty claim rows should fail parsing");
+    assert_eq!(
+        err,
+        CargoAllowError::new("support-tier claims table must include at least one claim row")
+    );
+
+    let err = parse_support_tier_claims(
+        r#"
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Worklist routing | Advisory | Claim text | cargo cmd |
+        "#,
+    )
+    .expect_err("missing notes cell should fail parsing");
+    assert_eq!(
+        err,
+        CargoAllowError::new("support-tier claims row missing notes cell")
+    );
+
+    let err = validate_support_tier_claims(
+        r#"
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Worklist routing | | Worklists exist. | cargo-allow worklist --format json | Missing tier. |
+        "#,
+    )
+    .expect_err("empty tier should fail validation");
+    assert_eq!(
+        err,
+        CargoAllowError::new("support-tier tier must not be empty")
+    );
+
+    let err = validate_support_tier_claims(
+        r#"
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Worklist routing | Experimental | Worklists exist. | cargo-allow worklist --format json | Unknown tier. |
+        "#,
+    )
+    .expect_err("unknown tier should fail validation");
+    assert_eq!(
+        err,
+        CargoAllowError::new("unknown support-tier level experimental")
+    );
+
+    let err = validate_support_tier_claims(
+        r#"
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | | Advisory | Worklists exist. | cargo-allow worklist --format json | Missing surface. |
+        "#,
+    )
+    .expect_err("empty surface should fail validation");
+    assert_eq!(
+        err,
+        CargoAllowError::new("support-tier surface must not be empty")
+    );
+
+    let err = validate_support_tier_claims(
+        r#"
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Worklist routing | Advisory | | cargo-allow worklist --format json | Missing claim. |
+        "#,
+    )
+    .expect_err("empty claim should fail validation");
+    assert_eq!(
+        err,
+        CargoAllowError::new("support-tier claim must not be empty")
+    );
+
+    let err = validate_support_tier_claims(
+        r#"
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | Source exception ledger | Stable | The scanner reports source-tree posture. | | Missing proof. |
+        "#,
+    )
+    .expect_err("stable tier without proof should fail validation");
+    assert_eq!(
+        err,
+        CargoAllowError::new(
+            "Source exception ledger support-tier proof command must not be empty"
+        )
+    );
+
+    let err = validate_support_tier_claims(
+        r#"
+            | Surface | Tier | Claim | Proof command | Notes |
+            | --- | --- | --- | --- | --- |
+            | PR posture | Stabilizing | Pull request posture is reported. | | Missing proof. |
+        "#,
+    )
+    .expect_err("stabilizing tier without proof should fail validation");
+    assert_eq!(
+        err,
+        CargoAllowError::new("PR posture support-tier proof command must not be empty")
+    );
 }
 
 #[test]
