@@ -6,8 +6,8 @@ const PUBLISHED_RELEASE_VERSION: &str = "0.1.9";
 const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.8";
 const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.9.md";
 const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.8.md";
-const STAGING_INSTALL_PIN_PHRASE: &str =
-    "Public install examples in this repository now pin the staged `0.1.9` candidate";
+const PUBLISHED_INSTALL_PIN_PHRASE: &str =
+    "Public install examples now pin the published `0.1.9` release";
 
 #[test]
 fn release_publish_order_matches_internal_dependency_graph() {
@@ -88,13 +88,13 @@ fn published_release_versions_match_workspace() {
     );
     assert!(
         release_doc.contains(&format!(
-            "Workspace package versions are bumped to `{PUBLISHED_RELEASE_VERSION}`"
+            "Workspace package versions were bumped to `{PUBLISHED_RELEASE_VERSION}`"
         )),
-        "release note should document the staged version bump"
+        "release note should document the completed version bump"
     );
     assert!(
-        release_doc.contains(STAGING_INSTALL_PIN_PHRASE),
-        "release note should document the staged install pin promotion"
+        release_doc.contains(PUBLISHED_INSTALL_PIN_PHRASE),
+        "release note should document the published install pin"
     );
 
     for (package, manifest) in &package_manifests {
@@ -171,8 +171,8 @@ fn install_examples_use_published_release() {
     let release_doc = read_workspace_file(&root, PUBLISHED_RELEASE_DOC);
 
     assert!(
-        release_doc.contains(STAGING_INSTALL_PIN_PHRASE),
-        "release record should note that public install examples moved to the staged release"
+        release_doc.contains(PUBLISHED_INSTALL_PIN_PHRASE),
+        "release record should note that public install examples pin the published release"
     );
 
     for relative_path in release_install_surfaces() {
