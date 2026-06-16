@@ -10,6 +10,20 @@ inventory without executing repository code.
 
 No unreleased changes yet.
 
+## [0.1.10] - TBD
+
+### Maintenance
+
+- Post-0.1.9 test hardening for `diff --config` missing-policy error
+  discriminators (`#1681`, `#1683`) and `add` load/validate/write error paths
+  (`#1685`).
+- Tag-triggered release workflow and release documentation (`#1684`).
+- Receipt issue closeouts carried in the 0.1.10 lane stack.
+
+This is a maintenance patch. It does not introduce new scanner features,
+migration surfaces, or spec-system promotion beyond the existing preview
+boundary.
+
 ## [0.1.9] - 2026-06-16
 
 ### Receipt adoption
