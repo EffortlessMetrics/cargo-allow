@@ -138,6 +138,16 @@ it does not execute proof commands.
 For adoption details, see
 [Run the spec-system profile in CI](how-to/run-spec-system-in-ci.md).
 
+## Release
+
+Tag pushes matching `v*` trigger the [Release
+workflow](../.github/workflows/release.yml). The workflow runs preflight checks,
+publishes the ten workspace crates to crates.io in dependency order, and creates
+a GitHub Release from `docs/release/github/vX.Y.Z.md` when that file exists.
+
+See [Release on Tag](release/README.md) for Trusted Publishing setup, manual
+dry-run via workflow dispatch, and the manual publish fallback.
+
 Copy-paste shape for an optional profile artifact:
 
 ```yaml

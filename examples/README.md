@@ -70,7 +70,7 @@ classification = "release_automation"
 reason = "Runs the release validation lane from reviewed workflow steps."
 created = "2026-05-27"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release.md"]
+evidence = ["doc:docs/release/README.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
