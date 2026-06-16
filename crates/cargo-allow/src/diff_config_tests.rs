@@ -55,9 +55,7 @@ fn cmd_diff_with_explicit_head_rejects_missing_explicit_config_path_with_exact_e
 
     assert_eq!(
         err,
-        CargoAllowError::new(
-            "policy config missing-policy.toml not found in compared revisions"
-        )
+        CargoAllowError::new("policy config missing-policy.toml not found in compared revisions")
     );
 
     fs::remove_dir_all(&root)
