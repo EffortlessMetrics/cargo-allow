@@ -383,85 +383,181 @@ mod tests {
     #[test]
     fn artifact_sample_validator_reports_array_and_scalar_constraint_errors() {
         let contains_schema = json_value(r#"{"type":"array","contains":{"const":"required"}}"#);
+        let path = "$";
+        let err = schema_covers_sample_value(
+            &contains_schema,
+            &contains_schema,
+            &json_value(r#"["other"]"#),
+            path,
+        )
+        .expect_err("array missing contains match should fail validation");
         assert_eq!(
-            schema_covers_sample_value(
-                &contains_schema,
-                &contains_schema,
-                &json_value(r#"["other"]"#),
-                "$"
-            ),
-            Err("$ did not contain a value matching contains".to_string())
+            err,
+            format!("{path} did not contain a value matching contains")
+        );
+
+        let any_of_schema = json_value(r#"{"anyOf":[{"const":"allow"},{"const":"audit"}]}"#);
+        let path = "$.mode";
+        let err = schema_covers_sample_value(
+            &any_of_schema,
+            &any_of_schema,
+            &json_value(r#""check""#),
+            path,
+        )
+        .expect_err("value outside anyOf branches should fail validation");
+        assert_eq!(
+            err,
+            format!(
+                "{path} did not match any anyOf branch: {path} has value \"check\", expected const \"allow\"; {path} has value \"check\", expected const \"audit\""
+            )
+        );
+
+        let required_schema = json_value(r#"{"type":"object","required":["name","kind"]}"#);
+        let path = "$";
+        let err = schema_covers_sample_value(
+            &required_schema,
+            &required_schema,
+            &json_value(r#"{"kind":"audit"}"#),
+            path,
+        )
+        .expect_err("object missing required keys should fail validation");
+        assert_eq!(
+            err,
+            format!("{path} is missing schema-required keys: name")
+        );
+
+        let additional_properties_schema = json_value(
+            r#"{
+                "type":"object",
+                "properties":{"known":{"type":"string"}},
+                "additionalProperties":false
+            }"#,
+        );
+        let path = "$";
+        let err = schema_covers_sample_value(
+            &additional_properties_schema,
+            &additional_properties_schema,
+            &json_value(r#"{"known":"ok","extra":true}"#),
+            path,
+        )
+        .expect_err("object with unknown keys should fail validation");
+        assert_eq!(
+            err,
+            format!("{path} has keys absent from schema properties: extra")
+        );
+
+        let no_properties_schema = json_value(r#"{"type":"object","additionalProperties":false}"#);
+        let path = "$";
+        let err = schema_covers_sample_value(
+            &no_properties_schema,
+            &no_properties_schema,
+            &json_value(r#"{"extra":true}"#),
+            path,
+        )
+        .expect_err("object with disallowed properties should fail validation");
+        assert_eq!(
+            err,
+            format!("{path} has object keys but schema allows no properties")
         );
 
         let const_schema = json_value(r#"{"const":"expected"}"#);
+        let path = "$.command";
+        let err = schema_covers_sample_value(
+            &const_schema,
+            &const_schema,
+            &json_value(r#""actual""#),
+            path,
+        )
+        .expect_err("value outside const should fail validation");
         assert_eq!(
-            schema_covers_sample_value(
-                &const_schema,
-                &const_schema,
-                &json_value(r#""actual""#),
-                "$.command"
-            ),
-            Err("$.command has value \"actual\", expected const \"expected\"".to_string())
+            err,
+            format!("{path} has value \"actual\", expected const \"expected\"")
         );
 
         let enum_schema = json_value(r#"{"enum":["audit","check"]}"#);
+        let path = "$.mode";
+        let err = schema_covers_sample_value(
+            &enum_schema,
+            &enum_schema,
+            &json_value(r#""doctor""#),
+            path,
+        )
+        .expect_err("value outside enum should fail validation");
         assert_eq!(
-            schema_covers_sample_value(
-                &enum_schema,
-                &enum_schema,
-                &json_value(r#""doctor""#),
-                "$.mode"
-            ),
-            Err("$.mode has value \"doctor\", outside schema enum".to_string())
+            err,
+            format!("{path} has value \"doctor\", outside schema enum")
         );
 
         let type_schema = json_value(r#"{"type":"string"}"#);
+        let path = "$.id";
+        let err = schema_covers_sample_value(
+            &type_schema,
+            &type_schema,
+            &json_value(r#"42"#),
+            path,
+        )
+        .expect_err("value outside schema type should fail validation");
         assert_eq!(
-            schema_covers_sample_value(&type_schema, &type_schema, &json_value(r#"42"#), "$.id"),
-            Err("$.id has JSON type integer, outside schema type".to_string())
+            err,
+            format!("{path} has JSON type integer, outside schema type")
         );
 
         let minimum_schema = json_value(r#"{"type":"number","minimum":10}"#);
+        let path = "$.count";
+        let err = schema_covers_sample_value(
+            &minimum_schema,
+            &minimum_schema,
+            &json_value(r#"3"#),
+            path,
+        )
+        .expect_err("value below minimum should fail validation");
         assert_eq!(
-            schema_covers_sample_value(
-                &minimum_schema,
-                &minimum_schema,
-                &json_value(r#"3"#),
-                "$.count"
-            ),
-            Err("$.count has numeric value 3, below minimum 10".to_string())
+            err,
+            format!("{path} has numeric value 3, below minimum 10")
         );
 
         let min_length_schema = json_value(r#"{"type":"string","minLength":4}"#);
+        let path = "$.id";
+        let err = schema_covers_sample_value(
+            &min_length_schema,
+            &min_length_schema,
+            &json_value(r#""abc""#),
+            path,
+        )
+        .expect_err("string shorter than minLength should fail validation");
         assert_eq!(
-            schema_covers_sample_value(
-                &min_length_schema,
-                &min_length_schema,
-                &json_value(r#""abc""#),
-                "$.id"
-            ),
-            Err("$.id has string shorter than minLength 4".to_string())
+            err,
+            format!("{path} has string shorter than minLength 4")
         );
 
         let pattern_schema = json_value(r#"{"type":"string","pattern":"^cargo-allow "}"#);
+        let path = "$.command";
+        let err = schema_covers_sample_value(
+            &pattern_schema,
+            &pattern_schema,
+            &json_value(r#""cargo check""#),
+            path,
+        )
+        .expect_err("string outside supported pattern should fail validation");
         assert_eq!(
-            schema_covers_sample_value(
-                &pattern_schema,
-                &pattern_schema,
-                &json_value(r#""cargo check""#),
-                "$.command"
-            ),
-            Err("$.command has string \"cargo check\", outside supported schema pattern \"^cargo-allow \"".to_string())
+            err,
+            format!(
+                "{path} has string \"cargo check\", outside supported schema pattern \"^cargo-allow \""
+            )
         );
     }
 
     #[test]
     fn artifact_sample_validator_reports_non_local_refs() {
         let schema = json_value(r#"{"$ref":"https://example.test/schema.json"}"#);
+        let path = "$";
+        let reference = "https://example.test/schema.json";
 
+        let err = schema_covers_sample_value(&schema, &schema, &json_value(r#"null"#), path)
+            .expect_err("non-local schema refs should fail validation");
         assert_eq!(
-            schema_covers_sample_value(&schema, &schema, &json_value(r#"null"#), "$"),
-            Err("$ schema uses non-local ref https://example.test/schema.json".to_string())
+            err,
+            format!("{path} schema uses non-local ref {reference}")
         );
     }
 

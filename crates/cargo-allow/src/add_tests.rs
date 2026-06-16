@@ -1,7 +1,7 @@
 use super::test_support::test_finding_at_line;
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand, RootArgs};
-use allow_core::{AllowConfig, AllowEntry};
+use allow_core::{AllowConfig, AllowEntry, CargoAllowError};
 use allow_policy::render_policy;
 use clap::Parser;
 use std::fs;
@@ -114,10 +114,47 @@ fn select_add_finding_fails_closed_on_equal_nearest_findings() {
     let kind = parse_kind_filter("panic")
         .unwrap_or_else(|err| std::panic::panic_any(format!("kind should parse: {err}")));
 
-    let err = select_add_finding(&findings, kind, Path::new("src/lib.rs"), 41)
+    let path = Path::new("src/lib.rs");
+    let line = 41;
+    let err = select_add_finding(&findings, kind, path, line)
         .expect_err("equally near findings should be ambiguous");
 
-    assert!(err.to_string().contains("ambiguous add request"));
+    assert_eq!(
+        err,
+        CargoAllowError::new(format!(
+            "ambiguous add request: 2 findings are equally near {}:{}",
+            allow_core::normalize_path(path),
+            line
+        ))
+    );
+}
+
+#[test]
+fn select_add_finding_reports_missing_nearby_findings() {
+    let findings = vec![test_finding_at_line(
+        FindingKind::Unsafe,
+        Some("unsafe_fn"),
+        "src/other.rs",
+        "unsafe_fn",
+        40,
+    )];
+    let kind = parse_kind_filter("panic")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("kind should parse: {err}")));
+    let path = Path::new("src/lib.rs");
+    let line = 39;
+
+    let err = select_add_finding(&findings, kind, path, line)
+        .expect_err("missing nearby panic finding should fail closed");
+
+    assert_eq!(
+        err,
+        CargoAllowError::new(format!(
+            "no current {} finding found near {}:{}",
+            kind.kind,
+            allow_core::normalize_path(path),
+            line
+        ))
+    );
 }
 
 #[test]
@@ -127,7 +164,13 @@ fn ensure_addable_outcome_rejects_already_matched_findings() {
     let err = ensure_addable_outcome(MatchStatus::Matched)
         .expect_err("matched finding should not be addable");
 
-    assert!(err.to_string().contains("already receipted"));
+    assert_eq!(
+        err,
+        CargoAllowError::new(format!(
+            "selected finding is already receipted or blocked with status `{}`; use list or explain before editing policy",
+            MatchStatus::Matched.as_str()
+        ))
+    );
 }
 
 #[test]

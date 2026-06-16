@@ -26,8 +26,8 @@ Recorded: 2026-06-15
 | default cargo-allow no-new | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md` reported `629` scanned files, `118` matched findings, `0` new findings, and `0` stale receipts. |
 | spec-system profile | passed | installed `cargo-allow 0.1.8`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.8`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json` reported `0` findings and `0` work items. |
-| ripr doctor | passed | installed `ripr 0.9.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
-| ripr+ repo readiness | blocked (provider-tracked) | `ripr` explicit gap-ledger projection still reports `6` `ripr+` targets after the hundred-forty-second slice, but all six remaining `predicate_boundary` anchors are filed as provider friction (`ripr#1432`, `#1433`, `#1440`–`#1443`). |
+| ripr doctor | passed | installed `ripr 0.10.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
+| ripr+ repo readiness | blocked (provider-tracked) | `ripr 0.10.0` explicit gap-ledger projection reports `364` `ripr+` targets (`358` `error_variant`, `6` `predicate_boundary`). The `error_variant` bulk is oracle-linking friction: `235` rows point at `parse_policy_toml_reports_toml_parse_errors`, `92` at `ensure_addable_outcome_rejects_matched_findings_with_exact_error`, and `24` at `artifact_sample_validator_reports_array_and_scalar_constraint_errors` even when exact `expect_err` + payload assertions already exist in the named or adjacent tests. Bulk tracking: `EffortlessMetrics/ripr-swarm#1304` (`error_variant` oracle regression). The six `predicate_boundary` anchors remain filed as `ripr#1432`, `#1433`, `#1440`–`#1443` (`EffortlessMetrics/ripr-swarm#1303`). |
 | unsafe-review+ readiness | blocked (provider-tracked) | `unsafe-review repo` reports `50` open gaps; `unsafe-review badges` reports `unsafe-review+ = 33` (`30 contract / 3 guard / 0 witness`). Initial triage filed `EffortlessMetrics/unsafe-review#541` after `40 / 50` cards anchored in tests/fixtures and the remaining nine non-fixture cards were false positives on safe scanner code or test string literals. |
 
 ## RIPR Evidence
@@ -41,7 +41,7 @@ ripr --version
 Result:
 
 ```text
-ripr 0.9.0
+ripr 0.10.0
 ```
 
 Discovery commands:
@@ -7920,6 +7920,75 @@ Remaining repairable evidence classes:
 
 All six remaining `predicate_boundary` anchors are provider-tracked.
 
+## RIPR 0.10.0 Upgrade Slice
+
+Installed provider:
+
+```bash
+rtk cargo install ripr --version 0.10.0 --locked --force
+rtk ripr --version
+```
+
+Result:
+
+```text
+ripr 0.10.0
+```
+
+After regenerating full repo exposure (`RIPR_REPO_EXPOSURE_SEAM_LIMIT=0`) and the gap
+decision ledger:
+
+```bash
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/v0.10.0-full.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/v0.10.0-full.repo-exposure.json --out target/ripr/reports/v0.10.0-full.gap-decision-ledger.json --out-md target/ripr/reports/v0.10.0-full.gap-decision-ledger.md
+rtk ripr check --root . --mode ready --format repo-badge-plus-json --gap-ledger target/ripr/reports/v0.10.0-full.gap-decision-ledger.json
+```
+
+Observed:
+
+```text
+repairable = 364
+ripr zero target count = 364
+ripr plus target count = 364
+```
+
+Evidence-class breakdown:
+
+| Evidence class | Count |
+| --- | ---: |
+| `error_variant` | 358 |
+| `predicate_boundary` | 6 |
+
+`error_variant` related-test concentration:
+
+| Related test | Count |
+| --- | ---: |
+| `parse_policy_toml_reports_toml_parse_errors` | 235 |
+| `ensure_addable_outcome_rejects_matched_findings_with_exact_error` | 92 |
+| `artifact_sample_validator_reports_array_and_scalar_constraint_errors` | 24 |
+| CLI arg call-presence observers | 7 |
+
+Focused repo test hardening in this slice:
+
+- `crates/allow-policy/src/entry_validation.rs`: rewrote
+  `direct_error_discriminators_match_entry_validation_messages` to use `expect_err` plus
+  exact `CargoAllowError::new(...)` payload assertions.
+- `crates/cargo-allow/src/add_tests.rs`: added
+  `select_add_finding_reports_missing_nearby_findings` and tightened ambiguous/matched
+  `select_add_finding` / `ensure_addable_outcome` assertions to exact `CargoAllowError`
+  payloads.
+- `crates/cargo-allow/src/artifact_sample_schema_support.rs`: consolidated object-shape
+  and scalar constraint assertions into
+  `artifact_sample_validator_reports_array_and_scalar_constraint_errors` using `expect_err`
+  plus `format!(...)` payloads that mirror production error construction.
+
+Post-change ledger regeneration did not move the `364` repairable projection. Treat the
+`error_variant` bulk as `ripr 0.10.0` oracle-linking friction until the provider revises
+related-test routing or accepts the existing exact payload assertions. Filed as
+`EffortlessMetrics/ripr-swarm#1304`. The six `predicate_boundary` anchors remain
+provider-tracked per-anchor in `ripr#1432`, `#1433`, `#1440`–`#1443`
+(`EffortlessMetrics/ripr-swarm#1303`).
+
 ## Unsafe-Review Evidence
 
 There is no separate `unsafe-review+` binary. Discovery used the installed
@@ -8011,11 +8080,19 @@ This record does not claim:
 - release readiness.
 - proof execution by cargo-allow.
 
-`ripr+ = 6` means the installed ripr ledger still reports six actionable
-targets. cargo-allow has revalidated direct boundary coverage for each anchor
-and filed provider issues for all six. Do not move `ripr` or other external
-repositories onto cargo-allow/spec-system as a readiness claim until ripr clears
-the ledger or the readiness bar is explicitly revised.
+`ripr+ = 364` means the installed ripr 0.10.0 ledger still reports three hundred
+sixty-four actionable targets. The `358` `error_variant` rows are not newly discovered
+untested seams: cross-version comparison shows they are the same anchors ripr 0.9.0 marked
+`already_observed`, reclassified as `MissingErrorDiscriminator` with misrouted
+`related_test`. Estimate ~75–85% oracle-linking regression and ~10–15% (~35–55) plausibly
+legitimate local gaps. cargo-allow strengthened exact error-discriminator tests in
+`entry_validation`, `add_tests`, and `artifact_sample_schema_support`, but the ledger did
+not move. The dominant `error_variant` projection is filed as provider oracle-linking
+friction in `EffortlessMetrics/ripr-swarm#1304` until ripr 0.10.0 revises related-test routing.
+
+The six unchanged `predicate_boundary` anchors remain provider-tracked in `ripr#1432`,
+`#1433`, and `#1440`–`#1443` (`EffortlessMetrics/ripr-swarm#1303`). Do not add low-value
+padding tests for those anchors.
 
 `unsafe-review+ = 33` means the installed unsafe-review badge still reports
 thirty-three contract/guard/witness gaps on a repo-scoped scan. cargo-allow's
