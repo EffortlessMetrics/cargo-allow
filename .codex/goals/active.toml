@@ -1,52 +1,44 @@
 schema_version = "1.0"
 
-id = "CARGO-ALLOW-GOAL-0001"
-title = "Spec-system profile"
-status = "done"
+id = "CARGO-ALLOW-GOAL-0002"
+title = "Migration and evidence parity"
+status = "active"
 owner = "codex"
-created = "2026-06-12"
+created = "2026-06-16"
 
 objective = """
-Build an opt-in spec-system profile into cargo-allow so repositories can govern
-their proposal, spec, ADR, implementation-plan, active-goal, support-tier,
-policy-ledger, and closeout graph without changing default source-exception
-behavior.
+Strengthen cargo-allow migration and evidence parity so repositories can replace
+bespoke AST/TOML allowlist xtasks with side-by-side proof, durable receipts, and
+documented deltas on the path to the 0.2.0 milestone claim.
 """
 
-linked_proposal = "CARGO-ALLOW-PROP-0001"
-linked_spec = "CARGO-ALLOW-SPEC-0001"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
-linked_plan = "plans/spec-system/implementation-plan.md"
-linked_plan_status = "done"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+linked_plan_status = "active"
 
 claim_boundary = """
-This manifest is agent execution state. It does not implement spec-system
-linting, prove claims, execute proof commands, or replace the proposal, spec,
-support-tier map, implementation plan, policy ledgers, or closeouts.
+This manifest is agent execution state. It does not implement migration lanes,
+prove side-by-side parity, execute proof commands, or replace the proposal,
+spec, support-tier map, implementation plan, policy ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "spec-system-pr-033"
-status = "done"
-title = "Finalize spec-system profile closeout"
-linked_proposal = "CARGO-ALLOW-PROP-0001"
-linked_spec = "CARGO-ALLOW-SPEC-0001"
-linked_plan = "plans/spec-system/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0001"
+id = "migration-parity-pr-001"
+status = "ready"
+title = "Register migration parity goal and sequence first parity lanes"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
 proof_commands = [
   "rtk cargo run -p cargo-allow -- doctor --profile spec-system --format json",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
   "rtk cargo run -p cargo-allow -- worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json",
-  "rtk cargo run -p cargo-allow -- explain CARGO-ALLOW-SPEC-0001 --profile spec-system --format json --output target/cargo-allow/spec-system-explain.json",
-  "rtk git diff --cached --check",
-  "rtk cargo fmt --all --check",
-  "rtk cargo clippy --workspace --all-targets -- -D warnings",
-  "rtk cargo test --workspace",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "The opt-in spec-system profile is implemented as one governance profile alongside the default source-exception ledger.",
-  "The final closeout records structural profile behavior, dogfood evidence, worklist/readiness/explain surfaces, and no-execution claim boundaries.",
-  "Keep CARGO-ALLOW-SUPPORT-0001 advisory unless a separate support-tier promotion decision is made.",
-  "Do not package, tag, publish, or claim stable support without explicit release authorization.",
+  "Archive the completed spec-system goal manifest and register the 0.2.0 migration parity execution lane.",
+  "Keep default cargo-allow behavior unchanged; migration work uses compat lanes and documentation only until parity proof exists.",
+  "Do not bump workspace version or publish release records without explicit cut authorization.",
 ]
