@@ -2,10 +2,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const PUBLISHED_RELEASE_VERSION: &str = "0.1.8";
-const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.7";
-const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.8.md";
-const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.7.md";
+const PUBLISHED_RELEASE_VERSION: &str = "0.1.9";
+const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.8";
+const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.9.md";
+const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.8.md";
+const STAGING_INSTALL_PIN_PHRASE: &str =
+    "Public install examples in this repository now pin the staged `0.1.9` candidate";
 
 #[test]
 fn release_publish_order_matches_internal_dependency_graph() {
@@ -86,15 +88,13 @@ fn published_release_versions_match_workspace() {
     );
     assert!(
         release_doc.contains(&format!(
-            "Workspace package versions were bumped to `{PUBLISHED_RELEASE_VERSION}`"
+            "Workspace package versions are bumped to `{PUBLISHED_RELEASE_VERSION}`"
         )),
-        "release note should document the published version bump"
+        "release note should document the staged version bump"
     );
     assert!(
-        release_doc.contains(&format!(
-            "Public install examples now pin the published `{PUBLISHED_RELEASE_VERSION}` release"
-        )),
-        "release note should record public install pin promotion"
+        release_doc.contains(STAGING_INSTALL_PIN_PHRASE),
+        "release note should document the staged install pin promotion"
     );
 
     for (package, manifest) in &package_manifests {
@@ -141,26 +141,26 @@ fn published_release_versions_match_workspace() {
 #[test]
 fn completed_release_record_versions_match_published_release() {
     let root = workspace_root();
-    let release_doc = read_workspace_file(&root, PUBLISHED_RELEASE_DOC);
+    let release_doc = read_workspace_file(&root, PREVIOUS_RELEASE_DOC);
 
     assert!(
-        release_doc.contains(&format!("# {PUBLISHED_RELEASE_VERSION} Release Record")),
+        release_doc.contains(&format!("# {PREVIOUS_PUBLISHED_VERSION} Release Record")),
         "published release note should name itself as a completed release record"
     );
     assert!(
         release_doc.contains(&format!(
-            "completed `{PUBLISHED_RELEASE_VERSION}` patch release"
+            "completed `{PREVIOUS_PUBLISHED_VERSION}` patch release"
         )),
         "published release note should document the completed patch release"
     );
     assert!(
         release_doc.contains("Published Registry State")
-            && release_doc.contains(&format!("cargo-allow {PUBLISHED_RELEASE_VERSION}")),
+            && release_doc.contains(&format!("cargo-allow {PREVIOUS_PUBLISHED_VERSION}")),
         "published release note should record registry visibility"
     );
     assert!(
         release_doc.contains("Final Verification")
-            && release_doc.contains(&format!("cargo-allow {PUBLISHED_RELEASE_VERSION}")),
+            && release_doc.contains(&format!("cargo-allow {PREVIOUS_PUBLISHED_VERSION}")),
         "published release note should record installed-binary verification"
     );
 }
@@ -171,10 +171,8 @@ fn install_examples_use_published_release() {
     let release_doc = read_workspace_file(&root, PUBLISHED_RELEASE_DOC);
 
     assert!(
-        release_doc.contains(&format!(
-            "Public install examples now pin the published `{PUBLISHED_RELEASE_VERSION}` release"
-        )),
-        "release record should note that public install examples moved to the published release"
+        release_doc.contains(STAGING_INSTALL_PIN_PHRASE),
+        "release record should note that public install examples moved to the staged release"
     );
 
     for relative_path in release_install_surfaces() {
