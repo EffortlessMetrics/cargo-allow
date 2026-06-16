@@ -518,6 +518,9 @@ fn local_evidence_reference(reference: &str) -> Option<LocalEvidenceReference> {
 }
 
 #[cfg(test)]
+#[path = "diff_config_tests.rs"]
+mod config_tests;
+#[cfg(test)]
 #[path = "diff_json_tests.rs"]
 mod json_tests;
 #[cfg(test)]
