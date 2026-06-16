@@ -10,7 +10,7 @@ inventory without executing repository code.
 
 No unreleased changes yet.
 
-## [0.1.9] - Unreleased
+## [0.1.9] - 2026-06-16
 
 ### Receipt adoption
 
