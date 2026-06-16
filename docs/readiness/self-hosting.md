@@ -17,18 +17,22 @@ Current state: **not ready for external migration**.
 
 ## Current Result
 
-Recorded: 2026-06-16
+Recorded: 2026-06-16 (summary refreshed after `0.1.9` cut)
 
 | Surface | Status | Evidence |
 | --- | --- | --- |
 | docs gate | passed | `cargo test --doc --workspace`; `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`; CI run `27455099250` passed both steps on `main`. |
-| workspace fmt/clippy/tests | passed | `cargo fmt --all --check`; `cargo clippy --workspace --all-targets -- -D warnings`; `cargo test --workspace` reported `1712 passed` on release head `7d47f4a9`. |
-| default cargo-allow no-new | passed | installed `cargo-allow 0.1.9`; `cargo-allow check --mode no-new --format markdown --receipt target/cargo-allow/install-0.1.9-check.receipt.json --output target/cargo-allow/install-0.1.9-check.md` reported `659` scanned files, `120` matched findings, `0` new findings, and `0` stale receipts. |
+| workspace fmt/clippy/tests | passed | `cargo fmt --all --check`; `cargo clippy --workspace --all-targets -- -D warnings`; `cargo test --workspace` reported `1715+` passed on release head `305e4c80` after the `0.1.9` maintenance stack (`#1681`, `#1683`, `#1684`, `#1685`). |
+| default cargo-allow no-new | passed | installed `cargo-allow 0.1.9`; `cargo-allow check --mode no-new --format markdown --receipt target/cargo-allow/install-0.1.9-check.receipt.json --output target/cargo-allow/install-0.1.9-check.md` reported `659` scanned files, `120` matched findings, `0` new findings, and `0` stale receipts on the published cut. |
 | spec-system profile | passed | installed `cargo-allow 0.1.9`; `cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/install-0.1.9-spec-system.json` reported `6` artifacts, `17` links, `4` support-tier rows, `0` findings, and `0` work items. |
 | spec-system worklist | passed | installed `cargo-allow 0.1.9`; `cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/install-0.1.9-spec-system-worklist.json` reported `0` findings and `0` work items. |
 | ripr doctor | passed | installed `ripr 0.10.0`; `ripr doctor` passed and selected `ripr first-pr --root . --base origin/main --head HEAD` as the safe next action. |
 | ripr+ repo readiness | blocked (provider-tracked) | `ripr 0.10.0` explicit gap-ledger projection reports `364` `ripr+` targets (`358` `error_variant`, `6` `predicate_boundary`). The `error_variant` bulk is oracle-linking friction: `235` rows point at `parse_policy_toml_reports_toml_parse_errors`, `92` at `ensure_addable_outcome_rejects_matched_findings_with_exact_error`, and `24` at `artifact_sample_validator_reports_array_and_scalar_constraint_errors` even when exact `expect_err` + payload assertions already exist in the named or adjacent tests. Bulk tracking: `EffortlessMetrics/ripr-swarm#1304` (`error_variant` oracle regression). The six `predicate_boundary` anchors remain filed as `ripr#1432`, `#1433`, `#1440`–`#1443` (`EffortlessMetrics/ripr-swarm#1303`). |
 | unsafe-review+ readiness | blocked (provider-tracked) | `unsafe-review repo` reports `50` open gaps; `unsafe-review badges` reports `unsafe-review+ = 33` (`30 contract / 3 guard / 0 witness`). Initial triage filed `EffortlessMetrics/unsafe-review#541` after `40 / 50` cards anchored in tests/fixtures and the remaining nine non-fixture cards were false positives on safe scanner code or test string literals. |
+
+The detailed burn-down slices below are historical provider-alignment records through
+the `0.1.9` lane. They are not required reading for current release posture;
+use the summary table above for adoption readiness.
 
 ## RIPR Evidence
 
