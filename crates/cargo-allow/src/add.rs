@@ -32,8 +32,6 @@ use crate::{
 const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
 
 #[cfg(test)]
-use allow_core::MatchStatus;
-#[cfg(test)]
 use std::path::{Path, PathBuf};
 
 pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
@@ -97,10 +95,10 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     Ok(())
 }
 
-fn selected_add_outcome<'a>(
-    outcomes: &'a [MatchOutcome],
+fn selected_add_outcome(
+    outcomes: &[MatchOutcome],
     finding_index: usize,
-) -> CargoAllowResult<&'a MatchOutcome> {
+) -> CargoAllowResult<&MatchOutcome> {
     outcomes
         .iter()
         .find(|outcome| outcome.finding_index == Some(finding_index))
