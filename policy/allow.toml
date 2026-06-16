@@ -416,6 +416,29 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0188"
+kind = "non_rust_file"
+family = "ci_declarative"
+path = ".github/workflows/release.yml"
+owner = "core/release"
+classification = "release_automation"
+reason = "Runs release preflight, publishes workspace crates on version tags, and creates GitHub Releases."
+evidence = ["doc:docs/release/README.md", "doc:docs/ci.md"]
+created = "2026-06-16"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/workflows/release.yml"
+target_fingerprint = "yml"
+line_hint = 1
+glob = ".github/workflows/release.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0144"
 kind = "non_rust_file"
 family = "documentation"
@@ -2779,6 +2802,29 @@ symbol = "docs/release/github/v0.1.9.md"
 target_fingerprint = "md"
 line_hint = 1
 glob = "docs/release/github/v0.1.9.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0189"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/README.md"
+owner = "core/release"
+classification = "release_runbook"
+reason = "Documents the canonical tag-triggered release workflow, Trusted Publishing setup, and manual fallback."
+evidence = ["doc:docs/release/0.1.9.md", "doc:docs/ci.md", "doc:docs/claim-boundaries.md"]
+created = "2026-06-16"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/README.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/release/README.md"
 
 [allow.last_seen]
 line = 1

@@ -9,6 +9,40 @@ const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.8.md";
 const PUBLISHED_INSTALL_PIN_PHRASE: &str =
     "Public install examples now pin the published `0.1.9` release";
 
+const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
+const RELEASE_DOC: &str = "docs/release/README.md";
+
+#[test]
+fn release_workflow_exists_and_lists_publish_order() {
+    let root = workspace_root();
+    let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
+    let release_doc = read_workspace_file(&root, RELEASE_DOC);
+    let publish_order = parse_publish_order(&read_workspace_file(
+        &root,
+        PUBLISHED_RELEASE_DOC,
+    ));
+
+    assert!(
+        workflow.contains("on:") && workflow.contains("tags:") && workflow.contains("v*"),
+        "{RELEASE_WORKFLOW} should trigger on version tags"
+    );
+    assert!(
+        workflow.contains("rust-lang/crates-io-auth-action@v1"),
+        "{RELEASE_WORKFLOW} should authenticate with crates.io Trusted Publishing"
+    );
+    assert!(
+        release_doc.contains(RELEASE_WORKFLOW),
+        "{RELEASE_DOC} should document the release workflow"
+    );
+
+    for package in publish_order {
+        assert!(
+            workflow.contains(&package),
+            "{RELEASE_WORKFLOW} should publish {package} in documented order"
+        );
+    }
+}
+
 #[test]
 fn release_publish_order_matches_internal_dependency_graph() {
     let root = workspace_root();

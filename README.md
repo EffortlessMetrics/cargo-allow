@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/EffortlessMetrics/cargo-allow/actions/workflows/ci.yml"><img src="https://github.com/EffortlessMetrics/cargo-allow/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
+  <a href="https://github.com/EffortlessMetrics/cargo-allow/releases/tag/v0.1.9"><img src="https://img.shields.io/github/v/release/EffortlessMetrics/cargo-allow?display_name=tag&include_prereleases=false" alt="GitHub release" /></a>
   <a href="https://crates.io/crates/cargo-allow"><img src="https://img.shields.io/crates/v/cargo-allow.svg" alt="crates.io" /></a>
   <a href="https://crates.io/crates/cargo-allow"><img src="https://img.shields.io/crates/d/cargo-allow.svg?label=crates.io%20downloads" alt="crates.io downloads" /></a>
   <a href="https://docs.rs/cargo-allow"><img src="https://docs.rs/cargo-allow/badge.svg" alt="docs.rs" /></a>
@@ -24,9 +25,8 @@
 They do not prove that no unsafe, panic, lint suppression, generated code, or
 non-Rust exception exists outside the scanned source-tree/source-syntax surface.
 Current reports may claim only that no new unreceipted findings were found in
-scanned source-tree inventory. There is no GitHub release badge here until a
-GitHub Release exists, and there are no custom posture badges until generated
-badge artifacts and a badge policy exist. -->
+scanned source-tree inventory. The GitHub release badge tracks the latest tag;
+it does not prove release readiness for unreleased commits. -->
 
 No invisible source exceptions.
 

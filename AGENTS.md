@@ -66,6 +66,12 @@ release authorization is explicit, perform the release steps directly, in
 dependency order, and record evidence. Do not leave a release half-finished
 unless a real blocker appears.
 
+Future releases should push a `v*` tag to trigger
+[`.github/workflows/release.yml`](../.github/workflows/release.yml). See
+[docs/release/README.md](../docs/release/README.md) for Trusted Publishing
+setup, workflow dispatch dry-runs, and manual fallback. Tag pushes perform real
+crates.io uploads; do not push test tags without release authorization.
+
 ## Validation
 
 Run the narrowest useful validation first, then broader checks when practical.
