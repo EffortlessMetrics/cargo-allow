@@ -18,6 +18,19 @@ impl CheckMode {
         }
     }
 
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Audit => "audit",
+            Self::NoNew => "no-new",
+            Self::Strict => "strict",
+            Self::Release => "release",
+        }
+    }
+
+    pub fn is_advisory(self) -> bool {
+        matches!(self, Self::Audit)
+    }
+
     pub fn fails(self, status: MatchStatus) -> bool {
         match self {
             Self::Audit => false,

@@ -14,7 +14,7 @@ fn receipt_schema_locks_top_level_status_vocabulary() {
         "receipt status",
         &schema,
         "/properties/status/enum",
-        allow_report::ARTIFACT_STATUSES,
+        allow_report::RECEIPT_STATUSES,
     );
 }
 

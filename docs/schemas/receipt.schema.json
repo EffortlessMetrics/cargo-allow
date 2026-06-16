@@ -31,7 +31,7 @@
       "description": "Receipts are emitted by cargo-allow check."
     },
     "status": {
-      "enum": ["passed", "failed"]
+      "enum": ["passed", "failed", "error"]
     },
     "failed": {
       "type": "boolean"
@@ -86,6 +86,28 @@
     },
     "inventory": {
       "$ref": "#/$defs/inventory"
+    },
+    "mode": {
+      "type": "string",
+      "description": "Effective check mode that governed this run."
+    },
+    "enforcement": {
+      "enum": ["advisory", "enforcing"],
+      "description": "Whether the effective mode treated findings as advisory or enforcing."
+    },
+    "policy_config": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Policy file path loaded for this run, when known."
+    },
+    "tool_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "cargo-allow version that produced this receipt."
+    },
+    "diagnostic": {
+      "type": "string",
+      "description": "Machine-readable validation or configuration error for status=error receipts."
     },
     "counts": {
       "$ref": "#/$defs/counts"

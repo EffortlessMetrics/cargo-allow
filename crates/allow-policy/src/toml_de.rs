@@ -21,6 +21,13 @@ enum U32ish {
     String(String),
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum SchemaVersionish {
+    Integer(i64),
+    String(String),
+}
+
 pub(crate) fn string_or_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -59,6 +66,17 @@ where
     }
 }
 
+pub(crate) fn option_schema_version<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match Option::<SchemaVersionish>::deserialize(deserializer)? {
+        Some(SchemaVersionish::Integer(value)) => Ok(Some(value.to_string())),
+        Some(SchemaVersionish::String(value)) => Ok(Some(value)),
+        None => Ok(None),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -79,6 +97,12 @@ mod tests {
     struct U32Fixture {
         #[serde(default, deserialize_with = "option_u32_or_string")]
         count: Option<u32>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct SchemaVersionFixture {
+        #[serde(default, deserialize_with = "option_schema_version")]
+        schema_version: Option<String>,
     }
 
     fn parse<T: serde::de::DeserializeOwned>(input: &str) -> Result<T, toml::de::Error> {
@@ -166,6 +190,21 @@ mod tests {
         let missing = parse::<U32Fixture>("")
             .unwrap_or_else(|err| std::panic::panic_any(format!("missing u32 parses: {err}")));
         assert_eq!(missing.count, None);
+    }
+
+    #[test]
+    fn option_schema_version_accepts_integer_string_and_missing_values() {
+        let integer = parse::<SchemaVersionFixture>("schema_version = 1")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("integer parses: {err}")));
+        assert_eq!(integer.schema_version.as_deref(), Some("1"));
+
+        let string = parse::<SchemaVersionFixture>("schema_version = \"0.1\"")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("string parses: {err}")));
+        assert_eq!(string.schema_version.as_deref(), Some("0.1"));
+
+        let missing = parse::<SchemaVersionFixture>("")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("missing schema parses: {err}")));
+        assert_eq!(missing.schema_version, None);
     }
 
     #[test]

@@ -13,14 +13,14 @@ dependencies = [
 
 [[package]]
 name = "allow-core"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "proptest",
 ]
 
 [[package]]
 name = "allow-diff"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "allow-core",
  "allow-files",
@@ -31,28 +31,28 @@ dependencies = [
 
 [[package]]
 name = "allow-files"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "allow-core",
 ]
 
 [[package]]
 name = "allow-inventory"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "allow-core",
 ]
 
 [[package]]
 name = "allow-match"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "allow-core",
 ]
 
 [[package]]
 name = "allow-policy"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "allow-core",
  "serde",
@@ -61,7 +61,7 @@ dependencies = [
 
 [[package]]
 name = "allow-policy-legacy"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "allow-core",
  "allow-match",
@@ -71,14 +71,14 @@ dependencies = [
 
 [[package]]
 name = "allow-report"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "allow-core",
 ]
 
 [[package]]
 name = "allow-rust"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "allow-core",
  "toml",
@@ -144,13 +144,13 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
 name = "bitflags"
-version = "2.11.1"
+version = "2.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
+checksum = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8"
 
 [[package]]
 name = "cargo-allow"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "allow-core",
  "allow-diff",
@@ -167,9 +167,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.62"
+version = "1.2.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1dce859f0832a7d088c4f1119888ab94ef4b5d6795d1ce05afb7fe159d79f98"
+checksum = "dad887fd958be91b5098c0248def011f4523ab786cd411be668777e55063501f"
 dependencies = [
  "find-msvc-tools",
  "shlex",
@@ -293,9 +293,9 @@ checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 
 [[package]]
 name = "memchr"
-version = "2.8.0"
+version = "2.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
+checksum = "88904434abc2901f197fe8cc55f0445e7ded921dba5911dad2e2b39b48e663c4"
 
 [[package]]
 name = "num-traits"
@@ -400,9 +400,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.12.3"
+version = "1.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e10754a14b9137dd7b1e3e5b0493cc9171fdd105e0ab477f51b72e7f3ac0e276"
+checksum = "f1292b7759ae1cb9ec195452d1390a074f0cd8541ab7a5a8c31cd6db45d4a6ba"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -423,9 +423,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.8.10"
+version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
+checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "serde"
@@ -482,9 +482,9 @@ dependencies = [
 
 [[package]]
 name = "shlex"
-version = "1.3.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
+checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "streaming-iterator"
@@ -634,18 +634,18 @@ checksum = "f17a85883d4e6d00e8a97c586de764dabcc06133f7f1d55dce5cdc070ad7fe59"
 
 [[package]]
 name = "zerocopy"
-version = "0.8.49"
+version = "0.8.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bce33a6288fa3f072a8c2c7d0f2fdbb90e28298f0135c1f99b96c3db2efcc60b"
+checksum = "ce1022995ff5ff5d841ad7d994facc23098cd40152f2c1d11cd607c6f530653f"
 dependencies = [
  "zerocopy-derive",
 ]
 
 [[package]]
 name = "zerocopy-derive"
-version = "0.8.49"
+version = "0.8.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fd425244944f4ab65ccff928e7323354c5a018c75838362fdce749dfad2ee1e"
+checksum = "1ae7f38b72ec2a254e2b87ef277cf2cd4fb97cbebf944faa6f33354da0867930"
 dependencies = [
  "proc-macro2",
  "quote",

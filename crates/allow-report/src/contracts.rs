@@ -32,7 +32,15 @@ pub struct ArtifactContract {
 
 pub const ARTIFACT_STATUS_PASSED: &str = "passed";
 pub const ARTIFACT_STATUS_FAILED: &str = "failed";
+pub const ARTIFACT_STATUS_ERROR: &str = "error";
 pub const ARTIFACT_STATUSES: &[&str] = &[ARTIFACT_STATUS_PASSED, ARTIFACT_STATUS_FAILED];
+pub const RECEIPT_STATUSES: &[&str] = &[
+    ARTIFACT_STATUS_PASSED,
+    ARTIFACT_STATUS_FAILED,
+    ARTIFACT_STATUS_ERROR,
+];
+pub const RECEIPT_ENFORCEMENT_ADVISORY: &str = "advisory";
+pub const RECEIPT_ENFORCEMENT_ENFORCING: &str = "enforcing";
 
 pub const REPORT_COMMAND_AUDIT: &str = "audit";
 pub const REPORT_COMMAND_CHECK: &str = "check";
@@ -331,6 +339,10 @@ pub struct ReportContext<'a> {
     pub policy_missing_evidence_entries: Option<usize>,
     pub broken_evidence_links: Option<usize>,
     pub weak_evidence_references: Option<usize>,
+    pub mode: Option<&'a str>,
+    pub enforcement: Option<&'a str>,
+    pub policy_config: Option<&'a str>,
+    pub tool_version: Option<&'a str>,
 }
 
 impl<'a> ReportContext<'a> {
@@ -350,6 +362,10 @@ impl<'a> ReportContext<'a> {
             policy_missing_evidence_entries: None,
             broken_evidence_links: None,
             weak_evidence_references: None,
+            mode: None,
+            enforcement: None,
+            policy_config: None,
+            tool_version: None,
         }
     }
 }

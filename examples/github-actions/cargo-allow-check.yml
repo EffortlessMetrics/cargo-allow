@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v6.0.2
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-allow
-        run: cargo install cargo-allow --version 0.1.8 --locked
+        run: cargo install cargo-allow --version 0.1.9 --locked
       - name: Run cargo-allow mainline check
         run: |
           mkdir -p target/cargo-allow

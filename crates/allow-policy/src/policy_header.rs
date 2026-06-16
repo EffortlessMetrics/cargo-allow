@@ -3,10 +3,13 @@ use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use crate::text_validation::{validate_optional_text, validate_required_text};
 
 const SUPPORTED_SCHEMA_VERSION: &str = "0.1";
+const SUPPORTED_SCHEMA_VERSION_ALIAS: &str = "1";
 
 pub(crate) fn validate_policy_header(cfg: &AllowConfig) -> CargoAllowResult<()> {
     validate_required_text("policy schema_version", &cfg.schema_version)?;
-    if cfg.schema_version != SUPPORTED_SCHEMA_VERSION {
+    if cfg.schema_version != SUPPORTED_SCHEMA_VERSION
+        && cfg.schema_version != SUPPORTED_SCHEMA_VERSION_ALIAS
+    {
         return Err(CargoAllowError::new(format!(
             "unsupported policy schema_version `{}`",
             cfg.schema_version

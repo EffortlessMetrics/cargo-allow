@@ -11,6 +11,140 @@ use support::{
 };
 
 #[test]
+fn check_receipt_includes_run_metadata() {
+    let root = temp_root("receipt-run-metadata");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(root.join("policy/allow.toml"), policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+
+    let receipt_output = root.join("target/cargo-allow/check.receipt.json");
+    let result = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--mode")
+        .arg("audit")
+        .arg("--format")
+        .arg("json")
+        .arg("--receipt")
+        .arg(&receipt_output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+
+    assert_status("check", &result, true);
+    let receipt = assert_saved_json_artifact(
+        &receipt_output,
+        "check receipt",
+        "cargo-allow.receipt.v1",
+        "check",
+    );
+    assert_json_str(&receipt, "/mode", "audit", "receipt mode");
+    assert_json_str(&receipt, "/enforcement", "advisory", "receipt enforcement");
+    assert_json_str(
+        &receipt,
+        "/tool_version",
+        env!("CARGO_PKG_VERSION"),
+        "receipt tool_version",
+    );
+    assert!(
+        receipt
+            .pointer("/policy_config")
+            .and_then(|value| value.as_str())
+            .is_some_and(|path| path.contains("allow.toml")),
+        "receipt should name the loaded policy path: {:?}",
+        receipt.pointer("/policy_config")
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn check_validation_error_writes_error_receipt_instead_of_leaving_stale_file() {
+    let root = temp_root("receipt-validation-error");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(root.join("policy/allow.toml"), policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+
+    let receipt_output = root.join("target/cargo-allow/check.receipt.json");
+    let passing = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--mode")
+        .arg("no-new")
+        .arg("--receipt")
+        .arg(&receipt_output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run passing check: {err}")));
+    assert_status("check", &passing, true);
+
+    let invalid_policy = format!(
+        r#"{}
+
+[[allow]]
+id = "allow-invalid"
+kind = "panic"
+family = "unwrap"
+path = "src/invalid.rs"
+owner = "core"
+classification = "fixture"
+reason = "fixture invalid lifecycle"
+created = "2026-08-01"
+review_after = "2026-07-01"
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"
+"#,
+        policy()
+    );
+    fs::write(root.join("policy/allow.toml"), invalid_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write invalid policy: {err}")));
+
+    let failing = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--mode")
+        .arg("no-new")
+        .arg("--receipt")
+        .arg(&receipt_output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run failing check: {err}")));
+    assert_eq!(
+        failing.status.code(),
+        Some(2),
+        "invalid policy should exit 2: {:?}",
+        failing
+    );
+
+    let receipt = assert_saved_json_artifact(
+        &receipt_output,
+        "check error receipt",
+        "cargo-allow.receipt.v1",
+        "check",
+    );
+    assert_json_str(&receipt, "/status", "error", "error receipt status");
+    assert!(
+        receipt
+            .pointer("/diagnostic")
+            .and_then(|value| value.as_str())
+            .is_some_and(|message| message.contains("review_after must not be before created")),
+        "error receipt should carry the validation diagnostic"
+    );
+    assert_json_u64(
+        &receipt,
+        "/counts/matched",
+        0,
+        "error receipt should not preserve stale matched counts",
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn check_receipt_file_exposes_saved_json_contract() {
     let root = temp_root("receipt-output");
     fs::create_dir_all(root.join("policy"))

@@ -139,6 +139,33 @@ fn unmatched_allow_entry_is_reported_as_stale_with_scope() {
 }
 
 #[test]
+fn evaluate_counts_review_due_for_matched_and_unused_entries() {
+    let today = allow_core::SimpleDate::today_utc_approx();
+    let past = today.add_days(-5).to_string();
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut matched = entry_with_hash("fnv1a64:actual");
+    matched.lifecycle.review_after = Some(past.clone());
+    let mut unused = entry_with_hash("fnv1a64:unused");
+    unused.id = "allow-unused".to_string();
+    unused.lifecycle.review_after = Some(past);
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(matched);
+    cfg.allow.push(unused);
+
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+    assert_eq!(
+        outcomes
+            .iter()
+            .filter(|outcome| outcome.status == MatchStatus::ReviewDue)
+            .count(),
+        2
+    );
+    assert!(!CheckMode::NoNew.fails(MatchStatus::ReviewDue));
+    assert!(CheckMode::Strict.fails(MatchStatus::ReviewDue));
+}
+
+#[test]
 fn expired_entry_reports_expired_even_when_structure_matches() {
     let finding = finding_with_hash("fnv1a64:actual");
     let mut entry = entry_with_hash("fnv1a64:actual");

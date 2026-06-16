@@ -74,6 +74,14 @@ impl SimpleDate {
             .unwrap_or(0);
         Self::from_days_since_unix_epoch((seconds / 86_400) as i64)
     }
+
+    pub fn is_before_date_str(date: Option<&str>, today: Self) -> bool {
+        date.and_then(Self::parse).is_some_and(|date| date < today)
+    }
+
+    pub fn is_due_date_str(date: Option<&str>, today: Self) -> bool {
+        date.and_then(Self::parse).is_some_and(|date| date <= today)
+    }
 }
 
 fn valid_ymd(year: i32, month: u32, day: u32) -> bool {

@@ -112,7 +112,13 @@ fn workflow_compat_preserves_missing_and_stale_drift() {
     assert_eq!(
         matched
             .iter()
-            .filter(|outcome| outcome.status == allow_core::MatchStatus::Matched)
+            .filter(|outcome| {
+                outcome.finding_index.is_some()
+                    && matches!(
+                        outcome.status,
+                        allow_core::MatchStatus::Matched | allow_core::MatchStatus::ReviewDue
+                    )
+            })
             .count(),
         3
     );
@@ -135,11 +141,13 @@ fn workflow_compat_preserves_missing_and_stale_drift() {
     );
 
     let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
-    assert!(
-        stale_allow
-            .iter()
-            .any(|outcome| outcome.status == allow_core::MatchStatus::Stale)
-    );
+    assert!(stale_allow.iter().any(|outcome| {
+        outcome.finding_index.is_none()
+            && matches!(
+                outcome.status,
+                allow_core::MatchStatus::Stale | allow_core::MatchStatus::ReviewDue
+            )
+    }));
 }
 
 #[test]
@@ -320,7 +328,13 @@ fn dependency_surface_compat_preserves_matched_new_and_stale_drift() {
     assert_eq!(
         matched
             .iter()
-            .filter(|outcome| outcome.status == allow_core::MatchStatus::Matched)
+            .filter(|outcome| {
+                outcome.finding_index.is_some()
+                    && matches!(
+                        outcome.status,
+                        allow_core::MatchStatus::Matched | allow_core::MatchStatus::ReviewDue
+                    )
+            })
             .count(),
         2
     );
@@ -339,11 +353,13 @@ fn dependency_surface_compat_preserves_matched_new_and_stale_drift() {
     );
 
     let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
-    assert!(
-        stale_allow
-            .iter()
-            .any(|outcome| outcome.status == allow_core::MatchStatus::Stale)
-    );
+    assert!(stale_allow.iter().any(|outcome| {
+        outcome.finding_index.is_none()
+            && matches!(
+                outcome.status,
+                allow_core::MatchStatus::Stale | allow_core::MatchStatus::ReviewDue
+            )
+    }));
 }
 
 #[test]
