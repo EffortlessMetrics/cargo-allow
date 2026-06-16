@@ -514,6 +514,150 @@ fn cmd_add_include_untracked_accepts_untracked_local_evidence() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
 
+#[test]
+fn cmd_add_reports_missing_policy_config_with_exact_error() {
+    let root = add_fixture_dir();
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("source write: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "src/lib.rs"]);
+    git(&root, &["commit", "-m", "source only"]);
+    let output = root.join("policy/allow.added.toml");
+
+    let err = cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        kind: "panic".to_string(),
+        path: PathBuf::from("src/lib.rs"),
+        line: 1,
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: Some(output.clone()),
+        force: false,
+        summary_format: AddSummaryFormat::Human,
+        summary_output: None,
+    })
+    .expect_err("add without policy config should fail at load_world");
+
+    assert_eq!(
+        err,
+        CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
+    );
+    assert!(
+        !output.exists(),
+        "add should not write policy output when load_world fails"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn cmd_add_validate_policy_rejects_unsupported_schema_version() {
+    let root = add_fixture_dir();
+    write_add_fixture_with_unsupported_schema_version(&root);
+    let output = root.join("policy/allow.added.toml");
+
+    let err = cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(root.join("policy/allow.toml")),
+        kind: "panic".to_string(),
+        path: PathBuf::from("src/lib.rs"),
+        line: 1,
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: Some(output.clone()),
+        force: false,
+        summary_format: AddSummaryFormat::Human,
+        summary_output: None,
+    })
+    .expect_err("add should fail closed when validate_policy rejects schema_version");
+
+    assert_eq!(
+        err,
+        CargoAllowError::new("unsupported policy schema_version `9.9`")
+    );
+    assert!(
+        !output.exists(),
+        "add should not write policy output when validate_policy fails"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn cmd_add_rejects_write_to_existing_output_without_force() {
+    let root = add_fixture_dir();
+    write_add_fixture_with_new_panic_finding(&root);
+    let output = root.join("policy/allow.added.toml");
+    fs::write(&output, "existing policy output")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("seed output policy: {err}")));
+
+    let err = cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(root.join("policy/allow.toml")),
+        kind: "panic".to_string(),
+        path: PathBuf::from("src/lib.rs"),
+        line: 1,
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: Some(output.clone()),
+        force: false,
+        summary_format: AddSummaryFormat::Human,
+        summary_output: None,
+    })
+    .expect_err("add should reject overwriting an existing output file without --force");
+
+    assert_eq!(
+        err,
+        CargoAllowError::new(format!(
+            "{} already exists; use --force to overwrite",
+            output.display()
+        ))
+    );
+    assert_eq!(
+        fs::read_to_string(&output).unwrap_or_else(|read_err| std::panic::panic_any(format!(
+            "read output policy: {read_err}"
+        ))),
+        "existing policy output"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
 fn argv(items: Vec<&str>) -> Vec<String> {
     items.into_iter().map(String::from).collect()
 }
@@ -559,6 +703,28 @@ review_after = "2026-11-01"
 ast_kind = "method_call"
 container = "load"
 callee = "unwrap"
+"#,
+    );
+}
+
+fn write_add_fixture_with_unsupported_schema_version(root: &std::path::Path) {
+    write_add_git_fixture(
+        root,
+        r#"schema_version = "9.9"
+policy = "cargo-allow"
+
+[[allow]]
+id = "allow-0001"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/allow.toml"
+owner = "core"
+classification = "fixture"
+reason = "fixture policy file"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
 "#,
     );
 }
