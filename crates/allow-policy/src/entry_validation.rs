@@ -524,10 +524,7 @@ mod tests {
             .expect_err("duplicate allow ids should fail identity validation");
         assert_eq!(
             err,
-            CargoAllowError::new(format!(
-                "duplicate allow id `{}`",
-                duplicate.id
-            ))
+            CargoAllowError::new(format!("duplicate allow id `{}`", duplicate.id))
         );
 
         let mut missing_owner = entry("missing-owner");
@@ -553,10 +550,7 @@ mod tests {
         .expect_err("unowned non-baseline owner should fail requirements validation");
         assert_eq!(
             err,
-            CargoAllowError::new(format!(
-                "{} missing concrete owner",
-                unowned_reviewed.id
-            ))
+            CargoAllowError::new(format!("{} missing concrete owner", unowned_reviewed.id))
         );
 
         let mut missing_reason = entry("missing-reason");
@@ -623,10 +617,7 @@ mod tests {
             .expect_err("evidence-required entry without evidence should fail validation");
         assert_eq!(
             err,
-            CargoAllowError::new(format!(
-                "{} missing evidence",
-                evidence_required.id
-            ))
+            CargoAllowError::new(format!("{} missing evidence", evidence_required.id))
         );
 
         let mut zero_limit = entry("zero-limit");
@@ -645,8 +636,7 @@ mod tests {
         assert_eq!(err, CargoAllowError::new("allow entry has empty id"));
 
         let padded_id = " allow-1 ";
-        let err = validate_allow_id(padded_id)
-            .expect_err("padded allow id should fail validation");
+        let err = validate_allow_id(padded_id).expect_err("padded allow id should fail validation");
         assert_eq!(
             err,
             CargoAllowError::new(format!(

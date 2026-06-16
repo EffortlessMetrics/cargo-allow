@@ -421,10 +421,7 @@ mod tests {
             path,
         )
         .expect_err("object missing required keys should fail validation");
-        assert_eq!(
-            err,
-            format!("{path} is missing schema-required keys: name")
-        );
+        assert_eq!(err, format!("{path} is missing schema-required keys: name"));
 
         let additional_properties_schema = json_value(
             r#"{
@@ -490,13 +487,9 @@ mod tests {
 
         let type_schema = json_value(r#"{"type":"string"}"#);
         let path = "$.id";
-        let err = schema_covers_sample_value(
-            &type_schema,
-            &type_schema,
-            &json_value(r#"42"#),
-            path,
-        )
-        .expect_err("value outside schema type should fail validation");
+        let err =
+            schema_covers_sample_value(&type_schema, &type_schema, &json_value(r#"42"#), path)
+                .expect_err("value outside schema type should fail validation");
         assert_eq!(
             err,
             format!("{path} has JSON type integer, outside schema type")
@@ -504,17 +497,10 @@ mod tests {
 
         let minimum_schema = json_value(r#"{"type":"number","minimum":10}"#);
         let path = "$.count";
-        let err = schema_covers_sample_value(
-            &minimum_schema,
-            &minimum_schema,
-            &json_value(r#"3"#),
-            path,
-        )
-        .expect_err("value below minimum should fail validation");
-        assert_eq!(
-            err,
-            format!("{path} has numeric value 3, below minimum 10")
-        );
+        let err =
+            schema_covers_sample_value(&minimum_schema, &minimum_schema, &json_value(r#"3"#), path)
+                .expect_err("value below minimum should fail validation");
+        assert_eq!(err, format!("{path} has numeric value 3, below minimum 10"));
 
         let min_length_schema = json_value(r#"{"type":"string","minLength":4}"#);
         let path = "$.id";
@@ -525,10 +511,7 @@ mod tests {
             path,
         )
         .expect_err("string shorter than minLength should fail validation");
-        assert_eq!(
-            err,
-            format!("{path} has string shorter than minLength 4")
-        );
+        assert_eq!(err, format!("{path} has string shorter than minLength 4"));
 
         let pattern_schema = json_value(r#"{"type":"string","pattern":"^cargo-allow "}"#);
         let path = "$.command";
@@ -555,10 +538,7 @@ mod tests {
 
         let err = schema_covers_sample_value(&schema, &schema, &json_value(r#"null"#), path)
             .expect_err("non-local schema refs should fail validation");
-        assert_eq!(
-            err,
-            format!("{path} schema uses non-local ref {reference}")
-        );
+        assert_eq!(err, format!("{path} schema uses non-local ref {reference}"));
     }
 
     #[test]
