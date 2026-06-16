@@ -1,7 +1,7 @@
 use super::test_support::test_finding_at_line;
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand, RootArgs};
-use allow_core::{AllowConfig, AllowEntry, CargoAllowError};
+use allow_core::{AllowConfig, AllowEntry, CargoAllowError, MatchOutcome, MatchStatus};
 use allow_policy::render_policy;
 use clap::Parser;
 use std::fs;
@@ -241,20 +241,23 @@ fn add_evidence_requirement_covers_high_risk_policy_exceptions() {
 
     let unsafe_err =
         require_add_evidence(&unsafe_finding, &[]).expect_err("unsafe add should require evidence");
-    assert!(
-        unsafe_err
-            .to_string()
-            .contains("unsafe allow entries require at least one --evidence reference")
+    assert_eq!(
+        unsafe_err,
+        CargoAllowError::new("unsafe allow entries require at least one --evidence reference")
     );
     let process_err = require_add_evidence(&process_finding, &[])
         .expect_err("process policy add should require evidence");
-    assert!(process_err.to_string().contains(
-        "policy_exception.process_spawn allow entries require at least one --evidence reference"
-    ));
+    assert_eq!(
+        process_err,
+        CargoAllowError::new(
+            "policy_exception.process_spawn allow entries require at least one --evidence reference"
+        )
+    );
     let network_err = require_add_evidence(&network_finding, &[])
         .expect_err("network policy add should require evidence");
-    assert!(
-        network_err.to_string().contains(
+    assert_eq!(
+        network_err,
+        CargoAllowError::new(
             "policy_exception.network_destination allow entries require at least one --evidence reference"
         )
     );
@@ -282,10 +285,11 @@ fn add_required_evidence_must_be_typed() {
     let err = require_add_evidence(&process_finding, &weak_references)
         .expect_err("weak evidence should not satisfy high-risk add evidence gate");
 
-    assert!(
-        err.to_string()
-            .contains("require at least one typed --evidence reference"),
-        "diagnostic should explain typed evidence requirement: {err}"
+    assert_eq!(
+        err,
+        CargoAllowError::new(
+            "policy_exception.process_spawn allow entries require at least one typed --evidence reference with a recognized non-empty prefix:value target"
+        )
     );
     assert!(
         require_add_evidence(
@@ -320,6 +324,111 @@ fn default_add_review_after_is_relative_to_current_date() {
         before <= parsed && parsed <= after,
         "default add review_after should stay relative to the current UTC date"
     );
+}
+
+#[test]
+fn selected_add_outcome_errors_when_finding_index_missing() {
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Stale,
+        allow_id: Some("allow-stale".to_string()),
+        finding_index: None,
+        message: "allow-stale is stale".to_string(),
+        score: 0,
+    }];
+
+    let err =
+        selected_add_outcome(&outcomes, 0).expect_err("missing finding_index should fail closed");
+
+    assert_eq!(
+        err,
+        CargoAllowError::new("selected finding did not produce a match outcome")
+    );
+}
+
+#[test]
+fn cmd_add_rejects_duplicate_allow_id() {
+    let root = add_fixture_dir();
+    write_add_fixture_with_new_panic_finding(&root);
+    let output = root.join("policy/allow.added.toml");
+    let duplicate_id = "allow-0001".to_string();
+
+    let err = cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(root.join("policy/allow.toml")),
+        kind: "panic".to_string(),
+        path: PathBuf::from("src/lib.rs"),
+        line: 1,
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: Some(duplicate_id.clone()),
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: Some(output.clone()),
+        force: false,
+        summary_format: AddSummaryFormat::Human,
+        summary_output: None,
+    })
+    .expect_err("add should reject duplicate allow ids");
+
+    assert_eq!(
+        err,
+        CargoAllowError::new(format!("allow entry id `{duplicate_id}` already exists"))
+    );
+    assert!(
+        !output.exists(),
+        "add should not write policy output when id validation fails"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn cmd_add_rejects_already_matched_finding() {
+    let root = add_fixture_dir();
+    write_add_fixture_with_matched_panic_finding(&root);
+    let output = root.join("policy/allow.added.toml");
+
+    let err = cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(root.join("policy/allow.toml")),
+        kind: "panic".to_string(),
+        path: PathBuf::from("src/lib.rs"),
+        line: 1,
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: Some(output.clone()),
+        force: false,
+        summary_format: AddSummaryFormat::Human,
+        summary_output: None,
+    })
+    .expect_err("add should reject already matched findings");
+
+    assert_eq!(
+        err,
+        CargoAllowError::new(format!(
+            "selected finding is already receipted or blocked with status `{}`; use list or explain before editing policy",
+            MatchStatus::Matched.as_str()
+        ))
+    );
+    assert!(
+        !output.exists(),
+        "add should not write policy output when match status blocks add"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
 
 #[test]
@@ -407,6 +516,73 @@ fn cmd_add_include_untracked_accepts_untracked_local_evidence() {
 
 fn argv(items: Vec<&str>) -> Vec<String> {
     items.into_iter().map(String::from).collect()
+}
+
+fn write_add_fixture_with_new_panic_finding(root: &std::path::Path) {
+    write_add_git_fixture(
+        root,
+        r#"policy = "cargo-allow"
+
+[[allow]]
+id = "allow-0001"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/allow.toml"
+owner = "core"
+classification = "fixture"
+reason = "fixture policy file"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+"#,
+    );
+}
+
+fn write_add_fixture_with_matched_panic_finding(root: &std::path::Path) {
+    write_add_git_fixture(
+        root,
+        r#"policy = "cargo-allow"
+
+[[allow]]
+id = "allow-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "fixture"
+evidence = ["test:parser_validates"]
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#,
+    );
+}
+
+fn write_add_git_fixture(root: &std::path::Path, policy: &str) {
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("source write: {err}")));
+    fs::write(root.join("policy/allow.toml"), policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+    git(root, &["init"]);
+    git(
+        root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(root, &["config", "user.name", "cargo-allow test"]);
+    git(root, &["add", "policy/allow.toml", "src/lib.rs"]);
+    git(root, &["commit", "-m", "base policy"]);
 }
 
 fn write_add_fixture_with_untracked_evidence(root: &std::path::Path) {
