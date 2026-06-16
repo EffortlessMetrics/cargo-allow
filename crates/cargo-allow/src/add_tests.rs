@@ -649,8 +649,9 @@ fn cmd_add_rejects_write_to_existing_output_without_force() {
         ))
     );
     assert_eq!(
-        fs::read_to_string(&output)
-            .unwrap_or_else(|read_err| std::panic::panic_any(format!("read output policy: {read_err}"))),
+        fs::read_to_string(&output).unwrap_or_else(|read_err| std::panic::panic_any(format!(
+            "read output policy: {read_err}"
+        ))),
         "existing policy output"
     );
     fs::remove_dir_all(root)
