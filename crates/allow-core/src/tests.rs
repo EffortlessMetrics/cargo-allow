@@ -80,7 +80,7 @@ fn match_status_strings_and_failure_modes_cover_all_statuses() {
             MatchStatus::New => ("new", true, true),
             MatchStatus::Stale => ("stale", true, false),
             MatchStatus::Expired => ("expired", true, true),
-            MatchStatus::ReviewDue => ("review_due", false, false),
+            MatchStatus::ReviewDue => ("review_due", true, false),
             MatchStatus::Ambiguous => ("ambiguous", true, true),
             MatchStatus::InvalidSelector => ("invalid_selector", true, true),
             MatchStatus::MissingRequiredField => ("missing_required_field", true, true),

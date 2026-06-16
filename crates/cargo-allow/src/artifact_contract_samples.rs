@@ -214,17 +214,18 @@ pub(crate) fn core_artifact_samples() -> Vec<ArtifactSample> {
             None,
         ),
     );
-    let receipt_json = allow_report::render_receipt_with_context(
-        "check",
-        &[],
-        false,
-        allow_report::ReportContext::source_syntax(
-            "git_tracked",
-            Some("H:/Code/Rust/cargo-allow"),
-            Some(42),
-            None,
-        ),
+    let mut receipt_context = allow_report::ReportContext::source_syntax(
+        "git_tracked",
+        Some("H:/Code/Rust/cargo-allow"),
+        Some(42),
+        None,
     );
+    receipt_context.mode = Some("no-new");
+    receipt_context.enforcement = Some(allow_report::RECEIPT_ENFORCEMENT_ENFORCING);
+    receipt_context.policy_config = Some("policy/allow.toml");
+    receipt_context.tool_version = Some(env!("CARGO_PKG_VERSION"));
+    let receipt_json =
+        allow_report::render_receipt_with_context("check", &[], false, receipt_context);
     let diff_base_json = allow_report::render_json_with_context(
         "diff",
         &[],
@@ -290,13 +291,17 @@ pub(crate) fn core_artifact_samples() -> Vec<ArtifactSample> {
                 "claim_boundary",
                 "command",
                 "counts",
+                "enforcement",
                 "failed",
                 "inventory",
+                "mode",
+                "policy_config",
                 "scanner_limitations",
                 "schema_id",
                 "schema_version",
                 "status",
                 "tool",
+                "tool_version",
             ],
         },
         ArtifactSample {

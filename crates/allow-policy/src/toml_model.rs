@@ -1,12 +1,15 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use serde::Deserialize;
+use std::path::Path;
 
+use crate::toml_de::option_schema_version;
 use crate::toml_entry::AllowEntryToml;
 use crate::toml_requirements::RequirementsToml;
 use crate::toml_workspace::WorkspaceToml;
 
 #[derive(Debug, Default, Deserialize)]
 struct PolicyToml {
+    #[serde(default, deserialize_with = "option_schema_version")]
     schema_version: Option<String>,
     policy: Option<String>,
     owner: Option<String>,
@@ -39,9 +42,17 @@ impl PolicyToml {
     }
 }
 
-pub(crate) fn parse_policy_toml(input: &str) -> CargoAllowResult<AllowConfig> {
-    let raw = toml::from_str::<PolicyToml>(input)
-        .map_err(|e| CargoAllowError::new(format!("failed to parse policy TOML: {e}")))?;
+pub(crate) fn parse_policy_toml_at(
+    path: Option<&Path>,
+    input: &str,
+) -> CargoAllowResult<AllowConfig> {
+    let raw = toml::from_str::<PolicyToml>(input).map_err(|e| {
+        let message = match path {
+            Some(path) => format!("failed to parse policy TOML in {}: {e}", path.display()),
+            None => format!("failed to parse policy TOML: {e}"),
+        };
+        CargoAllowError::new(message)
+    })?;
     raw.into_config()
 }
 
@@ -79,7 +90,8 @@ mod tests {
 
     #[test]
     fn parse_policy_toml_preserves_workspace_requirements_and_entries() {
-        let cfg = parse_policy_toml(
+        let cfg = parse_policy_toml_at(
+            None,
             r#"
 schema_version = "0.2"
 policy = "cargo-allow"
@@ -153,7 +165,8 @@ container = "load"
 
     #[test]
     fn policy_toml_into_config_reports_allow_entry_conversion_errors() {
-        let err = parse_policy_toml(
+        let err = parse_policy_toml_at(
+            None,
             r#"
 policy = "cargo-allow"
 
@@ -168,13 +181,54 @@ owner = "policy"
     }
 
     #[test]
+    fn parse_policy_toml_accepts_integer_schema_version() {
+        let cfg = parse_policy_toml_at(
+            None,
+            r#"
+schema_version = 1
+policy = "cargo-allow"
+
+[[allow]]
+id = "allow-policy"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/allow.toml"
+owner = "core"
+classification = "fixture"
+reason = "fixture policy file"
+review_after = "2026-08-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/allow.toml"
+target_fingerprint = "toml"
+glob = "policy/allow.toml"
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("integer schema parses: {err}")));
+
+        assert_eq!(cfg.schema_version, "1");
+    }
+
+    #[test]
+    fn parse_policy_toml_at_includes_path_in_parse_errors() {
+        let err = parse_policy_toml_at(
+            Some(std::path::Path::new("policy/allow.toml")),
+            "schema_version = [",
+        )
+        .expect_err("invalid TOML should include the ledger path");
+
+        assert!(err.to_string().contains("policy/allow.toml"));
+    }
+
+    #[test]
     fn parse_policy_toml_reports_toml_parse_errors() {
         let invalid = "policy = [";
         let e =
             toml::from_str::<PolicyToml>(invalid).expect_err("invalid TOML should fail parsing");
 
         assert_eq!(
-            parse_policy_toml(invalid).map(|_| ()),
+            parse_policy_toml_at(None, invalid).map(|_| ()),
             Err(CargoAllowError::new(format!(
                 "failed to parse policy TOML: {e}"
             )))

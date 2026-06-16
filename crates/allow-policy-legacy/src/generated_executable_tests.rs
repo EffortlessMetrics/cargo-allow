@@ -77,8 +77,12 @@ fn generated_compat_preserves_missing_and_stale_drift() {
         allow_match::CheckMode::NoNew,
     );
     assert!(matched.iter().any(|outcome| {
-        outcome.status == allow_core::MatchStatus::Matched
+        outcome.finding_index.is_some()
             && outcome.allow_id.as_deref() == Some("generated-no-panic-baseline")
+            && matches!(
+                outcome.status,
+                allow_core::MatchStatus::Matched | allow_core::MatchStatus::ReviewDue
+            )
     }));
 
     let missing_allow = allow_match::evaluate(
@@ -95,11 +99,13 @@ fn generated_compat_preserves_missing_and_stale_drift() {
     );
 
     let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
-    assert!(
-        stale_allow
-            .iter()
-            .any(|outcome| outcome.status == allow_core::MatchStatus::Stale)
-    );
+    assert!(stale_allow.iter().any(|outcome| {
+        outcome.finding_index.is_none()
+            && matches!(
+                outcome.status,
+                allow_core::MatchStatus::Stale | allow_core::MatchStatus::ReviewDue
+            )
+    }));
 }
 
 #[test]
@@ -289,8 +295,12 @@ fn executable_compat_preserves_missing_and_stale_drift() {
         allow_match::CheckMode::NoNew,
     );
     assert!(matched.iter().any(|outcome| {
-        outcome.status == allow_core::MatchStatus::Matched
+        outcome.finding_index.is_some()
             && outcome.allow_id.as_deref() == Some("exec-package-proof")
+            && matches!(
+                outcome.status,
+                allow_core::MatchStatus::Matched | allow_core::MatchStatus::ReviewDue
+            )
     }));
 
     let missing_allow = allow_match::evaluate(
@@ -305,9 +315,11 @@ fn executable_compat_preserves_missing_and_stale_drift() {
     );
 
     let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
-    assert!(
-        stale_allow
-            .iter()
-            .any(|outcome| outcome.status == allow_core::MatchStatus::Stale)
-    );
+    assert!(stale_allow.iter().any(|outcome| {
+        outcome.finding_index.is_none()
+            && matches!(
+                outcome.status,
+                allow_core::MatchStatus::Stale | allow_core::MatchStatus::ReviewDue
+            )
+    }));
 }

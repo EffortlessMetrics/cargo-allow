@@ -1,6 +1,7 @@
 use allow_core::{AllowConfig, AllowEntry, Finding, FindingKind, MatchStatus, SimpleDate};
 
 use crate::CheckMode;
+use crate::lifecycle::{entry_is_expired, entry_review_is_due};
 
 pub(crate) fn classify_matched(
     entry: &AllowEntry,
@@ -10,16 +11,23 @@ pub(crate) fn classify_matched(
     cfg: &AllowConfig,
     mode: CheckMode,
 ) -> (MatchStatus, String) {
-    if let Some(expires) = &entry.lifecycle.expires {
-        if expires != "never" {
-            if let Some(expiry) = SimpleDate::parse(expires) {
-                if expiry < today {
-                    return (
-                        MatchStatus::Expired,
-                        format!("{} matched but expired on {expires}", entry.id),
-                    );
-                }
-            }
+    if entry_is_expired(entry, today) {
+        if let Some(expires) = &entry.lifecycle.expires {
+            return (
+                MatchStatus::Expired,
+                format!("{} matched but expired on {expires}", entry.id),
+            );
+        }
+    }
+    if entry_review_is_due(entry, today) {
+        if let Some(review_after) = &entry.lifecycle.review_after {
+            return (
+                MatchStatus::ReviewDue,
+                format!(
+                    "{} matched but review is due after {review_after}",
+                    entry.id
+                ),
+            );
         }
     }
     if cfg.requirements.unsafe_evidence_required
@@ -147,6 +155,18 @@ mod tests {
             identity: StructuralIdentity::new("rust", "unsafe_fn"),
             message: String::new(),
         }
+    }
+
+    #[test]
+    fn classify_matched_reports_review_due_before_other_posture_checks() {
+        let cfg = AllowConfig::empty();
+        let finding = test_finding(FindingKind::Panic);
+        let mut review_due = entry(FindingKind::Panic);
+        review_due.lifecycle.review_after = Some("2020-01-01".to_string());
+        let (status, message) =
+            classify_matched(&review_due, &finding, 91, today(), &cfg, CheckMode::NoNew);
+        assert_eq!(status, MatchStatus::ReviewDue);
+        assert!(message.contains("review is due after 2020-01-01"));
     }
 
     #[test]

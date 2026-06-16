@@ -123,15 +123,11 @@ fn list_entry_status(
 }
 
 fn date_is_before(date: Option<&str>, today: SimpleDate) -> bool {
-    date.and_then(SimpleDate::parse)
-        .map(|date| date < today)
-        .unwrap_or(false)
+    SimpleDate::is_before_date_str(date, today)
 }
 
 fn date_is_due(date: Option<&str>, today: SimpleDate) -> bool {
-    date.and_then(SimpleDate::parse)
-        .map(|date| date <= today)
-        .unwrap_or(false)
+    SimpleDate::is_due_date_str(date, today)
 }
 
 #[cfg(test)]

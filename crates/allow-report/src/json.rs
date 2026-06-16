@@ -2,7 +2,7 @@ use allow_core::{MatchOutcome, json_escape};
 
 use crate::{
     ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, ArtifactContract, CLAIM_BOUNDARY,
-    InventoryContext, SCANNER_LIMITATIONS,
+    InventoryContext, ReportContext, SCANNER_LIMITATIONS,
 };
 
 pub(crate) fn push_json_artifact_header(
@@ -59,15 +59,44 @@ pub(crate) fn push_json_artifact_source_context(out: &mut String, inventory: Inv
 }
 
 pub(crate) fn push_json_status_fields(out: &mut String, failed: bool) {
-    out.push_str(&format!(
-        "  \"status\": \"{}\",\n",
+    push_json_status_fields_with_status(
+        out,
         if failed {
             ARTIFACT_STATUS_FAILED
         } else {
             ARTIFACT_STATUS_PASSED
-        }
-    ));
+        },
+        failed,
+    );
+}
+
+pub(crate) fn push_json_status_fields_with_status(out: &mut String, status: &str, failed: bool) {
+    out.push_str(&format!("  \"status\": \"{}\",\n", json_escape(status)));
     out.push_str(&format!("  \"failed\": {},\n", bool_json(failed)));
+}
+
+pub(crate) fn push_json_receipt_run_metadata(out: &mut String, context: ReportContext<'_>) {
+    if let Some(mode) = context.mode {
+        out.push_str(&format!("  \"mode\": \"{}\",\n", json_escape(mode)));
+    }
+    if let Some(enforcement) = context.enforcement {
+        out.push_str(&format!(
+            "  \"enforcement\": \"{}\",\n",
+            json_escape(enforcement)
+        ));
+    }
+    if let Some(policy_config) = context.policy_config {
+        out.push_str(&format!(
+            "  \"policy_config\": \"{}\",\n",
+            json_escape(policy_config)
+        ));
+    }
+    if let Some(tool_version) = context.tool_version {
+        out.push_str(&format!(
+            "  \"tool_version\": \"{}\",\n",
+            json_escape(tool_version)
+        ));
+    }
 }
 
 pub(crate) fn push_json_source_context_properties(

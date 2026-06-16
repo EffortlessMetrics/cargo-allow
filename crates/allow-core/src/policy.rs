@@ -210,7 +210,7 @@ impl MatchStatus {
     }
 
     pub fn is_failure_in_strict(self) -> bool {
-        !matches!(self, Self::Matched | Self::ReviewDue)
+        !matches!(self, Self::Matched)
     }
 
     pub fn is_failure_in_no_new(self) -> bool {

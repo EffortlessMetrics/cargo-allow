@@ -3,13 +3,14 @@ use crate::evidence_repair::{
     evidence_repair_queues_from_context, push_evidence_repair_queue_json_fields,
 };
 use crate::json::{
-    push_json_artifact_header, push_json_artifact_source_context, push_json_status_fields,
+    push_json_artifact_header, push_json_artifact_source_context, push_json_receipt_run_metadata,
+    push_json_status_fields, push_json_status_fields_with_status,
 };
 use crate::{
-    RECEIPT_COMMAND_CHECK, ReportContext, Summary, baseline_debt_count,
+    ARTIFACT_STATUS_ERROR, RECEIPT_COMMAND_CHECK, ReportContext, Summary, baseline_debt_count,
     render_count_fields_with_policy_context, render_source_inventory_json,
 };
-use allow_core::{Finding, MatchOutcome};
+use allow_core::{Finding, MatchOutcome, json_escape};
 
 pub fn render_receipt(command: &str, outcomes: &[MatchOutcome], failed: bool) -> String {
     render_receipt_with_context(command, outcomes, failed, ReportContext::default())
@@ -34,6 +35,31 @@ pub fn render_receipt_with_context_and_inventory(
     render_receipt_json(command, Some(findings), outcomes, failed, context)
 }
 
+pub fn render_error_receipt(diagnostic: &str, context: ReportContext<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    push_json_artifact_header(&mut out, RECEIPT_ARTIFACT, RECEIPT_COMMAND_CHECK);
+    push_json_status_fields_with_status(&mut out, ARTIFACT_STATUS_ERROR, true);
+    push_json_receipt_run_metadata(&mut out, context);
+    out.push_str(&format!(
+        "  \"diagnostic\": \"{}\",\n",
+        json_escape(diagnostic)
+    ));
+    push_json_artifact_source_context(&mut out, context.into());
+    out.push_str("  \"counts\": {\n");
+    out.push_str(&render_count_fields_with_policy_context(
+        &Summary::default(),
+        None,
+        None,
+        None,
+        None,
+        "    ",
+    ));
+    out.push_str("  }\n");
+    out.push_str("}\n");
+    out
+}
+
 fn render_receipt_json(
     command: &str,
     findings: Option<&[Finding]>,
@@ -50,6 +76,7 @@ fn render_receipt_json(
     out.push_str("{\n");
     push_json_artifact_header(&mut out, RECEIPT_ARTIFACT, command);
     push_json_status_fields(&mut out, failed);
+    push_json_receipt_run_metadata(&mut out, context);
     push_json_artifact_source_context(&mut out, context.into());
     out.push_str("  \"counts\": {\n");
     out.push_str(&render_count_fields_with_policy_context(

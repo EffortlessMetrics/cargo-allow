@@ -18,7 +18,10 @@ fn check_mode_failure_policy_matches_enforcement_levels() {
     assert!(CheckMode::Strict.fails(MatchStatus::Stale));
     assert!(CheckMode::Release.fails(MatchStatus::BaselineDebt));
     assert!(!CheckMode::Strict.fails(MatchStatus::Matched));
-    assert!(!CheckMode::Release.fails(MatchStatus::ReviewDue));
+    assert!(CheckMode::Strict.fails(MatchStatus::ReviewDue));
+    assert!(CheckMode::Release.fails(MatchStatus::ReviewDue));
+    assert!(!CheckMode::Audit.fails(MatchStatus::ReviewDue));
+    assert!(!CheckMode::NoNew.fails(MatchStatus::ReviewDue));
 }
 
 #[test]

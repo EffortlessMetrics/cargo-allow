@@ -7,6 +7,7 @@
 
 mod classification;
 mod evaluation;
+mod lifecycle;
 mod messages;
 mod mode;
 mod scoring;

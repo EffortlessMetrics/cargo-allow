@@ -2,6 +2,7 @@ use allow_core::{AllowConfig, Finding, MatchOutcome, MatchStatus, SimpleDate};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::classification::classify_matched;
+use crate::lifecycle::unused_entry_status;
 use crate::messages::{family_suffix, finding_location};
 use crate::mode::CheckMode;
 use crate::scoring::{STRUCTURAL_MATCH_THRESHOLD, score_match};
@@ -92,15 +93,34 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
         if used_entries.contains(&entry_index) {
             continue;
         }
-        outcomes.push(MatchOutcome {
-            status: MatchStatus::Stale,
-            allow_id: Some(entry.id.clone()),
-            finding_index: None,
-            message: format!(
+        let status = unused_entry_status(entry, today);
+        let message = match status {
+            MatchStatus::Expired => format!(
+                "{} is expired on {}",
+                entry.id,
+                entry.lifecycle.expires.as_deref().unwrap_or("<missing>")
+            ),
+            MatchStatus::ReviewDue => format!(
+                "{} is due for review after {}",
+                entry.id,
+                entry
+                    .lifecycle
+                    .review_after
+                    .as_deref()
+                    .unwrap_or("<missing>")
+            ),
+            MatchStatus::Stale => format!(
                 "{} is stale: no current finding matched {}",
                 entry.id,
                 entry.path_or_glob()
             ),
+            other => format!("{} has unexpected unused-entry status {other:?}", entry.id),
+        };
+        outcomes.push(MatchOutcome {
+            status,
+            allow_id: Some(entry.id.clone()),
+            finding_index: None,
+            message,
             score: 0,
         });
     }
