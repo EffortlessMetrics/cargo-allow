@@ -3,21 +3,73 @@
 This record tracks whether cargo-allow is ready to be the source-of-truth
 governance example for external repository adoption.
 
-The target state is:
+Normative policy:
+[CARGO-ALLOW-SPEC-0003](../specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md).
+
+## Readiness Policy
+
+cargo-allow uses two readiness definitions. They are not interchangeable.
+
+### Strict readiness
+
+Required for **external repository migration at scale** and for claiming
+**zero-gap** self-hosting readiness:
 
 ```text
 docs gate: passed
+workspace fmt/clippy/tests: passed
 default cargo-allow no-new: passed
 spec-system profile: passed
 ripr+: 0 actionable gaps
 unsafe-review+: 0 actionable gaps
 ```
 
-Current state: **not ready for external migration**.
+### Provider-tracked readiness
+
+Accepted for internal `0.1.10` adoption-trust work and `0.2.0` migration parity
+while provider gaps remain filed upstream:
+
+```text
+local cargo-allow actionable gaps = 0
+ripr+ blockers: provider-tracked, filed upstream
+unsafe-review+ blockers: provider-tracked, filed upstream
+```
+
+Provider-tracked readiness is **not** zero-gap readiness. It does **not**
+authorize external migration at scale or ripr external adoption handoff without
+explicit re-approval.
+
+### Recorded decision (2026-06-17)
+
+**Accepted posture:** provider-tracked readiness for continuing `0.1.10` and
+migration-parity work.
+
+| What | Blocks `0.1.10`? | Blocks external migration at scale? |
+| --- | --- | --- |
+| Local cargo-allow gaps | yes if non-zero | yes if non-zero |
+| `ripr+` provider blockers | no (filed upstream) | yes under strict readiness |
+| `unsafe-review+` provider blockers | no (filed upstream) | yes under strict readiness |
+
+## Current Posture
+
+```text
+Local cargo-allow readiness: clean (provider-tracked accepted)
+External migration at scale: not ready (strict readiness not met)
+```
+
+Local cargo-allow actionable gaps: **0**.
+
+Provider-tracked blockers (not local cargo-allow work):
+
+| Provider | Count | Upstream tracking |
+| --- | ---: | --- |
+| `ripr+` predicate_boundary | 6 | `ripr#1432`, `#1433`, `#1440`–`#1443` (`EffortlessMetrics/ripr-swarm#1303`) |
+| `ripr+` error_variant bulk | 358 | `EffortlessMetrics/ripr-swarm#1304` (oracle-linking friction) |
+| `unsafe-review+` badge gaps | 33 | `EffortlessMetrics/unsafe-review#541` |
 
 ## Current Result
 
-Recorded: 2026-06-16 (summary refreshed after `0.1.9` cut)
+Recorded: 2026-06-17 (provider-tracked policy recorded; summary from `0.1.9` cut)
 
 | Surface | Status | Evidence |
 | --- | --- | --- |
@@ -8108,21 +8160,46 @@ unsafe-review results above are external readiness evidence.
 
 ## Next Work
 
-Recommended next lane:
+Under **provider-tracked readiness**, recommended lanes (in order):
 
 ```text
-evidence: unsafe-review+ external readiness
+1. release: document and prove automated release prerequisites (E1–E2)
+2. migration: inventory 0.2 parity gaps (B1)
+3. migration: close one high-value evidence-preservation gap (B2)
+4. identity: inventory structural identity gaps (D1)
+5. spec-system: .allow/import design remains docs-only until authorized (C1 done)
 ```
 
-1. wait for `unsafe-review#541` triage or a provider rule that excludes
-   test/fixture cards and misclassified safe call sites.
-2. regenerate `target/unsafe-review/reports/repo.json` and badge artifacts.
-3. re-check whether repo-scoped `unsafe-review+` has reached `0`.
-4. if the provider closes the issue without ledger movement, record the residual
-   count honestly and revise the readiness bar only with explicit user approval.
+Provider refresh (does not block `0.1.10` under provider-tracked policy):
 
-Do not start `.allow` ledger edits as part of the external-readiness lane.
+1. wait for `unsafe-review#541` triage or provider rule updates.
+2. wait for `EffortlessMetrics/ripr-swarm#1304` / `#1303` provider movement.
+3. regenerate provider receipts and re-check strict readiness bar.
+4. revise readiness classification only with explicit approval.
 
-If ripr provider issues `#1432`, `#1433`, or `#1440`–`#1443` close, regenerate
-`target/ripr/reports/gap-decision-ledger.json` and re-check whether
-repo-scoped `ripr+` has reached `0`.
+Do not start external repo migration at scale until strict readiness is met.
+Do not start `.allow` profile state migration until an explicit implementation PR
+is authorized.
+
+## Validation
+
+Re-check local readiness:
+
+```bash
+rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
+rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json
+```
+
+Re-check provider-tracked blockers (external evidence; not cargo-allow scan):
+
+```bash
+ripr check --root . --mode ready --format repo-badge-plus-json --gap-ledger target/ripr/reports/gap-decision-ledger.json
+unsafe-review badges
+```
+
+## Claim Boundary
+
+This record documents self-hosting and adoption-readiness posture. It does not
+execute ripr, unsafe-review, or other proof providers as part of cargo-allow's
+own scan. Provider-tracked acceptance does not prove zero-gap readiness or
+external migration readiness.

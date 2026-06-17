@@ -37,6 +37,9 @@ cargo-allow can replace bespoke AST/TOML allowlist xtasks.
   [CARGO-ALLOW-GOAL-0002](../../.codex/goals/active.toml)
 - Migration guide:
   [docs/migration-from-xtask.md](../../docs/migration-from-xtask.md)
+- PR queue and gap inventory:
+  [pr-queue.md](pr-queue.md),
+  [gap-inventory.md](gap-inventory.md)
 
 ## Non-Goals
 
