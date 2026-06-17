@@ -2921,3 +2921,348 @@ glob = "plans/migration-parity/implementation-plan.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0194"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/proposals/CARGO-ALLOW-PROP-0003-readiness-policy.md"
+owner = "core/policy"
+classification = "source_truth_proposal"
+reason = "Registers the accepted self-hosting readiness policy proposal for strict versus provider-tracked readiness."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md", "doc:plans/readiness/implementation-plan.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/proposals/CARGO-ALLOW-PROP-0003-readiness-policy.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/proposals/CARGO-ALLOW-PROP-0003-readiness-policy.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0195"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md"
+owner = "core/policy"
+classification = "source_truth_spec"
+reason = "Defines the self-hosting readiness policy behavior contract and provider-tracked gap rules."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0003-readiness-policy.md", "doc:docs/readiness/self-hosting.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0196"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/proposals/CARGO-ALLOW-PROP-0004-allow-import-profile.md"
+owner = "core/policy"
+classification = "source_truth_proposal"
+reason = "Registers the accepted `.allow` namespace and import roots proposal for the spec-system profile."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md", "doc:plans/spec-system/allow-import-plan.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/proposals/CARGO-ALLOW-PROP-0004-allow-import-profile.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/proposals/CARGO-ALLOW-PROP-0004-allow-import-profile.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0197"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"
+owner = "core/policy"
+classification = "source_truth_spec"
+reason = "Defines the `.allow` namespace and import roots design contract for the spec-system profile."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0004-allow-import-profile.md", "doc:plans/spec-system/allow-import-plan.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0198"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/proposals/CARGO-ALLOW-PROP-0005-structural-identity-quality.md"
+owner = "core/policy"
+classification = "source_truth_proposal"
+reason = "Registers the accepted structural identity quality proposal for the 0.4.0 scanner hardening lane."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md", "doc:plans/structural-identity/implementation-plan.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/proposals/CARGO-ALLOW-PROP-0005-structural-identity-quality.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/proposals/CARGO-ALLOW-PROP-0005-structural-identity-quality.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0199"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md"
+owner = "core/policy"
+classification = "source_truth_spec"
+reason = "Defines the structural identity quality behavior contract for scanner characterization and diff posture."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0005-structural-identity-quality.md", "doc:plans/structural-identity/implementation-plan.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0200"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/proposals/CARGO-ALLOW-PROP-0006-adoption-trust-0.1.10.md"
+owner = "core/policy"
+classification = "source_truth_proposal"
+reason = "Registers the accepted adoption-trust release proposal for the 0.1.10 patch lane."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0006-adoption-trust-0.1.10.md", "doc:plans/release/0.1.10-implementation-plan.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/proposals/CARGO-ALLOW-PROP-0006-adoption-trust-0.1.10.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/proposals/CARGO-ALLOW-PROP-0006-adoption-trust-0.1.10.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0201"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/specs/CARGO-ALLOW-SPEC-0006-adoption-trust-0.1.10.md"
+owner = "core/policy"
+classification = "source_truth_spec"
+reason = "Defines the adoption-trust release behavior contract and proof obligations for 0.1.10."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0006-adoption-trust-0.1.10.md", "doc:plans/release/0.1.10-implementation-plan.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/specs/CARGO-ALLOW-SPEC-0006-adoption-trust-0.1.10.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/specs/CARGO-ALLOW-SPEC-0006-adoption-trust-0.1.10.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0202"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/migration-parity/gap-inventory.md"
+owner = "core/policy"
+classification = "source_truth_gap_inventory"
+reason = "Living gap inventory for the migration parity PR queue toward the 0.2.0 milestone."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:plans/migration-parity/pr-queue.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/migration-parity/gap-inventory.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/migration-parity/gap-inventory.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0203"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/migration-parity/pr-queue.md"
+owner = "core/policy"
+classification = "source_truth_pr_queue"
+reason = "Actionable PR queue for the 0.2.0 migration and evidence parity execution lane."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md", "doc:plans/migration-parity/implementation-plan.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/migration-parity/pr-queue.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/migration-parity/pr-queue.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0204"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/readiness/implementation-plan.md"
+owner = "core/policy"
+classification = "source_truth_implementation_plan"
+reason = "Sequences PR-sized readiness policy work and self-hosting record refresh for provider-tracked gaps."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0003-readiness-policy.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/readiness/implementation-plan.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/readiness/implementation-plan.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0205"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/release/0.1.10-implementation-plan.md"
+owner = "core/policy"
+classification = "source_truth_implementation_plan"
+reason = "Sequences PR-sized adoption-trust work toward the 0.1.10 patch release claim."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0006-adoption-trust-0.1.10.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0006-adoption-trust-0.1.10.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/release/0.1.10-implementation-plan.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/release/0.1.10-implementation-plan.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0206"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/spec-system/allow-import-plan.md"
+owner = "core/policy"
+classification = "source_truth_implementation_plan"
+reason = "Sequences PR-sized `.allow` namespace and import root design work for the spec-system profile."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0004-allow-import-profile.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/spec-system/allow-import-plan.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/spec-system/allow-import-plan.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0207"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/structural-identity/gap-inventory.md"
+owner = "core/policy"
+classification = "source_truth_gap_inventory"
+reason = "Living gap inventory for structural identity quality characterization toward the 0.4.0 lane."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md", "doc:plans/structural-identity/implementation-plan.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/structural-identity/gap-inventory.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/structural-identity/gap-inventory.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0208"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/structural-identity/implementation-plan.md"
+owner = "core/policy"
+classification = "source_truth_implementation_plan"
+reason = "Sequences PR-sized structural identity quality work toward the 0.4.0 scanner hardening milestone."
+created = "2026-06-17"
+review_after = "2026-11-01"
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0005-structural-identity-quality.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/structural-identity/implementation-plan.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/structural-identity/implementation-plan.md"
+
+[allow.last_seen]
+line = 1
+column = 1

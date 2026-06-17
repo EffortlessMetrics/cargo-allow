@@ -8,6 +8,15 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+### Documentation
+
+- Record provider-tracked self-hosting readiness policy: strict vs
+  provider-tracked definitions, `0.1.10` path acceptance, and honest external
+  migration blockers (`ripr+`, `unsafe-review+` remain filed upstream).
+- Register improvement-lane specs and plans for readiness, migration parity
+  queue, `.allow`/import design, structural identity quality, and `0.1.10`
+  adoption-trust release sequencing.
+
 ### Testing
 
 - Harden `add` load, validate, and write error paths (#1685).

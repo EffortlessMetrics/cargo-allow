@@ -111,3 +111,115 @@ linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
 linked_goal = "CARGO-ALLOW-GOAL-0002"
+
+[[artifact]]
+id = "CARGO-ALLOW-PROP-0003"
+kind = "proposal"
+path = "docs/proposals/CARGO-ALLOW-PROP-0003-readiness-policy.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-06-17"
+
+[[artifact]]
+id = "CARGO-ALLOW-SPEC-0003"
+kind = "spec"
+path = "docs/specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-06-17"
+linked_proposal = "CARGO-ALLOW-PROP-0003"
+
+[[artifact]]
+id = "CARGO-ALLOW-PLAN-0003"
+kind = "implementation_plan"
+path = "plans/readiness/implementation-plan.md"
+status = "active"
+owner = "repo-infra"
+created = "2026-06-17"
+linked_proposal = "CARGO-ALLOW-PROP-0003"
+linked_spec = "CARGO-ALLOW-SPEC-0003"
+linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
+
+[[artifact]]
+id = "CARGO-ALLOW-PROP-0004"
+kind = "proposal"
+path = "docs/proposals/CARGO-ALLOW-PROP-0004-allow-import-profile.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-06-17"
+
+[[artifact]]
+id = "CARGO-ALLOW-SPEC-0004"
+kind = "spec"
+path = "docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-06-17"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+
+[[artifact]]
+id = "CARGO-ALLOW-PLAN-0004"
+kind = "implementation_plan"
+path = "plans/spec-system/allow-import-plan.md"
+status = "draft"
+owner = "repo-infra"
+created = "2026-06-17"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
+
+[[artifact]]
+id = "CARGO-ALLOW-PROP-0005"
+kind = "proposal"
+path = "docs/proposals/CARGO-ALLOW-PROP-0005-structural-identity-quality.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-06-17"
+
+[[artifact]]
+id = "CARGO-ALLOW-SPEC-0005"
+kind = "spec"
+path = "docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-06-17"
+linked_proposal = "CARGO-ALLOW-PROP-0005"
+
+[[artifact]]
+id = "CARGO-ALLOW-PLAN-0005"
+kind = "implementation_plan"
+path = "plans/structural-identity/implementation-plan.md"
+status = "draft"
+owner = "repo-infra"
+created = "2026-06-17"
+linked_proposal = "CARGO-ALLOW-PROP-0005"
+linked_spec = "CARGO-ALLOW-SPEC-0005"
+linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
+
+[[artifact]]
+id = "CARGO-ALLOW-PROP-0006"
+kind = "proposal"
+path = "docs/proposals/CARGO-ALLOW-PROP-0006-adoption-trust-0.1.10.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-06-17"
+
+[[artifact]]
+id = "CARGO-ALLOW-SPEC-0006"
+kind = "spec"
+path = "docs/specs/CARGO-ALLOW-SPEC-0006-adoption-trust-0.1.10.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-06-17"
+linked_proposal = "CARGO-ALLOW-PROP-0006"
+
+[[artifact]]
+id = "CARGO-ALLOW-PLAN-0006"
+kind = "implementation_plan"
+path = "plans/release/0.1.10-implementation-plan.md"
+status = "draft"
+owner = "repo-infra"
+created = "2026-06-17"
+linked_proposal = "CARGO-ALLOW-PROP-0006"
+linked_spec = "CARGO-ALLOW-SPEC-0006"
+linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
