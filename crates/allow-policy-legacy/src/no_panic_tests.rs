@@ -265,3 +265,98 @@ fn no_panic_allowlist_loader_requires_allowlist_policy() {
 
     assert!(err.to_string().contains("not a no-panic-allowlist policy"));
 }
+
+#[test]
+fn no_panic_baseline_preserves_legacy_evidence_when_present() {
+    let path = fixture_dir().join("no-panic-baseline-with-evidence.toml");
+    fs::write(
+        &path,
+        r#"schema_version = 1
+policy = "no-panic-baseline"
+
+[[entry]]
+path = "src/lib.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let value = maybe.unwrap();"
+count = 2
+owner = "parser"
+reason = "Counted unwrap baseline after parser hardening."
+evidence = ["test:parser_validates_optional_value", "issue:#123"]
+created = "2026-05-09"
+review_after = "2026-06-09"
+expires = "2026-06-09"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+    let cfg = load_no_panic_baseline_compat_config(&path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("no-panic baseline with evidence loads: {err}"))
+    });
+
+    let entry = cfg
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected no-panic baseline entry"));
+    assert_eq!(entry.owner, "parser");
+    assert_eq!(
+        entry.reason,
+        "Counted unwrap baseline after parser hardening."
+    );
+    assert_eq!(entry.occurrence_limit, Some(2));
+    assert_eq!(
+        entry.evidence,
+        vec![
+            "test:parser_validates_optional_value".to_string(),
+            "issue:#123".to_string(),
+        ]
+    );
+    assert_eq!(entry.lifecycle.created.as_deref(), Some("2026-05-09"));
+    assert_eq!(entry.lifecycle.review_after.as_deref(), Some("2026-06-09"));
+    assert_eq!(entry.lifecycle.expires.as_deref(), Some("2026-06-09"));
+    assert_eq!(
+        allow_policy::weak_evidence_reference_count(Path::new("."), &cfg),
+        0,
+        "recognized legacy no-panic baseline evidence should not be reported as weak"
+    );
+}
+
+#[test]
+fn no_panic_baseline_without_evidence_keeps_visible_debt_markers() {
+    let path = fixture_dir().join("no-panic-baseline-debt.toml");
+    fs::write(
+        &path,
+        r#"schema_version = 1
+policy = "no-panic-baseline"
+
+[[entry]]
+path = "src/lib.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let value = maybe.unwrap();"
+count = 2
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+    let cfg = load_no_panic_baseline_compat_config(&path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("no-panic baseline debt fixture loads: {err}"))
+    });
+
+    let entry = cfg
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected no-panic baseline entry"));
+    assert_eq!(entry.owner, "unowned");
+    assert_eq!(entry.classification, "baseline_debt");
+    assert_eq!(
+        entry.evidence,
+        vec![
+            "legacy_policy:no-panic-baseline".to_string(),
+            "legacy_selector_callee:Option/Result::unwrap".to_string(),
+            "baseline_count:2".to_string(),
+        ]
+    );
+}

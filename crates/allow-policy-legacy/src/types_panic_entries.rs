@@ -9,6 +9,12 @@ pub(crate) struct LegacyNoPanicBaselineEntry {
     pub(crate) selector_callee: String,
     pub(crate) snippet: String,
     pub(crate) count: u32,
+    pub(crate) owner: String,
+    pub(crate) reason: String,
+    pub(crate) evidence: Vec<String>,
+    pub(crate) created: Option<String>,
+    pub(crate) review_after: Option<String>,
+    pub(crate) expires: Option<String>,
 }
 
 #[derive(Debug, Clone)]

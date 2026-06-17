@@ -595,6 +595,48 @@ callee = "unwrap"
             expected_links: &["legacy-policy:no-panic-allowlist"],
         },
         EvidenceMatrixCase {
+            label: "no-panic baseline evidence",
+            file_name: "no-panic-baseline.toml",
+            policy_text: r#"schema_version = 1
+policy = "no-panic-baseline"
+
+[[entry]]
+path = "src/lib.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "unwrap"
+snippet = "value.unwrap()"
+count = 2
+evidence = ["test:parser_validates_optional_value", "issue:#123"]
+"#,
+            entry_id: "panic-baseline-0001",
+            family: Some("unwrap"),
+            expected_evidence: &["test:parser_validates_optional_value", "issue:#123"],
+            expected_derived_evidence: &[],
+            expected_links: &["legacy-policy:no-panic-baseline"],
+        },
+        EvidenceMatrixCase {
+            label: "no-panic baseline covered_by",
+            file_name: "no-panic-baseline.toml",
+            policy_text: r#"schema_version = 1
+policy = "no-panic-baseline"
+
+[[entry]]
+path = "src/lib.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "unwrap"
+snippet = "value.unwrap()"
+count = 2
+covered_by = "test:baseline_unwrap_counted"
+"#,
+            entry_id: "panic-baseline-0001",
+            family: Some("unwrap"),
+            expected_evidence: &["test:baseline_unwrap_counted"],
+            expected_derived_evidence: &[],
+            expected_links: &["legacy-policy:no-panic-baseline"],
+        },
+        EvidenceMatrixCase {
             label: "unsafe evidence",
             file_name: "unsafe-allowlist.toml",
             policy_text: r#"schema_version = 1

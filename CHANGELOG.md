@@ -21,6 +21,13 @@ inventory without executing repository code.
   dry-run steps, publish-order verification, recovery/yank guidance, and links
   to the `0.1.10` release plan (E1/E2).
 
+### Migration
+
+- Preserve optional owner, reason, lifecycle, and legacy `evidence`/`covered_by`
+  fields when migrating `no-panic-baseline` entries; entries without evidence
+  still emit visible `baseline_debt` traceability markers and keep
+  `occurrence_limit` from legacy `count`.
+
 ### Testing
 
 - Harden `add` load, validate, and write error paths (#1685).

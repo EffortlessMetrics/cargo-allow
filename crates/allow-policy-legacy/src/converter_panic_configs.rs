@@ -50,6 +50,12 @@ status = "active"
             selector_callee: "core::result::Result::expect".to_string(),
             snippet: "value.expect(\"validated\")".to_string(),
             count: 2,
+            owner: "unowned".to_string(),
+            reason: "Generated from legacy no-panic baseline; requires human review.".to_string(),
+            evidence: Vec::new(),
+            created: Some(crate::default_baseline_created()),
+            review_after: None,
+            expires: Some(crate::default_baseline_expires()),
         }];
 
         let cfg = config_from_no_panic_baseline_entries(&table, &entries)
