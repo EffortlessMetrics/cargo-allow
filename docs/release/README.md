@@ -4,6 +4,28 @@ Future cargo-allow releases publish from GitHub Actions when a version tag is
 pushed. Manual `cargo publish` remains a documented fallback during Trusted
 Publishing setup or when automation is blocked.
 
+This document is the operator source of truth for automated release
+prerequisites. Sequencing for the `0.1.10` adoption-trust cut lives in
+[plans/release/0.1.10-implementation-plan.md](../../plans/release/0.1.10-implementation-plan.md)
+(PR E1 documents prerequisites here; PR E2 records workflow_dispatch dry-run
+evidence).
+
+## Prerequisites
+
+Complete these checks before the first tag-triggered automated release:
+
+| Prerequisite | Verification |
+| --- | --- |
+| Trusted Publishing on all ten crates | Each crate in [Publish order](#publish-order) has crates.io **Settings → Trusted Publishing** with owner `EffortlessMetrics`, repo `cargo-allow`, workflow `release.yml` |
+| Prior manual publish per crate | `0.1.0`–`0.1.9` manual publishes satisfy crates.io's first-publish requirement |
+| Workflow dry-run green on `main` | **Actions → Release → Run workflow**; preflight passes and publish runs `cargo publish --dry-run` only ([Manual dry-run](#manual-dry-run)) |
+| Token fallback documented | `CARGO_REGISTRY_TOKEN` secret exists only when OIDC is not yet configured for every crate ([Token fallback](#token-fallback-migration-only)) |
+| Release prep merged | Version bump, `docs/release/X.Y.Z.md`, and `docs/release/github/vX.Y.Z.md` on `main` before tagging |
+| No-new guard green on release head | `cargo-allow check --mode no-new` receipt on the commit to tag |
+
+Do not push a version tag until Trusted Publishing or an approved token fallback
+is verified and a recent workflow_dispatch dry-run is green.
+
 ## Canonical Path
 
 1. Merge release-prep PRs to `main` (version bump, release record, install pins,
@@ -45,7 +67,24 @@ Internal crates must publish in dependency order:
 ```
 
 Each crate is dry-run verified immediately before upload. The workflow waits for
-crates.io index visibility before publishing dependents.
+crates.io index visibility (up to 30 attempts, 10 seconds apart) before
+publishing dependents.
+
+### Verifying publish order locally
+
+Before tagging, confirm packaging and dry-run publish for the full workspace:
+
+```bash
+rtk cargo package --workspace --locked
+for crate in allow-core allow-policy allow-inventory allow-files allow-rust \
+  allow-match allow-report allow-policy-legacy allow-diff cargo-allow; do
+  rtk cargo publish --dry-run -p "${crate}" --locked
+done
+```
+
+The [release workflow](../../.github/workflows/release.yml) uses the same crate
+list and order. A failure mid-publish leaves earlier crates on crates.io; use
+[Recovery and yank](#recovery-and-yank) before retrying.
 
 ## crates.io Trusted Publishing (Preferred)
 
@@ -67,6 +106,25 @@ Trusted Publishing requires at least one prior manual publish for each crate.
 The `0.1.0`–`0.1.9` releases were published manually and satisfy that
 prerequisite.
 
+Configure Trusted Publishing on **each** published crate:
+
+| # | Crate | crates.io settings |
+| --- | --- | --- |
+| 1 | `allow-core` | Settings → Trusted Publishing |
+| 2 | `allow-policy` | Settings → Trusted Publishing |
+| 3 | `allow-inventory` | Settings → Trusted Publishing |
+| 4 | `allow-files` | Settings → Trusted Publishing |
+| 5 | `allow-rust` | Settings → Trusted Publishing |
+| 6 | `allow-match` | Settings → Trusted Publishing |
+| 7 | `allow-report` | Settings → Trusted Publishing |
+| 8 | `allow-policy-legacy` | Settings → Trusted Publishing |
+| 9 | `allow-diff` | Settings → Trusted Publishing |
+| 10 | `cargo-allow` | Settings → Trusted Publishing |
+
+All ten rows use the same GitHub binding: owner `EffortlessMetrics`, repository
+`cargo-allow`, workflow filename `release.yml`. Leave **Environment** blank
+unless the workflow is later scoped to a GitHub `release` environment.
+
 ## Token Fallback (Migration Only)
 
 If Trusted Publishing is not yet configured for every crate, add a repository
@@ -78,12 +136,24 @@ Do not commit API tokens to the repository.
 
 ## Manual Dry-Run
 
-Use workflow dispatch to validate release automation without uploading:
+Use workflow_dispatch to validate release automation without uploading. This is
+the proof step for [PR E2](../../plans/release/0.1.10-implementation-plan.md#pr-e2-dry-run-release-workflow-on-main)
+in the `0.1.10` plan.
 
 1. Open **Actions → Release → Run workflow** on `main`.
-2. Confirm preflight passes and publish steps run `cargo publish --dry-run` only.
+2. Leave the branch selector on `main` and start the run.
+3. Confirm the **preflight** job passes (`fmt`, `clippy`, `test`, `package`,
+   no-new guard).
+4. Confirm the **publish** job authenticates (`auth: oidc` in
+   `release-publish.receipt.json` when Trusted Publishing is configured, or
+   `auth: secret` when using `CARGO_REGISTRY_TOKEN`).
+5. Confirm each crate step logs `Dry-run only; skipping upload` and no real
+   `cargo publish` upload occurs.
+6. Download the `release-publish-receipt` artifact and record the workflow run
+   id in the release record or plan closeout.
 
-Tag pushes always perform real publishes once preflight succeeds.
+Tag pushes always perform real publishes once preflight succeeds. A
+workflow_dispatch run never uploads to crates.io.
 
 ## Manual Publish Fallback
 
@@ -105,6 +175,35 @@ rtk cargo publish -p <crate> --locked
 ```
 
 Create the GitHub Release from `docs/release/github/vX.Y.Z.md` after publication.
+
+## Recovery and yank
+
+Published crate versions are irreversible. If a published package is wrong:
+
+1. **Stop** — do not push another tag for the same version string.
+2. **Assess scope** — identify which crates from [Publish order](#publish-order)
+   reached crates.io before the failure.
+3. **Yank** affected versions (newest dependent first when multiple crates
+   published):
+
+   ```bash
+   rtk cargo yank <crate> --vers X.Y.Z
+   ```
+
+4. **Fix on `main`** — merge corrective changes under a new patch version; never
+   reuse the yanked version number.
+5. **Republish** — either re-run the release workflow on a new tag or follow
+   [Manual publish fallback](#manual-publish-fallback) in dependency order.
+6. **Record** — update `docs/release/X.Y.Z.md` with yank actions, workflow run
+   ids, and the replacement version.
+
+Yanking removes the version from default dependency resolution but does not
+delete download history. Prefer yank plus a new patch over force-publishing the
+same version.
+
+If a workflow fails mid-publish, inspect the publish job log for the last
+successful crate, yank any incorrect uploads, fix `main`, and dry-run again
+before tagging.
 
 ## Claim Boundary
 
