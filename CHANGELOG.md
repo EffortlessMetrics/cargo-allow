@@ -16,6 +16,10 @@ inventory without executing repository code.
 - Register improvement-lane specs and plans for readiness, migration parity
   queue, `.allow`/import design, structural identity quality, and `0.1.10`
   adoption-trust release sequencing.
+- Document automated release prerequisites in `docs/release/README.md`: Trusted
+  Publishing checklist for all ten crates, token fallback, workflow_dispatch
+  dry-run steps, publish-order verification, recovery/yank guidance, and links
+  to the `0.1.10` release plan (E1/E2).
 
 ### Testing
 
