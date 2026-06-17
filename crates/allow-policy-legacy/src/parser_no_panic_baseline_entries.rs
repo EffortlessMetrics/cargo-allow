@@ -1,8 +1,10 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use toml::Value;
 
-use crate::fields::required_string_field;
+use crate::fields::{legacy_evidence, required_string_field, string_field};
+use crate::parser_support::normalize_legacy_expires;
 use crate::types::LegacyNoPanicBaselineEntry;
+use crate::{default_baseline_created, default_baseline_expires};
 
 pub(crate) fn parse_no_panic_baseline_entries(
     table: &toml::Table,
@@ -32,6 +34,9 @@ fn parse_no_panic_baseline_entry(
         .filter(|value| *value > 0)
         .and_then(|value| u32::try_from(value).ok())
         .ok_or_else(|| CargoAllowError::new(format!("{context} missing count")))?;
+    let review_after = string_field(table, "review_after");
+    let expires = normalize_legacy_expires(string_field(table, "expires"))
+        .or_else(|| review_after.is_none().then(default_baseline_expires));
     Ok(LegacyNoPanicBaselineEntry {
         index,
         path: required_string_field(table, "path", &context)?,
@@ -40,6 +45,16 @@ fn parse_no_panic_baseline_entry(
         selector_callee: required_string_field(table, "selector_callee", &context)?,
         snippet: required_string_field(table, "snippet", &context)?,
         count,
+        owner: string_field(table, "owner").unwrap_or_else(|| "unowned".to_string()),
+        reason: string_field(table, "reason")
+            .or_else(|| string_field(table, "explanation"))
+            .unwrap_or_else(|| {
+                "Generated from legacy no-panic baseline; requires human review.".to_string()
+            }),
+        evidence: legacy_evidence(table),
+        created: string_field(table, "created").or_else(|| Some(default_baseline_created())),
+        review_after,
+        expires,
     })
 }
 
@@ -96,6 +111,70 @@ count = 1
         assert_eq!(second.selector_callee, "expect");
         assert_eq!(second.snippet, "value.expect(\"ready\")");
         assert_eq!(second.count, 1);
+    }
+
+    #[test]
+    fn parse_no_panic_baseline_entries_preserves_optional_metadata_and_evidence() {
+        let table = parse_table(
+            r#"
+[[entry]]
+path = "src/lib.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "unwrap"
+snippet = "value.unwrap()"
+count = 2
+owner = "parser"
+reason = "Counted unwrap baseline after parser hardening."
+evidence = ["test:parser_validates_optional_value", "issue:#123"]
+created = "2026-05-09"
+review_after = "2026-06-09"
+expires = "2026-06-09"
+
+[[entry]]
+path = "src/main.rs"
+family = "expect"
+selector_kind = "method_call"
+selector_callee = "expect"
+snippet = "value.expect(\"ready\")"
+count = 1
+explanation = "Crash path is unreachable after argument validation."
+covered_by = "test:panic_path_unreachable"
+"#,
+        );
+
+        let mut entries = parse_no_panic_baseline_entries(&table).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("no-panic baseline metadata parses: {err}"))
+        });
+
+        assert_eq!(entries.len(), 2);
+        let reviewed = entries.remove(0);
+        assert_eq!(reviewed.owner, "parser");
+        assert_eq!(
+            reviewed.reason,
+            "Counted unwrap baseline after parser hardening."
+        );
+        assert_eq!(
+            reviewed.evidence,
+            vec![
+                "test:parser_validates_optional_value".to_string(),
+                "issue:#123".to_string(),
+            ]
+        );
+        assert_eq!(reviewed.created.as_deref(), Some("2026-05-09"));
+        assert_eq!(reviewed.review_after.as_deref(), Some("2026-06-09"));
+        assert_eq!(reviewed.expires.as_deref(), Some("2026-06-09"));
+
+        let covered = entries.remove(0);
+        assert_eq!(covered.owner, "unowned");
+        assert_eq!(
+            covered.reason,
+            "Crash path is unreachable after argument validation."
+        );
+        assert_eq!(
+            covered.evidence,
+            vec!["test:panic_path_unreachable".to_string()]
+        );
     }
 
     #[test]

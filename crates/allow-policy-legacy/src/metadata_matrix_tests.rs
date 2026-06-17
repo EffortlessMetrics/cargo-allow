@@ -278,6 +278,34 @@ container = "read"
             expected_review_after: Some("2026-09-09"),
             expected_expires: None,
         },
+        MetadataMatrixCase {
+            label: "no-panic baseline metadata",
+            file_name: "no-panic-baseline.toml",
+            policy_text: r#"schema_version = 1
+policy = "no-panic-baseline"
+
+[[entry]]
+path = "src/lib.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "unwrap"
+snippet = "value.unwrap()"
+count = 2
+owner = "parser"
+reason = "Counted unwrap baseline after parser hardening."
+created = "2026-05-09"
+review_after = "2026-06-09"
+expires = "2026-06-09"
+"#,
+            entry_id: "panic-baseline-0001",
+            family: Some("unwrap"),
+            expected_owner: "parser",
+            expected_classification: "baseline_debt",
+            expected_reason: "Counted unwrap baseline after parser hardening.",
+            expected_created: Some("2026-05-09"),
+            expected_review_after: Some("2026-06-09"),
+            expected_expires: Some("2026-06-09"),
+        },
     ]
 }
 
