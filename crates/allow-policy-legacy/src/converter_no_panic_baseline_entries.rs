@@ -9,7 +9,7 @@ use crate::converter_panic_support::{
     cargo_allow_panic_family, no_panic_macro_name, normalize_selector_kind,
 };
 use crate::types::LegacyNoPanicBaselineEntry;
-use crate::{default_baseline_created, default_baseline_expires};
+use crate::default_baseline_expires;
 
 pub(crate) fn entry_from_no_panic_baseline_entry(rule: &LegacyNoPanicBaselineEntry) -> AllowEntry {
     let path = normalize_path(&rule.path);
