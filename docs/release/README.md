@@ -45,12 +45,18 @@ is verified and a recent workflow_dispatch dry-run is green.
      and release-record files; release-record checks skip on workflow_dispatch),
      then publishes the ten workspace crates to crates.io in dependency order
      (dry-run before each upload).
+   - **install-smoke** *(tag pushes only)* — after `cargo-allow` is published,
+     runs [release install smoke](../../scripts/release-install-smoke.sh):
+     `cargo install cargo-allow --version "$VERSION" --locked`, then
+     `cargo-allow --version`, `doctor`, `check --help`, and
+     `doctor --profile spec-system --help`. Skipped on workflow_dispatch dry-run.
    - **github-release** — creates a GitHub Release from
-     `docs/release/github/vX.Y.Z.md` when that file exists.
+     `docs/release/github/vX.Y.Z.md` when that file exists, after install-smoke
+     passes.
 
 4. After the workflow succeeds, finish the release record in
    `docs/release/X.Y.Z.md` with workflow run id, registry visibility checks, and
-   installed-binary smoke evidence.
+   the install-smoke receipt artifact (`release-install-smoke-receipt`).
 
 ## Publish Order
 
@@ -212,9 +218,32 @@ If a workflow fails mid-publish, inspect the publish job log for the last
 successful crate, yank any incorrect uploads, fix `main`, and dry-run again
 before tagging.
 
+## Install smoke (tag pushes)
+
+Tag-triggered releases run install smoke automatically after publish completes.
+The job installs the exact published version from crates.io and exercises core
+CLI surfaces:
+
+```bash
+cargo install cargo-allow --version "$VERSION" --locked
+cargo-allow --version
+cargo-allow doctor
+cargo-allow check --help
+cargo-allow doctor --profile spec-system --help
+```
+
+Local characterization against the latest published release:
+
+```bash
+bash scripts/test-release-install-smoke.sh
+```
+
+workflow_dispatch dry-runs skip install-smoke because no new version is uploaded.
+
 ## Claim Boundary
 
 The release workflow proves formatting, lint, tests, packaging, no-new policy
-posture, and successful crates.io uploads for the tagged commit. It does not
-execute install-smoke checks against the published binary; record those in the
-release closeout after the workflow completes.
+posture, successful crates.io uploads, and post-publish install smoke for the
+tagged commit. Install smoke verifies the published binary installs and exposes
+expected CLI help surfaces; it does not run repository checks, proof commands,
+or spec-system graph validation against a consumer repo.
