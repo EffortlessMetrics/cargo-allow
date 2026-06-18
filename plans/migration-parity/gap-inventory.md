@@ -1,8 +1,8 @@
 # Migration Parity Gap Inventory
 
 Living inventory for [CARGO-ALLOW-SPEC-0002](../../docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md)
-and the [PR queue](pr-queue.md). Last reconciled after import-parity execution
-lane closeout CARGO-ALLOW-CLOSEOUT-0004 (2026-06-18).
+and the [PR queue](pr-queue.md). Last reconciled after portable governance
+transition closeout CARGO-ALLOW-CLOSEOUT-0005 (2026-06-18).
 
 Parity status values:
 
@@ -39,10 +39,14 @@ Parity status values:
 ## Adoption Substrate Lane (closed)
 
 10-PR cleanup queue complete on main; structural identity D3–D7 slices recorded in
-closeout extension. Structural identity execution lane (D1–D7) closed; D8 docs
-deferred. Closeout:
-[CARGO-ALLOW-CLOSEOUT-0003](closeouts/adoption-substrate-lane.md). Release cut
-(`0.1.10`) remains deferred; this closeout is not a publish authorization.
+closeout extension. Structural identity execution lane (D1–D8) closed; D8 docs
+landed. Advisory ratcheting complete: receipt `advisory` counters, `check --deny
+<status>` (#1474 closed), per-lane posture (#1473), and `occurrence_headroom`
+(#1472 closed). Closeouts:
+[CARGO-ALLOW-CLOSEOUT-0003](closeouts/adoption-substrate-lane.md) and portable
+governance transition [CARGO-ALLOW-CLOSEOUT-0005](../spec-system/closeouts/portable-governance-transition.md).
+Release cut (`0.1.10`) remains deferred; these closeouts are not publish
+authorization.
 
 | Item | Gap | Status | Owner | Evidence | PR |
 | --- | --- | --- | --- | --- | --- |
@@ -60,6 +64,20 @@ deferred. Closeout:
 | structural identity D5 | Lint attribute target identity landed | done | repo-infra | #1728 merge `7b2f2785`; `plans/structural-identity/gap-inventory.md` | pr-012 |
 | structural identity D6 | Matcher selector precision characterization landed | done | repo-infra | #1730 merge `10e98453`; `plans/structural-identity/gap-inventory.md` | pr-013 |
 | structural identity D7 | Diff posture identity characterization landed | done | repo-infra | #1732 merge `1f67fd64`; `plans/structural-identity/gap-inventory.md` | pr-014 |
+
+## Portable Governance Lane (active)
+
+Execution transitioned from CARGO-ALLOW-GOAL-0002 to CARGO-ALLOW-GOAL-0003 after
+[CARGO-ALLOW-CLOSEOUT-0005](../spec-system/closeouts/portable-governance-transition.md).
+Migration, adoption-substrate, and import-parity execution lanes are archived;
+advisory ratcheting (#1474, #1472) is complete on main.
+
+| Item | Gap | Status | Owner | Evidence | PR |
+| --- | --- | --- | --- | --- | --- |
+| `.allow` profile resolution (C2) | Governance profile state still lives under dogfood `policy/` paths without portable resolver | ready | repo-infra | CARGO-ALLOW-PLAN-0004 C2; `portable-governance-c2` in `.codex/goals/active.toml` | c2 |
+| P2 multi-ledger federation (#1473) | Federation across additional legacy ledgers needs design acceptance | blocked | repo-infra | `portable-governance-f0-federation`; docs/source-of-truth/README.md | — |
+| external ripr adoption | In-repo ripr-style dogfood closed; external repo migration unrequested | blocked | repo-infra | `docs/dogfood/cargo-allow-ripr-style-adoption.md`; `portable-governance-external-ripr` | — |
+| full import mode (#1466) | Umbrella open; characterization slices #1713–#1718 closed | blocked | repo-infra | CARGO-ALLOW-CLOSEOUT-0004; `portable-governance-full-import` | — |
 
 ## Claim Boundary
 

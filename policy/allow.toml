@@ -3801,7 +3801,7 @@ normalized_snippet_hash = "fnv1a64:fa9243922c7f7584"
 glob = "tests/fixtures/structural-identity/lint_same_different_items/*.rs"
 
 [allow.last_seen]
-line = 4
+line = 1
 column = 1
 
 [[allow]]
@@ -3825,7 +3825,7 @@ normalized_snippet_hash = "fnv1a64:7e13a5ebdee85d74"
 glob = "tests/fixtures/structural-identity/lint_same_different_items/*.rs"
 
 [allow.last_seen]
-line = 1
+line = 4
 column = 1
 
 [[allow]]
@@ -4376,6 +4376,52 @@ symbol = "plans/migration-parity/closeouts/import-parity-lane.md"
 target_fingerprint = "md"
 line_hint = 1
 glob = "plans/migration-parity/closeouts/import-parity-lane.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0257"
+kind = "non_rust_file"
+family = "configuration"
+path = ".codex/goals/archive/CARGO-ALLOW-GOAL-0002-migration-evidence-parity.toml"
+owner = "core/policy"
+classification = "active_goal_manifest"
+reason = "Archives the completed migration and evidence parity active goal manifest after portable governance transition."
+evidence = ["doc:plans/spec-system/closeouts/portable-governance-transition.md", "doc:policy/doc-artifacts.toml"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".codex/goals/archive/CARGO-ALLOW-GOAL-0002-migration-evidence-parity.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = ".codex/goals/archive/CARGO-ALLOW-GOAL-0002-migration-evidence-parity.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0258"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/spec-system/closeouts/portable-governance-transition.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records portable governance transition closeout (GOAL-0002 archive, GOAL-0003 activation) without implementing C2 profile resolution."
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.codex/goals/active.toml", "doc:policy/doc-artifacts.toml"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/spec-system/closeouts/portable-governance-transition.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/spec-system/closeouts/portable-governance-transition.md"
 
 [allow.last_seen]
 line = 1

@@ -1,595 +1,81 @@
 schema_version = "1.0"
 
-id = "CARGO-ALLOW-GOAL-0002"
-title = "Migration and evidence parity"
+id = "CARGO-ALLOW-GOAL-0003"
+title = "Portable governance substrate"
 status = "active"
 owner = "codex"
-created = "2026-06-16"
+created = "2026-06-18"
 
 objective = """
-Strengthen cargo-allow migration and evidence parity on an adoption-ready
-substrate. Import parity execution lane (#1713–#1718) closed in
-CARGO-ALLOW-CLOSEOUT-0004; umbrella #1466 remains open for full import mode
-and external adoption. Post-import next lane: #1473 P2 multi-ledger federation is design-first
-blocked; #1466 full import mode is blocked on external need. Internal coherence, modularization, and documented deltas remain
-on the path to the 0.2.0 milestone claim. Release automation (0.1.10) and OIDC
-publish lanes stay dormant until explicit authorization. `.allow` namespace
-import product behavior remains future work (CARGO-ALLOW-SPEC-0004 /
-allow-import-plan).
+Transition cargo-allow governance profile state toward portable `.allow/`
+ownership after migration and evidence parity execution closed in
+CARGO-ALLOW-CLOSEOUT-0005. Next execution slice: C2 `.allow` profile
+resolution with `policy/` fallback (portable-governance-c2). P2 multi-ledger
+federation (#1473), external `ripr` migration, and full import mode (#1466)
+remain blocked. Release automation (0.1.10) and OIDC publish lanes stay dormant
+until explicit authorization.
 """
 
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_plan_status = "active"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_plan_status = "draft"
 
 claim_boundary = """
-This manifest is agent execution state. It does not implement migration lanes,
-prove side-by-side parity, execute proof commands, or replace the proposal,
-spec, support-tier map, implementation plan, policy ledgers, or closeouts.
+This manifest is agent execution state. It does not implement profile
+resolution, import adapters, prove side-by-side parity, execute proof commands,
+or replace the proposal, spec, support-tier map, implementation plan, policy
+ledgers, or closeouts.
 """
 
 [[work_item]]
-id = "migration-parity-pr-001"
-status = "done"
-title = "Register migration parity goal and sequence first parity lanes"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
-proof_commands = [
-  "rtk cargo run -p cargo-allow -- doctor --profile spec-system --format json",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in docs(goals): register 0.2.0 migration parity execution lane (#1687).",
-  "Archived CARGO-ALLOW-GOAL-0001 and registered CARGO-ALLOW-PROP-0002, CARGO-ALLOW-SPEC-0002, CARGO-ALLOW-PLAN-0002, and plans/migration-parity/ queue artifacts.",
-  "Default cargo-allow behavior unchanged; migration work uses compat lanes and documentation only until parity proof exists.",
-]
-
-[[work_item]]
-id = "migration-parity-b1"
-status = "done"
-title = "Inventory remaining legacy allowlist parity gaps"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
-proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Reconciled plans/migration-parity/gap-inventory.md from allow-policy-legacy characterization tests and open adoption issues.",
-  "Per-lane status is partial, gap, or unknown—needs fixture; no lane is parity-complete under CARGO-ALLOW-SPEC-0002 acceptance criteria.",
-]
-
-[[work_item]]
-id = "migration-parity-b2"
-status = "done"
-title = "Close no-panic-baseline evidence and lifecycle parity gap"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
-proof_commands = [
-  "rtk cargo test -p allow-policy-legacy no_panic_baseline",
-  "rtk cargo test -p allow-policy-legacy legacy_migration_preserves_evidence_matrix",
-  "rtk cargo test -p allow-policy-legacy legacy_migration_preserves_metadata_matrix",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1691 (merge 1cd408e): preserve owner/reason/evidence/covered_by on no-panic-baseline import.",
-  "Entries without evidence keep visible baseline_debt markers (legacy_policy, legacy_selector_callee, baseline_count).",
-  "Lifecycle fix: review_after without expires no longer inherits parser None as an unintended expires value.",
-  "Does not claim full panic-lane or xtask retirement; B3 fixture matrix and B5 dogfood remain open.",
-]
-
-[[work_item]]
-id = "migration-parity-b3"
-status = "done"
-title = "Add fixture matrix for all supported legacy lanes"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
-proof_commands = [
-  "rtk cargo test -p allow-policy-legacy migration_fixture_matrix",
-  "rtk cargo test -p allow-policy-legacy",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1693 (merge cd0ab7b): tests/fixtures/migration/ minimal legacy TOML inputs for all supported compat lanes.",
-  "Table-driven migration_fixture_matrix_tests.rs characterizes parse preservation, owner/reason, evidence/covered_by, lifecycle, occurrence limits, visible baseline_debt, deterministic reruns, policy-dir batch import, and compat-loader smoke checks.",
-  "Policy allow-0210 covers migration fixture TOML files; gap-inventory.md reconciled after B3 characterization.",
-  "Fixture-backed observed migration behavior only; does not claim side-by-side xtask retirement or 0.2.0 milestone parity.",
-]
-
-[[work_item]]
-id = "migration-parity-b4"
-status = "done"
-title = "Add or refresh migration closeout guide"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
-proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1695 (merge 64832c5): migrate closeout routing in cargo-allow.migrate.v1 summaries and migration-evidence-cookbook.md.",
-  "Closeout queues route baseline_debt, evidence repair, and follow-up work without chat memory.",
-  "Closeout routing metadata only; not side-by-side parity proof or 0.2.0 release cut.",
-]
-
-[[work_item]]
-id = "migration-parity-b5"
-status = "done"
-title = "Add side-by-side dogfood receipt on cargo-allow"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
-proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --compat --kind panic --config docs/dogfood/fixtures/no-panic-baseline.toml --mode no-new",
-  "rtk cargo run -p cargo-allow -- migrate --from docs/dogfood/fixtures/no-panic-baseline.toml --out docs/dogfood/receipts/cargo-allow-panic-baseline.migrated.toml --summary-format json --summary-output docs/dogfood/receipts/cargo-allow-panic-baseline.migrate-summary.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1697 (merge 26a6873): docs/dogfood/cargo-allow-panic-baseline.md records one scoped panic-baseline side-by-side receipt for this repository.",
-  "Dogfood evidence for this repo only; does not claim full xtask retirement or 0.2.0 milestone parity.",
-]
-
-[[work_item]]
-id = "migration-parity-b6"
-status = "done"
-title = "Close or split remaining import/parity issues"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
-proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "#1470 foreign-dialect discovery closed in #1699 (merge 53ea19aa) and #1700; gap-inventory reconciled.",
-  "#1466 bespoke semantic-selector import remains open umbrella; split and governance disposition tracked in adoption-substrate-pr-005.",
-]
-
-[[work_item]]
-id = "adoption-substrate-pr-002"
-status = "done"
-title = "Add migration lane descriptors for modular compat surfaces"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit",
-  "rtk cargo test -p allow-policy-legacy",
-]
-evidence_notes = [
-  "Landed in #1709 (merge 35e1f70a): shared migration lane descriptor table in allow-policy-legacy without migration behavior change.",
-  "Fixture matrix and legacy filename lookups table-driven from descriptors.",
-]
-
-[[work_item]]
-id = "adoption-substrate-pr-003"
-status = "done"
-title = "Extract evidence and lifecycle migration helpers"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo test -p allow-policy-legacy",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1711 (merge 04facd42): shared evidence/lifecycle metadata helpers in allow-policy-legacy without migration behavior change.",
-]
-
-[[work_item]]
-id = "adoption-substrate-pr-004"
-status = "done"
-title = "Normalize closeout queue routing across compat kinds"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo test -p allow-policy-legacy migration_closeout",
-  "rtk cargo test -p cargo-allow migrate_closeout_summary",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1712: shared closeout queue construction via migrate_closeout_queues and CloseoutQueueHints without migration behavior change beyond routing labels.",
-  "Panic-baseline and lint-exception closeout summaries now use consistent baseline-debt queue naming.",
-]
-
-[[work_item]]
-id = "adoption-substrate-pr-005"
-status = "done"
-title = "Split and govern #1466 semantic-selector import umbrella"
+id = "portable-governance-c2"
+status = "ready"
+title = "`.allow` profile resolution with policy fallback (C2)"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Governance split only; no import implementation. Umbrella #1466 remains open.",
-  "Child issues: #1713 semantic selectors, #1714 advisory drift, #1715 re-bless receipts, #1716 multi-family model, #1717 owner/reason/evidence fixture, #1718 ripr adoption receipt.",
-  "Split index recorded on #1466 and in plans/migration-parity/gap-inventory.md.",
-]
-
-[[work_item]]
-id = "adoption-substrate-pr-006"
-status = "done"
-title = "Add advisory occurrence-count ratcheting for migration debt"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo test -p allow-report receipt_advisory",
-  "rtk cargo test -p cargo-allow receipt_output",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed receipt `advisory` counters mirroring report trend totals for ratcheting metadata.",
-  "Does not add `--deny <status>` escalation or occurrence_headroom outcomes; see adoption-substrate-pr-007.",
-]
-
-[[work_item]]
-id = "adoption-substrate-pr-007"
-status = "done"
-title = "Add clippy-style --deny <status> escalation for check"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo test -p cargo-allow check_deny deny_escalation",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Second half of #1474: repeatable `check --deny <status>` promotes receipt advisory counts to exit 1.",
-  "Supported classes mirror receipt `advisory` fields; `occurrence_headroom` rejected with #1472 gap message.",
-  "Does not add per-lane posture model or occurrence_headroom outcomes.",
-]
-
-[[work_item]]
-id = "adoption-substrate-pr-008"
-status = "done"
-title = "Add per-lane posture model for advisory escalation"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo test -p allow-policy lane_validation",
-  "rtk cargo test -p cargo-allow lane_posture",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed optional [lanes.<kind>] posture with advisory/shadow/blocking modes and receipt lane_posture reporting.",
-  "Read/report behavior only; multi-ledger federation remains #1473 P2.",
-]
-
-[[work_item]]
-id = "adoption-substrate-pr-009"
-status = "done"
-title = "Second cargo-allow dogfood receipt (unsafe-allowlist lane)"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --compat --kind unsafe --config docs/dogfood/fixtures/unsafe-allowlist.toml --mode no-new",
-  "rtk cargo run -p cargo-allow -- migrate --from docs/dogfood/fixtures/unsafe-allowlist.toml --out docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrated.toml --summary-format json --summary-output docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrate-summary.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1723 (merge 3bd815fd): docs/dogfood/cargo-allow-unsafe-allowlist.md records one scoped unsafe-allowlist side-by-side receipt for this repository.",
-  "Dogfood evidence for this repo only; does not claim full xtask retirement or 0.2.0 milestone parity.",
-]
-
-[[work_item]]
-id = "adoption-substrate-pr-010"
-status = "done"
-title = "Improve container identity for ambiguous contexts (structural identity D3)"
-linked_proposal = "CARGO-ALLOW-PROP-0005"
-linked_spec = "CARGO-ALLOW-SPEC-0005"
-linked_plan = "plans/structural-identity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo test -p allow-rust structural_identity",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1724 (merge ffc4a47): module-qualifies unqualified container names for findings inside nested modules; fixture container_same_name_sibling_modules.",
-  "Does not claim receiver/target (D4), lint-target (D5), matcher precision (D6), or diff posture (D7) work.",
-]
-
-[[work_item]]
-id = "adoption-substrate-pr-011"
-status = "done"
-title = "Improve receiver/target identity for method/index (structural identity D4)"
-linked_proposal = "CARGO-ALLOW-PROP-0005"
-linked_spec = "CARGO-ALLOW-SPEC-0005"
-linked_plan = "plans/structural-identity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo test -p allow-rust structural_identity",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1726 (merge 4f19e298): parameter-slot receiver fingerprints (param:N) and index selector target fingerprints; fixtures rename_local, callee_same_receiver_diff, index_same_form_diff_targets.",
-  "Does not claim lint-target (D5), matcher precision (D6), or diff posture (D7) work.",
-]
-
-[[work_item]]
-id = "adoption-substrate-pr-012"
-status = "done"
-title = "Improve lint attribute target identity (structural identity D5)"
-linked_proposal = "CARGO-ALLOW-PROP-0005"
-linked_spec = "CARGO-ALLOW-SPEC-0005"
-linked_plan = "plans/structural-identity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo test -p allow-rust structural_identity",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1728 (merge 7b2f2785): scope map records inner_attribute_item targets; lint container/module identity for same-line, cfg_attr, multiline, shared-policy, and inner module/impl attrs; fixture lint_same_different_items.",
-  "Does not claim matcher precision (D6) or diff posture (D7) work.",
-]
-
-[[work_item]]
-id = "adoption-substrate-pr-013"
-status = "done"
-title = "Assert selector precision with new identity fields (structural identity D6)"
-linked_proposal = "CARGO-ALLOW-PROP-0005"
-linked_spec = "CARGO-ALLOW-SPEC-0005"
-linked_plan = "plans/structural-identity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo test -p allow-match",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1730 (merge 10e98453): allow-match selector_precision characterization over structural-identity fixtures; policy entries allow-0215..0234 and allow-0243..0246; no matcher logic changes.",
-  "Does not claim diff posture weakening detection (D7).",
-]
-
-[[work_item]]
-id = "adoption-substrate-pr-014"
-status = "done"
-title = "Verify weakening/improvement with new identity fields (structural identity D7)"
-linked_proposal = "CARGO-ALLOW-PROP-0005"
-linked_spec = "CARGO-ALLOW-SPEC-0005"
-linked_plan = "plans/structural-identity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo test -p allow-diff",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1732 (merge 1f67fd64): allow-diff structural_identity_posture characterization for selector precision weakening/improvement and finding identity loss; no diff logic changes.",
-  "Structural identity execution lane D1–D7 complete; D8 limitation docs deferred (not queued in active.toml).",
-]
-
-[[work_item]]
-id = "import-parity-pr-001"
-status = "done"
-title = "Register import parity execution lane starting with #1713"
-linked_proposal = "CARGO-ALLOW-PROP-0004"
-linked_spec = "CARGO-ALLOW-SPEC-0004"
-linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0005"
 proof_commands = [
   "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Governance registration only; no import behavior change.",
-  "Queues #1713 (semantic selector fields) as first import-parity execution slice; #1714–#1718 remain sequenced siblings.",
-  "Release/OIDC publish lanes dormant; `.allow` import design-only per CARGO-ALLOW-SPEC-0004.",
+  "First portable-governance execution slice from CARGO-ALLOW-PLAN-0004 C2.",
+  "Resolver prefers `.allow/` profile config with compatibility fallback to existing `policy/` paths.",
+  "Does not migrate dogfood profile state (C4), import external spec roots (C8–C11), or claim full import mode.",
 ]
 
 [[work_item]]
-id = "import-parity-1713"
-status = "done"
-title = "Import semantic selector fields from legacy allowlists (#1466-a / #1713)"
-linked_proposal = "CARGO-ALLOW-PROP-0004"
-linked_spec = "CARGO-ALLOW-SPEC-0004"
-linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
-proof_commands = [
-  "rtk cargo test -p allow-policy-legacy semantic_selector",
-  "rtk cargo test -p allow-policy-legacy",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1735 (merge d5983b81): preserve receiver_fingerprint, target_fingerprint, symbol, and normalized_snippet_hash from legacy nested selector tables into canonical policy entries.",
-  "Fixture-backed characterization in semantic_selector_import_tests.rs and tests/fixtures/migration/no-panic-allowlist-semantic-selectors.toml.",
-  "Does not close umbrella #1466, advisory drift (#1714), multi-ledger federation (#1473), or ripr dogfood receipt (#1718).",
-]
-
-[[work_item]]
-id = "import-parity-1714"
-status = "done"
-title = "Import advisory drift / last_seen movement from legacy allowlists (#1466-b / #1714)"
-linked_proposal = "CARGO-ALLOW-PROP-0004"
-linked_spec = "CARGO-ALLOW-SPEC-0004"
-linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
-proof_commands = [
-  "rtk cargo test -p allow-policy-legacy advisory_drift",
-  "rtk cargo test -p allow-policy-legacy",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1737 (merge 4dffb1e7): preserve last_seen and line_hint on clippy import; emit MatchStatus::LocationDrift advisories without failing no-new.",
-  "Fixture: tests/fixtures/migration/clippy-exceptions-advisory-drift.toml.",
-  "Does not close umbrella #1466, re-bless receipts (#1715), or ripr dogfood receipt (#1718).",
-]
-
-[[work_item]]
-id = "import-parity-1715"
-status = "done"
-title = "Import parity recorded re-bless / refresh receipts (#1466-c / #1715)"
-linked_proposal = "CARGO-ALLOW-PROP-0004"
-linked_spec = "CARGO-ALLOW-SPEC-0004"
-linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
-proof_commands = [
-  "rtk cargo test -p allow-report refresh",
-  "rtk cargo test -p cargo-allow refresh",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1738: cargo-allow refresh command and cargo-allow.refresh.v1 receipt for operator-approved last_seen updates after advisory drift.",
-  "Fixture: tests/fixtures/refresh/advisory-drift/.",
-  "Does not close umbrella #1466, multi-family legacy ledger model (#1716), or ripr dogfood receipt (#1718).",
-]
-
-[[work_item]]
-id = "import-parity-1716"
-status = "done"
-title = "Import parity multi-family legacy ledger import model (#1466-d / #1716)"
-linked_proposal = "CARGO-ALLOW-PROP-0004"
-linked_spec = "CARGO-ALLOW-SPEC-0004"
-linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
-proof_commands = [
-  "rtk cargo test -p allow-policy-legacy",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1739: LegacyImportBatch / LegacyImportFamily policy-dir batch import with deterministic lane-descriptor ordering and per-lane metadata.",
-  "Fixture-backed characterization in legacy_import_batch.rs and migration_fixture_matrix_tests.rs.",
-  "Does not close umbrella #1466 or ripr dogfood receipt (#1718).",
-]
-
-[[work_item]]
-id = "import-parity-1717"
-status = "done"
-title = "Import parity owner/reason/evidence acceptance fixture (#1466-e / #1717)"
-linked_proposal = "CARGO-ALLOW-PROP-0004"
-linked_spec = "CARGO-ALLOW-SPEC-0004"
-linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
-proof_commands = [
-  "rtk cargo test -p allow-policy-legacy import_parity_metadata_acceptance",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Landed in #1740: acceptance fixture matrix in import_parity_metadata_acceptance_tests.rs characterizes owner/reason/evidence/covered_by round-trip for semantic-selector entries across no-panic, lint, and unsafe lanes.",
-  "Weak or missing evidence stays visible as baseline_debt or TODO debt; converters already passed — characterization only.",
-  "Does not close umbrella #1466 or ripr dogfood receipt (#1718).",
-]
-[[work_item]]
-id = "import-parity-1718"
-status = "done"
-title = "Import parity side-by-side ripr-style adoption receipt (#1466-f / #1718)"
-linked_proposal = "CARGO-ALLOW-PROP-0004"
-linked_spec = "CARGO-ALLOW-SPEC-0004"
-linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
-proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --compat --kind panic --config docs/dogfood/fixtures/ripr-style/no-panic-baseline.toml --mode no-new",
-  "rtk cargo run -p cargo-allow -- check --compat --kind unsafe --config docs/dogfood/fixtures/ripr-style/unsafe-allowlist.toml --mode no-new",
-  "rtk cargo run -p cargo-allow -- check --compat --kind lint --config docs/dogfood/fixtures/ripr-style/clippy-exceptions.toml --mode no-new",
-  "rtk cargo run -p cargo-allow -- migrate --repo-policy docs/dogfood/fixtures/ripr-style --out docs/dogfood/receipts/cargo-allow-ripr-style-adoption.migrated.toml --summary-format json --summary-output docs/dogfood/receipts/cargo-allow-ripr-style-adoption.migrate-summary.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "In-repo dogfood only: docs/dogfood/cargo-allow-ripr-style-adoption.md records multi-family panic+unsafe+lint compat→migrate→check→worklist→closeout for cargo-allow fixtures.",
-  "Does not migrate external ripr repo, execute ripr proof commands, or close umbrella #1466.",
-  "Lint invalid_selector friction documented when legacy selector references canonical policy id during side-by-side compat.",
-]
-
-[[work_item]]
-id = "import-parity-lane-closeout"
-status = "done"
-title = "Close import parity execution lane (#1713–#1718)"
-linked_proposal = "CARGO-ALLOW-PROP-0004"
-linked_spec = "CARGO-ALLOW-SPEC-0004"
-linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
-proof_commands = [
-  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Governance closeout only; no import behavior change.",
-  "CARGO-ALLOW-CLOSEOUT-0004 records landed #1713–#1718 characterization slices and ripr-style in-repo dogfood.",
-  "Umbrella #1466 remains open for full import mode and external adoption.",
-]
-
-[[work_item]]
-id = "post-import-d8"
-status = "done"
-title = "Document scanner limitation examples and claim boundary (structural identity D8)"
-linked_proposal = "CARGO-ALLOW-PROP-0005"
-linked_spec = "CARGO-ALLOW-SPEC-0005"
-linked_plan = "plans/structural-identity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Documentation-only slice from structural identity D8 PR sequence.",
-  "Extends docs/identity.md and docs/claim-boundaries.md with honest scanner limits after D1–D7 characterization.",
-  "Closes structural identity execution lane D1–D8; recorded in CARGO-ALLOW-CLOSEOUT-0003.",
-  "Does not add scanner behavior, matcher logic, or diff posture changes.",
-]
-
-[[work_item]]
-id = "post-import-1472"
-status = "done"
-title = "Add occurrence_headroom outcomes and worklist routing (#1472)"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
-proof_commands = [
-  "rtk cargo test -p cargo-allow check_deny deny_escalation e2e_occurrence_headroom",
-  "rtk cargo test -p allow-report receipt_advisory occurrence_headroom",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-]
-evidence_notes = [
-  "Completes deferred half of advisory ratcheting after receipt advisory counts and check --deny escalation.",
-  "Emit occurrence_headroom in receipt advisory counts; enable worklist routing and optional --deny occurrence_headroom.",
-  "Does not add multi-ledger federation (#1473 P2) or full import mode (#1466).",
-]
-
-[[work_item]]
-id = "post-import-1473"
+id = "portable-governance-f0-federation"
 status = "blocked"
-title = "Design P2 multi-ledger federation for additional graph kinds (#1473)"
+title = "P2 multi-ledger federation for additional graph kinds (#1473)"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
-blocker_reason = "Design-first: per-lane posture (P1) landed; federation across additional legacy ledgers needs proposal/spec acceptance before implementation."
+blocker_reason = "Design-first: per-lane posture landed; federation across additional legacy ledgers needs proposal/spec acceptance before implementation."
 evidence_notes = [
+  "Carried forward from GOAL-0002 post-import-1473; not the active execution slice.",
   "Tracked in docs/source-of-truth/README.md Level 1 multi-ledger posture.",
-  "Blocked until federation design is accepted; not the active execution slice.",
 ]
 
 [[work_item]]
-id = "post-import-1466"
+id = "portable-governance-external-ripr"
+status = "blocked"
+title = "External ripr repository migration and adoption proof"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+blocker_reason = "In-repo ripr-style dogfood receipt (#1718) closed import-parity characterization; external repo migration blocked on explicit adoption request."
+evidence_notes = [
+  "docs/dogfood/cargo-allow-ripr-style-adoption.md records in-repository multi-family batch only.",
+  "Does not execute ripr proof commands or migrate external repositories.",
+]
+
+[[work_item]]
+id = "portable-governance-full-import"
 status = "blocked"
 title = "Full import mode product behavior and external adoption (#1466)"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
@@ -597,6 +83,6 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 blocker_reason = "Higher-risk product surface blocked on external adoption need; import-parity characterization (#1713–#1718) closed without claiming full import mode."
 evidence_notes = [
-  "Umbrella #1466 remains open after CARGO-ALLOW-CLOSEOUT-0004.",
-  "Requires explicit external repo adoption request before execution; not queued ahead of D8 or #1472.",
+  "Umbrella #1466 remains open after CARGO-ALLOW-CLOSEOUT-0004 and GOAL-0002 archive.",
+  "Requires explicit external repo adoption request before execution.",
 ]

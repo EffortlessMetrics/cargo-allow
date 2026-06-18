@@ -10,6 +10,15 @@ inventory without executing repository code.
 
 ### Added
 
+- Register portable governance transition closeout (CARGO-ALLOW-CLOSEOUT-0005):
+  archive CARGO-ALLOW-GOAL-0002 migration/adoption-substrate/import-parity
+  execution; close #1474 advisory counters + `--deny` escalation after #1472
+  `occurrence_headroom`; register CARGO-ALLOW-GOAL-0003 with
+  `portable-governance-c2` (`.allow` profile resolution) `ready` and federation
+  (#1473), external ripr, and full import mode (#1466) blocked. Reconcile
+  `gap-inventory.md` and `0.1.10-readiness.md`; no release authorization.
+- Consolidate receipt advisory field names and `check --deny` parsing behind
+  canonical `AdvisoryClass` registry in `allow-report` (#1746).
 - Emit `occurrence_headroom` advisory counts when a matched allow entry has
   `occurrence_limit` above its current matched count; route worklist items with
   limit-reduction guidance; include receipt/report trend and repair-queue
