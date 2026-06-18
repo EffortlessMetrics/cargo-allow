@@ -3827,3 +3827,49 @@ glob = "tests/fixtures/structural-identity/lint_same_different_items/*.rs"
 [allow.last_seen]
 line = 4
 column = 1
+
+[[allow]]
+id = "allow-0227"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/release-version-preflight.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Release automation script guarded by release workflow preflight."
+evidence = ["doc:docs/release/README.md"]
+created = "2026-06-18"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/release-version-preflight.sh"
+target_fingerprint = "sh"
+line_hint = 1
+glob = "scripts/release-version-preflight.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0228"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-release-version-preflight.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Release automation script guarded by release workflow preflight."
+evidence = ["doc:docs/release/README.md"]
+created = "2026-06-18"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-release-version-preflight.sh"
+target_fingerprint = "sh"
+line_hint = 1
+glob = "scripts/test-release-version-preflight.sh"
+
+[allow.last_seen]
+line = 1
+column = 1

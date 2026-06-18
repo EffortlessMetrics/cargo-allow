@@ -8,6 +8,13 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+### Added
+
+- Add `scripts/release-version-preflight.sh` and wire it into the release
+  publish job to guard tag/workspace version alignment, internal dependency
+  version consistency, CHANGELOG sections, and release-record artifacts before
+  crates.io upload (release-record checks skip on workflow_dispatch dry-run).
+
 ### Testing
 
 - Add structural identity refactor-pair fixture matrix under
