@@ -37,8 +37,9 @@ Parity status values:
 
 ## Adoption Substrate Lane (closed)
 
-10-PR cleanup queue complete on main; D4-D5 structural-identity slices recorded in
-closeout extension. Closeout:
+10-PR cleanup queue complete on main; structural identity D3–D7 slices recorded in
+closeout extension. Structural identity execution lane (D1–D7) closed; D8 docs
+deferred. Closeout:
 [CARGO-ALLOW-CLOSEOUT-0003](closeouts/adoption-substrate-lane.md). Release cut
 (`0.1.10`) remains deferred; this closeout is not a publish authorization.
 
@@ -53,7 +54,10 @@ closeout extension. Closeout:
 | per-lane posture | No per-lane advisory/shadow/blocking model | done | repo-infra | `[lanes.<kind>]` posture (#1473) | pr-008 |
 | dogfood receipts | Two in-repo side-by-side receipts (panic-baseline, unsafe-allowlist); additional lanes still open | partial | repo-infra | `docs/dogfood/cargo-allow-panic-baseline.md`; `docs/dogfood/cargo-allow-unsafe-allowlist.md` | pr-009 |
 | structural identity D3 | Container module-qualification landed | done | repo-infra | #1724 merge `ffc4a47`; `plans/structural-identity/gap-inventory.md` | pr-010 |
-| structural identity D4 | Receiver/target fingerprint hardening landed; D5–D7 queued | partial | repo-infra | #1726 merge `4f19e298`; `plans/structural-identity/gap-inventory.md` | pr-011 |
+| structural identity D4 | Receiver/target fingerprint hardening landed | done | repo-infra | #1726 merge `4f19e298`; `plans/structural-identity/gap-inventory.md` | pr-011 |
+| structural identity D5 | Lint attribute target identity landed | done | repo-infra | #1728 merge `7b2f2785`; `plans/structural-identity/gap-inventory.md` | pr-012 |
+| structural identity D6 | Matcher selector precision characterization landed | done | repo-infra | #1730 merge `10e98453`; `plans/structural-identity/gap-inventory.md` | pr-013 |
+| structural identity D7 | Diff posture identity characterization landed | done | repo-infra | #1732 merge `1f67fd64`; `plans/structural-identity/gap-inventory.md` | pr-014 |
 
 ## Claim Boundary
 

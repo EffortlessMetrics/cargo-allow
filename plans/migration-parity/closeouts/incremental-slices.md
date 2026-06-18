@@ -82,8 +82,9 @@ or the `0.2.0` milestone.
 
 ## Remaining Work
 
-- Structural identity D7 (`adoption-substrate-pr-014`); D6 landed #1730 (`10e98453`); see
-  CARGO-ALLOW-CLOSEOUT-0003.
+- Structural identity D1–D7 complete (`adoption-substrate-pr-010` through
+  `adoption-substrate-pr-014`); see CARGO-ALLOW-CLOSEOUT-0003. D8 limitation
+  docs deferred (not queued in active.toml).
 - B7 `0.2.0` migration parity release notes — after remaining parity proof.
 - Per-lane `partial` rows in gap inventory — side-by-side dogfood and full lane
   acceptance still open.

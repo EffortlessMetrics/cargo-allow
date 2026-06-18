@@ -10,6 +10,9 @@ inventory without executing repository code.
 
 ### Added
 
+- Extend adoption-substrate lane closeout (CARGO-ALLOW-CLOSEOUT-0003) after
+  structural identity D7 diff posture identity characterization lands in #1732;
+  close structural identity execution lane D1–D7 (D8 docs deferred).
 - Add fixture-backed `allow-diff` posture characterization tests asserting
   policy selector precision weakening when identity fields loosen, improvement
   when fields tighten, equal-precision selector identity retarget review, and

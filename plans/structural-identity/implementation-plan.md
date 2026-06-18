@@ -41,7 +41,13 @@ rewrites.
 | D4 — receiver/target identity for method/index | done | #1726 (merge `4f19e298`); parameter-slot receiver fingerprints (`param:N`); index selector target fingerprints; fixtures `rename_local`, `callee_same_receiver_diff`, `index_same_form_diff_targets` |
 | D5 — lint attribute target identity | done | #1728 (merge `7b2f2785`); scope map records `inner_attribute_item` targets; characterization for same-line, cfg_attr, multiline, shared-policy, and inner module/impl lint attrs; fixture `lint_same_different_items` |
 | D6 — selector precision assertions | done | `allow-match` `selector_precision` tests; structural-identity fixture policy entries `allow-0215`..`0234`, `allow-0243`..`0246`; no matcher changes required |
-| D7 — diff posture identity characterization | done | `allow-diff` `structural_identity_posture` tests; policy selector precision weakening/improvement and finding identity loss via structural-identity fixtures; no diff logic changes required |
+| D7 — diff posture identity characterization | done | #1732 (merge `1f67fd64`); `allow-diff` `structural_identity_posture` tests; policy selector precision weakening/improvement and finding identity loss via structural-identity fixtures; no diff logic changes required |
+| D8 — scanner limitation docs | deferred | not queued in active.toml; planned in PR sequence above |
+
+## Lane Status
+
+Structural identity execution lane D1–D7 is closed on main. D8 limitation
+documentation remains a deferred plan item outside active goal execution.
 
 ## Validation Baseline
 
