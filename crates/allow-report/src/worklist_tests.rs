@@ -138,7 +138,12 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
       "source_package": "parser",
       "message": "stale allow",
       "suggested_actions": ["review stale allow"],
-      "proof_commands": ["cargo-allow check --mode no-new"]
+      "proof_commands": ["cargo-allow check --mode no-new"],
+      "ledger_id": null,
+      "ledger_path": null,
+      "lane": null,
+      "mode": null,
+      "role": null
     }}
   ]
 }}
