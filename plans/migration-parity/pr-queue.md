@@ -10,7 +10,7 @@ Actionable inventory for the `0.2.0` migration parity lane
 | B1 / B1r — gap inventory reconciliation | done | this queue + [gap-inventory.md](gap-inventory.md) |
 | Goal registration (PR 1 / #1687) | done | `.codex/goals/active.toml`, `policy/doc-artifacts.toml` |
 | B2 — no-panic-baseline evidence/lifecycle slice | done | #1691 (merge `1cd408e`) |
-| B3 — migration fixture matrix | **in progress** | `tests/fixtures/migration/`, `migration_fixture_matrix_tests.rs` |
+| B3 — migration fixture matrix | done | #1693 (merge `cd0ab7b`) |
 
 ## Surfaces
 
@@ -77,10 +77,12 @@ Validation: `allow-policy-legacy` no-panic tests plus validation baseline.
 
 Claim boundary: no-panic-baseline import slice only; not full xtask retirement.
 
-### PR B3 — Add fixture matrix for all supported legacy lanes (next)
+### PR B3 — Add fixture matrix for all supported legacy lanes (done, #1693)
 
 Purpose: characterization coverage across compat kinds under
 `tests/fixtures/migration/`.
+
+Status: done (merge `cd0ab7b`).
 
 Files: `tests/fixtures/migration/`, compat tests in `allow-policy-legacy`.
 
@@ -88,7 +90,7 @@ Active goal work item: `migration-parity-b3`.
 
 Claim boundary: fixture-backed observed behavior only.
 
-### PR B4 — Add/refresh migration closeout guide
+### PR B4 — Add/refresh migration closeout guide (next)
 
 Purpose: make `cargo-allow.migrate.v1` summaries actionable without chat memory.
 

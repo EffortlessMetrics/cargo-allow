@@ -84,17 +84,36 @@ evidence_notes = [
 
 [[work_item]]
 id = "migration-parity-b3"
-status = "ready"
+status = "done"
 title = "Add fixture matrix for all supported legacy lanes"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
 proof_commands = [
+  "rtk cargo test -p allow-policy-legacy migration_fixture_matrix",
   "rtk cargo test -p allow-policy-legacy",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Add tests/fixtures/migration/ coverage across compat kinds listed in plans/migration-parity/pr-queue.md.",
-  "Characterize observed migration output only; do not claim side-by-side xtask retirement or 0.2.0 milestone parity.",
-  "Do not bump workspace version or publish release records without explicit cut authorization.",
+  "Landed in #1693 (merge cd0ab7b): tests/fixtures/migration/ minimal legacy TOML inputs for all supported compat lanes.",
+  "Table-driven migration_fixture_matrix_tests.rs characterizes parse preservation, owner/reason, evidence/covered_by, lifecycle, occurrence limits, visible baseline_debt, deterministic reruns, policy-dir batch import, and compat-loader smoke checks.",
+  "Policy allow-0210 covers migration fixture TOML files; gap-inventory.md reconciled after B3 characterization.",
+  "Fixture-backed observed migration behavior only; does not claim side-by-side xtask retirement or 0.2.0 milestone parity.",
+]
+
+[[work_item]]
+id = "migration-parity-b4"
+status = "ready"
+title = "Add or refresh migration closeout guide"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Make cargo-allow.migrate.v1 summaries actionable without chat memory.",
+  "Update docs/how-to/migration-evidence-cookbook.md and closeout routing docs per plans/migration-parity/pr-queue.md B4.",
+  "Closeout routing metadata only; not side-by-side parity proof or 0.2.0 release cut.",
 ]
