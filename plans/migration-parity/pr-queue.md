@@ -126,7 +126,8 @@ Purpose: resolve or explicitly defer tracked adoption blockers:
 - [#1466](https://github.com/EffortlessMetrics/cargo-allow/issues/1466) —
   bespoke semantic-selector ledger import/parity
 - [#1470](https://github.com/EffortlessMetrics/cargo-allow/issues/1470) —
-  foreign-dialect `policy/allow.toml` discovery
+  foreign-dialect `policy/allow.toml` discovery — **closed in #1699** (merge
+  `53ea19aa`); import-mode parity (#1466) remains open
 
 Non-goals: no silent broadening.
 
