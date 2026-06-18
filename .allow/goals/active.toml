@@ -20,8 +20,9 @@ multi-ledger check evaluation and receipt provenance landed (#1758;
 portable-governance-f2-federation done). F3 drain-window enforcement and mirror
 divergence reporting landed (#1759 merge `f81a9d2`; portable-governance-f3-federation
 done). I1 generic import-root model landed (#1761 merge `3912baa6`;
-portable-governance-i1-import done). I2 ecosystem import adapters are ready and
-unblocked per CARGO-ALLOW-PLAN-0004 / allow-import-plan C8–C11. External `ripr`
+portable-governance-i1-import done). I2 generic import adapters narrow start
+(C10 `.spec`/`.rails`/repo-spec) lands in this lane; Kiro/Spec Kit and xtask
+adapters remain queued. External `ripr`
 migration and full import mode (#1466) remain blocked. Release automation
 (0.1.10) and OIDC publish lanes stay dormant until explicit authorization.
 """
@@ -193,8 +194,26 @@ evidence_notes = [
 
 [[work_item]]
 id = "portable-governance-i2-import-adapters"
+status = "done"
+title = "Generic import adapters narrow start (I2 #1466)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "plans/spec-system/closeouts/import-i2-generic-adapters.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy import_roots",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "I2 narrow start: generic `.spec`/`.rails`/repo-spec read-only adapters on I1 import graph.",
+  "Fixture-backed tests under `tests/fixtures/import/`; does not claim Kiro/Spec Kit/xtask adapters or full import mode.",
+]
+
+[[work_item]]
+id = "portable-governance-i2-kiro-spec-kit-adapters"
 status = "ready"
-title = "Ecosystem import adapters (I2 #1466)"
+title = "Kiro and Spec Kit import adapters (I2 follow-up #1466)"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
@@ -204,9 +223,27 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "I1 generic import-root model merged (#1761 merge `3912baa6`); next import lane per allow-import-plan C8–C11.",
-  "Targets Kiro, Spec Kit, generic `.spec`/`.rails`, and xtask discovery adapters on top of the I1 graph model.",
-  "Does not claim full import mode (#1466 umbrella), external ripr migration, or release readiness.",
+  "Follow-up to I2 generic adapter slice per allow-import-plan C8–C9.",
+  "Targets Kiro (`.kiro/`) and Spec Kit (`.specify/`) discovery adapters on the I1 graph model.",
+  "Does not claim xtask registry adapter, full import mode (#1466), or release readiness.",
+]
+
+[[work_item]]
+id = "portable-governance-i2-xtask-adapter"
+status = "ready"
+title = "xtask command registry import adapter (I2 follow-up #1466)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy import_roots",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Follow-up to I2 generic adapter slice per allow-import-plan C11.",
+  "Targets xtask command registry discovery without Rust dispatch parsing.",
+  "Does not claim full import mode (#1466) or release readiness.",
 ]
 
 [[work_item]]

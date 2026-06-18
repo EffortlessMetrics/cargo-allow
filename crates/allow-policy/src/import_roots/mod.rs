@@ -4,6 +4,8 @@
 //! provenance and confidence, and emits read-only discovery diagnostics.
 //! Does not rewrite imported files or execute proof commands from imported nodes.
 
+pub mod adapters;
+
 mod config;
 mod discover;
 mod validate;
