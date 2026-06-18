@@ -16,6 +16,7 @@ use crate::{
         PolicyReferenceDiagnostic, current_evidence_source_tree_files,
         policy_reference_diagnostics_for_source_tree,
     },
+    federation_doctor::FederationDoctorFacts,
     spec_system,
 };
 
@@ -66,6 +67,9 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         .as_ref()
         .and_then(|result| result.as_ref().ok())
         .and_then(|cfg| cfg.status.as_deref());
+    let federation = FederationDoctorFacts::load(&root)?;
+    let configured_ledgers = federation.configured_ledger_summaries();
+    let federation_diagnostics = federation.diagnostic_summaries();
     let report = allow_report::DoctorReport {
         source_tree_root: source_context.source_tree_root(),
         root_discovery,
@@ -80,6 +84,19 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         weak_evidence_references,
         inventory_source: source_context.inventory_source(),
         files_scanned,
+        federation_config_path: federation.federation_config_path(),
+        federation_config_found: federation.found,
+        federation_config_valid: federation.valid,
+        configured_ledgers: if configured_ledgers.is_empty() {
+            None
+        } else {
+            Some(configured_ledgers.as_slice())
+        },
+        federation_diagnostics: if federation_diagnostics.is_empty() {
+            None
+        } else {
+            Some(federation_diagnostics.as_slice())
+        },
     };
     let text = match args.format {
         DoctorFormat::Human => allow_report::render_doctor_human(report),
@@ -202,6 +219,11 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
         weak_evidence_references: Some(0),
         inventory_source: "git_tracked",
         files_scanned: 50,
+        federation_config_path: None,
+        federation_config_found: false,
+        federation_config_valid: None,
+        configured_ledgers: None,
+        federation_diagnostics: None,
     })
 }
 

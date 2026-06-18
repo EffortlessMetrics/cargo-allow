@@ -1,0 +1,13 @@
+schema_version = "1.0"
+
+[[ledgers]]
+id = "dup"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+
+[[ledgers]]
+id = "dup"
+path = "policy/cargo-allow.toml"
+dialect = "cargo-allow"
+role = "imported"

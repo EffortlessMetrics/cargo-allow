@@ -93,8 +93,8 @@ pub use artifacts::{
     AddReport, DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange,
     DiffLifecycleChange, DiffMetadataChange, DiffOccurrenceLimitChange, DiffPolicyChange,
     DiffPolicyStatusChange, DiffPostureSummary, DiffReport, DiffRequirementChange, DiffScopeChange,
-    DiffSelectorIdentityChange, DiffSelectorPrecisionChange, DoctorReport, EvidenceReference,
-    ExplainReport, ListFilters, ListRow, MigrateReport, ProposeReport, PruneCandidate,
+    DiffSelectorIdentityChange, DiffSelectorPrecisionChange, ConfiguredLedgerSummary, DoctorReport,
+    EvidenceReference, FederationDiagnosticSummary, ExplainReport, ListFilters, ListRow, MigrateReport, ProposeReport, PruneCandidate,
     PruneModeContext, RefreshModeContext, RefreshReport, WorklistFilters, WorklistItem,
 };
 pub use contracts::{

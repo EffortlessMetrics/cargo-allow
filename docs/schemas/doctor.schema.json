@@ -13,7 +13,8 @@
     "scanner_limitations",
     "root",
     "config",
-    "inventory"
+    "inventory",
+    "federation"
   ],
   "properties": {
     "schema_version": {
@@ -192,6 +193,111 @@
     },
     "inventory": {
       "$ref": "#/$defs/inventory"
+    },
+    "federation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "found",
+        "path",
+        "valid"
+      ],
+      "properties": {
+        "found": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "valid": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "configured_ledgers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "path",
+              "dialect",
+              "role",
+              "mode",
+              "priority"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "dialect": {
+                "type": "string"
+              },
+              "role": {
+                "enum": [
+                  "canonical",
+                  "mirror",
+                  "imported"
+                ]
+              },
+              "mode": {
+                "enum": [
+                  "advisory",
+                  "shadow",
+                  "blocking"
+                ]
+              },
+              "priority": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "lanes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "mirrors": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "message",
+              "ledger_ids"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "ledger_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "$defs": {

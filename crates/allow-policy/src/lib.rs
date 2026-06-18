@@ -9,6 +9,7 @@ use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+pub mod federation;
 mod discovery;
 mod entries_validation;
 mod entry_validation;
@@ -59,6 +60,12 @@ pub use lifecycle::BASELINE_DEBT_MAX_DAYS;
 pub use render::render_policy;
 pub use starter::starter_policy;
 pub use validation::validate_policy;
+
+pub use federation::{
+    FederationConfig, FederationDiagnostic, FederationDiagnosticKind, LedgerEntry, LedgerRole,
+    ValidatedFederationConfig, load_federation_config, parse_federation_config,
+    validate_federation_config,
+};
 
 pub use discovery::{
     DISCOVERY_REL_PATHS, NATIVE_LEDGER_REL_PATH, SkippedPolicyCandidate, discover_config,
