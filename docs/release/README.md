@@ -40,8 +40,11 @@ is verified and a recent workflow_dispatch dry-run is green.
 3. The [Release workflow](../../.github/workflows/release.yml) runs:
    - **preflight** — `fmt`, `clippy`, `cargo test --workspace`,
      `cargo package --workspace --locked`, and the default no-new guard.
-   - **publish** — publishes the ten workspace crates to crates.io in dependency
-     order (dry-run before each upload).
+   - **publish** — runs [release version preflight](../../scripts/release-version-preflight.sh)
+     (tag/workspace alignment, internal dependency versions, CHANGELOG section,
+     and release-record files; release-record checks skip on workflow_dispatch),
+     then publishes the ten workspace crates to crates.io in dependency order
+     (dry-run before each upload).
    - **github-release** — creates a GitHub Release from
      `docs/release/github/vX.Y.Z.md` when that file exists.
 

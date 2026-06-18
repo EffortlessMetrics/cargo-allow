@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# Release version and artifact preflight for tag-triggered publishes.
+#
+# Usage:
+#   scripts/release-version-preflight.sh [VERSION]
+#
+# Environment:
+#   DRY_RUN=true          Skip release-record file requirements (workflow_dispatch).
+#   RELEASE_VERSION       Version override when no positional arg is supplied.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${ROOT}"
+
+log() {
+  printf 'release-version-preflight: %s\n' "$*"
+}
+
+fail() {
+  printf 'release-version-preflight: error: %s\n' "$*" >&2
+  exit 1
+}
+
+read_workspace_version() {
+  awk '
+    /^\[workspace\.package\]/ { in_ws = 1; next }
+    /^\[/ { if (in_ws) exit }
+    in_ws && /^version = / {
+      gsub(/^version = "/, "", $0)
+      gsub(/".*$/, "", $0)
+      print $0
+      exit
+    }
+  ' Cargo.toml
+}
+
+read_workspace_dependency_versions() {
+  awk '
+    /^\[workspace\.dependencies\]/ { in_ws = 1; next }
+    /^\[/ { if (in_ws) exit }
+    in_ws && /^allow-/ {
+      line = $0
+      sub(/^[^=]+= \{ path = "[^"]+", version = "/, "", line)
+      sub(/".*$/, "", line)
+      print line
+    }
+  ' Cargo.toml
+}
+
+version="${1:-${RELEASE_VERSION:-}}"
+if [[ -z "${version}" ]]; then
+  version="$(read_workspace_version)"
+  log "no release version argument; using workspace version ${version}"
+fi
+
+workspace_version="$(read_workspace_version)"
+[[ -n "${workspace_version}" ]] || fail "could not read [workspace.package].version from Cargo.toml"
+
+if [[ "${GITHUB_EVENT_NAME:-}" == "push" && "${GITHUB_REF_NAME:-}" == v* ]]; then
+  tag_version="${GITHUB_REF_NAME#v}"
+  [[ "${tag_version}" == "${version}" ]] || fail "tag version v${tag_version} does not match release version ${version}"
+  [[ "${tag_version}" == "${workspace_version}" ]] || fail "tag version v${tag_version} does not match workspace version ${workspace_version}"
+  log "tag v${tag_version} matches workspace version ${workspace_version}"
+else
+  [[ "${version}" == "${workspace_version}" ]] || fail "release version ${version} does not match workspace version ${workspace_version}"
+  log "release version ${version} matches workspace version ${workspace_version}"
+fi
+
+while IFS= read -r dep_version; do
+  [[ -n "${dep_version}" ]] || continue
+  [[ "${dep_version}" == "${workspace_version}" ]] || fail "workspace dependency version ${dep_version} does not match workspace version ${workspace_version}"
+done < <(read_workspace_dependency_versions)
+log "internal workspace dependency versions match ${workspace_version}"
+
+if grep -Eq "^## \\[${version//./\\.}\\]" CHANGELOG.md; then
+  log "CHANGELOG.md contains section for ${version}"
+else
+  fail "CHANGELOG.md is missing a ## [${version}] section"
+fi
+
+release_record="docs/release/${version}.md"
+github_notes="docs/release/github/v${version}.md"
+
+if [[ "${DRY_RUN:-false}" == "true" ]]; then
+  log "DRY_RUN=true; skipping release record checks for ${release_record} and ${github_notes}"
+  exit 0
+fi
+
+[[ -f "${release_record}" ]] || fail "missing release record ${release_record}"
+[[ -f "${github_notes}" ]] || fail "missing GitHub release notes ${github_notes}"
+log "release record and GitHub notes exist for ${version}"
