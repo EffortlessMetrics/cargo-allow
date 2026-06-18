@@ -67,6 +67,9 @@ mod prune_tests;
 mod receipt;
 #[cfg(test)]
 mod receipt_tests;
+mod refresh;
+#[cfg(test)]
+mod refresh_tests;
 mod report_json;
 mod report_text;
 mod sarif;
@@ -90,7 +93,7 @@ pub use artifacts::{
     DiffPolicyStatusChange, DiffPostureSummary, DiffReport, DiffRequirementChange, DiffScopeChange,
     DiffSelectorIdentityChange, DiffSelectorPrecisionChange, DoctorReport, EvidenceReference,
     ExplainReport, ListFilters, ListRow, MigrateReport, ProposeReport, PruneCandidate,
-    PruneModeContext, WorklistFilters, WorklistItem,
+    PruneModeContext, RefreshModeContext, RefreshReport, WorklistFilters, WorklistItem,
 };
 pub use contracts::{
     ADD_SCHEMA_ID, ADD_SCHEMA_VERSION, ARTIFACT_CONTRACTS, ARTIFACT_STATUS_ERROR,
@@ -102,10 +105,11 @@ pub use contracts::{
     LIST_SCHEMA_VERSION, MIGRATE_SCHEMA_ID, MIGRATE_SCHEMA_VERSION, PROPOSE_SCHEMA_ID,
     PROPOSE_SCHEMA_VERSION, PRUNE_SCHEMA_ID, PRUNE_SCHEMA_VERSION, RECEIPT_COMMAND_CHECK,
     RECEIPT_ENFORCEMENT_ADVISORY, RECEIPT_ENFORCEMENT_ENFORCING, RECEIPT_SCHEMA_ID,
-    RECEIPT_SCHEMA_VERSION, RECEIPT_STATUSES, REPORT_COMMAND_AUDIT, REPORT_COMMAND_CHECK,
-    REPORT_COMMAND_DIFF, REPORT_COMMANDS, REPORT_SCHEMA_ID, REPORT_SCHEMA_VERSION, ReportContext,
-    SCANNER_LIMITATIONS, SPEC_SYSTEM_CLAIM_BOUNDARY, SPEC_SYSTEM_SCANNER_LIMITATIONS,
-    SPEC_SYSTEM_SCHEMA_ID, SPEC_SYSTEM_SCHEMA_VERSION, WORKLIST_SCHEMA_ID, WORKLIST_SCHEMA_VERSION,
+    RECEIPT_SCHEMA_VERSION, RECEIPT_STATUSES, REFRESH_SCHEMA_ID, REFRESH_SCHEMA_VERSION,
+    REPORT_COMMAND_AUDIT, REPORT_COMMAND_CHECK, REPORT_COMMAND_DIFF, REPORT_COMMANDS,
+    REPORT_SCHEMA_ID, REPORT_SCHEMA_VERSION, ReportContext, SCANNER_LIMITATIONS,
+    SPEC_SYSTEM_CLAIM_BOUNDARY, SPEC_SYSTEM_SCANNER_LIMITATIONS, SPEC_SYSTEM_SCHEMA_ID,
+    SPEC_SYSTEM_SCHEMA_VERSION, WORKLIST_SCHEMA_ID, WORKLIST_SCHEMA_VERSION,
     artifact_contract_for_schema_id, claim_boundary_for_schema_id,
     scanner_limitations_for_schema_id,
 };
@@ -138,6 +142,7 @@ pub use receipt::{
     render_error_receipt, render_receipt, render_receipt_with_context,
     render_receipt_with_context_and_inventory,
 };
+pub use refresh::{render_refresh_human, render_refresh_json};
 pub use report_json::{render_json, render_json_with_context, render_json_with_context_and_diff};
 pub use report_text::{
     render_human, render_human_with_context, render_markdown, render_markdown_with_context,

@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/refresh.v1.schema.json",
+  "title": "cargo-allow refresh v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "command",
+    "claim_boundary",
+    "scanner_limitations",
+    "inventory",
+    "mode",
+    "summary",
+    "previous_last_seen",
+    "refreshed_last_seen",
+    "matched_finding"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "schema_id": {
+      "const": "cargo-allow.refresh.v1"
+    },
+    "tool": {
+      "const": "cargo-allow"
+    },
+    "command": {
+      "const": "refresh"
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/claim_boundary_flag"
+      }
+    },
+    "scanner_limitations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/scanner_limitation"
+      }
+    },
+    "inventory": {
+      "$ref": "#/$defs/inventory"
+    },
+    "mode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dry_run",
+        "write_requested",
+        "explicit_dry_run",
+        "written_path"
+      ],
+      "properties": {
+        "dry_run": {
+          "type": "boolean"
+        },
+        "write_requested": {
+          "type": "boolean"
+        },
+        "explicit_dry_run": {
+          "type": "boolean"
+        },
+        "written_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry_id",
+        "drift_message",
+        "lifecycle_preserved"
+      ],
+      "properties": {
+        "entry_id": {
+          "type": "string"
+        },
+        "drift_message": {
+          "type": "string"
+        },
+        "lifecycle_preserved": {
+          "const": true
+        }
+      }
+    },
+    "previous_last_seen": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "line",
+        "column"
+      ],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "refreshed_last_seen": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "line",
+        "column"
+      ],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "matched_finding": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "claim_boundary_flag": {
+      "type": "string",
+      "enum": [
+        "source_tree_inventory",
+        "source_syntax_only",
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "external_evidence_tools_not_invoked",
+        "repository_code_not_executed"
+      ]
+    },
+    "scanner_limitation": {
+      "type": "string",
+      "enum": [
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "external_evidence_tools_not_invoked",
+        "repository_code_not_executed"
+      ]
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "scanner",
+        "source"
+      ],
+      "properties": {
+        "scope": {
+          "const": "source_tree"
+        },
+        "scanner": {
+          "const": "source_syntax"
+        },
+        "source": {
+          "enum": [
+            "git_tracked",
+            "filesystem_fallback",
+            "filesystem_include_untracked",
+            "unknown"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Local source-tree root used for this refresh artifact. This may be an absolute path."
+        },
+        "files_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of source-tree inventory files considered before scanner filtering, when collected."
+        }
+      }
+    }
+  }
+}

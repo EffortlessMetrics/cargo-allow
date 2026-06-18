@@ -1,0 +1,29 @@
+schema_version = 1
+
+[workspace]
+ignored = []
+generated = []
+
+[[allow]]
+id = "allow-0250"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "src/lib.rs"
+owner = "lint"
+classification = "reviewed_lint_exception"
+reason = "Fixture keeps lint suppression with stale last_seen for refresh receipt proof."
+evidence = ["test:refresh-receipt-fixture"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+expires = "2026-12-31"
+
+[allow.selector]
+ast_kind = "attribute"
+lint = "clippy::unwrap_used"
+target_fingerprint = "policy:allow-0250"
+container = "fixture_refresh_drift"
+line_hint = 1
+
+[allow.last_seen]
+line = 1
+column = 1

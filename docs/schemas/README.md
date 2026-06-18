@@ -12,6 +12,7 @@ macro-expansion, or proof-level coverage.
 | Single-entry explanation | `cargo-allow.explain.v1` | `cargo-allow explain <id> --format json` |
 | Filtered ledger list | `cargo-allow.list.v1` | `cargo-allow list --format json` |
 | Stale prune preview/result | `cargo-allow.prune.v1` | `cargo-allow prune --stale --format json` |
+| Advisory drift refresh receipt | `cargo-allow.refresh.v1` | `cargo-allow refresh --allow-id <id> --format json` |
 | Baseline proposal summary | `cargo-allow.propose.v1` | `cargo-allow propose --summary-format json` |
 | Single-entry add summary | `cargo-allow.add.v1` | `cargo-allow add --summary-format json` |
 | Legacy migration summary | `cargo-allow.migrate.v1` | `cargo-allow migrate --summary-format json` |
@@ -26,6 +27,7 @@ macro-expansion, or proof-level coverage.
 - [explain.schema.json](explain.schema.json)
 - [list.schema.json](list.schema.json)
 - [prune.schema.json](prune.schema.json)
+- [refresh.schema.json](refresh.schema.json)
 - [propose.schema.json](propose.schema.json)
 - [add.schema.json](add.schema.json)
 - [migrate.schema.json](migrate.schema.json)

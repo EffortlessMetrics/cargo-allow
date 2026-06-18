@@ -6,6 +6,7 @@ mod list;
 mod migrate;
 mod propose;
 mod prune;
+mod refresh;
 mod worklist;
 
 pub use add::AddReport;
@@ -21,4 +22,5 @@ pub use list::{ListFilters, ListRow};
 pub use migrate::MigrateReport;
 pub use propose::ProposeReport;
 pub use prune::{PruneCandidate, PruneModeContext};
+pub use refresh::{RefreshModeContext, RefreshReport};
 pub use worklist::{WorklistFilters, WorklistItem};

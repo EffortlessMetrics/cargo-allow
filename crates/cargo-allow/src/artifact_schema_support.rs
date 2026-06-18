@@ -40,7 +40,7 @@ pub(crate) struct SchemaContract {
     pub(crate) fixed_command: Option<&'static str>,
 }
 
-pub(crate) fn schema_contracts() -> [SchemaContract; 11] {
+pub(crate) fn schema_contracts() -> [SchemaContract; 12] {
     [
         schema_contract("add", include_str!("../../../docs/schemas/add.schema.json")),
         schema_contract(
@@ -66,6 +66,10 @@ pub(crate) fn schema_contracts() -> [SchemaContract; 11] {
         schema_contract(
             "prune",
             include_str!("../../../docs/schemas/prune.schema.json"),
+        ),
+        schema_contract(
+            "refresh",
+            include_str!("../../../docs/schemas/refresh.schema.json"),
         ),
         schema_contract(
             "receipt",

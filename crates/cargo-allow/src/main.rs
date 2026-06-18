@@ -23,6 +23,7 @@ mod migrate;
 mod policy_config;
 mod propose;
 mod prune;
+mod refresh;
 mod reporting;
 mod selector;
 mod spec_system;
@@ -80,6 +81,8 @@ mod artifact_schema_propose_tests;
 mod artifact_schema_prune_tests;
 #[cfg(test)]
 mod artifact_schema_receipt_tests;
+#[cfg(test)]
+mod artifact_schema_refresh_tests;
 #[cfg(test)]
 mod artifact_schema_report_diff_identity_tests;
 #[cfg(test)]

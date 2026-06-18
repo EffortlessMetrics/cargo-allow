@@ -10,6 +10,11 @@ inventory without executing repository code.
 
 ### Added
 
+- Add `cargo-allow refresh --allow-id <id>` to record operator-approved advisory
+  drift refresh for entries with `location_drift` outcomes. Writes
+  `cargo-allow.refresh.v1` receipts that update `last_seen` (and selector
+  `line_hint`) without changing lifecycle dates. Fixture:
+  `tests/fixtures/refresh/advisory-drift/`.
 - Import legacy semantic selector fields (`receiver` / `receiver_fingerprint`,
   `target` / `target_fingerprint`, `symbol`, `normalized_snippet_hash`) from
   nested `[allow.selector]` tables into canonical policy entries for
