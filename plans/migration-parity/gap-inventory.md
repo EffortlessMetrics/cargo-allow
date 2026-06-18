@@ -1,8 +1,8 @@
 # Migration Parity Gap Inventory
 
 Living inventory for [CARGO-ALLOW-SPEC-0002](../../docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md)
-and the [PR queue](pr-queue.md). Last reconciled after #1466 governance split
-(adoption-substrate-pr-005, 2026-06-18).
+and the [PR queue](pr-queue.md). Last reconciled after adoption-substrate lane
+closeout (CARGO-ALLOW-CLOSEOUT-0003, 2026-06-18).
 
 Parity status values:
 
@@ -35,19 +35,23 @@ Parity status values:
 | policy-dir batch import | Primary-lane batch import characterized in `migration_fixture_matrix_policy_dir_batch_imports_primary_lanes`; mixed-policy-dir failure modes and ordering still open | partial | repo-infra | `migration_fixture_matrix_tests.rs`; `policy_dir_tests.rs` | adoption |
 | canonical rerun stability | Primary-lane deterministic rerun characterized in `migration_fixture_matrix_rerun_is_deterministic_for_primary_lanes`; B5 panic and unsafe dogfood migrate summaries are deterministic for their slices; full multi-lane batch byte-stability still open | partial | repo-infra | `migration_fixture_matrix_tests.rs`; `docs/dogfood/receipts/cargo-allow-panic-baseline.migrate-summary.json`; `docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrate-summary.json` | adoption |
 
-## Adoption Substrate Lane (active)
+## Adoption Substrate Lane (closed)
 
-Internal coherence and modularization work on the path to adoption-ready migration
-substrate. Release cut (`0.1.10`) is deferred; this lane is not a publish
-authorization.
+10-PR cleanup queue complete on main. Closeout:
+[CARGO-ALLOW-CLOSEOUT-0003](closeouts/adoption-substrate-lane.md). Release cut
+(`0.1.10`) remains deferred; this closeout is not a publish authorization.
 
 | Item | Gap | Status | Owner | Evidence | PR |
 | --- | --- | --- | --- | --- | --- |
-| migration lane descriptors | Compat kinds lack a single modular descriptor surface for agents and docs | ready | repo-infra | active goal `adoption-substrate-pr-002` | PR 2 |
-| evidence/lifecycle helpers | Shared import metadata paths are duplicated across compat loaders | blocked | repo-infra | B2 characterization in `allow-policy-legacy` | PR 3 |
-| closeout queue normalization | `next_queues` routing varies by compat kind; needs consistent phased naming | done | repo-infra | #1712 `migrate_closeout_queues`; `CloseoutQueueHints` | PR 4 |
-| #1466 governance split | Umbrella issue mixes import design, parity proof, and adoption blockers | done | repo-infra | #1713–#1718 child issues; #1466 split index comment | PR 5 |
-| advisory occurrence counts | Baseline debt visibility lacks advisory ratcheting metadata for migration summaries | blocked | repo-infra | `baseline_debt` markers in fixture matrix | PR 6 |
+| migration lane descriptors | Compat kinds lack a single modular descriptor surface for agents and docs | done | repo-infra | #1709 merge `35e1f70a` | pr-002 |
+| evidence/lifecycle helpers | Shared import metadata paths duplicated across compat loaders | done | repo-infra | #1711 merge `04facd42` | pr-003 |
+| closeout queue normalization | `next_queues` routing varies by compat kind | done | repo-infra | #1712 `migrate_closeout_queues`; `CloseoutQueueHints` | pr-004 |
+| #1466 governance split | Umbrella issue mixes import design, parity proof, and adoption blockers | done | repo-infra | #1713–#1718 child issues; #1466 split index comment | pr-005 |
+| advisory occurrence counts | Baseline debt visibility lacks advisory ratcheting metadata | done | repo-infra | receipt `advisory` counters | pr-006 |
+| `--deny <status>` escalation | Receipt advisory counts not promotable to blocking exit | done | repo-infra | `check --deny <status>` (#1474) | pr-007 |
+| per-lane posture | No per-lane advisory/shadow/blocking model | done | repo-infra | `[lanes.<kind>]` posture (#1473) | pr-008 |
+| dogfood receipts | Two in-repo side-by-side receipts (panic-baseline, unsafe-allowlist); additional lanes still open | partial | repo-infra | `docs/dogfood/cargo-allow-panic-baseline.md`; `docs/dogfood/cargo-allow-unsafe-allowlist.md` | pr-009 |
+| structural identity D3 | Container module-qualification landed; D4–D7 queued | partial | repo-infra | #1724 merge `ffc4a47`; `plans/structural-identity/gap-inventory.md` | pr-010 |
 
 ## Claim Boundary
 

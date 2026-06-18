@@ -10,6 +10,10 @@ inventory without executing repository code.
 
 ### Added
 
+- Register adoption-substrate lane closeout (CARGO-ALLOW-CLOSEOUT-0003) after the
+  10-PR cleanup queue lands on main: modularization, advisory ratcheting,
+  governance split, two in-repository dogfood receipts, and structural identity
+  D3 container module-qualification.
 - Qualify unqualified Rust `container` identity with the module path for findings
   inside nested modules, disambiguating sibling modules that share a free-function
   name (`inner::access` vs `access`). Impl/trait/extern containers that already

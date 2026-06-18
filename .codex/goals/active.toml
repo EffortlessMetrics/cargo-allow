@@ -161,7 +161,7 @@ title = "Add migration lane descriptors for modular compat surfaces"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit",
@@ -179,7 +179,7 @@ title = "Extract evidence and lifecycle migration helpers"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo test -p allow-policy-legacy",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
@@ -195,7 +195,7 @@ title = "Normalize closeout queue routing across compat kinds"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo test -p allow-policy-legacy migration_closeout",
   "rtk cargo test -p cargo-allow migrate_closeout_summary",
@@ -213,7 +213,7 @@ title = "Split and govern #1466 semantic-selector import umbrella"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
@@ -231,7 +231,7 @@ title = "Add advisory occurrence-count ratcheting for migration debt"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo test -p allow-report receipt_advisory",
   "rtk cargo test -p cargo-allow receipt_output",
@@ -249,7 +249,7 @@ title = "Add clippy-style --deny <status> escalation for check"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo test -p cargo-allow check_deny deny_escalation",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
@@ -267,7 +267,7 @@ title = "Add per-lane posture model for advisory escalation"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo test -p allow-policy lane_validation",
   "rtk cargo test -p cargo-allow lane_posture",
@@ -285,7 +285,7 @@ title = "Second cargo-allow dogfood receipt (unsafe-allowlist lane)"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo run -p cargo-allow -- check --compat --kind unsafe --config docs/dogfood/fixtures/unsafe-allowlist.toml --mode no-new",
   "rtk cargo run -p cargo-allow -- migrate --from docs/dogfood/fixtures/unsafe-allowlist.toml --out docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrated.toml --summary-format json --summary-output docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrate-summary.json",
@@ -298,8 +298,25 @@ evidence_notes = [
 
 [[work_item]]
 id = "adoption-substrate-pr-010"
-status = "ready"
+status = "done"
 title = "Improve container identity for ambiguous contexts (structural identity D3)"
+linked_proposal = "CARGO-ALLOW-PROP-0005"
+linked_spec = "CARGO-ALLOW-SPEC-0005"
+linked_plan = "plans/structural-identity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
+proof_commands = [
+  "rtk cargo test -p allow-rust structural_identity",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in #1724 (merge ffc4a47): module-qualifies unqualified container names for findings inside nested modules; fixture container_same_name_sibling_modules.",
+  "Does not claim receiver/target (D4), lint-target (D5), matcher precision (D6), or diff posture (D7) work.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-011"
+status = "ready"
+title = "Improve receiver/target identity for method/index (structural identity D4)"
 linked_proposal = "CARGO-ALLOW-PROP-0005"
 linked_spec = "CARGO-ALLOW-SPEC-0005"
 linked_plan = "plans/structural-identity/implementation-plan.md"
@@ -308,5 +325,50 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Queue after PR 9: D3 container identity hardening in allow-rust using structural-identity fixture matrix.",
+  "Queue after D3: receiver_fingerprint and target_fingerprint hardening using structural-identity fixture matrix.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-012"
+status = "ready"
+title = "Improve lint attribute target identity (structural identity D5)"
+linked_proposal = "CARGO-ALLOW-PROP-0005"
+linked_spec = "CARGO-ALLOW-SPEC-0005"
+linked_plan = "plans/structural-identity/implementation-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-rust structural_identity",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Queue after D4: lint attribute target identity hardening.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-013"
+status = "ready"
+title = "Assert selector precision with new identity fields (structural identity D6)"
+linked_proposal = "CARGO-ALLOW-PROP-0005"
+linked_spec = "CARGO-ALLOW-SPEC-0005"
+linked_plan = "plans/structural-identity/implementation-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-match",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Queue after D5: allow-match characterization for new identity fields.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-014"
+status = "ready"
+title = "Verify weakening/improvement with new identity fields (structural identity D7)"
+linked_proposal = "CARGO-ALLOW-PROP-0005"
+linked_spec = "CARGO-ALLOW-SPEC-0005"
+linked_plan = "plans/structural-identity/implementation-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-diff",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Queue after D6: allow-diff posture characterization for identity field changes.",
 ]
