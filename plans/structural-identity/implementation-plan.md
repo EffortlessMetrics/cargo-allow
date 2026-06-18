@@ -39,7 +39,7 @@ rewrites.
 | D2 — refactor-pair fixture matrix | done | #1701 (merge `2165848`); `tests/fixtures/structural-identity/`, `allow-rust` `structural_identity` tests, policy allow-0215..0234 |
 | D3 — container identity in nested modules | done | #1724 (merge `ffc4a47`); module-qualifies unqualified containers; fixture `container_same_name_sibling_modules` |
 | D4 — receiver/target identity for method/index | done | #1726 (merge `4f19e298`); parameter-slot receiver fingerprints (`param:N`); index selector target fingerprints; fixtures `rename_local`, `callee_same_receiver_diff`, `index_same_form_diff_targets` |
-| D5 — lint attribute target identity | done | #TBD; scope map records `inner_attribute_item` targets; characterization for same-line, cfg_attr, multiline, shared-policy, and inner module/impl lint attrs; fixture `lint_same_different_items` |
+| D5 — lint attribute target identity | done | #1728; scope map records `inner_attribute_item` targets; characterization for same-line, cfg_attr, multiline, shared-policy, and inner module/impl lint attrs; fixture `lint_same_different_items` |
 
 ## Validation Baseline
 
