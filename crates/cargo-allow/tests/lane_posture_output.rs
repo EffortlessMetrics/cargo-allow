@@ -12,7 +12,10 @@ use support::{
 #[test]
 fn shadow_lane_does_not_fail_check_but_receipt_records_posture() {
     let root = temp_root("lane-posture-shadow");
-    write_lane_posture_fixture(&root, "pub fn demo() { unsafe { std::ptr::null::<u8>().read() }; }\n");
+    write_lane_posture_fixture(
+        &root,
+        "pub fn demo() { unsafe { std::ptr::null::<u8>().read() }; }\n",
+    );
 
     let receipt_output = root.join("target/cargo-allow/check.receipt.json");
     let result = cargo_allow_command()
@@ -33,7 +36,12 @@ fn shadow_lane_does_not_fail_check_but_receipt_records_posture() {
     let report = serde_json::from_slice::<serde_json::Value>(&result.stdout)
         .unwrap_or_else(|err| std::panic::panic_any(format!("check stdout should be JSON: {err}")));
     assert_json_str(&report, "/status", "passed", "shadow lane report status");
-    assert_json_u64(&report, "/summary/new", 1, "shadow lane new count remains visible");
+    assert_json_u64(
+        &report,
+        "/summary/new",
+        1,
+        "shadow lane new count remains visible",
+    );
 
     let receipt = assert_saved_json_artifact(
         &receipt_output,

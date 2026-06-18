@@ -1,6 +1,4 @@
-use super::{
-    LaneEnforcementMode, lane_enforcement_mode_for_kind,
-};
+use super::{LaneEnforcementMode, lane_enforcement_mode_for_kind};
 use crate::FindingKind;
 use std::collections::BTreeMap;
 use std::str::FromStr;

@@ -100,7 +100,11 @@ pub(crate) fn push_json_receipt_run_metadata(out: &mut String, context: ReportCo
     if let Some(lane_posture) = context.lane_posture {
         out.push_str("  \"lane_posture\": {\n");
         for (index, (lane, mode)) in lane_posture.iter().enumerate() {
-            let comma = if index + 1 == lane_posture.len() { "" } else { "," };
+            let comma = if index + 1 == lane_posture.len() {
+                ""
+            } else {
+                ","
+            };
             out.push_str(&format!(
                 "    \"{}\": \"{}\"{comma}\n",
                 json_escape(lane),

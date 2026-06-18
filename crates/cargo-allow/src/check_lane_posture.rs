@@ -27,11 +27,7 @@ pub(crate) fn check_failed_for_outcomes(
         .any(|outcome| check_outcome_fails(outcome, findings, cfg, mode))
 }
 
-fn outcome_kind(
-    outcome: &MatchOutcome,
-    findings: &[Finding],
-    cfg: &AllowConfig,
-) -> FindingKind {
+fn outcome_kind(outcome: &MatchOutcome, findings: &[Finding], cfg: &AllowConfig) -> FindingKind {
     if let Some(index) = outcome.finding_index {
         if let Some(finding) = findings.get(index) {
             return finding.kind;

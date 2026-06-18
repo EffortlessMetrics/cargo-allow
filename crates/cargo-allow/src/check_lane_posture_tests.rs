@@ -1,7 +1,6 @@
 use super::check_failed_for_outcomes;
 use allow_core::{
-    AllowConfig, Finding, FindingKind, LaneConfig, LaneEnforcementMode, MatchOutcome,
-    MatchStatus,
+    AllowConfig, Finding, FindingKind, LaneConfig, LaneEnforcementMode, MatchOutcome, MatchStatus,
 };
 use allow_match::CheckMode;
 use std::collections::BTreeMap;

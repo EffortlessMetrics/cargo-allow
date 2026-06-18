@@ -1,6 +1,4 @@
-use allow_core::{
-    CargoAllowError, CargoAllowResult, effective_lane_posture_for_findings,
-};
+use allow_core::{CargoAllowError, CargoAllowResult, effective_lane_posture_for_findings};
 use allow_match::{CheckMode, evaluate};
 use allow_report::{
     RECEIPT_ENFORCEMENT_ADVISORY, RECEIPT_ENFORCEMENT_ENFORCING, ReportContext, Summary,
