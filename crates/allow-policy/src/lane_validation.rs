@@ -46,7 +46,7 @@ mod tests {
             ..AllowConfig::empty()
         };
 
-        validate_lanes(&cfg).unwrap_or_else(|err| panic!("lanes should validate: {err}"));
+        assert!(validate_lanes(&cfg).is_ok());
     }
 
     #[test]
