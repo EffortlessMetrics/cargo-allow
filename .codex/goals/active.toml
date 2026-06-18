@@ -443,7 +443,7 @@ evidence_notes = [
 
 [[work_item]]
 id = "import-parity-1715"
-status = "ready"
+status = "done"
 title = "Import parity recorded re-bless / refresh receipts (#1466-c / #1715)"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
@@ -454,7 +454,23 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Add cargo-allow refresh command and cargo-allow.refresh.v1 receipt for operator-approved last_seen updates after advisory drift.",
+  "Landed in #1738: cargo-allow refresh command and cargo-allow.refresh.v1 receipt for operator-approved last_seen updates after advisory drift.",
   "Fixture: tests/fixtures/refresh/advisory-drift/.",
   "Does not close umbrella #1466, multi-family legacy ledger model (#1716), or ripr dogfood receipt (#1718).",
+]
+
+[[work_item]]
+id = "import-parity-1716"
+status = "ready"
+title = "Import parity multi-family legacy ledger import model (#1466-d / #1716)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy-legacy",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Next import-parity slice after recorded re-bless receipts (#1715): multi-family legacy ledger import model.",
+  "Does not close umbrella #1466, owner/reason/evidence fixture (#1717), or ripr dogfood receipt (#1718).",
 ]

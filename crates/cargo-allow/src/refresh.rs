@@ -40,12 +40,26 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let (entry_index, finding_index, drift_message) =
         select_location_drift_refresh(&cfg, &outcomes, &findings, &args.allow_id)?;
-    let finding = &findings[finding_index];
-    let previous_last_seen = cfg.allow[entry_index].last_seen.clone();
-    let mut preview_entry = cfg.allow[entry_index].clone();
+    let finding = findings.get(finding_index).ok_or_else(|| {
+        CargoAllowError::new("internal error: selected finding index out of range")
+    })?;
+    let previous_last_seen = cfg
+        .allow
+        .get(entry_index)
+        .ok_or_else(|| CargoAllowError::new("internal error: selected allow entry index out of range"))?
+        .last_seen
+        .clone();
+    let mut preview_entry = cfg
+        .allow
+        .get(entry_index)
+        .ok_or_else(|| CargoAllowError::new("internal error: selected allow entry index out of range"))?
+        .clone();
     apply_last_seen_refresh(&mut preview_entry, finding);
     let written_path = if args.write {
-        apply_last_seen_refresh(&mut cfg.allow[entry_index], finding);
+        let entry = cfg.allow.get_mut(entry_index).ok_or_else(|| {
+            CargoAllowError::new("internal error: selected allow entry index out of range")
+        })?;
+        apply_last_seen_refresh(entry, finding);
         validate_policy(&cfg)?;
         let evidence_source_tree_files =
             current_evidence_source_tree_files(&root, args.include_untracked);
@@ -63,7 +77,9 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
         None
     };
     let entry_for_render = if args.write {
-        &cfg.allow[entry_index]
+        cfg.allow.get(entry_index).ok_or_else(|| {
+            CargoAllowError::new("internal error: selected allow entry index out of range")
+        })?
     } else {
         &preview_entry
     };

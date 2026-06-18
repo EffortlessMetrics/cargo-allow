@@ -41,10 +41,10 @@ ast_kind = "method_call"
 container = "parses_policy_with_allow"
 callee = "expect"
 normalized_snippet_hash = "fnv1a64:d89cea4b9dc969d2"
-line_hint = 31
+line_hint = 30
 
 [allow.last_seen]
-line = 31
+line = 30
 column = 6
 
 [[allow]]
@@ -4172,3 +4172,96 @@ glob = "plans/migration-parity/closeouts/adoption-substrate-lane.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0248"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/refresh.schema.json"
+owner = "core/policy"
+classification = "refresh_contract_schema"
+reason = "Defines the stable v1 JSON refresh receipt contract emitted by cargo-allow refresh."
+evidence = ["doc:docs/schemas/README.md", "doc:docs/source-exception-ledger.md", "test:refresh"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/refresh.schema.json"
+target_fingerprint = "json"
+line_hint = 1
+glob = "docs/schemas/refresh.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0249"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/refresh/advisory-drift/policy/allow.toml"
+owner = "core/policy"
+classification = "refresh_receipt_fixture"
+reason = "Refresh receipt characterization fixture policy for advisory drift last_seen updates."
+evidence = ["test:refresh", "doc:CHANGELOG.md"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/refresh/advisory-drift/policy/allow.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "tests/fixtures/refresh/advisory-drift/policy/allow.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0250"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "tests/fixtures/refresh/advisory-drift/src/lib.rs"
+owner = "core/rust-scanner"
+classification = "refresh_receipt_fixture"
+reason = "Refresh receipt fixture keeps a policy-linked expect attribute with stale last_seen for drift refresh proof."
+evidence = ["test:refresh"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "attribute"
+lint = "clippy::unwrap_used"
+symbol = "#[expect(clippy::unwrap_used, reason = \"policy:allow-0250: refresh receipt fixture\")]"
+target_fingerprint = "policy:allow-0250"
+container = "fixture_refresh_drift"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 5
+
+[[allow]]
+id = "allow-0251"
+kind = "panic"
+family = "unwrap"
+path = "tests/fixtures/refresh/advisory-drift/src/lib.rs"
+owner = "core/rust-scanner"
+classification = "refresh_receipt_fixture"
+reason = "Refresh receipt fixture intentionally unwraps so refresh dry-run can update last_seen without lifecycle drift."
+evidence = ["test:refresh"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_refresh_drift"
+callee = "unwrap"
+receiver_fingerprint = "Some(1)"
+line_hint = 3
+
+[allow.last_seen]
+line = 3
+column = 25
