@@ -741,6 +741,168 @@ fn spec_system_profile_renders_configured_shadow_mode_in_markdown() {
     assert!(report.contains("No spec-system findings in `shadow` mode."));
 }
 
+#[test]
+fn profile_resolution_uses_allow_profiles_config() {
+    let root = fixture_root("allow-profiles-only");
+    write_valid_spec_system_fixture(&root);
+    write_file(
+        &root,
+        ".allow/profiles/spec-system.toml",
+        &spec_system_config("advisory"),
+    );
+    let output = root.join("check.json");
+
+    let result = spec_system_check_json(&root, &output);
+    assert!(result.is_ok(), "allow profile config should pass: {:?}", result.err());
+    let json = parse_spec_system_json("allow profiles", &read_to_string(&output));
+    let _ = fs::remove_dir_all(&root);
+
+    assert_eq!(
+        json.get("config_source").and_then(Value::as_str),
+        Some(".allow/profiles/spec-system.toml")
+    );
+    assert_eq!(
+        json.get("config_provenance").and_then(Value::as_str),
+        Some("allow_profiles")
+    );
+}
+
+#[test]
+fn profile_resolution_falls_back_to_legacy_policy_config() {
+    let root = fixture_root("legacy-policy-only");
+    write_valid_spec_system_fixture(&root);
+    write_file(
+        &root,
+        "policy/spec-system.toml",
+        &spec_system_config("advisory"),
+    );
+    let output = root.join("check.json");
+
+    let result = spec_system_check_json(&root, &output);
+    assert!(result.is_ok(), "legacy profile config should pass: {:?}", result.err());
+    let json = parse_spec_system_json("legacy policy", &read_to_string(&output));
+    let _ = fs::remove_dir_all(&root);
+
+    assert_eq!(
+        json.get("config_source").and_then(Value::as_str),
+        Some("policy/spec-system.toml")
+    );
+    assert_eq!(
+        json.get("config_provenance").and_then(Value::as_str),
+        Some("legacy_policy")
+    );
+}
+
+#[test]
+fn profile_resolution_reports_owned_and_legacy_conflict() {
+    let root = fixture_root("allow-legacy-conflict");
+    write_valid_spec_system_fixture(&root);
+    write_file(
+        &root,
+        ".allow/profiles/spec-system.toml",
+        &spec_system_config("advisory"),
+    );
+    write_file(
+        &root,
+        "policy/spec-system.toml",
+        &spec_system_config("shadow"),
+    );
+    let output = root.join("check.json");
+
+    let result = spec_system_check_json(&root, &output);
+    assert!(
+        result.is_ok(),
+        "owned/legacy conflict should remain advisory: {:?}",
+        result.err()
+    );
+    let json = parse_spec_system_json("allow legacy conflict", &read_to_string(&output));
+    let _ = fs::remove_dir_all(&root);
+
+    assert_eq!(
+        json.get("config_source").and_then(Value::as_str),
+        Some(".allow/profiles/spec-system.toml")
+    );
+    assert_eq!(
+        json.get("config_provenance").and_then(Value::as_str),
+        Some("allow_profiles")
+    );
+    assert!(
+        json.get("findings")
+            .and_then(Value::as_array)
+            .is_some_and(|findings| findings.iter().any(|finding| {
+                finding.get("kind").and_then(Value::as_str) == Some("profile_config")
+                    && finding
+                        .get("message")
+                        .and_then(Value::as_str)
+                        .is_some_and(|message| {
+                            message.contains(".allow/profiles/spec-system.toml")
+                                && message.contains("policy/spec-system.toml")
+                        })
+            })),
+        "conflict diagnostic should name both configs: {json}"
+    );
+}
+
+#[test]
+fn profile_resolution_honors_explicit_config_override() {
+    let root = fixture_root("explicit-config-override");
+    write_valid_spec_system_fixture(&root);
+    write_file(
+        &root,
+        ".allow/profiles/spec-system.toml",
+        &spec_system_config("shadow"),
+    );
+    write_file(
+        &root,
+        "policy/spec-system.toml",
+        &spec_system_config("shadow"),
+    );
+    write_file(
+        &root,
+        "custom/spec-system.toml",
+        &spec_system_config("advisory"),
+    );
+    let output = root.join("check.json");
+
+    let result = check::cmd_check(&check::CheckArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(PathBuf::from("custom/spec-system.toml")),
+        profile: Some(ProfileArg::SpecSystem),
+        compat: false,
+        kind: None,
+        include_untracked: false,
+        format: OutputFormat::Json,
+        output: Some(output.clone()),
+        receipt: None,
+        mode: Some("audit".to_string()),
+        deny: Vec::new(),
+    });
+    assert!(
+        result.is_ok(),
+        "explicit config override should pass: {:?}",
+        result.err()
+    );
+    let json = parse_spec_system_json("explicit override", &read_to_string(&output));
+    let _ = fs::remove_dir_all(&root);
+
+    assert_eq!(
+        json.get("config_source").and_then(Value::as_str),
+        Some("custom/spec-system.toml")
+    );
+    assert_eq!(
+        json.get("config_provenance").and_then(Value::as_str),
+        Some("explicit_config")
+    );
+    assert!(
+        json.get("findings")
+            .and_then(Value::as_array)
+            .is_none_or(Vec::is_empty),
+        "explicit override should not emit owned/legacy conflict: {json}"
+    );
+}
+
 fn argv(items: Vec<&str>) -> Vec<String> {
     items.into_iter().map(String::from).collect()
 }

@@ -523,6 +523,51 @@ fn spec_system_doctor_reports_ready_when_bootstrap_files_exist() {
 }
 
 #[test]
+fn spec_system_doctor_reports_profile_config_provenance() {
+    let root = doctor_fixture_dir();
+    write_valid_spec_system_readiness_fixture(&root);
+    let output = root.join("doctor-provenance.json");
+
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        format: DoctorFormat::Json,
+        output: Some(output.clone()),
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("spec-system doctor should pass advisory: {err}"))
+    });
+
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    let value = parse_json_artifact(
+        "spec-system doctor provenance",
+        &json,
+        allow_report::SPEC_SYSTEM_SCHEMA_ID,
+        "doctor",
+    );
+    assert_eq!(
+        value.get("config_source").and_then(Value::as_str),
+        Some("policy/spec-system.toml")
+    );
+    assert_eq!(
+        value.get("config_provenance").and_then(Value::as_str),
+        Some("legacy_policy")
+    );
+    assert!(
+        readiness_check(&value, "profile_config")
+            .and_then(|check| check.get("message"))
+            .and_then(Value::as_str)
+            .is_some_and(|message| message.contains("provenance: legacy_policy")),
+        "doctor readiness should report provenance: {json}"
+    );
+    remove_doctor_fixture_dir(root);
+}
+
+#[test]
 fn spec_system_doctor_treats_bootstrap_active_goal_as_optional() {
     let root = doctor_fixture_dir();
     write_valid_spec_system_readiness_fixture(&root);
