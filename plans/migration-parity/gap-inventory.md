@@ -1,8 +1,8 @@
 # Migration Parity Gap Inventory
 
 Living inventory for [CARGO-ALLOW-SPEC-0002](../../docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md)
-and the [PR queue](pr-queue.md). Last reconciled after B6 issue disposition and
-adoption-substrate lane pivot (2026-06-18).
+and the [PR queue](pr-queue.md). Last reconciled after #1466 governance split
+(adoption-substrate-pr-005, 2026-06-18).
 
 Parity status values:
 
@@ -30,7 +30,7 @@ Parity status values:
 | lint-exception | Fixture matrix covers reviewed and minimal `baseline_debt` clippy paths plus compat loader | partial | repo-infra | `tests/fixtures/migration/lint-exception*.toml` | adoption |
 | unsafe | Fixture matrix covers reviewed evidence and missing-evidence TODO debt plus unsafe compat loader | partial | repo-infra | `tests/fixtures/migration/unsafe*.toml` | adoption |
 | doc/spec-system | Spec-system profile is separate from legacy xtask compat lanes; governed by CARGO-ALLOW-SPEC-0001 closeout | partial | repo-infra | CARGO-ALLOW-CLOSEOUT-0001; `policy/doc-artifacts.toml` | out of B3 scope |
-| import/parity [#1466](https://github.com/EffortlessMetrics/cargo-allow/issues/1466) | Open umbrella: no import mode for bespoke semantic-selector ledgers (container/receiver fingerprints, advisory drift re-bless, multi-family model); blocks ripr-style adoption; needs governance split before implementation | gap | repo-infra | open issue #1466; CARGO-ALLOW-PROP-0004 draft scope | adoption-substrate-pr-005 |
+| import/parity [#1466](https://github.com/EffortlessMetrics/cargo-allow/issues/1466) | **Governance split.** Umbrella open; child issues [#1713](https://github.com/EffortlessMetrics/cargo-allow/issues/1713) (semantic selectors), [#1714](https://github.com/EffortlessMetrics/cargo-allow/issues/1714) (advisory drift), [#1715](https://github.com/EffortlessMetrics/cargo-allow/issues/1715) (re-bless receipts), [#1716](https://github.com/EffortlessMetrics/cargo-allow/issues/1716) (multi-family model), [#1717](https://github.com/EffortlessMetrics/cargo-allow/issues/1717) (owner/reason/evidence fixture), [#1718](https://github.com/EffortlessMetrics/cargo-allow/issues/1718) (ripr adoption receipt); no import mode yet | gap | repo-infra | #1466 comment split index; CARGO-ALLOW-PROP-0004; CARGO-ALLOW-SPEC-0004 | adoption-substrate-pr-005 done |
 | policy dialect [#1470](https://github.com/EffortlessMetrics/cargo-allow/issues/1470) | **Closed.** Discovery prefers `policy/cargo-allow.toml`, recognizes the `policy = "cargo-allow"` dialect marker, and skips foreign-dialect `policy/allow.toml` with named diagnostics. Import-mode parity (#1466) and federation follow-ups remain open for full adoption | closed | repo-infra | #1699 merge `53ea19aa`; #1700; `policy_discovery` integration tests; `allow-policy` discovery unit tests | B6 |
 | policy-dir batch import | Primary-lane batch import characterized in `migration_fixture_matrix_policy_dir_batch_imports_primary_lanes`; mixed-policy-dir failure modes and ordering still open | partial | repo-infra | `migration_fixture_matrix_tests.rs`; `policy_dir_tests.rs` | adoption |
 | canonical rerun stability | Primary-lane deterministic rerun characterized in `migration_fixture_matrix_rerun_is_deterministic_for_primary_lanes`; B5 committed migrate summary is deterministic for the dogfood slice; full multi-lane batch byte-stability still open | partial | repo-infra | `migration_fixture_matrix_tests.rs`; `docs/dogfood/receipts/cargo-allow-panic-baseline.migrate-summary.json` | adoption |
@@ -46,7 +46,7 @@ authorization.
 | migration lane descriptors | Compat kinds lack a single modular descriptor surface for agents and docs | ready | repo-infra | active goal `adoption-substrate-pr-002` | PR 2 |
 | evidence/lifecycle helpers | Shared import metadata paths are duplicated across compat loaders | blocked | repo-infra | B2 characterization in `allow-policy-legacy` | PR 3 |
 | closeout queue normalization | `next_queues` routing varies by compat kind; needs consistent phased naming | done | repo-infra | #1712 `migrate_closeout_queues`; `CloseoutQueueHints` | PR 4 |
-| #1466 governance split | Umbrella issue mixes import design, parity proof, and adoption blockers | gap | repo-infra | #1466 open; CARGO-ALLOW-SPEC-0004 | PR 5 |
+| #1466 governance split | Umbrella issue mixes import design, parity proof, and adoption blockers | done | repo-infra | #1713–#1718 child issues; #1466 split index comment | PR 5 |
 | advisory occurrence counts | Baseline debt visibility lacks advisory ratcheting metadata for migration summaries | blocked | repo-infra | `baseline_debt` markers in fixture matrix | PR 6 |
 
 ## Claim Boundary

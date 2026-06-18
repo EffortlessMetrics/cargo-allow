@@ -208,28 +208,33 @@ evidence_notes = [
 
 [[work_item]]
 id = "adoption-substrate-pr-005"
-status = "ready"
+status = "done"
 title = "Split and govern #1466 semantic-selector import umbrella"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
 proof_commands = [
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Open umbrella issue #1466 blocks ripr-style adoption; split into owned sub-issues with explicit deferral boundaries.",
-  "Next active adoption/cleanup lane after closeout queue normalization (#1712).",
+  "Governance split only; no import implementation. Umbrella #1466 remains open.",
+  "Child issues: #1713 semantic selectors, #1714 advisory drift, #1715 re-bless receipts, #1716 multi-family model, #1717 owner/reason/evidence fixture, #1718 ripr adoption receipt.",
+  "Split index recorded on #1466 and in plans/migration-parity/gap-inventory.md.",
 ]
 
 [[work_item]]
 id = "adoption-substrate-pr-006"
-status = "blocked"
+status = "ready"
 title = "Add advisory occurrence-count ratcheting for migration debt"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
-blocker_reason = "Sequenced after adoption-substrate-pr-005 #1466 governance split lands."
+proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
 evidence_notes = [
   "Advisory counts and ratcheting metadata for baseline_debt visibility; does not auto-approve debt.",
+  "Next active adoption/cleanup lane after #1466 governance split.",
 ]
