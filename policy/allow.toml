@@ -3312,3 +3312,95 @@ glob = "tests/fixtures/migration/*.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0211"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/cargo-allow-panic-baseline.md"
+owner = "core/policy"
+classification = "dogfood_evidence"
+reason = "Records in-repository side-by-side panic-baseline migration parity proof for cargo-allow B5."
+created = "2026-06-18"
+review_after = "2026-11-01"
+evidence = ["doc:docs/dogfood/cargo-allow-panic-baseline.md", "doc:docs/migration-from-xtask.md", "doc:plans/migration-parity/gap-inventory.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/cargo-allow-panic-baseline.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/dogfood/cargo-allow-panic-baseline.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0212"
+kind = "non_rust_file"
+family = "test_fixture"
+owner = "core/policy"
+classification = "migration_parity_fixture"
+reason = "Staged legacy no-panic-baseline input for in-repository migration dogfood receipts."
+created = "2026-06-18"
+review_after = "2026-11-01"
+evidence = ["doc:docs/dogfood/cargo-allow-panic-baseline.md", "doc:plans/migration-parity/gap-inventory.md"]
+glob = "docs/dogfood/fixtures/*.toml"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/fixtures/"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "docs/dogfood/fixtures/*.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0213"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/cargo-allow-panic-baseline.migrated.toml"
+owner = "core/policy"
+classification = "dogfood_evidence"
+reason = "Committed migrated canonical policy from in-repository panic-baseline dogfood."
+created = "2026-06-18"
+review_after = "2026-11-01"
+evidence = ["doc:docs/dogfood/cargo-allow-panic-baseline.md", "doc:docs/schemas/migrate.schema.json"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/receipts/cargo-allow-panic-baseline.migrated.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "docs/dogfood/receipts/cargo-allow-panic-baseline.migrated.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0214"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/cargo-allow-panic-baseline.migrate-summary.json"
+owner = "core/policy"
+classification = "dogfood_evidence"
+reason = "Committed cargo-allow.migrate.v1 summary from in-repository panic-baseline dogfood."
+created = "2026-06-18"
+review_after = "2026-11-01"
+evidence = ["doc:docs/dogfood/cargo-allow-panic-baseline.md", "doc:docs/schemas/migrate.schema.json"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/receipts/cargo-allow-panic-baseline.migrate-summary.json"
+target_fingerprint = "json"
+line_hint = 1
+glob = "docs/dogfood/receipts/cargo-allow-panic-baseline.migrate-summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1

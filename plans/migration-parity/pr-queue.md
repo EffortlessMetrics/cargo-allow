@@ -3,7 +3,7 @@
 Actionable inventory for the `0.2.0` migration parity lane
 ([CARGO-ALLOW-SPEC-0002](../../docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md)).
 
-## Execution State (2026-06-17)
+## Execution State (2026-06-18)
 
 | PR | Status | Evidence |
 | --- | --- | --- |
@@ -11,7 +11,8 @@ Actionable inventory for the `0.2.0` migration parity lane
 | Goal registration (PR 1 / #1687) | done | `.codex/goals/active.toml`, `policy/doc-artifacts.toml` |
 | B2 — no-panic-baseline evidence/lifecycle slice | done | #1691 (merge `1cd408e`) |
 | B3 — migration fixture matrix | done | #1693 (merge `cd0ab7b`) |
-| B4 — migration closeout routing | done | #1695 (merge `64832c5`) |
+| B4 — migration closeout routing | done | #1695 (merge `64832c5`); closeout goal #1696 (merge `e9b4f9f`) |
+| B5 — panic-baseline dogfood receipt | in progress | [cargo-allow-panic-baseline.md](../../docs/dogfood/cargo-allow-panic-baseline.md) |
 
 ## Surfaces
 
@@ -104,13 +105,15 @@ Active goal work item: `migration-parity-b4`.
 
 Claim boundary: closeout routing metadata only.
 
-### PR B5 — Add side-by-side dogfood receipt on cargo-allow (next)
+### PR B5 — Add side-by-side dogfood receipt on cargo-allow (in progress)
 
 Purpose: run migration parity proof against this repository's own legacy surfaces.
 
-Files: `docs/dogfood/`, receipts under `target/cargo-allow/`.
+Files: `docs/dogfood/cargo-allow-panic-baseline.md`, `docs/dogfood/fixtures/`,
+`docs/dogfood/receipts/`.
 
-Claim boundary: dogfood evidence for this repo only.
+Claim boundary: dogfood evidence for this repo only; one characterized
+panic-baseline slice.
 
 ### PR B6 — Close or split remaining import/parity issues
 

@@ -1,0 +1,44 @@
+schema_version = "0.1"
+policy = "cargo-allow"
+
+[workspace]
+root = "."
+inventory = "git-tracked"
+default_mode = "no-new"
+ignored = [".git/**", "target/**"]
+generated = ["target/**", "vendor/**"]
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+stale_entries_fail = false
+
+[requirements.unsafe]
+evidence_required = true
+safety_comment_required = false
+
+[[allow]]
+id = "panic-baseline-0001"
+kind = "panic"
+family = "unwrap"
+path = "fixtures/panic/src/lib.rs"
+owner = "core/rust-scanner"
+classification = "baseline_debt"
+reason = "Counted unwrap baseline for cargo-allow panic scanner fixture dogfood."
+evidence = ["test:detects_panic_methods_from_syntax"]
+links = ["legacy-policy:no-panic-baseline"]
+occurrence_limit = 1
+created = "2026-06-18"
+review_after = "2026-09-18"
+expires = "2026-09-18"
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"
+normalized_snippet_hash = "fnv1a64:f64b7795c44d8e03"
+glob = "fixtures/panic/src/lib.rs"

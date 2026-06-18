@@ -10,6 +10,9 @@ inventory without executing repository code.
 
 ### Documentation
 
+- Add first in-repository migration parity dogfood receipt for the characterized
+  `no-panic-baseline` lane: compat check, migrate, canonical check, worklist,
+  and closeout artifacts under `docs/dogfood/`.
 - Reconcile migration parity execution state: mark goal registration and B2
   no-panic-baseline slice complete, populate `plans/migration-parity/gap-inventory.md`
   from `allow-policy-legacy` characterization and open issues #1466/#1470, and set
