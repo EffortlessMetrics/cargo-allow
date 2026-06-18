@@ -26,6 +26,8 @@ inventory without executing repository code.
   `index_same_form_diff_targets`.
 - Extend adoption-substrate lane closeout (CARGO-ALLOW-CLOSEOUT-0003) after
   structural identity D4 receiver/target fingerprints land in #1726.
+- Extend adoption-substrate lane closeout (CARGO-ALLOW-CLOSEOUT-0003) after
+  structural identity D5 lint attribute target identity lands in #1728.
 - Register adoption-substrate lane closeout (CARGO-ALLOW-CLOSEOUT-0003) after the
   10-PR cleanup queue lands on main: modularization, advisory ratcheting,
   governance split, two in-repository dogfood receipts, and structural identity

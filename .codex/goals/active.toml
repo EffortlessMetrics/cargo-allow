@@ -332,17 +332,19 @@ evidence_notes = [
 
 [[work_item]]
 id = "adoption-substrate-pr-012"
-status = "ready"
+status = "done"
 title = "Improve lint attribute target identity (structural identity D5)"
 linked_proposal = "CARGO-ALLOW-PROP-0005"
 linked_spec = "CARGO-ALLOW-SPEC-0005"
 linked_plan = "plans/structural-identity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo test -p allow-rust structural_identity",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Queue after D4: lint attribute target identity hardening.",
+  "Landed in #1728 (merge 7b2f2785): scope map records inner_attribute_item targets; lint container/module identity for same-line, cfg_attr, multiline, shared-policy, and inner module/impl attrs; fixture lint_same_different_items.",
+  "Does not claim matcher precision (D6) or diff posture (D7) work.",
 ]
 
 [[work_item]]
