@@ -43,7 +43,6 @@ mod findings;
 mod io;
 mod legacy_sources;
 mod loader_compat;
-mod migration_lane_descriptors;
 mod loader_executable_compat;
 mod loader_file_compat;
 mod loader_legacy_dispatch;
@@ -55,6 +54,7 @@ mod loader_source_compat;
 mod loader_source_exception_compat;
 mod loader_workflow_dependency_compat;
 mod loaders;
+mod migration_lane_descriptors;
 mod parser_clippy_entries;
 mod parser_dependency_entries;
 mod parser_executable_entries;
@@ -92,13 +92,6 @@ pub use legacy_sources::{
     LegacyPolicySource, legacy_compat_kind, legacy_policy_source_for_path,
     list_legacy_policy_sources_in_dir,
 };
-pub use migration_lane_descriptors::{
-    CloseoutQueueHints, CompatKind, DebtPolicy, EvidencePolicy, ExpectedCanonicalShape,
-    LegacyInputKind, LegacyLaneDescriptor, LifecyclePolicy, MigrationLane,
-    all_legacy_lane_descriptors, descriptor_for_compat_kind_id,
-    descriptor_for_legacy_filename, descriptor_for_legacy_policy_key, legacy_lane_descriptor,
-    legacy_policy_filenames,
-};
 pub use loaders::{
     load_clippy_exceptions_compat_config, load_dependency_surface_compat_config,
     load_executable_compat_config, load_generated_compat_config, load_legacy_or_canonical,
@@ -106,6 +99,12 @@ pub use loaders::{
     load_network_compat_config, load_no_panic_allowlist_compat_config,
     load_no_panic_baseline_compat_config, load_non_rust_compat_config, load_process_compat_config,
     load_unsafe_allowlist_compat_config, load_workflow_compat_config, migration_notes,
+};
+pub use migration_lane_descriptors::{
+    CloseoutQueueHints, CompatKind, DebtPolicy, EvidencePolicy, ExpectedCanonicalShape,
+    LegacyInputKind, LegacyLaneDescriptor, LifecyclePolicy, MigrationLane,
+    all_legacy_lane_descriptors, descriptor_for_compat_kind_id, descriptor_for_legacy_filename,
+    descriptor_for_legacy_policy_key, legacy_lane_descriptor, legacy_policy_filenames,
 };
 
 const BASELINE_DEBT_DEFAULT_DAYS: i64 = 67;

@@ -1,6 +1,6 @@
 use super::*;
-use allow_core::{AllowConfig, AllowEntry, CargoAllowResult};
 use crate::migration_lane_descriptors::{CompatKind, all_legacy_lane_descriptors};
+use allow_core::{AllowConfig, AllowEntry, CargoAllowResult};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -145,10 +145,8 @@ fn migration_fixture_matrix_characterizes_supported_legacy_lanes() {
 fn migration_fixture_matrix_rerun_is_deterministic_for_primary_lanes() {
     for descriptor in all_legacy_lane_descriptors() {
         let lane = descriptor.compat_kind_id();
-        let policy_path = stage_migration_fixture(
-            descriptor.primary_fixture_file,
-            descriptor.legacy_filename,
-        );
+        let policy_path =
+            stage_migration_fixture(descriptor.primary_fixture_file, descriptor.legacy_filename);
         let first = load_legacy_or_canonical(&policy_path)
             .unwrap_or_else(|err| std::panic::panic_any(format!("{lane} first migration: {err}")));
         let second = load_legacy_or_canonical(&policy_path)
