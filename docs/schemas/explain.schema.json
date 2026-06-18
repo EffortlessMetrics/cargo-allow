@@ -705,6 +705,7 @@
         "stale",
         "expired",
         "review_due",
+        "location_drift",
         "ambiguous",
         "invalid_selector",
         "missing_required_field",

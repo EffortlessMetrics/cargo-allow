@@ -23,6 +23,7 @@ pub(crate) fn explain_report_status(outcomes: &[MatchOutcome]) -> MatchStatus {
         MatchStatus::BaselineDebt,
         MatchStatus::Stale,
         MatchStatus::ReviewDue,
+        MatchStatus::LocationDrift,
     ] {
         if outcomes.iter().any(|outcome| outcome.status == status) {
             return status;

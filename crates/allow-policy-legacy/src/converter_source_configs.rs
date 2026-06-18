@@ -51,6 +51,8 @@ status = "active"
             created: Some("2026-05-09".to_string()),
             review_after: Some("2026-09-09".to_string()),
             expires: Some("2027-05-09".to_string()),
+            line_hint: None,
+            last_seen: None,
         }];
 
         let cfg = config_from_clippy_rules(&table, &rules)

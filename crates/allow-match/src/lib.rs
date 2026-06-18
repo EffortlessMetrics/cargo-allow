@@ -8,6 +8,7 @@
 mod classification;
 mod evaluation;
 mod lifecycle;
+mod location_drift;
 mod messages;
 mod mode;
 mod scoring;

@@ -2,6 +2,7 @@ use allow_core::{AllowConfig, AllowEntry, Finding, FindingKind, MatchStatus, Sim
 
 use crate::CheckMode;
 use crate::lifecycle::{entry_is_expired, entry_review_is_due};
+use crate::location_drift::last_seen_drift_message;
 
 pub(crate) fn classify_matched(
     entry: &AllowEntry,
@@ -96,6 +97,9 @@ pub(crate) fn classify_matched(
             format!("{} is baseline debt and cannot pass release mode", entry.id),
         );
     }
+    if let Some(message) = last_seen_drift_message(entry, finding) {
+        return (MatchStatus::LocationDrift, message);
+    }
     (
         MatchStatus::Matched,
         format!("{} matched with structural score {score}", entry.id),
@@ -107,7 +111,7 @@ mod tests {
     use super::classify_matched;
     use crate::CheckMode;
     use allow_core::{
-        AllowConfig, AllowEntry, Finding, FindingKind, Lifecycle, MatchStatus, Selector,
+        AllowConfig, AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, MatchStatus, Selector,
         SimpleDate, Span, StructuralIdentity,
     };
     use std::path::PathBuf;
@@ -251,6 +255,22 @@ mod tests {
             classify_matched(&entry, &finding, 87, today(), &cfg, CheckMode::NoNew);
         assert_eq!(status, MatchStatus::Matched);
         assert!(message.contains("matched with structural score 87"));
+    }
+
+    #[test]
+    fn classify_matched_reports_location_drift_as_advisory_signal() {
+        let cfg = AllowConfig::empty();
+        let finding = test_finding(FindingKind::Panic);
+        let mut drift_entry = entry(FindingKind::Panic);
+        drift_entry.last_seen = Some(LastSeen {
+            line: 7,
+            column: 12,
+        });
+        let (status, message) =
+            classify_matched(&drift_entry, &finding, 91, today(), &cfg, CheckMode::NoNew);
+        assert_eq!(status, MatchStatus::LocationDrift);
+        assert!(message.contains("last_seen changed from 7:12 to 50:12"));
+        assert!(!CheckMode::NoNew.fails(status));
     }
 
     #[test]

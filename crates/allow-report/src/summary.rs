@@ -2,11 +2,12 @@ use crate::ReportContext;
 use allow_core::{AllowConfig, MatchOutcome, MatchStatus};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub(crate) const STATUS_COUNT_ORDER: [MatchStatus; 10] = [
+pub(crate) const STATUS_COUNT_ORDER: [MatchStatus; 11] = [
     MatchStatus::Matched,
     MatchStatus::New,
     MatchStatus::Expired,
     MatchStatus::ReviewDue,
+    MatchStatus::LocationDrift,
     MatchStatus::Stale,
     MatchStatus::Ambiguous,
     MatchStatus::InvalidSelector,
@@ -15,10 +16,11 @@ pub(crate) const STATUS_COUNT_ORDER: [MatchStatus; 10] = [
     MatchStatus::BaselineDebt,
 ];
 
-pub(crate) const REVIEW_ITEM_STATUSES: [MatchStatus; 8] = [
+pub(crate) const REVIEW_ITEM_STATUSES: [MatchStatus; 9] = [
     MatchStatus::New,
     MatchStatus::Expired,
     MatchStatus::ReviewDue,
+    MatchStatus::LocationDrift,
     MatchStatus::Stale,
     MatchStatus::Ambiguous,
     MatchStatus::InvalidSelector,
@@ -26,7 +28,7 @@ pub(crate) const REVIEW_ITEM_STATUSES: [MatchStatus; 8] = [
     MatchStatus::EvidenceMissing,
 ];
 
-pub(crate) const AUDIT_REVIEW_QUEUE_STATUSES: [MatchStatus; 8] = [
+pub(crate) const AUDIT_REVIEW_QUEUE_STATUSES: [MatchStatus; 9] = [
     MatchStatus::New,
     MatchStatus::Expired,
     MatchStatus::Ambiguous,
@@ -35,6 +37,7 @@ pub(crate) const AUDIT_REVIEW_QUEUE_STATUSES: [MatchStatus; 8] = [
     MatchStatus::BaselineDebt,
     MatchStatus::Stale,
     MatchStatus::ReviewDue,
+    MatchStatus::LocationDrift,
 ];
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -153,6 +156,7 @@ pub(crate) fn render_advisory_count_fields(
         ("new", summary.count(MatchStatus::New)),
         ("expired", summary.count(MatchStatus::Expired)),
         ("review_due", summary.count(MatchStatus::ReviewDue)),
+        ("location_drift", summary.count(MatchStatus::LocationDrift)),
         ("stale", summary.count(MatchStatus::Stale)),
         ("ambiguous", summary.count(MatchStatus::Ambiguous)),
         (
@@ -193,6 +197,7 @@ pub const ADVISORY_DENY_FIELD_NAMES: &[&str] = &[
     "new",
     "expired",
     "review_due",
+    "location_drift",
     "stale",
     "ambiguous",
     "invalid_selector",
@@ -215,6 +220,7 @@ pub fn advisory_count_for_deny_field(
         "new" => Some(summary.count(MatchStatus::New)),
         "expired" => Some(summary.count(MatchStatus::Expired)),
         "review_due" => Some(summary.count(MatchStatus::ReviewDue)),
+        "location_drift" => Some(summary.count(MatchStatus::LocationDrift)),
         "stale" => Some(summary.count(MatchStatus::Stale)),
         "ambiguous" => Some(summary.count(MatchStatus::Ambiguous)),
         "invalid_selector" => Some(summary.count(MatchStatus::InvalidSelector)),

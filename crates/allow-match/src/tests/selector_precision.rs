@@ -105,13 +105,16 @@ fn assert_eval_matched(
     let matched = outcomes
         .iter()
         .filter(|outcome| {
-            outcome.status == MatchStatus::Matched && outcome.finding_index == Some(finding_index)
+            matches!(
+                outcome.status,
+                MatchStatus::Matched | MatchStatus::LocationDrift
+            ) && outcome.finding_index == Some(finding_index)
         })
         .collect::<Vec<_>>();
     assert_eq!(
         matched.len(),
         1,
-        "expected one Matched outcome for finding index {finding_index}"
+        "expected one Matched or location_drift outcome for finding index {finding_index}"
     );
     assert_eq!(matched[0].allow_id.as_deref(), Some(expected_id));
     assert!(

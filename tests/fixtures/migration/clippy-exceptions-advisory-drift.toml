@@ -1,0 +1,23 @@
+schema_version = 1
+policy = "clippy-exceptions"
+
+[[allow]]
+id = "fixture-clippy-drift"
+path = "src/lib.rs"
+lint = "clippy::unwrap_used"
+family = "expect"
+owner = "lint"
+classification = "reviewed_lint_exception"
+reason = "Fixture keeps lint suppression with advisory drift hints."
+policy_id = "fixture-clippy-drift"
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "attribute"
+target = "policy:fixture-clippy-drift"
+line_hint = 14
+
+[allow.last_seen]
+line = 14
+column = 8

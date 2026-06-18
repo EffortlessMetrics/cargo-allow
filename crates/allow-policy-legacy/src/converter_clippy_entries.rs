@@ -36,10 +36,11 @@ pub(crate) fn entry_from_clippy_rule(rule: &LegacyClippyRule) -> AllowEntry {
             lint: Some(rule.lint.clone()),
             symbol: rule.symbol.clone(),
             target_fingerprint: rule.target_fingerprint.clone(),
+            line_hint: rule.line_hint,
             glob: Some(path),
             ..Selector::default()
         },
-        last_seen: None,
+        last_seen: rule.last_seen.clone(),
     }
 }
 
@@ -66,6 +67,8 @@ mod tests {
             created: Some("2026-05-09".to_string()),
             review_after: Some("2026-09-09".to_string()),
             expires: Some("2027-05-09".to_string()),
+            line_hint: None,
+            last_seen: None,
         };
 
         let entry = entry_from_clippy_rule(&rule);
@@ -124,6 +127,8 @@ mod tests {
             created: Some("2026-06-01".to_string()),
             review_after: None,
             expires: Some("never".to_string()),
+            line_hint: None,
+            last_seen: None,
         };
 
         let entry = entry_from_clippy_rule(&rule);

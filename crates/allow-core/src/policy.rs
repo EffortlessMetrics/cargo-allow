@@ -182,6 +182,7 @@ pub enum MatchStatus {
     Stale,
     Expired,
     ReviewDue,
+    LocationDrift,
     Ambiguous,
     InvalidSelector,
     MissingRequiredField,
@@ -196,6 +197,7 @@ impl MatchStatus {
         Self::Stale,
         Self::Expired,
         Self::ReviewDue,
+        Self::LocationDrift,
         Self::Ambiguous,
         Self::InvalidSelector,
         Self::MissingRequiredField,
@@ -210,6 +212,7 @@ impl MatchStatus {
             Self::Stale => "stale",
             Self::Expired => "expired",
             Self::ReviewDue => "review_due",
+            Self::LocationDrift => "location_drift",
             Self::Ambiguous => "ambiguous",
             Self::InvalidSelector => "invalid_selector",
             Self::MissingRequiredField => "missing_required_field",
@@ -219,7 +222,7 @@ impl MatchStatus {
     }
 
     pub fn is_failure_in_strict(self) -> bool {
-        !matches!(self, Self::Matched)
+        !matches!(self, Self::Matched | Self::LocationDrift)
     }
 
     pub fn is_failure_in_no_new(self) -> bool {

@@ -255,6 +255,7 @@ fn sarif_rule_description(status: MatchStatus) -> &'static str {
         MatchStatus::New => "New unreceipted source-tree exception finding.",
         MatchStatus::Expired => "Matched allow entry is expired.",
         MatchStatus::ReviewDue => "Matched allow entry is due for review.",
+        MatchStatus::LocationDrift => "Matched allow entry moved since last_seen was recorded.",
         MatchStatus::Stale => "Allow entry did not match any current finding.",
         MatchStatus::Ambiguous => "Selector matched ambiguously and needs narrowing.",
         MatchStatus::InvalidSelector => "Allow entry selector is invalid.",
@@ -273,7 +274,9 @@ fn sarif_level(status: MatchStatus) -> &'static str {
         | MatchStatus::InvalidSelector
         | MatchStatus::MissingRequiredField
         | MatchStatus::EvidenceMissing => "error",
-        MatchStatus::ReviewDue | MatchStatus::BaselineDebt => "warning",
+        MatchStatus::ReviewDue | MatchStatus::BaselineDebt | MatchStatus::LocationDrift => {
+            "warning"
+        }
         MatchStatus::Stale => "note",
         MatchStatus::Matched => "none",
     }
