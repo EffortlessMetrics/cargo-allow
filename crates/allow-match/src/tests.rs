@@ -9,6 +9,7 @@ mod evaluation;
 mod lint;
 mod mode;
 mod scoring;
+mod selector_precision;
 
 fn entry_with_hash(hash: &str) -> AllowEntry {
     AllowEntry {

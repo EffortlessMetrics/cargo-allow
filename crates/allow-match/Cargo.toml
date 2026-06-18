@@ -13,3 +13,7 @@ categories.workspace = true
 
 [dependencies]
 allow-core.workspace = true
+
+[dev-dependencies]
+allow-policy.workspace = true
+allow-rust.workspace = true

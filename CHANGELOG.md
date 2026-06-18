@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- Add fixture-backed `allow-match` selector precision characterization tests
+  asserting policy selectors uniquely match intended structural-identity
+  findings via `container`, `receiver_fingerprint`, `target_fingerprint`,
+  `symbol`, and `normalized_snippet_hash`. Covers D2–D5 fixture policy entries
+  `allow-0215`..`0234` and `allow-0243`..`0246`; existing matcher passes
+  without changes.
 - Harden lint `#[allow(...)]` / `#[expect(...)]` attribute target identity so
   the same lint on different items yields distinct stable keys via `container`
   (and `module` for inner module attributes) while preserving
