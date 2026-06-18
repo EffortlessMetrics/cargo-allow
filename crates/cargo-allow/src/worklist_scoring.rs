@@ -32,7 +32,7 @@ pub(crate) fn work_item_kind(
         MatchStatus::MissingRequiredField => MISSING_REQUIRED_FIELD.to_string(),
         MatchStatus::InvalidSelector => INVALID_SELECTOR.to_string(),
         MatchStatus::BaselineDebt => BASELINE_DEBT.to_string(),
-        MatchStatus::ReviewDue => REVIEW_DUE.to_string(),
+        MatchStatus::ReviewDue | MatchStatus::LocationDrift => REVIEW_DUE.to_string(),
         MatchStatus::Matched => MATCHED.to_string(),
     }
 }

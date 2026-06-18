@@ -1,6 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use toml::Value;
 
+use crate::advisory_drift_fields::LegacyAdvisoryDriftHints;
 use crate::fields::{legacy_evidence, required_string_field, string_field};
 use crate::parser_support::{normalize_legacy_expires, normalize_lint_attribute_family};
 use crate::semantic_selector_fields::LegacySemanticSelectorExtras;
@@ -30,6 +31,7 @@ fn parse_clippy_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyClip
         .or_else(|| review_after.is_none().then(default_baseline_expires));
     let nested_selector = table.get("selector").and_then(Value::as_table);
     let nested_semantics = LegacySemanticSelectorExtras::from_selector_table(nested_selector);
+    let drift_hints = LegacyAdvisoryDriftHints::from_legacy_entry(table, nested_selector);
     Ok(LegacyClippyRule {
         path: required_string_field(table, "path", &id)?,
         lint: required_string_field(table, "lint", &id)?,
@@ -51,6 +53,8 @@ fn parse_clippy_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyClip
         created: string_field(table, "created").or_else(|| Some(default_baseline_created())),
         review_after,
         expires,
+        line_hint: drift_hints.line_hint,
+        last_seen: drift_hints.last_seen,
         id,
     })
 }

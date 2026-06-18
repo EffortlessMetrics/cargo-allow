@@ -258,6 +258,7 @@
         "new",
         "expired",
         "review_due",
+        "location_drift",
         "stale",
         "ambiguous",
         "invalid_selector",
@@ -279,6 +280,10 @@
           "minimum": 0
         },
         "review_due": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "location_drift": {
           "type": "integer",
           "minimum": 0
         },
@@ -336,6 +341,7 @@
         "new",
         "expired",
         "review_due",
+        "location_drift",
         "stale",
         "ambiguous",
         "invalid_selector",
@@ -358,6 +364,10 @@
           "minimum": 0
         },
         "review_due": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "location_drift": {
           "type": "integer",
           "minimum": 0
         },

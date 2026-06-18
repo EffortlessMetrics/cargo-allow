@@ -223,6 +223,10 @@ fn no_panic_allowlist_compat_preserves_matched_new_and_stale_drift() {
         "let value = maybe.unwrap();",
     );
     finding.identity.container = Some("load".to_string());
+    finding.span = Some(allow_core::Span {
+        line: 7,
+        column: 12,
+    });
     let matched = allow_match::evaluate(&cfg, &[finding], allow_match::CheckMode::NoNew);
     assert!(
         matched

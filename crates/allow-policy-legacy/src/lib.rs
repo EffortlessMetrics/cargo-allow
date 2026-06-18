@@ -7,6 +7,7 @@
 
 use allow_core::SimpleDate;
 
+mod advisory_drift_fields;
 mod converter_clippy_entries;
 mod converter_config;
 mod converter_dependency_entries;
@@ -127,6 +128,8 @@ fn default_baseline_expires() -> String {
         .to_string()
 }
 
+#[cfg(test)]
+mod advisory_drift_import_tests;
 #[cfg(test)]
 mod evidence_matrix_tests;
 #[cfg(test)]

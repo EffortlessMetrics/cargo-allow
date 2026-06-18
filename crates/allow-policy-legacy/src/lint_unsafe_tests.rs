@@ -268,9 +268,14 @@ fn unsafe_allowlist_compat_preserves_matched_new_and_stale_drift() {
         std::panic::panic_any(format!("unsafe allowlist compat config loads: {err}"))
     });
 
+    let mut finding = unsafe_finding("src/lib.rs", "unsafe_block", Some("read"));
+    finding.span = Some(allow_core::Span {
+        line: 7,
+        column: 12,
+    });
     let matched = allow_match::evaluate(
         &cfg,
-        &[unsafe_finding("src/lib.rs", "unsafe_block", Some("read"))],
+        &[finding],
         allow_match::CheckMode::NoNew,
     );
     assert!(
