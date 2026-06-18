@@ -3877,7 +3877,7 @@ column = 1
 [[allow]]
 id = "allow-0235"
 kind = "non_rust_file"
-family = "release_script"
+family = "shell_script"
 path = "scripts/verify-crate-registry-version.sh"
 owner = "core/release"
 classification = "release_automation_script"
@@ -3900,7 +3900,7 @@ column = 1
 [[allow]]
 id = "allow-0236"
 kind = "non_rust_file"
-family = "release_script"
+family = "shell_script"
 path = "scripts/test-verify-crate-registry-version.sh"
 owner = "core/release"
 classification = "release_automation_script"
