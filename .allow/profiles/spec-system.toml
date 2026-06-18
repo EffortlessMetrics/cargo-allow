@@ -40,6 +40,18 @@ ecosystem = "spec-kit"
 role = "imported"
 
 [[import_roots.entries]]
+id = "generic-spec"
+path = ".spec"
+ecosystem = "generic-spec"
+role = "imported"
+
+[[import_roots.entries]]
+id = "generic-rails"
+path = ".rails"
+ecosystem = "generic-spec"
+role = "imported"
+
+[[import_roots.entries]]
 id = "legacy-goals"
 path = ".codex/goals"
 ecosystem = "codex"

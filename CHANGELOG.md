@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- Generic import adapters I2 slice (#1466): read-only discovery for `.spec/`, `.rails/`,
+  and auto-detected `.<repo>-spec/` roots via `allow-policy::import_roots::adapters::generic`.
+  Recursive markdown scan with front-matter `id` and `linked_*` normalization extends the
+  I1 `import_graph` in spec-system doctor/audit/worklist. Fixture-backed tests under
+  `tests/fixtures/import/`. Does not implement Kiro or Spec Kit adapters (follow-up PR),
+  xtask registry adapter, or claim full import mode.
 - Register I1 generic import-root model closeout (CARGO-ALLOW-CLOSEOUT-0013):
   mark `portable-governance-i1-import` done after #1761; queue
   `portable-governance-i2-import-adapters` ready. No release authorization.

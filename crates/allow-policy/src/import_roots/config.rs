@@ -160,6 +160,18 @@ pub fn default_import_roots_config() -> ImportRootsConfig {
                 role: ImportNodeRole::Imported,
             },
             ImportRootEntry {
+                id: "generic-spec".to_string(),
+                path: ".spec".to_string(),
+                ecosystem: "generic-spec".to_string(),
+                role: ImportNodeRole::Imported,
+            },
+            ImportRootEntry {
+                id: "generic-rails".to_string(),
+                path: ".rails".to_string(),
+                ecosystem: "generic-spec".to_string(),
+                role: ImportNodeRole::Imported,
+            },
+            ImportRootEntry {
                 id: "legacy-goals".to_string(),
                 path: ".codex/goals".to_string(),
                 ecosystem: "codex".to_string(),

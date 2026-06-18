@@ -1,4 +1,5 @@
 use std::io;
+use std::path::PathBuf;
 
 use super::config::default_import_roots_config;
 use super::*;
@@ -100,6 +101,100 @@ fn discover_import_graph_normalizes_owned_import_markdown() -> io::Result<()> {
             .any(|edge| edge.kind == ImportEdgeKind::Contains)
     );
     Ok(())
+}
+
+#[test]
+fn discover_import_graph_generic_spec_fixture() -> io::Result<()> {
+    let root = import_fixture_root("generic-spec")?;
+    let validated = validate_import_roots_config(ImportRootsConfig {
+        owned: None,
+        entries: vec![ImportRootEntry {
+            id: "generic-spec".to_string(),
+            path: ".spec".to_string(),
+            ecosystem: "generic-spec".to_string(),
+            role: ImportNodeRole::Imported,
+        }],
+    });
+    let graph = discover_import_graph(&root, &validated);
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .any(|node| node.path == ".spec/specs/example-spec.md"),
+        "expected generic spec node: {:?}",
+        graph.nodes
+    );
+    assert!(
+        graph.edges.iter().any(|edge| {
+            edge.kind == ImportEdgeKind::References
+                && edge.target_id == "FIXTURE-GENERIC-SPEC-001"
+        }),
+        "expected front matter id reference: {:?}",
+        graph.edges
+    );
+    Ok(())
+}
+
+#[test]
+fn discover_import_graph_generic_rails_fixture() -> io::Result<()> {
+    let root = import_fixture_root("generic-rails")?;
+    let validated = validate_import_roots_config(ImportRootsConfig {
+        owned: None,
+        entries: vec![ImportRootEntry {
+            id: "generic-rails".to_string(),
+            path: ".rails".to_string(),
+            ecosystem: "generic-spec".to_string(),
+            role: ImportNodeRole::Imported,
+        }],
+    });
+    let graph = discover_import_graph(&root, &validated);
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .any(|node| node.path == ".rails/README.md"),
+        "expected rails README node: {:?}",
+        graph.nodes
+    );
+    Ok(())
+}
+
+#[test]
+fn discover_import_graph_auto_repo_spec_fixture() -> io::Result<()> {
+    let root = import_fixture_root("repo-spec")?;
+    let validated = validate_import_roots_config(ImportRootsConfig {
+        owned: None,
+        entries: vec![],
+    });
+    let graph = discover_import_graph(&root, &validated);
+    assert!(
+        graph.nodes.iter().any(|node| node.id == "auto-.cargo-allow-spec"),
+        "expected auto-discovered repo-spec root: {:?}",
+        graph.nodes
+    );
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .any(|node| node.path == ".cargo-allow-spec/plans/plan.md"),
+        "expected repo-spec plan node: {:?}",
+        graph.nodes
+    );
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .find(|node| node.id == "auto-.cargo-allow-spec")
+            .is_some_and(|node| node.provenance == ImportProvenance::Discovered),
+        "auto-discovered root should use discovered provenance"
+    );
+    Ok(())
+}
+
+fn import_fixture_root(label: &str) -> io::Result<std::path::PathBuf> {
+    Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/import")
+        .join(label))
 }
 
 fn fixture_root(label: &str) -> io::Result<std::path::PathBuf> {

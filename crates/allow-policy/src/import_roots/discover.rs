@@ -1,6 +1,11 @@
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
+use super::adapters::{
+    discover_auto_repo_spec_roots, discover_generic_spec_root, is_generic_spec_root,
+    GENERIC_SPEC_ECOSYSTEM,
+};
 use super::config::{
     ImportConfidence, ImportEdgeKind, ImportNodeRole, ImportProvenance, ImportRootEntry,
     ImportRootsConfig,
@@ -37,10 +42,24 @@ pub fn discover_import_graph(root: &Path, validated: &ValidatedImportRootsConfig
     let mut edges = Vec::new();
     let mut diagnostics = validated.diagnostics.clone();
 
-    for entry in &validated.config.entries {
+    let configured_paths = validated
+        .config
+        .entries
+        .iter()
+        .map(|entry| entry.path.clone())
+        .collect::<BTreeSet<_>>();
+    let auto_roots = discover_auto_repo_spec_roots(root, &configured_paths);
+    let entries = validated
+        .config
+        .entries
+        .iter()
+        .chain(auto_roots.iter())
+        .collect::<Vec<_>>();
+
+    for entry in entries {
         let absolute = root.join(&entry.path);
         let exists = absolute.exists();
-        nodes.push(root_node(entry));
+        nodes.push(root_node(entry, auto_roots.iter().any(|auto| auto.id == entry.id)));
         if !exists {
             diagnostics.push(ImportDiagnostic {
                 kind: ImportDiagnosticKind::MissingRoot,
@@ -53,14 +72,25 @@ pub fn discover_import_graph(root: &Path, validated: &ValidatedImportRootsConfig
             continue;
         }
         if absolute.is_dir() {
-            discover_directory_children(
-                root,
-                entry,
-                &absolute,
-                &mut nodes,
-                &mut edges,
-                &mut diagnostics,
-            );
+            if is_generic_spec_root(&entry.path) || entry.ecosystem == GENERIC_SPEC_ECOSYSTEM {
+                discover_generic_spec_root(
+                    root,
+                    entry,
+                    &absolute,
+                    &mut nodes,
+                    &mut edges,
+                    &mut diagnostics,
+                );
+            } else {
+                discover_directory_children(
+                    root,
+                    entry,
+                    &absolute,
+                    &mut nodes,
+                    &mut edges,
+                    &mut diagnostics,
+                );
+            }
         }
     }
 
@@ -72,14 +102,22 @@ pub fn discover_import_graph(root: &Path, validated: &ValidatedImportRootsConfig
     }
 }
 
-fn root_node(entry: &ImportRootEntry) -> ImportNode {
+fn root_node(entry: &ImportRootEntry, auto_discovered: bool) -> ImportNode {
     ImportNode {
         id: entry.id.clone(),
         path: entry.path.clone(),
         role: entry.role,
         ecosystem: entry.ecosystem.clone(),
-        provenance: ImportProvenance::Configured,
-        confidence: ImportConfidence::High,
+        provenance: if auto_discovered {
+            ImportProvenance::Discovered
+        } else {
+            ImportProvenance::Configured
+        },
+        confidence: if auto_discovered {
+            ImportConfidence::Medium
+        } else {
+            ImportConfidence::High
+        },
     }
 }
 
