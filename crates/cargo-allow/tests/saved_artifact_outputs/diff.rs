@@ -725,9 +725,9 @@ fn saved_diff_output_covers_selector_precision_increase_details() {
 fn saved_diff_output_covers_selector_identity_change_details() {
     let fixture = SourceTreeFixture::new("saved-diff-selector-changed");
     fixture.write_panic_source();
-    write_policy_with_selector_receiver(&fixture, "value");
+    write_policy_with_selector_receiver(&fixture, "param:0");
     commit_fixture_base(&fixture.root);
-    write_policy_with_selector_receiver(&fixture, "val");
+    write_policy_with_selector_receiver(&fixture, "param");
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let diff = artifact_dir.join("diff.json");
