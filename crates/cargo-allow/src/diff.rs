@@ -219,7 +219,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
 }
 
 fn load_current_world(args: &DiffArgs) -> CargoAllowResult<CurrentWorld> {
-    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_mode(
+    let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,

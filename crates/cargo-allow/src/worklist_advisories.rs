@@ -5,6 +5,7 @@ use super::worklist_item_kind::{
 };
 use super::worklist_priority::DIFFICULTY_SMALL;
 use super::worklist_scoring::{exception_family, work_item_difficulty, work_item_risk};
+use super::worklist_types::WorkItemLedger;
 use allow_core::{
     AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, allow_entry_broad_scope,
     normalize_path,
@@ -58,6 +59,7 @@ pub(super) fn work_items_from_policy_advisories(
                 ),
                 suggested_actions: suggested_actions_for_context(&kind, finding, Some(entry)),
                 proof_commands: proof_commands(&kind, finding, Some(entry)),
+                ledger: WorkItemLedger::from_finding(finding),
             });
         }
         if entry.classification == "baseline_debt" {
@@ -91,6 +93,7 @@ pub(super) fn work_items_from_policy_advisories(
                 ),
                 suggested_actions: suggested_actions_for_context(&kind, finding, Some(entry)),
                 proof_commands: proof_commands(&kind, finding, Some(entry)),
+                ledger: WorkItemLedger::from_finding(finding),
                 kind,
             });
             continue;
@@ -123,6 +126,7 @@ pub(super) fn work_items_from_policy_advisories(
                 message: format!("{} has no evidence references", entry.id),
                 suggested_actions: suggested_actions_for_context(&kind, finding, Some(entry)),
                 proof_commands: proof_commands(&kind, finding, Some(entry)),
+                ledger: WorkItemLedger::from_finding(finding),
                 kind,
             });
         }
@@ -153,6 +157,7 @@ pub(super) fn work_items_from_policy_advisories(
                 message: format!("{} uses a broad source-tree scope `{}`", entry.id, scope),
                 suggested_actions: suggested_actions(BROAD_SCOPE),
                 proof_commands: proof_commands(BROAD_SCOPE, finding, Some(entry)),
+                ledger: WorkItemLedger::from_finding(finding),
             });
         }
     }

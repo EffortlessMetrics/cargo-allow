@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use crate::artifacts::federation::FederationReportContext;
+
 pub const REPORT_SCHEMA_VERSION: u32 = 1;
 pub const REPORT_SCHEMA_ID: &str = "cargo-allow.report.v1";
 pub const RECEIPT_SCHEMA_VERSION: u32 = 1;
@@ -358,6 +360,7 @@ pub struct ReportContext<'a> {
     pub policy_config: Option<&'a str>,
     pub tool_version: Option<&'a str>,
     pub lane_posture: Option<&'a BTreeMap<String, allow_core::LaneEnforcementMode>>,
+    pub federation: Option<FederationReportContext<'a>>,
 }
 
 impl<'a> ReportContext<'a> {
@@ -383,6 +386,7 @@ impl<'a> ReportContext<'a> {
             policy_config: None,
             tool_version: None,
             lane_posture: None,
+            federation: None,
         }
     }
 }

@@ -36,7 +36,7 @@ use std::path::{Path, PathBuf};
 
 pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let parsed_kind = parse_kind_filter(&args.kind)?;
-    let (root, mut cfg, findings, inventory_facts) = load_world(
+    let (root, mut cfg, findings, inventory_facts, _federation) = load_world(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
@@ -160,6 +160,7 @@ pub(crate) fn sample_add_json_for_contract_test() -> String {
         span: Some(allow_core::Span { line: 1, column: 1 }),
         identity: allow_core::StructuralIdentity::new("file", "method_call"),
         message: "test finding".to_string(),
+        ledger: None,
     };
     let add_entry = allow_entry_from_finding(AddEntryRequest {
         finding: &add_finding,

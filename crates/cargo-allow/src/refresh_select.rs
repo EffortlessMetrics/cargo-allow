@@ -102,6 +102,7 @@ mod tests {
             path: "src/lib.rs".into(),
             identity: StructuralIdentity::new("rust", "attribute"),
             message: "fixture".to_string(),
+            ledger: None,
             span: Some(Span {
                 line: 22,
                 column: 4,

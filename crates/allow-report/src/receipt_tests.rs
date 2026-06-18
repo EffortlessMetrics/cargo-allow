@@ -289,5 +289,6 @@ fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
         span: Some(Span { line: 1, column: 1 }),
         identity: StructuralIdentity::new("rust", "method_call"),
         message: "test finding".to_string(),
+        ledger: None,
     }
 }

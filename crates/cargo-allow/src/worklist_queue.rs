@@ -150,6 +150,7 @@ mod tests {
         WorkItem, WorkItemEvidenceReference,
         worklist_item_kind::BROKEN_EVIDENCE_LINK,
         worklist_priority::{RISK_HIGH, RISK_LOW, RISK_MEDIUM},
+        worklist_types::WorkItemLedger,
     };
     use allow_core::MatchStatus;
 
@@ -178,6 +179,7 @@ mod tests {
             message: "message".to_string(),
             suggested_actions: Vec::new(),
             proof_commands: Vec::new(),
+            ledger: WorkItemLedger::default(),
         }
     }
 

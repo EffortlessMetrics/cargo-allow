@@ -89,6 +89,7 @@ mod tests {
             span: Some(Span { line: 1, column: 1 }),
             identity: StructuralIdentity::new("file", "tracked_file"),
             message: format!("tracked file: {path}"),
+            ledger: None,
         }
     }
 }

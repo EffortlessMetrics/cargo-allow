@@ -37,6 +37,7 @@ mod tests {
             }),
             identity,
             message: "fixture".to_string(),
+            ledger: None,
         }
     }
 

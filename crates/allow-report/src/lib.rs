@@ -95,9 +95,9 @@ pub use artifacts::{
     DiffPolicyChange, DiffPolicyStatusChange, DiffPostureSummary, DiffReport,
     DiffRequirementChange, DiffScopeChange, DiffSelectorIdentityChange,
     DiffSelectorPrecisionChange, DoctorReport, EvidenceReference, ExplainReport,
-    FederationDiagnosticSummary, ListFilters, ListRow, MigrateReport, ProposeReport,
-    PruneCandidate, PruneModeContext, RefreshModeContext, RefreshReport, WorklistFilters,
-    WorklistItem,
+    FederationDiagnosticSummary, FederationReportContext, LedgerContributorSummary, ListFilters,
+    ListRow, MigrateReport, ProposeReport, PruneCandidate, PruneModeContext, RefreshModeContext,
+    RefreshReport, WorklistFilters, WorklistItem,
 };
 pub use contracts::{
     ADD_SCHEMA_ID, ADD_SCHEMA_VERSION, ARTIFACT_CONTRACTS, ARTIFACT_STATUS_ERROR,

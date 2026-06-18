@@ -1,0 +1,19 @@
+schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+mode = "blocking"
+priority = 10
+
+[[ledgers]]
+id = "doc-artifacts"
+path = ".allow/artifacts/doc-artifacts.toml"
+dialect = "cargo-allow-doc-artifacts"
+role = "canonical"
+lanes = ["spec-system"]
+mode = "blocking"
+priority = 20

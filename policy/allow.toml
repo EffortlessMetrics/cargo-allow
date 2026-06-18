@@ -4702,3 +4702,49 @@ glob = "plans/federation/closeouts/f1-config-parse.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-4703"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/federation/closeouts/f2-evaluation.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records F2 federation canonical ledger evaluation closeout without claiming mirror divergence or import adapters."
+evidence = ["doc:plans/federation/implementation-plan.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/federation/closeouts/f2-evaluation.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/federation/closeouts/f2-evaluation.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4702"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/config.toml"
+owner = "core/policy"
+classification = "federation_registry"
+reason = "Registers multi-ledger federation registry for canonical source-exception and spec-system ledgers (F2)."
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0007-multi-ledger-federation.md", "test:evaluate_two_canonical_ledgers_from_fixture_config"]
+created = "2026-06-18"
+review_after = "2026-09-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/config.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = ".allow/config.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

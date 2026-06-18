@@ -54,6 +54,7 @@ fn policy_and_finding_json_helpers_render_current_contract() {
         }),
         identity,
         message: "unwrap call".to_string(),
+        ledger: None,
     };
 
     let entry_json = render_allow_entry_json(&entry, "  ");

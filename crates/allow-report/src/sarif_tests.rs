@@ -49,6 +49,7 @@ fn sarif_result_properties_include_source_package_context() {
         span: Some(Span { line: 4, column: 9 }),
         identity,
         message: "unwrap call".to_string(),
+        ledger: None,
     }];
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::New,
@@ -142,6 +143,7 @@ fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
         span: Some(Span { line: 1, column: 1 }),
         identity: StructuralIdentity::new("file", "tracked_file"),
         message: "tracked non-Rust file".to_string(),
+        ledger: None,
     }
 }
 

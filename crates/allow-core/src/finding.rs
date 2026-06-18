@@ -1,4 +1,4 @@
-use crate::{CargoAllowError, normalize_path};
+use crate::{CargoAllowError, LedgerProvenance, normalize_path};
 use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -157,6 +157,7 @@ pub struct Finding {
     pub span: Option<Span>,
     pub identity: StructuralIdentity,
     pub message: String,
+    pub ledger: Option<LedgerProvenance>,
 }
 
 impl Finding {

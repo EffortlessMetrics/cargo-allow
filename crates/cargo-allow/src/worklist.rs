@@ -47,7 +47,10 @@ pub(crate) use worklist_priority::{DIFFICULTY_LEVELS, RISK_LEVELS};
 use worklist_queue::{filter_work_items, renumber_work_items, sort_work_items};
 use worklist_render::{render_worklist_human_with_context, render_worklist_json_with_context};
 pub(crate) use worklist_scoring::work_item_kind;
-use worklist_types::{WorkItem, WorkItemEvidenceReference, WorklistContext, WorklistFilters};
+#[cfg(test)]
+use worklist_types::WorkItemLedger;
+pub(super) use worklist_types::{WorkItem, WorkItemEvidenceReference};
+use worklist_types::{WorklistContext, WorklistFilters};
 
 #[cfg(test)]
 use allow_core::{AllowConfig, FindingKind, MatchOutcome, MatchStatus};
@@ -63,7 +66,7 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         });
     }
 
-    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_mode(
+    let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
@@ -200,6 +203,7 @@ pub(crate) fn sample_worklist_json_for_contract_test() -> String {
             "cargo-allow list --allow-id allow-baseline --format json".to_string(),
             "cargo-allow worklist --allow-id allow-baseline --format json".to_string(),
         ],
+        ledger: WorkItemLedger::default(),
     }];
     render_worklist_json_with_context(
         &items,

@@ -267,6 +267,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "enforcement",
                 "evidence_repair_queues",
                 "failed",
+                "federation",
                 "inventory",
                 "mode",
                 "policy_config",

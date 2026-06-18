@@ -203,6 +203,7 @@ pub(super) fn finding(path: &str, line: u32, container: &str) -> Finding {
         span: Some(Span { line, column: 1 }),
         identity,
         message: "test finding".to_string(),
+        ledger: None,
     }
 }
 

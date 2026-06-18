@@ -122,6 +122,7 @@ fn finding_identity_key_excludes_span_but_includes_structural_scope() {
         }),
         identity,
         message: "test finding".to_string(),
+        ledger: None,
     };
     let mut moved = first.clone();
     moved.span = Some(Span {
@@ -148,6 +149,7 @@ fn finding_source_package_name_trims_source_derived_crate_name() {
         span: None,
         identity: StructuralIdentity::new("rust", "method_call"),
         message: "test finding".to_string(),
+        ledger: None,
     };
 
     assert_eq!(finding.source_package_name(), None);

@@ -181,3 +181,57 @@ fn federation_precedence_orders_by_priority_then_declaration() {
     assert_eq!(ordered[0].id, "first");
     assert_eq!(ordered[1].id, "second");
 }
+
+#[test]
+fn evaluate_two_canonical_ledgers_from_fixture_config() {
+    let root = fixture_root_for_federation_test("two-canonical-ledgers");
+    std::fs::create_dir_all(root.join(".allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("allow dir: {err}")));
+    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/federation/multi-ledger-config.toml");
+    std::fs::copy(&fixture, root.join(".allow/config.toml")).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "copy federation fixture from {}: {err}",
+            fixture.display()
+        ))
+    });
+    std::fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    std::fs::write(root.join("policy/allow.toml"), "schema_version = \"1.0\"\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+
+    let (path, evaluation) = super::evaluate::evaluate_source_exception_policy(&root, None)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("evaluate fixture config: {err}")));
+
+    assert_eq!(path, root.join("policy/allow.toml"));
+    assert_eq!(
+        evaluation.ledger_contributors.len(),
+        2,
+        "fixture registers two canonical ledgers"
+    );
+    assert_eq!(evaluation.ledger_contributors[0].id, "source-policy");
+    assert_eq!(evaluation.ledger_contributors[1].id, "doc-artifacts");
+    cleanup_fixture_root(&root);
+}
+
+fn fixture_root_for_federation_test(label: &str) -> std::path::PathBuf {
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let dir = std::env::temp_dir().join(format!(
+        "cargo-allow-federation-test-{label}-{}-{stamp}",
+        std::process::id()
+    ));
+    if dir.exists() {
+        std::fs::remove_dir_all(&dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("reset fixture dir: {err}")));
+    }
+    std::fs::create_dir_all(&dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("fixture dir: {err}")));
+    dir
+}
+
+fn cleanup_fixture_root(root: &std::path::Path) {
+    let _ = std::fs::remove_dir_all(root);
+}

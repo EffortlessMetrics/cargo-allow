@@ -1,5 +1,8 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
+use allow_policy::federation::{
+    FederationEvaluation, PrecedenceTier, evaluate_source_exception_policy,
+};
 use std::env;
 use std::path::{Path, PathBuf};
 
@@ -8,8 +11,7 @@ use crate::{
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    extend_unique_findings, load_config_optional_with_evidence_mode,
-    load_config_required_with_evidence_mode, parse_kind_filter,
+    extend_unique_findings, load_policy_at_path, parse_kind_filter,
 };
 
 pub(crate) fn load_world(
@@ -18,7 +20,13 @@ pub(crate) fn load_world(
     require_config: bool,
     kind_filter: Option<&str>,
     include_untracked: bool,
-) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>, InventoryFacts)> {
+) -> CargoAllowResult<(
+    PathBuf,
+    AllowConfig,
+    Vec<Finding>,
+    InventoryFacts,
+    FederationEvaluation,
+)> {
     load_world_with_evidence_mode(
         explicit_root,
         config,
@@ -36,16 +44,30 @@ pub(crate) fn load_world_with_evidence_mode(
     kind_filter: Option<&str>,
     include_untracked: bool,
     evidence_validation: EvidenceValidationMode,
-) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>, InventoryFacts)> {
+) -> CargoAllowResult<(
+    PathBuf,
+    AllowConfig,
+    Vec<Finding>,
+    InventoryFacts,
+    FederationEvaluation,
+)> {
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
-    let cfg = if require_config {
-        load_config_required_with_evidence_mode(&root, config, evidence_validation)?
-    } else {
-        load_config_optional_with_evidence_mode(&root, config, evidence_validation)?
-            .unwrap_or_else(AllowConfig::empty)
+    let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
+        Ok(value) => value,
+        Err(_err) if !require_config => {
+            return load_world_without_policy(
+                &root,
+                kind_filter,
+                include_untracked,
+                evidence_validation,
+                empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
+            );
+        }
+        Err(err) => return Err(err),
     };
+    let cfg = load_policy_at_path(policy_path, evidence_validation)?;
     let opts = InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
         generated: cfg.workspace.generated.clone(),
@@ -77,7 +99,71 @@ pub(crate) fn load_world_with_evidence_mode(
         let parsed = parse_kind_filter(kind)?;
         findings.retain(|f| parsed.matches_finding(f));
     }
-    Ok((root, cfg, findings, inventory_facts))
+    if let Some(provenance) = federation.active_provenance.clone() {
+        for finding in &mut findings {
+            finding.ledger = Some(provenance.clone());
+        }
+    }
+    Ok((root, cfg, findings, inventory_facts, federation))
+}
+
+fn load_world_without_policy(
+    root: &Path,
+    kind_filter: Option<&str>,
+    include_untracked: bool,
+    evidence_validation: EvidenceValidationMode,
+    federation: FederationEvaluation,
+) -> CargoAllowResult<(
+    PathBuf,
+    AllowConfig,
+    Vec<Finding>,
+    InventoryFacts,
+    FederationEvaluation,
+)> {
+    let cfg = AllowConfig::empty();
+    let opts = InventoryOptions {
+        ignored: cfg.workspace.ignored.clone(),
+        generated: cfg.workspace.generated.clone(),
+        include_untracked,
+    };
+    let inventory = inventory(root, &opts)?;
+    let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
+    let files = inventory.files;
+    let mut findings = Vec::new();
+    findings.extend(allow_rust::scan_rust_files(root, &files)?);
+    findings.extend(allow_files::scan_files_with_options(
+        &files,
+        &allow_files::FileScanOptions {
+            generated: opts.generated.clone(),
+        },
+    ));
+    let companion_findings = canonical_companion_findings(root, &cfg, &files)?;
+    extend_unique_findings(&mut findings, companion_findings);
+    if let Some(kind) = kind_filter {
+        let parsed = parse_kind_filter(kind)?;
+        findings.retain(|f| parsed.matches_finding(f));
+    }
+    let _ = evidence_validation;
+    Ok((
+        root.to_path_buf(),
+        cfg,
+        findings,
+        inventory_facts,
+        federation,
+    ))
+}
+
+fn empty_federation_evaluation(precedence: PrecedenceTier) -> FederationEvaluation {
+    FederationEvaluation {
+        federation_version: allow_policy::federation::FEDERATION_VERSION,
+        precedence_applied: precedence,
+        active_provenance: None,
+        ledger_contributors: Vec::new(),
+    }
+}
+
+pub(crate) fn default_federation_evaluation() -> FederationEvaluation {
+    empty_federation_evaluation(PrecedenceTier::DiscoveryFallback)
 }
 
 #[cfg(test)]

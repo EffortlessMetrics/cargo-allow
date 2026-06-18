@@ -3,6 +3,7 @@ use super::worklist_actions::{proof_commands, suggested_actions_for_context};
 use super::worklist_scoring::{
     exception_family, work_item_difficulty, work_item_kind, work_item_risk,
 };
+use super::worklist_types::WorkItemLedger;
 use allow_core::{AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path};
 use allow_diff::selector_precision_score;
 
@@ -67,6 +68,7 @@ fn work_item_from_outcome(
         message: outcome.message.clone(),
         suggested_actions,
         proof_commands: proof_commands(&kind, finding, entry),
+        ledger: WorkItemLedger::from_finding(finding),
         kind,
     }
 }

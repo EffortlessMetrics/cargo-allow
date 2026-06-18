@@ -43,6 +43,7 @@ fn process_finding_from_entry(entry: &AllowEntry) -> Finding {
         span: Some(allow_core::Span { line: 1, column: 1 }),
         identity,
         message: format!("retained process policy entry {symbol}"),
+        ledger: None,
     }
 }
 
@@ -66,6 +67,7 @@ fn network_finding_from_entry(entry: &AllowEntry) -> Finding {
         span: Some(allow_core::Span { line: 1, column: 1 }),
         identity,
         message: format!("retained network policy entry {symbol}"),
+        ledger: None,
     }
 }
 

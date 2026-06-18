@@ -45,4 +45,9 @@ pub struct WorklistItem<'a> {
     pub message: &'a str,
     pub suggested_actions: &'a [String],
     pub proof_commands: &'a [String],
+    pub ledger_id: Option<&'a str>,
+    pub ledger_path: Option<&'a str>,
+    pub lane: Option<&'a str>,
+    pub mode: Option<&'a str>,
+    pub role: Option<&'a str>,
 }

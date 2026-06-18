@@ -110,6 +110,7 @@ mod tests {
             span: None,
             identity: StructuralIdentity::new("file", "tracked_file"),
             message: "tracked file: docs\\architecture.md".to_string(),
+            ledger: None,
         };
 
         let entry = entry_from_finding(&rule, &finding, 12);
@@ -142,6 +143,7 @@ mod tests {
             span: Some(Span { line, column }),
             identity: StructuralIdentity::new("file", "tracked_file"),
             message: format!("tracked file: {path}"),
+            ledger: None,
         }
     }
 }

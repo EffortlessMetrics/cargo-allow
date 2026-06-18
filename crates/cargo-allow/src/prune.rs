@@ -45,7 +45,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             "pass either --dry-run or --write, not both",
         ));
     }
-    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_mode(
+    let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,

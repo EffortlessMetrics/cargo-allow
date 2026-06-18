@@ -1,7 +1,31 @@
 use allow_core::MatchStatus;
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct WorkItemLedger {
+    pub(super) ledger_id: Option<String>,
+    pub(super) ledger_path: Option<String>,
+    pub(super) lane: Option<String>,
+    pub(super) mode: Option<String>,
+    pub(super) role: Option<String>,
+}
+
+impl WorkItemLedger {
+    pub(super) fn from_finding(finding: Option<&allow_core::Finding>) -> Self {
+        finding
+            .and_then(|finding| finding.ledger.as_ref())
+            .map(|ledger| Self {
+                ledger_id: Some(ledger.ledger_id.clone()),
+                ledger_path: Some(ledger.ledger_path.clone()),
+                lane: Some(ledger.lane.clone()),
+                mode: Some(ledger.mode.clone()),
+                role: Some(ledger.role.clone()),
+            })
+            .unwrap_or_default()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct WorkItemEvidenceReference {
+pub(crate) struct WorkItemEvidenceReference {
     pub(super) raw: String,
     pub(super) prefix: Option<String>,
     pub(super) target: Option<String>,
@@ -11,7 +35,7 @@ pub(super) struct WorkItemEvidenceReference {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct WorkItem {
+pub(crate) struct WorkItem {
     pub(super) id: String,
     pub(super) kind: String,
     pub(super) exception_kind: Option<String>,
@@ -35,6 +59,7 @@ pub(super) struct WorkItem {
     pub(super) message: String,
     pub(super) suggested_actions: Vec<String>,
     pub(super) proof_commands: Vec<String>,
+    pub(super) ledger: WorkItemLedger,
 }
 
 #[derive(Debug, Clone, Copy, Default)]

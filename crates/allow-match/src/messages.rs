@@ -51,6 +51,7 @@ mod tests {
             span: Some(Span { line, column }),
             identity: StructuralIdentity::new("rust", "unsafe_block"),
             message: format!("unsafe finding at {path}"),
+            ledger: None,
         }
     }
 }

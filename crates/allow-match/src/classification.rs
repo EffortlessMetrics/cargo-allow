@@ -158,6 +158,7 @@ mod tests {
             }),
             identity: StructuralIdentity::new("rust", "unsafe_fn"),
             message: String::new(),
+            ledger: None,
         }
     }
 

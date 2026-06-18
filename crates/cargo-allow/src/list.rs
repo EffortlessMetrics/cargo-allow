@@ -34,7 +34,7 @@ use allow_core::{AllowConfig, AllowEntry, Finding, FindingKind, MatchOutcome, Ma
 use std::path::PathBuf;
 
 pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_mode(
+    let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,

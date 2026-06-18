@@ -55,6 +55,7 @@ fn add_json_renderer_records_entry_and_selected_finding() {
         }),
         identity,
         message: "unwrap call".to_string(),
+        ledger: None,
     };
 
     let json = render_add_json(AddReport::new(

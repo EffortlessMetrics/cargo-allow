@@ -10,7 +10,7 @@ use allow_core::{Finding, StructuralIdentity, json_escape, normalize_path};
 pub fn render_explain_finding_json(finding: &Finding, status: &str, indent: &str) -> String {
     let span = finding.span.as_ref();
     format!(
-        "{indent}  {{\n{indent}    \"status\": \"{}\",\n{indent}    \"kind\": \"{}\",\n{indent}    \"family\": {},\n{indent}    \"path\": \"{}\",\n{indent}    \"line\": {},\n{indent}    \"column\": {},\n{indent}    \"source_package\": {},\n{indent}    \"identity\": {},\n{indent}    \"message\": \"{}\"\n{indent}  }}",
+        "{indent}  {{\n{indent}    \"status\": \"{}\",\n{indent}    \"kind\": \"{}\",\n{indent}    \"family\": {},\n{indent}    \"path\": \"{}\",\n{indent}    \"line\": {},\n{indent}    \"column\": {},\n{indent}    \"source_package\": {},\n{indent}    \"identity\": {},\n{indent}    \"message\": \"{}\"{}\n{indent}  }}",
         json_escape(status),
         finding.kind,
         option_json(finding.family.as_deref()),
@@ -19,7 +19,22 @@ pub fn render_explain_finding_json(finding: &Finding, status: &str, indent: &str
         option_u32_json(span.map(|span| span.column)),
         option_json(finding.source_package_name()),
         structural_identity_json(&finding.identity, indent),
-        json_escape(&finding.message)
+        json_escape(&finding.message),
+        ledger_json_suffix(finding, indent)
+    )
+}
+
+fn ledger_json_suffix(finding: &Finding, indent: &str) -> String {
+    let Some(ledger) = finding.ledger.as_ref() else {
+        return String::new();
+    };
+    format!(
+        ",\n{indent}    \"ledger_id\": \"{}\",\n{indent}    \"ledger_path\": \"{}\",\n{indent}    \"lane\": \"{}\",\n{indent}    \"mode\": \"{}\",\n{indent}    \"role\": \"{}\"",
+        json_escape(&ledger.ledger_id),
+        json_escape(&ledger.ledger_path),
+        json_escape(&ledger.lane),
+        json_escape(&ledger.mode),
+        json_escape(&ledger.role)
     )
 }
 

@@ -41,6 +41,7 @@ fn sample_finding() -> Finding {
             line: 22,
             column: 4,
         }),
+        ledger: None,
     }
 }
 

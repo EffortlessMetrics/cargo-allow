@@ -665,6 +665,7 @@ fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
         span: Some(Span { line: 1, column: 1 }),
         identity: StructuralIdentity::new("file", "tracked_file"),
         message: "tracked non-Rust file".to_string(),
+        ledger: None,
     }
 }
 

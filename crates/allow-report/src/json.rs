@@ -1,5 +1,6 @@
 use allow_core::{MatchOutcome, json_escape};
 
+use crate::artifacts::federation::FederationReportContext;
 use crate::{
     ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, ArtifactContract, CLAIM_BOUNDARY,
     InventoryContext, ReportContext, SCANNER_LIMITATIONS,
@@ -113,6 +114,64 @@ pub(crate) fn push_json_receipt_run_metadata(out: &mut String, context: ReportCo
         }
         out.push_str("  },\n");
     }
+    if let Some(federation) = context.federation {
+        push_json_federation_context(out, federation);
+    }
+}
+
+pub(crate) fn push_json_federation_context(
+    out: &mut String,
+    federation: FederationReportContext<'_>,
+) {
+    out.push_str("  \"federation\": {\n");
+    out.push_str(&format!(
+        "    \"federation_version\": {},\n",
+        option_json(federation.federation_version)
+    ));
+    out.push_str(&format!(
+        "    \"precedence_applied\": {},\n",
+        option_json(federation.precedence_applied)
+    ));
+    out.push_str("    \"ledger_contributors\": [\n");
+    if let Some(contributors) = federation.ledger_contributors {
+        for (index, contributor) in contributors.iter().enumerate() {
+            if index > 0 {
+                out.push_str(",\n");
+            }
+            out.push_str("      {\n");
+            out.push_str(&format!(
+                "        \"id\": \"{}\",\n",
+                json_escape(contributor.id)
+            ));
+            out.push_str(&format!(
+                "        \"path\": \"{}\",\n",
+                json_escape(contributor.path)
+            ));
+            out.push_str(&format!(
+                "        \"role\": \"{}\",\n",
+                json_escape(contributor.role)
+            ));
+            out.push_str(&format!(
+                "        \"dialect\": \"{}\",\n",
+                json_escape(contributor.dialect)
+            ));
+            out.push_str(&format!(
+                "        \"mode\": \"{}\",\n",
+                json_escape(contributor.mode)
+            ));
+            out.push_str(&format!(
+                "        \"priority\": {},\n",
+                contributor.priority
+            ));
+            out.push_str(&format!(
+                "        \"lanes\": {}",
+                json_string_array(contributor.lanes)
+            ));
+            out.push_str("\n      }");
+        }
+    }
+    out.push_str("\n    ]\n");
+    out.push_str("  },\n");
 }
 
 pub(crate) fn push_json_source_context_properties(

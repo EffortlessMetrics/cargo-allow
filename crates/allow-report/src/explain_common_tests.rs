@@ -11,6 +11,7 @@ fn minimal_finding(path: &str, span: Option<Span>) -> Finding {
         span,
         identity: StructuralIdentity::new("rust", "method_call"),
         message: "fixture".to_string(),
+        ledger: None,
     }
 }
 

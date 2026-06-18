@@ -213,6 +213,7 @@ mod tests {
             span: Some(Span { line, column: 1 }),
             identity,
             message: "test finding".to_string(),
+            ledger: None,
         }
     }
 }

@@ -53,6 +53,7 @@ fn finding_with_hash(hash: &str) -> Finding {
         }),
         identity: id,
         message: String::new(),
+        ledger: None,
     }
 }
 
@@ -106,5 +107,6 @@ fn lint_finding(family: &str) -> Finding {
         }),
         identity: id,
         message: String::new(),
+        ledger: None,
     }
 }

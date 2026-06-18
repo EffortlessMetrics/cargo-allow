@@ -175,5 +175,6 @@ fn test_finding(kind: FindingKind, family: Option<&str>, path: &str, ast_kind: &
         span: Some(Span { line: 1, column: 1 }),
         identity: StructuralIdentity::new("file", ast_kind),
         message: "test finding".to_string(),
+        ledger: None,
     }
 }

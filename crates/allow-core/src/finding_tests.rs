@@ -17,6 +17,7 @@ fn stable_identity_key_from_parts_call_presence_observer() {
         span: Some(Span { line: 1, column: 1 }),
         identity: StructuralIdentity::new("rust", "method_call"),
         message: "observer finding".to_string(),
+        ledger: None,
     };
     assert_eq!(
         finding_identity_key(&finding),

@@ -263,6 +263,7 @@ mod tests {
             span: Some(Span { line: 1, column: 1 }),
             identity: StructuralIdentity::new("test", "source_inventory"),
             message: "source inventory fixture".to_string(),
+            ledger: None,
         }
     }
 

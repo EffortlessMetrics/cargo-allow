@@ -16,8 +16,9 @@ repository's profile state to `.allow/` (#1752 merge `651d9c90`;
 portable-governance-c4 done). F0 multi-ledger federation design landed
 (#1755; portable-governance-f0-federation done). F1 federation config
 parse/validate landed (#1756; portable-governance-f1-federation done). F2
-multi-ledger check evaluation and receipt provenance is ready and unblocked per
-CARGO-ALLOW-PLAN-0007 F2 slice. External `ripr`
+multi-ledger check evaluation and receipt provenance landed (#1758;
+portable-governance-f2-federation done). F3 drain-window enforcement is ready
+and unblocked per CARGO-ALLOW-PLAN-0007 F3 slice. External `ripr`
 migration and full import mode (#1466) remain blocked. Release automation
 (0.1.10) and OIDC publish lanes stay dormant until explicit authorization.
 """
@@ -134,8 +135,26 @@ evidence_notes = [
 
 [[work_item]]
 id = "portable-governance-f2-federation"
-status = "ready"
+status = "done"
 title = "P2 multi-ledger federation check evaluation (F2 #1473)"
+linked_proposal = "CARGO-ALLOW-PROP-0007"
+linked_spec = "CARGO-ALLOW-SPEC-0007"
+linked_plan = "plans/federation/implementation-plan.md"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy federation",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in #1758: `allow-policy::federation::evaluate` resolves canonical ledgers with deterministic precedence; findings, work items, and receipts carry ledger provenance and `federation.ledger_contributors`.",
+  "Two-canonical-ledger fixture tests and dogfood `.allow/config.toml` registry; does not claim mirror divergence or drain-window enforcement (F3).",
+]
+
+[[work_item]]
+id = "portable-governance-f3-federation"
+status = "ready"
+title = "P2 multi-ledger federation drain enforcement (F3 #1473)"
 linked_proposal = "CARGO-ALLOW-PROP-0007"
 linked_spec = "CARGO-ALLOW-SPEC-0007"
 linked_plan = "plans/federation/implementation-plan.md"
@@ -145,9 +164,9 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "F1 config parse/validate merged to main; active execution slice per plans/federation/implementation-plan.md F2.",
-  "Targets multi-ledger check evaluation and receipt `ledger_contributors` provenance per CARGO-ALLOW-SPEC-0007.",
-  "Does not claim drain-window enforcement (F3) until that slice lands.",
+  "F2 check evaluation merged to main; active execution slice per plans/federation/implementation-plan.md F3.",
+  "Targets drain-window enforcement and mirror divergence reporting per CARGO-ALLOW-SPEC-0007.",
+  "Does not claim release readiness or import-mode parity.",
 ]
 
 [[work_item]]

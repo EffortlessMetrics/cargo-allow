@@ -68,6 +68,7 @@ pub(crate) fn dependency_surface_finding(path: PathBuf) -> Finding {
         span: Some(allow_core::Span { line: 1, column: 1 }),
         identity,
         message: format!("tracked dependency surface {normalized}"),
+        ledger: None,
     }
 }
 

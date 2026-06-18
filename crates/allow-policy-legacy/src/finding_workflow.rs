@@ -80,6 +80,7 @@ pub(crate) fn workflow_file_finding(path: PathBuf) -> Finding {
         span: Some(allow_core::Span { line: 1, column: 1 }),
         identity,
         message: "GitHub Actions workflow file".to_string(),
+        ledger: None,
     }
 }
 
@@ -95,6 +96,7 @@ pub(crate) fn workflow_action_finding(path: PathBuf, action: String) -> Finding 
         span: Some(allow_core::Span { line: 1, column: 1 }),
         identity,
         message: format!("GitHub Actions workflow uses external action {action}"),
+        ledger: None,
     }
 }
 

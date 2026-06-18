@@ -25,13 +25,22 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         });
     }
 
-    let (root, cfg, findings, inventory_facts) = if args.compat {
+    let (root, cfg, findings, inventory_facts, _federation) = if args.compat {
         load_compat_world(
             args.root.root.as_deref(),
             args.config.as_deref(),
             args.kind.as_deref(),
             args.include_untracked,
-        )?
+        )
+        .map(|(root, cfg, findings, inventory_facts)| {
+            (
+                root,
+                cfg,
+                findings,
+                inventory_facts,
+                crate::world::default_federation_evaluation(),
+            )
+        })?
     } else {
         load_world_with_evidence_mode(
             args.root.root.as_deref(),
