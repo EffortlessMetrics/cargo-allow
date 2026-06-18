@@ -1,8 +1,8 @@
 # Migration Parity Gap Inventory
 
 Living inventory for [CARGO-ALLOW-SPEC-0002](../../docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md)
-and the [PR queue](pr-queue.md). Last reconciled after portable governance
-transition closeout CARGO-ALLOW-CLOSEOUT-0005 (2026-06-18).
+and the [PR queue](pr-queue.md). Last reconciled after federation F1 closeout
+CARGO-ALLOW-CLOSEOUT-0010 (#1756; 2026-06-18).
 
 Parity status values:
 
@@ -78,7 +78,8 @@ advisory ratcheting (#1474, #1472) is complete on main.
 | `init` to `.allow/` (C3) | `init --profile spec-system` bootstraps owned state under `.allow/`; dogfood migrated in C4 | done | repo-infra | #1750 merge `23ac8376`; [CARGO-ALLOW-CLOSEOUT-0007](../spec-system/closeouts/init-writes-c3.md) | #1750 |
 | dogfood profile migration (C4) | Repository dogfood profile state lives under `.allow/`; legacy `policy/` profile paths removed | done | repo-infra | #1752 merge `651d9c90`; [CARGO-ALLOW-CLOSEOUT-0008](../spec-system/closeouts/dogfood-migration-c4.md); `.allow/profiles/spec-system.toml` | #1752 |
 | P2 multi-ledger federation F0 (#1473) | F0 design artifacts (PROP-0007 / SPEC-0007 / ADR-0001 / PLAN-0007) define roles, precedence, duplicates, dialects, drain windows, divergence, receipt provenance; no runtime code | done (design-only) | repo-infra | `portable-governance-f0-federation`; [CARGO-ALLOW-CLOSEOUT-0009](../federation/closeouts/f0-design.md); docs/source-of-truth/README.md Level 1 | #1755 |
-| P2 multi-ledger federation F1 (#1473) | Runtime federation resolver, divergence receipts, drain enforcement | ready | repo-infra | `portable-governance-f1-federation`; CARGO-ALLOW-PLAN-0007 F1 slice | — |
+| P2 multi-ledger federation F1 (#1473) | **Done.** Ledger registry parse/validate for `[[ledgers]]` in `.allow/config.toml`; precedence ordering, duplicate/path/mirror/dialect validation; doctor and spec-system federation reporting. Multi-ledger check evaluation deferred to F2 | done | repo-infra | `portable-governance-f1-federation`; [CARGO-ALLOW-CLOSEOUT-0010](../federation/closeouts/f1-config-parse.md); `allow-policy::federation`; #1756 merge `21debf6c` | #1756 |
+| P2 multi-ledger federation F2 (#1473) | Multi-ledger check evaluation and receipt `ledger_contributors` provenance; divergence receipts and drain enforcement remain F3 | ready | repo-infra | `portable-governance-f2-federation`; CARGO-ALLOW-PLAN-0007 F2 slice | — |
 | external ripr adoption | In-repo ripr-style dogfood closed; external repo migration unrequested | blocked | repo-infra | `docs/dogfood/cargo-allow-ripr-style-adoption.md`; `portable-governance-external-ripr` | — |
 | full import mode (#1466) | Umbrella open; characterization slices #1713–#1718 closed | blocked | repo-infra | CARGO-ALLOW-CLOSEOUT-0004; `portable-governance-full-import` | — |
 
