@@ -90,6 +90,12 @@ If line numbers move but structural identity still matches, the allow entry may
 remain valid. If multiple findings match the same selector, the result is
 ambiguous and must fail closed in strict review contexts.
 
+Structural identity field behavior, per-field stable/hint/ambiguous/missing
+classifications, and fixture-backed scanner limits after D1–D7 characterization
+are documented in [identity.md](identity.md). Those docs record what the
+source-syntax scanner proves for each identity field; they do not claim build,
+type, macro-expansion, or MIR-level identity.
+
 ## Evidence Is Not Proof By Itself
 
 Evidence references are traceability. They are not automatic proof.

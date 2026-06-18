@@ -14,11 +14,16 @@ characterization tests in #1701 (merge `2165848`).
 | lint attributes | attribute target identity | done | lint attr fixtures | D5 (#1728, `7b2f2785`) |
 | match selectors | precision on new fields | done | matcher characterization | D6 |
 | diff posture | weakening on identity loss | done | diff characterization | D7 |
+| scanner limitation docs | claim boundary and fixture examples | done | docs slice | D8 |
+
+Normative field classifications and fixture-backed scanner limitation examples:
+[docs/identity.md](../../docs/identity.md).
 
 ## Field Classifications (D2 fixture matrix)
 
 Characterization source: `tests/fixtures/structural-identity/` and
-`allow-rust` `structural_identity` tests.
+`allow-rust` `structural_identity` tests. Published reference:
+[docs/identity.md](../../docs/identity.md#field-classifications-d2d7).
 
 | Field | Classification | Fixture evidence |
 | --- | --- | --- |
@@ -51,4 +56,6 @@ Characterization source: `tests/fixtures/structural-identity/` and
 lands. `partial` rows have refactor-pair fixtures and tests but may still need
 scanner or diff hardening. D6 matcher characterization is done; D7 diff posture
 characterization covers policy selector precision weakening/improvement and
-finding identity loss between refactor sides.
+finding identity loss between refactor sides. D8 publishes honest scanner
+limits and fixture examples in [docs/identity.md](../../docs/identity.md); it
+does not change scanner, matcher, or diff behavior.
