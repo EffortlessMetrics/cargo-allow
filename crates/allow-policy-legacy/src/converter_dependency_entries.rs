@@ -1,7 +1,9 @@
 use allow_core::{AllowEntry, FindingKind, Selector, normalize_path};
 use std::path::PathBuf;
 
-use crate::converter_lifecycle_support::lifecycle_from_legacy_fields;
+use crate::converter_metadata_support::{
+    extend_evidence_with_markers, legacy_policy_links, map_lifecycle, map_occurrence_limit_none,
+};
 use crate::types::LegacyDependencySurfaceRule;
 
 pub(crate) fn entry_from_dependency_surface_rule(rule: &LegacyDependencySurfaceRule) -> AllowEntry {
@@ -22,9 +24,9 @@ pub(crate) fn entry_from_dependency_surface_rule(rule: &LegacyDependencySurfaceR
         classification: rule.surface.clone(),
         reason,
         evidence: dependency_surface_evidence(rule),
-        links: vec![format!("legacy-policy:{}", rule.id)],
-        occurrence_limit: None,
-        lifecycle: lifecycle_from_legacy_fields(
+        links: legacy_policy_links(&rule.id),
+        occurrence_limit: map_occurrence_limit_none(),
+        lifecycle: map_lifecycle(
             rule.created.clone(),
             rule.review_after.clone(),
             rule.expires.clone(),
@@ -40,13 +42,11 @@ pub(crate) fn entry_from_dependency_surface_rule(rule: &LegacyDependencySurfaceR
 }
 
 fn dependency_surface_evidence(rule: &LegacyDependencySurfaceRule) -> Vec<String> {
-    let mut evidence = rule.evidence.clone();
-    evidence.push(format!("legacy-policy:{}", rule.id));
-    evidence.push(format!("surface:{}", rule.surface));
+    let mut markers = vec![format!("surface:{}", rule.surface)];
     if let Some(count) = rule.dep_count_at_baseline {
-        evidence.push(format!("dep_count_at_baseline:{count}"));
+        markers.push(format!("dep_count_at_baseline:{count}"));
     }
-    evidence
+    extend_evidence_with_markers(&rule.evidence, &rule.id, &markers)
 }
 
 #[cfg(test)]

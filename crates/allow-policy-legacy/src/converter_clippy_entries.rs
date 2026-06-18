@@ -1,24 +1,32 @@
 use allow_core::{AllowEntry, FindingKind, Selector, normalize_path};
 use std::path::PathBuf;
 
-use crate::converter_lifecycle_support::lifecycle_from_legacy_fields;
+use crate::converter_metadata_support::{
+    LegacyEntryMetadata, legacy_policy_links, map_lifecycle, map_occurrence_limit_none,
+    preserve_evidence, preserve_metadata,
+};
 use crate::types::LegacyClippyRule;
 
 pub(crate) fn entry_from_clippy_rule(rule: &LegacyClippyRule) -> AllowEntry {
     let path = normalize_path(&rule.path);
+    let (owner, reason, classification) = preserve_metadata(LegacyEntryMetadata {
+        owner: &rule.owner,
+        reason: &rule.reason,
+        classification: &rule.classification,
+    });
     AllowEntry {
         id: rule.id.clone(),
         kind: FindingKind::LintException,
         family: Some(rule.family.clone()),
         path: Some(PathBuf::from(&path)),
         glob: None,
-        owner: rule.owner.clone(),
-        classification: rule.classification.clone(),
-        reason: rule.reason.clone(),
-        evidence: clippy_evidence(rule),
-        links: vec![format!("legacy-policy:{}", rule.id)],
-        occurrence_limit: None,
-        lifecycle: lifecycle_from_legacy_fields(
+        owner,
+        classification,
+        reason,
+        evidence: preserve_evidence(&rule.evidence, &rule.id),
+        links: legacy_policy_links(&rule.id),
+        occurrence_limit: map_occurrence_limit_none(),
+        lifecycle: map_lifecycle(
             rule.created.clone(),
             rule.review_after.clone(),
             rule.expires.clone(),
@@ -32,14 +40,6 @@ pub(crate) fn entry_from_clippy_rule(rule: &LegacyClippyRule) -> AllowEntry {
             ..Selector::default()
         },
         last_seen: None,
-    }
-}
-
-fn clippy_evidence(rule: &LegacyClippyRule) -> Vec<String> {
-    if rule.evidence.is_empty() {
-        vec![format!("legacy-policy:{}", rule.id)]
-    } else {
-        rule.evidence.clone()
     }
 }
 
