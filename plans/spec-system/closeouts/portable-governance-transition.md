@@ -82,8 +82,8 @@ Governance and execution-lane closeout evidence only. `partial` compat rows in
 - **Done:** `portable-governance-c4` (dogfood migrate profile state to `.allow/`
   per CARGO-ALLOW-PLAN-0004 C4; #1752 merge `651d9c90`; see
   CARGO-ALLOW-CLOSEOUT-0008).
-- **Design-ready (blocked):** `portable-governance-f0-federation` (P2
-  multi-ledger federation #1473; design-first until proposal/spec acceptance).
+- **Ready:** `portable-governance-f0-federation` (P2 multi-ledger federation
+  #1473; design-first until proposal/spec acceptance).
 - **Blocked:** external ripr adoption, full import mode (#1466).
 
 ## Follow-Up Links

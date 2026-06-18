@@ -56,7 +56,7 @@ compatibility.
 
 - **Active goal:** CARGO-ALLOW-GOAL-0003 portable governance substrate.
 - **Done:** `portable-governance-c4` (dogfood migrate profile state to `.allow/`; #1752 merge `651d9c90`).
-- **Design-ready (blocked):** `portable-governance-f0-federation` (#1473; design-first).
+- **Ready:** `portable-governance-f0-federation` (#1473; design-first).
 - **Blocked:** external ripr adoption, full import mode (#1466).
 
 ## Claim Boundary
