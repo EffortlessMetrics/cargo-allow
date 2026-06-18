@@ -126,3 +126,11 @@ and keep default cargo-allow source-exception behavior unchanged.
 ## Follow-Up Links
 
 - Future release work: `docs/release/0.1.7.md`.
+- Original feature proposal: GitHub issue #1478 (implemented as the opt-in
+  `spec-system` profile preview; closed after hygiene review on 2026-06-18).
+- Remaining enhancement tracks (not part of the original preview scope):
+  - #1473 — per-lane posture and multi-ledger federation for additional graph kinds.
+  - #1470 — dialect marker discovery (partially landed; federation follow-up remains).
+  - #1466 — bespoke-ledger import and parity.
+  - CARGO-ALLOW-SPEC-0004 — `.allow` namespace and import roots.
+  - Stable support-tier promotion for `CARGO-ALLOW-SUPPORT-0001` (currently advisory).
