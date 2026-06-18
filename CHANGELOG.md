@@ -20,6 +20,14 @@ inventory without executing repository code.
   legacy `policy/spec-system.toml`, then built-in defaults. Doctor and
   spec-system receipts report `config_provenance`; owned plus legacy configs
   emit an advisory conflict diagnostic instead of silent merge (#1748).
+- `cargo-allow init --profile spec-system` bootstraps owned profile state under
+  `.allow/` (CARGO-ALLOW-PLAN-0004 C3): `.allow/profiles/spec-system.toml`,
+  `.allow/artifacts/doc-artifacts.toml`, `.allow/goals/active.toml`,
+  `.allow/goals/archive/`, and `.allow/imports/README.md`. Legacy `policy/`
+  profile paths remain supported when `.allow/` is absent; `policy/allow.toml`
+  stays the source-exception ledger. Spec-system doctor reports
+  `allow_profiles` provenance and an `allow_imports` readiness check for the
+  owned layout.
 - Register portable governance transition closeout (CARGO-ALLOW-CLOSEOUT-0005):
   archive CARGO-ALLOW-GOAL-0002 migration/adoption-substrate/import-parity
   execution; close #1474 advisory counters + `--deny` escalation after #1472

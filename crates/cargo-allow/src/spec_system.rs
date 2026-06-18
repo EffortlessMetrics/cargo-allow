@@ -15,7 +15,9 @@ use std::path::{Path, PathBuf};
 use crate::{OutputFormat, RootArgs, emit_text, root_relative_path, write_file};
 
 const PROFILE_NAME: &str = "spec-system";
-const DEFAULT_PROFILE_CONFIG: &str = "policy/spec-system.toml";
+const DEFAULT_OWNED_ARTIFACT_LEDGER: &str = ".allow/artifacts/doc-artifacts.toml";
+const DEFAULT_OWNED_IMPORTS_ROOT: &str = ".allow/imports";
+const DEFAULT_PROFILE_CONFIG: &str = ".allow/profiles/spec-system.toml";
 const SPEC_SYSTEM_CHECK_PROOF_COMMAND: &str =
     "cargo-allow check --profile spec-system --mode audit";
 const SPEC_SYSTEM_WORKLIST_PROOF_COMMAND: &str =
@@ -266,7 +268,7 @@ fn spec_system_bootstrap_files(config_path: &Path) -> Vec<SpecSystemBootstrapFil
     let mut files = vec![
         bootstrap_file(config_path, spec_system_config_template()),
         bootstrap_file(
-            Path::new("policy/doc-artifacts.toml"),
+            Path::new(DEFAULT_OWNED_ARTIFACT_LEDGER),
             doc_artifacts_template(),
         ),
         bootstrap_file(
@@ -286,17 +288,18 @@ fn spec_system_bootstrap_files(config_path: &Path) -> Vec<SpecSystemBootstrapFil
             artifact_root_readme("Plans", "PR-sized execution sequences and rollback notes"),
         ),
         bootstrap_file(
-            Path::new(".codex/goals/README.md"),
+            Path::new(".allow/goals/README.md"),
             artifact_root_readme(
                 "Active Goals",
                 "agent execution state that points at repo truth",
             ),
         ),
         bootstrap_file(
-            Path::new(".codex/goals/active.toml"),
+            Path::new(".allow/goals/active.toml"),
             active_goal_template(),
         ),
-        bootstrap_file(Path::new(".codex/goals/archive/.gitkeep"), String::new()),
+        bootstrap_file(Path::new(".allow/goals/archive/.gitkeep"), String::new()),
+        bootstrap_file(Path::new(".allow/imports/README.md"), imports_root_readme()),
         bootstrap_file(
             Path::new("docs/status/SUPPORT_TIERS.md"),
             support_tiers_template(),
@@ -328,9 +331,9 @@ proposals = "docs/proposals"
 specs = "docs/specs"
 adrs = "docs/adr"
 plans = "plans"
-goals = ".codex/goals"
+goals = ".allow/goals"
 support_tiers = "docs/status/SUPPORT_TIERS.md"
-artifact_ledger = "policy/doc-artifacts.toml"
+artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
 
 [requirements]
 ledger_required = true
@@ -338,7 +341,7 @@ templates_required = true
 support_tiers_required = true
 # New repositories start with a placeholder active goal. Set this to true after
 # registering the proposal, spec, plan, support-tier, and active-goal artifacts
-# that the active goal should link to.
+# that the active goal should link to in `.allow/artifacts/doc-artifacts.toml`.
 active_goal_required = false
 closeout_required_for_done_items = true
 "#
@@ -356,16 +359,28 @@ status = "advisory"
 
 fn artifact_root_readme(title: &str, role: &str) -> String {
     format!(
-        "# {title}\n\nThis directory contains spec-system artifacts for {role}.\n\nRegister governed artifacts in `policy/doc-artifacts.toml` so `cargo-allow check --profile spec-system` can validate their source-tree graph links.\n"
+        "# {title}\n\nThis directory contains spec-system artifacts for {role}.\n\nRegister governed artifacts in `{DEFAULT_OWNED_ARTIFACT_LEDGER}` so `cargo-allow check --profile spec-system` can validate their source-tree graph links.\n"
     )
+}
+
+fn imports_root_readme() -> String {
+    r#"# Import Roots
+
+External spec ecosystems discovered under import roots are read-only by default.
+cargo-allow does not rewrite imported files unless explicitly promoted.
+
+Place import adapters and discovery notes here when the repository adopts
+external spec systems such as Kiro, Spec Kit, or generic `.spec/` trees.
+"#
+    .to_string()
 }
 
 fn active_goal_template() -> String {
     r#"schema_version = "1.0"
 
 # Placeholder execution state for the first adoption PR.
-# Register real proposal/spec/plan artifacts in policy/doc-artifacts.toml before
-# setting active_goal_required = true in policy/spec-system.toml.
+# Register real proposal/spec/plan artifacts in .allow/artifacts/doc-artifacts.toml
+# before setting active_goal_required = true in .allow/profiles/spec-system.toml.
 id = "spec-system-profile"
 title = "Spec-system profile"
 status = "active"
@@ -523,9 +538,11 @@ fn build_spec_system_report(
                     &cfg.roots.artifact_ledger,
                     &message,
                     vec![
-                        "create policy/doc-artifacts.toml with registered source-of-truth artifacts"
-                            .to_string(),
-                        "or correct the configured artifact_ledger path in policy/spec-system.toml"
+                        format!(
+                            "create {} with registered source-of-truth artifacts",
+                            cfg.roots.artifact_ledger
+                        ),
+                        "or correct the configured artifact_ledger path in the spec-system profile config"
                             .to_string(),
                     ],
                 ));
@@ -561,7 +578,7 @@ fn build_spec_system_report(
                         suggested_actions: vec![
                             "add a support-tier table with Surface, Tier, Claim, Proof command, and Notes columns"
                                 .to_string(),
-                            "or correct the configured support_tiers path in policy/spec-system.toml"
+                            "or correct the configured support_tiers path in the spec-system profile config"
                                 .to_string(),
                         ],
                         proof_commands: spec_system_proof_commands(),
@@ -585,7 +602,7 @@ fn build_spec_system_report(
                     message,
                     suggested_actions: vec![
                         "create docs/status/SUPPORT_TIERS.md with claim-to-proof rows".to_string(),
-                        "or correct the configured support_tiers path in policy/spec-system.toml"
+                        "or correct the configured support_tiers path in the spec-system profile config"
                             .to_string(),
                     ],
                     proof_commands: spec_system_proof_commands(),
@@ -907,6 +924,24 @@ fn collect_spec_system_readiness(
         },
     ));
 
+    if matches!(
+        loaded.provenance,
+        ProfileConfigProvenance::AllowProfiles | ProfileConfigProvenance::AllowConfig
+    ) {
+        let imports_path = root_relative_path(root, Path::new(DEFAULT_OWNED_IMPORTS_ROOT));
+        checks.push(readiness_check(
+            "allow_imports",
+            Some(DEFAULT_OWNED_IMPORTS_ROOT.to_string()),
+            imports_path.is_dir(),
+            Some(imports_path.is_dir()),
+            if imports_path.is_dir() {
+                format!("owned import root {DEFAULT_OWNED_IMPORTS_ROOT} exists")
+            } else {
+                format!("owned import root {DEFAULT_OWNED_IMPORTS_ROOT} is missing")
+            },
+        ));
+    }
+
     SpecSystemReadiness {
         ready: checks.iter().all(|check| check.status == "ready"),
         mode: spec_system_mode_name(&cfg.mode),
@@ -1157,7 +1192,7 @@ fn work_items_from_config_findings(findings: &[SpecSystemFinding]) -> Vec<SpecSy
                 DEFAULT_PROFILE_CONFIG,
                 &finding.message,
                 vec![
-                    "create policy/spec-system.toml".to_string(),
+                    format!("create {DEFAULT_PROFILE_CONFIG} with spec-system roots"),
                     "or pass --config with the intended spec-system profile config".to_string(),
                 ],
             )
@@ -1202,9 +1237,9 @@ fn active_goal_suggested_actions(kind: &str) -> Vec<String> {
             "or move the work item out of done until closeout evidence exists".to_string(),
         ],
         _ => vec![
-            "update .codex/goals/active.toml so its IDs, status, and links match policy/doc-artifacts.toml"
+            "update the active goal manifest so its IDs, status, and links match the doc artifact ledger"
                 .to_string(),
-            "or register the intended active goal, linked plan, spec, proposal, and support tier in policy/doc-artifacts.toml"
+            "or register the intended active goal, linked plan, spec, proposal, and support tier in the doc artifact ledger"
                 .to_string(),
         ],
     }
