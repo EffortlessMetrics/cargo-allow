@@ -59,7 +59,7 @@ fn clap_parses_refresh_dry_run_json() {
         "cargo-allow",
         "refresh",
         "--allow-id",
-        "fixture-refresh-drift",
+        "allow-0250",
         "--dry-run",
         "--include-untracked",
         "--format",
@@ -78,7 +78,7 @@ fn clap_parses_refresh_dry_run_json() {
             format: RefreshFormat::Json,
             output: Some(path),
             ..
-        })) if allow_id == "fixture-refresh-drift" && path == Path::new("target/refresh.json")
+        })) if allow_id == "allow-0250" && path == Path::new("target/refresh.json")
     ));
 }
 
@@ -95,7 +95,7 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     assert!(
         outcomes.iter().any(|outcome| {
-            outcome.allow_id.as_deref() == Some("fixture-refresh-drift")
+            outcome.allow_id.as_deref() == Some("allow-0250")
                 && outcome.status == MatchStatus::LocationDrift
         }),
         "fixture should report advisory location drift before refresh"
@@ -106,7 +106,7 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
             root: Some(root.clone()),
         },
         config: Some(config_arg.clone()),
-        allow_id: "fixture-refresh-drift".to_string(),
+        allow_id: "allow-0250".to_string(),
         dry_run: true,
         write: false,
         include_untracked: true,
@@ -125,7 +125,7 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
     let lifecycle_before = before
         .allow
         .iter()
-        .find(|entry| entry.id == "fixture-refresh-drift")
+        .find(|entry| entry.id == "allow-0250")
         .map(|entry| entry.lifecycle.clone())
         .unwrap_or_else(|| std::panic::panic_any("expected refresh fixture entry"));
 
@@ -134,7 +134,7 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
             root: Some(root.clone()),
         },
         config: Some(config_arg.clone()),
-        allow_id: "fixture-refresh-drift".to_string(),
+        allow_id: "allow-0250".to_string(),
         dry_run: false,
         write: true,
         include_untracked: true,
@@ -148,7 +148,7 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
     let entry = after
         .allow
         .iter()
-        .find(|entry| entry.id == "fixture-refresh-drift")
+        .find(|entry| entry.id == "allow-0250")
         .unwrap_or_else(|| std::panic::panic_any("expected refreshed entry"));
     assert_eq!(entry.lifecycle, lifecycle_before);
     assert!(
@@ -162,7 +162,7 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
     let post_outcomes = evaluate(&after, &findings, CheckMode::NoNew);
     assert!(
         post_outcomes.iter().any(|outcome| {
-            outcome.allow_id.as_deref() == Some("fixture-refresh-drift")
+            outcome.allow_id.as_deref() == Some("allow-0250")
                 && outcome.status == MatchStatus::Matched
         }),
         "refresh should clear location drift for the fixture entry"

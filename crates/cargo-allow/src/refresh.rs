@@ -46,13 +46,17 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
     let previous_last_seen = cfg
         .allow
         .get(entry_index)
-        .ok_or_else(|| CargoAllowError::new("internal error: selected allow entry index out of range"))?
+        .ok_or_else(|| {
+            CargoAllowError::new("internal error: selected allow entry index out of range")
+        })?
         .last_seen
         .clone();
     let mut preview_entry = cfg
         .allow
         .get(entry_index)
-        .ok_or_else(|| CargoAllowError::new("internal error: selected allow entry index out of range"))?
+        .ok_or_else(|| {
+            CargoAllowError::new("internal error: selected allow entry index out of range")
+        })?
         .clone();
     apply_last_seen_refresh(&mut preview_entry, finding);
     let written_path = if args.write {
@@ -126,7 +130,7 @@ fn render_and_emit(args: &RefreshArgs, input: RefreshEmitInput<'_>) -> CargoAllo
 pub(crate) fn sample_refresh_json_for_contract_test() -> String {
     use allow_core::{Finding, FindingKind, LastSeen, Selector, Span, StructuralIdentity};
     let entry = allow_core::AllowEntry {
-        id: "fixture-refresh-drift".to_string(),
+        id: "allow-0250".to_string(),
         kind: FindingKind::LintException,
         family: Some("expect".to_string()),
         path: Some("src/lib.rs".into()),

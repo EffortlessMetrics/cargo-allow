@@ -5,7 +5,7 @@ ignored = []
 generated = []
 
 [[allow]]
-id = "fixture-refresh-drift"
+id = "allow-0250"
 kind = "lint_exception"
 family = "expect_attribute"
 path = "src/lib.rs"
@@ -20,7 +20,7 @@ expires = "2026-12-31"
 [allow.selector]
 ast_kind = "attribute"
 lint = "clippy::unwrap_used"
-target_fingerprint = "policy:fixture-refresh-drift"
+target_fingerprint = "policy:allow-0250"
 container = "fixture_refresh_drift"
 line_hint = 1
 
