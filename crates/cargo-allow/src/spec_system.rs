@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_inventory::resolve_source_tree_root;
 use allow_policy::federation::{
-    evaluate_spec_system_ledger, load_federation_config, FederationLoadOutcome,
+    FederationLoadOutcome, evaluate_spec_system_ledger, load_federation_config,
 };
 use allow_policy::spec_system::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, ProfileConfigProvenance,
@@ -831,7 +831,8 @@ fn federation_ledgers_readiness_check(root: &Path) -> SpecSystemReadinessCheck {
                 found: false,
                 valid: None,
                 status: "ready",
-                message: "federation ledger registry `.allow/config.toml` is not configured".to_string(),
+                message: "federation ledger registry `.allow/config.toml` is not configured"
+                    .to_string(),
             },
             FederationLoadOutcome::Parsed(validated) => {
                 let count = validated.config.ledgers.len();
@@ -2134,7 +2135,10 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
         text.push_str(",\n      \"proof_commands\": ");
         render_string_array(&mut text, &item.proof_commands, "      ");
         if let Some(ledger_id) = &item.ledger_id {
-            text.push_str(&format!(",\n      \"ledger_id\": \"{}\"", json_escape(ledger_id)));
+            text.push_str(&format!(
+                ",\n      \"ledger_id\": \"{}\"",
+                json_escape(ledger_id)
+            ));
         }
         if let Some(ledger_path) = &item.ledger_path {
             text.push_str(&format!(

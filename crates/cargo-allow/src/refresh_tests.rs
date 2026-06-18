@@ -88,7 +88,7 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
     let policy_path = root.join("policy/allow.toml");
     let config_arg = PathBuf::from("policy/allow.toml");
     let output_path = root.join("refresh-summary.json");
-      let (_loaded_root, cfg, findings, _facts, _federation) =
+    let (_loaded_root, cfg, findings, _facts, _federation) =
         crate::load_world(Some(&root), Some(&config_arg), true, None, true).unwrap_or_else(|err| {
             std::panic::panic_any(format!("load refresh fixture world: {err}"))
         });

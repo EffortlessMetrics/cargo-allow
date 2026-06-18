@@ -47,10 +47,10 @@ pub(crate) use worklist_priority::{DIFFICULTY_LEVELS, RISK_LEVELS};
 use worklist_queue::{filter_work_items, renumber_work_items, sort_work_items};
 use worklist_render::{render_worklist_human_with_context, render_worklist_json_with_context};
 pub(crate) use worklist_scoring::work_item_kind;
-pub(super) use worklist_types::{WorkItem, WorkItemEvidenceReference};
-use worklist_types::{WorklistContext, WorklistFilters};
 #[cfg(test)]
 use worklist_types::WorkItemLedger;
+pub(super) use worklist_types::{WorkItem, WorkItemEvidenceReference};
+use worklist_types::{WorklistContext, WorklistFilters};
 
 #[cfg(test)]
 use allow_core::{AllowConfig, FindingKind, MatchOutcome, MatchStatus};

@@ -1,11 +1,11 @@
 use super::WorkItem;
 use super::worklist_actions::{proof_commands, suggested_actions, suggested_actions_for_context};
-use super::worklist_types::WorkItemLedger;
 use super::worklist_item_kind::{
     BASELINE_DEBT, BROAD_SCOPE, MISSING_EVIDENCE, OCCURRENCE_HEADROOM, UNSAFE_MISSING_EVIDENCE,
 };
 use super::worklist_priority::DIFFICULTY_SMALL;
 use super::worklist_scoring::{exception_family, work_item_difficulty, work_item_risk};
+use super::worklist_types::WorkItemLedger;
 use allow_core::{
     AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, allow_entry_broad_scope,
     normalize_path,

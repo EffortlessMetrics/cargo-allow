@@ -2,12 +2,12 @@ use std::path::{Path, PathBuf};
 
 use allow_core::{CargoAllowError, CargoAllowResult, LedgerProvenance};
 
+use super::FederationConfig;
 use super::config::{LedgerEntry, LedgerRole, ValidatedFederationConfig};
 use super::load::{FederationLoadOutcome, load_federation_config};
 use super::precedence::ordered_ledgers_by_precedence;
-use super::FederationConfig;
-use crate::discover_config;
 use crate::SkippedPolicyCandidate;
+use crate::discover_config;
 
 pub const FEDERATION_VERSION: &str = "1";
 pub const SOURCE_EXCEPTION_LANE: &str = "source-exception";
@@ -270,8 +270,10 @@ priority = 20
         fs::write(root.join("policy/allow.toml"), "schema_version = \"1.0\"\n")
             .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
 
-        let (path, evaluation) = evaluate_source_exception_policy(&root, None)
-            .unwrap_or_else(|err| std::panic::panic_any(format!("evaluate federation policy: {err}")));
+        let (path, evaluation) =
+            evaluate_source_exception_policy(&root, None).unwrap_or_else(|err| {
+                std::panic::panic_any(format!("evaluate federation policy: {err}"))
+            });
 
         assert_eq!(path, root.join("policy/allow.toml"));
         assert_eq!(
@@ -311,12 +313,17 @@ priority = 10
             .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
         fs::write(root.join("policy/allow.toml"), "schema_version = \"1.0\"\n")
             .unwrap_or_else(|err| std::panic::panic_any(format!("allow write: {err}")));
-        fs::write(root.join("policy/cargo-allow.toml"), "schema_version = \"1.0\"\n")
-            .unwrap_or_else(|err| std::panic::panic_any(format!("native write: {err}")));
+        fs::write(
+            root.join("policy/cargo-allow.toml"),
+            "schema_version = \"1.0\"\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("native write: {err}")));
 
         let (path, evaluation) =
             evaluate_source_exception_policy(&root, Some(Path::new("policy/cargo-allow.toml")))
-                .unwrap_or_else(|err| std::panic::panic_any(format!("evaluate cli override: {err}")));
+                .unwrap_or_else(|err| {
+                    std::panic::panic_any(format!("evaluate cli override: {err}"))
+                });
 
         assert_eq!(path, root.join("policy/cargo-allow.toml"));
         assert_eq!(evaluation.precedence_applied, PrecedenceTier::CliOverride);

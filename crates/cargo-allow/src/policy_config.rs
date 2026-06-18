@@ -1,7 +1,7 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use allow_policy::{
-    SkippedPolicyCandidate, discover_config, evaluate_source_exception_policy,
-    load_policy, load_policy_with_reportable_evidence, PrecedenceTier,
+    PrecedenceTier, SkippedPolicyCandidate, discover_config, evaluate_source_exception_policy,
+    load_policy, load_policy_with_reportable_evidence,
 };
 use std::path::{Path, PathBuf};
 

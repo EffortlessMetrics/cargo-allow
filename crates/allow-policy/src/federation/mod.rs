@@ -16,9 +16,8 @@ pub use config::{
 pub use evaluate::{
     FEDERATION_VERSION, FederationEvaluation, LedgerContributor, PrecedenceTier,
     SOURCE_EXCEPTION_LANE, SPEC_SYSTEM_LANE, canonical_ledgers_in_precedence_order,
-    evaluate_source_exception_policy, evaluate_spec_system_ledger,
-    ledger_contributors_from_config, ledger_provenance_from_entry,
-    resolve_canonical_ledger_for_lane,
+    evaluate_source_exception_policy, evaluate_spec_system_ledger, ledger_contributors_from_config,
+    ledger_provenance_from_entry, resolve_canonical_ledger_for_lane,
 };
 pub use load::{
     FEDERATION_CONFIG_REL_PATH, FederationLoadOutcome, FederationLoadResult, load_federation_config,

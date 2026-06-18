@@ -18,8 +18,8 @@ pub use diff::{
     DiffSelectorIdentityChange, DiffSelectorPrecisionChange,
 };
 pub use doctor::{ConfiguredLedgerSummary, DoctorReport, FederationDiagnosticSummary};
-pub use federation::{FederationReportContext, LedgerContributorSummary};
 pub use explain::{EvidenceReference, ExplainReport};
+pub use federation::{FederationReportContext, LedgerContributorSummary};
 pub use list::{ListFilters, ListRow};
 pub use migrate::MigrateReport;
 pub use propose::ProposeReport;

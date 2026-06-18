@@ -166,18 +166,9 @@ fn render_work_item_json(item: &WorklistItem<'_>) -> String {
         "      \"ledger_path\": {},\n",
         option_json(item.ledger_path)
     ));
-    out.push_str(&format!(
-        "      \"lane\": {},\n",
-        option_json(item.lane)
-    ));
-    out.push_str(&format!(
-        "      \"mode\": {},\n",
-        option_json(item.mode)
-    ));
-    out.push_str(&format!(
-        "      \"role\": {}\n",
-        option_json(item.role)
-    ));
+    out.push_str(&format!("      \"lane\": {},\n", option_json(item.lane)));
+    out.push_str(&format!("      \"mode\": {},\n", option_json(item.mode)));
+    out.push_str(&format!("      \"role\": {}\n", option_json(item.role)));
     out.push_str("    }");
     out
 }

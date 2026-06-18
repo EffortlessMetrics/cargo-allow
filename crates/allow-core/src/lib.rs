@@ -8,10 +8,10 @@
 mod date;
 mod error;
 mod finding;
-mod ledger_provenance;
 mod fingerprint;
 mod json;
 mod lane_posture;
+mod ledger_provenance;
 mod policy;
 mod source_tree_path;
 pub use date::SimpleDate;
@@ -20,13 +20,13 @@ pub use finding::{
     Finding, FindingKind, STRUCTURAL_IDENTITY_SCHEMA_ID, Span, StructuralIdentity,
     finding_identity_key,
 };
-pub use ledger_provenance::LedgerProvenance;
 pub use fingerprint::{maybe_line_distance_score, normalize_snippet, stable_hash_hex};
 pub use json::json_escape;
 pub use lane_posture::{
     LaneConfig, LaneEnforcementMode, effective_lane_posture_for_findings,
     lane_enforcement_mode_for_kind,
 };
+pub use ledger_provenance::LedgerProvenance;
 pub use policy::{
     AllowConfig, AllowEntry, LastSeen, Lifecycle, MatchOutcome, MatchStatus, Requirements,
     Selector, WorkspaceConfig,

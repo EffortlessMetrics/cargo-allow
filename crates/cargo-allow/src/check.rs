@@ -18,13 +18,13 @@ use check_lane_posture::check_failed_for_outcomes;
 mod check_deny;
 use check_deny::{deny_escalation_failed, validate_deny_statuses};
 
+use crate::federation_report::FederationReportBundle;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, ProfileArg, ReportRenderArgs,
     SourceTreeReportContext, config_path, evidence_inventory::current_evidence_source_tree_files,
     load_compat_world, load_world_with_evidence_mode, policy_baseline_debt_entries, print_report,
     report_config, spec_system, write_file,
 };
-use crate::federation_report::FederationReportBundle;
 use allow_inventory::{InventorySource, resolve_source_tree_root};
 
 pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
@@ -145,7 +145,11 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             receipt_context.lane_posture = Some(&lane_posture);
             receipt_context.federation = Some(federation_context);
             render_receipt_with_context_and_inventory(
-                "check", &findings, &outcomes, failed, receipt_context,
+                "check",
+                &findings,
+                &outcomes,
+                failed,
+                receipt_context,
             )
         });
         write_file(path, &receipt)?;

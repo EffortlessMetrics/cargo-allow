@@ -144,7 +144,13 @@ fn load_world_without_policy(
         findings.retain(|f| parsed.matches_finding(f));
     }
     let _ = evidence_validation;
-    Ok((root.to_path_buf(), cfg, findings, inventory_facts, federation))
+    Ok((
+        root.to_path_buf(),
+        cfg,
+        findings,
+        inventory_facts,
+        federation,
+    ))
 }
 
 fn empty_federation_evaluation(precedence: PrecedenceTier) -> FederationEvaluation {
