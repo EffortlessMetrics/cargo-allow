@@ -61,7 +61,7 @@ profile resolution, migrate profile state, or authorize release cut.
 
 ## Non-Goals
 
-- `init` writes `.allow/` (queued as `portable-governance-c3` after C2 #1748).
+- Dogfood profile state migration (queued as `portable-governance-c4` after C3 #1750).
 - P2 multi-ledger federation (#1473).
 - Full import mode (#1466) or external `ripr` migration.
 - Version bump or `0.1.10` release authorization.
@@ -77,8 +77,11 @@ Governance and execution-lane closeout evidence only. `partial` compat rows in
 - **Done:** `portable-governance-c2` (`.allow` profile resolution with policy
   fallback per CARGO-ALLOW-PLAN-0004 C2; #1748 merge `2adb0b5e`; see
   CARGO-ALLOW-CLOSEOUT-0006).
-- **Ready:** `portable-governance-c3` (`init` writes spec-system state to
-  `.allow/` per CARGO-ALLOW-PLAN-0004 C3).
+- **Done:** `portable-governance-c3` (`init` writes spec-system state to
+  `.allow/` per CARGO-ALLOW-PLAN-0004 C3; #1750 merge `23ac8376`; see
+  CARGO-ALLOW-CLOSEOUT-0007).
+- **Ready:** `portable-governance-c4` (dogfood migrate profile state to `.allow/`
+  per CARGO-ALLOW-PLAN-0004 C4).
 - **Blocked:** federation (#1473), external ripr adoption, full import mode
   (#1466).
 

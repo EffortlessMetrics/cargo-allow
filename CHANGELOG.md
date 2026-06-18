@@ -10,6 +10,10 @@ inventory without executing repository code.
 
 ### Added
 
+- Register C3 init writes closeout (CARGO-ALLOW-CLOSEOUT-0007): mark
+  `portable-governance-c3` done after #1750; queue `portable-governance-c4`
+  (dogfood migrate profile state to `.allow/`) ready; reconcile
+  `gap-inventory.md` and governance manifests. No release authorization.
 - Register C2 profile resolution closeout (CARGO-ALLOW-CLOSEOUT-0006): mark
   `portable-governance-c2` done after #1748; queue `portable-governance-c3`
   (`init` writes spec-system state to `.allow/`) ready; reconcile
