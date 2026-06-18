@@ -1777,6 +1777,41 @@
             "pattern": "^cargo-allow ",
             "description": "Suggested follow-up command. cargo-allow emits standalone cargo-allow commands here; it does not execute them."
           }
+        },
+        "ledger_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Canonical ledger ID when federation provenance is present."
+        },
+        "ledger_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Canonical ledger path when federation provenance is present."
+        },
+        "lane": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Federation lane owning the work item, when known."
+        },
+        "mode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Federation ledger mode, when known."
+        },
+        "role": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Federation ledger role, when known."
         }
       }
     },
