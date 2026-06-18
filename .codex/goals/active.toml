@@ -249,6 +249,7 @@ title = "Add clippy-style --deny <status> escalation for check"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
 proof_commands = [
   "rtk cargo test -p cargo-allow check_deny deny_escalation",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
