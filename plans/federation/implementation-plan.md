@@ -50,7 +50,7 @@ CARGO-ALLOW-SPEC-0007 and CARGO-ALLOW-ADR-0001.
 | F0 | `portable-governance-f0-federation` | Proposal, spec, ADR, plan, doc-artifact registration, active goal | done (#1755) |
 | F1 | `portable-governance-f1-federation` | Ledger registry parse/validate, precedence ordering, doctor/spec-system reporting | done (#1756) |
 | F2 | `portable-governance-f2-federation` | Multi-ledger check evaluation + receipt provenance fields | done (#1758) |
-| F3 | `portable-governance-f3-federation` | Drain window enforcement + closeout linkage | ready |
+| F3 | `portable-governance-f3-federation` | Drain window enforcement + closeout linkage | done (#1759) |
 
 ## F0 Validation
 

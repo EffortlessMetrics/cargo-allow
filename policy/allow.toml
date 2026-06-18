@@ -4727,6 +4727,29 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-4704"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/federation/closeouts/f3-drain-divergence.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records F3 federation drain windows and mirror divergence closeout without claiming import adapters or release readiness."
+evidence = ["doc:plans/federation/implementation-plan.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/federation/closeouts/f3-drain-divergence.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/federation/closeouts/f3-drain-divergence.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-4702"
 kind = "non_rust_file"
 family = "configuration"
