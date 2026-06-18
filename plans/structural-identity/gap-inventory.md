@@ -11,7 +11,7 @@ characterization tests in #1701 (merge `2165848`).
 | panic method calls | receiver fingerprint edge cases | done | method call matrix | D4 (#1726, `4f19e298`) |
 | panic macros | macro_name visibility | partial | macro invocation fixtures | D2 (done) |
 | index/slice | target_fingerprint precision | done | index expr matrix | D4 (#1726, `4f19e298`) |
-| lint attributes | attribute target identity | partial | lint attr fixtures | D2 (done) |
+| lint attributes | attribute target identity | done | lint attr fixtures | D5 |
 | match selectors | precision on new fields | open | matcher characterization | D6 |
 | diff posture | weakening on identity loss | open | diff characterization | D7 |
 | match selectors | precision on new fields | open | matcher characterization | D6 |
@@ -51,5 +51,5 @@ Characterization source: `tests/fixtures/structural-identity/` and
 
 `open` rows are inventory placeholders until fixture-backed characterization
 lands. `partial` rows have refactor-pair fixtures and tests but may still need
-scanner hardening (D4–D5). They are not claims that gaps are fully closed in
+scanner hardening (D6–D7). They are not claims that gaps are fully closed in
 production matching or diff posture.

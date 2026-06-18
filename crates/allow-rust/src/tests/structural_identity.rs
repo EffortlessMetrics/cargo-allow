@@ -188,6 +188,10 @@ fn refactor_pair_same_lint_on_different_items_changes_container_identity() {
 
     assert_eq!(before_parse.identity.lint.as_deref(), Some("dead_code"));
     assert_eq!(
+        before_parse.identity.target_fingerprint.as_deref(),
+        Some("policy:allow-0226")
+    );
+    assert_eq!(
         before_parse.identity.stable_key(),
         after_parse.identity.stable_key(),
         "reordering lint targets should preserve per-item identity"
@@ -200,6 +204,10 @@ fn refactor_pair_same_lint_on_different_items_changes_container_identity() {
                 && finding.identity.container.as_deref() == Some("render")
         })
         .unwrap_or_else(|| std::panic::panic_any("missing render lint finding"));
+    assert_eq!(
+        before_render.identity.target_fingerprint.as_deref(),
+        Some("policy:allow-0225")
+    );
     assert_ne!(
         before_parse.identity.stable_key(),
         before_render.identity.stable_key(),

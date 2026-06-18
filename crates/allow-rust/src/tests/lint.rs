@@ -106,6 +106,84 @@ fn load() {}
 }
 
 #[test]
+fn same_line_lint_attributes_record_target_function_container() {
+    let src = r#"
+#[allow(dead_code)] fn parse() {}
+#[allow(dead_code)] fn render() {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let containers = findings
+        .iter()
+        .filter(|f| {
+            f.kind == FindingKind::LintException && f.family.as_deref() == Some("allow_attribute")
+        })
+        .map(|f| f.identity.container.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(containers, vec![Some("parse"), Some("render")]);
+}
+
+#[test]
+fn cfg_attr_lint_attributes_record_target_function_container() {
+    let src = r#"
+#[cfg_attr(feature = "lint", allow(dead_code))]
+fn parse() {}
+
+#[cfg_attr(feature = "lint", allow(dead_code))]
+fn render() {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let containers = findings
+        .iter()
+        .filter(|f| {
+            f.kind == FindingKind::LintException && f.family.as_deref() == Some("allow_attribute")
+        })
+        .map(|f| f.identity.container.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(containers, vec![Some("parse"), Some("render")]);
+}
+
+#[test]
+fn same_lint_and_policy_on_different_items_differs_by_container() {
+    let shared = r#"#[expect(dead_code, reason = "policy:allow-shared: structural identity shared policy")]"#;
+    let src = format!(
+        r#"
+{shared}
+fn parse() {{}}
+
+{shared}
+fn render() {{}}
+        "#
+    );
+    let findings = scan_rust_source("src/lib.rs", &src);
+    let lint_findings = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::LintException)
+        .map(|f| {
+            (
+                f.identity.container.as_deref(),
+                f.identity.lint.as_deref(),
+                f.identity.target_fingerprint.as_deref(),
+                f.identity.stable_key(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(lint_findings.len(), 2);
+    assert_eq!(lint_findings[0].1, Some("dead_code"));
+    assert_eq!(lint_findings[1].1, Some("dead_code"));
+    assert_eq!(
+        lint_findings[0].2,
+        Some("policy:allow-shared"),
+        "shared policy id should still populate target_fingerprint"
+    );
+    assert_eq!(lint_findings[0].0, Some("parse"));
+    assert_eq!(lint_findings[1].0, Some("render"));
+    assert_ne!(lint_findings[0].3, lint_findings[1].3);
+}
+
+#[test]
 fn outer_lint_attributes_record_target_function_container() {
     let src = r#"
 #[allow(dead_code)]
@@ -305,6 +383,68 @@ struct Parser {
 }
 
 #[test]
+fn inner_impl_lint_attributes_record_target_container() {
+    let src = r#"
+struct Parser;
+
+impl Parser {
+    #![allow(dead_code)]
+    fn parse() {}
+}
+
+struct Renderer;
+
+impl Renderer {
+    #![allow(dead_code)]
+    fn render() {}
+}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let keyed = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::LintException)
+        .map(|f| (f.identity.container.as_deref(), f.identity.stable_key()))
+        .collect::<Vec<_>>();
+
+    assert_eq!(keyed.len(), 2);
+    assert_eq!(keyed[0].0, Some("Parser"));
+    assert_eq!(keyed[1].0, Some("Renderer"));
+    assert_ne!(keyed[0].1, keyed[1].1);
+}
+
+#[test]
+fn inner_module_lint_attributes_record_target_module_scope() {
+    let src = r#"
+mod parser {
+    #![allow(dead_code)]
+}
+
+mod render {
+    #![allow(dead_code)]
+}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let scopes = findings
+        .iter()
+        .filter(|f| {
+            f.kind == FindingKind::LintException && f.family.as_deref() == Some("allow_attribute")
+        })
+        .map(|f| {
+            (
+                f.identity.module.as_deref(),
+                f.identity.container.as_deref(),
+                f.identity.stable_key(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(scopes.len(), 2);
+    assert_eq!(scopes[0].0, Some("parser"));
+    assert_eq!(scopes[1].0, Some("render"));
+    assert_ne!(scopes[0].2, scopes[1].2);
+}
+
+#[test]
 fn outer_lint_attributes_record_target_module_scope() {
     let src = r#"
 #[allow(dead_code)]
@@ -488,6 +628,42 @@ fn load() {}
         expect.identity.target_fingerprint.as_deref(),
         Some("policy:allow-lint")
     );
+    assert_eq!(expect.identity.container.as_deref(), Some("load"));
+}
+
+#[test]
+fn multiline_lint_attributes_record_target_function_container() {
+    let src = r#"
+#[expect(
+    dead_code,
+    reason = "policy:allow-shared"
+)]
+fn parse() {}
+
+#[expect(
+    dead_code,
+    reason = "policy:allow-shared"
+)]
+fn render() {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let keyed = findings
+        .iter()
+        .filter(|f| f.kind == FindingKind::LintException)
+        .map(|f| {
+            (
+                f.identity.container.as_deref(),
+                f.identity.target_fingerprint.as_deref(),
+                f.identity.stable_key(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(keyed.len(), 2);
+    assert_eq!(keyed[0].0, Some("parse"));
+    assert_eq!(keyed[1].0, Some("render"));
+    assert_eq!(keyed[0].1, Some("policy:allow-shared"));
+    assert_ne!(keyed[0].2, keyed[1].2);
 }
 
 #[test]
