@@ -179,9 +179,9 @@ mod tests {
                 .all(|finding| finding.path == Path::new("src/lib.rs"))
         );
         assert!(
-            findings
-                .iter()
-                .all(|finding| finding.identity.container.as_deref() == Some("parse"))
+            findings.iter().all(
+                |finding| finding.identity.container.as_deref() == Some("parser::lexer::parse")
+            )
         );
         assert!(
             findings

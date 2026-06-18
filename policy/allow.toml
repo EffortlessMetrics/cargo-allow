@@ -3724,7 +3724,7 @@ review_after = "2026-11-01"
 
 [allow.selector]
 ast_kind = "unsafe_block"
-container = "access"
+container = "inner::access"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
 line_hint = 3
 
@@ -4057,3 +4057,95 @@ glob = "docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrate-summary.json"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0243"
+kind = "unsafe"
+family = "unsafe_block"
+path = "tests/fixtures/structural-identity/container_same_name_sibling_modules/before.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity D3 fixture: sibling modules with same free-function name."
+evidence = ["test:refactor_pair_sibling_modules_same_function_name_have_distinct_container_identity"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "alpha::access"
+module = "alpha"
+normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
+line_hint = 3
+
+[allow.last_seen]
+line = 3
+column = 9
+
+[[allow]]
+id = "allow-0244"
+kind = "unsafe"
+family = "unsafe_block"
+path = "tests/fixtures/structural-identity/container_same_name_sibling_modules/before.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity D3 fixture: sibling modules with same free-function name."
+evidence = ["test:refactor_pair_sibling_modules_same_function_name_have_distinct_container_identity"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "beta::access"
+module = "beta"
+normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
+line_hint = 8
+
+[allow.last_seen]
+line = 8
+column = 9
+
+[[allow]]
+id = "allow-0245"
+kind = "unsafe"
+family = "unsafe_block"
+path = "tests/fixtures/structural-identity/container_same_name_sibling_modules/after.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity D3 fixture: sibling modules with same free-function name."
+evidence = ["test:refactor_pair_sibling_modules_same_function_name_have_distinct_container_identity"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "alpha::access"
+module = "alpha"
+normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
+line_hint = 3
+
+[allow.last_seen]
+line = 3
+column = 9
+
+[[allow]]
+id = "allow-0246"
+kind = "unsafe"
+family = "unsafe_block"
+path = "tests/fixtures/structural-identity/container_same_name_sibling_modules/after.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity D3 fixture: sibling modules with same free-function name."
+evidence = ["test:refactor_pair_sibling_modules_same_function_name_have_distinct_container_identity"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "beta::access"
+module = "beta"
+normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
+line_hint = 8
+
+[allow.last_seen]
+line = 8
+column = 9

@@ -97,7 +97,7 @@ fn refactor_pair_function_move_preserves_unsafe_block_identity() {
 fn refactor_pair_module_move_changes_module_and_container_identity() {
     let path = PathBuf::from("src/fixture.rs");
     let (before, after) = scan_fixture_pair("module_move", &path);
-    let before_block = single_unsafe_block(&before, "access");
+    let before_block = single_unsafe_block(&before, "inner::access");
     let after_block = single_unsafe_block(&after, "access");
 
     assert_eq!(
@@ -106,6 +106,12 @@ fn refactor_pair_module_move_changes_module_and_container_identity() {
         "nested module should be recorded"
     );
     assert_eq!(after_block.identity.module.as_deref(), None);
+    assert_eq!(
+        before_block.identity.container.as_deref(),
+        Some("inner::access"),
+        "nested free functions should qualify container with module path"
+    );
+    assert_eq!(after_block.identity.container.as_deref(), Some("access"));
     assert_ne!(
         before_block.identity.stable_key(),
         after_block.identity.stable_key(),
@@ -249,6 +255,32 @@ fn refactor_pair_same_index_form_different_targets_changes_identity() {
 }
 
 #[test]
+fn refactor_pair_sibling_modules_same_function_name_have_distinct_container_identity() {
+    let path = PathBuf::from("src/fixture.rs");
+    let (before, _) = scan_fixture_pair("container_same_name_sibling_modules", &path);
+    let blocks: Vec<_> = before
+        .iter()
+        .filter(|f| f.kind == FindingKind::Unsafe && f.family.as_deref() == Some("unsafe_block"))
+        .collect();
+    assert_eq!(blocks.len(), 2);
+    let alpha = blocks
+        .iter()
+        .find(|f| f.identity.module.as_deref() == Some("alpha"))
+        .unwrap_or_else(|| std::panic::panic_any("missing alpha unsafe block"));
+    let beta = blocks
+        .iter()
+        .find(|f| f.identity.module.as_deref() == Some("beta"))
+        .unwrap_or_else(|| std::panic::panic_any("missing beta unsafe block"));
+    assert_eq!(alpha.identity.container.as_deref(), Some("alpha::access"));
+    assert_eq!(beta.identity.container.as_deref(), Some("beta::access"));
+    assert_ne!(
+        alpha.identity.stable_key(),
+        beta.identity.stable_key(),
+        "same function name in sibling modules must not collide"
+    );
+}
+
+#[test]
 fn structural_identity_field_matrix_documents_fixture_classifications() {
     let path = PathBuf::from("src/fixture.rs");
     let (before, _after) = scan_fixture_pair("line_move", &path);
@@ -280,7 +312,7 @@ fn structural_identity_field_matrix_documents_fixture_classifications() {
     );
 
     let (before_findings, after_findings) = scan_fixture_pair("module_move", &path);
-    let nested = single_unsafe_block(&before_findings, "access");
+    let nested = single_unsafe_block(&before_findings, "inner::access");
     let top_level = single_unsafe_block(&after_findings, "access");
     assert_eq!(nested.identity.module.as_deref(), Some("inner"));
     assert_eq!(top_level.identity.module.as_deref(), None);

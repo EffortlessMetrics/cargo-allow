@@ -292,13 +292,13 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "PR 9 (pending merge): docs/dogfood/cargo-allow-unsafe-allowlist.md records one scoped unsafe-allowlist side-by-side receipt for this repository.",
+  "Landed in #1723 (merge 3bd815fd): docs/dogfood/cargo-allow-unsafe-allowlist.md records one scoped unsafe-allowlist side-by-side receipt for this repository.",
   "Dogfood evidence for this repo only; does not claim full xtask retirement or 0.2.0 milestone parity.",
 ]
 
 [[work_item]]
 id = "adoption-substrate-pr-010"
-status = "ready"
+status = "done"
 title = "Improve container identity for ambiguous contexts (structural identity D3)"
 linked_proposal = "CARGO-ALLOW-PROP-0005"
 linked_spec = "CARGO-ALLOW-SPEC-0005"
@@ -308,5 +308,66 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Queue after PR 9: D3 container identity hardening in allow-rust using structural-identity fixture matrix.",
+  "Module-qualifies unqualified container names for findings inside nested modules; fixture container_same_name_sibling_modules.",
+  "Does not claim receiver/target (D4), lint-target (D5), matcher precision (D6), or diff posture (D7) work.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-011"
+status = "ready"
+title = "Improve receiver/target identity for method/index (structural identity D4)"
+linked_proposal = "CARGO-ALLOW-PROP-0005"
+linked_spec = "CARGO-ALLOW-SPEC-0005"
+linked_plan = "plans/structural-identity/implementation-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-rust structural_identity",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Queue after D3: receiver_fingerprint and target_fingerprint hardening using structural-identity fixture matrix.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-012"
+status = "ready"
+title = "Improve lint attribute target identity (structural identity D5)"
+linked_proposal = "CARGO-ALLOW-PROP-0005"
+linked_spec = "CARGO-ALLOW-SPEC-0005"
+linked_plan = "plans/structural-identity/implementation-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-rust structural_identity",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Queue after D4: lint attribute target identity hardening.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-013"
+status = "ready"
+title = "Assert selector precision with new identity fields (structural identity D6)"
+linked_proposal = "CARGO-ALLOW-PROP-0005"
+linked_spec = "CARGO-ALLOW-SPEC-0005"
+linked_plan = "plans/structural-identity/implementation-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-match",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Queue after D5: allow-match characterization for new identity fields.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-014"
+status = "ready"
+title = "Verify weakening/improvement with new identity fields (structural identity D7)"
+linked_proposal = "CARGO-ALLOW-PROP-0005"
+linked_spec = "CARGO-ALLOW-SPEC-0005"
+linked_plan = "plans/structural-identity/implementation-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-diff",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Queue after D6: allow-diff posture characterization for identity field changes.",
 ]

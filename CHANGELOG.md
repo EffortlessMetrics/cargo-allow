@@ -10,6 +10,10 @@ inventory without executing repository code.
 
 ### Added
 
+- Qualify unqualified Rust `container` identity with the module path for findings
+  inside nested modules, disambiguating sibling modules that share a free-function
+  name (`inner::access` vs `access`). Impl/trait/extern containers that already
+  include `::` are unchanged. Fixture: `container_same_name_sibling_modules`.
 - Add second in-repository migration parity dogfood receipt for the characterized
   `unsafe-allowlist` lane: compat check, migrate, canonical check, worklist,
   and closeout artifacts under `docs/dogfood/`.

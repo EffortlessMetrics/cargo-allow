@@ -47,7 +47,10 @@ fn scan_uses_syntax_module_scope() {
     };
 
     assert_eq!(parser_finding.identity.module.as_deref(), Some("parser"));
-    assert_eq!(parser_finding.identity.container.as_deref(), Some("parse"));
+    assert_eq!(
+        parser_finding.identity.container.as_deref(),
+        Some("parser::parse")
+    );
     assert_eq!(root_finding.identity.module, None);
     assert_eq!(root_finding.identity.container.as_deref(), Some("load"));
 }
