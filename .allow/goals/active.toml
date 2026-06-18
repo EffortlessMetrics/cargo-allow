@@ -12,10 +12,12 @@ ownership after migration and evidence parity execution closed in
 CARGO-ALLOW-CLOSEOUT-0005. C2 `.allow` profile resolution with `policy/`
 fallback landed (#1748 merge `2adb0b5e`). C3 `init` writes spec-system state
 to `.allow/` landed (#1750 merge `23ac8376`). C4 dogfood migration moved this
-repository's profile state to `.allow/` (portable-governance-c4). P2 multi-ledger
-federation (#1473), external `ripr` migration, and full import mode (#1466)
-remain blocked. Release automation (0.1.10) and OIDC publish lanes stay
-dormant until explicit authorization.
+repository's profile state to `.allow/` (#1752 merge `651d9c90`;
+portable-governance-c4 done). F0 multi-ledger federation design
+(CARGO-ALLOW-PROP-0007 / SPEC-0007 / ADR-0001) completes in F0 PR; F1 runtime
+implementation blocked pending F0 merge. External `ripr` migration and full
+import mode (#1466) remain blocked. Release automation (0.1.10) and OIDC publish
+lanes stay dormant until explicit authorization.
 """
 
 linked_proposal = "CARGO-ALLOW-PROP-0004"
@@ -91,15 +93,35 @@ evidence_notes = [
 
 [[work_item]]
 id = "portable-governance-f0-federation"
-status = "blocked"
-title = "P2 multi-ledger federation for additional graph kinds (#1473)"
-linked_proposal = "CARGO-ALLOW-PROP-0002"
-linked_spec = "CARGO-ALLOW-SPEC-0002"
-linked_plan = "plans/migration-parity/implementation-plan.md"
-blocker_reason = "Design-first: per-lane posture landed; federation across additional legacy ledgers needs proposal/spec acceptance before implementation."
+status = "done"
+title = "P2 multi-ledger federation design (F0 #1473)"
+linked_proposal = "CARGO-ALLOW-PROP-0007"
+linked_spec = "CARGO-ALLOW-SPEC-0007"
+linked_plan = "plans/federation/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0009"
+proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
+]
 evidence_notes = [
-  "Carried forward from GOAL-0002 post-import-1473; not the active execution slice.",
-  "Tracked in docs/source-of-truth/README.md Level 1 multi-ledger posture.",
+  "F0 design-only: CARGO-ALLOW-PROP-0007, CARGO-ALLOW-SPEC-0007, CARGO-ALLOW-ADR-0001, and CARGO-ALLOW-PLAN-0007 define ledger roles, precedence, duplicate/dialect handling, drain windows, divergence reporting, and receipt provenance.",
+  "No runtime federation code in F0; no silent merging per ADR-0001.",
+  "F1 runtime implementation blocked pending F0 merge.",
+]
+
+[[work_item]]
+id = "portable-governance-f1-federation"
+status = "blocked"
+title = "P2 multi-ledger federation runtime (F1 #1473)"
+linked_proposal = "CARGO-ALLOW-PROP-0007"
+linked_spec = "CARGO-ALLOW-SPEC-0007"
+linked_plan = "plans/federation/implementation-plan.md"
+blocker_reason = "Blocked pending F0 design merge: runtime ledger role classification, precedence hooks, and divergence receipts require accepted F0 artifacts on main."
+evidence_notes = [
+  "Implements CARGO-ALLOW-SPEC-0007 behavior contract per CARGO-ALLOW-ADR-0001.",
+  "Does not start until F0 PR merges to main.",
+  "Tracked in plans/federation/implementation-plan.md F1 slice.",
 ]
 
 [[work_item]]
