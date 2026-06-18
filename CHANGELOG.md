@@ -10,6 +10,13 @@ inventory without executing repository code.
 
 ### Added
 
+- Multi-ledger federation F0 design (#1473): register CARGO-ALLOW-PROP-0007,
+  CARGO-ALLOW-SPEC-0007, CARGO-ALLOW-ADR-0001, and CARGO-ALLOW-PLAN-0007.
+  Define canonical/mirror/imported ledger roles, lane ownership, deterministic
+  precedence, duplicate and dialect handling, drain windows, divergence
+  reporting, and receipt provenance with no silent merging. Mark
+  `portable-governance-f0-federation` done (design-only); queue F1 runtime
+  implementation blocked pending F0 merge. No release authorization.
 - Dogfood migrate profile state to `.allow/` (CARGO-ALLOW-PLAN-0004 C4): move
   spec-system profile config, artifact ledger, active goal, archive, and imports
   stub from legacy `policy/` profile paths and `.codex/goals/` to owned
