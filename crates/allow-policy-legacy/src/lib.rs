@@ -56,6 +56,7 @@ mod loader_source_exception_compat;
 mod loader_workflow_dependency_compat;
 mod loaders;
 mod migration_lane_descriptors;
+mod migration_closeout;
 mod parser_clippy_entries;
 mod parser_dependency_entries;
 mod parser_executable_entries;
@@ -106,6 +107,12 @@ pub use migration_lane_descriptors::{
     LegacyInputKind, LegacyLaneDescriptor, LifecyclePolicy, MigrationLane,
     all_legacy_lane_descriptors, descriptor_for_compat_kind_id, descriptor_for_legacy_filename,
     descriptor_for_legacy_policy_key, legacy_lane_descriptor, legacy_policy_filenames,
+};
+pub use migration_closeout::{
+    MigrationCloseoutBaselineDebt, MigrationDebtClass, baseline_debt_closeout_metadata,
+    migration_closeout_baseline_debt, migration_debt_classes, primary_legacy_descriptor,
+    BASELINE_DEBT_ITEM_KIND, MISSING_EVIDENCE_ITEM_KIND, NO_NEW_GATE_ITEM_KIND,
+    NO_NEW_GATE_SIGNAL,
 };
 
 const BASELINE_DEBT_DEFAULT_DAYS: i64 = 67;
