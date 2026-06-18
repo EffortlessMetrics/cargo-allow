@@ -1,7 +1,7 @@
 ---
 id: CARGO-ALLOW-CLOSEOUT-0013
 kind: closeout
-status: draft
+status: done
 owner: repo-infra
 created: 2026-06-18
 linked_plan: CARGO-ALLOW-PLAN-0004
@@ -30,16 +30,21 @@ abstraction with read-only discovery:
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| `cargo test -p allow-policy import_roots` | pass | I1 PR proof |
-| `cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest` | pass | I1 PR proof |
-| `cargo-allow check --profile spec-system --mode audit` | pass | `target/cargo-allow/spec-system.json` |
-| `cargo-allow check --mode no-new` | pass | `target/cargo-allow/check.receipt.json` |
+| `cargo test -p allow-policy import_roots` | pass | #1761 merge `3912baa6` |
+| `cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest` | pass | #1761 merge `3912baa6` |
+| `cargo-allow check --profile spec-system --mode audit` | pass | post-merge proof |
+| `cargo-allow check --mode no-new` | pass | post-merge proof |
 
 ## Non-Goals
 
 - Kiro, Spec Kit, generic `.spec`/`.rails`, and xtask adapters (I2+).
 - Full import mode (#1466) or external `ripr` migration.
 - Release authorization or support-tier promotion.
+
+## Remaining Work
+
+- **Done:** `portable-governance-i1-import` (generic import-root model; #1761).
+- **Ready:** `portable-governance-i2-import-adapters` (Kiro/Spec Kit/.rails/xtask adapters per allow-import-plan C8–C11).
 
 ## Claim Boundary
 
