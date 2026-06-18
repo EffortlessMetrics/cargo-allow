@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- Add shared migration metadata helpers in `allow-policy-legacy`
+  (`preserve_metadata`, `preserve_evidence`, `preserve_evidence_with_fallback`,
+  `extend_evidence_with_markers`, `map_lifecycle`, `map_baseline_debt_lifecycle`,
+  `map_occurrence_limit`, `classify_baseline_debt`) and route clippy, unsafe,
+  dependency-surface, panic-baseline, and non-rust file converters through them
+  without migration behavior change.
 - Add shared migration lane descriptor table in `allow-policy-legacy` covering all
   11 supported legacy compat kinds (`CompatKind`, `LegacyLaneDescriptor`,
   `LegacyInputKind`, `EvidencePolicy`, `LifecyclePolicy`, `DebtPolicy`,

@@ -1,14 +1,15 @@
 use allow_core::{
-    AllowEntry, FindingKind, Lifecycle, Selector, normalize_path, normalize_snippet,
-    stable_hash_hex,
+    AllowEntry, FindingKind, Selector, normalize_path, normalize_snippet, stable_hash_hex,
 };
 use std::path::PathBuf;
 
-use crate::converter_lifecycle_support::lifecycle_from_legacy_fields;
+use crate::converter_metadata_support::{
+    classify_baseline_debt, legacy_policy_links, map_baseline_debt_lifecycle, map_occurrence_limit,
+    preserve_evidence_with_fallback,
+};
 use crate::converter_panic_support::{
     cargo_allow_panic_family, no_panic_macro_name, normalize_selector_kind,
 };
-use crate::default_baseline_expires;
 use crate::types::LegacyNoPanicBaselineEntry;
 
 pub(crate) fn entry_from_no_panic_baseline_entry(rule: &LegacyNoPanicBaselineEntry) -> AllowEntry {
@@ -23,12 +24,16 @@ pub(crate) fn entry_from_no_panic_baseline_entry(rule: &LegacyNoPanicBaselineEnt
         path: Some(PathBuf::from(&path)),
         glob: None,
         owner: rule.owner.clone(),
-        classification: "baseline_debt".to_string(),
+        classification: classify_baseline_debt(),
         reason: rule.reason.clone(),
         evidence: no_panic_baseline_evidence(rule),
-        links: vec!["legacy-policy:no-panic-baseline".to_string()],
-        occurrence_limit: Some(rule.count),
-        lifecycle: no_panic_baseline_lifecycle(rule),
+        links: legacy_policy_links("no-panic-baseline"),
+        occurrence_limit: map_occurrence_limit(rule.count),
+        lifecycle: map_baseline_debt_lifecycle(
+            rule.created.clone(),
+            rule.review_after.clone(),
+            rule.expires.clone(),
+        ),
         selector: Selector {
             ast_kind: Some(ast_kind.clone()),
             callee: (ast_kind == "method_call").then(|| family.clone()),
@@ -42,25 +47,14 @@ pub(crate) fn entry_from_no_panic_baseline_entry(rule: &LegacyNoPanicBaselineEnt
 }
 
 fn no_panic_baseline_evidence(rule: &LegacyNoPanicBaselineEntry) -> Vec<String> {
-    if rule.evidence.is_empty() {
-        vec![
+    preserve_evidence_with_fallback(
+        &rule.evidence,
+        &[
             "legacy_policy:no-panic-baseline".to_string(),
             format!("legacy_selector_callee:{}", rule.selector_callee),
             format!("baseline_count:{}", rule.count),
-        ]
-    } else {
-        rule.evidence.clone()
-    }
-}
-
-fn no_panic_baseline_lifecycle(rule: &LegacyNoPanicBaselineEntry) -> Lifecycle {
-    let created = rule.created.clone();
-    let expires = match rule.expires.as_deref() {
-        Some("never") => Some(default_baseline_expires()),
-        None => None,
-        Some(value) => Some(value.to_string()),
-    };
-    lifecycle_from_legacy_fields(created, rule.review_after.clone(), expires)
+        ],
+    )
 }
 
 #[cfg(test)]

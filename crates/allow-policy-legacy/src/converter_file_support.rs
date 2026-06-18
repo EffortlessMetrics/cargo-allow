@@ -1,6 +1,6 @@
 use allow_core::{Finding, Lifecycle};
 
-use crate::converter_lifecycle_support::lifecycle_from_legacy_fields;
+use crate::converter_metadata_support::{map_lifecycle, preserve_evidence};
 use crate::types::LegacyNonRustRule;
 
 pub(crate) fn best_rule_index(rules: &[LegacyNonRustRule], finding: &Finding) -> Option<usize> {
@@ -13,7 +13,7 @@ pub(crate) fn best_rule_index(rules: &[LegacyNonRustRule], finding: &Finding) ->
 }
 
 pub(crate) fn lifecycle_from_rule(rule: &LegacyNonRustRule) -> Lifecycle {
-    lifecycle_from_legacy_fields(
+    map_lifecycle(
         rule.created.clone(),
         rule.review_after.clone(),
         rule.expires.clone(),
@@ -21,11 +21,7 @@ pub(crate) fn lifecycle_from_rule(rule: &LegacyNonRustRule) -> Lifecycle {
 }
 
 pub(crate) fn evidence_from_rule(rule: &LegacyNonRustRule) -> Vec<String> {
-    if rule.evidence.is_empty() {
-        vec![format!("legacy-policy:{}", rule.id)]
-    } else {
-        rule.evidence.clone()
-    }
+    preserve_evidence(&rule.evidence, &rule.id)
 }
 
 #[cfg(test)]
