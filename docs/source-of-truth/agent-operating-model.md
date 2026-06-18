@@ -107,6 +107,6 @@ proof_commands = [
 ```
 
 The current manifest is
-[`CARGO-ALLOW-GOAL-0001`](../../.codex/goals/active.toml). Its
+[`CARGO-ALLOW-GOAL-0003`](../../.allow/goals/active.toml). Its
 `linked_plan` value points to
 [`CARGO-ALLOW-PLAN-0001`](../../plans/spec-system/implementation-plan.md).

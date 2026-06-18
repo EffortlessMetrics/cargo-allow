@@ -1,7 +1,9 @@
 # Doc Artifact Ledger
 
-`policy/doc-artifacts.toml` is the machine-readable registry for the
-`spec-system` source-of-truth graph.
+`policy/allow.toml` remains the source-exception ledger. For this repository,
+the governed artifact registry lives at `.allow/artifacts/doc-artifacts.toml`
+(owned profile state). Legacy `policy/doc-artifacts.toml` remains a
+compatibility fallback for repositories that have not migrated.
 
 This ledger is part of the spec-system profile. cargo-allow reads it only when
 a caller uses `--profile spec-system`; default source-exception checks continue
