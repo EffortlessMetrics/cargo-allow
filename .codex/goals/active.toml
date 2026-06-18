@@ -226,8 +226,26 @@ evidence_notes = [
 
 [[work_item]]
 id = "adoption-substrate-pr-006"
-status = "ready"
+status = "done"
 title = "Add advisory occurrence-count ratcheting for migration debt"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
+proof_commands = [
+  "rtk cargo test -p allow-report receipt_advisory",
+  "rtk cargo test -p cargo-allow receipt_output",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed receipt `advisory` counters mirroring report trend totals for ratcheting metadata.",
+  "Does not add `--deny <status>` escalation or occurrence_headroom outcomes.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-007"
+status = "ready"
+title = "Add clippy-style --deny <status> escalation for check"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
@@ -235,6 +253,6 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Advisory counts and ratcheting metadata for baseline_debt visibility; does not auto-approve debt.",
-  "Next active adoption/cleanup lane after #1466 governance split.",
+  "Second half of #1474: promote individual advisory classes to blocking without new modes.",
+  "Deferred occurrence_headroom outcome remains #1472.",
 ]

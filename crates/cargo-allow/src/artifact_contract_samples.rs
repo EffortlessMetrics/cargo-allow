@@ -289,6 +289,7 @@ pub(crate) fn core_artifact_samples() -> Vec<ArtifactSample> {
             json: receipt_json,
             expected_command: "check",
             expected_top_level_keys: &[
+                "advisory",
                 "claim_boundary",
                 "command",
                 "counts",

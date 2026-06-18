@@ -8,7 +8,8 @@ use crate::json::{
 };
 use crate::{
     ARTIFACT_STATUS_ERROR, RECEIPT_COMMAND_CHECK, ReportContext, Summary, baseline_debt_count,
-    render_count_fields_with_policy_context, render_source_inventory_json,
+    render_advisory_count_fields, render_count_fields_with_policy_context,
+    render_source_inventory_json,
 };
 use allow_core::{Finding, MatchOutcome, json_escape};
 
@@ -55,6 +56,13 @@ pub fn render_error_receipt(diagnostic: &str, context: ReportContext<'_>) -> Str
         None,
         "    ",
     ));
+    out.push_str("  },\n");
+    out.push_str("  \"advisory\": {\n");
+    out.push_str(&render_advisory_count_fields(
+        &Summary::default(),
+        context,
+        "    ",
+    ));
     out.push_str("  }\n");
     out.push_str("}\n");
     out
@@ -87,6 +95,9 @@ fn render_receipt_json(
         context.weak_evidence_references,
         "    ",
     ));
+    out.push_str("  },\n");
+    out.push_str("  \"advisory\": {\n");
+    out.push_str(&render_advisory_count_fields(&summary, context, "    "));
     out.push_str("  }");
     append_evidence_repair_queues_json(&summary, context, &mut out);
     if let Some(source_inventory) =

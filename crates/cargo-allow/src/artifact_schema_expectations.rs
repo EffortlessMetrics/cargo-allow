@@ -241,6 +241,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
         (
             "receipt",
             &[
+                "advisory",
                 "claim_boundary",
                 "command",
                 "counts",
@@ -442,6 +443,7 @@ pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [
         (
             "receipt",
             &[
+                "advisory",
                 "claim_boundary",
                 "command",
                 "counts",

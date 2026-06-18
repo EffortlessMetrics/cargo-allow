@@ -157,7 +157,8 @@ pub(crate) use source_inventory::{
 pub(crate) use summary::{
     AUDIT_REVIEW_QUEUE_STATUSES, ReviewSignals, STATUS_COUNT_ORDER, audit_review_queue,
     baseline_debt_count, broken_evidence_link_count, policy_missing_evidence_count,
-    render_count_fields_with_policy_context, weak_evidence_reference_count,
+    render_advisory_count_fields, render_count_fields_with_policy_context,
+    weak_evidence_reference_count,
 };
 
 #[cfg(test)]

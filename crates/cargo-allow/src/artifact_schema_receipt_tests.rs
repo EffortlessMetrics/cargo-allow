@@ -35,6 +35,49 @@ fn receipt_schema_locks_check_command_producer() {
 }
 
 #[test]
+fn receipt_schema_requires_advisory_counts() {
+    let schema = parse_schema(
+        "receipt",
+        include_str!("../../../docs/schemas/receipt.schema.json"),
+    );
+
+    assert_required_fields(
+        "receipt",
+        &schema,
+        &[
+            "schema_version",
+            "schema_id",
+            "tool",
+            "command",
+            "status",
+            "failed",
+            "claim_boundary",
+            "scanner_limitations",
+            "inventory",
+            "counts",
+            "advisory",
+        ],
+    );
+    let advisory = required_schema_pointer("receipt", &schema, "/$defs/advisory");
+    assert_required_fields(
+        "receipt advisory",
+        advisory,
+        &[
+            "review_items",
+            "new",
+            "expired",
+            "review_due",
+            "stale",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "evidence_missing",
+            "baseline_debt",
+        ],
+    );
+}
+
+#[test]
 fn receipt_schema_allows_optional_policy_baseline_debt_count() {
     let schema = parse_schema(
         "receipt",
