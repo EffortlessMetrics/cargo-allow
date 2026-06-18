@@ -41,6 +41,7 @@ mod finding_generated_executable;
 mod finding_workflow;
 mod findings;
 mod io;
+mod legacy_sources;
 mod loader_compat;
 mod loader_executable_compat;
 mod loader_file_compat;
@@ -85,6 +86,10 @@ pub use findings::{
     generated_findings_from_gitattributes, generated_findings_from_gitattributes_text,
     network_findings_from_config, process_findings_from_config, workflow_findings_from_files,
     workflow_findings_from_sources,
+};
+pub use legacy_sources::{
+    LegacyPolicySource, legacy_compat_kind, legacy_policy_source_for_path,
+    list_legacy_policy_sources_in_dir,
 };
 pub use loaders::{
     load_clippy_exceptions_compat_config, load_dependency_surface_compat_config,

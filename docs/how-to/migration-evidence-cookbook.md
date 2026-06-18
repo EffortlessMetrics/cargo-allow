@@ -15,7 +15,20 @@ cargo-allow migrate \
   --summary-output target/cargo-allow/migrate-summary.json
 ```
 
-Important fields:
+Read `closeout` first. It answers the migration handoff questions without chat
+memory:
+
+- `closeout.preserved`: migrated allow entries, reviewed entries, and carried
+  evidence/link counts.
+- `closeout.baseline_debt.entries`: generated `baseline_debt` still needing
+  human review.
+- `closeout.evidence_debt`: broken, weak, or missing evidence still visible in
+  the migrated policy.
+- `closeout.next_queues`: phased worklist and no-new commands to run next.
+- `closeout.legacy_retirement`: which legacy source files were imported, whether
+  retirement is `ready` or `blocked`, and the blocker signals.
+
+Important summary fields:
 
 - `summary.entries_with_evidence`: migrated allow entries that have at least
   one evidence value.

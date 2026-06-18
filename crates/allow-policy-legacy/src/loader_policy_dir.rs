@@ -5,6 +5,10 @@ use std::path::Path;
 use crate::loader_compat::load_non_rust_compat_config;
 use crate::loaders::load_legacy_or_canonical;
 
+pub(crate) fn legacy_policy_file_names() -> &'static [&'static str] {
+    LEGACY_POLICY_FILES
+}
+
 const LEGACY_POLICY_FILES: &[&str] = &[
     "non-rust-allowlist.toml",
     "generated-allowlist.toml",

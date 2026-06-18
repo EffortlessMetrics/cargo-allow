@@ -24,6 +24,7 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
             "input",
             "output",
             "summary",
+            "closeout",
             "notes",
         ],
     );
@@ -273,6 +274,25 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
             .and_then(Value::as_str),
         Some("string"),
         "migrate evidence repair queue unsafe_command should be an optional string"
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/closeout/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/closeout"),
+        "migrate closeout should use the closeout definition"
+    );
+    let closeout = required_schema_pointer("migrate", &schema, "/$defs/closeout");
+    assert_required_fields(
+        "migrate closeout",
+        closeout,
+        &[
+            "preserved",
+            "baseline_debt",
+            "evidence_debt",
+            "next_queues",
+            "legacy_retirement",
+        ],
     );
     assert_eq!(
         schema

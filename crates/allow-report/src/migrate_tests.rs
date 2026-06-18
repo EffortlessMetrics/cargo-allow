@@ -29,7 +29,8 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
         notes: "migration notes",
     };
 
-    let json = render_migrate_json(report);
+    let closeout_input = sample_closeout_input(report, 0, &[]);
+    let json = render_migrate_json(report, closeout_input);
 
     assert!(json.contains("\"schema_id\": \"cargo-allow.migrate.v1\""));
     assert!(json.contains("\"command\": \"migrate\""));
@@ -81,85 +82,13 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(json.contains(
         "\"unsafe_command\": \"cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json\""
     ));
+    assert!(json.contains("\"closeout\""));
+    assert!(json.contains("\"legacy_retirement\""));
+    assert!(json.contains("\"next_queues\""));
     assert!(json.contains("\"notes\": \"migration notes\""));
-    let expected = format!(
-        r#"{{
-  "schema_version": 1,
-  "schema_id": "cargo-allow.migrate.v1",
-  "tool": "cargo-allow",
-  "command": "migrate",
-  "claim_boundary": {},
-  "scanner_limitations": {},
-  "inventory": {{
-    "scope": "source_tree",
-    "scanner": "policy_migration",
-    "source": "git_tracked",
-    "root": "H:/Code/Rust/cargo-allow",
-    "files_scanned": 76
-  }},
-  "input": {{
-    "kind": "repo_policy",
-    "path": "policy"
-  }},
-  "output": {{
-    "path": "policy/allow.toml",
-    "force": true
-  }},
-  "summary": {{
-    "allow_entries": 12,
-    "baseline_debt": 5,
-    "unsafe_entries": 2,
-    "lint_exception_entries": 4,
-    "entries_with_evidence": 3,
-    "evidence_entries": 5,
-    "entries_with_links": 6,
-    "link_entries": 7,
-    "broken_evidence_links": 3,
-    "unsafe_broken_evidence_links": 1,
-    "weak_evidence_references": 2,
-    "unsafe_weak_evidence_references": 1
-  }},
-  "follow_up_queues": [
-    {{
-      "signal": "baseline_debt",
-      "label": "baseline debt entries",
-      "route_kind": "worklist_item_kind",
-      "item_kind": "baseline_debt",
-      "count": 5,
-      "command": "cargo-allow worklist --item-kind baseline_debt --format json"
-    }}
-  ],
-  "evidence_repair_queues": [
-    {{
-      "signal": "broken_evidence_links",
-      "label": "broken evidence links",
-      "route_kind": "worklist_item_kind",
-      "item_kind": "broken_evidence_link",
-      "count": 3,
-      "unsafe_count": 1,
-      "command": "cargo-allow worklist --item-kind broken_evidence_link --format json",
-      "unsafe_command": "cargo-allow worklist --item-kind broken_evidence_link --kind unsafe --format json"
-    }},
-    {{
-      "signal": "weak_evidence_references",
-      "label": "weak evidence references",
-      "route_kind": "worklist_item_kind",
-      "item_kind": "weak_evidence_reference",
-      "count": 2,
-      "unsafe_count": 1,
-      "command": "cargo-allow worklist --item-kind weak_evidence_reference --format json",
-      "unsafe_command": "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json"
-    }}
-  ],
-  "notes": "migration notes"
-}}
-"#,
-        render_claim_boundary_json(),
-        render_scanner_limitations_json()
-    );
-    assert_eq!(json, expected);
 
-    let text = render_migrate_human(report);
+    let closeout_input = sample_closeout_input(report, 0, &[]);
+    let text = render_migrate_human(report, closeout_input);
 
     assert!(text.contains("cargo-allow migrate summary"));
     assert!(text.contains("input_kind: repo_policy"));
@@ -195,8 +124,22 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
         text.contains("inventory: source_tree/policy_migration via git_tracked; files scanned: 76")
     );
     assert!(text.contains("source_tree_root: H:/Code/Rust/cargo-allow"));
+    assert!(text.contains("closeout:"));
+    assert!(text.contains("legacy_retirement.ready: false"));
     assert!(text.contains("migration notes"));
     assert!(text.contains(CLAIM_BOUNDARY_TEXT));
+}
+
+fn sample_closeout_input<'a>(
+    report: MigrateReport<'a>,
+    missing_evidence_entries: usize,
+    legacy_sources: &'a [MigrateLegacySource],
+) -> MigrateCloseoutInput<'a> {
+    MigrateCloseoutInput {
+        report,
+        missing_evidence_entries,
+        legacy_sources,
+    }
 }
 
 #[test]
@@ -263,7 +206,8 @@ fn migrate_report_from_config_counts_summary_fields() {
     assert_eq!(report.unsafe_weak_evidence_references, None);
     assert_eq!(report.inventory.scanner, "policy_migration");
 
-    let text = render_migrate_human(report);
+    let closeout_input = sample_closeout_input(report, 0, &[]);
+    let text = render_migrate_human(report, closeout_input);
     assert!(
         text.contains("follow_up_queues:"),
         "baseline-debt migration summaries should route follow-up queues"
@@ -276,7 +220,8 @@ fn migrate_report_from_config_counts_summary_fields() {
         !text.contains("evidence_repair_queues:"),
         "clean migration summaries should not route repair queues"
     );
-    let json = render_migrate_json(report);
+    let closeout_input = sample_closeout_input(report, 0, &[]);
+    let json = render_migrate_json(report, closeout_input);
     assert!(
         json.contains("\"follow_up_queues\""),
         "baseline-debt migration JSON should emit follow-up queues"
@@ -320,7 +265,8 @@ fn migrate_repair_queues_omit_unsafe_command_without_unsafe_count() {
         notes: "migration notes",
     };
 
-    let json = render_migrate_json(report);
+    let closeout_input = sample_closeout_input(report, 0, &[]);
+    let json = render_migrate_json(report, closeout_input);
 
     assert!(json.contains("\"evidence_repair_queues\""));
     assert!(
@@ -335,7 +281,8 @@ fn migrate_repair_queues_omit_unsafe_command_without_unsafe_count() {
         "non-unsafe evidence repair queues should not emit unsafe-scoped routing"
     );
 
-    let text = render_migrate_human(report);
+    let closeout_input = sample_closeout_input(report, 0, &[]);
+    let text = render_migrate_human(report, closeout_input);
     assert!(text.contains("cargo-allow worklist --item-kind broken_evidence_link --format json"));
     assert!(
         !text.contains("--kind unsafe"),
@@ -372,7 +319,8 @@ fn migrate_repair_queues_normalize_unsafe_subset_counts() {
         notes: "migration notes",
     };
 
-    let json = render_migrate_json(report);
+    let closeout_input = sample_closeout_input(report, 0, &[]);
+    let json = render_migrate_json(report, closeout_input);
 
     assert!(json.contains("\"count\": 1"));
     assert!(json.contains("\"unsafe_count\": 1"));

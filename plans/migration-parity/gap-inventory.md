@@ -21,7 +21,7 @@ Parity status values:
 | process | Fixture matrix covers covered_by preservation and process compat loader | partial | repo-infra | `tests/fixtures/migration/process.toml` | B5 |
 | network | Fixture matrix covers evidence preservation and network compat loader | partial | repo-infra | `tests/fixtures/migration/network.toml` | B5 |
 | no-panic allowlist | Fixture matrix covers structural panic migration and no-panic allowlist compat loader | partial | repo-infra | `tests/fixtures/migration/no-panic-allowlist.toml` | B5 |
-| panic baseline | Fixture matrix covers B2 behaviors: evidence preservation, visible `baseline_debt` when evidence absent, `occurrence_limit` from legacy `count`, lifecycle dates | partial | repo-infra | `tests/fixtures/migration/panic-baseline*.toml`; #1691 | B5 |
+| panic baseline | Fixture matrix covers B2 behaviors; migrate closeout routes baseline debt and weak generated markers through `closeout.next_queues` | partial | repo-infra | `tests/fixtures/migration/panic-baseline*.toml`; `migrate_closeout_summary_tests.rs`; #1691 | B5 |
 | lint-exception | Fixture matrix covers reviewed and minimal `baseline_debt` clippy paths plus compat loader | partial | repo-infra | `tests/fixtures/migration/lint-exception*.toml` | B5 |
 | unsafe | Fixture matrix covers reviewed evidence and missing-evidence TODO debt plus unsafe compat loader | partial | repo-infra | `tests/fixtures/migration/unsafe*.toml` | B5 |
 | doc/spec-system | Spec-system profile is separate from legacy xtask compat lanes; governed by CARGO-ALLOW-SPEC-0001 closeout | partial | repo-infra | CARGO-ALLOW-CLOSEOUT-0001; `policy/doc-artifacts.toml` | out of B3 scope |

@@ -11,6 +11,7 @@ Actionable inventory for the `0.2.0` migration parity lane
 | Goal registration (PR 1 / #1687) | done | `.codex/goals/active.toml`, `policy/doc-artifacts.toml` |
 | B2 — no-panic-baseline evidence/lifecycle slice | done | #1691 (merge `1cd408e`) |
 | B3 — migration fixture matrix | done | #1693 (merge `cd0ab7b`) |
+| B4 — migration closeout routing | in progress | this branch |
 
 ## Surfaces
 
@@ -90,15 +91,18 @@ Active goal work item: `migration-parity-b3`.
 
 Claim boundary: fixture-backed observed behavior only.
 
-### PR B4 — Add/refresh migration closeout guide (next)
+### PR B4 — Add/refresh migration closeout guide (in progress)
 
 Purpose: make `cargo-allow.migrate.v1` summaries actionable without chat memory.
 
-Files: `docs/how-to/migration-evidence-cookbook.md`, closeout routing docs.
+Status: in progress on `migration/closeout-worklist-routing`.
+
+Files: `docs/how-to/migration-evidence-cookbook.md`, `docs/schemas/migrate.schema.json`,
+`crates/allow-report/src/migrate_closeout.rs`.
 
 Claim boundary: closeout routing metadata only.
 
-### PR B5 — Add side-by-side dogfood receipt on cargo-allow
+### PR B5 — Add side-by-side dogfood receipt on cargo-allow (next)
 
 Purpose: run migration parity proof against this repository's own legacy surfaces.
 

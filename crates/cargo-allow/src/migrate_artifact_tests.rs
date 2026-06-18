@@ -26,6 +26,8 @@ fn render_migrate_summary_json_records_policy_migration_context() {
         inventory_files: Some(53),
         input_kind: "repo_policy".to_string(),
         input_path: "policy".to_string(),
+        legacy_source_files: Vec::new(),
+        legacy_compat_kinds: Vec::new(),
     };
 
     let json = render_migrate_summary_json(&cfg, &context, Path::new("policy/allow.toml"), true);
@@ -141,6 +143,10 @@ fn render_migrate_summary_json_records_policy_migration_context() {
             .and_then(Value::as_u64),
         Some(1),
         "migrate unsafe weak evidence references"
+    );
+    assert!(
+        value.pointer("/closeout/preserved/allow_entries").is_some(),
+        "migrate JSON should emit closeout preserved counts"
     );
     let follow_up_queues = value
         .pointer("/follow_up_queues")
