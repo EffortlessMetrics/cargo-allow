@@ -25,6 +25,10 @@ parity on the path to the `0.2.0` milestone claim:
 cargo-allow can replace bespoke AST/TOML allowlist xtasks.
 ```
 
+After B1–B6 groundwork, the active execution lane shifts to adoption-substrate
+modularization (PRs 2–6). Release automation for `0.1.10` stays dormant until
+explicit authorization.
+
 ## Linked Artifacts
 
 - Proposal:
@@ -40,6 +44,8 @@ cargo-allow can replace bespoke AST/TOML allowlist xtasks.
 - PR queue and gap inventory:
   [pr-queue.md](pr-queue.md),
   [gap-inventory.md](gap-inventory.md)
+- Closeout:
+  [CARGO-ALLOW-CLOSEOUT-0002](closeouts/incremental-slices.md)
 
 ## Non-Goals
 
@@ -47,6 +53,7 @@ cargo-allow can replace bespoke AST/TOML allowlist xtasks.
 - Do not broaden scanner identity beyond current source-syntax boundaries.
 - Do not publish `0.2.0` or cut patch releases without explicit authorization.
 - Do not execute proof providers from cargo-allow's own scan.
+- Do not activate `0.1.10` release cut during adoption-substrate work.
 
 ## Claim Boundary
 
@@ -81,9 +88,18 @@ slices rather than inventing migration from scratch.
 | PR 1 — register migration parity goal | done | #1687; archived GOAL-0001 |
 | B1 — gap inventory | done | [gap-inventory.md](gap-inventory.md) (B1r) |
 | B2 — no-panic-baseline evidence/lifecycle | done | #1691 (`1cd408e`) |
-| B3 — migration fixture matrix | **next** | active work item `migration-parity-b3` |
+| B3 — migration fixture matrix | done | #1693 (`cd0ab7b`) |
+| B4 — migration closeout routing | done | #1695 (`64832c5`) |
+| B5 — panic-baseline dogfood receipt | done | #1697 (`26a6873`) |
+| B6 — import/parity disposition | done | #1470 closed (#1699, #1700); #1466 split → adoption-substrate-pr-005 |
+| D2 — structural identity refactor pairs | done | #1701 (`2165848`) |
+| Release hardening (#1703–#1705) | done, dormant | not active release lane |
+| #1478 spec-system hygiene | closed | #1706 |
+| **Adoption substrate PR 2** | **next** | `adoption-substrate-pr-002` ready |
+| Adoption substrate PRs 3–6 | blocked | sequenced after PR 2 |
+| B7 — 0.2.0 migration parity notes | pending | after adoption substrate |
 
-## PR Sequence
+## PR Sequence (completed B1–B6)
 
 ### PR 1: Register migration parity goal (done, #1687)
 
@@ -93,14 +109,9 @@ items.
 
 Non-goals: no scanner or compat behavior changes.
 
-Files: `.codex/goals/`, `docs/proposals/`, `docs/specs/`, `plans/migration-parity/`,
-`policy/doc-artifacts.toml`.
-
 Validation: spec-system structural checks plus the validation baseline.
 
 Claim boundary: registers execution state and artifact links only.
-
-Rollback: restore prior active goal manifest and doc-artifact ledger entries.
 
 ### PR B2: Strengthen side-by-side evidence for no-panic-baseline (done, #1691)
 
@@ -109,37 +120,86 @@ evidence on `no-panic-baseline` import, keep visible `baseline_debt` when
 evidence is absent, and fix lifecycle handling when `review_after` is set without
 `expires`.
 
-Non-goals: no new compat kinds and no release cut.
-
-Validation: `allow-policy-legacy` no-panic tests plus the validation baseline.
+Status: done (merge `1cd408e`).
 
 Claim boundary: documents observed behavior for the panic-baseline import slice;
 does not claim full xtask retirement or full panic-lane parity.
 
-Rollback: revert the characterization slice.
-
-### PR B3: Add fixture matrix for all supported legacy lanes (next)
+### PR B3: Add fixture matrix for all supported legacy lanes (done, #1693)
 
 Purpose: add `tests/fixtures/migration/` characterization across compat kinds
 listed in [pr-queue.md](pr-queue.md).
 
-Non-goals: no new compat kinds; no `0.2.0` release cut.
-
-Validation: targeted migration fixture tests plus the validation baseline.
+Status: done (merge `cd0ab7b`).
 
 Claim boundary: fixture-backed observed migration output only.
 
-Rollback: revert the fixture matrix slice.
-
-### PR B4: Improve migration closeout queue routing
+### PR B4: Improve migration closeout queue routing (done, #1695)
 
 Purpose: make saved `cargo-allow.migrate.v1` summaries easier to turn into owned
 closeout work items without chat memory.
 
-Non-goals: no policy broadening and no auto-approval of baseline debt.
-
-Validation: migration summary tests plus the validation baseline.
+Status: done (merge `64832c5`).
 
 Claim boundary: improves closeout routing metadata only.
 
-Rollback: revert the routing slice.
+### PR B5: Add side-by-side dogfood receipt (done, #1697)
+
+Purpose: run migration parity proof against this repository's own legacy surfaces.
+
+Status: done (merge `26a6873`).
+
+Claim boundary: dogfood evidence for this repo only.
+
+### PR B6: Import/parity issue disposition (done)
+
+Purpose: close #1470 foreign-dialect discovery; record #1466 umbrella split for
+adoption lane.
+
+Status: done — #1470 closed; #1466 deferred to `adoption-substrate-pr-005`.
+
+Claim boundary: issue disposition only.
+
+## Adoption Substrate Sequence (active)
+
+### PR 2: Migration lane descriptors (next)
+
+Purpose: modular descriptor surface for compat kinds without behavior change.
+
+Active work item: `adoption-substrate-pr-002`.
+
+### PR 3: Evidence/lifecycle helpers
+
+Purpose: refactor-preserving extraction of shared import metadata paths.
+
+Blocked until PR 2 lands.
+
+### PR 4: Closeout queue normalization
+
+Purpose: consistent phased `next_queues` across compat kinds.
+
+Blocked until PR 3 lands.
+
+### PR 5: Split #1466 governance
+
+Purpose: split open umbrella into owned sub-issues with deferral boundaries.
+
+Blocked until PR 4 lands. Links CARGO-ALLOW-SPEC-0004 / allow-import plan.
+
+### PR 6: Advisory occurrence counts
+
+Purpose: advisory ratcheting metadata for baseline debt visibility.
+
+Blocked until PR 5 lands.
+
+### PR B7: Stage 0.2.0 migration parity notes (pending)
+
+Purpose: document milestone claim boundary before any `0.2.0` cut authorization.
+
+Pending after adoption substrate PRs 2–6.
+
+## Dormant Release Lane
+
+`0.1.10` release automation groundwork (#1703–#1705) is complete on `main`.
+Cut deferred per [docs/release/0.1.10-readiness.md](../../docs/release/0.1.10-readiness.md).
+See [plans/release/0.1.10-implementation-plan.md](../release/0.1.10-implementation-plan.md).

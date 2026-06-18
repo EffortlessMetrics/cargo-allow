@@ -13,6 +13,15 @@ Actionable inventory for the `0.2.0` migration parity lane
 | B3 — migration fixture matrix | done | #1693 (merge `cd0ab7b`) |
 | B4 — migration closeout routing | done | #1695 (merge `64832c5`); closeout goal #1696 (merge `e9b4f9f`) |
 | B5 — panic-baseline dogfood receipt | done | #1697 (merge `26a6873`); [cargo-allow-panic-baseline.md](../../docs/dogfood/cargo-allow-panic-baseline.md) |
+| B6 — import/parity issue disposition | done | #1470 closed (#1699/`53ea19aa`, #1700); #1466 split deferred to adoption-substrate-pr-005 |
+| D2 — structural identity refactor-pair matrix | done | #1701 (merge `2165848`); `tests/fixtures/structural-identity/` |
+| Release hardening E1 (preflight) | done, dormant | #1703; not an active release lane |
+| Release hardening E1b (dry-run + registry visibility) | done, dormant | #1704; not an active release lane |
+| Release hardening E1c (install-smoke) | done, dormant | #1705; not an active release lane |
+| #1478 — spec-system profile hygiene | closed | #1706; [plans/spec-system/closeout.md](../spec-system/closeout.md) |
+
+**Active lane:** adoption-substrate PRs 2–6 in [`.codex/goals/active.toml`](../../.codex/goals/active.toml).
+**Dormant:** `0.1.10` release cut per [0.1.10-readiness.md](../../docs/release/0.1.10-readiness.md).
 
 ## Surfaces
 
@@ -119,26 +128,53 @@ Active goal work item: `migration-parity-b5`.
 Claim boundary: dogfood evidence for this repo only; one characterized
 panic-baseline slice.
 
-### PR B6 — Close or split remaining import/parity issues
+### PR B6 — Close or split remaining import/parity issues (done)
 
 Purpose: resolve or explicitly defer tracked adoption blockers:
 
-- [#1466](https://github.com/EffortlessMetrics/cargo-allow/issues/1466) —
-  bespoke semantic-selector ledger import/parity
 - [#1470](https://github.com/EffortlessMetrics/cargo-allow/issues/1470) —
-  foreign-dialect `policy/allow.toml` discovery — **closed in #1699** (merge
-  `53ea19aa`); import-mode parity (#1466) remains open
+  foreign-dialect `policy/allow.toml` discovery — **closed** in #1699 (merge
+  `53ea19aa`) and #1700
+- [#1466](https://github.com/EffortlessMetrics/cargo-allow/issues/1466) —
+  bespoke semantic-selector ledger import/parity — **open umbrella**; governance
+  split tracked in `adoption-substrate-pr-005`
 
-Non-goals: no silent broadening.
+Status: done for #1470 disposition; #1466 split deferred to adoption lane.
 
-Claim boundary: issue disposition recorded in plan/closeout.
+Non-goals: no silent broadening; no import implementation in disposition PR.
+
+Claim boundary: issue disposition recorded in plan/closeout/gap-inventory.
 
 ### PR B7 — Stage 0.2.0 migration parity notes
 
 Purpose: document milestone claim boundary before any `0.2.0` cut authorization.
+
+Status: pending — after adoption-substrate PRs 2–6.
 
 Non-goals: no version bump without explicit authorization.
 
 Files: `docs/release/` notes, CHANGELOG section, support-tier review.
 
 Claim boundary: release notes only; not a parity proof.
+
+## Adoption Substrate Queue (active)
+
+Internal coherence and modularization on the migration path. See
+[gap-inventory.md](gap-inventory.md) adoption section and
+`.codex/goals/active.toml` work items `adoption-substrate-pr-002` through
+`adoption-substrate-pr-006`.
+
+| PR | Work item | Status |
+| --- | --- | --- |
+| PR 2 | migration lane descriptors | ready |
+| PR 3 | evidence/lifecycle helpers | blocked (after PR 2) |
+| PR 4 | closeout queue normalization | blocked (after PR 3) |
+| PR 5 | split #1466 governance | blocked (after PR 4) |
+| PR 6 | advisory occurrence counts | blocked (after PR 5) |
+
+## Dormant Release Lane (0.1.10)
+
+Release automation groundwork landed on `main` (#1703–#1705). Cut is **deferred**
+pending adoption/cleanup lane; operator OIDC/dry-run steps are not blocking
+normal PR work. See [0.1.10-readiness.md](../../docs/release/0.1.10-readiness.md)
+and [0.1.10-implementation-plan.md](../release/0.1.10-implementation-plan.md).
