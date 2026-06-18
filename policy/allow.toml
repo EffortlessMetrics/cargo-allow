@@ -3304,7 +3304,7 @@ glob = "tests/fixtures/migration/*.toml"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = "tests/fixtures/migration/*.toml"
+symbol = "tests/fixtures/migration/"
 target_fingerprint = "toml"
 line_hint = 1
 glob = "tests/fixtures/migration/*.toml"
