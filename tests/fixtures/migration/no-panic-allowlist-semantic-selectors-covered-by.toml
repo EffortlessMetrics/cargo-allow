@@ -1,0 +1,19 @@
+schema_version = 1
+policy = "no-panic-allowlist"
+
+[[allow]]
+id = "fixture-semantic-covered"
+path = "src/lib.rs"
+family = "unwrap"
+owner = "parser"
+classification = "reviewed_panic_exception"
+reason = "Semantic selector with legacy covered_by governance metadata."
+covered_by = "test:semantic_selector_covered_by_round_trip"
+created = "2026-06-18"
+review_after = "2026-12-18"
+
+[allow.selector]
+kind = "method_call"
+callee = "unwrap"
+container = "load"
+receiver = "optional_value"

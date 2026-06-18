@@ -137,6 +137,8 @@ mod evidence_matrix_tests;
 #[cfg(test)]
 mod generated_executable_tests;
 #[cfg(test)]
+mod import_parity_metadata_acceptance_tests;
+#[cfg(test)]
 mod lint_unsafe_tests;
 #[cfg(test)]
 mod metadata_matrix_tests;
