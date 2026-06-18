@@ -4149,3 +4149,26 @@ line_hint = 8
 [allow.last_seen]
 line = 8
 column = 9
+
+[[allow]]
+id = "allow-0247"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/migration-parity/closeouts/adoption-substrate-lane.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records adoption-substrate 10-PR cleanup queue closeout without claiming 0.2.0 milestone parity or import-mode implementation."
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.codex/goals/active.toml"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/migration-parity/closeouts/adoption-substrate-lane.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/migration-parity/closeouts/adoption-substrate-lane.md"
+
+[allow.last_seen]
+line = 1
+column = 1

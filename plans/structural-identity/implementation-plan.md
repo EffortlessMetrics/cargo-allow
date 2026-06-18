@@ -37,7 +37,7 @@ rewrites.
 | --- | --- | --- |
 | D1 — gap inventory | done | [gap-inventory.md](gap-inventory.md), [docs/identity.md](../../docs/identity.md) |
 | D2 — refactor-pair fixture matrix | done | #1701 (merge `2165848`); `tests/fixtures/structural-identity/`, `allow-rust` `structural_identity` tests, policy allow-0215..0234 |
-| D3 — container identity in nested modules | done | `rust/structural-identity-container-d3`; module-qualifies unqualified containers; fixture `container_same_name_sibling_modules` |
+| D3 — container identity in nested modules | done | #1724 (merge `ffc4a47`); module-qualifies unqualified containers; fixture `container_same_name_sibling_modules` |
 
 ## Validation Baseline
 

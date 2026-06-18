@@ -7,7 +7,7 @@ characterization tests in #1701 (merge `2165848`).
 
 | Finding surface | Gap | Status | Fixture needed | PR |
 | --- | --- | --- | --- | --- |
-| unsafe | container ambiguity in nested modules | done | refactor pair + sibling modules | D3 (#TBD) |
+| unsafe | container ambiguity in nested modules | done | refactor pair + sibling modules | D3 (#1724, `ffc4a47`) |
 | panic method calls | receiver fingerprint edge cases | partial | method call matrix | D2 (done) |
 | panic macros | macro_name visibility | partial | macro invocation fixtures | D2 (done) |
 | index/slice | target_fingerprint precision | partial | index expr matrix | D2 (done) |

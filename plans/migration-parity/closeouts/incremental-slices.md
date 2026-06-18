@@ -82,9 +82,9 @@ or the `0.2.0` milestone.
 
 ## Remaining Work
 
-- Adoption-substrate PRs 2–6 (modularization, closeout normalization, #1466
-  split, advisory counts) — active lane in `.codex/goals/active.toml`.
-- B7 `0.2.0` migration parity release notes — after adoption substrate.
+- Structural identity D4–D7 (`adoption-substrate-pr-011`–`014`); see
+  CARGO-ALLOW-CLOSEOUT-0003.
+- B7 `0.2.0` migration parity release notes — after remaining parity proof.
 - Per-lane `partial` rows in gap inventory — side-by-side dogfood and full lane
   acceptance still open.
 
