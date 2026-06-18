@@ -15,6 +15,7 @@
     "input",
     "output",
     "summary",
+    "closeout",
     "notes"
   ],
   "properties": {
@@ -158,11 +159,127 @@
         "$ref": "#/$defs/follow_up_queue"
       }
     },
+    "closeout": {
+      "$ref": "#/$defs/closeout"
+    },
     "notes": {
       "type": "string"
     }
   },
   "$defs": {
+    "closeout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preserved",
+        "baseline_debt",
+        "evidence_debt",
+        "next_queues",
+        "legacy_retirement"
+      ],
+      "properties": {
+        "preserved": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "allow_entries",
+            "reviewed_entries",
+            "entries_with_evidence",
+            "evidence_entries",
+            "entries_with_links",
+            "link_entries"
+          ],
+          "properties": {
+            "allow_entries": { "type": "integer", "minimum": 0 },
+            "reviewed_entries": { "type": "integer", "minimum": 0 },
+            "entries_with_evidence": { "type": "integer", "minimum": 0 },
+            "evidence_entries": { "type": "integer", "minimum": 0 },
+            "entries_with_links": { "type": "integer", "minimum": 0 },
+            "link_entries": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "baseline_debt": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["entries"],
+          "properties": {
+            "entries": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "evidence_debt": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "broken_evidence_links": { "type": "integer", "minimum": 0 },
+            "unsafe_broken_evidence_links": { "type": "integer", "minimum": 0 },
+            "weak_evidence_references": { "type": "integer", "minimum": 0 },
+            "unsafe_weak_evidence_references": { "type": "integer", "minimum": 0 },
+            "missing_evidence_entries": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "next_queues": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/closeout_queue" }
+        },
+        "legacy_retirement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ready", "blockers", "sources"],
+          "properties": {
+            "ready": { "type": "boolean" },
+            "blockers": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "baseline_debt",
+                  "broken_evidence_link",
+                  "missing_evidence",
+                  "weak_evidence_reference"
+                ]
+              }
+            },
+            "sources": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/legacy_retirement_source" }
+            }
+          }
+        }
+      }
+    },
+    "closeout_queue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase",
+        "signal",
+        "route_kind",
+        "item_kind",
+        "count",
+        "command"
+      ],
+      "properties": {
+        "phase": { "type": "integer", "minimum": 1 },
+        "signal": { "type": "string" },
+        "label": { "type": "string" },
+        "route_kind": {
+          "enum": ["worklist_item_kind", "check_mode"]
+        },
+        "item_kind": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 },
+        "command": { "type": "string" },
+        "unsafe_command": { "type": "string" }
+      }
+    },
+    "legacy_retirement_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file_name", "compat_kind", "status"],
+      "properties": {
+        "file_name": { "type": "string" },
+        "compat_kind": { "type": "string" },
+        "status": { "enum": ["ready", "blocked"] }
+      }
+    },
     "claim_boundary_flag": {
       "type": "string",
       "enum": [

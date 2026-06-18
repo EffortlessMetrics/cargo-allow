@@ -13,4 +13,6 @@ pub(super) struct MigrateContext {
     pub(super) inventory_files: Option<usize>,
     pub(super) input_kind: String,
     pub(super) input_path: String,
+    pub(super) legacy_source_files: Vec<String>,
+    pub(super) legacy_compat_kinds: Vec<&'static str>,
 }

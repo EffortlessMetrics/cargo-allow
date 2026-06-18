@@ -86,6 +86,8 @@ pub(crate) fn sample_migrate_json_for_contract_test() -> String {
             inventory_files: None,
             input_kind: "from".to_string(),
             input_path: "policy/legacy.toml".to_string(),
+            legacy_source_files: Vec::new(),
+            legacy_compat_kinds: Vec::new(),
         },
         Path::new("policy/allow.toml"),
         false,
@@ -95,6 +97,9 @@ pub(crate) fn sample_migrate_json_for_contract_test() -> String {
 #[cfg(test)]
 #[path = "migrate_artifact_tests.rs"]
 mod artifact_tests;
+#[cfg(test)]
+#[path = "migrate_closeout_summary_tests.rs"]
+mod migrate_closeout_summary_tests;
 #[cfg(test)]
 #[path = "migrate_tests.rs"]
 mod tests;

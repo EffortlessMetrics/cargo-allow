@@ -27,6 +27,9 @@ inventory without executing repository code.
 
 ### Migration
 
+- Add `closeout` routing to `cargo-allow.migrate.v1` summaries: preserved
+  counts, baseline-debt and evidence-debt signals, phased `next_queues`, and
+  legacy-file retirement readiness for imported compat sources.
 - Preserve optional owner, reason, lifecycle, and legacy `evidence`/`covered_by`
   fields when migrating `no-panic-baseline` entries; entries without evidence
   still emit visible `baseline_debt` traceability markers and keep

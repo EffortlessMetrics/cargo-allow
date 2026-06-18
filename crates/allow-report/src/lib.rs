@@ -50,6 +50,7 @@ mod list;
 #[cfg(test)]
 mod list_tests;
 mod migrate;
+mod migrate_closeout;
 #[cfg(test)]
 mod migrate_tests;
 mod non_rust;
@@ -126,6 +127,9 @@ pub use json::{
 };
 pub use list::{render_list_human, render_list_json};
 pub use migrate::{render_migrate_human, render_migrate_json};
+pub use migrate_closeout::{
+    MigrateCloseoutInput, MigrateLegacySource, migrate_closeout_from_input,
+};
 pub use path_text::source_tree_path_text;
 pub use propose::{render_propose_human, render_propose_json};
 pub use prune::{render_prune_human, render_prune_human_with_context, render_prune_json};

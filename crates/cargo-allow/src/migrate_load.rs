@@ -21,6 +21,8 @@ pub(super) fn load_single_file_migration_config(
             inventory_files: None,
             input_kind: "from".to_string(),
             input_path: normalize_path(from),
+            legacy_source_files: legacy_source_file_names(from),
+            legacy_compat_kinds: legacy_source_compat_kinds(from),
         },
     })
 }
@@ -42,6 +44,7 @@ pub(super) fn load_repo_policy_migration_config(
         &repo_policy,
         &findings,
     )?;
+    let legacy_sources = allow_policy_legacy::list_legacy_policy_sources_in_dir(&repo_policy);
     Ok(MigrationLoad {
         cfg,
         context: MigrateContext {
@@ -50,6 +53,14 @@ pub(super) fn load_repo_policy_migration_config(
             inventory_files: Some(files_scanned),
             input_kind: "repo_policy".to_string(),
             input_path: normalize_path(&repo_policy),
+            legacy_source_files: legacy_sources
+                .iter()
+                .map(|source| source.file_name.clone())
+                .collect(),
+            legacy_compat_kinds: legacy_sources
+                .iter()
+                .map(|source| source.compat_kind)
+                .collect(),
         },
     })
 }
@@ -81,6 +92,18 @@ fn repo_policy_source_tree_root(
             });
     }
     resolve_source_tree_root(None, cwd)
+}
+
+fn legacy_source_file_names(from: &Path) -> Vec<String> {
+    allow_policy_legacy::legacy_policy_source_for_path(from)
+        .map(|source| vec![source.file_name])
+        .unwrap_or_default()
+}
+
+fn legacy_source_compat_kinds(from: &Path) -> Vec<&'static str> {
+    allow_policy_legacy::legacy_policy_source_for_path(from)
+        .map(|source| vec![source.compat_kind])
+        .unwrap_or_default()
 }
 
 #[cfg(test)]

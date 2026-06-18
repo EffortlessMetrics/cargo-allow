@@ -1,5 +1,8 @@
 use super::MigrateContext;
 use allow_core::{AllowConfig, FindingKind};
+use allow_report::{
+    MigrateCloseoutInput, MigrateLegacySource, policy_missing_evidence_entries,
+};
 use std::path::{Path, PathBuf};
 
 pub(super) fn render_migrate_summary(
@@ -9,7 +12,14 @@ pub(super) fn render_migrate_summary(
     force: bool,
 ) -> String {
     let output = output.display().to_string();
-    allow_report::render_migrate_human(migrate_report(cfg, context, &output, force))
+    let legacy_sources = migrate_legacy_sources(context);
+    let report = migrate_report(cfg, context, &output, force);
+    let closeout_input = MigrateCloseoutInput {
+        report,
+        missing_evidence_entries: policy_missing_evidence_entries(cfg),
+        legacy_sources: &legacy_sources,
+    };
+    allow_report::render_migrate_human(report, closeout_input)
 }
 
 pub(super) fn render_migrate_summary_json(
@@ -19,7 +29,26 @@ pub(super) fn render_migrate_summary_json(
     force: bool,
 ) -> String {
     let output = output.display().to_string();
-    allow_report::render_migrate_json(migrate_report(cfg, context, &output, force))
+    let legacy_sources = migrate_legacy_sources(context);
+    let report = migrate_report(cfg, context, &output, force);
+    let closeout_input = MigrateCloseoutInput {
+        report,
+        missing_evidence_entries: policy_missing_evidence_entries(cfg),
+        legacy_sources: &legacy_sources,
+    };
+    allow_report::render_migrate_json(report, closeout_input)
+}
+
+fn migrate_legacy_sources(context: &MigrateContext) -> Vec<MigrateLegacySource> {
+    context
+        .legacy_source_files
+        .iter()
+        .zip(context.legacy_compat_kinds.iter())
+        .map(|(file_name, compat_kind)| MigrateLegacySource {
+            file_name: file_name.clone(),
+            compat_kind: *compat_kind,
+        })
+        .collect()
 }
 
 fn migrate_report<'a>(
@@ -137,7 +166,11 @@ mod tests {
 
     #[test]
     fn evidence_diagnostic_root_call_presence_observer() {
-        let explicit = migrate_context(Some("fixture-root".to_string()));
+        let explicit = migrate_context(None);
+        let explicit = MigrateContext {
+            source_tree_root: Some("fixture-root".to_string()),
+            ..explicit
+        };
         let implicit = migrate_context(None);
 
         assert_eq!(
@@ -200,6 +233,8 @@ mod tests {
             inventory_files: Some(7),
             input_kind: "from".to_string(),
             input_path: "policy/legacy.toml".to_string(),
+            legacy_source_files: Vec::new(),
+            legacy_compat_kinds: Vec::new(),
         }
     }
 

@@ -1,6 +1,10 @@
 use crate::contracts::MIGRATE_ARTIFACT;
 use crate::evidence_repair::evidence_repair_queues_from_counts;
 use crate::json::{bool_json, push_json_fixed_artifact_preamble};
+use crate::migrate_closeout::{
+    MigrateCloseoutInput, append_migrate_closeout_human, append_migrate_closeout_json,
+    migrate_closeout_from_input,
+};
 use crate::{CLAIM_BOUNDARY_TEXT, MigrateReport};
 use allow_core::json_escape;
 
@@ -14,7 +18,7 @@ const UNSAFE_WEAK_EVIDENCE_REFERENCE_COMMAND: &str =
     "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json";
 const BASELINE_DEBT_COMMAND: &str = "cargo-allow worklist --item-kind baseline_debt --format json";
 
-pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
+pub fn render_migrate_human(report: MigrateReport<'_>, closeout_input: MigrateCloseoutInput<'_>) -> String {
     let mut out = String::new();
     out.push_str("cargo-allow migrate summary\n");
     out.push_str(&format!("input_kind: {}\n", report.input_kind));
@@ -58,6 +62,8 @@ pub fn render_migrate_human(report: MigrateReport<'_>) -> String {
     }
     append_migrate_follow_up_queues_human(report, &mut out);
     append_migrate_evidence_repair_queues_human(report, &mut out);
+    let closeout = migrate_closeout_from_input(closeout_input);
+    append_migrate_closeout_human(&closeout, &mut out);
     out.push_str(&format!(
         "inventory: {}/{} via {}{}\n",
         report.inventory.scope,
@@ -127,7 +133,7 @@ fn migrate_inventory_files_suffix(inventory: crate::InventoryContext<'_>) -> Str
         .unwrap_or_default()
 }
 
-pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
+pub fn render_migrate_json(report: MigrateReport<'_>, closeout_input: MigrateCloseoutInput<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
     push_json_fixed_artifact_preamble(&mut out, MIGRATE_ARTIFACT, report.inventory);
@@ -199,6 +205,8 @@ pub fn render_migrate_json(report: MigrateReport<'_>) -> String {
     out.push_str("  },\n");
     append_migrate_follow_up_queues_json(report, &mut out);
     append_migrate_evidence_repair_queues_json(report, &mut out);
+    let closeout = migrate_closeout_from_input(closeout_input);
+    append_migrate_closeout_json(&closeout, &mut out);
     out.push_str(&format!("  \"notes\": \"{}\"\n", json_escape(report.notes)));
     out.push_str("}\n");
     out
@@ -292,7 +300,7 @@ fn append_migrate_evidence_repair_queues_json(report: MigrateReport<'_>, out: &m
     out.push_str("\n  ],\n");
 }
 
-fn migrate_follow_up_queues(report: MigrateReport<'_>) -> Vec<MigrateFollowUpQueue> {
+pub(crate) fn migrate_follow_up_queues(report: MigrateReport<'_>) -> Vec<MigrateFollowUpQueue> {
     let mut queues = Vec::new();
     if report.baseline_debt > 0 {
         queues.push(MigrateFollowUpQueue {
@@ -307,7 +315,7 @@ fn migrate_follow_up_queues(report: MigrateReport<'_>) -> Vec<MigrateFollowUpQue
     queues
 }
 
-fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvidenceRepairQueue> {
+pub(crate) fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvidenceRepairQueue> {
     let mut queues = Vec::new();
     let broken_count = report.broken_evidence_links.unwrap_or(0);
     let unsafe_broken_count = report.unsafe_broken_evidence_links.unwrap_or(0);
@@ -353,22 +361,22 @@ fn migrate_evidence_repair_command(item_kind: &str) -> &'static str {
     }
 }
 
-struct MigrateFollowUpQueue {
-    signal: &'static str,
-    label: &'static str,
-    route_kind: &'static str,
-    item_kind: &'static str,
-    count: usize,
-    command: &'static str,
+pub(crate) struct MigrateFollowUpQueue {
+    pub(crate) signal: &'static str,
+    pub(crate) label: &'static str,
+    pub(crate) route_kind: &'static str,
+    pub(crate) item_kind: &'static str,
+    pub(crate) count: usize,
+    pub(crate) command: &'static str,
 }
 
-struct MigrateEvidenceRepairQueue {
-    signal: &'static str,
-    label: &'static str,
-    route_kind: &'static str,
-    item_kind: &'static str,
-    count: usize,
-    unsafe_count: usize,
-    command: &'static str,
-    unsafe_command: Option<&'static str>,
+pub(crate) struct MigrateEvidenceRepairQueue {
+    pub(crate) signal: &'static str,
+    pub(crate) label: &'static str,
+    pub(crate) route_kind: &'static str,
+    pub(crate) item_kind: &'static str,
+    pub(crate) count: usize,
+    pub(crate) unsafe_count: usize,
+    pub(crate) command: &'static str,
+    pub(crate) unsafe_command: Option<&'static str>,
 }
