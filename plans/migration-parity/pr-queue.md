@@ -11,7 +11,7 @@ Actionable inventory for the `0.2.0` migration parity lane
 | Goal registration (PR 1 / #1687) | done | `.codex/goals/active.toml`, `policy/doc-artifacts.toml` |
 | B2 — no-panic-baseline evidence/lifecycle slice | done | #1691 (merge `1cd408e`) |
 | B3 — migration fixture matrix | done | #1693 (merge `cd0ab7b`) |
-| B4 — migration closeout routing | in progress | this branch |
+| B4 — migration closeout routing | done | #1695 (merge `64832c5`) |
 
 ## Surfaces
 
@@ -91,14 +91,16 @@ Active goal work item: `migration-parity-b3`.
 
 Claim boundary: fixture-backed observed behavior only.
 
-### PR B4 — Add/refresh migration closeout guide (in progress)
+### PR B4 — Add/refresh migration closeout guide (done, #1695)
 
 Purpose: make `cargo-allow.migrate.v1` summaries actionable without chat memory.
 
-Status: in progress on `migration/closeout-worklist-routing`.
+Status: done (merge `64832c5`).
 
 Files: `docs/how-to/migration-evidence-cookbook.md`, `docs/schemas/migrate.schema.json`,
 `crates/allow-report/src/migrate_closeout.rs`.
+
+Active goal work item: `migration-parity-b4`.
 
 Claim boundary: closeout routing metadata only.
 
