@@ -36,15 +36,16 @@ stub) while keeping `policy/allow.toml` as the source-exception ledger. Legacy
 
 ## Non-Goals
 
-- Dogfood profile state migration (queued as `portable-governance-c4`).
+- Dogfood profile state migration (done as `portable-governance-c4`; #1752 merge `651d9c90`).
 - Import-root config (C5) or import adapters (C8–C11).
 - Full import mode (#1466) or external `ripr` migration.
 
 ## Remaining Work
 
 - **Active goal:** CARGO-ALLOW-GOAL-0003 portable governance substrate.
-- **Ready:** `portable-governance-c4` (dogfood migrate profile state to `.allow/` per C4).
-- **Blocked:** federation (#1473), external ripr adoption, full import mode (#1466).
+- **Done:** `portable-governance-c4` (dogfood migrate profile state to `.allow/` per C4; #1752 merge `651d9c90`; see CARGO-ALLOW-CLOSEOUT-0008).
+- **Design-ready (blocked):** `portable-governance-f0-federation` (#1473; design-first).
+- **Blocked:** external ripr adoption, full import mode (#1466).
 
 ## Claim Boundary
 

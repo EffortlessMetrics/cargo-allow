@@ -39,11 +39,11 @@ compatibility.
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| `parses_current_repository_active_goal_manifest` | pass | C4 PR proof |
-| `cargo-allow check --profile spec-system --mode audit` | pass | C4 PR proof |
+| `parses_current_repository_active_goal_manifest` | pass | #1752 merge `651d9c90` |
+| `cargo-allow check --profile spec-system --mode audit` | pass | #1752 merge `651d9c90` |
 | `cargo-allow check --mode no-new` | pass | `target/cargo-allow/check.receipt.json` |
-| `cargo test -p cargo-allow init` | pass | C4 PR proof |
-| `cargo test -p cargo-allow doctor` | pass | C4 PR proof |
+| `cargo test -p cargo-allow init` | pass | #1752 merge `651d9c90` |
+| `cargo test -p cargo-allow doctor` | pass | #1752 merge `651d9c90` |
 
 ## Non-Goals
 
@@ -55,8 +55,9 @@ compatibility.
 ## Remaining Work
 
 - **Active goal:** CARGO-ALLOW-GOAL-0003 portable governance substrate.
-- **Done:** `portable-governance-c4` (dogfood migrate profile state to `.allow/`).
-- **Blocked:** federation (#1473), external ripr adoption, full import mode (#1466).
+- **Done:** `portable-governance-c4` (dogfood migrate profile state to `.allow/`; #1752 merge `651d9c90`).
+- **Design-ready (blocked):** `portable-governance-f0-federation` (#1473; design-first).
+- **Blocked:** external ripr adoption, full import mode (#1466).
 
 ## Claim Boundary
 

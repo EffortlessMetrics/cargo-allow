@@ -13,11 +13,11 @@ CARGO-ALLOW-CLOSEOUT-0005. C2 `.allow` profile resolution with `policy/`
 fallback landed (#1748 merge `2adb0b5e`). C3 `init` writes spec-system state
 to `.allow/` landed (#1750 merge `23ac8376`). C4 dogfood migration moved this
 repository's profile state to `.allow/` (#1752 merge `651d9c90`;
-portable-governance-c4 done). F0 multi-ledger federation design
-(CARGO-ALLOW-PROP-0007 / SPEC-0007 / ADR-0001) completes in F0 PR; F1 runtime
-implementation blocked pending F0 merge. External `ripr` migration and full
-import mode (#1466) remain blocked. Release automation (0.1.10) and OIDC publish
-lanes stay dormant until explicit authorization.
+portable-governance-c4 done). F0 multi-ledger federation design landed
+(#1755; portable-governance-f0-federation done). F1 runtime implementation is
+ready and unblocked per CARGO-ALLOW-PLAN-0007 F1 slice. External `ripr`
+migration and full import mode (#1466) remain blocked. Release automation
+(0.1.10) and OIDC publish lanes stay dormant until explicit authorization.
 """
 
 linked_proposal = "CARGO-ALLOW-PROP-0004"
@@ -86,7 +86,7 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Migrated dogfood profile state from legacy `policy/` profile paths and `.codex/goals/` to owned `.allow/` layout.",
+  "Landed in #1752 (merge `651d9c90`): migrated dogfood profile state from legacy `policy/` profile paths and `.codex/goals/` to owned `.allow/` layout.",
   "Legacy path fixtures and C2 resolution fallback remain for compatibility; `policy/allow.toml` stays the source-exception ledger.",
   "Does not import external spec roots (C8–C11) or claim full import mode.",
 ]
@@ -107,21 +107,25 @@ proof_commands = [
 evidence_notes = [
   "F0 design-only: CARGO-ALLOW-PROP-0007, CARGO-ALLOW-SPEC-0007, CARGO-ALLOW-ADR-0001, and CARGO-ALLOW-PLAN-0007 define ledger roles, precedence, duplicate/dialect handling, drain windows, divergence reporting, and receipt provenance.",
   "No runtime federation code in F0; no silent merging per ADR-0001.",
-  "F1 runtime implementation blocked pending F0 merge.",
+  "Landed in #1755; F1 runtime slice ready and unblocked after merge.",
 ]
 
 [[work_item]]
 id = "portable-governance-f1-federation"
-status = "blocked"
+status = "ready"
 title = "P2 multi-ledger federation runtime (F1 #1473)"
 linked_proposal = "CARGO-ALLOW-PROP-0007"
 linked_spec = "CARGO-ALLOW-SPEC-0007"
 linked_plan = "plans/federation/implementation-plan.md"
-blocker_reason = "Blocked pending F0 design merge: runtime ledger role classification, precedence hooks, and divergence receipts require accepted F0 artifacts on main."
+proof_commands = [
+  "rtk cargo test -p allow-policy federation_precedence",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
 evidence_notes = [
   "Implements CARGO-ALLOW-SPEC-0007 behavior contract per CARGO-ALLOW-ADR-0001.",
-  "Does not start until F0 PR merges to main.",
-  "Tracked in plans/federation/implementation-plan.md F1 slice.",
+  "F0 design merged to main; active execution slice per plans/federation/implementation-plan.md F1.",
+  "Does not claim drain-window enforcement (F3) or receipt provenance fields (F2) until those slices land.",
 ]
 
 [[work_item]]
