@@ -9,11 +9,12 @@ created = "2026-06-18"
 objective = """
 Transition cargo-allow governance profile state toward portable `.allow/`
 ownership after migration and evidence parity execution closed in
-CARGO-ALLOW-CLOSEOUT-0005. Next execution slice: C2 `.allow` profile
-resolution with `policy/` fallback (portable-governance-c2). P2 multi-ledger
-federation (#1473), external `ripr` migration, and full import mode (#1466)
-remain blocked. Release automation (0.1.10) and OIDC publish lanes stay dormant
-until explicit authorization.
+CARGO-ALLOW-CLOSEOUT-0005. C2 `.allow` profile resolution with `policy/`
+fallback landed (#1748 merge `2adb0b5e`). Next execution slice: C3 `init`
+writes spec-system state to `.allow/` (portable-governance-c3). P2
+multi-ledger federation (#1473), external `ripr` migration, and full import
+mode (#1466) remain blocked. Release automation (0.1.10) and OIDC publish
+lanes stay dormant until explicit authorization.
 """
 
 linked_proposal = "CARGO-ALLOW-PROP-0004"
@@ -31,21 +32,40 @@ ledgers, or closeouts.
 
 [[work_item]]
 id = "portable-governance-c2"
-status = "ready"
+status = "done"
 title = "`.allow` profile resolution with policy fallback (C2)"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0005"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0006"
+proof_commands = [
+  "rtk cargo test -p allow-policy profile_resolution",
+  "rtk cargo test -p cargo-allow profile_resolution",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in #1748 (merge `2adb0b5e`): resolver prefers `.allow/` profile config with compatibility fallback to existing `policy/` paths.",
+  "Doctor and spec-system receipts report `config_provenance`; owned plus legacy configs emit advisory conflict diagnostics.",
+  "Does not migrate dogfood profile state (C4), import external spec roots (C8–C11), or claim full import mode.",
+]
+
+[[work_item]]
+id = "portable-governance-c3"
+status = "ready"
+title = "`init` writes spec-system state to `.allow/` (C3)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
 proof_commands = [
   "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "First portable-governance execution slice from CARGO-ALLOW-PLAN-0004 C2.",
-  "Resolver prefers `.allow/` profile config with compatibility fallback to existing `policy/` paths.",
-  "Does not migrate dogfood profile state (C4), import external spec roots (C8–C11), or claim full import mode.",
+  "Next portable-governance execution slice from CARGO-ALLOW-PLAN-0004 C3.",
+  "`cargo-allow init` (or equivalent CLI surface) writes spec-system profile state under `.allow/` instead of legacy `policy/` paths.",
+  "Does not migrate existing dogfood profile state (C4), import external spec roots (C8–C11), or claim full import mode.",
 ]
 
 [[work_item]]
