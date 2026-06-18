@@ -4,7 +4,6 @@ use super::config::{
     FederationConfig, FederationDiagnosticKind, LedgerEntry, LedgerRole, NATIVE_POLICY_DIALECT,
     ValidatedFederationConfig, parse_federation_config,
 };
-use super::divergence::FederationDivergenceKind;
 use super::precedence::ordered_ledgers_by_precedence;
 use super::validate::validate_federation_config;
 use std::fs;
