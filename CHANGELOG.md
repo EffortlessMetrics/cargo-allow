@@ -8,6 +8,13 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+### Testing
+
+- Add structural identity refactor-pair fixture matrix under
+  `tests/fixtures/structural-identity/` with characterization tests in
+  `allow-rust` covering line/function/module movement, receiver renames, lint
+  target disambiguation, macro path keys, and indexing targets.
+
 ### Added
 
 - Policy discovery prefers `policy/cargo-allow.toml` when present, recognizes the
