@@ -12,8 +12,9 @@ ownership after migration and evidence parity execution closed in
 CARGO-ALLOW-CLOSEOUT-0005. C2 `.allow` profile resolution with `policy/`
 fallback landed (#1748 merge `2adb0b5e`). C3 `init` writes spec-system state
 to `.allow/` landed (#1750 merge `23ac8376`). C4 dogfood migration moved this
-repository's profile state to `.allow/` (portable-governance-c4). P2 multi-ledger
-federation (#1473), external `ripr` migration, and full import mode (#1466)
+repository's profile state to `.allow/` (#1752 merge `651d9c90`;
+portable-governance-c4 done). P2 multi-ledger federation (#1473) is design-ready
+and blocked design-first; external `ripr` migration and full import mode (#1466)
 remain blocked. Release automation (0.1.10) and OIDC publish lanes stay
 dormant until explicit authorization.
 """
@@ -84,7 +85,7 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Migrated dogfood profile state from legacy `policy/` profile paths and `.codex/goals/` to owned `.allow/` layout.",
+  "Landed in #1752 (merge `651d9c90`): migrated dogfood profile state from legacy `policy/` profile paths and `.codex/goals/` to owned `.allow/` layout.",
   "Legacy path fixtures and C2 resolution fallback remain for compatibility; `policy/allow.toml` stays the source-exception ledger.",
   "Does not import external spec roots (C8–C11) or claim full import mode.",
 ]
@@ -98,7 +99,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 blocker_reason = "Design-first: per-lane posture landed; federation across additional legacy ledgers needs proposal/spec acceptance before implementation."
 evidence_notes = [
-  "Carried forward from GOAL-0002 post-import-1473; not the active execution slice.",
+  "Design-ready: CARGO-ALLOW-PROP-0002, CARGO-ALLOW-SPEC-0002, and migration-parity plan define the federation surface.",
+  "Blocked design-first until proposal/spec acceptance; not the active execution slice.",
   "Tracked in docs/source-of-truth/README.md Level 1 multi-ledger posture.",
 ]
 
