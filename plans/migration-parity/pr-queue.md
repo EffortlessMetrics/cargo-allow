@@ -3,6 +3,15 @@
 Actionable inventory for the `0.2.0` migration parity lane
 ([CARGO-ALLOW-SPEC-0002](../../docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md)).
 
+## Execution State (2026-06-17)
+
+| PR | Status | Evidence |
+| --- | --- | --- |
+| B1 / B1r — gap inventory reconciliation | done | this queue + [gap-inventory.md](gap-inventory.md) |
+| Goal registration (PR 1 / #1687) | done | `.codex/goals/active.toml`, `policy/doc-artifacts.toml` |
+| B2 — no-panic-baseline evidence/lifecycle slice | done | #1691 (merge `1cd408e`) |
+| B3 — migration fixture matrix | **next** | active goal work item `migration-parity-b3` |
+
 ## Surfaces
 
 | Lane | Legacy input | Compat kind | Primary paths |
@@ -33,49 +42,49 @@ Each lane is parity-ready only when all of the following hold:
 - worklist and closeout queues route remaining debt;
 - migration docs show the path and known deltas.
 
-## Gap Inventory Template
-
-Track each open gap in this table as lanes are inventoried in PR B1:
-
-| Lane | Gap | Owner | Evidence needed | PR target |
-| --- | --- | --- | --- | --- |
-| | | | | |
+No compat lane currently meets all criteria. See [gap-inventory.md](gap-inventory.md).
 
 ## PR Queue (B1–B7)
 
-### PR B1 — Inventory remaining legacy allowlist parity gaps
+### PR B1 — Inventory remaining legacy allowlist parity gaps (done / B1r)
 
 Purpose: turn goal text into an actionable gap table per surface.
+
+Status: done — gap inventory reconciled from `allow-policy-legacy` tests and open
+issues (#1466, #1470).
 
 Non-goals: no compat behavior changes.
 
 Files: `plans/migration-parity/pr-queue.md`, `plans/migration-parity/gap-inventory.md`,
-`docs/migration-from-xtask.md` (delta notes only).
+`.codex/goals/active.toml`.
 
 Validation: spec-system audit; no-new guard.
 
 Claim boundary: inventory and classification only.
 
-### PR B2 — Close one compat/evidence gap for highest-value lane
+### PR B2 — Close no-panic-baseline evidence/lifecycle gap (done, #1691)
 
-Purpose: pick one lane with highest adoption friction and land a focused fix
-with fixture-backed characterization.
+Purpose: close the highest-friction panic-baseline slice — metadata/evidence
+preservation, visible `baseline_debt` for missing evidence, and lifecycle fix for
+`review_after` without `expires`.
 
-Candidate lanes: unsafe evidence migration, panic occurrence limits, lint evidence
-preservation, non-Rust/generated executable evidence.
+Status: done (merge `1cd408e`).
 
-Non-goals: no new compat kinds; no `0.2.0` release cut.
+Non-goals: no new compat kinds; no `0.2.0` release cut; no full panic-lane
+parity claim.
 
-Validation: targeted tests plus validation baseline from
-[implementation-plan.md](implementation-plan.md).
+Validation: `allow-policy-legacy` no-panic tests plus validation baseline.
 
-Claim boundary: one lane delta documented; not full xtask retirement.
+Claim boundary: no-panic-baseline import slice only; not full xtask retirement.
 
-### PR B3 — Add fixture matrix for all supported legacy lanes
+### PR B3 — Add fixture matrix for all supported legacy lanes (next)
 
-Purpose: characterization coverage across compat kinds.
+Purpose: characterization coverage across compat kinds under
+`tests/fixtures/migration/`.
 
-Files: `tests/fixtures/migration/`, compat tests.
+Files: `tests/fixtures/migration/`, compat tests in `allow-policy-legacy`.
+
+Active goal work item: `migration-parity-b3`.
 
 Claim boundary: fixture-backed observed behavior only.
 
@@ -95,9 +104,14 @@ Files: `docs/dogfood/`, receipts under `target/cargo-allow/`.
 
 Claim boundary: dogfood evidence for this repo only.
 
-### PR B6 — Close or split remaining import/parity issue #1466
+### PR B6 — Close or split remaining import/parity issues
 
-Purpose: resolve or explicitly defer the tracked import/parity issue.
+Purpose: resolve or explicitly defer tracked adoption blockers:
+
+- [#1466](https://github.com/EffortlessMetrics/cargo-allow/issues/1466) —
+  bespoke semantic-selector ledger import/parity
+- [#1470](https://github.com/EffortlessMetrics/cargo-allow/issues/1470) —
+  foreign-dialect `policy/allow.toml` discovery
 
 Non-goals: no silent broadening.
 

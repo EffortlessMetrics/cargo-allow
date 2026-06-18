@@ -10,6 +10,10 @@ inventory without executing repository code.
 
 ### Documentation
 
+- Reconcile migration parity execution state: mark goal registration and B2
+  no-panic-baseline slice complete, populate `plans/migration-parity/gap-inventory.md`
+  from `allow-policy-legacy` characterization and open issues #1466/#1470, and set
+  B3 fixture matrix as the next active goal work item.
 - Record provider-tracked self-hosting readiness policy: strict vs
   provider-tracked definitions, `0.1.10` path acceptance, and honest external
   migration blockers (`ripr+`, `unsafe-review+` remain filed upstream).
