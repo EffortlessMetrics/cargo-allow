@@ -1,7 +1,7 @@
 # Migration Parity Gap Inventory
 
 Living inventory for [CARGO-ALLOW-SPEC-0002](../../docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md)
-and the [PR queue](pr-queue.md). Last reconciled after B3 migration fixture matrix characterization.
+and the [PR queue](pr-queue.md). Last reconciled after B5 panic-baseline dogfood receipt.
 
 Parity status values:
 
@@ -21,18 +21,17 @@ Parity status values:
 | process | Fixture matrix covers covered_by preservation and process compat loader | partial | repo-infra | `tests/fixtures/migration/process.toml` | B5 |
 | network | Fixture matrix covers evidence preservation and network compat loader | partial | repo-infra | `tests/fixtures/migration/network.toml` | B5 |
 | no-panic allowlist | Fixture matrix covers structural panic migration and no-panic allowlist compat loader | partial | repo-infra | `tests/fixtures/migration/no-panic-allowlist.toml` | B5 |
-| panic baseline | Fixture matrix covers B2 behaviors; migrate closeout routes baseline debt and weak generated markers through `closeout.next_queues` | partial | repo-infra | `tests/fixtures/migration/panic-baseline*.toml`; `migrate_closeout_summary_tests.rs`; #1691 | B5 |
+| panic baseline | B5 in-repo dogfood receipt records compat/migrate/canonical/worklist/closeout for one scoped baseline; full lane acceptance still open | partial | repo-infra | `docs/dogfood/cargo-allow-panic-baseline.md`; `tests/fixtures/migration/panic-baseline*.toml`; #1691 | B6+ |
 | lint-exception | Fixture matrix covers reviewed and minimal `baseline_debt` clippy paths plus compat loader | partial | repo-infra | `tests/fixtures/migration/lint-exception*.toml` | B5 |
 | unsafe | Fixture matrix covers reviewed evidence and missing-evidence TODO debt plus unsafe compat loader | partial | repo-infra | `tests/fixtures/migration/unsafe*.toml` | B5 |
 | doc/spec-system | Spec-system profile is separate from legacy xtask compat lanes; governed by CARGO-ALLOW-SPEC-0001 closeout | partial | repo-infra | CARGO-ALLOW-CLOSEOUT-0001; `policy/doc-artifacts.toml` | out of B3 scope |
 | import/parity [#1466](https://github.com/EffortlessMetrics/cargo-allow/issues/1466) | No import mode for bespoke semantic-selector ledgers (container/receiver fingerprints, advisory drift re-bless, multi-family model); blocks ripr-style adoption | gap | repo-infra | open issue #1466; CARGO-ALLOW-PROP-0004 draft scope | B6 |
 | policy dialect [#1470](https://github.com/EffortlessMetrics/cargo-allow/issues/1470) | Discovery hard-fails on foreign-dialect `policy/allow.toml` without `policy = "cargo-allow"` marker; no `policy/cargo-allow.toml` preference yet | gap | repo-infra | open issue #1470; ub-review dogfood receipts in issue body | B6, PLAN-0004 |
 | policy-dir batch import | Primary-lane batch import characterized in `migration_fixture_matrix_policy_dir_batch_imports_primary_lanes`; mixed-policy-dir failure modes and ordering still open | partial | repo-infra | `migration_fixture_matrix_tests.rs`; `policy_dir_tests.rs` | B6 |
-| canonical rerun stability | Primary-lane deterministic rerun characterized in `migration_fixture_matrix_rerun_is_deterministic_for_primary_lanes`; full multi-lane batch byte-stability still open | partial | repo-infra | `migration_fixture_matrix_tests.rs` | B5 |
+| canonical rerun stability | Primary-lane deterministic rerun characterized in `migration_fixture_matrix_rerun_is_deterministic_for_primary_lanes`; B5 committed migrate summary is deterministic for the dogfood slice; full multi-lane batch byte-stability still open | partial | repo-infra | `migration_fixture_matrix_tests.rs`; `docs/dogfood/receipts/cargo-allow-panic-baseline.migrate-summary.json` | B6 |
 
 ## Claim Boundary
 
 This inventory tracks observed migration characterization and known adoption
 blockers. `partial` rows are not parity claims. `gap` rows reference open issues
-or missing product behavior. `unknown—needs fixture` rows are honest inventory
-placeholders until B3 characterization lands.
+or missing product behavior.

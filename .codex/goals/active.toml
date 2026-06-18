@@ -121,8 +121,25 @@ evidence_notes = [
 
 [[work_item]]
 id = "migration-parity-b5"
-status = "ready"
+status = "in_progress"
 title = "Add side-by-side dogfood receipt on cargo-allow"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --compat --kind panic --config docs/dogfood/fixtures/no-panic-baseline.toml --mode no-new",
+  "rtk cargo run -p cargo-allow -- migrate --from docs/dogfood/fixtures/no-panic-baseline.toml --out docs/dogfood/receipts/cargo-allow-panic-baseline.migrated.toml --summary-format json --summary-output docs/dogfood/receipts/cargo-allow-panic-baseline.migrate-summary.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "docs/dogfood/cargo-allow-panic-baseline.md records one scoped panic-baseline side-by-side receipt for this repository.",
+  "Dogfood evidence for this repo only; does not claim full xtask retirement or 0.2.0 milestone parity.",
+]
+
+[[work_item]]
+id = "migration-parity-b6"
+status = "ready"
+title = "Close or split remaining import/parity issues"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
@@ -130,6 +147,5 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Run migration parity proof against this repository's own legacy surfaces per plans/migration-parity/pr-queue.md B5.",
-  "Dogfood evidence for this repo only; does not claim full xtask retirement or 0.2.0 milestone parity.",
+  "Resolve or defer #1466 semantic-selector import and #1470 foreign-dialect discovery per plans/migration-parity/pr-queue.md B6.",
 ]
