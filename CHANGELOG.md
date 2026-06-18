@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- Add shared migration lane descriptor table in `allow-policy-legacy` covering all
+  11 supported legacy compat kinds (`CompatKind`, `LegacyLaneDescriptor`,
+  `LegacyInputKind`, `EvidencePolicy`, `LifecyclePolicy`, `DebtPolicy`,
+  `ExpectedCanonicalShape`, optional `CloseoutQueueHints`). Refactor fixture
+  matrix and legacy filename lookups to table-drive from descriptors without
+  migration behavior change.
 - Add post-publish install-smoke job to the release workflow for tag pushes:
   installs `cargo-allow` from crates.io and verifies `--version`, `doctor`,
   `check --help`, and `doctor --profile spec-system --help` (skipped on

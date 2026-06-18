@@ -43,6 +43,7 @@ mod findings;
 mod io;
 mod legacy_sources;
 mod loader_compat;
+mod migration_lane_descriptors;
 mod loader_executable_compat;
 mod loader_file_compat;
 mod loader_legacy_dispatch;
@@ -90,6 +91,13 @@ pub use findings::{
 pub use legacy_sources::{
     LegacyPolicySource, legacy_compat_kind, legacy_policy_source_for_path,
     list_legacy_policy_sources_in_dir,
+};
+pub use migration_lane_descriptors::{
+    CloseoutQueueHints, CompatKind, DebtPolicy, EvidencePolicy, ExpectedCanonicalShape,
+    LegacyInputKind, LegacyLaneDescriptor, LifecyclePolicy, MigrationLane,
+    all_legacy_lane_descriptors, descriptor_for_compat_kind_id,
+    descriptor_for_legacy_filename, descriptor_for_legacy_policy_key, legacy_lane_descriptor,
+    legacy_policy_filenames,
 };
 pub use loaders::{
     load_clippy_exceptions_compat_config, load_dependency_surface_compat_config,

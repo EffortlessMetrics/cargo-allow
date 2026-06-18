@@ -1,5 +1,6 @@
 use super::*;
 use allow_core::{AllowConfig, AllowEntry, CargoAllowResult};
+use crate::migration_lane_descriptors::{CompatKind, all_legacy_lane_descriptors};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -128,8 +129,8 @@ fn migration_fixture_matrix_characterizes_supported_legacy_lanes() {
             );
         }
 
-        if case.compat_loader.is_some() {
-            let compat = load_compat_config(case.compat_loader, &policy_path);
+        if let Some(loader) = case.compat_loader {
+            let compat = load_compat_config(loader, &policy_path);
             assert!(
                 compat.is_ok(),
                 "{} compat loader should succeed: {:?}",
@@ -142,38 +143,12 @@ fn migration_fixture_matrix_characterizes_supported_legacy_lanes() {
 
 #[test]
 fn migration_fixture_matrix_rerun_is_deterministic_for_primary_lanes() {
-    let lanes = [
-        ("non-rust", "non-rust.toml", "non-rust-allowlist.toml"),
-        ("generated", "generated.toml", "generated-allowlist.toml"),
-        ("executable", "executable.toml", "executable-allowlist.toml"),
-        ("workflow", "workflow.toml", "workflow-allowlist.toml"),
-        (
-            "dependency-surface",
-            "dependency-surface.toml",
-            "dependency-surface-allowlist.toml",
-        ),
-        ("process", "process.toml", "process-allowlist.toml"),
-        ("network", "network.toml", "network-allowlist.toml"),
-        (
-            "no-panic allowlist",
-            "no-panic-allowlist.toml",
-            "no-panic-allowlist.toml",
-        ),
-        (
-            "panic baseline",
-            "panic-baseline.toml",
-            "no-panic-baseline.toml",
-        ),
-        (
-            "lint-exception",
-            "lint-exception.toml",
-            "clippy-exceptions.toml",
-        ),
-        ("unsafe", "unsafe.toml", "unsafe-allowlist.toml"),
-    ];
-
-    for (lane, fixture_file, legacy_filename) in lanes {
-        let policy_path = stage_migration_fixture(fixture_file, legacy_filename);
+    for descriptor in all_legacy_lane_descriptors() {
+        let lane = descriptor.compat_kind_id();
+        let policy_path = stage_migration_fixture(
+            descriptor.primary_fixture_file,
+            descriptor.legacy_filename,
+        );
         let first = load_legacy_or_canonical(&policy_path)
             .unwrap_or_else(|err| std::panic::panic_any(format!("{lane} first migration: {err}")));
         let second = load_legacy_or_canonical(&policy_path)
@@ -189,30 +164,20 @@ fn migration_fixture_matrix_rerun_is_deterministic_for_primary_lanes() {
 #[test]
 fn migration_fixture_matrix_policy_dir_batch_imports_primary_lanes() {
     let dir = crate::test_support::fixture_dir();
-    let mappings = [
-        ("non-rust.toml", "non-rust-allowlist.toml"),
-        ("generated.toml", "generated-allowlist.toml"),
-        ("executable.toml", "executable-allowlist.toml"),
-        ("workflow.toml", "workflow-allowlist.toml"),
-        (
-            "dependency-surface.toml",
-            "dependency-surface-allowlist.toml",
-        ),
-        ("process.toml", "process-allowlist.toml"),
-        ("network.toml", "network-allowlist.toml"),
-        ("no-panic-allowlist.toml", "no-panic-allowlist.toml"),
-        ("panic-baseline.toml", "no-panic-baseline.toml"),
-        ("lint-exception.toml", "clippy-exceptions.toml"),
-        ("unsafe.toml", "unsafe-allowlist.toml"),
-    ];
 
-    for (fixture_file, legacy_filename) in mappings {
-        let source = migration_fixture_path(fixture_file);
+    for descriptor in all_legacy_lane_descriptors() {
+        let source = migration_fixture_path(descriptor.primary_fixture_file);
         let text = fs::read_to_string(&source).unwrap_or_else(|err| {
-            std::panic::panic_any(format!("read migration fixture {fixture_file}: {err}"))
+            std::panic::panic_any(format!(
+                "read migration fixture {}: {err}",
+                descriptor.primary_fixture_file
+            ))
         });
-        fs::write(dir.join(legacy_filename), text).unwrap_or_else(|err| {
-            std::panic::panic_any(format!("write policy dir fixture {legacy_filename}: {err}"))
+        fs::write(dir.join(descriptor.legacy_filename), text).unwrap_or_else(|err| {
+            std::panic::panic_any(format!(
+                "write policy dir fixture {}: {err}",
+                descriptor.legacy_filename
+            ))
         });
     }
 
@@ -222,7 +187,7 @@ fn migration_fixture_matrix_policy_dir_batch_imports_primary_lanes() {
 
     assert_eq!(cfg.policy, "cargo-allow");
     assert!(
-        cfg.allow.len() >= 11,
+        cfg.allow.len() >= all_legacy_lane_descriptors().len(),
         "batch import should merge all primary lane entries; got {}",
         cfg.allow.len()
     );
@@ -258,6 +223,24 @@ enum CompatLoader {
     Unsafe,
 }
 
+impl CompatLoader {
+    const fn from_lane(lane: CompatKind) -> Option<Self> {
+        Some(match lane {
+            CompatKind::NonRust => return None,
+            CompatKind::Generated => Self::Generated,
+            CompatKind::Executable => Self::Executable,
+            CompatKind::Workflow => Self::Workflow,
+            CompatKind::DependencySurface => Self::DependencySurface,
+            CompatKind::Process => Self::Process,
+            CompatKind::Network => Self::Network,
+            CompatKind::NoPanicAllowlist => Self::NoPanicAllowlist,
+            CompatKind::PanicBaseline => Self::NoPanicBaseline,
+            CompatKind::LintException => Self::Clippy,
+            CompatKind::Unsafe => Self::Unsafe,
+        })
+    }
+}
+
 struct MigrationLaneCase {
     lane: &'static str,
     fixture_file: &'static str,
@@ -278,173 +261,239 @@ struct MigrationLaneCase {
 }
 
 fn migration_lane_cases() -> Vec<MigrationLaneCase> {
+    let mut cases = primary_migration_lane_cases();
+    cases.extend(variant_migration_lane_cases());
+    cases
+}
+
+fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
     vec![
-        MigrationLaneCase {
-            lane: "non-rust",
-            fixture_file: "non-rust.toml",
-            legacy_filename: "non-rust-allowlist.toml",
-            entry_id: "fixture-non-rust",
-            family: None,
-            expected_owner: "docs",
-            expected_reason: "Repository policy prose.",
-            expected_classification: Some("documentation"),
-            expected_evidence: &["doc:docs/source-exception-ledger.md", "issue:#123"],
-            expected_links: &[],
-            occurrence_limit: OccurrenceLimitExpect::None,
-            expected_created: Some("2026-05-09"),
-            expected_review_after: Some("2026-05-09"),
-            expected_expires: Some("never"),
-            expect_baseline_debt_markers: false,
-            compat_loader: None,
-        },
-        MigrationLaneCase {
-            lane: "generated",
-            fixture_file: "generated.toml",
-            legacy_filename: "generated-allowlist.toml",
-            entry_id: "fixture-generated",
-            family: Some("generated_code"),
-            expected_owner: "policy",
-            expected_reason: "Generated schema fixture.",
-            expected_classification: Some("generated_code"),
-            expected_evidence: &["doc:docs/schemas/README.md"],
-            expected_links: &["legacy-policy:fixture-generated"],
-            occurrence_limit: OccurrenceLimitExpect::None,
-            expected_created: Some("2026-05-10"),
-            expected_review_after: Some("2026-05-10"),
-            expected_expires: Some("never"),
-            expect_baseline_debt_markers: false,
-            compat_loader: Some(CompatLoader::Generated),
-        },
-        MigrationLaneCase {
-            lane: "executable",
-            fixture_file: "executable.toml",
-            legacy_filename: "executable-allowlist.toml",
-            entry_id: "fixture-executable",
-            family: Some("executable_file"),
-            expected_owner: "release",
-            expected_reason: "Release helper fixture.",
-            expected_classification: Some("executable_file"),
-            expected_evidence: &["doc:docs/release/README.md"],
-            expected_links: &["legacy-policy:fixture-executable"],
-            occurrence_limit: OccurrenceLimitExpect::None,
-            expected_created: Some("2026-05-09"),
-            expected_review_after: Some("2026-08-09"),
-            expected_expires: Some("never"),
-            expect_baseline_debt_markers: false,
-            compat_loader: Some(CompatLoader::Executable),
-        },
-        MigrationLaneCase {
-            lane: "workflow",
-            fixture_file: "workflow.toml",
-            legacy_filename: "workflow-allowlist.toml",
-            entry_id: "workflow-action-github-workflows-release-yml--actions-checkout-v4",
-            family: Some("workflow_external_action"),
-            expected_owner: "release/ci",
-            expected_reason: "Release workflow fixture.",
-            expected_classification: Some("workflow_external_action"),
-            expected_evidence: &["doc:docs/ci.md"],
-            expected_links: &[],
-            occurrence_limit: OccurrenceLimitExpect::None,
-            expected_created: Some("2026-05-09"),
-            expected_review_after: Some("2026-09-09"),
-            expected_expires: Some("never"),
-            expect_baseline_debt_markers: false,
-            compat_loader: Some(CompatLoader::Workflow),
-        },
-        MigrationLaneCase {
-            lane: "dependency-surface",
-            fixture_file: "dependency-surface.toml",
-            legacy_filename: "dependency-surface-allowlist.toml",
-            entry_id: "fixture-dependency",
-            family: Some("dependency_surface"),
-            expected_owner: "release",
-            expected_reason: "Workspace dependency block fixture.",
-            expected_classification: Some("workspace_manifest"),
-            expected_evidence: &["doc:docs/dependencies.md", "dep_count_at_baseline:22"],
-            expected_links: &[],
-            occurrence_limit: OccurrenceLimitExpect::None,
-            expected_created: Some("2026-05-09"),
-            expected_review_after: Some("2026-08-09"),
-            expected_expires: Some("never"),
-            expect_baseline_debt_markers: false,
-            compat_loader: Some(CompatLoader::DependencySurface),
-        },
-        MigrationLaneCase {
-            lane: "process",
-            fixture_file: "process.toml",
-            legacy_filename: "process-allowlist.toml",
-            entry_id: "fixture-process",
-            family: Some("process_spawn"),
-            expected_owner: "release/ci",
-            expected_reason: "Release helper fixture.",
-            expected_classification: Some("network_process"),
-            expected_evidence: &["doc:docs/ci.md"],
-            expected_links: &[],
-            occurrence_limit: OccurrenceLimitExpect::None,
-            expected_created: Some("2026-05-09"),
-            expected_review_after: Some("2026-08-09"),
-            expected_expires: Some("never"),
-            expect_baseline_debt_markers: false,
-            compat_loader: Some(CompatLoader::Process),
-        },
-        MigrationLaneCase {
-            lane: "network",
-            fixture_file: "network.toml",
-            legacy_filename: "network-allowlist.toml",
-            entry_id: "fixture-network",
-            family: Some("network_destination"),
-            expected_owner: "release",
-            expected_reason: "Release API fixture.",
-            expected_classification: Some("public_network"),
-            expected_evidence: &["doc:docs/release/README.md"],
-            expected_links: &[],
-            occurrence_limit: OccurrenceLimitExpect::None,
-            expected_created: Some("2026-05-09"),
-            expected_review_after: Some("2026-08-09"),
-            expected_expires: Some("never"),
-            expect_baseline_debt_markers: false,
-            compat_loader: Some(CompatLoader::Network),
-        },
-        MigrationLaneCase {
-            lane: "no-panic allowlist",
-            fixture_file: "no-panic-allowlist.toml",
-            legacy_filename: "no-panic-allowlist.toml",
-            entry_id: "fixture-no-panic-unwrap",
-            family: Some("unwrap"),
-            expected_owner: "parser",
-            expected_reason: "Parser validates the optional value.",
-            expected_classification: Some("reviewed_panic_exception"),
-            expected_evidence: &["test:parser_validates_optional_value", "issue:#123"],
-            expected_links: &[],
-            occurrence_limit: OccurrenceLimitExpect::None,
-            expected_created: None,
-            expected_review_after: Some("2026-09-09"),
-            expected_expires: None,
-            expect_baseline_debt_markers: false,
-            compat_loader: Some(CompatLoader::NoPanicAllowlist),
-        },
-        MigrationLaneCase {
-            lane: "panic baseline",
-            fixture_file: "panic-baseline.toml",
-            legacy_filename: "no-panic-baseline.toml",
-            entry_id: "panic-baseline-0001",
-            family: Some("unwrap"),
-            expected_owner: "parser",
-            expected_reason: "Counted unwrap baseline after parser hardening.",
-            expected_classification: Some("baseline_debt"),
-            expected_evidence: &["test:parser_baseline", "issue:#456"],
-            expected_links: &["legacy-policy:no-panic-baseline"],
-            occurrence_limit: OccurrenceLimitExpect::Some(2),
-            expected_created: Some("2026-05-09"),
-            expected_review_after: Some("2026-06-09"),
-            expected_expires: Some("2026-06-09"),
-            expect_baseline_debt_markers: false,
-            compat_loader: Some(CompatLoader::NoPanicBaseline),
-        },
+        primary_case(
+            CompatKind::NonRust,
+            "non-rust",
+            "fixture-non-rust",
+            None,
+            "docs",
+            "Repository policy prose.",
+            Some("documentation"),
+            &["doc:docs/source-exception-ledger.md", "issue:#123"],
+            &[],
+            OccurrenceLimitExpect::None,
+            Some("2026-05-09"),
+            Some("2026-05-09"),
+            Some("never"),
+            false,
+        ),
+        primary_case(
+            CompatKind::Generated,
+            "generated",
+            "fixture-generated",
+            Some("generated_code"),
+            "policy",
+            "Generated schema fixture.",
+            Some("generated_code"),
+            &["doc:docs/schemas/README.md"],
+            &["legacy-policy:fixture-generated"],
+            OccurrenceLimitExpect::None,
+            Some("2026-05-10"),
+            Some("2026-05-10"),
+            Some("never"),
+            false,
+        ),
+        primary_case(
+            CompatKind::Executable,
+            "executable",
+            "fixture-executable",
+            Some("executable_file"),
+            "release",
+            "Release helper fixture.",
+            Some("executable_file"),
+            &["doc:docs/release/README.md"],
+            &["legacy-policy:fixture-executable"],
+            OccurrenceLimitExpect::None,
+            Some("2026-05-09"),
+            Some("2026-08-09"),
+            Some("never"),
+            false,
+        ),
+        primary_case(
+            CompatKind::Workflow,
+            "workflow",
+            "workflow-action-github-workflows-release-yml--actions-checkout-v4",
+            Some("workflow_external_action"),
+            "release/ci",
+            "Release workflow fixture.",
+            Some("workflow_external_action"),
+            &["doc:docs/ci.md"],
+            &[],
+            OccurrenceLimitExpect::None,
+            Some("2026-05-09"),
+            Some("2026-09-09"),
+            Some("never"),
+            false,
+        ),
+        primary_case(
+            CompatKind::DependencySurface,
+            "dependency-surface",
+            "fixture-dependency",
+            Some("dependency_surface"),
+            "release",
+            "Workspace dependency block fixture.",
+            Some("workspace_manifest"),
+            &["doc:docs/dependencies.md", "dep_count_at_baseline:22"],
+            &[],
+            OccurrenceLimitExpect::None,
+            Some("2026-05-09"),
+            Some("2026-08-09"),
+            Some("never"),
+            false,
+        ),
+        primary_case(
+            CompatKind::Process,
+            "process",
+            "fixture-process",
+            Some("process_spawn"),
+            "release/ci",
+            "Release helper fixture.",
+            Some("network_process"),
+            &["doc:docs/ci.md"],
+            &[],
+            OccurrenceLimitExpect::None,
+            Some("2026-05-09"),
+            Some("2026-08-09"),
+            Some("never"),
+            false,
+        ),
+        primary_case(
+            CompatKind::Network,
+            "network",
+            "fixture-network",
+            Some("network_destination"),
+            "release",
+            "Release API fixture.",
+            Some("public_network"),
+            &["doc:docs/release/README.md"],
+            &[],
+            OccurrenceLimitExpect::None,
+            Some("2026-05-09"),
+            Some("2026-08-09"),
+            Some("never"),
+            false,
+        ),
+        primary_case(
+            CompatKind::NoPanicAllowlist,
+            "no-panic allowlist",
+            "fixture-no-panic-unwrap",
+            Some("unwrap"),
+            "parser",
+            "Parser validates the optional value.",
+            Some("reviewed_panic_exception"),
+            &["test:parser_validates_optional_value", "issue:#123"],
+            &[],
+            OccurrenceLimitExpect::None,
+            None,
+            Some("2026-09-09"),
+            None,
+            false,
+        ),
+        primary_case(
+            CompatKind::PanicBaseline,
+            "panic baseline",
+            "panic-baseline-0001",
+            Some("unwrap"),
+            "parser",
+            "Counted unwrap baseline after parser hardening.",
+            Some("baseline_debt"),
+            &["test:parser_baseline", "issue:#456"],
+            &["legacy-policy:no-panic-baseline"],
+            OccurrenceLimitExpect::Some(2),
+            Some("2026-05-09"),
+            Some("2026-06-09"),
+            Some("2026-06-09"),
+            false,
+        ),
+        primary_case(
+            CompatKind::LintException,
+            "lint-exception",
+            "fixture-clippy",
+            Some("expect_attribute"),
+            "lint",
+            "Parser validates optional value before unwrap.",
+            Some("reviewed_lint_exception"),
+            &["test:parser_validates_optional_value"],
+            &[],
+            OccurrenceLimitExpect::None,
+            Some("2026-05-09"),
+            Some("2026-09-09"),
+            None,
+            false,
+        ),
+        primary_case(
+            CompatKind::Unsafe,
+            "unsafe",
+            "fixture-unsafe",
+            Some("unsafe_block"),
+            "runtime",
+            "Caller validates pointer before read.",
+            Some("reviewed_unsafe_boundary"),
+            &["unsafe-review:docs/evidence/unsafe/read.json"],
+            &["legacy-policy:fixture-unsafe"],
+            OccurrenceLimitExpect::None,
+            Some("2026-05-09"),
+            Some("2026-09-09"),
+            None,
+            false,
+        ),
+    ]
+}
+
+fn primary_case(
+    lane: CompatKind,
+    lane_label: &'static str,
+    entry_id: &'static str,
+    family: Option<&'static str>,
+    expected_owner: &'static str,
+    expected_reason: &'static str,
+    expected_classification: Option<&'static str>,
+    expected_evidence: &'static [&'static str],
+    expected_links: &'static [&'static str],
+    occurrence_limit: OccurrenceLimitExpect,
+    expected_created: Option<&'static str>,
+    expected_review_after: Option<&'static str>,
+    expected_expires: Option<&'static str>,
+    expect_baseline_debt_markers: bool,
+) -> MigrationLaneCase {
+    let descriptor = legacy_lane_descriptor(lane);
+    MigrationLaneCase {
+        lane: lane_label,
+        fixture_file: descriptor.primary_fixture_file,
+        legacy_filename: descriptor.legacy_filename,
+        entry_id,
+        family,
+        expected_owner,
+        expected_reason,
+        expected_classification,
+        expected_evidence,
+        expected_links,
+        occurrence_limit,
+        expected_created,
+        expected_review_after,
+        expected_expires,
+        expect_baseline_debt_markers,
+        compat_loader: CompatLoader::from_lane(lane),
+    }
+}
+
+fn variant_migration_lane_cases() -> Vec<MigrationLaneCase> {
+    let panic_baseline = legacy_lane_descriptor(CompatKind::PanicBaseline);
+    let lint_exception = legacy_lane_descriptor(CompatKind::LintException);
+    let unsafe_lane = legacy_lane_descriptor(CompatKind::Unsafe);
+
+    vec![
         MigrationLaneCase {
             lane: "panic baseline missing evidence",
             fixture_file: "panic-baseline-no-evidence.toml",
-            legacy_filename: "no-panic-baseline.toml",
+            legacy_filename: panic_baseline.legacy_filename,
             entry_id: "panic-baseline-0001",
             family: Some("unwrap"),
             expected_owner: "parser",
@@ -460,27 +509,9 @@ fn migration_lane_cases() -> Vec<MigrationLaneCase> {
             compat_loader: None,
         },
         MigrationLaneCase {
-            lane: "lint-exception",
-            fixture_file: "lint-exception.toml",
-            legacy_filename: "clippy-exceptions.toml",
-            entry_id: "fixture-clippy",
-            family: Some("expect_attribute"),
-            expected_owner: "lint",
-            expected_reason: "Parser validates optional value before unwrap.",
-            expected_classification: Some("reviewed_lint_exception"),
-            expected_evidence: &["test:parser_validates_optional_value"],
-            expected_links: &[],
-            occurrence_limit: OccurrenceLimitExpect::None,
-            expected_created: Some("2026-05-09"),
-            expected_review_after: Some("2026-09-09"),
-            expected_expires: None,
-            expect_baseline_debt_markers: false,
-            compat_loader: Some(CompatLoader::Clippy),
-        },
-        MigrationLaneCase {
             lane: "lint-exception minimal",
             fixture_file: "lint-exception-minimal.toml",
-            legacy_filename: "clippy-exceptions.toml",
+            legacy_filename: lint_exception.legacy_filename,
             entry_id: "legacy-clippy-0000",
             family: Some("expect_attribute"),
             expected_owner: "unowned",
@@ -496,27 +527,9 @@ fn migration_lane_cases() -> Vec<MigrationLaneCase> {
             compat_loader: Some(CompatLoader::Clippy),
         },
         MigrationLaneCase {
-            lane: "unsafe",
-            fixture_file: "unsafe.toml",
-            legacy_filename: "unsafe-allowlist.toml",
-            entry_id: "fixture-unsafe",
-            family: Some("unsafe_block"),
-            expected_owner: "runtime",
-            expected_reason: "Caller validates pointer before read.",
-            expected_classification: Some("reviewed_unsafe_boundary"),
-            expected_evidence: &["unsafe-review:docs/evidence/unsafe/read.json"],
-            expected_links: &["legacy-policy:fixture-unsafe"],
-            occurrence_limit: OccurrenceLimitExpect::None,
-            expected_created: Some("2026-05-09"),
-            expected_review_after: Some("2026-09-09"),
-            expected_expires: None,
-            expect_baseline_debt_markers: false,
-            compat_loader: Some(CompatLoader::Unsafe),
-        },
-        MigrationLaneCase {
             lane: "unsafe missing evidence",
             fixture_file: "unsafe-no-evidence.toml",
-            legacy_filename: "unsafe-allowlist.toml",
+            legacy_filename: unsafe_lane.legacy_filename,
             entry_id: "fixture-unsafe-no-evidence",
             family: Some("unsafe_fn"),
             expected_owner: "runtime",
@@ -594,21 +607,18 @@ fn assert_baseline_debt_visible(lane: &str, entry: &AllowEntry) {
     );
 }
 
-fn load_compat_config(loader: Option<CompatLoader>, path: &Path) -> CargoAllowResult<AllowConfig> {
+fn load_compat_config(loader: CompatLoader, path: &Path) -> CargoAllowResult<AllowConfig> {
     match loader {
-        Some(CompatLoader::Generated) => load_generated_compat_config(path),
-        Some(CompatLoader::Executable) => load_executable_compat_config(path),
-        Some(CompatLoader::Workflow) => load_workflow_compat_config(path),
-        Some(CompatLoader::DependencySurface) => load_dependency_surface_compat_config(path),
-        Some(CompatLoader::Process) => load_process_compat_config(path),
-        Some(CompatLoader::Network) => load_network_compat_config(path),
-        Some(CompatLoader::NoPanicAllowlist) => load_no_panic_allowlist_compat_config(path),
-        Some(CompatLoader::NoPanicBaseline) => load_no_panic_baseline_compat_config(path),
-        Some(CompatLoader::Clippy) => load_clippy_exceptions_compat_config(path),
-        Some(CompatLoader::Unsafe) => load_unsafe_allowlist_compat_config(path),
-        None => Err(allow_core::CargoAllowError::new(
-            "compat loader not configured for lane",
-        )),
+        CompatLoader::Generated => load_generated_compat_config(path),
+        CompatLoader::Executable => load_executable_compat_config(path),
+        CompatLoader::Workflow => load_workflow_compat_config(path),
+        CompatLoader::DependencySurface => load_dependency_surface_compat_config(path),
+        CompatLoader::Process => load_process_compat_config(path),
+        CompatLoader::Network => load_network_compat_config(path),
+        CompatLoader::NoPanicAllowlist => load_no_panic_allowlist_compat_config(path),
+        CompatLoader::NoPanicBaseline => load_no_panic_baseline_compat_config(path),
+        CompatLoader::Clippy => load_clippy_exceptions_compat_config(path),
+        CompatLoader::Unsafe => load_unsafe_allowlist_compat_config(path),
     }
 }
 
