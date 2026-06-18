@@ -41,14 +41,18 @@ fn validate_deny_statuses_accepts_occurrence_headroom() {
 #[test]
 fn deny_escalation_failed_when_occurrence_headroom_count_is_positive() {
     let summary = Summary::from_outcomes(&[outcome(MatchStatus::Matched)]);
-    let mut context = ReportContext::default();
-    context.occurrence_headroom_entries = Some(2);
+    let context = ReportContext {
+        occurrence_headroom_entries: Some(2),
+        ..ReportContext::default()
+    };
     assert!(deny_escalation_failed(
         &["occurrence_headroom".to_string()],
         &summary,
         context
     ));
 }
+
+#[test]
 fn deny_escalation_failed_when_denied_advisory_count_is_positive() {
     let summary = Summary::from_outcomes(&[outcome(MatchStatus::ReviewDue)]);
     assert!(deny_escalation_failed(
