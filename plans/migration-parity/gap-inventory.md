@@ -74,7 +74,8 @@ advisory ratcheting (#1474, #1472) is complete on main.
 
 | Item | Gap | Status | Owner | Evidence | PR |
 | --- | --- | --- | --- | --- | --- |
-| `.allow` profile resolution (C2) | Governance profile state still lives under dogfood `policy/` paths without portable resolver | ready | repo-infra | CARGO-ALLOW-PLAN-0004 C2; `portable-governance-c2` in `.codex/goals/active.toml` | c2 |
+| `.allow` profile resolution (C2) | Resolver prefers `.allow/` with legacy `policy/` fallback; dogfood paths unchanged until C4 | done | repo-infra | #1748 merge `2adb0b5e`; [CARGO-ALLOW-CLOSEOUT-0006](../spec-system/closeouts/profile-resolution-c2.md) | #1748 |
+| `init` to `.allow/` (C3) | No CLI path materializes spec-system state under `.allow/` yet | ready | repo-infra | CARGO-ALLOW-PLAN-0004 C3; `portable-governance-c3` in `.codex/goals/active.toml` | c3 |
 | P2 multi-ledger federation (#1473) | Federation across additional legacy ledgers needs design acceptance | blocked | repo-infra | `portable-governance-f0-federation`; docs/source-of-truth/README.md | — |
 | external ripr adoption | In-repo ripr-style dogfood closed; external repo migration unrequested | blocked | repo-infra | `docs/dogfood/cargo-allow-ripr-style-adoption.md`; `portable-governance-external-ripr` | — |
 | full import mode (#1466) | Umbrella open; characterization slices #1713–#1718 closed | blocked | repo-infra | CARGO-ALLOW-CLOSEOUT-0004; `portable-governance-full-import` | — |

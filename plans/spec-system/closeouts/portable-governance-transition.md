@@ -61,7 +61,7 @@ profile resolution, migrate profile state, or authorize release cut.
 
 ## Non-Goals
 
-- `.allow` profile resolution implementation (queued as `portable-governance-c2`).
+- `init` writes `.allow/` (queued as `portable-governance-c3` after C2 #1748).
 - P2 multi-ledger federation (#1473).
 - Full import mode (#1466) or external `ripr` migration.
 - Version bump or `0.1.10` release authorization.
@@ -74,8 +74,11 @@ Governance and execution-lane closeout evidence only. `partial` compat rows in
 ## Remaining Work
 
 - **Active goal:** CARGO-ALLOW-GOAL-0003 portable governance substrate.
-- **Ready:** `portable-governance-c2` (`.allow` profile resolution with policy
-  fallback per CARGO-ALLOW-PLAN-0004 C2).
+- **Done:** `portable-governance-c2` (`.allow` profile resolution with policy
+  fallback per CARGO-ALLOW-PLAN-0004 C2; #1748 merge `2adb0b5e`; see
+  CARGO-ALLOW-CLOSEOUT-0006).
+- **Ready:** `portable-governance-c3` (`init` writes spec-system state to
+  `.allow/` per CARGO-ALLOW-PLAN-0004 C3).
 - **Blocked:** federation (#1473), external ripr adoption, full import mode
   (#1466).
 
