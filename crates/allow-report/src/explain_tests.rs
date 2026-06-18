@@ -49,6 +49,7 @@ fn explain_json_renderer_records_context_and_current_status() {
         span: Some(Span { line: 9, column: 5 }),
         identity,
         message: "unsafe block".to_string(),
+        ledger: None,
     };
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::EvidenceMissing,

@@ -387,6 +387,7 @@ fn json_report_exposes_source_package_context_on_findings() {
         }),
         identity,
         message: "unwrap call".to_string(),
+        ledger: None,
     }];
 
     let json = render_json("audit", &findings, &[], false);
@@ -479,5 +480,6 @@ fn file_finding(kind: FindingKind, family: &str, path: &str) -> Finding {
         span: Some(Span { line: 1, column: 1 }),
         identity: StructuralIdentity::new("rust", "method_call"),
         message: "test finding".to_string(),
+        ledger: None,
     }
 }

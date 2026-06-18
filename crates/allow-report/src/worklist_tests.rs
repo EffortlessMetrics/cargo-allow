@@ -28,6 +28,11 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
         message: "stale allow",
         suggested_actions: &suggested_actions,
         proof_commands: &proof_commands,
+        ledger_id: None,
+        ledger_path: None,
+        lane: None,
+        mode: None,
+        role: None,
     }];
 
     let json = render_worklist_json(
@@ -212,6 +217,11 @@ fn worklist_json_renderer_includes_optional_evidence_reference() {
         message: "allow-weak evidence `spreadsheet:manual-review`: unrecognized evidence prefix; not locally validated",
         suggested_actions: &suggested_actions,
         proof_commands: &proof_commands,
+        ledger_id: None,
+        ledger_path: None,
+        lane: None,
+        mode: None,
+        role: None,
     }];
 
     let json = render_worklist_json(
@@ -286,6 +296,11 @@ fn worklist_human_renderer_shows_ledger_inspection_proof_commands() {
         message: "broad scope",
         suggested_actions: &suggested_actions,
         proof_commands: &proof_commands,
+        ledger_id: None,
+        ledger_path: None,
+        lane: None,
+        mode: None,
+        role: None,
     }];
 
     let text = render_worklist_human(

@@ -233,6 +233,7 @@ status = "active"
             span: Some(Span { line, column: 1 }),
             identity: StructuralIdentity::new("file", "tracked_file"),
             message: format!("tracked file: {path}"),
+            ledger: None,
         }
     }
 }

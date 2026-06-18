@@ -27,6 +27,7 @@ impl EvidenceValidationMode {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn load_config_required_with_evidence_mode(
     root: &Path,
     config: Option<&Path>,
@@ -39,6 +40,7 @@ pub(crate) fn load_config_required_with_evidence_mode(
     load_policy_for_root(path, evidence_validation)
 }
 
+#[cfg(test)]
 pub(crate) fn load_config_optional_with_evidence_mode(
     root: &Path,
     config: Option<&Path>,

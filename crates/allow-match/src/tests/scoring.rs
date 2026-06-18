@@ -15,6 +15,7 @@ fn matches_moved_line_by_structure() {
         }),
         identity: id,
         message: String::new(),
+        ledger: None,
     };
     let entry = AllowEntry {
         id: "allow-1".to_string(),

@@ -47,6 +47,7 @@ mod tests {
             span: Some(Span { line, column }),
             identity: StructuralIdentity::new("rust", "method_call"),
             message: String::new(),
+            ledger: None,
         }
     }
 

@@ -28,6 +28,11 @@ fn item(kind: &'static str, risk: &'static str, difficulty: &'static str) -> Wor
         message: "fixture",
         suggested_actions: &[],
         proof_commands: &[],
+        ledger_id: None,
+        ledger_path: None,
+        lane: None,
+        mode: None,
+        role: None,
     }
 }
 

@@ -14,6 +14,7 @@ pub(super) fn process_policy_finding(path: &str, symbol: &str) -> Finding {
         span: Some(Span { line: 1, column: 1 }),
         identity,
         message: String::new(),
+        ledger: None,
     }
 }
 
@@ -28,6 +29,7 @@ pub(super) fn network_policy_finding(symbol: &str) -> Finding {
         span: Some(Span { line: 1, column: 1 }),
         identity,
         message: String::new(),
+        ledger: None,
     }
 }
 
@@ -50,6 +52,7 @@ pub(super) fn panic_finding(
         span: Some(Span { line: 1, column: 1 }),
         identity,
         message: String::new(),
+        ledger: None,
     }
 }
 
@@ -73,6 +76,7 @@ pub(super) fn lint_finding(
         span: Some(Span { line: 1, column: 1 }),
         identity,
         message: String::new(),
+        ledger: None,
     }
 }
 
@@ -86,6 +90,7 @@ pub(super) fn unsafe_finding(path: &str, family: &str, container: Option<&str>) 
         span: Some(Span { line: 1, column: 1 }),
         identity,
         message: String::new(),
+        ledger: None,
     }
 }
 
@@ -97,5 +102,6 @@ pub(super) fn finding(path: &str, ast_kind: &str) -> Finding {
         span: Some(Span { line: 1, column: 1 }),
         identity: StructuralIdentity::new("file", ast_kind),
         message: String::new(),
+        ledger: None,
     }
 }

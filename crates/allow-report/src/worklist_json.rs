@@ -295,6 +295,11 @@ mod tests {
             message: "missing evidence",
             suggested_actions,
             proof_commands,
+            ledger_id: None,
+            ledger_path: None,
+            lane: None,
+            mode: None,
+            role: None,
         }
     }
 

@@ -287,6 +287,7 @@ mod proptests {
                 span: Some(Span { line, column }),
                 identity,
                 message: "generated finding".to_string(),
+                ledger: None,
             };
             let mut moved = finding.clone();
             moved.span = Some(Span {
