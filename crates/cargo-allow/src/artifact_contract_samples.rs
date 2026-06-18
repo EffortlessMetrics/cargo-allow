@@ -40,6 +40,7 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "claim_boundary",
                 "command",
                 "config",
+                "federation",
                 "inventory",
                 "root",
                 "scanner_limitations",
