@@ -18,6 +18,7 @@ pub fn assert_status(command: &str, result: &Output, should_succeed: bool) {
     );
 }
 
+#[allow(dead_code)] // each integration-test binary includes this module and uses a different helper subset
 pub fn assert_stdout_empty(command: &str, result: &Output, message: &str) {
     assert!(
         result.stdout.is_empty(),
