@@ -5,8 +5,8 @@ use std::fs;
 
 use json_assertions::{assert_json_str, assert_json_u64};
 use support::{
-    assert_saved_json_artifact, assert_status, assert_stderr_empty, cargo_allow_command,
-    remove_temp_root, temp_root,
+    assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
+    cargo_allow_command, remove_temp_root, temp_root,
 };
 
 #[test]
@@ -93,6 +93,11 @@ fn blocking_lane_still_fails_no_new() {
     assert_json_u64(&report, "/summary/new", 1, "blocking lane new count");
 
     remove_temp_root(root);
+}
+
+#[test]
+fn integration_support_links_stdout_helper() {
+    let _ = assert_stdout_empty as fn(&str, &std::process::Output, &str);
 }
 
 fn write_lane_posture_fixture(root: &std::path::Path, source: &str) {
