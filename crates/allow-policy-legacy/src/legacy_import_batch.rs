@@ -158,11 +158,7 @@ mod tests {
     #[test]
     fn multi_family_batch_import_preserves_panic_and_lint_metadata() {
         let dir = fixture_dir();
-        stage_migration_fixture(
-            &dir,
-            "no-panic-allowlist.toml",
-            "no-panic-allowlist.toml",
-        );
+        stage_migration_fixture(&dir, "no-panic-allowlist.toml", "no-panic-allowlist.toml");
         stage_migration_fixture(&dir, "panic-baseline.toml", "no-panic-baseline.toml");
         stage_migration_fixture(&dir, "lint-exception.toml", "clippy-exceptions.toml");
 
@@ -198,26 +194,34 @@ mod tests {
 
         let cfg = &batch.config;
         assert!(
-            cfg.allow.iter().any(|entry| entry.id == "fixture-no-panic-unwrap"
-                && entry.kind == FindingKind::Panic
-                && entry.family.as_deref() == Some("unwrap")
-                && entry.classification == "reviewed_panic_exception"
-                && entry.reason.contains("Parser validates the optional value.")),
+            cfg.allow
+                .iter()
+                .any(|entry| entry.id == "fixture-no-panic-unwrap"
+                    && entry.kind == FindingKind::Panic
+                    && entry.family.as_deref() == Some("unwrap")
+                    && entry.classification == "reviewed_panic_exception"
+                    && entry
+                        .reason
+                        .contains("Parser validates the optional value.")),
             "reviewed panic allowlist reason should survive batch import"
         );
         assert!(
-            cfg.allow.iter().any(|entry| entry.id == "panic-baseline-0001"
-                && entry.kind == FindingKind::Panic
-                && entry.family.as_deref() == Some("unwrap")
-                && entry.classification == "baseline_debt"
-                && entry.occurrence_limit == Some(2)),
+            cfg.allow
+                .iter()
+                .any(|entry| entry.id == "panic-baseline-0001"
+                    && entry.kind == FindingKind::Panic
+                    && entry.family.as_deref() == Some("unwrap")
+                    && entry.classification == "baseline_debt"
+                    && entry.occurrence_limit == Some(2)),
             "panic baseline occurrence limit should survive batch import"
         );
         assert!(
             cfg.allow.iter().any(|entry| entry.id == "fixture-clippy"
                 && entry.kind == FindingKind::LintException
                 && entry.family.as_deref() == Some("expect_attribute")
-                && entry.reason.contains("Parser validates optional value before unwrap.")),
+                && entry
+                    .reason
+                    .contains("Parser validates optional value before unwrap.")),
             "lint exception reason should survive batch import"
         );
     }

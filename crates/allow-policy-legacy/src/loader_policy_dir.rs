@@ -78,12 +78,23 @@ mod tests {
         assert_eq!(batch.config.status.as_deref(), Some("advisory"));
         assert_eq!(batch.config.allow.len(), 4);
         assert!(
-            batch.config.allow.iter().any(|entry| entry.family.as_deref() == Some("process_spawn")
-                && entry.path.as_deref() == Some(Path::new(".github/workflows/ci.yml")))
+            batch
+                .config
+                .allow
+                .iter()
+                .any(|entry| entry.family.as_deref() == Some("process_spawn")
+                    && entry.path.as_deref() == Some(Path::new(".github/workflows/ci.yml")))
         );
-        assert!(batch.config.allow.iter().any(|entry| entry.family.as_deref()
-            == Some("network_destination")
-            && entry.selector.symbol.as_deref() == Some("api.github.com lane release")));
+        assert!(
+            batch
+                .config
+                .allow
+                .iter()
+                .any(
+                    |entry| entry.family.as_deref() == Some("network_destination")
+                        && entry.selector.symbol.as_deref() == Some("api.github.com lane release")
+                )
+        );
     }
 
     #[test]

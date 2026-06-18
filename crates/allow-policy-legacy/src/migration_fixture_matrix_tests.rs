@@ -198,8 +198,12 @@ fn migration_fixture_matrix_multi_family_batch_preserves_lane_metadata() {
     assert_eq!(batch.families[0].finding_kind, FindingKind::Panic);
     assert_eq!(batch.families[2].finding_kind, FindingKind::LintException);
     assert!(
-        batch.families[0].entry_families.contains(&"unwrap".to_string())
-            && batch.families[1].entry_families.contains(&"unwrap".to_string())
+        batch.families[0]
+            .entry_families
+            .contains(&"unwrap".to_string())
+            && batch.families[1]
+                .entry_families
+                .contains(&"unwrap".to_string())
             && batch.families[2]
                 .entry_families
                 .contains(&"expect_attribute".to_string()),
@@ -208,19 +212,23 @@ fn migration_fixture_matrix_multi_family_batch_preserves_lane_metadata() {
 
     let cfg = &batch.config;
     assert!(
-        cfg.allow.iter().any(|entry| entry.id == "fixture-no-panic-unwrap"
-            && entry.kind == FindingKind::Panic),
+        cfg.allow
+            .iter()
+            .any(|entry| entry.id == "fixture-no-panic-unwrap" && entry.kind == FindingKind::Panic),
         "batch import should retain reviewed panic allowlist entries"
     );
     assert!(
-        cfg.allow.iter().any(|entry| entry.id == "panic-baseline-0001"
-            && entry.kind == FindingKind::Panic
-            && entry.occurrence_limit == Some(2)),
+        cfg.allow
+            .iter()
+            .any(|entry| entry.id == "panic-baseline-0001"
+                && entry.kind == FindingKind::Panic
+                && entry.occurrence_limit == Some(2)),
         "batch import should retain panic baseline occurrence limits"
     );
     assert!(
-        cfg.allow.iter().any(|entry| entry.id == "fixture-clippy"
-            && entry.kind == FindingKind::LintException),
+        cfg.allow
+            .iter()
+            .any(|entry| entry.id == "fixture-clippy" && entry.kind == FindingKind::LintException),
         "batch import should retain lint exception entries"
     );
 }
