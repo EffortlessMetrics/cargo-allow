@@ -60,6 +60,12 @@ inventory without executing repository code.
 
 ### Documentation
 
+- Split umbrella #1466 into six owned child issues for import parity governance:
+  #1713 (semantic selector fields), #1714 (advisory drift / last_seen),
+  #1715 (recorded re-bless receipts), #1716 (multi-family legacy ledger model),
+  #1717 (owner/reason/evidence acceptance fixture), #1718 (ripr-style adoption
+  receipt). Umbrella #1466 remains open; update `gap-inventory.md` and
+  `adoption-substrate-pr-005` in `.codex/goals/active.toml`.
 - Reconcile migration parity and adoption-substrate execution state after B3–B6
   groundwork: mark B1–B6 done in `.codex/goals/active.toml`, close #1470 in
   gap-inventory, record #1466 umbrella split as adoption-substrate-pr-005, pivot
