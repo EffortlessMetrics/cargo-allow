@@ -8,9 +8,9 @@ characterization tests in #1701 (merge `2165848`).
 | Finding surface | Gap | Status | Fixture needed | PR |
 | --- | --- | --- | --- | --- |
 | unsafe | container ambiguity in nested modules | done | refactor pair + sibling modules | D3 (#1724, `ffc4a47`) |
-| panic method calls | receiver fingerprint edge cases | partial | method call matrix | D2 (done) |
+| panic method calls | receiver fingerprint edge cases | done | method call matrix | D4 |
 | panic macros | macro_name visibility | partial | macro invocation fixtures | D2 (done) |
-| index/slice | target_fingerprint precision | partial | index expr matrix | D2 (done) |
+| index/slice | target_fingerprint precision | done | index expr matrix | D4 |
 | lint attributes | attribute target identity | partial | lint attr fixtures | D2 (done) |
 | match selectors | precision on new fields | open | matcher characterization | D6 |
 | diff posture | weakening on identity loss | open | diff characterization | D7 |
@@ -38,10 +38,10 @@ Characterization source: `tests/fixtures/structural-identity/` and
 | `callee` | stable | preserved when receiver changes (`callee_same_receiver_diff`, `rename_local`) |
 | `macro_name` | stable | recorded for `panic!` (`macro_same_different_paths`) |
 | `lint` | stable | preserved across lint-target reorder |
-| `receiver_fingerprint` | stable | distinguishes same callee on different receivers |
-| `receiver_fingerprint` | ambiguous | rename-only refactors change identity (`rename_local`) |
+| `receiver_fingerprint` | stable | distinguishes same callee on different parameter slots (`callee_same_receiver_diff`, `index_same_form_diff_targets`) |
+| `receiver_fingerprint` | stable | rename-only refactors preserve parameter-slot identity (`rename_local`) |
+| `target_fingerprint` | stable | populated from index selector text for indexing fixtures |
 | `target_fingerprint` | stable | present for lint expect reasons where applicable |
-| `target_fingerprint` | missing | not populated for bare indexing/unwrap fixtures |
 | `normalized_snippet_hash` | stable | line-local hash unchanged when finding line text is unchanged |
 | `line_hint` | useful hint | changes on line movement without affecting stable key |
 | `column_hint` | useful hint | review/navigation only; excluded from stable key |

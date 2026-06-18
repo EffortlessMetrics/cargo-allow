@@ -10,6 +10,13 @@ inventory without executing repository code.
 
 ### Added
 
+- Map simple Rust parameter identifiers to structural receiver fingerprints
+  (`param:N`) for panic method calls and index receivers, preserving identity
+  across rename-only refactors while still distinguishing different parameter
+  slots. Non-identifier receivers keep normalized expression text. Index
+  `target_fingerprint` now records the bracket selector instead of mirroring
+  the receiver. Fixtures: `rename_local`, `callee_same_receiver_diff`,
+  `index_same_form_diff_targets`.
 - Register adoption-substrate lane closeout (CARGO-ALLOW-CLOSEOUT-0003) after the
   10-PR cleanup queue lands on main: modularization, advisory ratcheting,
   governance split, two in-repository dogfood receipts, and structural identity

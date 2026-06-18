@@ -64,7 +64,7 @@ fn syntax_panic_methods_record_non_empty_receiver_fingerprint() {
 
     assert_eq!(
         expect.identity.receiver_fingerprint.as_deref(),
-        Some("value")
+        Some("param:0")
     );
 }
 
@@ -138,7 +138,10 @@ fn syntax_panic_methods_record_unicode_receiver_fingerprint() {
         .find(|f| f.kind == FindingKind::Panic && f.family.as_deref() == Some("expect"))
         .unwrap_or_else(|| std::panic::panic_any("expected expect finding"));
 
-    assert_eq!(expect.identity.receiver_fingerprint.as_deref(), Some(name));
+    assert_eq!(
+        expect.identity.receiver_fingerprint.as_deref(),
+        Some("param:0")
+    );
 }
 #[test]
 fn syntax_panic_methods_ignore_text_in_strings_and_comments() {

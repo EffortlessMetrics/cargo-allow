@@ -71,7 +71,7 @@ fn refactor_pair_line_move_preserves_structural_identity() {
     );
     assert_eq!(
         before_finding.identity.receiver_fingerprint.as_deref(),
-        Some("value")
+        Some("param:0")
     );
     assert_eq!(before_finding.identity.callee.as_deref(), Some("expect"));
 }
@@ -120,7 +120,7 @@ fn refactor_pair_module_move_changes_module_and_container_identity() {
 }
 
 #[test]
-fn refactor_pair_rename_local_changes_receiver_fingerprint() {
+fn refactor_pair_rename_local_preserves_structural_identity() {
     let path = PathBuf::from("src/fixture.rs");
     let (before, after) = scan_fixture_pair("rename_local", &path);
     let before_finding = single_finding(&before, FindingKind::Panic, "expect");
@@ -130,16 +130,16 @@ fn refactor_pair_rename_local_changes_receiver_fingerprint() {
     assert_eq!(after_finding.identity.callee.as_deref(), Some("expect"));
     assert_eq!(
         before_finding.identity.receiver_fingerprint.as_deref(),
-        Some("value")
+        Some("param:0")
     );
     assert_eq!(
         after_finding.identity.receiver_fingerprint.as_deref(),
-        Some("payload")
+        Some("param:0")
     );
     assert_ne!(
-        before_finding.identity.stable_key(),
-        after_finding.identity.stable_key(),
-        "renamed receiver should change structural identity"
+        before_finding.identity.normalized_snippet_hash,
+        after_finding.identity.normalized_snippet_hash,
+        "local line text still reflects the renamed binding"
     );
 }
 
@@ -154,11 +154,11 @@ fn refactor_pair_same_callee_different_receiver_changes_identity() {
     assert_eq!(after_finding.identity.callee.as_deref(), Some("unwrap"));
     assert_eq!(
         before_finding.identity.receiver_fingerprint.as_deref(),
-        Some("value")
+        Some("param:0")
     );
     assert_eq!(
         after_finding.identity.receiver_fingerprint.as_deref(),
-        Some("other")
+        Some("param:1")
     );
     assert_ne!(
         before_finding.identity.stable_key(),
@@ -240,11 +240,19 @@ fn refactor_pair_same_index_form_different_targets_changes_identity() {
 
     assert_eq!(
         before_index.identity.receiver_fingerprint.as_deref(),
-        Some("left")
+        Some("param:0")
     );
     assert_eq!(
         after_index.identity.receiver_fingerprint.as_deref(),
-        Some("right")
+        Some("param:1")
+    );
+    assert_eq!(
+        before_index.identity.target_fingerprint.as_deref(),
+        Some("0")
+    );
+    assert_eq!(
+        after_index.identity.target_fingerprint.as_deref(),
+        Some("0")
     );
     assert_eq!(before_index.identity.symbol.as_deref(), Some("left[0]"));
     assert_eq!(after_index.identity.symbol.as_deref(), Some("right[0]"));
