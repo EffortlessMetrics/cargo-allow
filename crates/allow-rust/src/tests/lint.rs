@@ -403,12 +403,7 @@ impl Renderer {
     let keyed = findings
         .iter()
         .filter(|f| f.kind == FindingKind::LintException)
-        .map(|f| {
-            (
-                f.identity.container.as_deref(),
-                f.identity.stable_key(),
-            )
-        })
+        .map(|f| (f.identity.container.as_deref(), f.identity.stable_key()))
         .collect::<Vec<_>>();
 
     assert_eq!(keyed.len(), 2);
