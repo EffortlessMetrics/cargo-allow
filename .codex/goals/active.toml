@@ -174,30 +174,35 @@ evidence_notes = [
 
 [[work_item]]
 id = "adoption-substrate-pr-003"
-status = "ready"
+status = "done"
 title = "Extract evidence and lifecycle migration helpers"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
 proof_commands = [
   "rtk cargo test -p allow-policy-legacy",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Refactor-preserving modularization of shared evidence/lifecycle import paths.",
-  "Next active adoption/cleanup lane after migration lane descriptors.",
+  "Landed in #1711 (merge 04facd42): shared evidence/lifecycle metadata helpers in allow-policy-legacy without migration behavior change.",
 ]
 
 [[work_item]]
 id = "adoption-substrate-pr-004"
-status = "blocked"
+status = "ready"
 title = "Normalize closeout queue routing across compat kinds"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
-blocker_reason = "Sequenced after adoption-substrate-pr-003 evidence/lifecycle helpers land."
+proof_commands = [
+  "rtk cargo test -p allow-policy-legacy migration_closeout",
+  "rtk cargo test -p cargo-allow migrate_closeout_summary",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
 evidence_notes = [
   "Align closeout queue naming and phased next_queues across migration summaries.",
+  "Next active adoption/cleanup lane after evidence/lifecycle helpers.",
 ]
 
 [[work_item]]
