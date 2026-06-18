@@ -214,6 +214,7 @@ mod tests {
             status: None,
             workspace: WorkspaceConfig::default(),
             requirements: Default::default(),
+            lanes: std::collections::BTreeMap::new(),
             allow: vec![
                 dependency_entry_with_glob("crates/*/Cargo.toml"),
                 non_dependency_entry(),

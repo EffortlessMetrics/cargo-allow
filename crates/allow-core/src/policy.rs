@@ -1,5 +1,8 @@
 use crate::{FindingKind, normalize_path, source_tree_path::normalize_source_tree_scope};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
+
+use crate::lane_posture::{LaneConfig, LaneEnforcementMode, lane_enforcement_mode_for_kind};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LastSeen {
@@ -149,6 +152,7 @@ pub struct AllowConfig {
     pub status: Option<String>,
     pub workspace: WorkspaceConfig,
     pub requirements: Requirements,
+    pub lanes: BTreeMap<String, LaneConfig>,
     pub allow: Vec<AllowEntry>,
 }
 
@@ -161,8 +165,13 @@ impl AllowConfig {
             status: Some("active".to_string()),
             workspace: WorkspaceConfig::default(),
             requirements: Requirements::default(),
+            lanes: BTreeMap::new(),
             allow: Vec::new(),
         }
+    }
+
+    pub fn lane_enforcement_mode_for_kind(&self, kind: FindingKind) -> LaneEnforcementMode {
+        lane_enforcement_mode_for_kind(&self.lanes, kind)
     }
 }
 

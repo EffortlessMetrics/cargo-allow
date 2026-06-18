@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 pub const REPORT_SCHEMA_VERSION: u32 = 1;
 pub const REPORT_SCHEMA_ID: &str = "cargo-allow.report.v1";
 pub const RECEIPT_SCHEMA_VERSION: u32 = 1;
@@ -343,6 +345,7 @@ pub struct ReportContext<'a> {
     pub enforcement: Option<&'a str>,
     pub policy_config: Option<&'a str>,
     pub tool_version: Option<&'a str>,
+    pub lane_posture: Option<&'a BTreeMap<String, allow_core::LaneEnforcementMode>>,
 }
 
 impl<'a> ReportContext<'a> {
@@ -366,6 +369,7 @@ impl<'a> ReportContext<'a> {
             enforcement: None,
             policy_config: None,
             tool_version: None,
+            lane_posture: None,
         }
     }
 }

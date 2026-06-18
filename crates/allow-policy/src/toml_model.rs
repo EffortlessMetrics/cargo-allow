@@ -4,6 +4,7 @@ use std::path::Path;
 
 use crate::toml_de::option_schema_version;
 use crate::toml_entry::AllowEntryToml;
+use crate::toml_lanes::LanesToml;
 use crate::toml_requirements::RequirementsToml;
 use crate::toml_workspace::WorkspaceToml;
 
@@ -18,6 +19,8 @@ struct PolicyToml {
     workspace: WorkspaceToml,
     #[serde(default)]
     requirements: RequirementsToml,
+    #[serde(default)]
+    lanes: LanesToml,
     #[serde(default)]
     allow: Vec<AllowEntryToml>,
 }
@@ -37,6 +40,7 @@ impl PolicyToml {
             status: self.status,
             workspace: self.workspace.into_workspace_config(),
             requirements: self.requirements.into_requirements(),
+            lanes: self.lanes.into_lane_configs()?,
             allow,
         })
     }
@@ -208,6 +212,32 @@ glob = "policy/allow.toml"
         .unwrap_or_else(|err| std::panic::panic_any(format!("integer schema parses: {err}")));
 
         assert_eq!(cfg.schema_version, "1");
+    }
+
+    #[test]
+    fn parse_policy_toml_preserves_lane_posture() {
+        let cfg = parse_policy_toml_at(
+            None,
+            r#"
+policy = "cargo-allow"
+
+[lanes.panic]
+mode = "blocking"
+
+[lanes.unsafe]
+mode = "shadow"
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy parses: {err}")));
+
+        assert_eq!(
+            cfg.lane_enforcement_mode_for_kind(allow_core::FindingKind::Panic),
+            allow_core::LaneEnforcementMode::Blocking
+        );
+        assert_eq!(
+            cfg.lane_enforcement_mode_for_kind(allow_core::FindingKind::Unsafe),
+            allow_core::LaneEnforcementMode::Shadow
+        );
     }
 
     #[test]
