@@ -45,7 +45,7 @@ authorization.
 | --- | --- | --- | --- | --- | --- |
 | migration lane descriptors | Compat kinds lack a single modular descriptor surface for agents and docs | ready | repo-infra | active goal `adoption-substrate-pr-002` | PR 2 |
 | evidence/lifecycle helpers | Shared import metadata paths are duplicated across compat loaders | blocked | repo-infra | B2 characterization in `allow-policy-legacy` | PR 3 |
-| closeout queue normalization | `next_queues` routing varies by compat kind; needs consistent phased naming | blocked | repo-infra | B4 closeout routing (#1695) | PR 4 |
+| closeout queue normalization | `next_queues` routing varies by compat kind; needs consistent phased naming | done | repo-infra | #1712 `migrate_closeout_queues`; `CloseoutQueueHints` | PR 4 |
 | #1466 governance split | Umbrella issue mixes import design, parity proof, and adoption blockers | gap | repo-infra | #1466 open; CARGO-ALLOW-SPEC-0004 | PR 5 |
 | advisory occurrence counts | Baseline debt visibility lacks advisory ratcheting metadata for migration summaries | blocked | repo-infra | `baseline_debt` markers in fixture matrix | PR 6 |
 

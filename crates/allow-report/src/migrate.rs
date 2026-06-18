@@ -5,6 +5,7 @@ use crate::migrate_closeout::{
     MigrateCloseoutInput, append_migrate_closeout_human, append_migrate_closeout_json,
     migrate_closeout_from_input,
 };
+use crate::migrate_closeout_queues::migrate_follow_up_queues_for_legacy;
 use crate::{CLAIM_BOUNDARY_TEXT, MigrateReport};
 use allow_core::json_escape;
 
@@ -16,7 +17,6 @@ const WEAK_EVIDENCE_REFERENCE_COMMAND: &str =
     "cargo-allow worklist --item-kind weak_evidence_reference --format json";
 const UNSAFE_WEAK_EVIDENCE_REFERENCE_COMMAND: &str =
     "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json";
-const BASELINE_DEBT_COMMAND: &str = "cargo-allow worklist --item-kind baseline_debt --format json";
 
 pub fn render_migrate_human(
     report: MigrateReport<'_>,
@@ -63,7 +63,11 @@ pub fn render_migrate_human(
     {
         out.push_str(&format!("unsafe_weak_evidence_references: {count}\n"));
     }
-    append_migrate_follow_up_queues_human(report, &mut out);
+    append_migrate_follow_up_queues_human(
+        report,
+        &mut out,
+        &closeout_input.legacy_compat_kind_ids(),
+    );
     append_migrate_evidence_repair_queues_human(report, &mut out);
     let closeout = migrate_closeout_from_input(closeout_input);
     append_migrate_closeout_human(&closeout, &mut out);
@@ -86,8 +90,12 @@ pub fn render_migrate_human(
     out
 }
 
-fn append_migrate_follow_up_queues_human(report: MigrateReport<'_>, out: &mut String) {
-    let queues = migrate_follow_up_queues(report);
+fn append_migrate_follow_up_queues_human(
+    report: MigrateReport<'_>,
+    out: &mut String,
+    legacy_compat_kinds: &[&str],
+) {
+    let queues = migrate_follow_up_queues_for_legacy(report, legacy_compat_kinds);
     if queues.is_empty() {
         return;
     }
@@ -209,7 +217,11 @@ pub fn render_migrate_json(
     out.push_str(&summary_tail.join(",\n"));
     out.push('\n');
     out.push_str("  },\n");
-    append_migrate_follow_up_queues_json(report, &mut out);
+    append_migrate_follow_up_queues_json(
+        report,
+        &mut out,
+        &closeout_input.legacy_compat_kind_ids(),
+    );
     append_migrate_evidence_repair_queues_json(report, &mut out);
     let closeout = migrate_closeout_from_input(closeout_input);
     append_migrate_closeout_json(&closeout, &mut out);
@@ -218,8 +230,12 @@ pub fn render_migrate_json(
     out
 }
 
-fn append_migrate_follow_up_queues_json(report: MigrateReport<'_>, out: &mut String) {
-    let queues = migrate_follow_up_queues(report);
+fn append_migrate_follow_up_queues_json(
+    report: MigrateReport<'_>,
+    out: &mut String,
+    legacy_compat_kinds: &[&str],
+) {
+    let queues = migrate_follow_up_queues_for_legacy(report, legacy_compat_kinds);
     if queues.is_empty() {
         return;
     }
@@ -304,21 +320,6 @@ fn append_migrate_evidence_repair_queues_json(report: MigrateReport<'_>, out: &m
         out.push_str("    }");
     }
     out.push_str("\n  ],\n");
-}
-
-pub(crate) fn migrate_follow_up_queues(report: MigrateReport<'_>) -> Vec<MigrateFollowUpQueue> {
-    let mut queues = Vec::new();
-    if report.baseline_debt > 0 {
-        queues.push(MigrateFollowUpQueue {
-            signal: "baseline_debt",
-            label: "baseline debt entries",
-            route_kind: "worklist_item_kind",
-            item_kind: "baseline_debt",
-            count: report.baseline_debt,
-            command: BASELINE_DEBT_COMMAND,
-        });
-    }
-    queues
 }
 
 pub(crate) fn migrate_evidence_repair_queues(

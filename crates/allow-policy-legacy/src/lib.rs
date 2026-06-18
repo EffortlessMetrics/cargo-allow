@@ -55,6 +55,7 @@ mod loader_source_compat;
 mod loader_source_exception_compat;
 mod loader_workflow_dependency_compat;
 mod loaders;
+mod migration_closeout;
 mod migration_lane_descriptors;
 mod parser_clippy_entries;
 mod parser_dependency_entries;
@@ -100,6 +101,11 @@ pub use loaders::{
     load_network_compat_config, load_no_panic_allowlist_compat_config,
     load_no_panic_baseline_compat_config, load_non_rust_compat_config, load_process_compat_config,
     load_unsafe_allowlist_compat_config, load_workflow_compat_config, migration_notes,
+};
+pub use migration_closeout::{
+    BASELINE_DEBT_ITEM_KIND, MISSING_EVIDENCE_ITEM_KIND, MigrationCloseoutBaselineDebt,
+    MigrationDebtClass, NO_NEW_GATE_ITEM_KIND, NO_NEW_GATE_SIGNAL, baseline_debt_closeout_metadata,
+    migration_closeout_baseline_debt, migration_debt_classes, primary_legacy_descriptor,
 };
 pub use migration_lane_descriptors::{
     CloseoutQueueHints, CompatKind, DebtPolicy, EvidencePolicy, ExpectedCanonicalShape,

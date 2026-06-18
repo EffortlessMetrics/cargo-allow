@@ -1,9 +1,7 @@
 use allow_core::json_escape;
 
 use crate::artifacts::MigrateReport;
-use crate::migrate::{migrate_evidence_repair_queues, migrate_follow_up_queues};
-
-const CHECK_NO_NEW_COMMAND: &str = "cargo-allow check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md";
+use crate::migrate_closeout_queues::build_migrate_closeout_next_queues;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MigrateLegacySource {
@@ -16,6 +14,15 @@ pub struct MigrateCloseoutInput<'a> {
     pub report: MigrateReport<'a>,
     pub missing_evidence_entries: usize,
     pub legacy_sources: &'a [MigrateLegacySource],
+}
+
+impl<'a> MigrateCloseoutInput<'a> {
+    pub(crate) fn legacy_compat_kind_ids(&self) -> Vec<&'static str> {
+        self.legacy_sources
+            .iter()
+            .map(|source| source.compat_kind)
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -87,7 +94,8 @@ pub fn migrate_closeout_from_input(input: MigrateCloseoutInput<'_>) -> MigrateCl
         missing_evidence_entries: input.missing_evidence_entries,
     };
     let blockers = migrate_closeout_blockers(report.baseline_debt, &evidence_debt);
-    let next_queues = migrate_closeout_next_queues(report, &evidence_debt);
+    let next_queues =
+        build_migrate_closeout_next_queues(report, &evidence_debt, &input.legacy_compat_kind_ids());
     let retirement_status = if blockers.is_empty() {
         "ready"
     } else {
@@ -142,70 +150,6 @@ fn migrate_closeout_blockers(
         blockers.push("weak_evidence_reference");
     }
     blockers
-}
-
-fn migrate_closeout_next_queues<'a>(
-    report: MigrateReport<'a>,
-    evidence_debt: &MigrateEvidenceDebt,
-) -> Vec<MigrateCloseoutQueue> {
-    let mut queues = Vec::new();
-    let mut phase = 1usize;
-    for queue in migrate_follow_up_queues(report) {
-        queues.push(MigrateCloseoutQueue {
-            phase,
-            signal: queue.signal,
-            label: queue.label,
-            route_kind: queue.route_kind,
-            item_kind: queue.item_kind,
-            count: queue.count,
-            command: queue.command,
-            unsafe_command: None,
-        });
-        phase += 1;
-    }
-    for queue in migrate_evidence_repair_queues(report) {
-        queues.push(MigrateCloseoutQueue {
-            phase,
-            signal: queue.signal,
-            label: queue.label,
-            route_kind: queue.route_kind,
-            item_kind: queue.item_kind,
-            count: queue.count,
-            command: queue.command,
-            unsafe_command: queue.unsafe_command,
-        });
-        phase += 1;
-    }
-    if evidence_debt.missing_evidence_entries > 0
-        && !queues
-            .iter()
-            .any(|queue| queue.item_kind == "missing_evidence")
-    {
-        queues.push(MigrateCloseoutQueue {
-            phase,
-            signal: "missing_evidence",
-            label: "missing evidence entries",
-            route_kind: "worklist_item_kind",
-            item_kind: "missing_evidence",
-            count: evidence_debt.missing_evidence_entries,
-            command: "cargo-allow worklist --item-kind missing_evidence --format json",
-            unsafe_command: None,
-        });
-        phase += 1;
-    }
-    if !queues.is_empty() {
-        queues.push(MigrateCloseoutQueue {
-            phase,
-            signal: "no_new_gate",
-            label: "no-new guard after closeout edits",
-            route_kind: "check_mode",
-            item_kind: "no_new",
-            count: 0,
-            command: CHECK_NO_NEW_COMMAND,
-            unsafe_command: None,
-        });
-    }
-    queues
 }
 
 pub fn append_migrate_closeout_human(closeout: &MigrateCloseout<'_>, out: &mut String) {
@@ -518,6 +462,7 @@ mod tests {
             ));
         };
         assert_eq!(baseline.item_kind, "baseline_debt");
+        assert_eq!(baseline.label, "panic baseline debt entries");
         assert_eq!(missing.item_kind, "missing_evidence");
         assert_eq!(
             missing.command,

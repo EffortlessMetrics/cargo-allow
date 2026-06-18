@@ -51,6 +51,7 @@ mod list;
 mod list_tests;
 mod migrate;
 mod migrate_closeout;
+mod migrate_closeout_queues;
 #[cfg(test)]
 mod migrate_tests;
 mod non_rust;

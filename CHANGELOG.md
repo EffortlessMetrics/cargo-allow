@@ -10,6 +10,11 @@ inventory without executing repository code.
 
 ### Added
 
+- Normalize migrate `closeout.next_queues` construction across legacy compat lanes
+  using shared lane-descriptor debt classification and `CloseoutQueueHints`
+  (`migration_closeout`, `migrate_closeout_queues`). Panic-baseline migrations
+  now label baseline-debt queues consistently; follow-up and closeout queues
+  share one builder without migration behavior change beyond routing labels.
 - Add shared migration metadata helpers in `allow-policy-legacy`
   (`preserve_metadata`, `preserve_evidence`, `preserve_evidence_with_fallback`,
   `extend_evidence_with_markers`, `map_lifecycle`, `map_baseline_debt_lifecycle`,

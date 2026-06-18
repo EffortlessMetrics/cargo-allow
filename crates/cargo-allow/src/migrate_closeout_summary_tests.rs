@@ -83,6 +83,76 @@ fn migrate_closeout_summary_panic_baseline_without_evidence_routes_baseline_debt
     remove_dir(&root);
 }
 
+#[test]
+fn migrate_closeout_summary_lint_exception_minimal_routes_baseline_debt() {
+    let root = stage_lane_fixture("lint-exception-minimal.toml", "clippy-exceptions.toml");
+    let policy_path = root.join("clippy-exceptions.toml");
+    let cfg = load_legacy_or_canonical(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("load lint exception: {err}")));
+    let context = migrate_context(
+        &root,
+        policy_path.display().to_string(),
+        vec!["clippy-exceptions.toml".to_string()],
+        vec!["lint-exception"],
+    );
+
+    let json = render_migrate_summary_json(&cfg, &context, Path::new("policy/allow.toml"), false);
+    let closeout = closeout_value(&json);
+
+    assert_eq!(closeout_pointer_u64(&closeout, "/baseline_debt/entries"), 1);
+    assert!(
+        closeout_blockers(&closeout).contains(&"baseline_debt".to_string()),
+        "minimal lint entries should remain baseline debt"
+    );
+    assert_legacy_source(
+        &closeout,
+        "clippy-exceptions.toml",
+        "lint-exception",
+        "blocked",
+    );
+    assert!(
+        json.contains("\"label\": \"baseline debt entries\""),
+        "lint-exception closeout should use generic baseline-debt queue label"
+    );
+    assert!(
+        json.contains("\"signal\": \"no_new_gate\""),
+        "closeout should end with the no-new guard after routed queues"
+    );
+    remove_dir(&root);
+}
+
+#[test]
+fn migrate_closeout_summary_unsafe_without_evidence_routes_weak_evidence() {
+    let root = stage_lane_fixture("unsafe-no-evidence.toml", "unsafe-allowlist.toml");
+    let policy_path = root.join("unsafe-allowlist.toml");
+    let cfg = load_legacy_or_canonical(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("load unsafe allowlist: {err}")));
+    let context = migrate_context(
+        &root,
+        policy_path.display().to_string(),
+        vec!["unsafe-allowlist.toml".to_string()],
+        vec!["unsafe"],
+    );
+
+    let json = render_migrate_summary_json(&cfg, &context, Path::new("policy/allow.toml"), false);
+    let closeout = closeout_value(&json);
+
+    assert!(
+        closeout_blockers(&closeout).contains(&"weak_evidence_reference".to_string()),
+        "unsafe lane without legacy evidence should route weak-evidence closeout"
+    );
+    assert_legacy_source(&closeout, "unsafe-allowlist.toml", "unsafe", "blocked");
+    assert!(
+        json.contains("\"item_kind\": \"weak_evidence_reference\""),
+        "unsafe without evidence should route weak-evidence closeout queue"
+    );
+    assert!(
+        json.contains("\"signal\": \"no_new_gate\""),
+        "closeout should end with the no-new guard after routed queues"
+    );
+    remove_dir(&root);
+}
+
 fn closeout_value(json: &str) -> serde_json::Value {
     let value: serde_json::Value = serde_json::from_str(json)
         .unwrap_or_else(|err| std::panic::panic_any(format!("parse migrate json: {err}")));
@@ -161,6 +231,10 @@ fn migrate_context(
 }
 
 fn stage_panic_fixture(fixture_file: &str, legacy_filename: &str) -> PathBuf {
+    stage_lane_fixture(fixture_file, legacy_filename)
+}
+
+fn stage_lane_fixture(fixture_file: &str, legacy_filename: &str) -> PathBuf {
     let root = std::env::temp_dir().join(format!(
         "cargo-allow-migrate-closeout-{}-{}",
         fixture_file.replace('.', "-"),
