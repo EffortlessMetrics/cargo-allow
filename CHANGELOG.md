@@ -118,6 +118,11 @@ inventory without executing repository code.
 
 ### Documentation
 
+- Register import parity execution lane in `.codex/goals/active.toml` after
+  adoption-substrate and structural identity D1–D7 closeout: queue #1713
+  (semantic selector fields) as the first import slice; #1714–#1718 remain
+  sequenced siblings. Release/OIDC publish lanes stay dormant; `.allow` namespace
+  import remains design-only (CARGO-ALLOW-SPEC-0004).
 - Split umbrella #1466 into six owned child issues for import parity governance:
   #1713 (semantic selector fields), #1714 (advisory drift / last_seen),
   #1715 (recorded re-bless receipts), #1716 (multi-family legacy ledger model),
