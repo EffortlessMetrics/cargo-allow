@@ -53,6 +53,7 @@ deferred. Closeout:
 | advisory occurrence counts | Baseline debt visibility lacks advisory ratcheting metadata | done | repo-infra | receipt `advisory` counters | pr-006 |
 | `--deny <status>` escalation | Receipt advisory counts not promotable to blocking exit | done | repo-infra | `check --deny <status>` (#1474) | pr-007 |
 | per-lane posture | No per-lane advisory/shadow/blocking model | done | repo-infra | `[lanes.<kind>]` posture (#1473) | pr-008 |
+| occurrence headroom | Counted `occurrence_limit` debt could rot silently with no ratchet-down signal | done | repo-infra | receipt `advisory.occurrence_headroom`, worklist routing, `check --deny occurrence_headroom` (#1472) | post-import-1472 |
 | dogfood receipts | Three in-repo side-by-side receipts (panic-baseline, unsafe-allowlist, ripr-style multi-family batch); additional lanes still open | partial | repo-infra | `docs/dogfood/cargo-allow-panic-baseline.md`; `docs/dogfood/cargo-allow-unsafe-allowlist.md`; `docs/dogfood/cargo-allow-ripr-style-adoption.md` | import-parity-1718 |
 | structural identity D3 | Container module-qualification landed | done | repo-infra | #1724 merge `ffc4a47`; `plans/structural-identity/gap-inventory.md` | pr-010 |
 | structural identity D4 | Receiver/target fingerprint hardening landed | done | repo-infra | #1726 merge `4f19e298`; `plans/structural-identity/gap-inventory.md` | pr-011 |

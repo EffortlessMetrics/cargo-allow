@@ -144,6 +144,7 @@ fn report_schema_allows_optional_evidence_repair_queues() {
             "broken_evidence_links",
             "missing_evidence",
             "weak_evidence_references",
+            "occurrence_headroom",
         ],
     );
     assert_eq!(
@@ -167,6 +168,7 @@ fn report_schema_allows_optional_evidence_repair_queues() {
             "broken_evidence_link",
             "missing_evidence",
             "weak_evidence_reference",
+            "occurrence_headroom",
         ],
     );
     assert_enum_equals(
@@ -246,6 +248,7 @@ fn report_schema_allows_optional_audit_remediation_roadmap() {
             "broken_evidence_links",
             "weak_evidence_references",
             "baseline_debt",
+            "occurrence_headroom",
         ],
     );
     assert_eq!(
@@ -282,6 +285,7 @@ fn report_schema_allows_optional_audit_remediation_roadmap() {
             "broken_evidence_link",
             "weak_evidence_reference",
             "baseline_debt",
+            "occurrence_headroom",
         ],
     );
     assert_enum_equals(

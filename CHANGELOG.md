@@ -10,6 +10,10 @@ inventory without executing repository code.
 
 ### Added
 
+- Emit `occurrence_headroom` advisory counts when a matched allow entry has
+  `occurrence_limit` above its current matched count; route worklist items with
+  limit-reduction guidance; include receipt/report trend and repair-queue
+  routing; and support `check --deny occurrence_headroom` (#1472).
 - Document structural identity scanner limitations and claim boundary (D8):
   extend [docs/identity.md](docs/identity.md) with source-syntax claim boundary,
   per-field stable/hint/ambiguous/missing table from D2–D7 characterization,
@@ -114,13 +118,13 @@ inventory without executing repository code.
   effective mode per configured or scanned kind (#1473).
 - Add `check --deny <status>` to promote individual receipt `advisory` count classes to
   blocking failures without changing check mode. Repeatable; supported classes mirror receipt
-  advisory fields. `occurrence_headroom` remains unavailable (#1472).
+  advisory fields including `occurrence_headroom`.
 - Add receipt-visible `advisory` counters to `cargo-allow.receipt.v1` check artifacts so
   CI and ratcheting workflows can read review-oriented status totals (`review_items`,
   `review_due`, `stale`, `baseline_debt`, optional policy/evidence-health counts) without
   parsing human reports. Markdown check reports include a matching `## Advisory counts`
   section. Exit status is unchanged without `--deny`; per-class `--deny` escalation is available
-  for receipt `advisory` fields except deferred `occurrence_headroom` (#1472).
+  for receipt `advisory` fields.
 - Normalize migrate `closeout.next_queues` construction across legacy compat lanes
   using shared lane-descriptor debt classification and `CloseoutQueueHints`
   (`migration_closeout`, `migrate_closeout_queues`). Panic-baseline migrations

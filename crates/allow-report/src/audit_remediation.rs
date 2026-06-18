@@ -1,7 +1,8 @@
 use allow_core::MatchStatus;
 
 use crate::evidence_repair::{
-    BROKEN_EVIDENCE_LINK_COMMAND, MISSING_EVIDENCE_COMMAND, WEAK_EVIDENCE_REFERENCE_COMMAND,
+    OCCURRENCE_HEADROOM_COMMAND, BROKEN_EVIDENCE_LINK_COMMAND, MISSING_EVIDENCE_COMMAND,
+    WEAK_EVIDENCE_REFERENCE_COMMAND,
 };
 use crate::{ReviewSignals, Summary};
 
@@ -38,6 +39,15 @@ impl AuditRemediationRoute {
             item_kind: Some(item_kind),
             worklist_status: None,
             worklist_filter: Some(worklist_filter),
+        }
+    }
+
+    fn worklist_item_kind(item_kind: &'static str) -> Self {
+        Self {
+            route_kind: "worklist_item_kind",
+            item_kind: Some(item_kind),
+            worklist_status: None,
+            worklist_filter: None,
         }
     }
 
@@ -145,6 +155,14 @@ pub(crate) fn audit_remediation_items(
         "baseline debt",
         AuditRemediationRoute::worklist_filter("baseline_debt", "baseline_debt"),
         "cargo-allow worklist --baseline-debt --format json",
+    );
+    push_audit_remediation_item_if(
+        &mut items,
+        signals.occurrence_headroom,
+        "occurrence_headroom",
+        "occurrence headroom",
+        AuditRemediationRoute::worklist_item_kind("occurrence_headroom"),
+        OCCURRENCE_HEADROOM_COMMAND,
     );
     items
 }

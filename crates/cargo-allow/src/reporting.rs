@@ -10,6 +10,7 @@ pub(crate) struct EvidenceReportSummary {
     pub(crate) policy_missing_evidence_entries: usize,
     pub(crate) broken_evidence_links: usize,
     pub(crate) weak_evidence_references: usize,
+    pub(crate) occurrence_headroom_entries: usize,
 }
 
 impl EvidenceReportSummary {
@@ -42,6 +43,7 @@ impl EvidenceReportSummary {
                 .iter()
                 .filter(|reference| reference.diagnostic.status.is_weak_reference())
                 .count(),
+            occurrence_headroom_entries: allow_report::occurrence_headroom_entries(cfg, outcomes),
         }
     }
 
@@ -56,6 +58,8 @@ impl EvidenceReportSummary {
             (self.weak_evidence_references > 0).then_some(self.weak_evidence_references);
         context.policy_missing_evidence_entries = (self.policy_missing_evidence_entries > 0)
             .then_some(self.policy_missing_evidence_entries);
+        context.occurrence_headroom_entries = (self.occurrence_headroom_entries > 0)
+            .then_some(self.occurrence_headroom_entries);
     }
 }
 
@@ -281,6 +285,7 @@ mod tests {
             policy_missing_evidence_entries: 3,
             broken_evidence_links: 2,
             weak_evidence_references: 1,
+            occurrence_headroom_entries: 0,
         }
         .apply_to(&mut populated_context);
 
@@ -318,6 +323,7 @@ mod tests {
                     policy_missing_evidence_entries: 1,
                     broken_evidence_links: 1,
                     weak_evidence_references: 1,
+                    occurrence_headroom_entries: 0,
                 },
                 findings: &[],
                 outcomes: &[],

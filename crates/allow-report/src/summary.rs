@@ -1,5 +1,5 @@
 use crate::ReportContext;
-use allow_core::{AllowConfig, MatchOutcome, MatchStatus};
+use allow_core::{AllowConfig, AllowEntry, MatchOutcome, MatchStatus};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) const STATUS_COUNT_ORDER: [MatchStatus; 11] = [
@@ -69,6 +69,7 @@ pub(crate) struct ReviewSignals {
     pub(crate) policy_missing_evidence: usize,
     pub(crate) broken_evidence_links: usize,
     pub(crate) weak_evidence_references: usize,
+    pub(crate) occurrence_headroom: usize,
     pub(crate) review_items: usize,
 }
 
@@ -78,18 +79,21 @@ impl ReviewSignals {
         let policy_missing_evidence = policy_missing_evidence_count(summary, context);
         let broken_evidence_links = broken_evidence_link_count(context);
         let weak_evidence_references = weak_evidence_reference_count(context);
+        let occurrence_headroom = occurrence_headroom_count(context);
         let review_items = review_item_count_with_baseline(
             summary,
             baseline_debt,
             policy_missing_evidence,
             broken_evidence_links,
             weak_evidence_references,
+            occurrence_headroom,
         );
         Self {
             baseline_debt,
             policy_missing_evidence,
             broken_evidence_links,
             weak_evidence_references,
+            occurrence_headroom,
             review_items,
         }
     }
@@ -182,6 +186,9 @@ pub(crate) fn render_advisory_count_fields(
     if signals.weak_evidence_references > 0 {
         fields.push(("weak_evidence_references", signals.weak_evidence_references));
     }
+    if signals.occurrence_headroom > 0 {
+        fields.push(("occurrence_headroom", signals.occurrence_headroom));
+    }
     fields
         .iter()
         .enumerate()
@@ -207,6 +214,7 @@ pub const ADVISORY_DENY_FIELD_NAMES: &[&str] = &[
     "policy_missing_evidence",
     "broken_evidence_links",
     "weak_evidence_references",
+    "occurrence_headroom",
 ];
 
 pub fn advisory_count_for_deny_field(
@@ -230,6 +238,7 @@ pub fn advisory_count_for_deny_field(
         "policy_missing_evidence" => Some(signals.policy_missing_evidence),
         "broken_evidence_links" => Some(signals.broken_evidence_links),
         "weak_evidence_references" => Some(signals.weak_evidence_references),
+        "occurrence_headroom" => Some(signals.occurrence_headroom),
         _ => None,
     }
 }
@@ -240,6 +249,7 @@ pub(crate) fn review_item_count_with_baseline(
     policy_missing_evidence: usize,
     broken_evidence_links: usize,
     weak_evidence_references: usize,
+    occurrence_headroom: usize,
 ) -> usize {
     let policy_missing_evidence_extra =
         policy_missing_evidence.saturating_sub(summary.count(MatchStatus::EvidenceMissing));
@@ -251,6 +261,7 @@ pub(crate) fn review_item_count_with_baseline(
         + policy_missing_evidence_extra
         + broken_evidence_links
         + weak_evidence_references
+        + occurrence_headroom
 }
 
 pub(crate) fn baseline_debt_count(summary: &Summary, context: ReportContext<'_>) -> usize {
@@ -265,6 +276,42 @@ pub(crate) fn broken_evidence_link_count(context: ReportContext<'_>) -> usize {
 
 pub(crate) fn weak_evidence_reference_count(context: ReportContext<'_>) -> usize {
     context.weak_evidence_references.unwrap_or(0)
+}
+
+pub(crate) fn occurrence_headroom_count(context: ReportContext<'_>) -> usize {
+    context.occurrence_headroom_entries.unwrap_or(0)
+}
+
+pub fn matched_occurrence_counts(outcomes: &[MatchOutcome]) -> BTreeMap<String, u32> {
+    let mut counts = BTreeMap::new();
+    for outcome in outcomes {
+        if outcome.status != MatchStatus::Matched {
+            continue;
+        }
+        if let Some(allow_id) = &outcome.allow_id {
+            *counts.entry(allow_id.clone()).or_insert(0) += 1;
+        }
+    }
+    counts
+}
+
+pub fn occurrence_headroom_for_entry(entry: &AllowEntry, matched_count: u32) -> Option<u32> {
+    let limit = entry.occurrence_limit?;
+    (matched_count > 0 && matched_count < limit).then_some(limit)
+}
+
+pub fn occurrence_headroom_entries(cfg: &AllowConfig, outcomes: &[MatchOutcome]) -> usize {
+    let counts = matched_occurrence_counts(outcomes);
+    cfg.allow
+        .iter()
+        .filter(|entry| {
+            counts
+                .get(&entry.id)
+                .copied()
+                .and_then(|count| occurrence_headroom_for_entry(entry, count))
+                .is_some()
+        })
+        .count()
 }
 
 pub(crate) fn policy_missing_evidence_count(
@@ -402,10 +449,11 @@ mod tests {
                 policy_missing_evidence: 5,
                 broken_evidence_links: 2,
                 weak_evidence_references: 1,
+                occurrence_headroom: 0,
                 review_items: 13,
             }
         );
-        assert_eq!(review_item_count_with_baseline(&summary, 3, 5, 2, 1), 13);
+        assert_eq!(review_item_count_with_baseline(&summary, 3, 5, 2, 1, 0), 13);
     }
 
     #[test]
@@ -551,5 +599,43 @@ mod tests {
         assert!(queue.iter().all(|item| item.status != MatchStatus::Matched));
         assert_eq!(queue[0].allow_id.as_deref(), Some("new-0"));
         assert_eq!(queue[19].allow_id.as_deref(), Some("new-19"));
+    }
+
+    #[test]
+    fn occurrence_headroom_entries_count_matched_entries_below_limit() {
+        let mut cfg = AllowConfig::empty();
+        let mut capped = entry("allow-capped", "reviewed", &["test:capped"]);
+        capped.occurrence_limit = Some(5);
+        let mut at_limit = entry("allow-full", "reviewed", &["test:full"]);
+        at_limit.occurrence_limit = Some(2);
+        let mut stale = entry("allow-stale", "reviewed", &["test:stale"]);
+        stale.occurrence_limit = Some(3);
+        cfg.allow.push(capped.clone());
+        cfg.allow.push(at_limit.clone());
+        cfg.allow.push(stale.clone());
+        let outcomes = vec![
+            outcome(MatchStatus::Matched, Some("allow-capped")),
+            outcome(MatchStatus::Matched, Some("allow-capped")),
+            outcome(MatchStatus::Matched, Some("allow-full")),
+            outcome(MatchStatus::Matched, Some("allow-full")),
+            outcome(MatchStatus::Stale, Some("allow-stale")),
+        ];
+
+        assert_eq!(occurrence_headroom_entries(&cfg, &outcomes), 1);
+        assert_eq!(
+            occurrence_headroom_for_entry(&capped, 2),
+            Some(5),
+            "headroom should exist below the limit"
+        );
+        assert_eq!(
+            occurrence_headroom_for_entry(&at_limit, 2),
+            None,
+            "at-limit entries should not report headroom"
+        );
+        assert_eq!(
+            occurrence_headroom_for_entry(&stale, 0),
+            None,
+            "unused entries should not report headroom"
+        );
     }
 }

@@ -1,5 +1,6 @@
 pub(crate) const NEW_UNRECEIPTED_FINDING: &str = "new_unreceipted_finding";
 pub(crate) const OCCURRENCE_LIMIT_EXCEEDED: &str = "occurrence_limit_exceeded";
+pub(crate) const OCCURRENCE_HEADROOM: &str = "occurrence_headroom";
 pub(crate) const EXPIRED_ALLOW: &str = "expired_allow";
 pub(crate) const STALE_ALLOW: &str = "stale_allow";
 pub(crate) const AMBIGUOUS_SELECTOR: &str = "ambiguous_selector";
@@ -17,6 +18,7 @@ pub(crate) const WEAK_EVIDENCE_REFERENCE: &str = "weak_evidence_reference";
 pub(crate) const WORK_ITEM_KINDS: &[&str] = &[
     NEW_UNRECEIPTED_FINDING,
     OCCURRENCE_LIMIT_EXCEEDED,
+    OCCURRENCE_HEADROOM,
     EXPIRED_ALLOW,
     STALE_ALLOW,
     AMBIGUOUS_SELECTOR,

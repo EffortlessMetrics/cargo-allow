@@ -2,6 +2,9 @@ use allow_core::{MatchStatus, json_escape};
 
 use crate::{ReportContext, ReviewSignals, Summary};
 
+pub(crate) const OCCURRENCE_HEADROOM_COMMAND: &str =
+    "cargo-allow worklist --item-kind occurrence_headroom --format json";
+
 pub(crate) const BROKEN_EVIDENCE_LINK_COMMAND: &str =
     "cargo-allow worklist --broken-evidence --format json";
 pub(crate) const MISSING_EVIDENCE_COMMAND: &str =
@@ -37,6 +40,7 @@ pub(crate) fn evidence_repair_queues(
             .policy_missing_evidence
             .max(summary.count(MatchStatus::EvidenceMissing)),
         signals.weak_evidence_references,
+        signals.occurrence_headroom,
     )
 }
 
@@ -44,6 +48,7 @@ pub(crate) fn evidence_repair_queues_from_counts(
     broken_evidence_links: usize,
     missing_evidence: usize,
     weak_evidence_references: usize,
+    occurrence_headroom: usize,
 ) -> Vec<EvidenceRepairQueue> {
     let mut queues = Vec::new();
     push_evidence_repair_queue_if(
@@ -80,6 +85,18 @@ pub(crate) fn evidence_repair_queues_from_counts(
             worklist_filter: Some("weak_evidence"),
             count: weak_evidence_references,
             command: WEAK_EVIDENCE_REFERENCE_COMMAND,
+        },
+    );
+    push_evidence_repair_queue_if(
+        &mut queues,
+        EvidenceRepairQueue {
+            signal: "occurrence_headroom",
+            label: "occurrence headroom",
+            route_kind: "worklist_item_kind",
+            item_kind: Some("occurrence_headroom"),
+            worklist_filter: None,
+            count: occurrence_headroom,
+            command: OCCURRENCE_HEADROOM_COMMAND,
         },
     );
     queues

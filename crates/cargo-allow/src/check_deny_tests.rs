@@ -32,14 +32,23 @@ fn validate_deny_statuses_rejects_unknown_status() {
 }
 
 #[test]
-fn validate_deny_statuses_rejects_deferred_occurrence_headroom() {
-    let err = validate_deny_statuses(&["occurrence_headroom".to_string()])
-        .expect_err("occurrence_headroom should be rejected with an honest gap message");
-    assert!(err.to_string().contains("occurrence_headroom"));
-    assert!(err.to_string().contains("#1472"));
+fn validate_deny_statuses_accepts_occurrence_headroom() {
+    validate_deny_statuses(&["occurrence_headroom".to_string()]).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("occurrence_headroom should be supported: {err}"))
+    });
 }
 
 #[test]
+fn deny_escalation_failed_when_occurrence_headroom_count_is_positive() {
+    let summary = Summary::from_outcomes(&[outcome(MatchStatus::Matched)]);
+    let mut context = ReportContext::default();
+    context.occurrence_headroom_entries = Some(2);
+    assert!(deny_escalation_failed(
+        &["occurrence_headroom".to_string()],
+        &summary,
+        context
+    ));
+}
 fn deny_escalation_failed_when_denied_advisory_count_is_positive() {
     let summary = Summary::from_outcomes(&[outcome(MatchStatus::ReviewDue)]);
     assert!(deny_escalation_failed(

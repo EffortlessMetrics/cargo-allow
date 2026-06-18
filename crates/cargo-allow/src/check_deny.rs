@@ -3,19 +3,8 @@ use allow_report::{
     ADVISORY_DENY_FIELD_NAMES, ReportContext, Summary, advisory_count_for_deny_field,
 };
 
-pub(crate) const DEFERRED_DENY_STATUSES: &[(&str, &str)] = &[(
-    "occurrence_headroom",
-    "occurrence_headroom is not emitted in receipt advisory counts yet; tracked in #1472",
-)];
-
 pub(crate) fn validate_deny_statuses(statuses: &[String]) -> CargoAllowResult<()> {
     for status in statuses {
-        if let Some((_, message)) = DEFERRED_DENY_STATUSES
-            .iter()
-            .find(|(name, _)| *name == status.as_str())
-        {
-            return Err(CargoAllowError::new(*message));
-        }
         if advisory_count_for_deny_field(&Summary::default(), ReportContext::default(), status)
             .is_none()
         {

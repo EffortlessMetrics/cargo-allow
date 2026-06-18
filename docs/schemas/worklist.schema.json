@@ -280,6 +280,10 @@
           "type": "integer",
           "minimum": 0
         },
+        "occurrence_headroom": {
+          "type": "integer",
+          "minimum": 0
+        },
         "expired_allow": {
           "type": "integer",
           "minimum": 0
@@ -360,6 +364,7 @@
           "enum": [
             "new_unreceipted_finding",
             "occurrence_limit_exceeded",
+            "occurrence_headroom",
             "expired_allow",
             "stale_allow",
             "ambiguous_selector",

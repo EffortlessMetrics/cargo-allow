@@ -157,6 +157,7 @@ fn doctor_evidence_repair_queues(facts: DoctorReport<'_>) -> Vec<EvidenceRepairQ
         facts.broken_evidence_links.unwrap_or(0),
         0,
         facts.weak_evidence_references.unwrap_or(0),
+        0,
     )
 }
 

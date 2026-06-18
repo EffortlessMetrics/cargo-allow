@@ -3,8 +3,8 @@ use allow_core::{AllowEntry, Finding, FindingKind};
 use super::worklist_item_kind::{
     AMBIGUOUS_SELECTOR, BASELINE_DEBT, BROAD_SCOPE, BROKEN_EVIDENCE_LINK, EXPIRED_ALLOW,
     INVALID_SELECTOR, MISSING_EVIDENCE, MISSING_REQUIRED_FIELD, NEW_UNRECEIPTED_FINDING,
-    OCCURRENCE_LIMIT_EXCEEDED, REVIEW_DUE, STALE_ALLOW, UNSAFE_MISSING_EVIDENCE,
-    WEAK_EVIDENCE_REFERENCE,
+    OCCURRENCE_HEADROOM, OCCURRENCE_LIMIT_EXCEEDED, REVIEW_DUE, STALE_ALLOW,
+    UNSAFE_MISSING_EVIDENCE, WEAK_EVIDENCE_REFERENCE,
 };
 
 pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
@@ -17,6 +17,10 @@ pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
         OCCURRENCE_LIMIT_EXCEEDED => vec![
             "reduce the current findings back to the baseline count".to_string(),
             "or split the added occurrence into a reviewed allow entry".to_string(),
+        ],
+        OCCURRENCE_HEADROOM => vec![
+            "reduce occurrence_limit to the current matched count".to_string(),
+            "run cargo-allow diff after tightening to confirm policy improvement".to_string(),
         ],
         EXPIRED_ALLOW => vec![
             "remove the expired allow if the exception is gone".to_string(),

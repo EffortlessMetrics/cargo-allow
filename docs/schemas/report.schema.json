@@ -140,7 +140,8 @@
             "enum": [
               "broken_evidence_links",
               "missing_evidence",
-              "weak_evidence_references"
+              "weak_evidence_references",
+              "occurrence_headroom"
             ],
             "description": "Evidence-health signal routed by this queue."
           },
@@ -159,7 +160,8 @@
             "enum": [
               "broken_evidence_link",
               "missing_evidence",
-              "weak_evidence_reference"
+              "weak_evidence_reference",
+              "occurrence_headroom"
             ],
             "description": "Stable cargo-allow worklist item kind routed by this queue when available."
           },
@@ -449,6 +451,11 @@
           "type": "integer",
           "minimum": 0,
           "description": "Optional count of unstructured or unknown-prefix evidence or link references included in review item totals when available."
+        },
+        "occurrence_headroom": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of matched allow entries whose occurrence_limit exceeds the current matched count and can be ratcheted down."
         }
       }
     },
@@ -469,7 +476,8 @@
             "missing_evidence",
             "broken_evidence_links",
             "weak_evidence_references",
-            "baseline_debt"
+            "baseline_debt",
+            "occurrence_headroom"
           ],
           "description": "Audit remediation signal routed by this roadmap row."
         },
@@ -498,7 +506,8 @@
             "missing_evidence",
             "broken_evidence_link",
             "weak_evidence_reference",
-            "baseline_debt"
+            "baseline_debt",
+            "occurrence_headroom"
           ],
           "description": "Stable cargo-allow worklist item kind associated with this row when applicable."
         },

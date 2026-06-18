@@ -210,6 +210,7 @@ fn receipt_schema_allows_optional_evidence_repair_queues() {
             "broken_evidence_links",
             "missing_evidence",
             "weak_evidence_references",
+            "occurrence_headroom",
         ],
     );
     assert_eq!(
@@ -233,6 +234,7 @@ fn receipt_schema_allows_optional_evidence_repair_queues() {
             "broken_evidence_link",
             "missing_evidence",
             "weak_evidence_reference",
+            "occurrence_headroom",
         ],
     );
     assert_enum_equals(

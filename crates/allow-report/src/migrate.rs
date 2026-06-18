@@ -332,7 +332,7 @@ pub(crate) fn migrate_evidence_repair_queues(
     let unsafe_weak_count = report.unsafe_weak_evidence_references.unwrap_or(0);
     let broken_total = broken_count.max(unsafe_broken_count);
     let weak_total = weak_count.max(unsafe_weak_count);
-    for queue in evidence_repair_queues_from_counts(broken_total, 0, weak_total) {
+    for queue in evidence_repair_queues_from_counts(broken_total, 0, weak_total, 0) {
         let Some(item_kind) = queue.item_kind else {
             continue;
         };

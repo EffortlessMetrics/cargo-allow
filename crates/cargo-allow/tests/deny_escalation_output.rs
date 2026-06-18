@@ -124,33 +124,85 @@ fn check_receipt_records_advisory_count_used_by_deny() {
 }
 
 #[test]
-fn check_rejects_deferred_occurrence_headroom_deny_status() {
-    let root = temp_root("deny-occurrence-headroom-gap");
-    write_policy_missing_evidence_fixture(&root);
+fn advisory_only_check_fails_when_denied_occurrence_headroom_is_positive() {
+    let root = temp_root("deny-occurrence-headroom-fail");
+    write_counted_headroom_fixture(&root);
+    let receipt_output = root.join("target/cargo-allow/check.receipt.json");
 
     let result = cargo_allow_command()
         .arg("check")
         .arg("--root")
         .arg(&root)
+        .arg("--config")
+        .arg("policy/allow.toml")
+        .arg("--kind")
+        .arg("non-rust")
         .arg("--mode")
         .arg("no-new")
         .arg("--deny")
         .arg("occurrence_headroom")
+        .arg("--receipt")
+        .arg(&receipt_output)
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
 
     assert_status("check", &result, false);
-    let stderr = String::from_utf8_lossy(&result.stderr);
-    assert!(
-        stderr.contains("occurrence_headroom"),
-        "stderr should name the deferred status: {stderr}"
+    assert_stdout_empty(
+        "check",
+        &result,
+        "--receipt should not emit report JSON to stdout",
     );
-    assert!(
-        stderr.contains("#1472"),
-        "stderr should cite the tracking issue: {stderr}"
+    let receipt = assert_saved_json_artifact(
+        &receipt_output,
+        "check receipt",
+        "cargo-allow.receipt.v1",
+        "check",
+    );
+    assert_json_str(&receipt, "/status", "failed", "receipt status");
+    assert_json_u64(
+        &receipt,
+        "/advisory/occurrence_headroom",
+        1,
+        "receipt advisory occurrence_headroom",
     );
 
     remove_temp_root(root);
+}
+
+fn write_counted_headroom_fixture(root: &std::path::Path) {
+    std::fs::create_dir_all(root.join("crates/alpha"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create alpha dir: {err}")));
+    std::fs::write(
+        root.join("crates/alpha/Cargo.toml"),
+        "[package]\nname = \"alpha\"\nversion = \"0.1.0\"\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write alpha manifest: {err}")));
+    std::fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    std::fs::write(
+        root.join("policy/allow.toml"),
+        r#"policy = "cargo-allow"
+
+[[allow]]
+id = "allow-manifest"
+kind = "non_rust_file"
+family = "package_metadata"
+glob = "crates/*/Cargo.toml"
+owner = "core"
+classification = "baseline_debt"
+reason = "fixture counted baseline headroom"
+occurrence_limit = 2
+evidence = ["test:deny_escalation_output"]
+review_after = "2026-08-01"
+expires = "2026-09-30"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "crates/*/Cargo.toml"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
 }
 
 fn write_policy_missing_evidence_fixture(root: &std::path::Path) {
