@@ -5,16 +5,34 @@ use allow_core::{AllowConfig, AllowEntry, Finding, MatchStatus};
 use allow_policy::parse_policy;
 use allow_rust::scan_rust_source;
 
-use crate::{CheckMode, evaluate, score_match, STRUCTURAL_MATCH_THRESHOLD};
+use crate::{CheckMode, STRUCTURAL_MATCH_THRESHOLD, evaluate, score_match};
 
 const FIXTURE_ROOT: &str = "../../tests/fixtures/structural-identity";
 const POLICY_PATH: &str = "../../policy/allow.toml";
 
 const STRUCTURAL_FIXTURE_ENTRY_IDS: &[&str] = &[
-    "allow-0215", "allow-0216", "allow-0217", "allow-0218", "allow-0219", "allow-0220",
-    "allow-0221", "allow-0222", "allow-0223", "allow-0224", "allow-0225", "allow-0226",
-    "allow-0229", "allow-0230", "allow-0231", "allow-0232", "allow-0233", "allow-0234",
-    "allow-0243", "allow-0244", "allow-0245", "allow-0246",
+    "allow-0215",
+    "allow-0216",
+    "allow-0217",
+    "allow-0218",
+    "allow-0219",
+    "allow-0220",
+    "allow-0221",
+    "allow-0222",
+    "allow-0223",
+    "allow-0224",
+    "allow-0225",
+    "allow-0226",
+    "allow-0229",
+    "allow-0230",
+    "allow-0231",
+    "allow-0232",
+    "allow-0233",
+    "allow-0234",
+    "allow-0243",
+    "allow-0244",
+    "allow-0245",
+    "allow-0246",
 ];
 
 fn workspace_root() -> PathBuf {
@@ -27,9 +45,8 @@ fn fixture_root() -> PathBuf {
 
 fn read_fixture(name: &str, side: &str) -> String {
     let path = fixture_root().join(name).join(format!("{side}.rs"));
-    fs::read_to_string(&path).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("read {}: {err}", path.display()))
-    })
+    fs::read_to_string(&path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())))
 }
 
 fn scan_fixture(name: &str, side: &str) -> Vec<Finding> {
@@ -40,9 +57,8 @@ fn scan_fixture(name: &str, side: &str) -> Vec<Finding> {
 }
 
 fn structural_fixture_policy() -> AllowConfig {
-    let policy_text = fs::read_to_string(workspace_root().join(POLICY_PATH)).unwrap_or_else(
-        |err| std::panic::panic_any(format!("read policy: {err}")),
-    );
+    let policy_text = fs::read_to_string(workspace_root().join(POLICY_PATH))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
     let full = parse_policy(&policy_text)
         .unwrap_or_else(|err| std::panic::panic_any(format!("parse policy: {err}")));
     let allow = full
@@ -50,10 +66,7 @@ fn structural_fixture_policy() -> AllowConfig {
         .into_iter()
         .filter(|entry| STRUCTURAL_FIXTURE_ENTRY_IDS.contains(&entry.id.as_str()))
         .collect();
-    AllowConfig {
-        allow,
-        ..full
-    }
+    AllowConfig { allow, ..full }
 }
 
 fn entry_by_id<'a>(cfg: &'a AllowConfig, id: &str) -> &'a AllowEntry {
@@ -82,13 +95,17 @@ fn assert_unique_match(cfg: &AllowConfig, finding: &Finding, expected_id: &str) 
     );
 }
 
-fn assert_eval_matched(cfg: &AllowConfig, findings: &[Finding], finding_index: usize, expected_id: &str) {
+fn assert_eval_matched(
+    cfg: &AllowConfig,
+    findings: &[Finding],
+    finding_index: usize,
+    expected_id: &str,
+) {
     let outcomes = evaluate(cfg, findings, CheckMode::NoNew);
     let matched = outcomes
         .iter()
         .filter(|outcome| {
-            outcome.status == MatchStatus::Matched
-                && outcome.finding_index == Some(finding_index)
+            outcome.status == MatchStatus::Matched && outcome.finding_index == Some(finding_index)
         })
         .collect::<Vec<_>>();
     assert_eq!(
@@ -98,15 +115,14 @@ fn assert_eval_matched(cfg: &AllowConfig, findings: &[Finding], finding_index: u
     );
     assert_eq!(matched[0].allow_id.as_deref(), Some(expected_id));
     assert!(
-        !outcomes.iter().any(|outcome| outcome.status == MatchStatus::Ambiguous),
+        !outcomes
+            .iter()
+            .any(|outcome| outcome.status == MatchStatus::Ambiguous),
         "evaluate should not report ambiguous matches"
     );
 }
 
-fn single_finding_by_container<'a>(
-    findings: &'a [Finding],
-    container: &str,
-) -> &'a Finding {
+fn single_finding_by_container<'a>(findings: &'a [Finding], container: &str) -> &'a Finding {
     findings
         .iter()
         .find(|finding| finding.identity.container.as_deref() == Some(container))
@@ -115,31 +131,21 @@ fn single_finding_by_container<'a>(
         })
 }
 
-fn single_finding_by_receiver<'a>(
-    findings: &'a [Finding],
-    receiver: &str,
-) -> &'a Finding {
+fn single_finding_by_receiver<'a>(findings: &'a [Finding], receiver: &str) -> &'a Finding {
     findings
         .iter()
-        .find(|finding| {
-            finding.identity.receiver_fingerprint.as_deref() == Some(receiver)
-        })
+        .find(|finding| finding.identity.receiver_fingerprint.as_deref() == Some(receiver))
         .unwrap_or_else(|| {
             std::panic::panic_any(format!("missing finding with receiver `{receiver}`"))
         })
 }
 
-fn single_finding_by_target_policy<'a>(
-    findings: &'a [Finding],
-    policy_id: &str,
-) -> &'a Finding {
+fn single_finding_by_target_policy<'a>(findings: &'a [Finding], policy_id: &str) -> &'a Finding {
     let target = format!("policy:{policy_id}");
     findings
         .iter()
         .find(|finding| finding.identity.target_fingerprint.as_deref() == Some(target.as_str()))
-        .unwrap_or_else(|| {
-            std::panic::panic_any(format!("missing finding with target `{target}`"))
-        })
+        .unwrap_or_else(|| std::panic::panic_any(format!("missing finding with target `{target}`")))
 }
 
 #[test]
@@ -152,8 +158,14 @@ fn selector_precision_receiver_fingerprint_discriminates_parameter_slots() {
 
     assert_unique_match(&cfg, before_finding, "allow-0216");
     assert_unique_match(&cfg, after_finding, "allow-0215");
-    assert!(!finding_matches_entry(before_finding, entry_by_id(&cfg, "allow-0215")));
-    assert!(!finding_matches_entry(after_finding, entry_by_id(&cfg, "allow-0216")));
+    assert!(!finding_matches_entry(
+        before_finding,
+        entry_by_id(&cfg, "allow-0215")
+    ));
+    assert!(!finding_matches_entry(
+        after_finding,
+        entry_by_id(&cfg, "allow-0216")
+    ));
 }
 
 #[test]
@@ -177,8 +189,14 @@ fn selector_precision_container_discriminates_module_qualified_access() {
 
     assert_unique_match(&cfg, nested, "allow-0232");
     assert_unique_match(&cfg, top_level, "allow-0231");
-    assert!(!finding_matches_entry(nested, entry_by_id(&cfg, "allow-0231")));
-    assert!(!finding_matches_entry(top_level, entry_by_id(&cfg, "allow-0232")));
+    assert!(!finding_matches_entry(
+        nested,
+        entry_by_id(&cfg, "allow-0231")
+    ));
+    assert!(!finding_matches_entry(
+        top_level,
+        entry_by_id(&cfg, "allow-0232")
+    ));
 }
 
 #[test]
@@ -210,8 +228,14 @@ fn selector_precision_index_receiver_and_symbol_discriminate_targets() {
         .find(|finding| finding.identity.symbol.as_deref() == Some("right[0]"))
         .unwrap_or_else(|| std::panic::panic_any("missing right[0] index finding"));
 
-    assert_eq!(left.identity.receiver_fingerprint.as_deref(), Some("param:0"));
-    assert_eq!(right.identity.receiver_fingerprint.as_deref(), Some("param:1"));
+    assert_eq!(
+        left.identity.receiver_fingerprint.as_deref(),
+        Some("param:0")
+    );
+    assert_eq!(
+        right.identity.receiver_fingerprint.as_deref(),
+        Some("param:1")
+    );
     assert_eq!(left.identity.target_fingerprint.as_deref(), Some("0"));
     assert_eq!(right.identity.target_fingerprint.as_deref(), Some("0"));
     assert_unique_match(&cfg, left, "allow-0222");
@@ -258,10 +282,18 @@ fn selector_precision_snippet_hash_discriminates_rename_only_refactors() {
 #[test]
 fn selector_precision_macro_entries_match_path_scoped_findings() {
     let cfg = structural_fixture_policy();
-    let before_path = PathBuf::from("tests/fixtures/structural-identity/macro_same_different_paths/before.rs");
-    let after_path = PathBuf::from("tests/fixtures/structural-identity/macro_same_different_paths/after.rs");
-    let before = scan_rust_source(&before_path, &read_fixture("macro_same_different_paths", "before"));
-    let after = scan_rust_source(&after_path, &read_fixture("macro_same_different_paths", "after"));
+    let before_path =
+        PathBuf::from("tests/fixtures/structural-identity/macro_same_different_paths/before.rs");
+    let after_path =
+        PathBuf::from("tests/fixtures/structural-identity/macro_same_different_paths/after.rs");
+    let before = scan_rust_source(
+        &before_path,
+        &read_fixture("macro_same_different_paths", "before"),
+    );
+    let after = scan_rust_source(
+        &after_path,
+        &read_fixture("macro_same_different_paths", "after"),
+    );
     let before_macro = before
         .iter()
         .find(|finding| finding.family.as_deref() == Some("panic_macro"))
