@@ -73,9 +73,7 @@ pub fn discover_spec_kit_root(
                 Ok(text) => collect_reference_edges(&node_id, &text, edges),
                 Err(_) => diagnostics.push(ImportDiagnostic {
                     kind: ImportDiagnosticKind::BrokenEdge,
-                    message: format!(
-                        "failed to read discovered Spec Kit import node `{relative}`"
-                    ),
+                    message: format!("failed to read discovered Spec Kit import node `{relative}`"),
                     root_ids: vec![entry.id.clone(), node_id],
                 }),
             }
