@@ -1,5 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_inventory::resolve_source_tree_root;
+use allow_policy::federation::{FederationLoadOutcome, load_federation_config};
 use allow_policy::spec_system::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, ProfileConfigProvenance,
     ResolvedProfileConfig, SpecSystemConfig, SpecSystemMode, SpecSystemRequirements,
@@ -486,6 +487,7 @@ fn build_spec_system_report(
     if let Some(message) = profile_config_conflict_message(&loaded_config.resolved) {
         findings.push(SpecSystemFinding::new("profile_config", message));
     }
+    findings.extend(federation_config_findings(&root));
     let mut artifacts = Vec::new();
     let mut links = Vec::new();
     let mut support_tier_rows = 0;
@@ -735,6 +737,74 @@ fn profile_config_findings(
     Vec::new()
 }
 
+fn federation_config_findings(root: &Path) -> Vec<SpecSystemFinding> {
+    let Ok(loaded) = load_federation_config(root) else {
+        return Vec::new();
+    };
+    let FederationLoadOutcome::Parsed(validated) = loaded.outcome else {
+        return Vec::new();
+    };
+    validated
+        .diagnostics
+        .into_iter()
+        .filter(|diagnostic| {
+            !matches!(
+                diagnostic.kind,
+                allow_policy::federation::FederationDiagnosticKind::DialectSkipped
+            )
+        })
+        .map(|diagnostic| {
+            SpecSystemFinding::new(
+                "federation_config",
+                format!("{}: {}", diagnostic.kind.as_str(), diagnostic.message),
+            )
+        })
+        .collect()
+}
+
+fn federation_ledgers_readiness_check(root: &Path) -> SpecSystemReadinessCheck {
+    let path = allow_policy::federation::FEDERATION_CONFIG_REL_PATH.to_string();
+    match load_federation_config(root) {
+        Ok(loaded) => match loaded.outcome {
+            FederationLoadOutcome::Missing => SpecSystemReadinessCheck {
+                kind: "federation_ledgers",
+                path: Some(path),
+                found: false,
+                valid: None,
+                status: "ready",
+                message: "federation ledger registry `.allow/config.toml` is not configured (optional until F2 evaluation)".to_string(),
+            },
+            FederationLoadOutcome::Parsed(validated) => {
+                let count = validated.config.ledgers.len();
+                readiness_check(
+                    "federation_ledgers",
+                    Some(path.clone()),
+                    true,
+                    Some(validated.valid),
+                    if validated.valid {
+                        format!("federation registry parsed with {count} configured ledger(s)")
+                    } else {
+                        format!(
+                            "federation registry has {} validation issue(s)",
+                            validated.diagnostics.len()
+                        )
+                    },
+                )
+            }
+        },
+        Err(err) => {
+            let config_path = allow_policy::federation::FEDERATION_CONFIG_REL_PATH;
+            readiness_check(
+                "federation_ledgers",
+                Some(config_path.to_string()),
+                root.join(config_path).is_file(),
+                Some(false),
+                err.to_string(),
+            )
+        }
+    }
+}
+
 fn default_spec_system_config() -> SpecSystemConfig {
     SpecSystemConfig {
         schema_version: "1.0".to_string(),
@@ -941,6 +1011,8 @@ fn collect_spec_system_readiness(
             },
         ));
     }
+
+    checks.push(federation_ledgers_readiness_check(root));
 
     SpecSystemReadiness {
         ready: checks.iter().all(|check| check.status == "ready"),
@@ -2139,6 +2211,7 @@ fn spec_system_report_status(report: &SpecSystemReport) -> &'static str {
 fn spec_system_blocking_reason(kind: &str, message: &str) -> Option<&'static str> {
     match kind {
         "profile_config" => profile_config_blocking_reason(message),
+        "federation_config" => federation_config_blocking_reason(message),
         "doc_artifact_ledger" => doc_artifact_ledger_blocking_reason(message),
         "artifact_file" => artifact_file_blocking_reason(message),
         "artifact_link" => artifact_link_blocking_reason(message),
@@ -2154,6 +2227,26 @@ fn profile_config_blocking_reason(message: &str) -> Option<&'static str> {
         || message.contains("failed to read spec-system profile config")
     {
         return Some("profile_config_parse_failure");
+    }
+    None
+}
+
+fn federation_config_blocking_reason(message: &str) -> Option<&'static str> {
+    if message.contains("duplicate federation ledger id") {
+        return Some("duplicate_id");
+    }
+    if message.contains("dialect_conflict") || message.contains("foreign dialect") {
+        return Some("dialect_conflict");
+    }
+    if message.contains("duplicate_path")
+        || message.contains("duplicate_canonical_lane")
+        || message.contains("mirror_missing_target")
+        || message.contains("unknown_mirror_target")
+    {
+        return Some("federation_config_invalid");
+    }
+    if message.contains("failed to parse federation config TOML") {
+        return Some("federation_config_parse_failure");
     }
     None
 }

@@ -47,10 +47,10 @@ CARGO-ALLOW-SPEC-0007 and CARGO-ALLOW-ADR-0001.
 
 | PR | Work item | Scope | Status |
 | --- | --- | --- | --- |
-| F0 | `portable-governance-f0-federation` | Proposal, spec, ADR, plan, doc-artifact registration, active goal | design-only (this PR) |
-| F1 | `portable-governance-f1-federation` | Ledger role classification, precedence resolver hooks, divergence report types | blocked pending F0 merge |
-| F2 | TBD | Receipt provenance fields + doctor federation summary | blocked pending F1 |
-| F3 | TBD | Drain window enforcement + closeout linkage | blocked pending F1 |
+| F0 | `portable-governance-f0-federation` | Proposal, spec, ADR, plan, doc-artifact registration, active goal | done (#1755) |
+| F1 | `portable-governance-f1-federation` | Ledger registry parse/validate, precedence ordering, doctor/spec-system reporting | done (#1756) |
+| F2 | `portable-governance-f2-federation` | Multi-ledger check evaluation + receipt provenance fields | ready |
+| F3 | TBD | Drain window enforcement + closeout linkage | blocked pending F2 |
 
 ## F0 Validation
 

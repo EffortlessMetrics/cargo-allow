@@ -16,6 +16,11 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
         weak_evidence_references: Some(0),
         inventory_source: "git_tracked",
         files_scanned: 50,
+        federation_config_path: None,
+        federation_config_found: false,
+        federation_config_valid: None,
+        configured_ledgers: None,
+        federation_diagnostics: None,
     });
 
     assert!(json.contains("\"schema_id\": \"cargo-allow.doctor.v1\""));
@@ -68,6 +73,11 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
     "diagnostic": null,
     "broken_evidence_links": 0,
     "weak_evidence_references": 0
+  }},
+  "federation": {{
+    "found": false,
+    "path": null,
+    "valid": null
   }}
 }}
 "#,
@@ -93,6 +103,11 @@ fn doctor_human_renderer_records_root_config_and_inventory() {
         weak_evidence_references: None,
         inventory_source: "filesystem_fallback",
         files_scanned: 7,
+        federation_config_path: None,
+        federation_config_found: false,
+        federation_config_valid: None,
+        configured_ledgers: None,
+        federation_diagnostics: None,
     });
 
     assert!(text.contains("source tree root: H:/Code/Rust/cargo-allow"));
@@ -125,6 +140,11 @@ fn doctor_json_renderer_suggests_init_when_config_is_missing() {
         weak_evidence_references: None,
         inventory_source: "filesystem_fallback",
         files_scanned: 7,
+        federation_config_path: None,
+        federation_config_found: false,
+        federation_config_valid: None,
+        configured_ledgers: None,
+        federation_diagnostics: None,
     });
 
     assert!(json.contains("\"found\": false"));
@@ -152,6 +172,11 @@ fn doctor_human_renderer_reports_invalid_config_status() {
         weak_evidence_references: Some(1),
         inventory_source: "git_tracked",
         files_scanned: 7,
+        federation_config_path: None,
+        federation_config_found: false,
+        federation_config_valid: None,
+        configured_ledgers: None,
+        federation_diagnostics: None,
     });
 
     assert!(text.contains("config: policy/allow.toml"));
@@ -186,6 +211,11 @@ fn doctor_json_renderer_includes_optional_evidence_health_counts() {
         weak_evidence_references: Some(1),
         inventory_source: "git_tracked",
         files_scanned: 7,
+        federation_config_path: None,
+        federation_config_found: false,
+        federation_config_valid: None,
+        configured_ledgers: None,
+        federation_diagnostics: None,
     });
 
     assert!(json.contains("\"broken_evidence_links\": 2"));
@@ -208,6 +238,11 @@ fn doctor_json_renderer_routes_evidence_repair_queues() {
         weak_evidence_references: Some(1),
         inventory_source: "git_tracked",
         files_scanned: 7,
+        federation_config_path: None,
+        federation_config_found: false,
+        federation_config_valid: None,
+        configured_ledgers: None,
+        federation_diagnostics: None,
     });
 
     assert!(json.contains("\"evidence_repair_queues\""));
@@ -242,7 +277,51 @@ fn doctor_json_renderer_omits_evidence_repair_queues_when_clean() {
         weak_evidence_references: Some(0),
         inventory_source: "git_tracked",
         files_scanned: 7,
+        federation_config_path: None,
+        federation_config_found: false,
+        federation_config_valid: None,
+        configured_ledgers: None,
+        federation_diagnostics: None,
     });
 
     assert!(!json.contains("\"evidence_repair_queues\""));
+}
+
+#[test]
+fn doctor_json_renderer_records_configured_federation_ledgers() {
+    let lanes = vec!["source-exception".to_string()];
+    let json = render_doctor_json(DoctorReport {
+        source_tree_root: "H:/Code/Rust/cargo-allow",
+        root_discovery: "nearest_git_root",
+        config_path: Some("policy/allow.toml"),
+        config_schema_version: Some("0.1"),
+        config_policy: Some("cargo-allow"),
+        config_owner: None,
+        config_status: None,
+        config_valid: Some(true),
+        config_diagnostic: None,
+        broken_evidence_links: Some(0),
+        weak_evidence_references: Some(0),
+        inventory_source: "git_tracked",
+        files_scanned: 7,
+        federation_config_path: Some(".allow/config.toml"),
+        federation_config_found: true,
+        federation_config_valid: Some(true),
+        configured_ledgers: Some(&[ConfiguredLedgerSummary {
+            id: "source-policy",
+            path: "policy/allow.toml",
+            dialect: "cargo-allow",
+            role: "canonical",
+            mode: "blocking",
+            priority: 10,
+            lanes: lanes.as_slice(),
+            mirrors: None,
+        }]),
+        federation_diagnostics: None,
+    });
+
+    assert!(json.contains("\"federation\""));
+    assert!(json.contains("\"configured_ledgers\""));
+    assert!(json.contains("\"id\": \"source-policy\""));
+    assert!(json.contains("\"dialect\": \"cargo-allow\""));
 }

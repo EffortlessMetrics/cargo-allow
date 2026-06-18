@@ -15,6 +15,7 @@ mod doctor;
 mod evidence_inventory;
 mod evidence_render;
 mod explain;
+mod federation_doctor;
 mod init;
 mod io;
 mod kind_filter;

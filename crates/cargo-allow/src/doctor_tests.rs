@@ -82,6 +82,11 @@ fn render_doctor_json_records_setup_context() {
         weak_evidence_references: Some(0),
         inventory_source: "git_tracked",
         files_scanned: 50,
+        federation_config_path: None,
+        federation_config_found: false,
+        federation_config_valid: None,
+        configured_ledgers: None,
+        federation_diagnostics: None,
     });
     let value = parse_json_artifact("doctor", &json, allow_report::DOCTOR_SCHEMA_ID, "doctor");
 
@@ -704,6 +709,111 @@ linked_plan = "plans/spec-system/implementation-plan.md"
                     .is_some_and(|message| message.contains("active_goal_required = false"))
         }),
         "active goal readiness should explain optional validation: {json}"
+    );
+    remove_doctor_fixture_dir(root);
+}
+
+fn federation_fixture_path(name: &str) -> std::path::PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/federation")
+        .join(name)
+}
+
+#[test]
+fn doctor_reports_configured_federation_ledgers() {
+    let root = doctor_fixture_dir();
+    fs::create_dir_all(root.join(".allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create .allow dir: {err}")));
+    fs::copy(
+        federation_fixture_path("multi-ledger-config.toml"),
+        root.join(".allow/config.toml"),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("copy federation config: {err}")));
+    let output = root.join("doctor-federation.json");
+
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: None,
+        format: DoctorFormat::Json,
+        output: Some(output.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
+
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    let value = parse_json_artifact(
+        "doctor federation",
+        &json,
+        allow_report::DOCTOR_SCHEMA_ID,
+        "doctor",
+    );
+    assert_eq!(
+        value.pointer("/federation/found").and_then(Value::as_bool),
+        Some(true)
+    );
+    assert_eq!(
+        value.pointer("/federation/valid").and_then(Value::as_bool),
+        Some(true)
+    );
+    let ledgers = value
+        .pointer("/federation/configured_ledgers")
+        .and_then(Value::as_array);
+    assert!(
+        ledgers.as_ref().is_some_and(|entries| {
+            entries.len() == 3
+                && entries
+                    .iter()
+                    .any(|ledger| ledger.get("id").and_then(Value::as_str) == Some("source-policy"))
+        }),
+        "expected three configured ledgers including source-policy: {json}"
+    );
+    remove_doctor_fixture_dir(root);
+}
+
+#[test]
+fn spec_system_doctor_reports_federation_ledgers_readiness() {
+    let root = doctor_fixture_dir();
+    spec_system_init_fixture(&root);
+    fs::copy(
+        federation_fixture_path("multi-ledger-config.toml"),
+        root.join(".allow/config.toml"),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("copy federation config: {err}")));
+    let output = root.join("doctor-federation-readiness.json");
+
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        format: DoctorFormat::Json,
+        output: Some(output.clone()),
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("spec-system doctor should pass advisory: {err}"))
+    });
+
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    let value = parse_json_artifact(
+        "spec-system doctor federation readiness",
+        &json,
+        allow_report::SPEC_SYSTEM_SCHEMA_ID,
+        "doctor",
+    );
+    assert!(
+        readiness_check(&value, "federation_ledgers").is_some_and(|check| {
+            check.pointer("/status").and_then(Value::as_str) == Some("ready")
+                && check
+                    .pointer("/message")
+                    .and_then(Value::as_str)
+                    .is_some_and(|message| message.contains("3 configured ledger"))
+        }),
+        "federation readiness should report configured ledgers: {json}"
     );
     remove_doctor_fixture_dir(root);
 }

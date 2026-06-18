@@ -10,6 +10,13 @@ inventory without executing repository code.
 
 ### Added
 
+- Multi-ledger federation F1 config (#1473): parse `[[ledgers]]` entries from
+  `.allow/config.toml` with `id`, `path`, `dialect`, `role`, optional `lanes`,
+  `mode`, `priority`, and mirror `mirrors` targets. Validate duplicate ledger
+  IDs/paths, canonical lane collisions, mirror targets, and foreign dialect
+  posture (`dialect_conflict` vs informational `dialect_skipped`). Default
+  `doctor` and spec-system doctor report configured ledgers and validation
+  diagnostics; multi-ledger check evaluation remains deferred to F2.
 - Multi-ledger federation F0 design (#1473): register CARGO-ALLOW-PROP-0007,
   CARGO-ALLOW-SPEC-0007, CARGO-ALLOW-ADR-0001, and CARGO-ALLOW-PLAN-0007.
   Define canonical/mirror/imported ledger roles, lane ownership, deterministic

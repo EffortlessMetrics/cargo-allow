@@ -1,0 +1,26 @@
+schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+mode = "blocking"
+priority = 10
+
+[[ledgers]]
+id = "doc-artifacts"
+path = ".allow/artifacts/doc-artifacts.toml"
+dialect = "cargo-allow-doc-artifacts"
+role = "canonical"
+lanes = ["spec-system"]
+priority = 20
+
+[[ledgers]]
+id = "legacy-import"
+path = "policy/non-rust-allowlist.toml"
+dialect = "non-rust-allowlist"
+role = "imported"
+mode = "advisory"
+priority = 100

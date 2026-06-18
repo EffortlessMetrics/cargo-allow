@@ -56,8 +56,53 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
         "inventory: source_tree/source_syntax via {}; files scanned: {}\n",
         facts.inventory_source, facts.files_scanned
     ));
+    append_federation_doctor_human(facts, &mut out);
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out
+}
+
+fn append_federation_doctor_human(facts: DoctorReport<'_>, out: &mut String) {
+    match facts.federation_config_found {
+        false => out.push_str("federation config: not found\n"),
+        true => {
+            if let Some(path) = facts.federation_config_path {
+                out.push_str(&format!("federation config: {path}\n"));
+            }
+            out.push_str(&format!(
+                "federation config status: {}\n",
+                federation_status_text(facts.federation_config_valid)
+            ));
+            if let Some(ledgers) = facts.configured_ledgers {
+                out.push_str(&format!("configured ledgers: {}\n", ledgers.len()));
+                for ledger in ledgers {
+                    out.push_str(&format!(
+                        "  - {} ({}) role={} dialect={} mode={} priority={}",
+                        ledger.id,
+                        ledger.path,
+                        ledger.role,
+                        ledger.dialect,
+                        ledger.mode,
+                        ledger.priority
+                    ));
+                    if !ledger.lanes.is_empty() {
+                        out.push_str(&format!(" lanes={}", ledger.lanes.join(",")));
+                    }
+                    if let Some(mirrors) = ledger.mirrors {
+                        out.push_str(&format!(" mirrors={mirrors}"));
+                    }
+                    out.push('\n');
+                }
+            }
+            if let Some(diagnostics) = facts.federation_diagnostics {
+                for diagnostic in diagnostics {
+                    out.push_str(&format!(
+                        "federation {}: {}\n",
+                        diagnostic.kind, diagnostic.message
+                    ));
+                }
+            }
+        }
+    }
 }
 
 pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
@@ -128,10 +173,109 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
         out.push_str(&format!(",\n    \"weak_evidence_references\": {count}"));
     }
     append_doctor_evidence_repair_queues_json(facts, &mut out);
-    out.push('\n');
-    out.push_str("  }\n");
-    out.push_str("}\n");
+    out.push_str("\n  },\n");
+    append_federation_doctor_json(facts, &mut out);
+    out.push_str("\n}\n");
     out
+}
+
+fn append_federation_doctor_json(facts: DoctorReport<'_>, out: &mut String) {
+    out.push_str("  \"federation\": {\n");
+    out.push_str(&format!(
+        "    \"found\": {},\n",
+        bool_json(facts.federation_config_found)
+    ));
+    out.push_str(&format!(
+        "    \"path\": {},\n",
+        option_json(facts.federation_config_path)
+    ));
+    out.push_str(&format!(
+        "    \"valid\": {}",
+        option_bool_json(facts.federation_config_valid)
+    ));
+    if let Some(ledgers) = facts.configured_ledgers {
+        out.push_str(",\n    \"configured_ledgers\": [\n");
+        for (index, ledger) in ledgers.iter().enumerate() {
+            if index > 0 {
+                out.push_str(",\n");
+            }
+            out.push_str("      {\n");
+            out.push_str(&format!(
+                "        \"id\": \"{}\",\n",
+                json_escape(ledger.id)
+            ));
+            out.push_str(&format!(
+                "        \"path\": \"{}\",\n",
+                json_escape(ledger.path)
+            ));
+            out.push_str(&format!(
+                "        \"dialect\": \"{}\",\n",
+                json_escape(ledger.dialect)
+            ));
+            out.push_str(&format!(
+                "        \"role\": \"{}\",\n",
+                json_escape(ledger.role)
+            ));
+            out.push_str(&format!(
+                "        \"mode\": \"{}\",\n",
+                json_escape(ledger.mode)
+            ));
+            out.push_str(&format!("        \"priority\": {}", ledger.priority));
+            if !ledger.lanes.is_empty() {
+                out.push_str(",\n        \"lanes\": [");
+                for (lane_index, lane) in ledger.lanes.iter().enumerate() {
+                    if lane_index > 0 {
+                        out.push_str(", ");
+                    }
+                    out.push_str(&format!("\"{}\"", json_escape(lane)));
+                }
+                out.push(']');
+            }
+            if let Some(mirrors) = ledger.mirrors {
+                out.push_str(&format!(
+                    ",\n        \"mirrors\": \"{}\"",
+                    json_escape(mirrors)
+                ));
+            }
+            out.push_str("\n      }");
+        }
+        out.push_str("\n    ]");
+    }
+    if let Some(diagnostics) = facts.federation_diagnostics {
+        out.push_str(",\n    \"diagnostics\": [\n");
+        for (index, diagnostic) in diagnostics.iter().enumerate() {
+            if index > 0 {
+                out.push_str(",\n");
+            }
+            out.push_str("      {\n");
+            out.push_str(&format!(
+                "        \"kind\": \"{}\",\n",
+                json_escape(diagnostic.kind)
+            ));
+            out.push_str(&format!(
+                "        \"message\": \"{}\",\n",
+                json_escape(diagnostic.message)
+            ));
+            out.push_str("        \"ledger_ids\": [");
+            for (id_index, id) in diagnostic.ledger_ids.iter().enumerate() {
+                if id_index > 0 {
+                    out.push_str(", ");
+                }
+                out.push_str(&format!("\"{}\"", json_escape(id)));
+            }
+            out.push_str("]\n      }");
+        }
+        out.push_str("\n    ]");
+    }
+    out.push_str("\n  }");
+}
+
+fn federation_status_text(valid: Option<bool>) -> String {
+    match valid {
+        Some(true) => "valid".to_string(),
+        Some(false) => "invalid".to_string(),
+        None => "not checked".to_string(),
+    }
 }
 
 fn append_doctor_evidence_repair_queues_json(facts: DoctorReport<'_>, out: &mut String) {
