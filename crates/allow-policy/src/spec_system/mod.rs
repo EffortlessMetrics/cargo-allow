@@ -9,6 +9,7 @@
 mod active_goal;
 mod config;
 mod doc_artifacts;
+mod profile_resolution;
 mod support_tiers;
 mod validate;
 
@@ -23,6 +24,10 @@ pub use config::{
 pub use doc_artifacts::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, load_doc_artifacts,
     parse_doc_artifact_ledger,
+};
+pub use profile_resolution::{
+    ALLOW_CONFIG_REL_PATH, ProfileConfigProvenance, ResolvedProfileConfig, allow_profile_rel_path,
+    legacy_profile_rel_path, profile_config_conflict_message, resolve_profile_config,
 };
 pub use support_tiers::{
     SupportTierLevel, SupportTierRow, parse_support_tier_claims, validate_support_tier_claims,

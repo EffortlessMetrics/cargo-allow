@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- Resolve spec-system profile config with `.allow/` precedence and legacy
+  `policy/<profile>.toml` fallback (CARGO-ALLOW-PLAN-0004 C2): explicit
+  `--config`, then `.allow/profiles/<profile>.toml`, `.allow/config.toml`,
+  legacy `policy/spec-system.toml`, then built-in defaults. Doctor and
+  spec-system receipts report `config_provenance`; owned plus legacy configs
+  emit an advisory conflict diagnostic instead of silent merge.
 - Register portable governance transition closeout (CARGO-ALLOW-CLOSEOUT-0005):
   archive CARGO-ALLOW-GOAL-0002 migration/adoption-substrate/import-parity
   execution; close #1474 advisory counters + `--deny` escalation after #1472

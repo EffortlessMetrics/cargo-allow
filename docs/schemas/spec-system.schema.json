@@ -18,6 +18,7 @@
     "inventory",
     "source_tree_root",
     "config_source",
+    "config_provenance",
     "summary",
     "artifacts",
     "links",
@@ -85,6 +86,17 @@
       "type": "string",
       "minLength": 1,
       "description": "Profile configuration source, either a repo path or the built-in default root set."
+    },
+    "config_provenance": {
+      "type": "string",
+      "enum": [
+        "explicit_config",
+        "allow_profiles",
+        "allow_config",
+        "legacy_policy",
+        "built_in_default"
+      ],
+      "description": "How the profile configuration path was selected."
     },
     "explained_artifact_id": {
       "type": "string",

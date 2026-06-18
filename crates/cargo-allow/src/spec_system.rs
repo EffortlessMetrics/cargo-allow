@@ -1,10 +1,12 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_inventory::resolve_source_tree_root;
 use allow_policy::spec_system::{
-    ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, SpecSystemConfig, SpecSystemMode,
-    SpecSystemRequirements, SpecSystemRoots, SupportTierLevel, load_doc_artifacts,
-    parse_spec_system_config, parse_support_tier_claims, validate_active_goal_manifest_text,
-    validate_doc_artifact_files, validate_doc_artifact_links, validate_support_tier_claims,
+    ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, ProfileConfigProvenance,
+    ResolvedProfileConfig, SpecSystemConfig, SpecSystemMode, SpecSystemRequirements,
+    SpecSystemRoots, SupportTierLevel, load_doc_artifacts, parse_spec_system_config,
+    parse_support_tier_claims, profile_config_conflict_message, resolve_profile_config,
+    validate_active_goal_manifest_text, validate_doc_artifact_files, validate_doc_artifact_links,
+    validate_support_tier_claims,
 };
 use std::env;
 use std::fs;
@@ -166,6 +168,7 @@ struct SpecSystemReport {
     command: String,
     root: PathBuf,
     config_source: String,
+    config_provenance: String,
     mode: SpecSystemMode,
     artifacts: Vec<SpecSystemArtifact>,
     links: Vec<SpecSystemLink>,
@@ -246,10 +249,12 @@ struct SpecSystemReadinessCheck {
 struct LoadedSpecSystemConfig {
     cfg: SpecSystemConfig,
     source: String,
+    provenance: ProfileConfigProvenance,
     path: String,
     found: bool,
     valid: Option<bool>,
     diagnostic: Option<String>,
+    resolved: ResolvedProfileConfig,
 }
 
 struct SpecSystemBootstrapFile {
@@ -461,7 +466,11 @@ fn build_spec_system_report(
     let loaded_config = load_spec_system_config(&root, config);
     let cfg = loaded_config.cfg.clone();
     let config_source = loaded_config.source.clone();
+    let config_provenance = loaded_config.provenance.as_str().to_string();
     let mut findings = profile_config_findings(&loaded_config, config.is_some());
+    if let Some(message) = profile_config_conflict_message(&loaded_config.resolved) {
+        findings.push(SpecSystemFinding::new("profile_config", message));
+    }
     let mut artifacts = Vec::new();
     let mut links = Vec::new();
     let mut support_tier_rows = 0;
@@ -598,6 +607,7 @@ fn build_spec_system_report(
         command: command.to_string(),
         root,
         config_source,
+        config_provenance,
         mode: cfg.mode,
         artifacts,
         links,
@@ -609,22 +619,47 @@ fn build_spec_system_report(
 }
 
 fn load_spec_system_config(root: &Path, config: Option<&Path>) -> LoadedSpecSystemConfig {
-    let config_path = config
-        .map(|path| root_relative_path(root, path))
-        .unwrap_or_else(|| root.join(DEFAULT_PROFILE_CONFIG));
-    let config_path_text = root_relative_display(root, &config_path);
+    let resolved = resolve_profile_config(root, PROFILE_NAME, config);
+    let provenance = resolved.provenance;
+    let config_path_text = resolved
+        .path
+        .clone()
+        .unwrap_or_else(|| DEFAULT_PROFILE_CONFIG.to_string());
+    let config_path = root_relative_path(root, Path::new(&config_path_text));
+    let source = match provenance {
+        ProfileConfigProvenance::BuiltInDefault => "default spec-system roots".to_string(),
+        _ => config_path_text.clone(),
+    };
 
-    if !config_path.exists() {
+    if provenance == ProfileConfigProvenance::BuiltInDefault {
         return LoadedSpecSystemConfig {
             cfg: default_spec_system_config(),
-            source: "default spec-system roots".to_string(),
-            path: config_path_text.clone(),
+            source,
+            provenance,
+            path: config_path_text,
             found: false,
             valid: None,
             diagnostic: Some(format!(
                 "spec-system profile config {} does not exist",
                 config_path.display()
             )),
+            resolved,
+        };
+    }
+
+    if !config_path.exists() {
+        return LoadedSpecSystemConfig {
+            cfg: default_spec_system_config(),
+            source: "default spec-system roots".to_string(),
+            provenance,
+            path: config_path_text,
+            found: false,
+            valid: None,
+            diagnostic: Some(format!(
+                "spec-system profile config {} does not exist",
+                config_path.display()
+            )),
+            resolved,
         };
     }
 
@@ -633,23 +668,28 @@ fn load_spec_system_config(root: &Path, config: Option<&Path>) -> LoadedSpecSyst
             Ok(cfg) => LoadedSpecSystemConfig {
                 cfg,
                 source: config_path_text.clone(),
+                provenance,
                 path: config_path_text,
                 found: true,
                 valid: Some(true),
                 diagnostic: None,
+                resolved,
             },
             Err(err) => LoadedSpecSystemConfig {
                 cfg: default_spec_system_config(),
                 source: "default spec-system roots".to_string(),
+                provenance,
                 path: config_path_text,
                 found: true,
                 valid: Some(false),
                 diagnostic: Some(err.to_string()),
+                resolved,
             },
         },
         Err(err) => LoadedSpecSystemConfig {
             cfg: default_spec_system_config(),
             source: "default spec-system roots".to_string(),
+            provenance,
             path: config_path_text,
             found: true,
             valid: Some(false),
@@ -657,6 +697,7 @@ fn load_spec_system_config(root: &Path, config: Option<&Path>) -> LoadedSpecSyst
                 "failed to read spec-system profile config {}: {err}",
                 config_path.display()
             )),
+            resolved,
         },
     }
 }
@@ -744,9 +785,15 @@ fn collect_spec_system_readiness(
         loaded.valid,
         loaded.diagnostic.clone().unwrap_or_else(|| {
             if loaded.found {
-                "spec-system profile config parsed".to_string()
+                format!(
+                    "spec-system profile config parsed (provenance: {})",
+                    loaded.provenance.as_str()
+                )
             } else {
-                "spec-system profile config is missing; built-in roots are in use".to_string()
+                format!(
+                    "spec-system profile config is missing; built-in roots are in use (provenance: {})",
+                    loaded.provenance.as_str()
+                )
             }
         }),
     ));
@@ -1270,6 +1317,7 @@ fn filter_spec_system_report_for_artifact(
         command: report.command.clone(),
         root: report.root.clone(),
         config_source: report.config_source.clone(),
+        config_provenance: report.config_provenance.clone(),
         mode: report.mode.clone(),
         artifacts: vec![artifact.clone()],
         links,
@@ -1324,6 +1372,10 @@ fn render_spec_system_explain_markdown(report: &SpecSystemReport) -> String {
         report.root.display()
     ));
     text.push_str(&format!("Config: `{}`\n\n", report.config_source));
+    text.push_str(&format!(
+        "Config provenance: `{}`\n\n",
+        report.config_provenance
+    ));
 
     text.push_str("## Artifact\n\n");
     text.push_str("| Field | Value |\n|---|---|\n");
@@ -1444,6 +1496,10 @@ fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
         report.root.display()
     ));
     text.push_str(&format!("Config: `{}`\n\n", report.config_source));
+    text.push_str(&format!(
+        "Config provenance: `{}`\n\n",
+        report.config_provenance
+    ));
     if let Some(readiness) = &report.readiness {
         text.push_str("## Setup Readiness\n\n");
         text.push_str(&format!("Mode: `{}`\n\n", readiness.mode));
@@ -1619,6 +1675,10 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
     text.push_str(&format!(
         "  \"config_source\": \"{}\",\n",
         json_escape(&report.config_source)
+    ));
+    text.push_str(&format!(
+        "  \"config_provenance\": \"{}\",\n",
+        json_escape(&report.config_provenance)
     ));
     if report.command == "explain" {
         if let Some(artifact) = report.artifacts.first() {
@@ -2052,10 +2112,15 @@ fn spec_system_blocking_reason(kind: &str, message: &str) -> Option<&'static str
 }
 
 fn profile_config_blocking_reason(message: &str) -> Option<&'static str> {
-    if message.contains("does not exist") {
+    if message.contains("does not exist") || message.contains("both owned profile config") {
         return None;
     }
-    Some("profile_config_parse_failure")
+    if message.contains("failed to parse spec-system config TOML")
+        || message.contains("failed to read spec-system profile config")
+    {
+        return Some("profile_config_parse_failure");
+    }
+    None
 }
 
 fn doc_artifact_ledger_blocking_reason(message: &str) -> Option<&'static str> {
@@ -2194,6 +2259,7 @@ pub(crate) fn sample_spec_system_json_for_contract_test() -> String {
         command: "check".to_string(),
         root: PathBuf::from("H:/Code/Rust/cargo-allow"),
         config_source: "policy/spec-system.toml".to_string(),
+        config_provenance: ProfileConfigProvenance::LegacyPolicy.as_str().to_string(),
         mode: SpecSystemMode::Advisory,
         artifacts: vec![
             SpecSystemArtifact {
@@ -2245,6 +2311,24 @@ pub(crate) fn sample_spec_system_json_for_contract_test() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use allow_policy::spec_system::ResolvedProfileConfig;
+
+    fn test_loaded_spec_system_config(cfg: SpecSystemConfig) -> LoadedSpecSystemConfig {
+        LoadedSpecSystemConfig {
+            cfg,
+            source: "built-in".to_string(),
+            provenance: ProfileConfigProvenance::BuiltInDefault,
+            path: DEFAULT_PROFILE_CONFIG.to_string(),
+            found: true,
+            valid: Some(true),
+            diagnostic: None,
+            resolved: ResolvedProfileConfig {
+                path: None,
+                provenance: ProfileConfigProvenance::BuiltInDefault,
+                legacy_conflict_path: None,
+            },
+        }
+    }
 
     #[test]
     fn spec_system_name_helpers_cover_all_variants() {
@@ -2312,11 +2396,21 @@ mod tests {
     #[test]
     fn spec_system_finding_blocking_reasons_are_discriminated() {
         assert_eq!(
-            spec_system_blocking_reason("profile_config", "failed to parse profile config"),
+            spec_system_blocking_reason(
+                "profile_config",
+                "failed to parse spec-system config TOML: invalid type"
+            ),
             Some("profile_config_parse_failure")
         );
         assert_eq!(
             spec_system_blocking_reason("profile_config", "policy/spec-system.toml does not exist"),
+            None
+        );
+        assert_eq!(
+            spec_system_blocking_reason(
+                "profile_config",
+                "both owned profile config `.allow/profiles/spec-system.toml` and legacy `policy/spec-system.toml` exist"
+            ),
             None
         );
 
@@ -2480,17 +2574,7 @@ mod tests {
         }
         write_fixture_file(&root, &cfg.roots.artifact_ledger, "not = valid = toml")?;
 
-        let readiness = collect_spec_system_readiness(
-            &root,
-            &LoadedSpecSystemConfig {
-                cfg,
-                source: "built-in".to_string(),
-                path: DEFAULT_PROFILE_CONFIG.to_string(),
-                found: true,
-                valid: Some(true),
-                diagnostic: None,
-            },
-        );
+        let readiness = collect_spec_system_readiness(&root, &test_loaded_spec_system_config(cfg));
         let _ = std::fs::remove_dir_all(&root);
 
         let ledger = readiness_check_by_kind(&readiness, "artifact_ledger");
@@ -2566,14 +2650,7 @@ mod tests {
 
         let readiness = collect_spec_system_readiness(
             &root,
-            &LoadedSpecSystemConfig {
-                cfg: default_spec_system_config(),
-                source: "built-in".to_string(),
-                path: DEFAULT_PROFILE_CONFIG.to_string(),
-                found: true,
-                valid: Some(true),
-                diagnostic: None,
-            },
+            &test_loaded_spec_system_config(default_spec_system_config()),
         );
         let _ = std::fs::remove_dir_all(&root);
 
