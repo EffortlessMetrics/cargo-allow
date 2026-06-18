@@ -10,6 +10,11 @@ inventory without executing repository code.
 
 ### Added
 
+- Import legacy semantic selector fields (`receiver` / `receiver_fingerprint`,
+  `target` / `target_fingerprint`, `symbol`, `normalized_snippet_hash`) from
+  nested `[allow.selector]` tables into canonical policy entries for
+  no-panic-allowlist and clippy-exceptions migrations. Fixture:
+  `tests/fixtures/migration/no-panic-allowlist-semantic-selectors.toml`.
 - Extend adoption-substrate lane closeout (CARGO-ALLOW-CLOSEOUT-0003) after
   structural identity D7 diff posture identity characterization lands in #1732;
   close structural identity execution lane D1–D7 (D8 docs deferred).

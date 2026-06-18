@@ -11,6 +11,18 @@ pub(crate) fn entry_from_no_panic_allow_entry(rule: &LegacyNoPanicAllowEntry) ->
     let path = normalize_path(&rule.path);
     let family = cargo_allow_panic_family(&rule.family);
     let ast_kind = normalize_selector_kind(&rule.selector_kind);
+    let mut selector = Selector {
+        ast_kind: Some(ast_kind.clone()),
+        container: rule.selector_container.clone(),
+        callee: (ast_kind == "method_call")
+            .then(|| no_panic_method_callee(&family, rule.selector_callee.as_deref())),
+        macro_name: (ast_kind == "macro_call")
+            .then(|| no_panic_macro_name(rule.selector_callee.as_deref().unwrap_or(&family))),
+        line_hint: rule.line_hint,
+        glob: Some(path.clone()),
+        ..Selector::default()
+    };
+    rule.selector_semantics.apply_to_selector(&mut selector);
     AllowEntry {
         id: rule.id.clone(),
         kind: FindingKind::Panic,
@@ -28,17 +40,7 @@ pub(crate) fn entry_from_no_panic_allow_entry(rule: &LegacyNoPanicAllowEntry) ->
             rule.review_after.clone(),
             rule.expires.clone(),
         ),
-        selector: Selector {
-            ast_kind: Some(ast_kind.clone()),
-            container: rule.selector_container.clone(),
-            callee: (ast_kind == "method_call")
-                .then(|| no_panic_method_callee(&family, rule.selector_callee.as_deref())),
-            macro_name: (ast_kind == "macro_call")
-                .then(|| no_panic_macro_name(rule.selector_callee.as_deref().unwrap_or(&family))),
-            line_hint: rule.line_hint,
-            glob: Some(path),
-            ..Selector::default()
-        },
+        selector,
         last_seen: rule.last_seen.clone(),
     }
 }
@@ -84,6 +86,10 @@ mod tests {
                 line: 17,
                 column: 12,
             }),
+            selector_semantics: crate::semantic_selector_fields::LegacySemanticSelectorExtras {
+                receiver_fingerprint: Some("optional_value".to_string()),
+                ..Default::default()
+            },
         };
 
         let entry = entry_from_no_panic_allow_entry(&rule);
@@ -114,6 +120,10 @@ mod tests {
         assert_eq!(entry.selector.ast_kind.as_deref(), Some("method_call"));
         assert_eq!(entry.selector.container.as_deref(), Some("parse_optional"));
         assert_eq!(entry.selector.callee.as_deref(), Some("unwrap"));
+        assert_eq!(
+            entry.selector.receiver_fingerprint.as_deref(),
+            Some("optional_value")
+        );
         assert_eq!(entry.selector.macro_name, None);
         assert_eq!(entry.selector.line_hint, Some(17));
         assert_eq!(entry.selector.glob.as_deref(), Some("src/parser.rs"));
@@ -145,6 +155,7 @@ mod tests {
             expires: Some("never".to_string()),
             line_hint: None,
             last_seen: None,
+            selector_semantics: Default::default(),
         };
 
         let entry = entry_from_no_panic_allow_entry(&rule);

@@ -73,6 +73,7 @@ mod parser_support;
 mod parser_unsafe_entries;
 mod parser_workflow_entries;
 mod parsers;
+mod semantic_selector_fields;
 mod types;
 mod types_dependency_entries;
 mod types_executable_entries;
@@ -144,6 +145,8 @@ mod non_rust_tests;
 mod policy_dir_tests;
 #[cfg(test)]
 mod process_network_tests;
+#[cfg(test)]
+mod semantic_selector_import_tests;
 #[cfg(test)]
 mod test_findings;
 #[cfg(test)]

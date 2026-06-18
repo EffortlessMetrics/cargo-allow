@@ -3,6 +3,7 @@ use toml::Value;
 
 use crate::fields::{legacy_evidence, required_string_field, string_field};
 use crate::parser_support::{normalize_legacy_expires, normalize_lint_attribute_family};
+use crate::semantic_selector_fields::LegacySemanticSelectorExtras;
 use crate::types::LegacyClippyRule;
 use crate::{default_baseline_created, default_baseline_expires};
 
@@ -27,6 +28,8 @@ fn parse_clippy_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyClip
     let review_after = string_field(table, "review_after");
     let expires = normalize_legacy_expires(string_field(table, "expires"))
         .or_else(|| review_after.is_none().then(default_baseline_expires));
+    let nested_selector = table.get("selector").and_then(Value::as_table);
+    let nested_semantics = LegacySemanticSelectorExtras::from_selector_table(nested_selector);
     Ok(LegacyClippyRule {
         path: required_string_field(table, "path", &id)?,
         lint: required_string_field(table, "lint", &id)?,
@@ -41,9 +44,10 @@ fn parse_clippy_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyClip
             "Generated from legacy Clippy exceptions policy; requires human review.".to_string()
         }),
         evidence: legacy_evidence(table),
-        symbol: string_field(table, "symbol"),
+        symbol: string_field(table, "symbol").or(nested_semantics.symbol),
         target_fingerprint: string_field(table, "target_fingerprint")
-            .or_else(|| string_field(table, "policy_id").map(|id| format!("policy:{id}"))),
+            .or_else(|| string_field(table, "policy_id").map(|id| format!("policy:{id}")))
+            .or(nested_semantics.target_fingerprint),
         created: string_field(table, "created").or_else(|| Some(default_baseline_created())),
         review_after,
         expires,
@@ -184,6 +188,34 @@ review_after = "2026-09-09"
         assert_eq!(rule.created.as_deref(), Some("2026-05-09"));
         assert_eq!(rule.review_after.as_deref(), Some("2026-09-09"));
         assert!(rule.expires.is_none());
+    }
+
+    #[test]
+    fn parse_clippy_rules_imports_nested_selector_target_fingerprint() {
+        let table = parse_table(
+            r#"
+[[allow]]
+id = "fixture-clippy"
+path = "src/lib.rs"
+lint = "clippy::unwrap_used"
+
+[allow.selector]
+kind = "attribute"
+target = "policy:fixture-clippy"
+"#,
+        );
+
+        let mut rules = parse_clippy_rules(&table).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("nested selector clippy rules parse: {err}"))
+        });
+
+        assert_eq!(rules.len(), 1);
+        let rule = rules.remove(0);
+        assert_eq!(rule.id, "fixture-clippy");
+        assert_eq!(
+            rule.target_fingerprint.as_deref(),
+            Some("policy:fixture-clippy")
+        );
     }
 
     #[test]

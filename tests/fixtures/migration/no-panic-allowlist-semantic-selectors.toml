@@ -1,0 +1,19 @@
+schema_version = 1
+policy = "no-panic-allowlist"
+
+[[allow]]
+id = "fixture-semantic-unwrap"
+path = "src/lib.rs"
+family = "unwrap"
+owner = "parser"
+classification = "reviewed_panic_exception"
+reason = "Semantic selector pins unwrap on optional after validation."
+evidence = ["test:semantic_selector_round_trip"]
+created = "2026-06-18"
+review_after = "2026-12-18"
+
+[allow.selector]
+kind = "method_call"
+callee = "unwrap"
+container = "load"
+receiver = "optional_value"
