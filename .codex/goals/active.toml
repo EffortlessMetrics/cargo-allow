@@ -31,7 +31,7 @@ ledgers, or closeouts.
 
 [[work_item]]
 id = "portable-governance-c2"
-status = "done"
+status = "ready"
 title = "`.allow` profile resolution with policy fallback (C2)"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
