@@ -1,5 +1,6 @@
 use super::*;
 use crate::artifact_contract_support::parse_json_artifact;
+use crate::init::cmd_init;
 use crate::{CargoAllowCli, CargoAllowCommand, ProfileArg, RootArgs};
 use clap::Parser;
 use serde_json::Value;
@@ -518,6 +519,70 @@ fn spec_system_doctor_reports_ready_when_bootstrap_files_exist() {
         readiness_check(&value, "templates")
             .is_some_and(|check| check.pointer("/status").and_then(Value::as_str) == Some("ready")),
         "templates should be ready: {json}"
+    );
+    remove_doctor_fixture_dir(root);
+}
+
+fn spec_system_init_fixture(root: &Path) {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "init",
+        "--root",
+        &root.display().to_string(),
+        "--profile",
+        "spec-system",
+    ]))
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("CLI should parse spec-system init: {err}"))
+    });
+    let Some(CargoAllowCommand::Init(args)) = parsed.command else {
+        std::panic::panic_any("expected init command");
+    };
+    cmd_init(&args).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("spec-system init should pass: {err}"))
+    });
+}
+
+#[test]
+fn spec_system_doctor_recognizes_allow_init_layout() {
+    let root = doctor_fixture_dir();
+    spec_system_init_fixture(&root);
+    let output = root.join("doctor-allow.json");
+
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        format: DoctorFormat::Json,
+        output: Some(output.clone()),
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("spec-system doctor should pass advisory: {err}"))
+    });
+
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    let value = parse_json_artifact(
+        "spec-system doctor allow layout",
+        &json,
+        allow_report::SPEC_SYSTEM_SCHEMA_ID,
+        "doctor",
+    );
+    assert_eq!(
+        value.get("config_source").and_then(Value::as_str),
+        Some(".allow/profiles/spec-system.toml")
+    );
+    assert_eq!(
+        value.get("config_provenance").and_then(Value::as_str),
+        Some("allow_profiles")
+    );
+    assert!(
+        readiness_check(&value, "allow_imports").is_some_and(|check| {
+            check.pointer("/status").and_then(Value::as_str) == Some("ready")
+        }),
+        "doctor should recognize owned import root: {json}"
     );
     remove_doctor_fixture_dir(root);
 }

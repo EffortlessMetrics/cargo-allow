@@ -236,7 +236,7 @@ fn spec_system_init_dry_run_does_not_write_bootstrap_files() {
     });
 
     assert!(
-        !root.join("policy/spec-system.toml").exists(),
+        !root.join(".allow/profiles/spec-system.toml").exists(),
         "spec-system init dry-run should not write profile config"
     );
     assert!(
@@ -264,8 +264,12 @@ fn spec_system_init_bootstraps_profile_files() {
     .unwrap_or_else(|err| std::panic::panic_any(format!("spec-system init should pass: {err}")));
 
     for path in [
-        "policy/spec-system.toml",
-        "policy/doc-artifacts.toml",
+        ".allow/profiles/spec-system.toml",
+        ".allow/artifacts/doc-artifacts.toml",
+        ".allow/goals/README.md",
+        ".allow/goals/active.toml",
+        ".allow/goals/archive/.gitkeep",
+        ".allow/imports/README.md",
         "docs/proposals/README.md",
         "docs/specs/README.md",
         "docs/adr/README.md",
@@ -278,22 +282,108 @@ fn spec_system_init_bootstraps_profile_files() {
         "docs/templates/pr-body.md",
         "docs/status/SUPPORT_TIERS.md",
         "plans/README.md",
-        ".codex/goals/README.md",
-        ".codex/goals/active.toml",
-        ".codex/goals/archive/.gitkeep",
     ] {
         assert!(
             root.join(path).exists(),
             "spec-system init should create {path}"
         );
     }
-    let config = fs::read_to_string(root.join("policy/spec-system.toml"))
+    let config = fs::read_to_string(root.join(".allow/profiles/spec-system.toml"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("read profile config: {err}")));
     assert!(config.contains("profile = \"spec-system\""));
     assert!(config.contains("mode = \"advisory\""));
+    assert!(config.contains("goals = \".allow/goals\""));
+    assert!(config.contains("artifact_ledger = \".allow/artifacts/doc-artifacts.toml\""));
     assert!(
         config.contains("active_goal_required = false"),
         "new repositories should not start with a self-invalidating active goal"
+    );
+
+    remove_init_fixture_dir(root);
+}
+
+#[test]
+fn spec_system_init_bootstrapped_profile_loads_via_check() {
+    let root = init_fixture_dir();
+
+    cmd_init(&InitArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        strict: false,
+        profile: Some(ProfileArg::SpecSystem),
+        dry_run: false,
+        force: false,
+        config: PathBuf::from("policy/allow.toml"),
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("spec-system init should pass: {err}"))
+    });
+
+    let output = root.join("check.json");
+    let result = crate::check::cmd_check(&crate::check::CheckArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        compat: false,
+        kind: None,
+        include_untracked: false,
+        format: crate::OutputFormat::Json,
+        output: Some(output.clone()),
+        receipt: None,
+        mode: Some("audit".to_string()),
+        deny: Vec::new(),
+    });
+    assert!(
+        result.is_ok(),
+        "spec-system check should load bootstrapped .allow profile: {:?}",
+        result.err()
+    );
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read check output: {err}")));
+    assert!(
+        json.contains(".allow/profiles/spec-system.toml"),
+        "check should resolve owned profile config: {json}"
+    );
+    assert!(
+        json.contains("\"allow_profiles\""),
+        "check should report allow_profiles provenance: {json}"
+    );
+
+    remove_init_fixture_dir(root);
+}
+
+#[test]
+fn spec_system_init_does_not_write_legacy_policy_profile_paths() {
+    let root = init_fixture_dir();
+
+    cmd_init(&InitArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        strict: false,
+        profile: Some(ProfileArg::SpecSystem),
+        dry_run: false,
+        force: false,
+        config: PathBuf::from("policy/allow.toml"),
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("spec-system init should pass: {err}"))
+    });
+
+    assert!(
+        !root.join("policy/spec-system.toml").exists(),
+        "init should not create legacy policy/spec-system.toml"
+    );
+    assert!(
+        !root.join("policy/doc-artifacts.toml").exists(),
+        "init should not create legacy policy/doc-artifacts.toml"
+    );
+    assert!(
+        !root.join(".codex/goals/active.toml").exists(),
+        "init should not create legacy .codex/goals layout"
     );
 
     remove_init_fixture_dir(root);
