@@ -156,7 +156,7 @@ evidence_notes = [
 
 [[work_item]]
 id = "adoption-substrate-pr-002"
-status = "ready"
+status = "done"
 title = "Add migration lane descriptors for modular compat surfaces"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
@@ -164,22 +164,27 @@ linked_plan = "plans/migration-parity/implementation-plan.md"
 proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit",
+  "rtk cargo test -p allow-policy-legacy",
 ]
 evidence_notes = [
-  "Internal coherence slice: document and modularize compat lane descriptors without behavior change.",
-  "Next active adoption/cleanup lane after B1–B6 migration parity groundwork.",
+  "Landed in #1709 (merge 35e1f70a): shared migration lane descriptor table in allow-policy-legacy without migration behavior change.",
+  "Fixture matrix and legacy filename lookups table-driven from descriptors.",
 ]
 
 [[work_item]]
 id = "adoption-substrate-pr-003"
-status = "blocked"
+status = "ready"
 title = "Extract evidence and lifecycle migration helpers"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
-blocker_reason = "Sequenced after adoption-substrate-pr-002 migration lane descriptors land."
+proof_commands = [
+  "rtk cargo test -p allow-policy-legacy",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
 evidence_notes = [
   "Refactor-preserving modularization of shared evidence/lifecycle import paths.",
+  "Next active adoption/cleanup lane after migration lane descriptors.",
 ]
 
 [[work_item]]
