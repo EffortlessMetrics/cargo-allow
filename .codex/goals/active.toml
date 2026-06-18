@@ -485,12 +485,27 @@ title = "Import parity owner/reason/evidence acceptance fixture (#1466-e / #1717
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo test -p allow-policy-legacy import_parity_metadata_acceptance",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Acceptance fixture matrix in import_parity_metadata_acceptance_tests.rs characterizes owner/reason/evidence/covered_by round-trip for semantic-selector entries across no-panic, lint, and unsafe lanes.",
+  "Landed in #1740: acceptance fixture matrix in import_parity_metadata_acceptance_tests.rs characterizes owner/reason/evidence/covered_by round-trip for semantic-selector entries across no-panic, lint, and unsafe lanes.",
   "Weak or missing evidence stays visible as baseline_debt or TODO debt; converters already passed — characterization only.",
   "Does not close umbrella #1466 or ripr dogfood receipt (#1718).",
+]
+[[work_item]]
+id = "import-parity-1718"
+status = "ready"
+title = "Import parity side-by-side ripr-style adoption receipt (#1466-f / #1718)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Next import-parity slice after owner/reason/evidence acceptance fixture (#1717): side-by-side ripr-style adoption receipt for one semantic-selector import slice.",
+  "Receipt must state claim boundary (characterization until import mode ships); does not close umbrella #1466.",
 ]

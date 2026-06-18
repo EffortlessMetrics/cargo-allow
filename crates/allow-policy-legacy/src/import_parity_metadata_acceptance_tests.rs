@@ -13,7 +13,8 @@ use std::path::{Path, PathBuf};
 #[test]
 fn import_parity_metadata_acceptance_matrix_characterizes_governance_round_trip() {
     for case in metadata_acceptance_cases() {
-        let policy_path = stage_metadata_acceptance_fixture(case.fixture_file, case.legacy_filename);
+        let policy_path =
+            stage_metadata_acceptance_fixture(case.fixture_file, case.legacy_filename);
         let cfg = case
             .loader
             .load(&policy_path)
@@ -337,8 +338,7 @@ fn assert_governance_metadata(case_lane: &str, entry: &AllowEntry, case: &Metada
         assert!(
             has_traceability,
             "{case_lane} should keep visible baseline_debt traceability in evidence {:?} or links {:?}",
-            entry.evidence,
-            entry.links
+            entry.evidence, entry.links
         );
     }
 }
@@ -405,7 +405,10 @@ fn assert_weak_evidence_visible(
         entry.evidence
     );
     assert!(
-        entry.evidence.iter().any(|item| item.starts_with("legacy-policy:")),
+        entry
+            .evidence
+            .iter()
+            .any(|item| item.starts_with("legacy-policy:")),
         "{case_lane} should keep legacy-policy traceability alongside TODO debt"
     );
     assert_eq!(
