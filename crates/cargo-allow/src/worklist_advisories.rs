@@ -1,7 +1,7 @@
 use super::WorkItem;
 use super::worklist_actions::{proof_commands, suggested_actions, suggested_actions_for_context};
 use super::worklist_item_kind::{
-    BASELINE_DEBT, BROAD_SCOPE, MISSING_EVIDENCE, UNSAFE_MISSING_EVIDENCE,
+    BASELINE_DEBT, BROAD_SCOPE, MISSING_EVIDENCE, OCCURRENCE_HEADROOM, UNSAFE_MISSING_EVIDENCE,
 };
 use super::worklist_priority::DIFFICULTY_SMALL;
 use super::worklist_scoring::{exception_family, work_item_difficulty, work_item_risk};
@@ -10,6 +10,7 @@ use allow_core::{
     normalize_path,
 };
 use allow_diff::selector_precision_score;
+use allow_report::{matched_occurrence_counts, occurrence_headroom_for_entry};
 
 pub(super) fn work_items_from_policy_advisories(
     cfg: &AllowConfig,
@@ -18,11 +19,47 @@ pub(super) fn work_items_from_policy_advisories(
     start_index: usize,
 ) -> Vec<WorkItem> {
     let mut items = Vec::new();
+    let matched_counts = matched_occurrence_counts(outcomes);
     for entry in &cfg.allow {
         let Some(outcome) = matched_outcome_for_entry(outcomes, entry) else {
             continue;
         };
         let finding = outcome.finding_index.and_then(|idx| findings.get(idx));
+        let matched_count = matched_counts.get(&entry.id).copied().unwrap_or(0);
+        if let Some(limit) = occurrence_headroom_for_entry(entry, matched_count) {
+            let item_index = start_index + items.len();
+            let kind = OCCURRENCE_HEADROOM.to_string();
+            items.push(WorkItem {
+                id: format!("work-occurrence-headroom-{item_index:04}"),
+                kind: kind.clone(),
+                exception_kind: Some(entry.kind.as_str().to_string()),
+                family: exception_family(finding, Some(entry)).map(ToOwned::to_owned),
+                owner: Some(entry.owner.clone()),
+                classification: Some(entry.classification.clone()),
+                reason: Some(entry.reason.clone()),
+                created: entry.lifecycle.created.clone(),
+                review_after: entry.lifecycle.review_after.clone(),
+                expires: entry.lifecycle.expires.clone(),
+                evidence_count: Some(entry.evidence.len()),
+                selector_precision: Some(selector_precision_score(entry)),
+                risk: work_item_risk(&kind, MatchStatus::Matched, finding, Some(entry)),
+                difficulty: work_item_difficulty(&kind, finding, Some(entry)),
+                status: MatchStatus::Matched,
+                allow_id: Some(entry.id.clone()),
+                finding_index: outcome.finding_index,
+                path: finding
+                    .map(|finding| normalize_path(&finding.path))
+                    .or_else(|| Some(entry.path_or_glob())),
+                evidence_reference: None,
+                source_package: source_package_name(finding),
+                message: format!(
+                    "{} has occurrence_limit {limit} but only {matched_count} current matches",
+                    entry.id
+                ),
+                suggested_actions: suggested_actions_for_context(&kind, finding, Some(entry)),
+                proof_commands: proof_commands(&kind, finding, Some(entry)),
+            });
+        }
         if entry.classification == "baseline_debt" {
             let item_index = start_index + items.len();
             let kind = BASELINE_DEBT.to_string();

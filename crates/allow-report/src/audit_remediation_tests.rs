@@ -21,6 +21,7 @@ fn empty_signals() -> ReviewSignals {
         policy_missing_evidence: 0,
         broken_evidence_links: 0,
         weak_evidence_references: 0,
+        occurrence_headroom: 0,
         review_items: 0,
     }
 }

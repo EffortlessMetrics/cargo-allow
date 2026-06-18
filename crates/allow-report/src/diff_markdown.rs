@@ -241,6 +241,7 @@ fn render_diff_pr_summary_markdown_with_evidence_health_counts_inner(
         broken_evidence_links,
         missing_evidence,
         weak_evidence_references,
+        0,
     );
     if !evidence_repair_queues.is_empty() {
         out.push_str("**Evidence repair queues:**\n");

@@ -10,9 +10,7 @@ objective = """
 Strengthen cargo-allow migration and evidence parity on an adoption-ready
 substrate. Import parity execution lane (#1713–#1718) closed in
 CARGO-ALLOW-CLOSEOUT-0004; umbrella #1466 remains open for full import mode
-and external adoption. Post-import next lane: #1472 occurrence_headroom
-outcomes/worklist is ready; D8 scanner limitation docs closed in
-CARGO-ALLOW-CLOSEOUT-0003; #1473 P2 multi-ledger federation is design-first
+and external adoption. Post-import next lane: #1473 P2 multi-ledger federation is design-first
 blocked; #1466 full import mode is blocked on external need. Internal coherence, modularization, and documented deltas remain
 on the path to the 0.2.0 milestone claim. Release automation (0.1.10) and OIDC
 publish lanes stay dormant until explicit authorization. `.allow` namespace
@@ -560,14 +558,15 @@ evidence_notes = [
 
 [[work_item]]
 id = "post-import-1472"
-status = "ready"
+status = "done"
 title = "Add occurrence_headroom outcomes and worklist routing (#1472)"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo test -p cargo-allow check_deny deny_escalation",
-  "rtk cargo test -p allow-report receipt_advisory",
+  "rtk cargo test -p cargo-allow check_deny deny_escalation e2e_occurrence_headroom",
+  "rtk cargo test -p allow-report receipt_advisory occurrence_headroom",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
