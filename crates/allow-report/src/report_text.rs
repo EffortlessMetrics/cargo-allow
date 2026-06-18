@@ -283,6 +283,8 @@ pub fn render_markdown_with_context(
     if command == "audit" {
         render_source_inventory_markdown(findings, outcomes, &mut out);
         render_audit_summary_markdown(&summary, outcomes, context, &mut out);
+    } else if command == "check" {
+        render_advisory_summary_markdown(&summary, context, &mut out);
     }
     render_non_rust_markdown(findings, outcomes, &mut out);
     if command != "audit" {
@@ -328,6 +330,69 @@ fn append_markdown_omitted_outcome_note(out: &mut String, outcome_count: usize) 
             "\n{omitted} additional non-matched outcome{plural} omitted from this listing.\n"
         ));
     }
+}
+
+fn render_advisory_summary_markdown(
+    summary: &Summary,
+    context: ReportContext<'_>,
+    out: &mut String,
+) {
+    let signals = ReviewSignals::from_summary(summary, context);
+    out.push_str("\n## Advisory counts\n\n");
+    out.push_str("| Signal | Count |\n|---|---:|\n");
+    out.push_str(&format!("| Review items | {} |\n", signals.review_items));
+    out.push_str(&format!(
+        "| New unreceipted | {} |\n",
+        summary.count(MatchStatus::New)
+    ));
+    out.push_str(&format!(
+        "| Expired | {} |\n",
+        summary.count(MatchStatus::Expired)
+    ));
+    out.push_str(&format!(
+        "| Review due | {} |\n",
+        summary.count(MatchStatus::ReviewDue)
+    ));
+    out.push_str(&format!(
+        "| Stale | {} |\n",
+        summary.count(MatchStatus::Stale)
+    ));
+    out.push_str(&format!(
+        "| Ambiguous | {} |\n",
+        summary.count(MatchStatus::Ambiguous)
+    ));
+    out.push_str(&format!(
+        "| Invalid selectors | {} |\n",
+        summary.count(MatchStatus::InvalidSelector)
+    ));
+    out.push_str(&format!(
+        "| Missing required fields | {} |\n",
+        summary.count(MatchStatus::MissingRequiredField)
+    ));
+    out.push_str(&format!(
+        "| Evidence gaps | {} |\n",
+        summary.count(MatchStatus::EvidenceMissing)
+    ));
+    out.push_str(&format!(
+        "| Policy missing evidence | {} |\n",
+        signals.policy_missing_evidence
+    ));
+    if signals.broken_evidence_links > 0 {
+        out.push_str(&format!(
+            "| Broken evidence links | {} |\n",
+            signals.broken_evidence_links
+        ));
+    }
+    if signals.weak_evidence_references > 0 {
+        out.push_str(&format!(
+            "| Weak evidence references | {} |\n",
+            signals.weak_evidence_references
+        ));
+    }
+    out.push_str(&format!(
+        "| Baseline debt | {} |\n",
+        signals.baseline_debt
+    ));
 }
 
 fn render_audit_summary_markdown(

@@ -10,6 +10,11 @@ inventory without executing repository code.
 
 ### Added
 
+- Add receipt-visible `advisory` counters to `cargo-allow.receipt.v1` check artifacts so
+  CI and ratcheting workflows can read review-oriented status totals (`review_items`,
+  `review_due`, `stale`, `baseline_debt`, optional policy/evidence-health counts) without
+  parsing human reports. Markdown check reports include a matching `## Advisory counts`
+  section. Exit status is unchanged; per-class `--deny` escalation remains deferred.
 - Normalize migrate `closeout.next_queues` construction across legacy compat lanes
   using shared lane-descriptor debt classification and `CloseoutQueueHints`
   (`migration_closeout`, `migrate_closeout_queues`). Panic-baseline migrations

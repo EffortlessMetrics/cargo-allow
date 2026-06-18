@@ -70,6 +70,18 @@ fn receipt_matches_empty_check_golden_contract() {
     "evidence_missing": 0,
     "missing_required_field": 0,
     "baseline_debt": 0
+  }},
+  "advisory": {{
+    "review_items": 0,
+    "new": 0,
+    "expired": 0,
+    "review_due": 0,
+    "stale": 0,
+    "ambiguous": 0,
+    "invalid_selector": 0,
+    "missing_required_field": 0,
+    "evidence_missing": 0,
+    "baseline_debt": 0
   }}
 }}
 "#,
@@ -161,6 +173,29 @@ fn receipt_routes_evidence_repair_queues() {
     assert!(json.contains("\"worklist_filter\": \"weak_evidence\""));
     assert!(json.contains("\"count\": 3"));
     assert!(json.contains("\"command\": \"cargo-allow worklist --weak-evidence --format json\""));
+}
+
+#[test]
+fn receipt_advisory_counts_policy_context() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, Some(3));
+    context.policy_missing_evidence_entries = Some(4);
+    context.broken_evidence_links = Some(2);
+    context.weak_evidence_references = Some(1);
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::ReviewDue,
+        allow_id: Some("review".to_string()),
+        finding_index: None,
+        message: "review_due".to_string(),
+        score: 0,
+    }];
+    let json = render_receipt_with_context("check", &outcomes, false, context);
+
+    assert!(json.contains("\"advisory\": {"));
+    assert!(json.contains("\"review_items\": 11"));
+    assert!(json.contains("\"review_due\": 1"));
+    assert!(json.contains("\"policy_missing_evidence\": 4"));
+    assert!(json.contains("\"broken_evidence_links\": 2"));
+    assert!(json.contains("\"weak_evidence_references\": 1"));
 }
 
 #[test]

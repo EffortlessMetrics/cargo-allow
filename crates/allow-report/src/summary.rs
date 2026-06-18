@@ -142,6 +142,52 @@ pub(crate) fn render_count_fields_with_policy_context(
     out
 }
 
+pub(crate) fn render_advisory_count_fields(
+    summary: &Summary,
+    context: ReportContext<'_>,
+    indent: &str,
+) -> String {
+    let signals = ReviewSignals::from_summary(summary, context);
+    let mut fields = vec![
+        ("review_items", signals.review_items),
+        ("new", summary.count(MatchStatus::New)),
+        ("expired", summary.count(MatchStatus::Expired)),
+        ("review_due", summary.count(MatchStatus::ReviewDue)),
+        ("stale", summary.count(MatchStatus::Stale)),
+        ("ambiguous", summary.count(MatchStatus::Ambiguous)),
+        (
+            "invalid_selector",
+            summary.count(MatchStatus::InvalidSelector),
+        ),
+        (
+            "missing_required_field",
+            summary.count(MatchStatus::MissingRequiredField),
+        ),
+        (
+            "evidence_missing",
+            summary.count(MatchStatus::EvidenceMissing),
+        ),
+        ("baseline_debt", signals.baseline_debt),
+    ];
+    if signals.policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing) {
+        fields.push(("policy_missing_evidence", signals.policy_missing_evidence));
+    }
+    if signals.broken_evidence_links > 0 {
+        fields.push(("broken_evidence_links", signals.broken_evidence_links));
+    }
+    if signals.weak_evidence_references > 0 {
+        fields.push(("weak_evidence_references", signals.weak_evidence_references));
+    }
+    fields
+        .iter()
+        .enumerate()
+        .map(|(idx, (name, value))| {
+            let comma = if idx + 1 == fields.len() { "" } else { "," };
+            format!("{indent}\"{name}\": {value}{comma}\n")
+        })
+        .collect()
+}
+
 pub(crate) fn review_item_count_with_baseline(
     summary: &Summary,
     baseline_debt: usize,
@@ -401,6 +447,48 @@ mod tests {
         assert_eq!(policy_baseline_debt_entries(&cfg), 1);
         assert_eq!(policy_missing_evidence_entries(&cfg), 3);
         assert_eq!(matched_policy_missing_evidence_entries(&cfg, &outcomes), 1);
+    }
+
+    #[test]
+    fn advisory_count_fields_include_optional_evidence_signals_when_nonzero() {
+        let outcomes = vec![
+            outcome(MatchStatus::Matched, Some("matched")),
+            outcome(MatchStatus::New, Some("new")),
+            outcome(MatchStatus::Expired, Some("expired")),
+            outcome(MatchStatus::ReviewDue, Some("review")),
+            outcome(MatchStatus::Stale, Some("stale")),
+            outcome(MatchStatus::Ambiguous, Some("ambiguous")),
+            outcome(MatchStatus::InvalidSelector, Some("invalid")),
+            outcome(MatchStatus::MissingRequiredField, Some("missing")),
+            outcome(MatchStatus::EvidenceMissing, Some("evidence")),
+            outcome(MatchStatus::BaselineDebt, Some("baseline")),
+        ];
+        let summary = Summary::from_outcomes(&outcomes);
+        let mut context = ReportContext::source_syntax("git_tracked", None, None, Some(5));
+        context.policy_missing_evidence_entries = Some(4);
+        context.broken_evidence_links = Some(2);
+        context.weak_evidence_references = Some(3);
+
+        let fields = render_advisory_count_fields(&summary, context, "    ");
+
+        for expected in [
+            "\"review_items\": 21,",
+            "\"new\": 1,",
+            "\"expired\": 1,",
+            "\"review_due\": 1,",
+            "\"stale\": 1,",
+            "\"ambiguous\": 1,",
+            "\"invalid_selector\": 1,",
+            "\"missing_required_field\": 1,",
+            "\"evidence_missing\": 1,",
+            "\"baseline_debt\": 5,",
+            "\"policy_missing_evidence\": 4,",
+            "\"broken_evidence_links\": 2,",
+            "\"weak_evidence_references\": 3",
+        ] {
+            assert!(fields.contains(expected), "{expected}\n{fields}");
+        }
+        assert!(!fields.contains("\"weak_evidence_references\": 3,"));
     }
 
     #[test]

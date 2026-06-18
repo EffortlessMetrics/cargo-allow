@@ -262,6 +262,18 @@ fn check_success_reports_policy_missing_evidence_counts() {
         1,
         "receipt policy_missing_evidence",
     );
+    assert_json_u64(
+        &receipt,
+        "/advisory/review_items",
+        1,
+        "receipt advisory review_items",
+    );
+    assert_json_u64(
+        &receipt,
+        "/advisory/policy_missing_evidence",
+        1,
+        "receipt advisory policy_missing_evidence",
+    );
 
     remove_temp_root(root);
 }

@@ -14,7 +14,8 @@
     "claim_boundary",
     "scanner_limitations",
     "inventory",
-    "counts"
+    "counts",
+    "advisory"
   ],
   "properties": {
     "schema_version": {
@@ -111,6 +112,9 @@
     },
     "counts": {
       "$ref": "#/$defs/counts"
+    },
+    "advisory": {
+      "$ref": "#/$defs/advisory"
     },
     "evidence_repair_queues": {
       "type": "array",
@@ -321,6 +325,81 @@
           "type": "integer",
           "minimum": 0,
           "description": "Optional count of unstructured or unknown-prefix evidence or link references. These strings are retained as traceability but are not recognized as typed evidence by cargo-allow."
+        }
+      }
+    },
+    "advisory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "review_items",
+        "new",
+        "expired",
+        "review_due",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt"
+      ],
+      "properties": {
+        "review_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total review-oriented items for ratcheting, including policy-level baseline debt inventory when available."
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expired": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_due": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ambiguous": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid_selector": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_required_field": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_missing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "baseline_debt": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Policy-level count of generated baseline_debt entries when available; otherwise the baseline_debt outcome count."
+        },
+        "policy_missing_evidence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional policy-level count of allow entries with no evidence references included in review item totals when available."
+        },
+        "broken_evidence_links": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of missing or invalid local evidence or link references included in review item totals when available."
+        },
+        "weak_evidence_references": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of unstructured or unknown-prefix evidence or link references included in review item totals when available."
         }
       }
     },
