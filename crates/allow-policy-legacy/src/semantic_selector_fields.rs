@@ -80,10 +80,7 @@ normalized_snippet_hash = "abc123"
             Some("canonical-target")
         );
         assert_eq!(extras.symbol.as_deref(), Some("load"));
-        assert_eq!(
-            extras.normalized_snippet_hash.as_deref(),
-            Some("abc123")
-        );
+        assert_eq!(extras.normalized_snippet_hash.as_deref(), Some("abc123"));
     }
 
     #[test]
@@ -121,10 +118,7 @@ target = "policy:fixture-clippy"
 
         extras.apply_to_selector(&mut selector);
 
-        assert_eq!(
-            selector.receiver_fingerprint.as_deref(),
-            Some("param:0")
-        );
+        assert_eq!(selector.receiver_fingerprint.as_deref(), Some("param:0"));
         assert_eq!(selector.container.as_deref(), Some("load"));
         assert_eq!(selector.target_fingerprint, None);
     }

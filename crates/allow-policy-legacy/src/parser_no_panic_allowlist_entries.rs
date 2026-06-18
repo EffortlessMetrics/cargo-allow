@@ -136,7 +136,10 @@ line_hint = 7
         );
         assert_eq!(entry.line_hint, Some(7));
         assert!(entry.last_seen.is_none());
-        assert_eq!(entry.selector_semantics, LegacySemanticSelectorExtras::default());
+        assert_eq!(
+            entry.selector_semantics,
+            LegacySemanticSelectorExtras::default()
+        );
     }
 
     #[test]

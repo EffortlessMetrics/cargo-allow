@@ -138,8 +138,6 @@ mod metadata_matrix_tests;
 #[cfg(test)]
 mod migration_fixture_matrix_tests;
 #[cfg(test)]
-mod semantic_selector_import_tests;
-#[cfg(test)]
 mod no_panic_tests;
 #[cfg(test)]
 mod non_rust_tests;
@@ -147,6 +145,8 @@ mod non_rust_tests;
 mod policy_dir_tests;
 #[cfg(test)]
 mod process_network_tests;
+#[cfg(test)]
+mod semantic_selector_import_tests;
 #[cfg(test)]
 mod test_findings;
 #[cfg(test)]

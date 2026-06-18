@@ -36,9 +36,8 @@ fn semantic_selector_import_preserves_receiver_container_and_callee() {
 fn semantic_selector_import_preserves_nested_clippy_target_fingerprint() {
     let dir = crate::test_support::fixture_dir();
     let source = migration_fixture_path("lint-exception.toml");
-    let text = fs::read_to_string(&source).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("read lint-exception fixture: {err}"))
-    });
+    let text = fs::read_to_string(&source)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read lint-exception fixture: {err}")));
     let path = dir.join("clippy-exceptions.toml");
     fs::write(&path, text).unwrap_or_else(|err| {
         std::panic::panic_any(format!("stage lint-exception fixture: {err}"))
