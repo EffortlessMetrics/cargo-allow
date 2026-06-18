@@ -322,24 +322,14 @@ pub fn all_legacy_lane_descriptors() -> &'static [LegacyLaneDescriptor] {
     LEGACY_LANE_DESCRIPTORS
 }
 
-pub fn legacy_lane_descriptor(lane: CompatKind) -> &'static LegacyLaneDescriptor {
-    match lane {
-        CompatKind::NonRust => &LEGACY_LANE_DESCRIPTORS[0],
-        CompatKind::Generated => &LEGACY_LANE_DESCRIPTORS[1],
-        CompatKind::NoPanicAllowlist => &LEGACY_LANE_DESCRIPTORS[2],
-        CompatKind::PanicBaseline => &LEGACY_LANE_DESCRIPTORS[3],
-        CompatKind::LintException => &LEGACY_LANE_DESCRIPTORS[4],
-        CompatKind::Unsafe => &LEGACY_LANE_DESCRIPTORS[5],
-        CompatKind::Executable => &LEGACY_LANE_DESCRIPTORS[6],
-        CompatKind::Workflow => &LEGACY_LANE_DESCRIPTORS[7],
-        CompatKind::DependencySurface => &LEGACY_LANE_DESCRIPTORS[8],
-        CompatKind::Process => &LEGACY_LANE_DESCRIPTORS[9],
-        CompatKind::Network => &LEGACY_LANE_DESCRIPTORS[10],
-    }
+pub fn legacy_lane_descriptor(lane: CompatKind) -> Option<&'static LegacyLaneDescriptor> {
+    LEGACY_LANE_DESCRIPTORS
+        .iter()
+        .find(|descriptor| descriptor.lane == lane)
 }
 
 pub fn descriptor_for_compat_kind_id(id: &str) -> Option<&'static LegacyLaneDescriptor> {
-    CompatKind::from_compat_kind_id(id).map(legacy_lane_descriptor)
+    CompatKind::from_compat_kind_id(id).and_then(legacy_lane_descriptor)
 }
 
 pub fn descriptor_for_legacy_filename(filename: &str) -> Option<&'static LegacyLaneDescriptor> {
@@ -368,9 +358,22 @@ mod tests {
     fn descriptor_table_covers_all_compat_kinds() {
         assert_eq!(LEGACY_LANE_DESCRIPTORS.len(), CompatKind::ALL.len());
         for lane in CompatKind::ALL {
-            let descriptor = legacy_lane_descriptor(*lane);
-            assert_eq!(descriptor.lane, *lane);
-            assert_eq!(descriptor.compat_kind_id(), lane.compat_kind_id());
+            assert!(
+                legacy_lane_descriptor(*lane).is_some(),
+                "descriptor table missing lane {:?}",
+                lane
+            );
+        }
+        for descriptor in LEGACY_LANE_DESCRIPTORS {
+            assert!(
+                CompatKind::ALL.contains(&descriptor.lane),
+                "descriptor table has unexpected lane {:?}",
+                descriptor.lane
+            );
+            assert_eq!(
+                descriptor.compat_kind_id(),
+                descriptor.lane.compat_kind_id()
+            );
         }
     }
 

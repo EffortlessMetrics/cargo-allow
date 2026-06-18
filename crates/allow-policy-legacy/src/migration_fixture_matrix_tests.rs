@@ -1,5 +1,7 @@
 use super::*;
-use crate::migration_lane_descriptors::{CompatKind, all_legacy_lane_descriptors};
+use crate::migration_lane_descriptors::{
+    CompatKind, LegacyLaneDescriptor, all_legacy_lane_descriptors,
+};
 use allow_core::{AllowConfig, AllowEntry, CargoAllowResult};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -278,9 +280,18 @@ fn migration_lane_cases() -> Vec<MigrationLaneCase> {
     cases
 }
 
+#[test]
+fn primary_migration_lane_cases_cover_all_compat_kinds() {
+    assert_eq!(
+        primary_migration_lane_cases().len(),
+        CompatKind::ALL.len(),
+        "primary migration fixture matrix should cover every compat kind"
+    );
+}
+
 fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
-    vec![
-        primary_case(
+    [
+        primary_case_for_lane(
             CompatKind::NonRust,
             "non-rust",
             "fixture-non-rust",
@@ -298,7 +309,7 @@ fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
                 expect_baseline_debt_markers: false,
             },
         ),
-        primary_case(
+        primary_case_for_lane(
             CompatKind::Generated,
             "generated",
             "fixture-generated",
@@ -316,7 +327,7 @@ fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
                 expect_baseline_debt_markers: false,
             },
         ),
-        primary_case(
+        primary_case_for_lane(
             CompatKind::Executable,
             "executable",
             "fixture-executable",
@@ -334,7 +345,7 @@ fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
                 expect_baseline_debt_markers: false,
             },
         ),
-        primary_case(
+        primary_case_for_lane(
             CompatKind::Workflow,
             "workflow",
             "workflow-action-github-workflows-release-yml--actions-checkout-v4",
@@ -352,7 +363,7 @@ fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
                 expect_baseline_debt_markers: false,
             },
         ),
-        primary_case(
+        primary_case_for_lane(
             CompatKind::DependencySurface,
             "dependency-surface",
             "fixture-dependency",
@@ -370,7 +381,7 @@ fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
                 expect_baseline_debt_markers: false,
             },
         ),
-        primary_case(
+        primary_case_for_lane(
             CompatKind::Process,
             "process",
             "fixture-process",
@@ -388,7 +399,7 @@ fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
                 expect_baseline_debt_markers: false,
             },
         ),
-        primary_case(
+        primary_case_for_lane(
             CompatKind::Network,
             "network",
             "fixture-network",
@@ -406,7 +417,7 @@ fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
                 expect_baseline_debt_markers: false,
             },
         ),
-        primary_case(
+        primary_case_for_lane(
             CompatKind::NoPanicAllowlist,
             "no-panic allowlist",
             "fixture-no-panic-unwrap",
@@ -424,7 +435,7 @@ fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
                 expect_baseline_debt_markers: false,
             },
         ),
-        primary_case(
+        primary_case_for_lane(
             CompatKind::PanicBaseline,
             "panic baseline",
             "panic-baseline-0001",
@@ -442,7 +453,7 @@ fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
                 expect_baseline_debt_markers: false,
             },
         ),
-        primary_case(
+        primary_case_for_lane(
             CompatKind::LintException,
             "lint-exception",
             "fixture-clippy",
@@ -460,7 +471,7 @@ fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
                 expect_baseline_debt_markers: false,
             },
         ),
-        primary_case(
+        primary_case_for_lane(
             CompatKind::Unsafe,
             "unsafe",
             "fixture-unsafe",
@@ -479,15 +490,17 @@ fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
             },
         ),
     ]
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 fn primary_case(
-    lane: CompatKind,
+    descriptor: LegacyLaneDescriptor,
     lane_label: &'static str,
     entry_id: &'static str,
     expect: PrimaryCaseExpectations,
 ) -> MigrationLaneCase {
-    let descriptor = legacy_lane_descriptor(lane);
     MigrationLaneCase {
         lane: lane_label,
         fixture_file: descriptor.primary_fixture_file,
@@ -504,14 +517,40 @@ fn primary_case(
         expected_review_after: expect.expected_review_after,
         expected_expires: expect.expected_expires,
         expect_baseline_debt_markers: expect.expect_baseline_debt_markers,
-        compat_loader: CompatLoader::from_lane(lane),
+        compat_loader: CompatLoader::from_lane(descriptor.lane),
     }
 }
 
+fn primary_case_for_lane(
+    lane: CompatKind,
+    lane_label: &'static str,
+    entry_id: &'static str,
+    expect: PrimaryCaseExpectations,
+) -> Option<MigrationLaneCase> {
+    let descriptor = all_legacy_lane_descriptors()
+        .iter()
+        .find(|descriptor| descriptor.lane == lane)
+        .copied()?;
+    Some(primary_case(descriptor, lane_label, entry_id, expect))
+}
+
+fn variant_lane_descriptor(lane: CompatKind) -> Option<LegacyLaneDescriptor> {
+    all_legacy_lane_descriptors()
+        .iter()
+        .find(|descriptor| descriptor.lane == lane)
+        .copied()
+}
+
 fn variant_migration_lane_cases() -> Vec<MigrationLaneCase> {
-    let panic_baseline = legacy_lane_descriptor(CompatKind::PanicBaseline);
-    let lint_exception = legacy_lane_descriptor(CompatKind::LintException);
-    let unsafe_lane = legacy_lane_descriptor(CompatKind::Unsafe);
+    let Some(panic_baseline) = variant_lane_descriptor(CompatKind::PanicBaseline) else {
+        return vec![];
+    };
+    let Some(lint_exception) = variant_lane_descriptor(CompatKind::LintException) else {
+        return vec![];
+    };
+    let Some(unsafe_lane) = variant_lane_descriptor(CompatKind::Unsafe) else {
+        return vec![];
+    };
 
     vec![
         MigrationLaneCase {
