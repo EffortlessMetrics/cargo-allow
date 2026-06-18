@@ -405,17 +405,36 @@ evidence_notes = [
 
 [[work_item]]
 id = "import-parity-1713"
-status = "ready"
+status = "done"
 title = "Import semantic selector fields from legacy allowlists (#1466-a / #1713)"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo test -p allow-policy-legacy semantic_selector",
   "rtk cargo test -p allow-policy-legacy",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Preserve container/receiver/callee fingerprint fields from legacy nested selector tables into canonical policy entries where legacy parsers already surface selector data.",
-  "Fixture-backed characterization required; does not close umbrella #1466, multi-ledger federation (#1473), or ripr dogfood receipt (#1718).",
+  "Landed in #1735 (merge d5983b81): preserve receiver_fingerprint, target_fingerprint, symbol, and normalized_snippet_hash from legacy nested selector tables into canonical policy entries.",
+  "Fixture-backed characterization in semantic_selector_import_tests.rs and tests/fixtures/migration/no-panic-allowlist-semantic-selectors.toml.",
+  "Does not close umbrella #1466, advisory drift (#1714), multi-ledger federation (#1473), or ripr dogfood receipt (#1718).",
+]
+
+[[work_item]]
+id = "import-parity-1714"
+status = "ready"
+title = "Import advisory drift / last_seen movement from legacy allowlists (#1466-b / #1714)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy-legacy advisory_drift",
+  "rtk cargo test -p allow-policy-legacy",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Preserve last_seen and movement metadata (line_hint) from legacy ledgers on import; emit advisory location drift when matched findings move without invalidating the entry.",
+  "Fixture-backed characterization required; does not close umbrella #1466, re-bless receipts (#1715), or ripr dogfood receipt (#1718).",
 ]
