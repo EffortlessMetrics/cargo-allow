@@ -117,6 +117,14 @@
       "$ref": "#/$defs/readiness",
       "description": "Optional setup readiness emitted by doctor --profile spec-system."
     },
+    "federation": {
+      "$ref": "#/$defs/federation",
+      "description": "Optional federation ledger summary when `.allow/config.toml` is configured."
+    },
+    "import_graph": {
+      "$ref": "#/$defs/import_graph",
+      "description": "Optional normalized import-root graph from configured import roots."
+    },
     "summary": {
       "$ref": "#/$defs/summary"
     },
@@ -501,7 +509,9 @@
         "artifact_file",
         "artifact_link",
         "active_goal",
-        "support_tier"
+        "support_tier",
+        "federation_config",
+        "import_graph"
       ]
     },
     "blocking_reason": {
@@ -535,8 +545,121 @@
         "claim_without_support_tier",
         "stale_active_goal",
         "missing_closeout",
-        "superseded_target_missing"
+        "superseded_target_missing",
+        "broken_import",
+        "missing_import_root"
       ]
+    },
+    "federation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "federation_version",
+        "precedence_applied",
+        "ledger_contributors"
+      ],
+      "properties": {
+        "federation_version": { "type": "string" },
+        "precedence_applied": { "type": "string" },
+        "ledger_contributors": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/federation_ledger_contributor" }
+        }
+      }
+    },
+    "federation_ledger_contributor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "role", "dialect", "mode", "priority", "lanes"],
+      "properties": {
+        "id": { "type": "string" },
+        "path": { "type": "string" },
+        "role": { "type": "string" },
+        "dialect": { "type": "string" },
+        "mode": { "type": "string" },
+        "priority": { "type": "integer" },
+        "lanes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "import_graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node_count", "edge_count", "diagnostic_count", "nodes", "edges", "diagnostics"],
+      "properties": {
+        "node_count": { "type": "integer", "minimum": 0 },
+        "edge_count": { "type": "integer", "minimum": 0 },
+        "diagnostic_count": { "type": "integer", "minimum": 0 },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/import_node" }
+        },
+        "edges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/import_edge" }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/import_diagnostic" }
+        }
+      }
+    },
+    "import_node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "role", "ecosystem", "provenance", "confidence"],
+      "properties": {
+        "id": { "type": "string" },
+        "path": { "type": "string" },
+        "role": {
+          "enum": ["owned", "imported", "legacy", "generated"]
+        },
+        "ecosystem": { "type": "string" },
+        "provenance": {
+          "enum": ["configured", "discovered", "legacy_fallback", "generated_marker"]
+        },
+        "confidence": {
+          "enum": ["high", "medium", "low"]
+        }
+      }
+    },
+    "import_edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "target_id", "kind", "provenance"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "target_id": { "type": "string" },
+        "kind": {
+          "enum": ["contains", "references", "promotes"]
+        },
+        "provenance": {
+          "enum": ["configured", "discovered", "legacy_fallback", "generated_marker"]
+        }
+      }
+    },
+    "import_diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "message", "root_ids"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "duplicate_root_id",
+            "duplicate_root_path",
+            "missing_root",
+            "broken_edge",
+            "unknown_role"
+          ]
+        },
+        "message": { "type": "string" },
+        "root_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
     }
   }
 }

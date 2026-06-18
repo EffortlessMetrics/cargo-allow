@@ -123,6 +123,8 @@ fn spec_system_schema_locks_profile_commands_and_readiness() {
             "artifact_link",
             "active_goal",
             "support_tier",
+            "federation_config",
+            "import_graph",
         ],
     );
     assert_enum_equals(
@@ -177,6 +179,8 @@ fn spec_system_schema_locks_profile_commands_and_readiness() {
             "stale_active_goal",
             "missing_closeout",
             "superseded_target_missing",
+            "broken_import",
+            "missing_import_root",
         ],
     );
 }

@@ -1,6 +1,8 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use serde::Deserialize;
 
+use crate::import_roots::ImportRootsConfig;
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SpecSystemMode {
@@ -18,6 +20,8 @@ pub struct SpecSystemConfig {
     pub roots: SpecSystemRoots,
     #[serde(default)]
     pub requirements: SpecSystemRequirements,
+    #[serde(default)]
+    pub import_roots: Option<ImportRootsConfig>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

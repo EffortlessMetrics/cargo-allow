@@ -10,6 +10,13 @@ inventory without executing repository code.
 
 ### Added
 
+- Generic import-root model I1 (#1466): parse optional `[import_roots]` config on the
+  spec-system profile with owned/imported/legacy/generated node roles; read-only
+  discovery stub normalizes graph nodes, edges, provenance, confidence, and
+  diagnostics in `allow-policy::import_roots`. Spec-system doctor, audit, and
+  worklist emit `import_graph` summaries and route `broken_import` work items for
+  broken edges and config collisions. Does not implement Kiro/Spec Kit/.rails
+  adapters (I2+) or claim full import mode.
 - Multi-ledger federation F3 mirror divergence (#1473): compare canonical and mirror
   policy ledgers during active `[[drain_windows]]` in `.allow/config.toml`; emit
   visible `mirror_divergence`, `mirror_stale`, and blocking `drain_expired`

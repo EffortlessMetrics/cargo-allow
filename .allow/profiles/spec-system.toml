@@ -17,3 +17,36 @@ templates_required = true
 support_tiers_required = true
 active_goal_required = true
 closeout_required_for_done_items = true
+
+[import_roots]
+owned = ".allow/imports"
+
+[[import_roots.entries]]
+id = "owned-imports"
+path = ".allow/imports"
+ecosystem = "cargo-allow"
+role = "owned"
+
+[[import_roots.entries]]
+id = "kiro"
+path = ".kiro"
+ecosystem = "kiro"
+role = "imported"
+
+[[import_roots.entries]]
+id = "specify"
+path = ".specify"
+ecosystem = "spec-kit"
+role = "imported"
+
+[[import_roots.entries]]
+id = "legacy-goals"
+path = ".codex/goals"
+ecosystem = "codex"
+role = "legacy"
+
+[[import_roots.entries]]
+id = "xtask"
+path = "xtask"
+ecosystem = "xtask"
+role = "imported"

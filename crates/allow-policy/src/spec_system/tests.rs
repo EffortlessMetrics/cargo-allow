@@ -1,4 +1,5 @@
 use super::*;
+use crate::import_roots::ImportNodeRole;
 use allow_core::CargoAllowError;
 
 #[test]
@@ -44,6 +45,49 @@ fn parses_minimal_spec_system_config() {
     );
     assert!(cfg.requirements.ledger_required);
     assert!(cfg.requirements.closeout_required_for_done_items);
+}
+
+#[test]
+fn parses_spec_system_config_with_import_roots() {
+    let cfg_result = parse_spec_system_config(
+        r#"
+            schema_version = "1.0"
+            profile = "spec-system"
+            mode = "advisory"
+
+            [roots]
+            proposals = "docs/proposals"
+            specs = "docs/specs"
+            adrs = "docs/adr"
+            plans = "plans"
+            goals = ".allow/goals"
+            support_tiers = "docs/status/SUPPORT_TIERS.md"
+            artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
+
+            [import_roots]
+            owned = ".allow/imports"
+
+            [[import_roots.entries]]
+            id = "kiro"
+            path = ".kiro"
+            ecosystem = "kiro"
+            role = "imported"
+        "#,
+    );
+    assert!(
+        cfg_result.is_ok(),
+        "config with import roots should parse: {:?}",
+        cfg_result.err()
+    );
+    let Ok(cfg) = cfg_result else {
+        return;
+    };
+    let Some(import_roots) = cfg.import_roots.as_ref() else {
+        std::panic::panic_any("expected import_roots section");
+    };
+    assert_eq!(import_roots.owned.as_deref(), Some(".allow/imports"));
+    assert_eq!(import_roots.entries.len(), 1);
+    assert_eq!(import_roots.entries[0].role, ImportNodeRole::Imported);
 }
 
 #[test]
