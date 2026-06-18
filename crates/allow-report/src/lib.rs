@@ -149,10 +149,9 @@ pub use report_text::{
 };
 pub use sarif::{render_sarif, render_sarif_with_context};
 pub use summary::{
-    ADVISORY_DENY_FIELD_NAMES, Summary, advisory_count_for_deny_field,
-    matched_occurrence_counts, matched_policy_missing_evidence_entries,
-    occurrence_headroom_entries, occurrence_headroom_for_entry, policy_baseline_debt_entries,
-    policy_missing_evidence_entries,
+    ADVISORY_DENY_FIELD_NAMES, Summary, advisory_count_for_deny_field, matched_occurrence_counts,
+    matched_policy_missing_evidence_entries, occurrence_headroom_entries,
+    occurrence_headroom_for_entry, policy_baseline_debt_entries, policy_missing_evidence_entries,
 };
 pub use worklist::{render_worklist_human, render_worklist_json};
 
@@ -163,8 +162,9 @@ pub(crate) use source_inventory::{
 };
 pub(crate) use summary::{
     AUDIT_REVIEW_QUEUE_STATUSES, ReviewSignals, STATUS_COUNT_ORDER, audit_review_queue,
-    baseline_debt_count, broken_evidence_link_count, policy_missing_evidence_count, render_advisory_count_fields,
-    render_count_fields_with_policy_context, weak_evidence_reference_count,
+    baseline_debt_count, broken_evidence_link_count, policy_missing_evidence_count,
+    render_advisory_count_fields, render_count_fields_with_policy_context,
+    weak_evidence_reference_count,
 };
 
 #[cfg(test)]

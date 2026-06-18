@@ -186,7 +186,9 @@ glob = "crates/*/Cargo.toml"
         .arg("--deny")
         .arg("occurrence_headroom")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check --deny: {err}")));
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("run cargo-allow check --deny: {err}"))
+        });
     assert_status("check --deny occurrence_headroom", &deny, false);
 
     remove_temp_root(root);

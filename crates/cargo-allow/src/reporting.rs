@@ -58,8 +58,8 @@ impl EvidenceReportSummary {
             (self.weak_evidence_references > 0).then_some(self.weak_evidence_references);
         context.policy_missing_evidence_entries = (self.policy_missing_evidence_entries > 0)
             .then_some(self.policy_missing_evidence_entries);
-        context.occurrence_headroom_entries = (self.occurrence_headroom_entries > 0)
-            .then_some(self.occurrence_headroom_entries);
+        context.occurrence_headroom_entries =
+            (self.occurrence_headroom_entries > 0).then_some(self.occurrence_headroom_entries);
     }
 }
 
