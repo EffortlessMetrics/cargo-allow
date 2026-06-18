@@ -26,7 +26,7 @@ spec, support-tier map, implementation plan, policy ledgers, or closeouts.
 
 [[work_item]]
 id = "migration-parity-pr-001"
-status = "ready"
+status = "done"
 title = "Register migration parity goal and sequence first parity lanes"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
@@ -38,7 +38,60 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Archive the completed spec-system goal manifest and register the 0.2.0 migration parity execution lane.",
-  "Keep default cargo-allow behavior unchanged; migration work uses compat lanes and documentation only until parity proof exists.",
+  "Landed in docs(goals): register 0.2.0 migration parity execution lane (#1687).",
+  "Archived CARGO-ALLOW-GOAL-0001 and registered CARGO-ALLOW-PROP-0002, CARGO-ALLOW-SPEC-0002, CARGO-ALLOW-PLAN-0002, and plans/migration-parity/ queue artifacts.",
+  "Default cargo-allow behavior unchanged; migration work uses compat lanes and documentation only until parity proof exists.",
+]
+
+[[work_item]]
+id = "migration-parity-b1"
+status = "done"
+title = "Inventory remaining legacy allowlist parity gaps"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Reconciled plans/migration-parity/gap-inventory.md from allow-policy-legacy characterization tests and open adoption issues.",
+  "Per-lane status is partial, gap, or unknown—needs fixture; no lane is parity-complete under CARGO-ALLOW-SPEC-0002 acceptance criteria.",
+]
+
+[[work_item]]
+id = "migration-parity-b2"
+status = "done"
+title = "Close no-panic-baseline evidence and lifecycle parity gap"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy-legacy no_panic_baseline",
+  "rtk cargo test -p allow-policy-legacy legacy_migration_preserves_evidence_matrix",
+  "rtk cargo test -p allow-policy-legacy legacy_migration_preserves_metadata_matrix",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in #1691 (merge 1cd408e): preserve owner/reason/evidence/covered_by on no-panic-baseline import.",
+  "Entries without evidence keep visible baseline_debt markers (legacy_policy, legacy_selector_callee, baseline_count).",
+  "Lifecycle fix: review_after without expires no longer inherits parser None as an unintended expires value.",
+  "Does not claim full panic-lane or xtask retirement; B3 fixture matrix and B5 dogfood remain open.",
+]
+
+[[work_item]]
+id = "migration-parity-b3"
+status = "ready"
+title = "Add fixture matrix for all supported legacy lanes"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy-legacy",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Add tests/fixtures/migration/ coverage across compat kinds listed in plans/migration-parity/pr-queue.md.",
+  "Characterize observed migration output only; do not claim side-by-side xtask retirement or 0.2.0 milestone parity.",
   "Do not bump workspace version or publish release records without explicit cut authorization.",
 ]

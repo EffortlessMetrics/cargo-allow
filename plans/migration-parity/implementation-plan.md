@@ -74,9 +74,18 @@ Compat bridges, migration writers, and adoption docs already exist for panic,
 unsafe, lint, and non-Rust lanes. This plan governs the next parity-hardening
 slices rather than inventing migration from scratch.
 
+## Execution State
+
+| Slice | Status | Evidence |
+| --- | --- | --- |
+| PR 1 — register migration parity goal | done | #1687; archived GOAL-0001 |
+| B1 — gap inventory | done | [gap-inventory.md](gap-inventory.md) (B1r) |
+| B2 — no-panic-baseline evidence/lifecycle | done | #1691 (`1cd408e`) |
+| B3 — migration fixture matrix | **next** | active work item `migration-parity-b3` |
+
 ## PR Sequence
 
-### PR 1: Register migration parity goal
+### PR 1: Register migration parity goal (done, #1687)
 
 Purpose: archive `CARGO-ALLOW-GOAL-0001`, register proposal/spec/plan/goal
 artifacts for the `0.2.0` migration parity lane, and point agents at bounded work
@@ -93,21 +102,36 @@ Claim boundary: registers execution state and artifact links only.
 
 Rollback: restore prior active goal manifest and doc-artifact ledger entries.
 
-### PR 2: Strengthen side-by-side evidence for one compat lane
+### PR B2: Strengthen side-by-side evidence for no-panic-baseline (done, #1691)
 
-Purpose: pick one compat kind with the highest adoption friction and add
-fixture-backed characterization for side-by-side delta classification.
+Purpose: close the first focused compat gap — preserve legacy metadata and
+evidence on `no-panic-baseline` import, keep visible `baseline_debt` when
+evidence is absent, and fix lifecycle handling when `review_after` is set without
+`expires`.
 
 Non-goals: no new compat kinds and no release cut.
 
-Validation: targeted tests plus the validation baseline.
+Validation: `allow-policy-legacy` no-panic tests plus the validation baseline.
 
-Claim boundary: documents observed deltas for one lane; does not claim full
-xtask retirement.
+Claim boundary: documents observed behavior for the panic-baseline import slice;
+does not claim full xtask retirement or full panic-lane parity.
 
 Rollback: revert the characterization slice.
 
-### PR 3: Improve migration closeout queue routing
+### PR B3: Add fixture matrix for all supported legacy lanes (next)
+
+Purpose: add `tests/fixtures/migration/` characterization across compat kinds
+listed in [pr-queue.md](pr-queue.md).
+
+Non-goals: no new compat kinds; no `0.2.0` release cut.
+
+Validation: targeted migration fixture tests plus the validation baseline.
+
+Claim boundary: fixture-backed observed migration output only.
+
+Rollback: revert the fixture matrix slice.
+
+### PR B4: Improve migration closeout queue routing
 
 Purpose: make saved `cargo-allow.migrate.v1` summaries easier to turn into owned
 closeout work items without chat memory.
