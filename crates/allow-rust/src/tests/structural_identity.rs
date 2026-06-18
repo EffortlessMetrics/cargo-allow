@@ -30,11 +30,7 @@ fn scan_fixture_pair(name: &str, path: &Path) -> (Vec<Finding>, Vec<Finding>) {
     )
 }
 
-fn single_finding<'a>(
-    findings: &'a [Finding],
-    kind: FindingKind,
-    family: &str,
-) -> &'a Finding {
+fn single_finding<'a>(findings: &'a [Finding], kind: FindingKind, family: &str) -> &'a Finding {
     findings
         .iter()
         .find(|finding| finding.kind == kind && finding.family.as_deref() == Some(family))
@@ -70,8 +66,7 @@ fn refactor_pair_line_move_preserves_structural_identity() {
         "line movement should preserve structural stable key"
     );
     assert_ne!(
-        before_finding.identity.line_hint,
-        after_finding.identity.line_hint,
+        before_finding.identity.line_hint, after_finding.identity.line_hint,
         "line_hint should track movement as a review hint"
     );
     assert_eq!(
@@ -271,12 +266,18 @@ fn structural_identity_field_matrix_documents_fixture_classifications() {
         finding.identity.normalized_snippet_hash.is_some(),
         "normalized_snippet_hash: stable"
     );
-    assert!(finding.identity.line_hint.is_some(), "line_hint: useful hint");
+    assert!(
+        finding.identity.line_hint.is_some(),
+        "line_hint: useful hint"
+    );
     assert!(
         finding.identity.column_hint.is_some(),
         "column_hint: useful hint"
     );
-    assert_eq!(finding.identity.crate_name, None, "crate_name: missing without manifest context");
+    assert_eq!(
+        finding.identity.crate_name, None,
+        "crate_name: missing without manifest context"
+    );
 
     let (before_findings, after_findings) = scan_fixture_pair("module_move", &path);
     let nested = single_unsafe_block(&before_findings, "access");
