@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- Register post-import next execution lane in `.codex/goals/active.toml`: D8
+  scanner limitation docs and #1472 `occurrence_headroom` outcomes/worklist
+  marked `ready`; #1473 P2 multi-ledger federation and #1466 full import mode
+  marked `blocked`. Refresh `docs/release/0.1.10-readiness.md` with import-parity
+  closeout, advisory ratcheting progress, and D1–D7 identity characterization;
+  release cut remains deferred.
 - Register import-parity execution lane closeout (CARGO-ALLOW-CLOSEOUT-0004)
   after #1713–#1718 characterization slices and ripr-style in-repo dogfood
   receipt (#1741). Umbrella #1466 remains open for full import mode and external
