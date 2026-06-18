@@ -35,7 +35,7 @@ pub(crate) struct CheckArgs {
     #[arg(long, value_parser = ["audit", "no-new", "strict", "release"])]
     pub(crate) mode: Option<String>,
     /// Promote one receipt `advisory` count class to a blocking failure.
-    /// Repeatable. Supported classes mirror receipt `advisory` fields.
+    /// Repeatable. Supported classes mirror receipt `advisory` fields, including `occurrence_headroom`.
     #[arg(long = "deny", value_name = "STATUS")]
     pub(crate) deny: Vec<String>,
 }

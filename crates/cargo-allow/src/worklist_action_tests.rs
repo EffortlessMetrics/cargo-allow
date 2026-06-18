@@ -14,6 +14,10 @@ fn suggested_actions_cover_known_worklist_kinds_and_default() {
             "reduce the current findings back to the baseline count",
         ),
         (
+            "occurrence_headroom",
+            "reduce occurrence_limit to the current matched count",
+        ),
+        (
             "expired_allow",
             "remove the expired allow if the exception is gone",
         ),
