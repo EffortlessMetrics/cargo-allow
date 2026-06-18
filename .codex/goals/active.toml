@@ -448,6 +448,7 @@ title = "Import parity recorded re-bless / refresh receipts (#1466-c / #1715)"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo test -p allow-report refresh",
   "rtk cargo test -p cargo-allow refresh",
