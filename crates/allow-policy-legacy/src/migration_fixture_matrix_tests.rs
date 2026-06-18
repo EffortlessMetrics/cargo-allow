@@ -162,6 +162,70 @@ fn migration_fixture_matrix_rerun_is_deterministic_for_primary_lanes() {
 }
 
 #[test]
+fn migration_fixture_matrix_multi_family_batch_preserves_lane_metadata() {
+    use crate::migration_lane_descriptors::CompatKind;
+    use allow_core::FindingKind;
+
+    let dir = crate::test_support::fixture_dir();
+    let panic_allowlist = migration_fixture_path("no-panic-allowlist.toml");
+    let panic_baseline = migration_fixture_path("panic-baseline.toml");
+    let lint_exception = migration_fixture_path("lint-exception.toml");
+
+    for (source, legacy_filename) in [
+        (panic_allowlist, "no-panic-allowlist.toml"),
+        (panic_baseline, "no-panic-baseline.toml"),
+        (lint_exception, "clippy-exceptions.toml"),
+    ] {
+        let text = fs::read_to_string(&source).unwrap_or_else(|err| {
+            std::panic::panic_any(format!(
+                "read migration fixture {}: {err}",
+                source.display()
+            ))
+        });
+        fs::write(dir.join(legacy_filename), text).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("write policy dir fixture {legacy_filename}: {err}"))
+        });
+    }
+
+    let batch = import_legacy_policy_dir(&dir, None).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("multi-family policy directory import: {err}"))
+    });
+
+    assert_eq!(batch.families.len(), 3);
+    assert_eq!(batch.families[0].compat_kind, CompatKind::NoPanicAllowlist);
+    assert_eq!(batch.families[1].compat_kind, CompatKind::PanicBaseline);
+    assert_eq!(batch.families[2].compat_kind, CompatKind::LintException);
+    assert_eq!(batch.families[0].finding_kind, FindingKind::Panic);
+    assert_eq!(batch.families[2].finding_kind, FindingKind::LintException);
+    assert!(
+        batch.families[0].entry_families.contains(&"unwrap".to_string())
+            && batch.families[1].entry_families.contains(&"unwrap".to_string())
+            && batch.families[2]
+                .entry_families
+                .contains(&"expect_attribute".to_string()),
+        "batch import should preserve distinct per-lane entry families without collapsing panic and lint lanes"
+    );
+
+    let cfg = &batch.config;
+    assert!(
+        cfg.allow.iter().any(|entry| entry.id == "fixture-no-panic-unwrap"
+            && entry.kind == FindingKind::Panic),
+        "batch import should retain reviewed panic allowlist entries"
+    );
+    assert!(
+        cfg.allow.iter().any(|entry| entry.id == "panic-baseline-0001"
+            && entry.kind == FindingKind::Panic
+            && entry.occurrence_limit == Some(2)),
+        "batch import should retain panic baseline occurrence limits"
+    );
+    assert!(
+        cfg.allow.iter().any(|entry| entry.id == "fixture-clippy"
+            && entry.kind == FindingKind::LintException),
+        "batch import should retain lint exception entries"
+    );
+}
+
+#[test]
 fn migration_fixture_matrix_policy_dir_batch_imports_primary_lanes() {
     let dir = crate::test_support::fixture_dir();
 
