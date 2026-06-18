@@ -17,13 +17,17 @@ inventory without executing repository code.
   `federation.ledger_contributors` and `precedence_applied`. Spec-system work
   items inherit doc-artifacts ledger provenance when federation config is present.
   Does not claim mirror divergence enforcement (F3) or release readiness.
+- Register F1 federation config parse closeout (CARGO-ALLOW-CLOSEOUT-0010):
+  mark `portable-governance-f1-federation` done after #1756; queue
+  `portable-governance-f2-federation` ready; reconcile
+  `plans/migration-parity/gap-inventory.md`. No release authorization.
 - Multi-ledger federation F1 config (#1473): parse `[[ledgers]]` entries from
   `.allow/config.toml` with `id`, `path`, `dialect`, `role`, optional `lanes`,
   `mode`, `priority`, and mirror `mirrors` targets. Validate duplicate ledger
   IDs/paths, canonical lane collisions, mirror targets, and foreign dialect
   posture (`dialect_conflict` vs informational `dialect_skipped`). Default
   `doctor` and spec-system doctor report configured ledgers and validation
-  diagnostics.
+  diagnostics; multi-ledger check evaluation remains deferred to F2.
 - Multi-ledger federation F0 design (#1473): register CARGO-ALLOW-PROP-0007,
   CARGO-ALLOW-SPEC-0007, CARGO-ALLOW-ADR-0001, and CARGO-ALLOW-PLAN-0007.
   Define canonical/mirror/imported ledger roles, lane ownership, deterministic
