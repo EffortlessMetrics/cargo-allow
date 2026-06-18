@@ -96,18 +96,20 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     let failed = outcomes.iter().any(|o| mode.fails(o.status))
         || evidence.has_broken_evidence_links()
         || (!args.deny.is_empty() && deny_escalation_failed(&args.deny, &summary, context));
-    print_report(ReportRenderArgs {
-        command: "check",
-        format: args.format,
-        baseline_debt_entries,
-        evidence,
-        findings: &findings,
-        outcomes: &outcomes,
-        failed,
-        output: args.output.as_deref(),
-        root: &root,
-        inventory_facts,
-    })?;
+    if should_emit_report_stdout(args.output.as_deref(), args.receipt.as_deref()) {
+        print_report(ReportRenderArgs {
+            command: "check",
+            format: args.format,
+            baseline_debt_entries,
+            evidence,
+            findings: &findings,
+            outcomes: &outcomes,
+            failed,
+            output: args.output.as_deref(),
+            root: &root,
+            inventory_facts,
+        })?;
+    }
     if let Some(path) = &args.receipt {
         let policy_config =
             config_path(&root, args.config.as_deref()).map(|path| path.display().to_string());
@@ -154,6 +156,10 @@ fn write_check_error_receipt(
     let mut context = source_context.report(None);
     apply_receipt_run_metadata(&mut context, effective_mode, mode, policy_config.as_deref());
     write_file(path, &render_error_receipt(&err.to_string(), context))
+}
+
+fn should_emit_report_stdout(output: Option<&Path>, receipt: Option<&Path>) -> bool {
+    output.is_some() || receipt.is_none()
 }
 
 fn apply_receipt_run_metadata<'a>(
