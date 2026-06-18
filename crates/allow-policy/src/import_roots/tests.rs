@@ -126,8 +126,7 @@ fn discover_import_graph_generic_spec_fixture() -> io::Result<()> {
     );
     assert!(
         graph.edges.iter().any(|edge| {
-            edge.kind == ImportEdgeKind::References
-                && edge.target_id == "FIXTURE-GENERIC-SPEC-001"
+            edge.kind == ImportEdgeKind::References && edge.target_id == "FIXTURE-GENERIC-SPEC-001"
         }),
         "expected front matter id reference: {:?}",
         graph.edges
@@ -168,7 +167,10 @@ fn discover_import_graph_auto_repo_spec_fixture() -> io::Result<()> {
     });
     let graph = discover_import_graph(&root, &validated);
     assert!(
-        graph.nodes.iter().any(|node| node.id == "auto-.cargo-allow-spec"),
+        graph
+            .nodes
+            .iter()
+            .any(|node| node.id == "auto-.cargo-allow-spec"),
         "expected auto-discovered repo-spec root: {:?}",
         graph.nodes
     );

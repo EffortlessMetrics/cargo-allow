@@ -125,7 +125,11 @@ fn generic_node_id(entry: &ImportRootEntry, relative_path: &str) -> String {
     }
 }
 
-fn generic_node_role(entry: &ImportRootEntry, file_name: &str, relative_path: &str) -> ImportNodeRole {
+fn generic_node_role(
+    entry: &ImportRootEntry,
+    file_name: &str,
+    relative_path: &str,
+) -> ImportNodeRole {
     if file_name == "README.md" && relative_path == format!("{}/README.md", entry.path) {
         return entry.role;
     }

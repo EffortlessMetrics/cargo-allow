@@ -3,8 +3,8 @@ use std::fs;
 use std::path::Path;
 
 use super::adapters::{
-    discover_auto_repo_spec_roots, discover_generic_spec_root, is_generic_spec_root,
-    GENERIC_SPEC_ECOSYSTEM,
+    GENERIC_SPEC_ECOSYSTEM, discover_auto_repo_spec_roots, discover_generic_spec_root,
+    is_generic_spec_root,
 };
 use super::config::{
     ImportConfidence, ImportEdgeKind, ImportNodeRole, ImportProvenance, ImportRootEntry,
@@ -59,7 +59,10 @@ pub fn discover_import_graph(root: &Path, validated: &ValidatedImportRootsConfig
     for entry in entries {
         let absolute = root.join(&entry.path);
         let exists = absolute.exists();
-        nodes.push(root_node(entry, auto_roots.iter().any(|auto| auto.id == entry.id)));
+        nodes.push(root_node(
+            entry,
+            auto_roots.iter().any(|auto| auto.id == entry.id),
+        ));
         if !exists {
             diagnostics.push(ImportDiagnostic {
                 kind: ImportDiagnosticKind::MissingRoot,
