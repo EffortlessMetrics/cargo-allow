@@ -37,10 +37,10 @@ on findings, work items, and receipts:
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| `cargo test -p allow-policy federation` | pending | F2 PR proof |
-| `cargo test -p cargo-allow doctor` | pending | F2 PR proof |
-| `cargo-allow check --profile spec-system --mode audit` | pending | F2 PR proof |
-| `cargo-allow check --mode no-new` | pending | F2 PR proof |
+| `cargo test -p allow-policy federation` | pass | 10 tests (includes 2-ledger fixture) |
+| `cargo test -p cargo-allow doctor` | pass | 20 tests |
+| `cargo-allow check --profile spec-system --mode audit` | pass | `target/cargo-allow/spec-system.json` |
+| `cargo-allow check --mode no-new` | pass | `target/cargo-allow/check.receipt.json` |
 
 ## Non-Goals
 

@@ -134,11 +134,12 @@ evidence_notes = [
 
 [[work_item]]
 id = "portable-governance-f2-federation"
-status = "ready"
+status = "in_progress"
 title = "P2 multi-ledger federation check evaluation (F2 #1473)"
 linked_proposal = "CARGO-ALLOW-PROP-0007"
 linked_spec = "CARGO-ALLOW-SPEC-0007"
 linked_plan = "plans/federation/implementation-plan.md"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
 proof_commands = [
   "rtk cargo test -p allow-policy federation",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
