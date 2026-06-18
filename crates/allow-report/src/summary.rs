@@ -1,4 +1,5 @@
 use crate::ReportContext;
+use crate::advisory_class::AdvisoryClass;
 use allow_core::{AllowConfig, AllowEntry, MatchOutcome, MatchStatus};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -154,93 +155,15 @@ pub(crate) fn render_advisory_count_fields(
     context: ReportContext<'_>,
     indent: &str,
 ) -> String {
-    let signals = ReviewSignals::from_summary(summary, context);
-    let mut fields = vec![
-        ("review_items", signals.review_items),
-        ("new", summary.count(MatchStatus::New)),
-        ("expired", summary.count(MatchStatus::Expired)),
-        ("review_due", summary.count(MatchStatus::ReviewDue)),
-        ("location_drift", summary.count(MatchStatus::LocationDrift)),
-        ("stale", summary.count(MatchStatus::Stale)),
-        ("ambiguous", summary.count(MatchStatus::Ambiguous)),
-        (
-            "invalid_selector",
-            summary.count(MatchStatus::InvalidSelector),
-        ),
-        (
-            "missing_required_field",
-            summary.count(MatchStatus::MissingRequiredField),
-        ),
-        (
-            "evidence_missing",
-            summary.count(MatchStatus::EvidenceMissing),
-        ),
-        ("baseline_debt", signals.baseline_debt),
-    ];
-    if signals.policy_missing_evidence > summary.count(MatchStatus::EvidenceMissing) {
-        fields.push(("policy_missing_evidence", signals.policy_missing_evidence));
-    }
-    if signals.broken_evidence_links > 0 {
-        fields.push(("broken_evidence_links", signals.broken_evidence_links));
-    }
-    if signals.weak_evidence_references > 0 {
-        fields.push(("weak_evidence_references", signals.weak_evidence_references));
-    }
-    if signals.occurrence_headroom > 0 {
-        fields.push(("occurrence_headroom", signals.occurrence_headroom));
-    }
+    let fields = AdvisoryClass::receipt_fields(summary, context);
     fields
         .iter()
         .enumerate()
-        .map(|(idx, (name, value))| {
+        .map(|(idx, (class, value))| {
             let comma = if idx + 1 == fields.len() { "" } else { "," };
-            format!("{indent}\"{name}\": {value}{comma}\n")
+            format!("{indent}\"{}\": {value}{comma}\n", class.field_name())
         })
         .collect()
-}
-
-pub const ADVISORY_DENY_FIELD_NAMES: &[&str] = &[
-    "review_items",
-    "new",
-    "expired",
-    "review_due",
-    "location_drift",
-    "stale",
-    "ambiguous",
-    "invalid_selector",
-    "missing_required_field",
-    "evidence_missing",
-    "baseline_debt",
-    "policy_missing_evidence",
-    "broken_evidence_links",
-    "weak_evidence_references",
-    "occurrence_headroom",
-];
-
-pub fn advisory_count_for_deny_field(
-    summary: &Summary,
-    context: ReportContext<'_>,
-    field: &str,
-) -> Option<usize> {
-    let signals = ReviewSignals::from_summary(summary, context);
-    match field {
-        "review_items" => Some(signals.review_items),
-        "new" => Some(summary.count(MatchStatus::New)),
-        "expired" => Some(summary.count(MatchStatus::Expired)),
-        "review_due" => Some(summary.count(MatchStatus::ReviewDue)),
-        "location_drift" => Some(summary.count(MatchStatus::LocationDrift)),
-        "stale" => Some(summary.count(MatchStatus::Stale)),
-        "ambiguous" => Some(summary.count(MatchStatus::Ambiguous)),
-        "invalid_selector" => Some(summary.count(MatchStatus::InvalidSelector)),
-        "missing_required_field" => Some(summary.count(MatchStatus::MissingRequiredField)),
-        "evidence_missing" => Some(summary.count(MatchStatus::EvidenceMissing)),
-        "baseline_debt" => Some(signals.baseline_debt),
-        "policy_missing_evidence" => Some(signals.policy_missing_evidence),
-        "broken_evidence_links" => Some(signals.broken_evidence_links),
-        "weak_evidence_references" => Some(signals.weak_evidence_references),
-        "occurrence_headroom" => Some(signals.occurrence_headroom),
-        _ => None,
-    }
 }
 
 pub(crate) fn review_item_count_with_baseline(
