@@ -1,6 +1,7 @@
 use allow_core::normalize_snippet;
 use tree_sitter::{Node, Point};
 
+use crate::syntax_facts::fingerprint::{index_target_fingerprint, structural_receiver_fingerprint};
 use crate::syntax_kinds::{IndexExpression, RustSyntaxFacts};
 use crate::syntax_tree::node_text;
 use crate::text::source_column;
@@ -26,13 +27,15 @@ pub(super) fn record_index_expression(node: Node<'_>, source: &str, facts: &mut 
     });
     let line = bracket_point.row as u32 + 1;
     let column = source_column(source, bracket_point.row, bracket_point.column);
-    let receiver_fingerprint = index_receiver_fingerprint(node, source);
+    let receiver_node = node
+        .child_by_field_name("value")
+        .or_else(|| direct_index_receiver_node(node));
+    let receiver_fingerprint =
+        receiver_node.and_then(|receiver| structural_receiver_fingerprint(receiver, source));
     let expression = IndexExpression {
         column,
         symbol: index_expression_symbol(node, source),
-        target_fingerprint: receiver_fingerprint
-            .clone()
-            .map(|receiver| target_fingerprint(&receiver)),
+        target_fingerprint: index_target_fingerprint(node, source),
         receiver_fingerprint,
         is_slice: index_selector_is_slice(node, source),
     };
@@ -48,16 +51,6 @@ fn index_expression_symbol(node: Node<'_>, source: &str) -> String {
         .map(normalize_snippet)
         .map(|symbol| symbol.chars().take(100).collect())
         .unwrap_or_default()
-}
-
-fn target_fingerprint(text: &str) -> String {
-    text.chars()
-        .rev()
-        .take(40)
-        .collect::<String>()
-        .chars()
-        .rev()
-        .collect()
 }
 
 fn index_selector_is_slice(node: Node<'_>, source: &str) -> bool {
@@ -90,35 +83,11 @@ fn direct_index_bracket_point(node: Node<'_>) -> Option<Point> {
         .map(|child| child.start_position())
 }
 
-fn index_receiver_fingerprint(node: Node<'_>, source: &str) -> Option<String> {
-    node.child_by_field_name("value")
-        .or_else(|| direct_index_receiver_node(node))
-        .and_then(|receiver| node_text(source, receiver))
-        .and_then(receiver_fingerprint)
-}
-
 fn direct_index_receiver_node(node: Node<'_>) -> Option<Node<'_>> {
     let mut cursor = node.walk();
     node.children(&mut cursor)
         .take_while(|child| child.kind() != "[")
         .find(|child| child.is_named())
-}
-
-fn receiver_fingerprint(text: &str) -> Option<String> {
-    let fingerprint = normalize_snippet(text);
-    if fingerprint.is_empty() {
-        return None;
-    }
-    Some(
-        fingerprint
-            .chars()
-            .rev()
-            .take(80)
-            .collect::<String>()
-            .chars()
-            .rev()
-            .collect(),
-    )
 }
 
 fn offset_position(text: &str, offset: usize) -> (usize, usize) {

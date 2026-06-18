@@ -77,7 +77,7 @@ fn syntax_indexing_records_receiver_identity_per_expression() {
         .map(|f| f.identity.receiver_fingerprint.as_deref())
         .collect::<Vec<_>>();
 
-    assert_eq!(receivers, vec![Some("left"), Some("right")]);
+    assert_eq!(receivers, vec![Some("param:0"), Some("param:1")]);
 }
 
 #[test]
@@ -111,7 +111,7 @@ fn syntax_indexing_records_target_identity_per_expression() {
         .map(|f| f.identity.target_fingerprint.as_deref())
         .collect::<Vec<_>>();
 
-    assert_eq!(targets, vec![Some("left"), Some("right")]);
+    assert_eq!(targets, vec![Some("0"), Some("1")]);
 }
 
 #[test]
@@ -173,7 +173,7 @@ fn syntax_indexing_records_nested_receiver_identity() {
         .map(|f| f.identity.receiver_fingerprint.as_deref())
         .collect::<Vec<_>>();
 
-    assert_eq!(receivers, vec![Some("matrix"), Some("matrix[0]")]);
+    assert_eq!(receivers, vec![Some("param:0"), Some("matrix[0]")]);
 }
 
 #[test]

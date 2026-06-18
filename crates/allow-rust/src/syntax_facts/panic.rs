@@ -1,6 +1,7 @@
 use allow_core::normalize_snippet;
 use tree_sitter::Node;
 
+use crate::syntax_facts::fingerprint::structural_receiver_fingerprint;
 use crate::syntax_kinds::{
     PanicMacroInvocation, PanicMacroKind, PanicMethodCall, PanicMethodKind, RustSyntaxFacts,
 };
@@ -57,8 +58,7 @@ fn panic_method_call(node: Node<'_>, source: &str) -> Option<(u32, PanicMethodCa
     let kind = PanicMethodKind::from_name(method_name)?;
     let receiver_fingerprint = function
         .child_by_field_name("value")
-        .and_then(|receiver| node_text(source, receiver))
-        .and_then(receiver_fingerprint);
+        .and_then(|receiver| structural_receiver_fingerprint(receiver, source));
     let start = field.start_position();
     Some((
         start.row as u32 + 1,
@@ -68,21 +68,4 @@ fn panic_method_call(node: Node<'_>, source: &str) -> Option<(u32, PanicMethodCa
             receiver_fingerprint,
         },
     ))
-}
-
-fn receiver_fingerprint(text: &str) -> Option<String> {
-    let fingerprint = normalize_snippet(text);
-    if fingerprint.is_empty() {
-        return None;
-    }
-    Some(
-        fingerprint
-            .chars()
-            .rev()
-            .take(80)
-            .collect::<String>()
-            .chars()
-            .rev()
-            .collect(),
-    )
 }

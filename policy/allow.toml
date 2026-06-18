@@ -341,7 +341,7 @@ review_after = "2026-08-01"
 ast_kind = "index_expr"
 container = "token_at"
 symbol = "tokens[idx]"
-target_fingerprint = "tokens"
+target_fingerprint = "idx"
 normalized_snippet_hash = "fnv1a64:707a90fd00693cea"
 line_hint = 6
 
@@ -3422,7 +3422,7 @@ review_after = "2026-11-01"
 ast_kind = "method_call"
 container = "load"
 callee = "unwrap"
-receiver_fingerprint = "other"
+receiver_fingerprint = "param:1"
 normalized_snippet_hash = "fnv1a64:09d227b7d728901a"
 line_hint = 2
 
@@ -3446,7 +3446,7 @@ review_after = "2026-11-01"
 ast_kind = "method_call"
 container = "load"
 callee = "unwrap"
-receiver_fingerprint = "value"
+receiver_fingerprint = "param:0"
 normalized_snippet_hash = "fnv1a64:dc9ff63ad6f05c95"
 line_hint = 2
 
@@ -3558,8 +3558,8 @@ review_after = "2026-11-01"
 ast_kind = "index_expr"
 container = "load"
 symbol = "right[0]"
-receiver_fingerprint = "right"
-target_fingerprint = "right"
+receiver_fingerprint = "param:1"
+target_fingerprint = "0"
 normalized_snippet_hash = "fnv1a64:60ee0c428de09879"
 line_hint = 2
 
@@ -3583,8 +3583,8 @@ review_after = "2026-11-01"
 ast_kind = "index_expr"
 container = "load"
 symbol = "left[0]"
-receiver_fingerprint = "left"
-target_fingerprint = "left"
+receiver_fingerprint = "param:0"
+target_fingerprint = "0"
 normalized_snippet_hash = "fnv1a64:5e1ad0e511ab384a"
 line_hint = 2
 
@@ -3608,7 +3608,7 @@ review_after = "2026-11-01"
 ast_kind = "method_call"
 container = "load"
 callee = "expect"
-receiver_fingerprint = "value"
+receiver_fingerprint = "param:0"
 normalized_snippet_hash = "fnv1a64:52b3fc980b9bd224"
 line_hint = 4
 
@@ -3632,7 +3632,7 @@ review_after = "2026-11-01"
 ast_kind = "method_call"
 container = "load"
 callee = "expect"
-receiver_fingerprint = "value"
+receiver_fingerprint = "param:0"
 normalized_snippet_hash = "fnv1a64:52b3fc980b9bd224"
 line_hint = 2
 
@@ -3748,7 +3748,7 @@ review_after = "2026-11-01"
 ast_kind = "method_call"
 container = "load"
 callee = "expect"
-receiver_fingerprint = "payload"
+receiver_fingerprint = "param:0"
 normalized_snippet_hash = "fnv1a64:9faea1b4aa39bd0f"
 line_hint = 2
 
@@ -3772,7 +3772,7 @@ review_after = "2026-11-01"
 ast_kind = "method_call"
 container = "load"
 callee = "expect"
-receiver_fingerprint = "value"
+receiver_fingerprint = "param:0"
 normalized_snippet_hash = "fnv1a64:52b3fc980b9bd224"
 line_hint = 2
 

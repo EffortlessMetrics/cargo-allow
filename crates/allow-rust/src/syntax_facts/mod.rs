@@ -3,6 +3,7 @@ use crate::syntax_tree::parse_rust_syntax;
 
 mod attributes;
 mod collector;
+mod fingerprint;
 mod index;
 mod panic;
 mod scopes;
