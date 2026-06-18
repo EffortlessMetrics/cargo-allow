@@ -23,7 +23,10 @@ pub(crate) fn push_finding<F>(
     F: FnOnce(&mut StructuralIdentity),
 {
     let mut identity = StructuralIdentity::new("rust", ast_kind);
-    identity.container = site.container.clone();
+    identity.container = site
+        .container
+        .as_ref()
+        .map(|container| qualify_container_for_module(container, site.module_stack));
     if !site.module_stack.is_empty() {
         identity.module = Some(site.module_stack.join("::"));
     }
@@ -42,4 +45,11 @@ pub(crate) fn push_finding<F>(
         identity,
         message: format!("{kind} {family} syntax found"),
     });
+}
+
+fn qualify_container_for_module(container: &str, module_stack: &[String]) -> String {
+    if module_stack.is_empty() || container.contains("::") {
+        return container.to_string();
+    }
+    format!("{}::{}", module_stack.join("::"), container)
 }

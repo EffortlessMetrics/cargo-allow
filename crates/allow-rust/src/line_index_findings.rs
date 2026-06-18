@@ -62,7 +62,7 @@ mod tests {
             Some("items")
         );
         assert_eq!(index.identity.target_fingerprint.as_deref(), Some("index"));
-        assert_eq!(index.identity.container.as_deref(), Some("load"));
+        assert_eq!(index.identity.container.as_deref(), Some("parser::load"));
         assert_eq!(index.identity.module.as_deref(), Some("parser"));
         assert_eq!(index.identity.line_hint, Some(42));
         assert_eq!(index.identity.column_hint, Some(9));

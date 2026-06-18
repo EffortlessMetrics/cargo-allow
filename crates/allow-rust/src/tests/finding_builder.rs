@@ -36,6 +36,34 @@ fn push_finding_populates_identity_span_message_and_enrichment() {
 }
 
 #[test]
+fn push_finding_qualifies_unqualified_container_with_module_path() {
+    let container = Some("access".to_string());
+    let modules = vec!["inner".to_string()];
+    let mut findings = Vec::new();
+
+    push_finding(
+        FindingSite {
+            path: Path::new("src/lib.rs"),
+            line: "    unsafe { core::ptr::read(ptr) }",
+            line_no: 3,
+            column: 5,
+            container: &container,
+            module_stack: &modules,
+        },
+        FindingKind::Unsafe,
+        "unsafe_block",
+        "unsafe_block",
+        |_| {},
+        &mut findings,
+    );
+
+    assert_eq!(
+        findings[0].identity.container.as_deref(),
+        Some("inner::access")
+    );
+}
+
+#[test]
 fn push_finding_leaves_optional_scope_fields_empty_without_scope_context() {
     let container = None;
     let modules = Vec::new();

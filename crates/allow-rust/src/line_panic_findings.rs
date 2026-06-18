@@ -69,7 +69,7 @@ mod tests {
             unwrap.identity.receiver_fingerprint.as_deref(),
             Some("builder.step()")
         );
-        assert_eq!(unwrap.identity.container.as_deref(), Some("load"));
+        assert_eq!(unwrap.identity.container.as_deref(), Some("parser::load"));
         assert_eq!(unwrap.identity.module.as_deref(), Some("parser"));
         assert_eq!(unwrap.identity.line_hint, Some(42));
         assert_eq!(unwrap.identity.column_hint, Some(13));
@@ -108,7 +108,10 @@ mod tests {
             panic.identity.target_fingerprint.as_deref(),
             Some("std::panic")
         );
-        assert_eq!(panic.identity.container.as_deref(), Some("load"));
+        assert_eq!(
+            panic.identity.container.as_deref(),
+            Some("parser::fatal::load")
+        );
         assert_eq!(panic.identity.module.as_deref(), Some("parser::fatal"));
         assert_eq!(panic.identity.line_hint, Some(42));
         assert_eq!(panic.identity.column_hint, Some(7));

@@ -126,7 +126,10 @@ mod tests {
                 assert_eq!(allow.path, PathBuf::from("src/lib.rs"));
                 assert_eq!(allow.span.as_ref().map(|span| span.line), Some(12));
                 assert_eq!(allow.identity.ast_kind, "attribute");
-                assert_eq!(allow.identity.container.as_deref(), Some("linted"));
+                assert_eq!(
+                    allow.identity.container.as_deref(),
+                    Some("parser::rules::linted")
+                );
                 assert_eq!(allow.identity.module.as_deref(), Some("parser::rules"));
                 assert_eq!(allow.identity.line_hint, Some(12));
                 assert_eq!(

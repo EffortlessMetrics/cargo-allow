@@ -80,7 +80,7 @@ mod tests {
         assert_eq!(unsafe_fn.path, Path::new("src/lib.rs"));
         assert_eq!(unsafe_fn.identity.ast_kind, "unsafe_fn");
         assert_eq!(unsafe_fn.identity.symbol.as_deref(), Some("read"));
-        assert_eq!(unsafe_fn.identity.container.as_deref(), Some("read"));
+        assert_eq!(unsafe_fn.identity.container.as_deref(), Some("ffi::read"));
         assert_eq!(unsafe_fn.identity.module.as_deref(), Some("ffi"));
         assert_eq!(unsafe_fn.identity.line_hint, Some(42));
         assert_eq!(unsafe_fn.identity.column_hint, Some(9));
@@ -169,7 +169,7 @@ mod tests {
             finding.kind == FindingKind::Unsafe
                 && finding.family.as_deref() == Some("unsafe_attr")
                 && finding.identity.ast_kind == "unsafe_attr"
-                && finding.identity.container.as_deref() == Some("export")
+                && finding.identity.container.as_deref() == Some("ffi::symbols::export")
                 && finding.identity.module.as_deref() == Some("ffi::symbols")
                 && finding.identity.target_fingerprint.as_deref() == Some("safety-comment:present")
         }));

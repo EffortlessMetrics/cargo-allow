@@ -7,7 +7,7 @@ characterization tests in #1701 (merge `2165848`).
 
 | Finding surface | Gap | Status | Fixture needed | PR |
 | --- | --- | --- | --- | --- |
-| unsafe | container ambiguity in nested modules | partial | refactor pair | D2 (done) |
+| unsafe | container ambiguity in nested modules | done | refactor pair + sibling modules | D3 (#TBD) |
 | panic method calls | receiver fingerprint edge cases | partial | method call matrix | D2 (done) |
 | panic macros | macro_name visibility | partial | macro invocation fixtures | D2 (done) |
 | index/slice | target_fingerprint precision | partial | index expr matrix | D2 (done) |
@@ -32,6 +32,7 @@ Characterization source: `tests/fixtures/structural-identity/` and
 | `module` | ambiguous | hoisting from nested module changes identity (`module_move`) |
 | `container` | stable | preserved across line/function reorder |
 | `container` | stable | distinguishes same lint on different items (`lint_same_different_items`) |
+| `container` | stable | module-qualifies unqualified free functions in nested modules (`container_same_name_sibling_modules`, `module_move`) |
 | `ast_kind` | stable | constant per surface (`method_call`, `unsafe_block`, `index_expr`, `attribute`) |
 | `symbol` | stable | tracks indexed expression text (`index_same_form_diff_targets`) |
 | `callee` | stable | preserved when receiver changes (`callee_same_receiver_diff`, `rename_local`) |
@@ -50,5 +51,5 @@ Characterization source: `tests/fixtures/structural-identity/` and
 
 `open` rows are inventory placeholders until fixture-backed characterization
 lands. `partial` rows have refactor-pair fixtures and tests but may still need
-scanner hardening (D3–D5). They are not claims that gaps are fully closed in
+scanner hardening (D4–D5). They are not claims that gaps are fully closed in
 production matching or diff posture.
