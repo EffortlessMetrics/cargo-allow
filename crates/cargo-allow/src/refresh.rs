@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult, Finding, LastSeen};
+use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 
@@ -13,7 +13,7 @@ mod refresh_types;
 pub(crate) use refresh_args::{RefreshArgs, RefreshFormat};
 use refresh_render::{render_refresh_json, render_refresh_result};
 use refresh_select::{apply_last_seen_refresh, select_location_drift_refresh};
-use refresh_types::RefreshContext;
+use refresh_types::{RefreshContext, RefreshEmitInput, RefreshRenderInput};
 
 use crate::{
     EvidenceValidationMode, SourceTreeReportContext, config_path, emit_text,
@@ -69,53 +69,38 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
     };
     render_and_emit(
         args,
-        entry_for_render,
-        finding,
-        previous_last_seen,
-        &drift_message,
-        &root,
-        inventory_facts,
-        written_path.as_deref(),
+        RefreshEmitInput {
+            entry: entry_for_render,
+            finding,
+            previous_last_seen,
+            drift_message: &drift_message,
+            root: &root,
+            inventory_facts,
+            written_path: written_path.as_deref(),
+        },
     )
 }
 
-fn render_and_emit(
-    args: &RefreshArgs,
-    entry: &allow_core::AllowEntry,
-    finding: &Finding,
-    previous_last_seen: Option<LastSeen>,
-    drift_message: &str,
-    root: &std::path::Path,
-    inventory_facts: crate::InventoryFacts,
-    written_path: Option<&std::path::Path>,
-) -> CargoAllowResult<()> {
-    let source_context = SourceTreeReportContext::new(root, inventory_facts);
+fn render_and_emit(args: &RefreshArgs, input: RefreshEmitInput<'_>) -> CargoAllowResult<()> {
+    let source_context = SourceTreeReportContext::new(input.root, input.inventory_facts);
     let context = RefreshContext {
         inventory: source_context.inventory(),
     };
-    let written = written_path.map(|path| path.display().to_string());
+    let written = input.written_path.map(|path| path.display().to_string());
     let written_ref = written.as_deref();
+    let render_input = RefreshRenderInput {
+        entry: input.entry,
+        finding: input.finding,
+        previous_last_seen: input.previous_last_seen,
+        drift_message: input.drift_message,
+        dry_run: args.dry_run,
+        write_requested: args.write,
+        written_path: written_ref,
+        context,
+    };
     let text = match args.format {
-        RefreshFormat::Human => render_refresh_result(
-            entry,
-            finding,
-            previous_last_seen,
-            drift_message,
-            args.dry_run,
-            args.write,
-            written_ref,
-            context,
-        ),
-        RefreshFormat::Json => render_refresh_json(
-            entry,
-            finding,
-            previous_last_seen,
-            drift_message,
-            args.dry_run,
-            args.write,
-            written_ref,
-            context,
-        ),
+        RefreshFormat::Human => render_refresh_result(render_input),
+        RefreshFormat::Json => render_refresh_json(render_input),
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
@@ -123,7 +108,7 @@ fn render_and_emit(
 
 #[cfg(test)]
 pub(crate) fn sample_refresh_json_for_contract_test() -> String {
-    use allow_core::{FindingKind, Selector, Span, StructuralIdentity};
+    use allow_core::{Finding, FindingKind, LastSeen, Selector, Span, StructuralIdentity};
     let entry = allow_core::AllowEntry {
         id: "fixture-refresh-drift".to_string(),
         kind: FindingKind::LintException,
@@ -158,25 +143,25 @@ pub(crate) fn sample_refresh_json_for_contract_test() -> String {
             column: 4,
         }),
     };
-    render_refresh_json(
-        &entry,
-        &finding,
-        Some(LastSeen {
+    render_refresh_json(RefreshRenderInput {
+        entry: &entry,
+        finding: &finding,
+        previous_last_seen: Some(LastSeen {
             line: 14,
             column: 8,
         }),
-        "allow-drift last_seen changed from 14:8 to 22:4",
-        true,
-        false,
-        None,
-        RefreshContext {
+        drift_message: "allow-drift last_seen changed from 14:8 to 22:4",
+        dry_run: true,
+        write_requested: false,
+        written_path: None,
+        context: RefreshContext {
             inventory: allow_report::InventoryContext::source_syntax(
                 "filesystem_include_untracked",
                 Some("tests/fixtures/refresh/advisory-drift"),
                 Some(2),
             ),
         },
-    )
+    })
 }
 
 #[cfg(test)]
