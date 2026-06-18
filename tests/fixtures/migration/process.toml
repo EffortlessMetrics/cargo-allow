@@ -1,0 +1,17 @@
+schema_version = 1
+policy = "process-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "fixture-process"
+binary = "cargo"
+argv_shape = ["install", "cargo-deny", "--locked"]
+network_reach = true
+called_by = [".github/workflows/ci.yml"]
+owner = "release/ci"
+reason = "Release helper fixture."
+covered_by = "doc:docs/ci.md"
+created = "2026-05-09"
+review_after = "2026-08-09"
+expires = "permanent"

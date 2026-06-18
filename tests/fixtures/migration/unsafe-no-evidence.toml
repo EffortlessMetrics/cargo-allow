@@ -1,0 +1,18 @@
+schema_version = 1
+policy = "unsafe-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "fixture-unsafe-no-evidence"
+path = "src/lib.rs"
+family = "unsafe_fn"
+owner = "runtime"
+classification = "reviewed_unsafe_boundary"
+reason = "Caller validates FFI boundary before call."
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "unsafe-fn"
+container = "ffi_call"

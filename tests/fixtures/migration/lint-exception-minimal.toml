@@ -1,0 +1,6 @@
+schema_version = 1
+policy = "clippy-exceptions"
+
+[[allow]]
+path = "src/lib.rs"
+lint = "clippy::unwrap_used"

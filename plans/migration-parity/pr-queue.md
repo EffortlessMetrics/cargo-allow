@@ -10,7 +10,7 @@ Actionable inventory for the `0.2.0` migration parity lane
 | B1 / B1r — gap inventory reconciliation | done | this queue + [gap-inventory.md](gap-inventory.md) |
 | Goal registration (PR 1 / #1687) | done | `.codex/goals/active.toml`, `policy/doc-artifacts.toml` |
 | B2 — no-panic-baseline evidence/lifecycle slice | done | #1691 (merge `1cd408e`) |
-| B3 — migration fixture matrix | **next** | active goal work item `migration-parity-b3` |
+| B3 — migration fixture matrix | **in progress** | `tests/fixtures/migration/`, `migration_fixture_matrix_tests.rs` |
 
 ## Surfaces
 

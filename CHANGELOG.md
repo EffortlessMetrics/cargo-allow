@@ -34,6 +34,10 @@ inventory without executing repository code.
 
 ### Testing
 
+- Add `tests/fixtures/migration/` characterization matrix across supported legacy
+  compat lanes with table-driven `allow-policy-legacy` tests for parse preservation,
+  evidence/covered_by, lifecycle, occurrence limits, visible `baseline_debt`,
+  deterministic reruns, policy-dir batch import, and compat loader smoke checks.
 - Harden `add` load, validate, and write error paths (#1685).
 - Add exact diff missing-policy config discriminator coverage (#1681).
 - Cover explicit `diff --config` missing behavior in revisions (#1683).

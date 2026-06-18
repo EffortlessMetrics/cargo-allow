@@ -1,0 +1,18 @@
+schema_version = 1
+policy = "clippy-exceptions"
+
+[[allow]]
+id = "fixture-clippy"
+path = "src/lib.rs"
+lint = "clippy::unwrap_used"
+family = "expect"
+owner = "lint"
+classification = "reviewed_lint_exception"
+reason = "Parser validates optional value before unwrap."
+evidence = ["test:parser_validates_optional_value"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "attribute"
+target = "policy:fixture-clippy"

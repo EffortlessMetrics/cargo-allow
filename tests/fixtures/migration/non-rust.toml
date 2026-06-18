@@ -1,0 +1,15 @@
+schema_version = 1
+policy = "non-rust-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "fixture-non-rust"
+glob = "docs/**"
+category = "documentation"
+owner = "docs"
+reason = "Repository policy prose."
+broad_glob_reason = "Docs are intentionally tree-shaped."
+evidence = ["doc:docs/source-exception-ledger.md", "issue:#123"]
+created = "2026-05-09"
+expires = "permanent"
