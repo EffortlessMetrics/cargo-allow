@@ -40,27 +40,19 @@ pub(super) fn load_repo_policy_migration_config(
         .into_iter()
         .filter(|finding| finding.kind == FindingKind::NonRustFile)
         .collect::<Vec<_>>();
-    let cfg = allow_policy_legacy::load_legacy_policy_dir_with_non_rust_findings(
-        &repo_policy,
-        &findings,
-    )?;
-    let legacy_sources = allow_policy_legacy::list_legacy_policy_sources_in_dir(&repo_policy);
+    let batch = allow_policy_legacy::import_legacy_policy_dir(&repo_policy, Some(&findings))?;
+    let legacy_source_files = batch.legacy_source_files();
+    let legacy_compat_kinds = batch.compat_kind_ids();
     Ok(MigrationLoad {
-        cfg,
+        cfg: batch.config,
         context: MigrateContext {
             inventory_source: inventory_source.as_str().to_string(),
             source_tree_root: Some(allow_report::source_tree_path_text(&root)),
             inventory_files: Some(files_scanned),
             input_kind: "repo_policy".to_string(),
             input_path: normalize_path(&repo_policy),
-            legacy_source_files: legacy_sources
-                .iter()
-                .map(|source| source.file_name.clone())
-                .collect(),
-            legacy_compat_kinds: legacy_sources
-                .iter()
-                .map(|source| source.compat_kind)
-                .collect(),
+            legacy_source_files,
+            legacy_compat_kinds,
         },
     })
 }

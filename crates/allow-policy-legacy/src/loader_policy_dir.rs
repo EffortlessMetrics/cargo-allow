@@ -1,68 +1,17 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding};
-use allow_policy::validate_policy;
+use allow_core::{AllowConfig, CargoAllowResult, Finding};
 use std::path::Path;
 
-use crate::loader_compat::load_non_rust_compat_config;
-use crate::loaders::load_legacy_or_canonical;
-use crate::migration_lane_descriptors::legacy_policy_filenames;
+use crate::legacy_import_batch::import_legacy_policy_dir;
 
 pub fn load_legacy_policy_dir(dir: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
-    load_legacy_policy_dir_inner(dir.as_ref(), None)
+    import_legacy_policy_dir(dir.as_ref(), None).map(|batch| batch.config)
 }
 
 pub fn load_legacy_policy_dir_with_non_rust_findings(
     dir: impl AsRef<Path>,
     findings: &[Finding],
 ) -> CargoAllowResult<AllowConfig> {
-    load_legacy_policy_dir_inner(dir.as_ref(), Some(findings))
-}
-
-fn load_legacy_policy_dir_inner(
-    dir: &Path,
-    non_rust_findings: Option<&[Finding]>,
-) -> CargoAllowResult<AllowConfig> {
-    if !dir.is_dir() {
-        return Err(CargoAllowError::new(format!(
-            "{} is not a policy directory",
-            dir.display()
-        )));
-    }
-
-    let mut merged = AllowConfig::empty();
-    let mut loaded = 0usize;
-    for file_name in legacy_policy_filenames() {
-        let path = dir.join(file_name);
-        if !path.is_file() {
-            continue;
-        }
-        let cfg = if file_name == "non-rust-allowlist.toml" {
-            if let Some(findings) = non_rust_findings {
-                load_non_rust_compat_config(&path, findings)?
-            } else {
-                load_legacy_or_canonical(&path)?
-            }
-        } else {
-            load_legacy_or_canonical(&path)?
-        };
-        if loaded == 0 {
-            merged.owner = cfg.owner.clone();
-            merged.status = cfg.status.clone();
-            merged.workspace = cfg.workspace.clone();
-            merged.requirements = cfg.requirements.clone();
-        }
-        loaded += 1;
-        merged.allow.extend(cfg.allow);
-    }
-
-    if loaded == 0 {
-        return Err(CargoAllowError::new(format!(
-            "{} contains no supported legacy policy files",
-            dir.display()
-        )));
-    }
-
-    validate_policy(&merged)?;
-    Ok(merged)
+    import_legacy_policy_dir(dir.as_ref(), Some(findings)).map(|batch| batch.config)
 }
 
 pub fn migration_notes() -> &'static str {
@@ -80,13 +29,13 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn load_legacy_policy_dir_inner_rejects_non_directory_and_empty_policy_dir() {
+    fn import_legacy_policy_dir_rejects_non_directory_and_empty_policy_dir() {
         let dir = fixture_dir();
         let not_a_dir = dir.join("policy.toml");
         fs::write(&not_a_dir, "not a policy directory")
             .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
 
-        let file_err = load_legacy_policy_dir_inner(&not_a_dir, None)
+        let file_err = import_legacy_policy_dir(&not_a_dir, None)
             .expect_err("file path should not load as a legacy policy directory");
         assert!(
             file_err.to_string().contains("is not a policy directory"),
@@ -94,7 +43,7 @@ mod tests {
         );
 
         let empty = fixture_dir();
-        let empty_err = load_legacy_policy_dir_inner(&empty, None)
+        let empty_err = import_legacy_policy_dir(&empty, None)
             .expect_err("empty directory should not load as a legacy policy directory");
         assert!(
             empty_err
@@ -105,7 +54,7 @@ mod tests {
     }
 
     #[test]
-    fn load_legacy_policy_dir_inner_merges_supported_files_and_first_metadata() {
+    fn import_legacy_policy_dir_merges_supported_files_and_first_metadata() {
         let dir = fixture_dir();
         fs::write(
             dir.join("process-allowlist.toml"),
@@ -120,37 +69,49 @@ mod tests {
         fs::write(dir.join("README.md"), "unsupported file")
             .unwrap_or_else(|err| std::panic::panic_any(format!("extra fixture write: {err}")));
 
-        let cfg = load_legacy_policy_dir_inner(&dir, None)
+        let batch = import_legacy_policy_dir(&dir, None)
             .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir migrates: {err}")));
 
-        assert_eq!(cfg.policy, "cargo-allow");
-        assert_eq!(cfg.owner.as_deref(), Some("EffortlessMetrics"));
-        assert_eq!(cfg.status.as_deref(), Some("advisory"));
-        assert_eq!(cfg.allow.len(), 4);
+        assert_eq!(batch.families.len(), 2);
+        assert_eq!(batch.config.policy, "cargo-allow");
+        assert_eq!(batch.config.owner.as_deref(), Some("EffortlessMetrics"));
+        assert_eq!(batch.config.status.as_deref(), Some("advisory"));
+        assert_eq!(batch.config.allow.len(), 4);
         assert!(
-            cfg.allow
+            batch
+                .config
+                .allow
                 .iter()
                 .any(|entry| entry.family.as_deref() == Some("process_spawn")
                     && entry.path.as_deref() == Some(Path::new(".github/workflows/ci.yml")))
         );
-        assert!(cfg.allow.iter().any(|entry| entry.family.as_deref()
-            == Some("network_destination")
-            && entry.selector.symbol.as_deref() == Some("api.github.com lane release")));
+        assert!(
+            batch
+                .config
+                .allow
+                .iter()
+                .any(
+                    |entry| entry.family.as_deref() == Some("network_destination")
+                        && entry.selector.symbol.as_deref() == Some("api.github.com lane release")
+                )
+        );
     }
 
     #[test]
-    fn load_legacy_policy_dir_inner_uses_non_rust_findings_for_non_rust_policy() {
+    fn import_legacy_policy_dir_uses_non_rust_findings_for_non_rust_policy() {
         let dir = fixture_dir();
         fs::write(dir.join("non-rust-allowlist.toml"), policy_fixture_text())
             .unwrap_or_else(|err| std::panic::panic_any(format!("non-rust fixture write: {err}")));
         let findings = vec![finding(".github/workflows/ci.yml", "tracked_file")];
 
-        let cfg = load_legacy_policy_dir_inner(&dir, Some(&findings)).unwrap_or_else(|err| {
+        let batch = import_legacy_policy_dir(&dir, Some(&findings)).unwrap_or_else(|err| {
             std::panic::panic_any(format!("policy dir with non-rust findings migrates: {err}"))
         });
 
-        assert_eq!(cfg.allow.len(), 1);
-        let entry = cfg
+        assert_eq!(batch.families.len(), 1);
+        assert_eq!(batch.config.allow.len(), 1);
+        let entry = batch
+            .config
             .allow
             .first()
             .unwrap_or_else(|| std::panic::panic_any("expected expanded non-rust entry"));

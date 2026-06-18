@@ -10,6 +10,13 @@ inventory without executing repository code.
 
 ### Added
 
+- Add multi-family legacy ledger import model (`LegacyImportBatch`,
+  `LegacyImportFamily`) for policy-directory batch migration: absorbs panic-family,
+  lint-attribute, and other compat lanes in deterministic lane-descriptor order
+  while preserving per-lane entry families, finding kinds, and owner/reason
+  metadata without collapsing families. Fixture:
+  `tests/fixtures/migration/no-panic-allowlist.toml`,
+  `panic-baseline.toml`, `lint-exception.toml`.
 - Add `cargo-allow refresh --allow-id <id>` to record operator-approved advisory
   drift refresh for entries with `location_drift` outcomes. Writes
   `cargo-allow.refresh.v1` receipts that update `last_seen` (and selector
