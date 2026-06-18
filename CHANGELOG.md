@@ -10,6 +10,11 @@ inventory without executing repository code.
 
 ### Added
 
+- Add optional `[lanes.<kind>]` policy posture with `mode = "advisory" | "shadow" | "blocking"`.
+  Check honors per-lane posture in read/report paths: shadow and advisory lanes keep
+  findings visible without failing `no-new`/`strict` unless `--deny` promotes receipt advisory
+  counts; blocking lanes retain existing gate behavior. Receipts emit `lane_posture` with
+  effective mode per configured or scanned kind (#1473).
 - Add `check --deny <status>` to promote individual receipt `advisory` count classes to
   blocking failures without changing check mode. Repeatable; supported classes mirror receipt
   advisory fields. `occurrence_headroom` remains unavailable (#1472).

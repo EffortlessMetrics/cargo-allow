@@ -1,5 +1,6 @@
 use allow_core::{AllowConfig, AllowEntry, CargoAllowResult, Requirements, WorkspaceConfig};
 use allow_policy::validate_policy;
+use std::collections::BTreeMap;
 
 use crate::fields::string_field;
 
@@ -21,6 +22,7 @@ fn base_config(table: &toml::Table) -> AllowConfig {
         status: string_field(table, "status"),
         workspace: WorkspaceConfig::default(),
         requirements: Requirements::default(),
+        lanes: BTreeMap::new(),
         allow: Vec::new(),
     }
 }

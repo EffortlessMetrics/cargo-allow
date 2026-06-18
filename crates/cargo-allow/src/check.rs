@@ -1,4 +1,6 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{
+    CargoAllowError, CargoAllowResult, effective_lane_posture_for_findings,
+};
 use allow_match::{CheckMode, evaluate};
 use allow_report::{
     RECEIPT_ENFORCEMENT_ADVISORY, RECEIPT_ENFORCEMENT_ENFORCING, ReportContext, Summary,
@@ -11,6 +13,9 @@ use std::process;
 #[path = "check_args.rs"]
 mod check_args;
 pub(crate) use check_args::CheckArgs;
+#[path = "check_lane_posture.rs"]
+mod check_lane_posture;
+use check_lane_posture::check_failed_for_outcomes;
 #[path = "check_deny.rs"]
 mod check_deny;
 use check_deny::{deny_escalation_failed, validate_deny_statuses};
@@ -93,10 +98,10 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     if !args.deny.is_empty() {
         validate_deny_statuses(&args.deny)?;
     }
-    let failed = outcomes.iter().any(|o| mode.fails(o.status))
+    let failed = check_failed_for_outcomes(&outcomes, &findings, &report_cfg, mode)
         || evidence.has_broken_evidence_links()
         || (!args.deny.is_empty() && deny_escalation_failed(&args.deny, &summary, context));
-    if should_emit_report_stdout(args.output.as_deref(), args.receipt.as_deref()) {
+    if should_emit_report_stdout(args.output.as_deref(), args.receipt.as_deref(), args.format) {
         print_report(ReportRenderArgs {
             command: "check",
             format: args.format,
@@ -117,7 +122,12 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             .mode
             .as_deref()
             .unwrap_or(report_cfg.workspace.default_mode.as_str());
+        let lane_posture = effective_lane_posture_for_findings(
+            &report_cfg.lanes,
+            findings.iter().map(|finding| finding.kind),
+        );
         apply_receipt_run_metadata(&mut context, effective_mode, mode, policy_config.as_deref());
+        context.lane_posture = Some(&lane_posture);
         write_file(
             path,
             &render_receipt_with_context_and_inventory(
@@ -158,8 +168,15 @@ fn write_check_error_receipt(
     write_file(path, &render_error_receipt(&err.to_string(), context))
 }
 
-fn should_emit_report_stdout(output: Option<&Path>, receipt: Option<&Path>) -> bool {
-    output.is_some() || receipt.is_none()
+fn should_emit_report_stdout(
+    output: Option<&Path>,
+    receipt: Option<&Path>,
+    format: crate::OutputFormat,
+) -> bool {
+    if output.is_some() {
+        return true;
+    }
+    !(receipt.is_some() && format == crate::OutputFormat::Human)
 }
 
 fn apply_receipt_run_metadata<'a>(

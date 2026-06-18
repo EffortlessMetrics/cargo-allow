@@ -262,8 +262,26 @@ evidence_notes = [
 
 [[work_item]]
 id = "adoption-substrate-pr-008"
-status = "ready"
+status = "done"
 title = "Add per-lane posture model for advisory escalation"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
+proof_commands = [
+  "rtk cargo test -p allow-policy lane_validation",
+  "rtk cargo test -p cargo-allow lane_posture",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed optional [lanes.<kind>] posture with advisory/shadow/blocking modes and receipt lane_posture reporting.",
+  "Read/report behavior only; multi-ledger federation remains #1473 P2.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-009"
+status = "ready"
+title = "Second cargo-allow dogfood receipt with per-lane posture"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
@@ -271,6 +289,5 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Next after #1474 deny escalation: per-lane posture and federation tracked in #1473.",
-  "Includes occurrence_headroom outcomes deferred from PR 7 (#1472).",
+  "Queue after PR 8: scoped dogfood receipt exercising mixed lane posture on this repository.",
 ]

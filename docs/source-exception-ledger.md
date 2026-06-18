@@ -655,6 +655,15 @@ when `--mode` is omitted. Passing `--mode audit`, `--mode no-new`,
 invocation.
 `workspace.inventory` and `workspace.default_mode` are exact policy tokens and
 must not include leading or trailing whitespace.
+
+Optional `[lanes.<kind>]` tables declare per-kind enforcement posture without
+splitting the ledger. Supported `mode` values are `advisory`, `shadow`, and
+`blocking`. Unconfigured kinds default to `blocking`. Shadow and advisory lanes
+report findings and receipt counts but do not fail `check` gate modes unless
+`--deny` promotes a receipt advisory class. Blocking lanes follow the existing
+`no-new`/`strict` failure rules. Receipts include `lane_posture` with the
+effective mode per configured or scanned kind.
+
 `workspace.ignored` and `workspace.generated` globs must be unique after slash
 normalization so inventory and generated-code posture cannot be inflated by
 repeating the same carveout.

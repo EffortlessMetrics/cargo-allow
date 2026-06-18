@@ -97,6 +97,18 @@ pub(crate) fn push_json_receipt_run_metadata(out: &mut String, context: ReportCo
             json_escape(tool_version)
         ));
     }
+    if let Some(lane_posture) = context.lane_posture {
+        out.push_str("  \"lane_posture\": {\n");
+        for (index, (lane, mode)) in lane_posture.iter().enumerate() {
+            let comma = if index + 1 == lane_posture.len() { "" } else { "," };
+            out.push_str(&format!(
+                "    \"{}\": \"{}\"{comma}\n",
+                json_escape(lane),
+                json_escape(mode.as_str())
+            ));
+        }
+        out.push_str("  },\n");
+    }
 }
 
 pub(crate) fn push_json_source_context_properties(
