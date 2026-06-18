@@ -1,0 +1,15 @@
+schema_version = 1
+policy = "generated-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "fixture-generated"
+path = "docs/generated/schema.json"
+generator = "cargo xtask schema"
+regenerate_command = "cargo xtask schema"
+owner = "policy"
+reason = "Generated schema fixture."
+covered_by = "doc:docs/schemas/README.md"
+created = "2026-05-10"
+expires = "permanent"

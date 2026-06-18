@@ -1,0 +1,16 @@
+schema_version = 1
+policy = "workflow-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[entry]]
+path = ".github/workflows/release.yml"
+owner = "release/ci"
+reason = "Release workflow fixture."
+permissions = ["contents:read"]
+secrets_used = []
+external_actions = ["actions/checkout@v4"]
+evidence = ["doc:docs/ci.md"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+expires = "permanent"

@@ -1,0 +1,19 @@
+schema_version = 1
+policy = "unsafe-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "fixture-unsafe"
+path = "src/lib.rs"
+family = "unsafe_block"
+owner = "runtime"
+classification = "reviewed_unsafe_boundary"
+reason = "Caller validates pointer before read."
+evidence = ["unsafe-review:docs/evidence/unsafe/read.json"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "unsafe-block"
+container = "read"

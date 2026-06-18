@@ -1,0 +1,17 @@
+schema_version = 1
+policy = "dependency-surface-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "fixture-dependency"
+path = "Cargo.toml"
+surface = "workspace_manifest"
+owner = "release"
+reason = "Workspace dependency block fixture."
+broad_glob_reason = "Workspace manifest is the dependency boundary."
+dep_count_at_baseline = 22
+evidence = ["doc:docs/dependencies.md"]
+created = "2026-05-09"
+review_after = "2026-08-09"
+expires = "permanent"

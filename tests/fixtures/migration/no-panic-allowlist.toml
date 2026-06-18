@@ -1,0 +1,23 @@
+schema_version = 1
+policy = "no-panic-allowlist"
+
+[[allow]]
+id = "fixture-no-panic-unwrap"
+path = "src/lib.rs"
+family = "unwrap"
+owner = "parser"
+classification = "reviewed_panic_exception"
+reason = "Parser validates the optional value."
+evidence = ["test:parser_validates_optional_value", "issue:#123"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "method-call"
+callee = "unwrap"
+container = "load"
+line_hint = 7
+
+[allow.last_seen]
+line = 7
+column = 12

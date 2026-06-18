@@ -1,0 +1,15 @@
+schema_version = 1
+policy = "executable-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "fixture-executable"
+path = "scripts/release.sh"
+interpreter = "bash"
+owner = "release"
+reason = "Release helper fixture."
+covered_by = "doc:docs/release/README.md"
+created = "2026-05-09"
+review_after = "2026-08-09"
+expires = "permanent"
