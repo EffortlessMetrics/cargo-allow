@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.migrate.v1",
+  "tool": "cargo-allow",
+  "command": "migrate",
+  "claim_boundary": ["source_tree_inventory", "source_syntax_only", "cargo_metadata_not_invoked", "cargo_commands_not_invoked", "rustc_not_invoked", "clippy_not_invoked", "build_scripts_not_executed", "proc_macros_not_executed", "macro_expansion_not_analyzed", "macro_token_tree_contents_not_analyzed", "type_information_not_analyzed", "mir_not_analyzed", "build_output_not_analyzed", "control_flow_not_analyzed", "data_flow_not_analyzed", "external_evidence_tools_not_invoked", "repository_code_not_executed"],
+  "scanner_limitations": ["cargo_metadata_not_invoked", "cargo_commands_not_invoked", "rustc_not_invoked", "clippy_not_invoked", "build_scripts_not_executed", "proc_macros_not_executed", "macro_expansion_not_analyzed", "macro_token_tree_contents_not_analyzed", "type_information_not_analyzed", "mir_not_analyzed", "build_output_not_analyzed", "control_flow_not_analyzed", "data_flow_not_analyzed", "external_evidence_tools_not_invoked", "repository_code_not_executed"],
+  "inventory": {
+    "scope": "source_tree",
+    "scanner": "policy_migration",
+    "source": "git_tracked",
+    "root": "H:/Code/Rust/cargo-allow",
+    "files_scanned": 779
+  },
+  "input": {
+    "kind": "repo_policy",
+    "path": "/?/H:/Code/Rust/cargo-allow/docs/dogfood/fixtures/ripr-style"
+  },
+  "output": {
+    "path": "docs/dogfood/receipts/cargo-allow-ripr-style-adoption.migrated.toml",
+    "force": false
+  },
+  "summary": {
+    "allow_entries": 3,
+    "baseline_debt": 1,
+    "unsafe_entries": 1,
+    "lint_exception_entries": 1,
+    "entries_with_evidence": 3,
+    "evidence_entries": 3,
+    "entries_with_links": 3,
+    "link_entries": 3
+  },
+  "follow_up_queues": [
+    {
+      "signal": "baseline_debt",
+      "label": "panic baseline debt entries",
+      "route_kind": "worklist_item_kind",
+      "item_kind": "baseline_debt",
+      "count": 1,
+      "command": "cargo-allow worklist --item-kind baseline_debt --format json"
+    }
+  ],
+  "closeout": {
+    "preserved": {
+      "allow_entries": 3,
+      "reviewed_entries": 2,
+      "entries_with_evidence": 3,
+      "evidence_entries": 3,
+      "entries_with_links": 3,
+      "link_entries": 3
+    },
+    "baseline_debt": {
+      "entries": 1
+    },
+    "evidence_debt": {
+    },
+    "next_queues": [
+      {
+        "phase": 1,
+        "signal": "baseline_debt",
+        "label": "panic baseline debt entries",
+        "route_kind": "worklist_item_kind",
+        "item_kind": "baseline_debt",
+        "count": 1,
+        "command": "cargo-allow worklist --item-kind baseline_debt --format json"
+      },
+      {
+        "phase": 2,
+        "signal": "no_new_gate",
+        "label": "no-new guard after closeout edits",
+        "route_kind": "check_mode",
+        "item_kind": "no_new",
+        "count": 0,
+        "command": "cargo-allow check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md"
+      }
+    ],
+    "legacy_retirement": {
+      "ready": false,
+      "blockers": ["baseline_debt"],
+      "sources": [
+        {
+          "file_name": "no-panic-baseline.toml",
+          "compat_kind": "panic",
+          "status": "blocked"
+        },
+        {
+          "file_name": "clippy-exceptions.toml",
+          "compat_kind": "lint-exception",
+          "status": "blocked"
+        },
+        {
+          "file_name": "unsafe-allowlist.toml",
+          "compat_kind": "unsafe",
+          "status": "blocked"
+        }
+      ]
+    }
+  },
+  "notes": "Legacy migration accepts canonical cargo-allow policies plus shiplog-style non-rust, generated, no-panic-allowlist, no-panic-baseline, clippy-exceptions, unsafe-allowlist, executable, workflow, dependency-surface, process, and network allowlists. Non-Rust compat expands matching legacy globs to exact current file entries; generated compat compares .gitattributes generated paths with policy/generated-allowlist.toml; no-panic allowlist migration maps retained source exceptions to structural panic receipts and treats last_seen as a hint only; no-panic baseline migration emits count-limited baseline_debt entries; clippy-exceptions compat maps retained lint suppression entries to source-syntax lint_exception receipts and uses cargo-allow's Rust source scanner for current findings; unsafe compat maps retained unsafe entries to source-syntax unsafe receipts and keeps missing evidence as temporary baseline_debt TODO evidence; executable compat compares git tree mode 100755 paths with policy/executable-allowlist.toml; workflow compat compares .github/workflows files and uses: actions with policy/workflow-allowlist.toml; dependency-surface compat preserves the legacy pattern-matches-tracked-file check; process compat validates retained process policy entries and does not scan source code for process spawns; network compat validates retained network policy entries and does not scan source code or runtime traffic."
+}

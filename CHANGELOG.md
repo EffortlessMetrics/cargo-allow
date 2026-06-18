@@ -10,6 +10,13 @@ inventory without executing repository code.
 
 ### Added
 
+- Add import-parity ripr-style multi-family adoption dogfood receipt (#1718):
+  `docs/dogfood/cargo-allow-ripr-style-adoption.md` records per-lane compat
+  checks, `--repo-policy` batch migrate, per-lane canonical checks, worklist
+  routing, and closeout for a panic+unsafe+lint legacy batch resembling ripr
+  adoption concerns. Committed fixtures under `docs/dogfood/fixtures/ripr-style/`
+  and receipts under `docs/dogfood/receipts/cargo-allow-ripr-style-adoption.*`.
+  Does not migrate the external `ripr` repository.
 - Add import-parity owner/reason/evidence acceptance fixture matrix (#1717):
   table-driven `import_parity_metadata_acceptance_tests.rs` characterizes
   semantic-selector governance round-trip (`owner`, `reason`, `evidence`,

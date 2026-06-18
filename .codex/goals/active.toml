@@ -497,15 +497,21 @@ evidence_notes = [
 ]
 [[work_item]]
 id = "import-parity-1718"
-status = "ready"
+status = "done"
 title = "Import parity side-by-side ripr-style adoption receipt (#1466-f / #1718)"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --compat --kind panic --config docs/dogfood/fixtures/ripr-style/no-panic-baseline.toml --mode no-new",
+  "rtk cargo run -p cargo-allow -- check --compat --kind unsafe --config docs/dogfood/fixtures/ripr-style/unsafe-allowlist.toml --mode no-new",
+  "rtk cargo run -p cargo-allow -- check --compat --kind lint --config docs/dogfood/fixtures/ripr-style/clippy-exceptions.toml --mode no-new",
+  "rtk cargo run -p cargo-allow -- migrate --repo-policy docs/dogfood/fixtures/ripr-style --out docs/dogfood/receipts/cargo-allow-ripr-style-adoption.migrated.toml --summary-format json --summary-output docs/dogfood/receipts/cargo-allow-ripr-style-adoption.migrate-summary.json",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Next import-parity slice after owner/reason/evidence acceptance fixture (#1717): side-by-side ripr-style adoption receipt for one semantic-selector import slice.",
-  "Receipt must state claim boundary (characterization until import mode ships); does not close umbrella #1466.",
+  "In-repo dogfood only: docs/dogfood/cargo-allow-ripr-style-adoption.md records multi-family panic+unsafe+lint compat→migrate→check→worklist→closeout for cargo-allow fixtures.",
+  "Does not migrate external ripr repo, execute ripr proof commands, or close umbrella #1466.",
+  "Lint invalid_selector friction documented when legacy selector references canonical policy id during side-by-side compat.",
 ]
