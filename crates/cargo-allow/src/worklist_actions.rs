@@ -2,9 +2,9 @@ use allow_core::{AllowEntry, Finding, FindingKind};
 
 use super::worklist_item_kind::{
     AMBIGUOUS_SELECTOR, BASELINE_DEBT, BROAD_SCOPE, BROKEN_EVIDENCE_LINK, EXPIRED_ALLOW,
-    INVALID_SELECTOR, MISSING_EVIDENCE, MISSING_REQUIRED_FIELD, NEW_UNRECEIPTED_FINDING,
-    OCCURRENCE_HEADROOM, OCCURRENCE_LIMIT_EXCEEDED, REVIEW_DUE, STALE_ALLOW,
-    UNSAFE_MISSING_EVIDENCE, WEAK_EVIDENCE_REFERENCE,
+    INVALID_SELECTOR, MIRROR_DIVERGENCE, MISSING_EVIDENCE, MISSING_REQUIRED_FIELD,
+    NEW_UNRECEIPTED_FINDING, OCCURRENCE_HEADROOM, OCCURRENCE_LIMIT_EXCEEDED, REVIEW_DUE,
+    STALE_ALLOW, UNSAFE_MISSING_EVIDENCE, WEAK_EVIDENCE_REFERENCE,
 };
 
 pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
@@ -72,6 +72,10 @@ pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
                 "use a recognized prefix such as {}",
                 evidence_prefix_examples()
             ),
+        ],
+        MIRROR_DIVERGENCE => vec![
+            "sync mirror ledger from canonical or document intentional drain posture".to_string(),
+            "review the active drain window closeout and mirror fingerprint".to_string(),
         ],
         _ => vec!["inspect the outcome and update policy or source accordingly".to_string()],
     }

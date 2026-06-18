@@ -95,7 +95,8 @@ pub use artifacts::{
     DiffPolicyChange, DiffPolicyStatusChange, DiffPostureSummary, DiffReport,
     DiffRequirementChange, DiffScopeChange, DiffSelectorIdentityChange,
     DiffSelectorPrecisionChange, DoctorReport, EvidenceReference, ExplainReport,
-    FederationDiagnosticSummary, FederationReportContext, LedgerContributorSummary, ListFilters,
+    FederationDiagnosticSummary, FederationDivergenceKindCount, FederationDivergenceRecordSummary,
+    FederationDivergenceSummary, FederationReportContext, LedgerContributorSummary, ListFilters,
     ListRow, MigrateReport, ProposeReport, PruneCandidate, PruneModeContext, RefreshModeContext,
     RefreshReport, WorklistFilters, WorklistItem,
 };

@@ -21,6 +21,7 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
         federation_config_valid: None,
         configured_ledgers: None,
         federation_diagnostics: None,
+        federation_divergences: None,
     });
 
     assert!(json.contains("\"schema_id\": \"cargo-allow.doctor.v1\""));
@@ -108,6 +109,7 @@ fn doctor_human_renderer_records_root_config_and_inventory() {
         federation_config_valid: None,
         configured_ledgers: None,
         federation_diagnostics: None,
+        federation_divergences: None,
     });
 
     assert!(text.contains("source tree root: H:/Code/Rust/cargo-allow"));
@@ -145,6 +147,7 @@ fn doctor_json_renderer_suggests_init_when_config_is_missing() {
         federation_config_valid: None,
         configured_ledgers: None,
         federation_diagnostics: None,
+        federation_divergences: None,
     });
 
     assert!(json.contains("\"found\": false"));
@@ -177,6 +180,7 @@ fn doctor_human_renderer_reports_invalid_config_status() {
         federation_config_valid: None,
         configured_ledgers: None,
         federation_diagnostics: None,
+        federation_divergences: None,
     });
 
     assert!(text.contains("config: policy/allow.toml"));
@@ -216,6 +220,7 @@ fn doctor_json_renderer_includes_optional_evidence_health_counts() {
         federation_config_valid: None,
         configured_ledgers: None,
         federation_diagnostics: None,
+        federation_divergences: None,
     });
 
     assert!(json.contains("\"broken_evidence_links\": 2"));
@@ -243,6 +248,7 @@ fn doctor_json_renderer_routes_evidence_repair_queues() {
         federation_config_valid: None,
         configured_ledgers: None,
         federation_diagnostics: None,
+        federation_divergences: None,
     });
 
     assert!(json.contains("\"evidence_repair_queues\""));
@@ -282,6 +288,7 @@ fn doctor_json_renderer_omits_evidence_repair_queues_when_clean() {
         federation_config_valid: None,
         configured_ledgers: None,
         federation_diagnostics: None,
+        federation_divergences: None,
     });
 
     assert!(!json.contains("\"evidence_repair_queues\""));
@@ -318,6 +325,7 @@ fn doctor_json_renderer_records_configured_federation_ledgers() {
             mirrors: None,
         }]),
         federation_diagnostics: None,
+        federation_divergences: None,
     });
 
     assert!(json.contains("\"federation\""));

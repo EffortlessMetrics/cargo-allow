@@ -71,6 +71,7 @@ pub(crate) struct ReviewSignals {
     pub(crate) broken_evidence_links: usize,
     pub(crate) weak_evidence_references: usize,
     pub(crate) occurrence_headroom: usize,
+    pub(crate) mirror_divergence: usize,
     pub(crate) review_items: usize,
 }
 
@@ -81,6 +82,7 @@ impl ReviewSignals {
         let broken_evidence_links = broken_evidence_link_count(context);
         let weak_evidence_references = weak_evidence_reference_count(context);
         let occurrence_headroom = occurrence_headroom_count(context);
+        let mirror_divergence = mirror_divergence_count(context);
         let review_items = review_item_count_with_baseline(
             summary,
             baseline_debt,
@@ -88,6 +90,7 @@ impl ReviewSignals {
             broken_evidence_links,
             weak_evidence_references,
             occurrence_headroom,
+            mirror_divergence,
         );
         Self {
             baseline_debt,
@@ -95,6 +98,7 @@ impl ReviewSignals {
             broken_evidence_links,
             weak_evidence_references,
             occurrence_headroom,
+            mirror_divergence,
             review_items,
         }
     }
@@ -173,6 +177,7 @@ pub(crate) fn review_item_count_with_baseline(
     broken_evidence_links: usize,
     weak_evidence_references: usize,
     occurrence_headroom: usize,
+    mirror_divergence: usize,
 ) -> usize {
     let policy_missing_evidence_extra =
         policy_missing_evidence.saturating_sub(summary.count(MatchStatus::EvidenceMissing));
@@ -185,6 +190,7 @@ pub(crate) fn review_item_count_with_baseline(
         + broken_evidence_links
         + weak_evidence_references
         + occurrence_headroom
+        + mirror_divergence
 }
 
 pub(crate) fn baseline_debt_count(summary: &Summary, context: ReportContext<'_>) -> usize {
@@ -203,6 +209,10 @@ pub(crate) fn weak_evidence_reference_count(context: ReportContext<'_>) -> usize
 
 pub(crate) fn occurrence_headroom_count(context: ReportContext<'_>) -> usize {
     context.occurrence_headroom_entries.unwrap_or(0)
+}
+
+pub(crate) fn mirror_divergence_count(context: ReportContext<'_>) -> usize {
+    context.mirror_divergence_entries.unwrap_or(0)
 }
 
 pub fn matched_occurrence_counts(outcomes: &[MatchOutcome]) -> BTreeMap<String, u32> {
@@ -373,10 +383,14 @@ mod tests {
                 broken_evidence_links: 2,
                 weak_evidence_references: 1,
                 occurrence_headroom: 0,
+                mirror_divergence: 0,
                 review_items: 13,
             }
         );
-        assert_eq!(review_item_count_with_baseline(&summary, 3, 5, 2, 1, 0), 13);
+        assert_eq!(
+            review_item_count_with_baseline(&summary, 3, 5, 2, 1, 0, 0),
+            13
+        );
     }
 
     #[test]

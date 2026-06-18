@@ -14,6 +14,7 @@ pub(crate) const MATCHED: &str = "matched";
 pub(crate) const BROAD_SCOPE: &str = "broad_scope";
 pub(crate) const BROKEN_EVIDENCE_LINK: &str = "broken_evidence_link";
 pub(crate) const WEAK_EVIDENCE_REFERENCE: &str = "weak_evidence_reference";
+pub(crate) const MIRROR_DIVERGENCE: &str = "mirror_divergence";
 
 pub(crate) const WORK_ITEM_KINDS: &[&str] = &[
     NEW_UNRECEIPTED_FINDING,
@@ -32,6 +33,7 @@ pub(crate) const WORK_ITEM_KINDS: &[&str] = &[
     BROAD_SCOPE,
     BROKEN_EVIDENCE_LINK,
     WEAK_EVIDENCE_REFERENCE,
+    MIRROR_DIVERGENCE,
 ];
 
 pub(crate) fn parse_work_item_kind_filter(value: &str) -> Result<String, String> {

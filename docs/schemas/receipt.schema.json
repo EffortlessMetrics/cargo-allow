@@ -131,6 +131,56 @@
               }
             }
           }
+        },
+        "divergence_summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "counts_by_kind": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "count"],
+                "properties": {
+                  "kind": { "type": "string" },
+                  "count": { "type": "integer", "minimum": 0 }
+                }
+              }
+            },
+            "records": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "message",
+                  "canonical_ledger_id",
+                  "mirror_ledger_id",
+                  "canonical_path",
+                  "mirror_path",
+                  "sample_entry_ids",
+                  "recommended_action"
+                ],
+                "properties": {
+                  "kind": { "type": "string" },
+                  "message": { "type": "string" },
+                  "canonical_ledger_id": { "type": "string" },
+                  "mirror_ledger_id": { "type": "string" },
+                  "canonical_path": { "type": "string" },
+                  "mirror_path": { "type": "string" },
+                  "sample_entry_ids": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "canonical_fingerprint": { "type": "string" },
+                  "mirror_fingerprint": { "type": "string" },
+                  "recommended_action": { "type": "string" }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -441,10 +491,10 @@
           "minimum": 0,
           "description": "Optional count of unstructured or unknown-prefix evidence or link references included in review item totals when available."
         },
-        "occurrence_headroom": {
+        "mirror_divergence": {
           "type": "integer",
           "minimum": 0,
-          "description": "Optional count of matched allow entries whose occurrence_limit exceeds the current matched count and can be ratcheted down."
+          "description": "Optional count of canonical versus mirror ledger divergences during active drain windows."
         }
       }
     },

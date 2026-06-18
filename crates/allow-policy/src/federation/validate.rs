@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use super::config::{
-    FederationConfig, FederationDiagnostic, FederationDiagnosticKind, LedgerEntry, LedgerRole,
-    ValidatedFederationConfig, is_native_dialect,
+    DrainWindow, FederationConfig, FederationDiagnostic, FederationDiagnosticKind, LedgerEntry,
+    LedgerRole, ValidatedFederationConfig, is_native_dialect,
 };
 
 pub fn validate_federation_config(config: FederationConfig) -> ValidatedFederationConfig {
@@ -12,6 +12,10 @@ pub fn validate_federation_config(config: FederationConfig) -> ValidatedFederati
     diagnostics.extend(detect_mirror_targets(&config.ledgers));
     diagnostics.extend(detect_duplicate_canonical_lanes(&config.ledgers));
     diagnostics.extend(detect_dialect_issues(&config.ledgers));
+    diagnostics.extend(detect_drain_window_issues(
+        &config.ledgers,
+        &config.drain_windows,
+    ));
 
     let valid = !diagnostics
         .iter()
@@ -192,5 +196,54 @@ fn detect_dialect_issues(ledgers: &[LedgerEntry]) -> Vec<FederationDiagnostic> {
         });
     }
 
+    diagnostics
+}
+
+fn detect_drain_window_issues(
+    ledgers: &[LedgerEntry],
+    drain_windows: &[DrainWindow],
+) -> Vec<FederationDiagnostic> {
+    let ledger_by_id = ledgers
+        .iter()
+        .map(|ledger| (ledger.id.as_str(), ledger))
+        .collect::<HashMap<_, _>>();
+    let mut diagnostics = Vec::new();
+    for drain in drain_windows {
+        if drain.drain_owner.trim().is_empty()
+            || drain.drain_reason.trim().is_empty()
+            || drain.review_after.trim().is_empty()
+            || drain.linked_closeout.trim().is_empty()
+        {
+            diagnostics.push(FederationDiagnostic {
+                kind: FederationDiagnosticKind::DrainWindowMissingField,
+                message: format!(
+                    "drain window for mirror `{}` requires drain_owner, drain_reason, review_after, and linked_closeout",
+                    drain.mirror_ledger
+                ),
+                ledger_ids: vec![drain.mirror_ledger.clone()],
+            });
+        }
+        let Some(mirror) = ledger_by_id.get(drain.mirror_ledger.as_str()).copied() else {
+            diagnostics.push(FederationDiagnostic {
+                kind: FederationDiagnosticKind::UnknownDrainMirrorLedger,
+                message: format!(
+                    "drain window references unknown mirror ledger `{}`",
+                    drain.mirror_ledger
+                ),
+                ledger_ids: vec![drain.mirror_ledger.clone()],
+            });
+            continue;
+        };
+        if mirror.role != LedgerRole::Mirror {
+            diagnostics.push(FederationDiagnostic {
+                kind: FederationDiagnosticKind::UnknownDrainMirrorLedger,
+                message: format!(
+                    "drain window mirror ledger `{}` must have role mirror",
+                    drain.mirror_ledger
+                ),
+                ledger_ids: vec![drain.mirror_ledger.clone()],
+            });
+        }
+    }
     diagnostics
 }

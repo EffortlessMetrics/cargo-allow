@@ -2403,6 +2403,8 @@ fn federation_config_blocking_reason(message: &str) -> Option<&'static str> {
         || message.contains("duplicate_canonical_lane")
         || message.contains("mirror_missing_target")
         || message.contains("unknown_mirror_target")
+        || message.contains("unknown_drain_mirror_ledger")
+        || message.contains("drain_window_missing_field")
     {
         return Some("federation_config_invalid");
     }

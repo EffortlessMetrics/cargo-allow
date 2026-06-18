@@ -361,6 +361,7 @@ pub struct ReportContext<'a> {
     pub tool_version: Option<&'a str>,
     pub lane_posture: Option<&'a BTreeMap<String, allow_core::LaneEnforcementMode>>,
     pub federation: Option<FederationReportContext<'a>>,
+    pub mirror_divergence_entries: Option<usize>,
 }
 
 impl<'a> ReportContext<'a> {
@@ -387,6 +388,7 @@ impl<'a> ReportContext<'a> {
             tool_version: None,
             lane_posture: None,
             federation: None,
+            mirror_divergence_entries: None,
         }
     }
 }

@@ -87,6 +87,7 @@ fn render_doctor_json_records_setup_context() {
         federation_config_valid: None,
         configured_ledgers: None,
         federation_diagnostics: None,
+        federation_divergences: None,
     });
     let value = parse_json_artifact("doctor", &json, allow_report::DOCTOR_SCHEMA_ID, "doctor");
 

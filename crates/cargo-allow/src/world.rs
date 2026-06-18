@@ -159,6 +159,7 @@ fn empty_federation_evaluation(precedence: PrecedenceTier) -> FederationEvaluati
         precedence_applied: precedence,
         active_provenance: None,
         ledger_contributors: Vec::new(),
+        divergences: Vec::new(),
     }
 }
 

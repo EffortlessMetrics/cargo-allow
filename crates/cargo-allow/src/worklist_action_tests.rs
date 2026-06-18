@@ -70,6 +70,10 @@ fn suggested_actions_cover_known_worklist_kinds_and_default() {
             "replace the weak evidence string with a typed evidence reference",
         ),
         (
+            "mirror_divergence",
+            "sync mirror ledger from canonical or document intentional drain posture",
+        ),
+        (
             "future_kind",
             "inspect the outcome and update policy or source accordingly",
         ),

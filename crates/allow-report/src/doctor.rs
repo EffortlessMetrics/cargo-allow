@@ -101,6 +101,14 @@ fn append_federation_doctor_human(facts: DoctorReport<'_>, out: &mut String) {
                     ));
                 }
             }
+            if let Some(divergences) = facts.federation_divergences {
+                for divergence in divergences {
+                    out.push_str(&format!(
+                        "federation {}: {}\n",
+                        divergence.kind, divergence.message
+                    ));
+                }
+            }
         }
     }
 }
@@ -258,6 +266,32 @@ fn append_federation_doctor_json(facts: DoctorReport<'_>, out: &mut String) {
             ));
             out.push_str("        \"ledger_ids\": [");
             for (id_index, id) in diagnostic.ledger_ids.iter().enumerate() {
+                if id_index > 0 {
+                    out.push_str(", ");
+                }
+                out.push_str(&format!("\"{}\"", json_escape(id)));
+            }
+            out.push_str("]\n      }");
+        }
+        out.push_str("\n    ]");
+    }
+    if let Some(divergences) = facts.federation_divergences {
+        out.push_str(",\n    \"divergences\": [\n");
+        for (index, divergence) in divergences.iter().enumerate() {
+            if index > 0 {
+                out.push_str(",\n");
+            }
+            out.push_str("      {\n");
+            out.push_str(&format!(
+                "        \"kind\": \"{}\",\n",
+                json_escape(divergence.kind)
+            ));
+            out.push_str(&format!(
+                "        \"message\": \"{}\",\n",
+                json_escape(divergence.message)
+            ));
+            out.push_str("        \"ledger_ids\": [");
+            for (id_index, id) in divergence.ledger_ids.iter().enumerate() {
                 if id_index > 0 {
                     out.push_str(", ");
                 }

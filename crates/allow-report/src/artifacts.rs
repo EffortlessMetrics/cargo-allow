@@ -19,7 +19,10 @@ pub use diff::{
 };
 pub use doctor::{ConfiguredLedgerSummary, DoctorReport, FederationDiagnosticSummary};
 pub use explain::{EvidenceReference, ExplainReport};
-pub use federation::{FederationReportContext, LedgerContributorSummary};
+pub use federation::{
+    FederationDivergenceKindCount, FederationDivergenceRecordSummary, FederationDivergenceSummary,
+    FederationReportContext, LedgerContributorSummary,
+};
 pub use list::{ListFilters, ListRow};
 pub use migrate::MigrateReport;
 pub use propose::ProposeReport;

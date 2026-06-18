@@ -37,4 +37,5 @@ pub struct DoctorReport<'a> {
     pub federation_config_valid: Option<bool>,
     pub configured_ledgers: Option<&'a [ConfiguredLedgerSummary<'a>]>,
     pub federation_diagnostics: Option<&'a [FederationDiagnosticSummary<'a>]>,
+    pub federation_divergences: Option<&'a [FederationDiagnosticSummary<'a>]>,
 }

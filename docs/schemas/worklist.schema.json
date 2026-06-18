@@ -335,6 +335,10 @@
         "weak_evidence_reference": {
           "type": "integer",
           "minimum": 0
+        },
+        "mirror_divergence": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     },
@@ -377,7 +381,8 @@
             "matched",
             "broad_scope",
             "broken_evidence_link",
-            "weak_evidence_reference"
+            "weak_evidence_reference",
+            "mirror_divergence"
           ],
           "description": "Stable queue item kind emitted by cargo-allow worklist."
         },

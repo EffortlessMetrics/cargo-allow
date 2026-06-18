@@ -15,6 +15,8 @@ mod worklist_advisories;
 mod worklist_args;
 #[path = "worklist_evidence.rs"]
 mod worklist_evidence;
+#[path = "worklist_federation.rs"]
+mod worklist_federation;
 #[path = "worklist_item_kind.rs"]
 mod worklist_item_kind;
 #[path = "worklist_items.rs"]
@@ -39,6 +41,7 @@ use worklist_args::{WorklistFormat, worklist_filters};
 #[cfg(test)]
 use worklist_evidence::work_items_from_evidence_diagnostics;
 use worklist_evidence::work_items_from_evidence_diagnostics_with_source_tree_files;
+use worklist_federation::work_items_from_federation_divergences;
 #[cfg(test)]
 pub(crate) use worklist_item_kind::WORK_ITEM_KINDS;
 use worklist_items::work_items_from_outcomes;
@@ -66,7 +69,7 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         });
     }
 
-    let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
+    let (root, cfg, findings, inventory_facts, federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
@@ -91,6 +94,10 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         &report_cfg,
         items.len() + 1,
         evidence_source_tree_files.as_ref(),
+    ));
+    items.extend(work_items_from_federation_divergences(
+        &federation.divergences,
+        items.len() + 1,
     ));
     let mut items = filter_work_items(items, filters);
     sort_work_items(&mut items);

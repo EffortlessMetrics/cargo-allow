@@ -67,9 +67,11 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         .as_ref()
         .and_then(|result| result.as_ref().ok())
         .and_then(|cfg| cfg.status.as_deref());
-    let federation = FederationDoctorFacts::load(&root)?;
+    let mut federation = FederationDoctorFacts::load(&root)?;
+    federation.enrich_runtime_divergences(&root)?;
     let configured_ledgers = federation.configured_ledger_summaries();
     let federation_diagnostics = federation.diagnostic_summaries();
+    let federation_divergences = federation.divergence_summaries();
     let report = allow_report::DoctorReport {
         source_tree_root: source_context.source_tree_root(),
         root_discovery,
@@ -96,6 +98,11 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
             None
         } else {
             Some(federation_diagnostics.as_slice())
+        },
+        federation_divergences: if federation_divergences.is_empty() {
+            None
+        } else {
+            Some(federation_divergences.as_slice())
         },
     };
     let text = match args.format {
@@ -224,6 +231,7 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
         federation_config_valid: None,
         configured_ledgers: None,
         federation_diagnostics: None,
+        federation_divergences: None,
     })
 }
 

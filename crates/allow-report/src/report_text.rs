@@ -661,6 +661,7 @@ mod tests {
         broken_evidence_links: usize,
         weak_evidence_references: usize,
         occurrence_headroom: usize,
+        mirror_divergence: usize,
         review_items: usize,
     ) -> ReviewSignals {
         ReviewSignals {
@@ -669,6 +670,7 @@ mod tests {
             broken_evidence_links,
             weak_evidence_references,
             occurrence_headroom,
+            mirror_divergence,
             review_items,
         }
     }
@@ -749,27 +751,27 @@ mod tests {
         let summary = Summary::from_outcomes(&[]);
 
         assert_eq!(
-            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 0, 0, 0), true),
+            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 0, 0, 0, 0), true),
             "\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n"
         );
         assert_eq!(
-            audit_recommended_next_step(&summary, review_signals(0, 0, 1, 0, 0, 1), true),
+            audit_recommended_next_step(&summary, review_signals(0, 0, 1, 0, 0, 0, 1), true),
             "\nRecommended next step: run `cargo-allow worklist --broken-evidence --format json` to repair broken local evidence/link references.\n"
         );
         assert_eq!(
-            audit_recommended_next_step(&summary, review_signals(0, 1, 0, 0, 0, 1), true),
+            audit_recommended_next_step(&summary, review_signals(0, 1, 0, 0, 0, 0, 1), true),
             "\nRecommended next step: run `cargo-allow worklist --format json` to route retained entries with no evidence references; add `--missing-evidence` to focus that queue.\n"
         );
         assert_eq!(
-            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 1, 0, 1), true),
+            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 1, 0, 0, 1), true),
             "\nRecommended next step: run `cargo-allow worklist --weak-evidence --format json` to replace unstructured or unknown-prefix evidence/link references.\n"
         );
         assert_eq!(
-            audit_recommended_next_step(&summary, review_signals(1, 0, 0, 0, 0, 1), true),
+            audit_recommended_next_step(&summary, review_signals(1, 0, 0, 0, 0, 0, 1), true),
             "\nRecommended next step: run `cargo-allow worklist --format json` to review generated baseline debt.\n"
         );
         assert_eq!(
-            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 0, 0, 1), false),
+            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 0, 0, 0, 1), false),
             "\nRecommended next step: review the queue below before tightening policy.\n"
         );
     }
