@@ -4656,3 +4656,49 @@ glob = "plans/federation/closeouts/f0-design.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0269"
+kind = "non_rust_file"
+family = "test_fixture"
+glob = "tests/fixtures/federation/*.toml"
+owner = "core/policy"
+classification = "federation_fixture"
+reason = "Federation registry characterization fixtures for multi-ledger config parse and validation tests."
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0007-multi-ledger-federation.md", "test:parse_federation_config_reads_ledgers_table"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/federation/"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "tests/fixtures/federation/*.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0270"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/federation/closeouts/f1-config-parse.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records F1 federation config parse closeout without claiming multi-ledger check evaluation."
+evidence = ["doc:plans/federation/implementation-plan.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/federation/closeouts/f1-config-parse.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/federation/closeouts/f1-config-parse.md"
+
+[allow.last_seen]
+line = 1
+column = 1

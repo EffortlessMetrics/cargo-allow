@@ -29,7 +29,10 @@ priority = 20
 "#;
 
 fn parse_validated(input: &str) -> ValidatedFederationConfig {
-    validate_federation_config(parse_federation_config(input).expect("parse federation config"))
+    let parsed = parse_federation_config(input).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("parse federation config: {err}"))
+    });
+    validate_federation_config(parsed)
 }
 
 #[test]
