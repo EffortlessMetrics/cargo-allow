@@ -48,6 +48,8 @@ name = "allow-match"
 version = "0.1.9"
 dependencies = [
  "allow-core",
+ "allow-policy",
+ "allow-rust",
 ]
 
 [[package]]

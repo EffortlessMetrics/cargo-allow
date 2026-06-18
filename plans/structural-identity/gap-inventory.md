@@ -12,9 +12,7 @@ characterization tests in #1701 (merge `2165848`).
 | panic macros | macro_name visibility | partial | macro invocation fixtures | D2 (done) |
 | index/slice | target_fingerprint precision | done | index expr matrix | D4 (#1726, `4f19e298`) |
 | lint attributes | attribute target identity | done | lint attr fixtures | D5 (#1728, `7b2f2785`) |
-| match selectors | precision on new fields | open | matcher characterization | D6 |
-| diff posture | weakening on identity loss | open | diff characterization | D7 |
-| match selectors | precision on new fields | open | matcher characterization | D6 |
+| match selectors | precision on new fields | done | matcher characterization | D6 |
 | diff posture | weakening on identity loss | open | diff characterization | D7 |
 
 ## Field Classifications (D2 fixture matrix)
@@ -51,5 +49,5 @@ Characterization source: `tests/fixtures/structural-identity/` and
 
 `open` rows are inventory placeholders until fixture-backed characterization
 lands. `partial` rows have refactor-pair fixtures and tests but may still need
-scanner hardening (D6–D7). They are not claims that gaps are fully closed in
-production matching or diff posture.
+scanner or diff hardening (D7). D6 matcher characterization is done; it is not a
+claim that diff posture weakening detection is fully closed.
