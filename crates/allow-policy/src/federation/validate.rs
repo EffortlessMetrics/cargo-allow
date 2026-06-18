@@ -13,7 +13,9 @@ pub fn validate_federation_config(config: FederationConfig) -> ValidatedFederati
     diagnostics.extend(detect_duplicate_canonical_lanes(&config.ledgers));
     diagnostics.extend(detect_dialect_issues(&config.ledgers));
 
-    let valid = !diagnostics.iter().any(|diagnostic| diagnostic.is_blocking());
+    let valid = !diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.is_blocking());
     ValidatedFederationConfig {
         config,
         diagnostics,
@@ -23,10 +25,7 @@ pub fn validate_federation_config(config: FederationConfig) -> ValidatedFederati
 
 impl FederationDiagnostic {
     fn is_blocking(&self) -> bool {
-        !matches!(
-            self.kind,
-            FederationDiagnosticKind::DialectSkipped
-        )
+        !matches!(self.kind, FederationDiagnosticKind::DialectSkipped)
     }
 }
 
@@ -113,10 +112,7 @@ fn detect_duplicate_canonical_lanes(ledgers: &[LedgerEntry]) -> Vec<FederationDi
             continue;
         }
         for lane in &ledger.lanes {
-            lane_owners
-                .entry(lane.clone())
-                .or_default()
-                .push(ledger);
+            lane_owners.entry(lane.clone()).or_default().push(ledger);
         }
     }
 

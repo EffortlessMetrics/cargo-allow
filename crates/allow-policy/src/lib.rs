@@ -9,7 +9,6 @@ use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub mod federation;
 mod discovery;
 mod entries_validation;
 mod entry_validation;
@@ -18,6 +17,7 @@ mod evidence_diagnostics;
 mod evidence_path;
 mod evidence_reference;
 mod evidence_validation;
+pub mod federation;
 mod lane_validation;
 mod lifecycle;
 mod policy_header;

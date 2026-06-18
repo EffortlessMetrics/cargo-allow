@@ -39,7 +39,10 @@ fn parse_federation_config_reads_ledgers_table() {
     assert_eq!(validated.config.ledgers.len(), 2);
     assert_eq!(validated.config.ledgers[0].id, "source-policy");
     assert_eq!(validated.config.ledgers[0].role, LedgerRole::Canonical);
-    assert_eq!(validated.config.ledgers[1].mode, LaneEnforcementMode::Blocking);
+    assert_eq!(
+        validated.config.ledgers[1].mode,
+        LaneEnforcementMode::Blocking
+    );
 }
 
 #[test]
@@ -111,9 +114,10 @@ role = "imported"
     );
     assert!(config.valid);
     assert!(
-        config.diagnostics.iter().any(|diagnostic| {
-            diagnostic.kind == FederationDiagnosticKind::DialectSkipped
-        }),
+        config
+            .diagnostics
+            .iter()
+            .any(|diagnostic| { diagnostic.kind == FederationDiagnosticKind::DialectSkipped }),
         "expected dialect_skipped: {:?}",
         config.diagnostics
     );
@@ -134,9 +138,10 @@ role = "mirror"
     );
     assert!(!config.valid);
     assert!(
-        config.diagnostics.iter().any(|diagnostic| {
-            diagnostic.kind == FederationDiagnosticKind::MirrorMissingTarget
-        }),
+        config
+            .diagnostics
+            .iter()
+            .any(|diagnostic| { diagnostic.kind == FederationDiagnosticKind::MirrorMissingTarget }),
         "expected mirror_missing_target: {:?}",
         config.diagnostics
     );

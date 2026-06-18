@@ -42,7 +42,9 @@ impl FederationDoctorFacts {
     fn from_load_result(loaded: FederationLoadResult) -> Self {
         match loaded.outcome {
             FederationLoadOutcome::Missing => Self::default(),
-            FederationLoadOutcome::Parsed(validated) => Self::from_validated(loaded.path, validated),
+            FederationLoadOutcome::Parsed(validated) => {
+                Self::from_validated(loaded.path, validated)
+            }
         }
     }
 

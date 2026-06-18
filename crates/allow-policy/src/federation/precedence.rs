@@ -9,8 +9,5 @@ pub fn ordered_ledgers_by_precedence(ledgers: &[LedgerEntry]) -> Vec<&LedgerEntr
             .cmp(&right.priority)
             .then_with(|| left_index.cmp(right_index))
     });
-    indexed
-        .into_iter()
-        .map(|(_, ledger)| ledger)
-        .collect()
+    indexed.into_iter().map(|(_, ledger)| ledger).collect()
 }

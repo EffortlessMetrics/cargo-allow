@@ -16,9 +16,7 @@ pub use diff::{
     DiffPostureSummary, DiffReport, DiffRequirementChange, DiffScopeChange,
     DiffSelectorIdentityChange, DiffSelectorPrecisionChange,
 };
-pub use doctor::{
-    ConfiguredLedgerSummary, DoctorReport, FederationDiagnosticSummary,
-};
+pub use doctor::{ConfiguredLedgerSummary, DoctorReport, FederationDiagnosticSummary};
 pub use explain::{EvidenceReference, ExplainReport};
 pub use list::{ListFilters, ListRow};
 pub use migrate::MigrateReport;

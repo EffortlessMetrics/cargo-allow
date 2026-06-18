@@ -119,9 +119,7 @@ impl FederationConfigToml {
             .map(|(index, entry)| entry.into_ledger_entry(index))
             .collect::<CargoAllowResult<Vec<_>>>()?;
         Ok(FederationConfig {
-            schema_version: self
-                .schema_version
-                .unwrap_or_else(|| "1.0".to_string()),
+            schema_version: self.schema_version.unwrap_or_else(|| "1.0".to_string()),
             ledgers,
         })
     }
@@ -131,9 +129,8 @@ impl LedgerEntryToml {
     fn into_ledger_entry(self, index: usize) -> CargoAllowResult<LedgerEntry> {
         let role = LedgerRole::parse(&self.role)?;
         let mode = match self.mode.as_deref() {
-            Some(value) => LaneEnforcementMode::from_str(value).map_err(|err| {
-                CargoAllowError::new(format!("ledgers[{}].mode: {err}", self.id))
-            })?,
+            Some(value) => LaneEnforcementMode::from_str(value)
+                .map_err(|err| CargoAllowError::new(format!("ledgers[{}].mode: {err}", self.id)))?,
             None => default_mode_for_role(role),
         };
         Ok(LedgerEntry {

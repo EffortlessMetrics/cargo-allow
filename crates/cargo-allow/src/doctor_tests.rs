@@ -714,15 +714,16 @@ linked_plan = "plans/spec-system/implementation-plan.md"
 }
 
 fn federation_fixture_path(name: &str) -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/federation").join(name)
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/federation")
+        .join(name)
 }
 
 #[test]
 fn doctor_reports_configured_federation_ledgers() {
     let root = doctor_fixture_dir();
-    fs::create_dir_all(root.join(".allow")).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("create .allow dir: {err}"))
-    });
+    fs::create_dir_all(root.join(".allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create .allow dir: {err}")));
     fs::copy(
         federation_fixture_path("multi-ledger-config.toml"),
         root.join(".allow/config.toml"),
@@ -743,7 +744,12 @@ fn doctor_reports_configured_federation_ledgers() {
 
     let json = fs::read_to_string(&output)
         .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
-    let value = parse_json_artifact("doctor federation", &json, allow_report::DOCTOR_SCHEMA_ID, "doctor");
+    let value = parse_json_artifact(
+        "doctor federation",
+        &json,
+        allow_report::DOCTOR_SCHEMA_ID,
+        "doctor",
+    );
     assert_eq!(
         value.pointer("/federation/found").and_then(Value::as_bool),
         Some(true)
@@ -758,9 +764,9 @@ fn doctor_reports_configured_federation_ledgers() {
     assert!(
         ledgers.as_ref().is_some_and(|entries| {
             entries.len() == 3
-                && entries.iter().any(|ledger| {
-                    ledger.get("id").and_then(Value::as_str) == Some("source-policy")
-                })
+                && entries
+                    .iter()
+                    .any(|ledger| ledger.get("id").and_then(Value::as_str) == Some("source-policy"))
         }),
         "expected three configured ledgers including source-policy: {json}"
     );
