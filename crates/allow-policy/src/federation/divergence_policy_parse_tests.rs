@@ -5,10 +5,8 @@ use std::fs;
 
 #[test]
 fn mirror_divergence_fixture_policies_load() {
-    let root = std::env::temp_dir().join(format!(
-        "cargo-allow-mirror-parse-{}",
-        std::process::id()
-    ));
+    let root =
+        std::env::temp_dir().join(format!("cargo-allow-mirror-parse-{}", std::process::id()));
     let _ = fs::remove_dir_all(&root);
     fs::create_dir_all(root.join("policy")).unwrap();
     fs::create_dir_all(root.join(".allow/mirror")).unwrap();
@@ -54,7 +52,9 @@ container = "load"
     assert!(
         divergences.iter().any(|record| {
             record.kind == super::divergence::FederationDivergenceKind::MirrorDivergence
-                && record.sample_entry_ids.contains(&"canonical-only".to_string())
+                && record
+                    .sample_entry_ids
+                    .contains(&"canonical-only".to_string())
         }),
         "divergences: {divergences:?}"
     );

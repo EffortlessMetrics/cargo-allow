@@ -232,7 +232,7 @@ fn detect_mirror_divergence_reports_entry_id_mismatch() {
     });
     std::fs::create_dir_all(root.join("policy"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
-    std::    fs::write(
+    std::fs::write(
         root.join("policy/allow.toml"),
         r#"schema_version = "0.1"
 policy = "cargo-allow"
@@ -270,7 +270,9 @@ container = "load"
     assert!(
         divergences.iter().any(|record| {
             record.kind == super::divergence::FederationDivergenceKind::MirrorDivergence
-                && record.sample_entry_ids.contains(&"canonical-only".to_string())
+                && record
+                    .sample_entry_ids
+                    .contains(&"canonical-only".to_string())
         }),
         "expected mirror_divergence for canonical-only entry: {:?}",
         divergences

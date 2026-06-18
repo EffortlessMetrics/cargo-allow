@@ -98,10 +98,10 @@ impl AdvisoryClass {
         let count = self.count(summary, signals);
         match self {
             Self::PolicyMissingEvidence => count > summary.count(MatchStatus::EvidenceMissing),
-            Self::BrokenEvidenceLinks | Self::WeakEvidenceReferences | Self::OccurrenceHeadroom
-            | Self::MirrorDivergence => {
-                count > 0
-            }
+            Self::BrokenEvidenceLinks
+            | Self::WeakEvidenceReferences
+            | Self::OccurrenceHeadroom
+            | Self::MirrorDivergence => count > 0,
             _ => true,
         }
     }

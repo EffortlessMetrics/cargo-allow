@@ -12,7 +12,10 @@ pub fn validate_federation_config(config: FederationConfig) -> ValidatedFederati
     diagnostics.extend(detect_mirror_targets(&config.ledgers));
     diagnostics.extend(detect_duplicate_canonical_lanes(&config.ledgers));
     diagnostics.extend(detect_dialect_issues(&config.ledgers));
-    diagnostics.extend(detect_drain_window_issues(&config.ledgers, &config.drain_windows));
+    diagnostics.extend(detect_drain_window_issues(
+        &config.ledgers,
+        &config.drain_windows,
+    ));
 
     let valid = !diagnostics
         .iter()

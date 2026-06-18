@@ -90,10 +90,7 @@ pub fn detect_mirror_divergences(
             continue;
         }
         records.extend(compare_mirror_canonical_ledgers(
-            root,
-            canonical,
-            mirror,
-            drain,
+            root, canonical, mirror, drain,
         )?);
     }
     Ok(records)
@@ -264,5 +261,9 @@ fn entry_sync_fingerprint(entry: &AllowEntry) -> String {
 }
 
 fn join_sample_ids(ids: &BTreeSet<String>, limit: usize) -> String {
-    ids.iter().take(limit).cloned().collect::<Vec<_>>().join(", ")
+    ids.iter()
+        .take(limit)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(", ")
 }

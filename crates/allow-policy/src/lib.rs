@@ -64,8 +64,8 @@ pub use validation::validate_policy;
 pub use federation::{
     DrainWindow, FederationConfig, FederationDiagnostic, FederationDiagnosticKind,
     FederationDivergenceKind, FederationDivergenceRecord, FederationEvaluation, LedgerContributor,
-    LedgerEntry, LedgerRole, PrecedenceTier, ValidatedFederationConfig,
-    detect_mirror_divergences, evaluate_source_exception_policy, evaluate_spec_system_ledger,
+    LedgerEntry, LedgerRole, PrecedenceTier, ValidatedFederationConfig, detect_mirror_divergences,
+    evaluate_source_exception_policy, evaluate_spec_system_ledger,
     federation_has_blocking_divergence, load_federation_config, mirror_divergence_advisory_count,
     parse_federation_config, validate_federation_config,
 };

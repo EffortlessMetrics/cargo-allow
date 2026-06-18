@@ -387,7 +387,10 @@ mod tests {
                 review_items: 13,
             }
         );
-        assert_eq!(review_item_count_with_baseline(&summary, 3, 5, 2, 1, 0, 0), 13);
+        assert_eq!(
+            review_item_count_with_baseline(&summary, 3, 5, 2, 1, 0, 0),
+            13
+        );
     }
 
     #[test]

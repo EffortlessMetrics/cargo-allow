@@ -60,7 +60,9 @@ impl FederationReportBundle {
             bundle.lanes.push(contributor.lanes.clone());
         }
         for record in &evaluation.divergences {
-            bundle.divergence_kinds.push(record.kind.as_str().to_string());
+            bundle
+                .divergence_kinds
+                .push(record.kind.as_str().to_string());
             bundle.divergence_messages.push(record.message.clone());
             bundle
                 .divergence_canonical_ids
@@ -83,9 +85,7 @@ impl FederationReportBundle {
             bundle
                 .divergence_mirror_fingerprints
                 .push(record.mirror_fingerprint.clone());
-            bundle
-                .divergence_actions
-                .push(record.recommended_action);
+            bundle.divergence_actions.push(record.recommended_action);
         }
         bundle
     }
@@ -93,12 +93,7 @@ impl FederationReportBundle {
     pub(crate) fn mirror_divergence_advisory_count(&self) -> usize {
         self.divergence_kinds
             .iter()
-            .filter(|kind| {
-                matches!(
-                    kind.as_str(),
-                    "mirror_divergence" | "mirror_stale"
-                )
-            })
+            .filter(|kind| matches!(kind.as_str(), "mirror_divergence" | "mirror_stale"))
             .count()
     }
 
@@ -146,10 +141,7 @@ impl FederationReportBundle {
                         .divergence_canonical_fingerprints
                         .get(index)?
                         .as_deref(),
-                    mirror_fingerprint: self
-                        .divergence_mirror_fingerprints
-                        .get(index)?
-                        .as_deref(),
+                    mirror_fingerprint: self.divergence_mirror_fingerprints.get(index)?.as_deref(),
                     recommended_action: self.divergence_actions.get(index)?,
                 })
             })
