@@ -15,7 +15,10 @@ impl LegacyAdvisoryDriftHints {
         let line_hint = selector
             .and_then(|selector| optional_u32_field(selector, "line_hint"))
             .or_else(|| last_seen.as_ref().map(|seen| seen.line));
-        Self { last_seen, line_hint }
+        Self {
+            last_seen,
+            line_hint,
+        }
     }
 }
 

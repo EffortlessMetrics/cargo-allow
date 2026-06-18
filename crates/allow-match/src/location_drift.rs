@@ -55,14 +55,13 @@ mod tests {
         let message = last_seen_drift_message(&entry_with_last_seen(7, 12), &finding_at(42, 5))
             .unwrap_or_else(|| std::panic::panic_any("expected drift message"));
 
-        assert_eq!(
-            message,
-            "allow-drift last_seen changed from 7:12 to 42:5"
-        );
+        assert_eq!(message, "allow-drift last_seen changed from 7:12 to 42:5");
     }
 
     #[test]
     fn last_seen_drift_message_absent_when_coordinates_match() {
-        assert!(last_seen_drift_message(&entry_with_last_seen(7, 12), &finding_at(7, 12)).is_none());
+        assert!(
+            last_seen_drift_message(&entry_with_last_seen(7, 12), &finding_at(7, 12)).is_none()
+        );
     }
 }

@@ -262,7 +262,10 @@ mod tests {
         let cfg = AllowConfig::empty();
         let finding = test_finding(FindingKind::Panic);
         let mut drift_entry = entry(FindingKind::Panic);
-        drift_entry.last_seen = Some(LastSeen { line: 7, column: 12 });
+        drift_entry.last_seen = Some(LastSeen {
+            line: 7,
+            column: 12,
+        });
         let (status, message) =
             classify_matched(&drift_entry, &finding, 91, today(), &cfg, CheckMode::NoNew);
         assert_eq!(status, MatchStatus::LocationDrift);

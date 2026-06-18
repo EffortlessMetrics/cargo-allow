@@ -274,7 +274,9 @@ fn sarif_level(status: MatchStatus) -> &'static str {
         | MatchStatus::InvalidSelector
         | MatchStatus::MissingRequiredField
         | MatchStatus::EvidenceMissing => "error",
-        MatchStatus::ReviewDue | MatchStatus::BaselineDebt | MatchStatus::LocationDrift => "warning",
+        MatchStatus::ReviewDue | MatchStatus::BaselineDebt | MatchStatus::LocationDrift => {
+            "warning"
+        }
         MatchStatus::Stale => "note",
         MatchStatus::Matched => "none",
     }
