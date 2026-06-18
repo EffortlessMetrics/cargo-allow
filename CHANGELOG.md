@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- Add post-publish install-smoke job to the release workflow for tag pushes:
+  installs `cargo-allow` from crates.io and verifies `--version`, `doctor`,
+  `check --help`, and `doctor --profile spec-system --help` (skipped on
+  workflow_dispatch dry-run).
+- Add `scripts/release-install-smoke.sh` and
+  `scripts/test-release-install-smoke.sh` for release install verification.
 - Add `scripts/verify-crate-registry-version.sh` and wire the release publish job
   to wait for exact crates.io index visibility after each upload.
 - Fix workflow_dispatch dry-run semantics: validate all workspace crates via
