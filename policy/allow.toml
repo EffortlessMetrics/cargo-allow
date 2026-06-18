@@ -75,7 +75,7 @@ column = 1
 id = "allow-0172"
 kind = "non_rust_file"
 family = "configuration"
-path = "policy/spec-system.toml"
+path = ".allow/profiles/spec-system.toml"
 owner = "core/policy"
 classification = "spec_system_profile_config"
 reason = "Enables the opt-in spec-system profile in blocking mode for selected structural dogfood checks without changing default source-exception behavior."
@@ -85,10 +85,10 @@ review_after = "2026-11-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = "policy/spec-system.toml"
+symbol = ".allow/profiles/spec-system.toml"
 target_fingerprint = "toml"
 line_hint = 1
-glob = "policy/spec-system.toml"
+glob = ".allow/profiles/spec-system.toml"
 
 [allow.last_seen]
 line = 1
@@ -170,8 +170,8 @@ family = "documentation"
 path = ".codex/goals/README.md"
 owner = "core/policy"
 classification = "active_goal_documentation"
-reason = "Explains the active-goal manifest boundary for the opt-in spec-system source-of-truth profile."
-evidence = ["doc:docs/source-of-truth/agent-operating-model.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md"]
+reason = "Legacy migration pointer for the former `.codex/goals/` active-goal path; canonical manifests live under `.allow/goals/`."
+evidence = ["doc:.allow/goals/README.md", "doc:docs/source-of-truth/agent-operating-model.md", "doc:plans/spec-system/closeouts/dogfood-migration-c4.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
 
@@ -190,20 +190,20 @@ column = 1
 id = "allow-0167"
 kind = "non_rust_file"
 family = "configuration"
-path = ".codex/goals/active.toml"
+path = ".allow/goals/active.toml"
 owner = "core/policy"
 classification = "active_goal_manifest"
-reason = "Records the active Codex execution state for the migration and evidence parity lane toward 0.2.0."
-evidence = ["doc:.codex/goals/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
+reason = "Records the active Codex execution state for portable governance substrate work under owned `.allow/` profile state."
+evidence = ["doc:.allow/goals/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = ".codex/goals/active.toml"
+symbol = ".allow/goals/active.toml"
 target_fingerprint = "toml"
 line_hint = 1
-glob = ".codex/goals/active.toml"
+glob = ".allow/goals/active.toml"
 
 [allow.last_seen]
 line = 1
@@ -213,20 +213,20 @@ column = 1
 id = "allow-0168"
 kind = "non_rust_file"
 family = "unknown_non_rust"
-path = ".codex/goals/archive/.gitkeep"
+path = ".allow/goals/archive/.gitkeep"
 owner = "core/policy"
 classification = "active_goal_archive_placeholder"
-reason = "Keeps the active-goal archive directory present for future completed or superseded manifests."
-evidence = ["doc:.codex/goals/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
+reason = "Keeps the active-goal archive directory present for completed or superseded manifests under owned `.allow/` profile state."
+evidence = ["doc:.allow/goals/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = ".codex/goals/archive/.gitkeep"
+symbol = ".allow/goals/archive/.gitkeep"
 target_fingerprint = ".gitkeep"
 line_hint = 1
-glob = ".codex/goals/archive/.gitkeep"
+glob = ".allow/goals/archive/.gitkeep"
 
 [allow.last_seen]
 line = 1
@@ -259,20 +259,20 @@ column = 1
 id = "allow-0163"
 kind = "non_rust_file"
 family = "configuration"
-path = "policy/doc-artifacts.toml"
+path = ".allow/artifacts/doc-artifacts.toml"
 owner = "core/policy"
 classification = "source_truth_artifact_ledger"
-reason = "Registers governed source-of-truth artifacts for the opt-in spec-system profile preview."
+reason = "Registers governed source-of-truth artifacts for the opt-in spec-system profile under owned `.allow/` profile state."
 evidence = ["doc:docs/source-of-truth/doc-artifact-ledger.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = "policy/doc-artifacts.toml"
+symbol = ".allow/artifacts/doc-artifacts.toml"
 target_fingerprint = "toml"
 line_hint = 1
-glob = "policy/doc-artifacts.toml"
+glob = ".allow/artifacts/doc-artifacts.toml"
 
 [allow.last_seen]
 line = 1
@@ -2835,20 +2835,20 @@ column = 1
 id = "allow-0190"
 kind = "non_rust_file"
 family = "configuration"
-path = ".codex/goals/archive/CARGO-ALLOW-GOAL-0001-spec-system-profile.toml"
+path = ".allow/goals/archive/CARGO-ALLOW-GOAL-0001-spec-system-profile.toml"
 owner = "core/policy"
 classification = "active_goal_manifest"
 reason = "Archives the completed spec-system profile active goal manifest for structural graph validation."
-evidence = ["doc:.codex/goals/README.md", "doc:plans/spec-system/closeout.md"]
+evidence = ["doc:.allow/goals/README.md", "doc:plans/spec-system/closeout.md"]
 created = "2026-06-16"
 review_after = "2026-11-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = ".codex/goals/archive/CARGO-ALLOW-GOAL-0001-spec-system-profile.toml"
+symbol = ".allow/goals/archive/CARGO-ALLOW-GOAL-0001-spec-system-profile.toml"
 target_fingerprint = "toml"
 line_hint = 1
-glob = ".codex/goals/archive/CARGO-ALLOW-GOAL-0001-spec-system-profile.toml"
+glob = ".allow/goals/archive/CARGO-ALLOW-GOAL-0001-spec-system-profile.toml"
 
 [allow.last_seen]
 line = 1
@@ -4158,7 +4158,7 @@ path = "plans/migration-parity/closeouts/adoption-substrate-lane.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records adoption-substrate 10-PR cleanup queue closeout without claiming 0.2.0 milestone parity or import-mode implementation."
-evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.codex/goals/active.toml"]
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/active.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -4366,7 +4366,7 @@ path = "plans/migration-parity/closeouts/import-parity-lane.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records import-parity execution lane closeout (#1713-#1718) without claiming full import mode or closing umbrella #1466."
-evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.codex/goals/active.toml", "doc:policy/doc-artifacts.toml"]
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -4385,20 +4385,20 @@ column = 1
 id = "allow-0257"
 kind = "non_rust_file"
 family = "configuration"
-path = ".codex/goals/archive/CARGO-ALLOW-GOAL-0002-migration-evidence-parity.toml"
+path = ".allow/goals/archive/CARGO-ALLOW-GOAL-0002-migration-evidence-parity.toml"
 owner = "core/policy"
 classification = "active_goal_manifest"
 reason = "Archives the completed migration and evidence parity active goal manifest after portable governance transition."
-evidence = ["doc:plans/spec-system/closeouts/portable-governance-transition.md", "doc:policy/doc-artifacts.toml"]
+evidence = ["doc:plans/spec-system/closeouts/portable-governance-transition.md", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = ".codex/goals/archive/CARGO-ALLOW-GOAL-0002-migration-evidence-parity.toml"
+symbol = ".allow/goals/archive/CARGO-ALLOW-GOAL-0002-migration-evidence-parity.toml"
 target_fingerprint = "toml"
 line_hint = 1
-glob = ".codex/goals/archive/CARGO-ALLOW-GOAL-0002-migration-evidence-parity.toml"
+glob = ".allow/goals/archive/CARGO-ALLOW-GOAL-0002-migration-evidence-parity.toml"
 
 [allow.last_seen]
 line = 1
@@ -4412,7 +4412,7 @@ path = "plans/spec-system/closeouts/portable-governance-transition.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records portable governance transition closeout (GOAL-0002 archive, GOAL-0003 activation) without implementing C2 profile resolution."
-evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.codex/goals/active.toml", "doc:policy/doc-artifacts.toml"]
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -4435,7 +4435,7 @@ path = "plans/spec-system/closeouts/profile-resolution-c2.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records C2 profile resolution closeout after #1748 without implementing C3 init or C4 dogfood migration."
-evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.codex/goals/active.toml", "doc:policy/doc-artifacts.toml"]
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -4458,7 +4458,7 @@ path = "plans/spec-system/closeouts/init-writes-c3.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records C3 init writes closeout after #1750 without implementing C4 dogfood migration."
-evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.codex/goals/active.toml", "doc:policy/doc-artifacts.toml"]
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -4468,6 +4468,75 @@ symbol = "plans/spec-system/closeouts/init-writes-c3.md"
 target_fingerprint = "md"
 line_hint = 1
 glob = "plans/spec-system/closeouts/init-writes-c3.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0261"
+kind = "non_rust_file"
+family = "documentation"
+path = ".allow/goals/README.md"
+owner = "core/policy"
+classification = "active_goal_documentation"
+reason = "Documents the canonical active-goal manifest boundary under owned `.allow/` profile state."
+evidence = ["doc:docs/source-of-truth/agent-operating-model.md", "doc:plans/spec-system/closeouts/dogfood-migration-c4.md"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/goals/README.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = ".allow/goals/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0262"
+kind = "non_rust_file"
+family = "documentation"
+path = ".allow/imports/README.md"
+owner = "core/policy"
+classification = "allow_imports_stub"
+reason = "Stub import-root documentation for owned `.allow/` profile state pending import adapters."
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md", "doc:plans/spec-system/closeouts/dogfood-migration-c4.md"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/imports/README.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = ".allow/imports/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0263"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/spec-system/closeouts/dogfood-migration-c4.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records C4 dogfood migration closeout after moving profile state to `.allow/` without implementing import adapters or federation."
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/spec-system/closeouts/dogfood-migration-c4.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/spec-system/closeouts/dogfood-migration-c4.md"
 
 [allow.last_seen]
 line = 1

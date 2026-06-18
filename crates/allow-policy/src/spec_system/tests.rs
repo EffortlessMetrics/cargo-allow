@@ -14,9 +14,9 @@ fn parses_minimal_spec_system_config() {
             specs = "docs/specs"
             adrs = "docs/adr"
             plans = "plans"
-            goals = ".codex/goals"
+            goals = ".allow/goals"
             support_tiers = "docs/status/SUPPORT_TIERS.md"
-            artifact_ledger = "policy/doc-artifacts.toml"
+            artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
 
             [requirements]
             ledger_required = true
@@ -38,7 +38,7 @@ fn parses_minimal_spec_system_config() {
     assert_eq!(cfg.schema_version, "1.0");
     assert_eq!(cfg.profile, "spec-system");
     assert_eq!(cfg.mode, SpecSystemMode::Advisory);
-    assert_eq!(cfg.roots.artifact_ledger, "policy/doc-artifacts.toml");
+    assert_eq!(cfg.roots.artifact_ledger, ".allow/artifacts/doc-artifacts.toml");
     assert!(cfg.requirements.ledger_required);
     assert!(cfg.requirements.closeout_required_for_done_items);
 }
@@ -46,7 +46,7 @@ fn parses_minimal_spec_system_config() {
 #[test]
 fn parses_current_repository_doc_artifact_ledger() {
     let ledger_result =
-        parse_doc_artifact_ledger(include_str!("../../../../policy/doc-artifacts.toml"));
+        parse_doc_artifact_ledger(include_str!("../../../../.allow/artifacts/doc-artifacts.toml"));
     assert!(
         ledger_result.is_ok(),
         "ledger should parse: {:?}",
@@ -483,7 +483,7 @@ fn rejects_unknown_artifact_status() {
 #[test]
 fn validates_current_repository_artifact_files() {
     let ledger_result =
-        parse_doc_artifact_ledger(include_str!("../../../../policy/doc-artifacts.toml"));
+        parse_doc_artifact_ledger(include_str!("../../../../.allow/artifacts/doc-artifacts.toml"));
     assert!(
         ledger_result.is_ok(),
         "ledger should parse: {:?}",
@@ -505,7 +505,7 @@ fn validates_current_repository_artifact_files() {
 #[test]
 fn validates_current_repository_artifact_links() {
     let ledger_result =
-        parse_doc_artifact_ledger(include_str!("../../../../policy/doc-artifacts.toml"));
+        parse_doc_artifact_ledger(include_str!("../../../../.allow/artifacts/doc-artifacts.toml"));
     assert!(
         ledger_result.is_ok(),
         "ledger should parse: {:?}",
@@ -1257,7 +1257,7 @@ fn accepts_active_goal_linked_plan_by_path() {
             [[artifact]]
             id = "CARGO-ALLOW-GOAL-0001"
             kind = "active_goal"
-            path = ".codex/goals/active.toml"
+            path = ".allow/goals/active.toml"
             status = "active"
             owner = "codex"
             created = "2026-06-12"
@@ -1313,7 +1313,7 @@ fn rejects_active_goal_unknown_plan() {
             [[artifact]]
             id = "CARGO-ALLOW-GOAL-0001"
             kind = "active_goal"
-            path = ".codex/goals/active.toml"
+            path = ".allow/goals/active.toml"
             status = "active"
             owner = "codex"
             created = "2026-06-12"
@@ -1344,7 +1344,7 @@ fn rejects_active_goal_unknown_plan() {
 #[test]
 fn parses_current_repository_active_goal_manifest() {
     let ledger_result =
-        parse_doc_artifact_ledger(include_str!("../../../../policy/doc-artifacts.toml"));
+        parse_doc_artifact_ledger(include_str!("../../../../.allow/artifacts/doc-artifacts.toml"));
     assert!(
         ledger_result.is_ok(),
         "ledger should parse: {:?}",
@@ -1355,7 +1355,7 @@ fn parses_current_repository_active_goal_manifest() {
     };
 
     let result = validate_active_goal_manifest_text(
-        include_str!("../../../../.codex/goals/active.toml"),
+        include_str!("../../../../.allow/goals/active.toml"),
         &ledger,
     );
 
@@ -1477,7 +1477,7 @@ fn rejects_active_goal_missing_required_spec_link() {
             [[artifact]]
             id = "CARGO-ALLOW-GOAL-0001"
             kind = "active_goal"
-            path = ".codex/goals/active.toml"
+            path = ".allow/goals/active.toml"
             status = "active"
             owner = "codex"
             created = "2026-06-12"
@@ -2292,7 +2292,7 @@ fn accepts_policy_ledger_under_policy_root() {
     let root = temp_root("policy-ledger-root");
     write_file(
         &root,
-        "policy/spec-system.toml",
+        ".allow/profiles/spec-system.toml",
         "CARGO-ALLOW-POLICY-0001\n",
     );
     let ledger_result = parse_doc_artifact_ledger(
@@ -2305,7 +2305,7 @@ fn accepts_policy_ledger_under_policy_root() {
             [[artifact]]
             id = "CARGO-ALLOW-POLICY-0001"
             kind = "policy_ledger"
-            path = "policy/spec-system.toml"
+            path = ".allow/profiles/spec-system.toml"
             status = "draft"
             owner = "repo-infra"
             created = "2026-06-12"
@@ -2620,7 +2620,7 @@ fn active_goal_manifest_test_ledger() -> DocArtifactLedger {
             [[artifact]]
             id = "CARGO-ALLOW-GOAL-0001"
             kind = "active_goal"
-            path = ".codex/goals/active.toml"
+            path = ".allow/goals/active.toml"
             status = "active"
             owner = "codex"
             created = "2026-06-12"
@@ -2737,8 +2737,8 @@ fn test_roots() -> SpecSystemRoots {
         specs: "docs/specs".to_string(),
         adrs: "docs/adr".to_string(),
         plans: "plans".to_string(),
-        goals: ".codex/goals".to_string(),
+        goals: ".allow/goals".to_string(),
         support_tiers: "docs/status/SUPPORT_TIERS.md".to_string(),
-        artifact_ledger: "policy/doc-artifacts.toml".to_string(),
+        artifact_ledger: ".allow/artifacts/doc-artifacts.toml".to_string(),
     }
 }
