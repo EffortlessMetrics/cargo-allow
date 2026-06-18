@@ -239,13 +239,31 @@ proof_commands = [
 ]
 evidence_notes = [
   "Landed receipt `advisory` counters mirroring report trend totals for ratcheting metadata.",
-  "Does not add `--deny <status>` escalation or occurrence_headroom outcomes.",
+  "Does not add `--deny <status>` escalation or occurrence_headroom outcomes; see adoption-substrate-pr-007.",
 ]
 
 [[work_item]]
 id = "adoption-substrate-pr-007"
-status = "ready"
+status = "done"
 title = "Add clippy-style --deny <status> escalation for check"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
+proof_commands = [
+  "rtk cargo test -p cargo-allow check_deny deny_escalation",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Second half of #1474: repeatable `check --deny <status>` promotes receipt advisory counts to exit 1.",
+  "Supported classes mirror receipt `advisory` fields; `occurrence_headroom` rejected with #1472 gap message.",
+  "Does not add per-lane posture model or occurrence_headroom outcomes.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-008"
+status = "ready"
+title = "Add per-lane posture model for advisory escalation"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
@@ -253,6 +271,6 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Second half of #1474: promote individual advisory classes to blocking without new modes.",
-  "Deferred occurrence_headroom outcome remains #1472.",
+  "Next after #1474 deny escalation: per-lane posture and federation tracked in #1473.",
+  "Includes occurrence_headroom outcomes deferred from PR 7 (#1472).",
 ]

@@ -103,6 +103,27 @@ mod tests {
     }
 
     #[test]
+    fn clap_parses_repeatable_check_deny_statuses() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--deny",
+            "review_due",
+            "--deny",
+            "stale",
+        ]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse --deny: {err}")));
+
+        assert!(matches!(
+            parsed.command,
+            Some(CargoAllowCommand::Check(check::CheckArgs {
+                deny,
+                ..
+            })) if deny == vec!["review_due".to_string(), "stale".to_string()]
+        ));
+    }
+
+    #[test]
     fn clap_rejects_unknown_kind_filters_for_report_commands() {
         for args in [
             vec!["cargo-allow", "audit", "--kind", "unsfae"],
@@ -139,6 +160,8 @@ mod tests {
         let help = check.render_help().to_string();
 
         assert!(help.contains("policy-configured source-tree gate mode"));
+        assert!(help.contains("--deny"));
+        assert!(help.contains("occurrence_headroom"));
         assert!(!help.contains("workspace.default_mode"));
     }
 

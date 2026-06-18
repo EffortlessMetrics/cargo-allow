@@ -106,6 +106,7 @@ fn check_spec_system_profile_does_not_require_allow_policy() {
         output: Some(output.clone()),
         receipt: Some(receipt.clone()),
         mode: Some("audit".to_string()),
+        deny: Vec::new(),
     });
 
     assert!(
@@ -200,6 +201,7 @@ fn check_spec_system_profile_reports_explicit_missing_config() {
         output: Some(output.clone()),
         receipt: None,
         mode: None,
+        deny: Vec::new(),
     });
 
     assert!(
@@ -233,6 +235,7 @@ fn check_spec_system_profile_rejects_source_exception_kind_filter() {
         output: None,
         receipt: None,
         mode: None,
+        deny: Vec::new(),
     });
     let _ = fs::remove_dir_all(&root);
 
@@ -295,6 +298,7 @@ fn check_spec_system_profile_json_report_uses_v1_graph_artifact() {
         output: Some(output.clone()),
         receipt: None,
         mode: Some("audit".to_string()),
+        deny: Vec::new(),
     });
 
     assert!(
@@ -366,6 +370,7 @@ fn spec_system_profile_reports_advisory_findings_without_failing() {
         output: Some(output.clone()),
         receipt: None,
         mode: None,
+        deny: Vec::new(),
     });
 
     assert!(
@@ -409,6 +414,7 @@ fn spec_system_profile_reports_shadow_mode_without_failing_command() {
         output: Some(output.clone()),
         receipt: None,
         mode: None,
+        deny: Vec::new(),
     });
 
     assert!(
@@ -717,6 +723,7 @@ fn spec_system_profile_renders_configured_shadow_mode_in_markdown() {
         output: Some(output.clone()),
         receipt: None,
         mode: Some("audit".to_string()),
+        deny: Vec::new(),
     });
 
     assert!(
@@ -801,6 +808,7 @@ fn spec_system_check_json(root: &Path, output: &Path) -> CargoAllowResult<()> {
         output: Some(output.to_path_buf()),
         receipt: None,
         mode: None,
+        deny: Vec::new(),
     })
 }
 
