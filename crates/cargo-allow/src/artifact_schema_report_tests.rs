@@ -286,6 +286,7 @@ fn report_schema_allows_optional_audit_remediation_roadmap() {
             "weak_evidence_reference",
             "baseline_debt",
             "occurrence_headroom",
+            "mirror_divergence",
         ],
     );
     assert_enum_equals(
