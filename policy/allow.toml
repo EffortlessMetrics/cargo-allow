@@ -4885,3 +4885,71 @@ glob = ".allow/config.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0273"
+kind = "panic"
+family = "expect"
+path = "crates/allow-policy/src/import_roots/adapters/xtask.rs"
+owner = "core/policy"
+classification = "import_adapter_unit_test"
+reason = "I2 xtask registry parser unit test expects valid fixture input so malformed TOML fails the test immediately."
+evidence = ["test:parse_command_registry_reads_command_tables"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::parse_command_registry_reads_command_tables"
+callee = "expect"
+line_hint = 247
+
+[allow.last_seen]
+line = 247
+column = 53
+
+[[allow]]
+id = "allow-4708"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/spec-system/closeouts/import-i2-xtask-adapter.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records I2 xtask command registry import adapter closeout without claiming full import mode or release readiness."
+evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/active.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/spec-system/closeouts/import-i2-xtask-adapter.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/spec-system/closeouts/import-i2-xtask-adapter.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0274"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/import/xtask/xtask/commands.toml"
+owner = "core/policy"
+classification = "import_adapter_fixture"
+reason = "I2 xtask command registry characterization fixture for registry TOML discovery."
+evidence = ["doc:plans/spec-system/allow-import-plan.md", "test:discover_import_graph_xtask_fixture"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/import/xtask/xtask/commands.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "tests/fixtures/import/xtask/xtask/commands.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

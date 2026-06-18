@@ -20,10 +20,10 @@ multi-ledger check evaluation and receipt provenance landed (#1758;
 portable-governance-f2-federation done). F3 drain-window enforcement and mirror
 divergence reporting landed (#1759 merge `f81a9d2`; portable-governance-f3-federation
 done). I1 generic import-root model landed (#1761 merge `3912baa6`;
-portable-governance-i1-import done). I2 generic import adapters narrow start
-(C10 `.spec`/`.rails`/repo-spec) and Kiro/Spec Kit adapters landed; xtask command
-registry adapter (C11) lands in this lane. External `ripr`
-migration and full import mode (#1466) remain blocked. Release automation
+portable-governance-i1-import done). I2 import adapter lane closed: generic
+`.spec`/`.rails`/repo-spec (C10), Kiro/Spec Kit (C8–C9), and xtask command
+registry (C11 #1765) adapters landed. External `ripr` preflight R0 and full
+import mode (#1466) remain blocked. Release automation
 (0.1.10) and OIDC publish lanes stay dormant until explicit authorization.
 """
 
@@ -244,6 +244,20 @@ proof_commands = [
 evidence_notes = [
   "Landed in C11 PR: xtask command registry TOML discovery on the I1 graph model.",
   "Does not claim Rust dispatch parsing, full import mode (#1466), or release readiness.",
+]
+
+[[work_item]]
+id = "portable-governance-ripr-preflight-r0"
+status = "blocked"
+title = "External ripr spec-system preflight (R0)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/external-dogfood/ripr-spec-system-adoption.md"
+blocker_reason = "I2 import adapter lane closed; external ripr preflight requires explicit adoption request and ripr repository access."
+evidence_notes = [
+  "Handoff at plans/external-dogfood/ripr-spec-system-adoption.md defines R0 preflight commands only.",
+  "In-repo ripr-style dogfood receipt (#1718) closed import-parity characterization without external migration.",
+  "Does not execute ripr proof commands or claim full import mode (#1466).",
 ]
 
 [[work_item]]
