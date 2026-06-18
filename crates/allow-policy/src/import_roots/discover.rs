@@ -3,8 +3,9 @@ use std::fs;
 use std::path::Path;
 
 use super::adapters::{
-    GENERIC_SPEC_ECOSYSTEM, discover_auto_repo_spec_roots, discover_generic_spec_root,
-    is_generic_spec_root,
+    GENERIC_SPEC_ECOSYSTEM, KIRO_ECOSYSTEM, SPEC_KIT_ECOSYSTEM, discover_auto_repo_spec_roots,
+    discover_generic_spec_root, discover_kiro_root, discover_spec_kit_root, is_generic_spec_root,
+    is_kiro_root, is_spec_kit_root,
 };
 use super::config::{
     ImportConfidence, ImportEdgeKind, ImportNodeRole, ImportProvenance, ImportRootEntry,
@@ -75,7 +76,26 @@ pub fn discover_import_graph(root: &Path, validated: &ValidatedImportRootsConfig
             continue;
         }
         if absolute.is_dir() {
-            if is_generic_spec_root(&entry.path) || entry.ecosystem == GENERIC_SPEC_ECOSYSTEM {
+            if is_kiro_root(&entry.path) || entry.ecosystem == KIRO_ECOSYSTEM {
+                discover_kiro_root(
+                    root,
+                    entry,
+                    &absolute,
+                    &mut nodes,
+                    &mut edges,
+                    &mut diagnostics,
+                );
+            } else if is_spec_kit_root(&entry.path) || entry.ecosystem == SPEC_KIT_ECOSYSTEM {
+                discover_spec_kit_root(
+                    root,
+                    entry,
+                    &absolute,
+                    &mut nodes,
+                    &mut edges,
+                    &mut diagnostics,
+                );
+            } else if is_generic_spec_root(&entry.path) || entry.ecosystem == GENERIC_SPEC_ECOSYSTEM
+            {
                 discover_generic_spec_root(
                     root,
                     entry,
