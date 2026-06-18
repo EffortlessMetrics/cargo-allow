@@ -3153,6 +3153,29 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0209"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/migration-parity/closeouts/incremental-slices.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records incremental migration parity slice closeout for goal registration, gap inventory, and no-panic-baseline import without claiming 0.2.0 milestone parity."
+created = "2026-06-18"
+review_after = "2026-11-01"
+evidence = ["doc:plans/migration-parity/pr-queue.md", "doc:plans/migration-parity/implementation-plan.md"]
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/migration-parity/closeouts/incremental-slices.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/migration-parity/closeouts/incremental-slices.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0204"
 kind = "non_rust_file"
 family = "documentation"
