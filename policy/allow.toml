@@ -3873,3 +3873,49 @@ glob = "scripts/test-release-version-preflight.sh"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0235"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/verify-crate-registry-version.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Release automation script guarded by release workflow publish visibility checks."
+evidence = ["doc:docs/release/README.md"]
+created = "2026-06-18"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/verify-crate-registry-version.sh"
+target_fingerprint = "sh"
+line_hint = 1
+glob = "scripts/verify-crate-registry-version.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0236"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-verify-crate-registry-version.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Release automation script guarded by release workflow publish visibility checks."
+evidence = ["doc:docs/release/README.md"]
+created = "2026-06-18"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-verify-crate-registry-version.sh"
+target_fingerprint = "sh"
+line_hint = 1
+glob = "scripts/test-verify-crate-registry-version.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
