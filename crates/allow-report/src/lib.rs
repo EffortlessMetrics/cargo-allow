@@ -8,6 +8,7 @@
 mod add;
 #[cfg(test)]
 mod add_tests;
+mod advisory_class;
 mod allow_entry_json;
 #[cfg(test)]
 mod allow_entry_json_tests;
@@ -86,6 +87,7 @@ mod worklist_summary;
 mod worklist_summary_tests;
 
 pub use add::{render_add_human, render_add_json};
+pub use advisory_class::{ADVISORY_DENY_FIELD_NAMES, AdvisoryClass, advisory_count_for_deny_field};
 pub use allow_entry_json::{render_allow_entry_json, render_last_seen_json, render_selector_json};
 pub use artifacts::{
     AddReport, DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange,
@@ -149,9 +151,9 @@ pub use report_text::{
 };
 pub use sarif::{render_sarif, render_sarif_with_context};
 pub use summary::{
-    ADVISORY_DENY_FIELD_NAMES, Summary, advisory_count_for_deny_field, matched_occurrence_counts,
-    matched_policy_missing_evidence_entries, occurrence_headroom_entries,
-    occurrence_headroom_for_entry, policy_baseline_debt_entries, policy_missing_evidence_entries,
+    Summary, matched_occurrence_counts, matched_policy_missing_evidence_entries,
+    occurrence_headroom_entries, occurrence_headroom_for_entry, policy_baseline_debt_entries,
+    policy_missing_evidence_entries,
 };
 pub use worklist::{render_worklist_human, render_worklist_json};
 
