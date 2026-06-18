@@ -70,7 +70,7 @@ impl AdvisoryClass {
             .find(|class| class.field_name() == name)
     }
 
-    pub fn count(self, summary: &Summary, signals: &ReviewSignals) -> usize {
+    pub(crate) fn count(self, summary: &Summary, signals: &ReviewSignals) -> usize {
         match self {
             Self::ReviewItems => signals.review_items,
             Self::New => summary.count(MatchStatus::New),
@@ -90,7 +90,7 @@ impl AdvisoryClass {
         }
     }
 
-    pub fn include_in_receipt(self, summary: &Summary, signals: &ReviewSignals) -> bool {
+    pub(crate) fn include_in_receipt(self, summary: &Summary, signals: &ReviewSignals) -> bool {
         let count = self.count(summary, signals);
         match self {
             Self::PolicyMissingEvidence => count > summary.count(MatchStatus::EvidenceMissing),
