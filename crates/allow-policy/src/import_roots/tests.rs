@@ -193,6 +193,108 @@ fn discover_import_graph_auto_repo_spec_fixture() -> io::Result<()> {
     Ok(())
 }
 
+#[test]
+fn discover_import_graph_kiro_fixture() -> io::Result<()> {
+    let root = import_fixture_root("kiro")?;
+    let validated = validate_import_roots_config(ImportRootsConfig {
+        owned: None,
+        entries: vec![ImportRootEntry {
+            id: "kiro".to_string(),
+            path: ".kiro".to_string(),
+            ecosystem: "kiro".to_string(),
+            role: ImportNodeRole::Imported,
+        }],
+    });
+    let graph = discover_import_graph(&root, &validated);
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .any(|node| node.path == ".kiro/specs/auth-feature/requirements.md"),
+        "expected Kiro requirements node: {:?}",
+        graph.nodes
+    );
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .any(|node| node.path == ".kiro/specs/session-timeout/bugfix.md"),
+        "expected Kiro bugfix node: {:?}",
+        graph.nodes
+    );
+    assert!(
+        graph.edges.iter().any(|edge| {
+            edge.kind == ImportEdgeKind::References && edge.target_id == "FIXTURE-KIRO-REQ-001"
+        }),
+        "expected Kiro front matter id reference: {:?}",
+        graph.edges
+    );
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .find(|node| node.path == ".kiro/specs/auth-feature/tasks.md")
+            .is_some_and(|node| node.role == ImportNodeRole::Generated),
+        "Kiro tasks.md should use generated role"
+    );
+    Ok(())
+}
+
+#[test]
+fn discover_import_graph_spec_kit_fixture() -> io::Result<()> {
+    let root = import_fixture_root("spec-kit")?;
+    let validated = validate_import_roots_config(ImportRootsConfig {
+        owned: None,
+        entries: vec![ImportRootEntry {
+            id: "specify".to_string(),
+            path: ".specify".to_string(),
+            ecosystem: "spec-kit".to_string(),
+            role: ImportNodeRole::Imported,
+        }],
+    });
+    let graph = discover_import_graph(&root, &validated);
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .any(|node| node.path == ".specify/memory/constitution.md"),
+        "expected Spec Kit constitution node: {:?}",
+        graph.nodes
+    );
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .any(|node| node.path == ".specify/specs/001-auth/spec.md"),
+        "expected Spec Kit spec node: {:?}",
+        graph.nodes
+    );
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .any(|node| node.path == ".specify/templates/spec-template.md"),
+        "expected Spec Kit template node: {:?}",
+        graph.nodes
+    );
+    assert!(
+        graph.edges.iter().any(|edge| {
+            edge.kind == ImportEdgeKind::References && edge.target_id == "FIXTURE-SPEC-KIT-SPEC-001"
+        }),
+        "expected Spec Kit front matter id reference: {:?}",
+        graph.edges
+    );
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .find(|node| node.path == ".specify/templates/spec-template.md")
+            .is_some_and(|node| node.role == ImportNodeRole::Generated),
+        "Spec Kit templates should use generated role"
+    );
+    Ok(())
+}
+
 fn import_fixture_root(label: &str) -> io::Result<std::path::PathBuf> {
     Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../tests/fixtures/import")

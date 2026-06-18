@@ -5,8 +5,13 @@
 //! confidence, and diagnostics without rewriting imported files.
 
 mod generic;
+mod kiro;
+mod shared;
+mod spec_kit;
 
 pub use generic::{
     GENERIC_SPEC_ECOSYSTEM, discover_auto_repo_spec_roots, discover_generic_spec_root,
     is_generic_spec_root,
 };
+pub use kiro::{KIRO_ECOSYSTEM, discover_kiro_root, is_kiro_root};
+pub use spec_kit::{SPEC_KIT_ECOSYSTEM, discover_spec_kit_root, is_spec_kit_root};

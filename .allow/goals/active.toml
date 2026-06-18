@@ -212,19 +212,19 @@ evidence_notes = [
 
 [[work_item]]
 id = "portable-governance-i2-kiro-spec-kit-adapters"
-status = "ready"
+status = "done"
 title = "Kiro and Spec Kit import adapters (I2 follow-up #1466)"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "plans/spec-system/closeouts/import-i2-kiro-spec-kit-adapters.md"
 proof_commands = [
   "rtk cargo test -p allow-policy import_roots",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Follow-up to I2 generic adapter slice per allow-import-plan C8–C9.",
-  "Targets Kiro (`.kiro/`) and Spec Kit (`.specify/`) discovery adapters on the I1 graph model.",
+  "Landed in C8–C9 PR: Kiro (`.kiro/`) and Spec Kit (`.specify/`) discovery adapters on the I1 graph model.",
   "Does not claim xtask registry adapter, full import mode (#1466), or release readiness.",
 ]
 

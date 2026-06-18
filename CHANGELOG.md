@@ -10,6 +10,13 @@ inventory without executing repository code.
 
 ### Added
 
+- Kiro and Spec Kit import adapters I2 slice (#1466): read-only discovery for `.kiro/`
+  (`requirements.md`|`bugfix.md`, `design.md`, `tasks.md`) and `.specify/` (constitution,
+  `spec.md`, `plan.md`, `tasks.md`, templates) via `allow-policy::import_roots::adapters::kiro`
+  and `::spec_kit`. Normalizes nodes, edges, provenance, confidence, and diagnostics on the
+  I1 `import_graph` in spec-system doctor/audit/worklist. Fixture-backed tests under
+  `tests/fixtures/import/kiro` and `tests/fixtures/import/spec-kit`. Does not implement
+  xtask registry adapter, full import mode, or claim release readiness.
 - Generic import adapters I2 slice (#1466): read-only discovery for `.spec/`, `.rails/`,
   and auto-detected `.<repo>-spec/` roots via `allow-policy::import_roots::adapters::generic`.
   Recursive markdown scan with front-matter `id` and `linked_*` normalization extends the
