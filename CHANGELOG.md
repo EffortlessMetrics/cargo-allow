@@ -10,6 +10,10 @@ inventory without executing repository code.
 
 ### Added
 
+- Register F1 federation config parse closeout (CARGO-ALLOW-CLOSEOUT-0010):
+  mark `portable-governance-f1-federation` done after #1756; queue
+  `portable-governance-f2-federation` ready; reconcile
+  `plans/migration-parity/gap-inventory.md`. No release authorization.
 - Multi-ledger federation F1 config (#1473): parse `[[ledgers]]` entries from
   `.allow/config.toml` with `id`, `path`, `dialect`, `role`, optional `lanes`,
   `mode`, `priority`, and mirror `mirrors` targets. Validate duplicate ledger
