@@ -98,7 +98,11 @@ fn migration_fixture_matrix_characterizes_supported_legacy_lanes() {
         match case.occurrence_limit {
             OccurrenceLimitExpect::Skip => {}
             OccurrenceLimitExpect::None => {
-                assert_eq!(entry.occurrence_limit, None, "{} occurrence_limit", case.lane);
+                assert_eq!(
+                    entry.occurrence_limit, None,
+                    "{} occurrence_limit",
+                    case.lane
+                );
             }
             OccurrenceLimitExpect::Some(limit) => {
                 assert_eq!(
@@ -156,19 +160,25 @@ fn migration_fixture_matrix_rerun_is_deterministic_for_primary_lanes() {
             "no-panic-allowlist.toml",
             "no-panic-allowlist.toml",
         ),
-        ("panic baseline", "panic-baseline.toml", "no-panic-baseline.toml"),
-        ("lint-exception", "lint-exception.toml", "clippy-exceptions.toml"),
+        (
+            "panic baseline",
+            "panic-baseline.toml",
+            "no-panic-baseline.toml",
+        ),
+        (
+            "lint-exception",
+            "lint-exception.toml",
+            "clippy-exceptions.toml",
+        ),
         ("unsafe", "unsafe.toml", "unsafe-allowlist.toml"),
     ];
 
     for (lane, fixture_file, legacy_filename) in lanes {
         let policy_path = stage_migration_fixture(fixture_file, legacy_filename);
-        let first = load_legacy_or_canonical(&policy_path).unwrap_or_else(|err| {
-            std::panic::panic_any(format!("{lane} first migration: {err}"))
-        });
-        let second = load_legacy_or_canonical(&policy_path).unwrap_or_else(|err| {
-            std::panic::panic_any(format!("{lane} second migration: {err}"))
-        });
+        let first = load_legacy_or_canonical(&policy_path)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("{lane} first migration: {err}")));
+        let second = load_legacy_or_canonical(&policy_path)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("{lane} second migration: {err}")));
         assert_eq!(
             migration_fingerprint(&first),
             migration_fingerprint(&second),
@@ -222,7 +232,9 @@ fn migration_fixture_matrix_policy_dir_batch_imports_primary_lanes() {
         "batch import should include non-rust lane"
     );
     assert!(
-        cfg.allow.iter().any(|entry| entry.id == "panic-baseline-0001"),
+        cfg.allow
+            .iter()
+            .any(|entry| entry.id == "panic-baseline-0001"),
         "batch import should include panic baseline lane"
     );
 }
@@ -278,10 +290,7 @@ fn migration_lane_cases() -> Vec<MigrationLaneCase> {
             expected_owner: "docs",
             expected_reason: "Repository policy prose.",
             expected_classification: Some("documentation"),
-            expected_evidence: &[
-                "doc:docs/source-exception-ledger.md",
-                "issue:#123",
-            ],
+            expected_evidence: &["doc:docs/source-exception-ledger.md", "issue:#123"],
             expected_links: &[],
             occurrence_limit: OccurrenceLimitExpect::None,
             expected_created: Some("2026-05-09"),
@@ -407,10 +416,7 @@ fn migration_lane_cases() -> Vec<MigrationLaneCase> {
             expected_owner: "parser",
             expected_reason: "Parser validates the optional value.",
             expected_classification: Some("reviewed_panic_exception"),
-            expected_evidence: &[
-                "test:parser_validates_optional_value",
-                "issue:#123",
-            ],
+            expected_evidence: &["test:parser_validates_optional_value", "issue:#123"],
             expected_links: &[],
             occurrence_limit: OccurrenceLimitExpect::None,
             expected_created: None,
@@ -428,10 +434,7 @@ fn migration_lane_cases() -> Vec<MigrationLaneCase> {
             expected_owner: "parser",
             expected_reason: "Counted unwrap baseline after parser hardening.",
             expected_classification: Some("baseline_debt"),
-            expected_evidence: &[
-                "test:parser_baseline",
-                "issue:#456",
-            ],
+            expected_evidence: &["test:parser_baseline", "issue:#456"],
             expected_links: &["legacy-policy:no-panic-baseline"],
             occurrence_limit: OccurrenceLimitExpect::Some(2),
             expected_created: Some("2026-05-09"),
@@ -552,7 +555,10 @@ fn stage_migration_fixture(fixture_file: &str, legacy_filename: &str) -> PathBuf
     });
     let path = dir.join(legacy_filename);
     fs::write(&path, text).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("write staged migration fixture {}: {err}", path.display()))
+        std::panic::panic_any(format!(
+            "write staged migration fixture {}: {err}",
+            path.display()
+        ))
     });
     path
 }
@@ -579,17 +585,18 @@ fn assert_baseline_debt_visible(lane: &str, entry: &AllowEntry) {
             || item.contains("TODO: add unsafe-review")
     });
     assert!(
-        has_traceability || entry.links.iter().any(|item| item.starts_with("legacy-policy:")),
+        has_traceability
+            || entry
+                .links
+                .iter()
+                .any(|item| item.starts_with("legacy-policy:")),
         "{lane} should keep visible baseline_debt traceability in evidence {:?} or links {:?}",
         entry.evidence,
         entry.links
     );
 }
 
-fn load_compat_config(
-    loader: Option<CompatLoader>,
-    path: &Path,
-) -> CargoAllowResult<AllowConfig> {
+fn load_compat_config(loader: Option<CompatLoader>, path: &Path) -> CargoAllowResult<AllowConfig> {
     match loader {
         Some(CompatLoader::Generated) => load_generated_compat_config(path),
         Some(CompatLoader::Executable) => load_executable_compat_config(path),
