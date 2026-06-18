@@ -8,6 +8,7 @@ mod lint;
 mod package;
 mod panic;
 mod scope;
+mod structural_identity;
 mod syntax_tree;
 mod text;
 mod unsafe_scan;
