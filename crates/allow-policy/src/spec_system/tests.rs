@@ -38,15 +38,19 @@ fn parses_minimal_spec_system_config() {
     assert_eq!(cfg.schema_version, "1.0");
     assert_eq!(cfg.profile, "spec-system");
     assert_eq!(cfg.mode, SpecSystemMode::Advisory);
-    assert_eq!(cfg.roots.artifact_ledger, ".allow/artifacts/doc-artifacts.toml");
+    assert_eq!(
+        cfg.roots.artifact_ledger,
+        ".allow/artifacts/doc-artifacts.toml"
+    );
     assert!(cfg.requirements.ledger_required);
     assert!(cfg.requirements.closeout_required_for_done_items);
 }
 
 #[test]
 fn parses_current_repository_doc_artifact_ledger() {
-    let ledger_result =
-        parse_doc_artifact_ledger(include_str!("../../../../.allow/artifacts/doc-artifacts.toml"));
+    let ledger_result = parse_doc_artifact_ledger(include_str!(
+        "../../../../.allow/artifacts/doc-artifacts.toml"
+    ));
     assert!(
         ledger_result.is_ok(),
         "ledger should parse: {:?}",
@@ -482,8 +486,9 @@ fn rejects_unknown_artifact_status() {
 
 #[test]
 fn validates_current_repository_artifact_files() {
-    let ledger_result =
-        parse_doc_artifact_ledger(include_str!("../../../../.allow/artifacts/doc-artifacts.toml"));
+    let ledger_result = parse_doc_artifact_ledger(include_str!(
+        "../../../../.allow/artifacts/doc-artifacts.toml"
+    ));
     assert!(
         ledger_result.is_ok(),
         "ledger should parse: {:?}",
@@ -504,8 +509,9 @@ fn validates_current_repository_artifact_files() {
 
 #[test]
 fn validates_current_repository_artifact_links() {
-    let ledger_result =
-        parse_doc_artifact_ledger(include_str!("../../../../.allow/artifacts/doc-artifacts.toml"));
+    let ledger_result = parse_doc_artifact_ledger(include_str!(
+        "../../../../.allow/artifacts/doc-artifacts.toml"
+    ));
     assert!(
         ledger_result.is_ok(),
         "ledger should parse: {:?}",
@@ -1343,8 +1349,9 @@ fn rejects_active_goal_unknown_plan() {
 
 #[test]
 fn parses_current_repository_active_goal_manifest() {
-    let ledger_result =
-        parse_doc_artifact_ledger(include_str!("../../../../.allow/artifacts/doc-artifacts.toml"));
+    let ledger_result = parse_doc_artifact_ledger(include_str!(
+        "../../../../.allow/artifacts/doc-artifacts.toml"
+    ));
     assert!(
         ledger_result.is_ok(),
         "ledger should parse: {:?}",
