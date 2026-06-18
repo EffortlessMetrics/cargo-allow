@@ -7,9 +7,9 @@ proposals = "docs/proposals"
 specs = "docs/specs"
 adrs = "docs/adr"
 plans = "plans"
-goals = ".codex/goals"
+goals = ".allow/goals"
 support_tiers = "docs/status/SUPPORT_TIERS.md"
-artifact_ledger = "policy/doc-artifacts.toml"
+artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
 
 [requirements]
 ledger_required = true

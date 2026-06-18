@@ -47,7 +47,7 @@ the source-tree state behind the claim.
 
 - The current evidence supports an advisory preview claim for the opt-in
   `spec-system` governance profile.
-- `policy/spec-system.toml` uses `mode = "blocking"` for this repository after
+- `.allow/profiles/spec-system.toml` uses `mode = "blocking"` for this repository after
   clean advisory and shadow burn-in.
 - A stronger support-tier claim requires an explicit promotion decision and
   refreshed evidence that the promoted posture is low-noise.

@@ -10,6 +10,13 @@ inventory without executing repository code.
 
 ### Added
 
+- Dogfood migrate profile state to `.allow/` (CARGO-ALLOW-PLAN-0004 C4): move
+  spec-system profile config, artifact ledger, active goal, archive, and imports
+  stub from legacy `policy/` profile paths and `.codex/goals/` to owned
+  `.allow/` layout. Register CARGO-ALLOW-CLOSEOUT-0008; mark
+  `portable-governance-c4` done; queue federation (#1473) blocked. Legacy C2
+  resolution fallback and fixture tests remain. `policy/allow.toml` stays the
+  source-exception ledger. No release authorization.
 - Register C3 init writes closeout (CARGO-ALLOW-CLOSEOUT-0007): mark
   `portable-governance-c3` done after #1750; queue `portable-governance-c4`
   (dogfood migrate profile state to `.allow/`) ready; reconcile

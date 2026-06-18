@@ -74,9 +74,9 @@ advisory ratcheting (#1474, #1472) is complete on main.
 
 | Item | Gap | Status | Owner | Evidence | PR |
 | --- | --- | --- | --- | --- | --- |
-| `.allow` profile resolution (C2) | Resolver prefers `.allow/` with legacy `policy/` fallback; dogfood paths unchanged until C4 | done | repo-infra | #1748 merge `2adb0b5e`; [CARGO-ALLOW-CLOSEOUT-0006](../spec-system/closeouts/profile-resolution-c2.md) | #1748 |
-| `init` to `.allow/` (C3) | `init --profile spec-system` bootstraps owned state under `.allow/`; dogfood paths unchanged until C4 | done | repo-infra | #1750 merge `23ac8376`; [CARGO-ALLOW-CLOSEOUT-0007](../spec-system/closeouts/init-writes-c3.md) | #1750 |
-| dogfood profile migration (C4) | Repository dogfood still uses legacy `policy/` profile paths | ready | repo-infra | CARGO-ALLOW-PLAN-0004 C4; `portable-governance-c4` in `.codex/goals/active.toml` | c4 |
+| `.allow` profile resolution (C2) | Resolver prefers `.allow/` with legacy `policy/` fallback; dogfood migrated in C4 | done | repo-infra | #1748 merge `2adb0b5e`; [CARGO-ALLOW-CLOSEOUT-0006](../spec-system/closeouts/profile-resolution-c2.md) | #1748 |
+| `init` to `.allow/` (C3) | `init --profile spec-system` bootstraps owned state under `.allow/`; dogfood migrated in C4 | done | repo-infra | #1750 merge `23ac8376`; [CARGO-ALLOW-CLOSEOUT-0007](../spec-system/closeouts/init-writes-c3.md) | #1750 |
+| dogfood profile migration (C4) | Repository dogfood profile state lives under `.allow/`; legacy `policy/` profile paths removed | done | repo-infra | CARGO-ALLOW-CLOSEOUT-0008; `.allow/profiles/spec-system.toml` | C4 |
 | P2 multi-ledger federation (#1473) | Federation across additional legacy ledgers needs design acceptance | blocked | repo-infra | `portable-governance-f0-federation`; docs/source-of-truth/README.md | — |
 | external ripr adoption | In-repo ripr-style dogfood closed; external repo migration unrequested | blocked | repo-infra | `docs/dogfood/cargo-allow-ripr-style-adoption.md`; `portable-governance-external-ripr` | — |
 | full import mode (#1466) | Umbrella open; characterization slices #1713–#1718 closed | blocked | repo-infra | CARGO-ALLOW-CLOSEOUT-0004; `portable-governance-full-import` | — |

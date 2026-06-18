@@ -380,11 +380,8 @@ fn validate_artifact_source_path(
         ArtifactKind::ActiveGoal => path_has_prefix(&source_path, &roots.goals),
         ArtifactKind::SupportTier => source_path == normalize_source_path(&roots.support_tiers),
         ArtifactKind::PolicyLedger => {
-            let policy_root = match source_parent(&roots.artifact_ledger) {
-                Some(root) => root,
-                None => "policy".to_string(),
-            };
-            path_has_prefix(&source_path, &policy_root)
+            path_has_prefix(&source_path, "policy")
+                || path_has_prefix(&source_path, ".allow/profiles")
         }
         ArtifactKind::ReleaseRecord => path_has_prefix(&source_path, "docs/release"),
     };
@@ -461,11 +458,6 @@ fn source_tree_path(repo_root: impl AsRef<Path>, source_path: &str) -> CargoAllo
 fn path_has_prefix(path: &str, prefix: &str) -> bool {
     let prefix = normalize_source_path(prefix);
     path == prefix || path.starts_with(&format!("{prefix}/"))
-}
-
-fn source_parent(path: &str) -> Option<String> {
-    let path = normalize_source_path(path);
-    path.rsplit_once('/').map(|(parent, _)| parent.to_string())
 }
 
 fn normalize_source_path(path: &str) -> String {
