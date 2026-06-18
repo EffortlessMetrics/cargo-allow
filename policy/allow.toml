@@ -3801,7 +3801,7 @@ normalized_snippet_hash = "fnv1a64:fa9243922c7f7584"
 glob = "tests/fixtures/structural-identity/lint_same_different_items/*.rs"
 
 [allow.last_seen]
-line = 1
+line = 4
 column = 1
 
 [[allow]]
@@ -3825,7 +3825,7 @@ normalized_snippet_hash = "fnv1a64:7e13a5ebdee85d74"
 glob = "tests/fixtures/structural-identity/lint_same_different_items/*.rs"
 
 [allow.last_seen]
-line = 4
+line = 1
 column = 1
 
 [[allow]]
@@ -4767,6 +4767,74 @@ symbol = "plans/spec-system/closeouts/import-i1-model.md"
 target_fingerprint = "md"
 line_hint = 1
 glob = "plans/spec-system/closeouts/import-i1-model.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0271"
+kind = "non_rust_file"
+family = "test_fixture"
+glob = "tests/fixtures/import/**/*"
+owner = "core/policy"
+classification = "import_adapter_fixture"
+reason = "I2 generic import adapter characterization fixtures for `.spec/`, `.rails/`, and repo-spec discovery."
+evidence = ["doc:plans/spec-system/allow-import-plan.md", "test:generic_spec_root_discovers_markdown_nodes"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/import/"
+target_fingerprint = "md"
+line_hint = 1
+glob = "tests/fixtures/import/**/*"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0272"
+kind = "panic"
+family = "expect"
+path = "crates/allow-policy/src/import_roots/adapters/generic.rs"
+owner = "core/policy"
+classification = "import_adapter_unit_test"
+reason = "I2 front-matter parser unit test expects valid fixture input so malformed YAML fails the test immediately."
+evidence = ["test:parse_front_matter_extracts_id_and_links"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::parse_front_matter_extracts_id_and_links"
+callee = "expect"
+line_hint = 259
+
+[allow.last_seen]
+line = 259
+column = 47
+
+[[allow]]
+id = "allow-4706"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/spec-system/closeouts/import-i2-generic-adapters.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records I2 generic import adapter narrow start closeout without claiming Kiro/Spec Kit adapters or release readiness."
+evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/active.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/spec-system/closeouts/import-i2-generic-adapters.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/spec-system/closeouts/import-i2-generic-adapters.md"
 
 [allow.last_seen]
 line = 1
