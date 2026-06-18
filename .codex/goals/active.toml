@@ -8,9 +8,12 @@ created = "2026-06-16"
 
 objective = """
 Strengthen cargo-allow migration and evidence parity on an adoption-ready
-substrate: internal coherence, modularization, and documented deltas on the path
-to the 0.2.0 milestone claim. Release automation (0.1.10) stays dormant until
-explicit authorization after adoption/cleanup lanes land.
+substrate, now executing import parity lanes toward real repo adoption (#1466
+child issues #1713–#1718). Internal coherence, modularization, and documented
+deltas remain on the path to the 0.2.0 milestone claim. Release automation
+(0.1.10) and OIDC publish lanes stay dormant until explicit authorization after
+import/adoption lanes land. `.allow` namespace import remains design-only
+(CARGO-ALLOW-SPEC-0004 / allow-import-plan).
 """
 
 linked_proposal = "CARGO-ALLOW-PROP-0002"
@@ -379,4 +382,40 @@ proof_commands = [
 evidence_notes = [
   "Landed in #1732 (merge 1f67fd64): allow-diff structural_identity_posture characterization for selector precision weakening/improvement and finding identity loss; no diff logic changes.",
   "Structural identity execution lane D1–D7 complete; D8 limitation docs deferred (not queued in active.toml).",
+]
+
+[[work_item]]
+id = "import-parity-pr-001"
+status = "done"
+title = "Register import parity execution lane starting with #1713"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
+proof_commands = [
+  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Governance registration only; no import behavior change.",
+  "Queues #1713 (semantic selector fields) as first import-parity execution slice; #1714–#1718 remain sequenced siblings.",
+  "Release/OIDC publish lanes dormant; `.allow` import design-only per CARGO-ALLOW-SPEC-0004.",
+]
+
+[[work_item]]
+id = "import-parity-1713"
+status = "ready"
+title = "Import semantic selector fields from legacy allowlists (#1466-a / #1713)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy-legacy semantic_selector",
+  "rtk cargo test -p allow-policy-legacy",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Preserve container/receiver/callee fingerprint fields from legacy nested selector tables into canonical policy entries where legacy parsers already surface selector data.",
+  "Fixture-backed characterization required; does not close umbrella #1466, multi-ledger federation (#1473), or ripr dogfood receipt (#1718).",
 ]
