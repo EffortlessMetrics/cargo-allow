@@ -7,9 +7,10 @@ owner = "codex"
 created = "2026-06-16"
 
 objective = """
-Strengthen cargo-allow migration and evidence parity so repositories can replace
-bespoke AST/TOML allowlist xtasks with side-by-side proof, durable receipts, and
-documented deltas on the path to the 0.2.0 milestone claim.
+Strengthen cargo-allow migration and evidence parity on an adoption-ready
+substrate: internal coherence, modularization, and documented deltas on the path
+to the 0.2.0 milestone claim. Release automation (0.1.10) stays dormant until
+explicit authorization after adoption/cleanup lanes land.
 """
 
 linked_proposal = "CARGO-ALLOW-PROP-0002"
@@ -139,14 +140,80 @@ evidence_notes = [
 
 [[work_item]]
 id = "migration-parity-b6"
-status = "ready"
+status = "done"
 title = "Close or split remaining import/parity issues"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
+proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "#1470 foreign-dialect discovery closed in #1699 (merge 53ea19aa) and #1700; gap-inventory reconciled.",
+  "#1466 bespoke semantic-selector import remains open umbrella; split and governance disposition tracked in adoption-substrate-pr-005.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-002"
+status = "ready"
+title = "Add migration lane descriptors for modular compat surfaces"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit",
 ]
 evidence_notes = [
-  "Resolve or defer #1466 semantic-selector import and #1470 foreign-dialect discovery per plans/migration-parity/pr-queue.md B6.",
+  "Internal coherence slice: document and modularize compat lane descriptors without behavior change.",
+  "Next active adoption/cleanup lane after B1–B6 migration parity groundwork.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-003"
+status = "blocked"
+title = "Extract evidence and lifecycle migration helpers"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+blocker_reason = "Sequenced after adoption-substrate-pr-002 migration lane descriptors land."
+evidence_notes = [
+  "Refactor-preserving modularization of shared evidence/lifecycle import paths.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-004"
+status = "blocked"
+title = "Normalize closeout queue routing across compat kinds"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+blocker_reason = "Sequenced after adoption-substrate-pr-003 evidence/lifecycle helpers land."
+evidence_notes = [
+  "Align closeout queue naming and phased next_queues across migration summaries.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-005"
+status = "blocked"
+title = "Split and govern #1466 semantic-selector import umbrella"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+blocker_reason = "Sequenced after adoption-substrate-pr-004 closeout queue normalization; governance split only, no import implementation."
+evidence_notes = [
+  "Open umbrella issue #1466 blocks ripr-style adoption; split into owned sub-issues with explicit deferral boundaries.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-006"
+status = "blocked"
+title = "Add advisory occurrence-count ratcheting for migration debt"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+blocker_reason = "Sequenced after adoption-substrate-pr-005 #1466 governance split lands."
+evidence_notes = [
+  "Advisory counts and ratcheting metadata for baseline_debt visibility; does not auto-approve debt.",
 ]

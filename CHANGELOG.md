@@ -43,6 +43,11 @@ inventory without executing repository code.
 
 ### Documentation
 
+- Reconcile migration parity and adoption-substrate execution state after B3–B6
+  groundwork: mark B1–B6 done in `.codex/goals/active.toml`, close #1470 in
+  gap-inventory, record #1466 umbrella split as adoption-substrate-pr-005, pivot
+  active lane to modularization PRs 2–6, and defer `0.1.10` release cut pending
+  adoption/cleanup (release automation #1703–#1705 dormant on `main`).
 - Add first in-repository migration parity dogfood receipt for the characterized
   `no-panic-baseline` lane: compat check, migrate, canonical check, worklist,
   and closeout artifacts under `docs/dogfood/`.

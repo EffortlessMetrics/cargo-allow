@@ -20,11 +20,13 @@ policy_impact:
 ## Summary
 
 Slice closeout for goal registration (#1687), gap inventory reconciliation (B1),
-and no-panic-baseline evidence/lifecycle import (B2, #1691).
+no-panic-baseline evidence/lifecycle import (B2, #1691), migration fixture matrix
+(B3, #1693), closeout routing (B4, #1695), panic-baseline dogfood receipt (B5,
+#1697), and import/parity disposition (B6).
 
 This closeout records landed planning and characterization work only. It does
-not claim full xtask replacement, side-by-side dogfood parity, or the `0.2.0`
-milestone.
+not claim full xtask replacement, side-by-side dogfood parity across all lanes,
+or the `0.2.0` milestone.
 
 ## Landed Slices
 
@@ -46,14 +48,48 @@ milestone.
 - Lifecycle fix: `review_after` without `expires` no longer inherits an
   unintended expires value.
 
+### Migration fixture matrix (migration-parity-b3)
+
+- Added `tests/fixtures/migration/` characterization across supported compat
+  kinds (#1693, merge `cd0ab7b`).
+- Table-driven `migration_fixture_matrix_tests.rs` covers parse preservation,
+  metadata, evidence, lifecycle, occurrence limits, deterministic reruns, and
+  policy-dir batch import.
+
+### Closeout routing (migration-parity-b4)
+
+- `cargo-allow.migrate.v1` summaries route baseline_debt, evidence repair, and
+  phased `next_queues` (#1695, merge `64832c5`).
+- Documented in `docs/how-to/migration-evidence-cookbook.md`.
+
+### Panic-baseline dogfood receipt (migration-parity-b5)
+
+- In-repository side-by-side receipt for one scoped panic-baseline slice
+  (#1697, merge `26a6873`).
+- Artifacts under `docs/dogfood/`.
+
+### Import/parity disposition (migration-parity-b6)
+
+- #1470 foreign-dialect discovery closed (#1699 merge `53ea19aa`, #1700).
+- #1466 bespoke semantic-selector import remains open umbrella; governance
+  split deferred to `adoption-substrate-pr-005`.
+
+## Related Landed Work (outside B1–B6 scope)
+
+- D2 structural identity refactor-pair matrix (#1701, merge `2165848`).
+- Release automation hardening (#1703–#1705) — dormant; not active release lane.
+- #1478 spec-system profile hygiene closed (#1706).
+
 ## Remaining Work
 
-- B3 fixture matrix under `tests/fixtures/migration/`.
-- B5 side-by-side dogfood receipts.
-- B6 import/parity issue disposition (#1466, #1470).
-- B7 `0.2.0` migration parity release notes.
+- Adoption-substrate PRs 2–6 (modularization, closeout normalization, #1466
+  split, advisory counts) — active lane in `.codex/goals/active.toml`.
+- B7 `0.2.0` migration parity release notes — after adoption substrate.
+- Per-lane `partial` rows in gap inventory — side-by-side dogfood and full lane
+  acceptance still open.
 
 ## Claim Boundary
 
 Incremental slice evidence only. `partial` lane status in the gap inventory is
-not a parity claim.
+not a parity claim. `0.1.10` release cut is deferred pending adoption/cleanup
+lane completion and explicit release authorization.
