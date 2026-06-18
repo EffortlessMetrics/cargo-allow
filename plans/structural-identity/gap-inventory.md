@@ -8,9 +8,9 @@ characterization tests in #1701 (merge `2165848`).
 | Finding surface | Gap | Status | Fixture needed | PR |
 | --- | --- | --- | --- | --- |
 | unsafe | container ambiguity in nested modules | done | refactor pair + sibling modules | D3 (#1724, `ffc4a47`) |
-| panic method calls | receiver fingerprint edge cases | done | method call matrix | D4 |
+| panic method calls | receiver fingerprint edge cases | done | method call matrix | D4 (#1726, `4f19e298`) |
 | panic macros | macro_name visibility | partial | macro invocation fixtures | D2 (done) |
-| index/slice | target_fingerprint precision | done | index expr matrix | D4 |
+| index/slice | target_fingerprint precision | done | index expr matrix | D4 (#1726, `4f19e298`) |
 | lint attributes | attribute target identity | partial | lint attr fixtures | D2 (done) |
 | match selectors | precision on new fields | open | matcher characterization | D6 |
 | diff posture | weakening on identity loss | open | diff characterization | D7 |

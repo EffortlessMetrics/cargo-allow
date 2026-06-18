@@ -17,6 +17,9 @@ inventory without executing repository code.
   `target_fingerprint` now records the bracket selector instead of mirroring
   the receiver. Fixtures: `rename_local`, `callee_same_receiver_diff`,
   `index_same_form_diff_targets`.
+  `index_same_form_diff_targets`.
+- Extend adoption-substrate lane closeout (CARGO-ALLOW-CLOSEOUT-0003) after
+  structural identity D4 receiver/target fingerprints land in #1726.
 - Register adoption-substrate lane closeout (CARGO-ALLOW-CLOSEOUT-0003) after the
   10-PR cleanup queue lands on main: modularization, advisory ratcheting,
   governance split, two in-repository dogfood receipts, and structural identity

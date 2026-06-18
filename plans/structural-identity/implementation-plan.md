@@ -38,7 +38,7 @@ rewrites.
 | D1 — gap inventory | done | [gap-inventory.md](gap-inventory.md), [docs/identity.md](../../docs/identity.md) |
 | D2 — refactor-pair fixture matrix | done | #1701 (merge `2165848`); `tests/fixtures/structural-identity/`, `allow-rust` `structural_identity` tests, policy allow-0215..0234 |
 | D3 — container identity in nested modules | done | #1724 (merge `ffc4a47`); module-qualifies unqualified containers; fixture `container_same_name_sibling_modules` |
-| D4 — receiver/target identity for method/index | done | parameter-slot receiver fingerprints (`param:N`); index selector target fingerprints; fixtures `rename_local`, `callee_same_receiver_diff`, `index_same_form_diff_targets` |
+| D4 — receiver/target identity for method/index | done | #1726 (merge `4f19e298`); parameter-slot receiver fingerprints (`param:N`); index selector target fingerprints; fixtures `rename_local`, `callee_same_receiver_diff`, `index_same_form_diff_targets` |
 
 ## Validation Baseline
 
