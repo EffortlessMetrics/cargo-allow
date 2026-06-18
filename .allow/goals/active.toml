@@ -135,7 +135,7 @@ evidence_notes = [
 
 [[work_item]]
 id = "portable-governance-f2-federation"
-status = "in_progress"
+status = "done"
 title = "P2 multi-ledger federation check evaluation (F2 #1473)"
 linked_proposal = "CARGO-ALLOW-PROP-0007"
 linked_spec = "CARGO-ALLOW-SPEC-0007"
@@ -147,7 +147,7 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Open in #1758: `allow-policy::federation::evaluate` resolves canonical ledgers with deterministic precedence; findings, work items, and receipts carry ledger provenance and `federation.ledger_contributors`.",
+  "Landed in #1758: `allow-policy::federation::evaluate` resolves canonical ledgers with deterministic precedence; findings, work items, and receipts carry ledger provenance and `federation.ledger_contributors`.",
   "Two-canonical-ledger fixture tests and dogfood `.allow/config.toml` registry; does not claim mirror divergence or drain-window enforcement (F3).",
 ]
 
@@ -164,7 +164,7 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Blocked pending F2 merge (#1758); targets drain-window enforcement and mirror divergence per CARGO-ALLOW-SPEC-0007.",
+  "F2 check evaluation merged to main; active execution slice per plans/federation/implementation-plan.md F3.",
   "Targets drain-window enforcement and mirror divergence reporting per CARGO-ALLOW-SPEC-0007.",
   "Does not claim release readiness or import-mode parity.",
 ]
