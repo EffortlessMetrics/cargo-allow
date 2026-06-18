@@ -10,6 +10,10 @@ inventory without executing repository code.
 
 ### Added
 
+- Register F2 federation check evaluation closeout (CARGO-ALLOW-CLOSEOUT-0011):
+  mark `portable-governance-f2-federation` done after #1758; queue
+  `portable-governance-f3-federation` ready; reconcile
+  `plans/migration-parity/gap-inventory.md`. No release authorization.
 - Multi-ledger federation F2 evaluation (#1473): evaluate canonical ledgers from
   `.allow/config.toml` with deterministic precedence on the source-exception
   `check` path; annotate findings, work items, and receipts with

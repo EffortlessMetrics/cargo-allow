@@ -1,7 +1,7 @@
 ---
 id: CARGO-ALLOW-CLOSEOUT-0011
 kind: closeout
-status: draft
+status: done
 owner: repo-infra
 created: 2026-06-18
 linked_plan: CARGO-ALLOW-PLAN-0007
@@ -49,7 +49,8 @@ on findings, work items, and receipts:
 
 ## Remaining Work
 
-- **Ready:** `portable-governance-f3-federation` (drain window enforcement; pending F2 merge).
+- **Done:** `portable-governance-f2-federation` (F2 check evaluation and receipt provenance; #1758).
+- **Ready:** `portable-governance-f3-federation` (drain window enforcement and mirror divergence reporting).
 
 ## Claim Boundary
 
