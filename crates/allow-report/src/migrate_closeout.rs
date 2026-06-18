@@ -1,12 +1,9 @@
 use allow_core::json_escape;
 
 use crate::artifacts::MigrateReport;
-use crate::migrate::{
-    migrate_evidence_repair_queues, migrate_follow_up_queues,
-};
+use crate::migrate::{migrate_evidence_repair_queues, migrate_follow_up_queues};
 
-const CHECK_NO_NEW_COMMAND: &str =
-    "cargo-allow check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md";
+const CHECK_NO_NEW_COMMAND: &str = "cargo-allow check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MigrateLegacySource {
@@ -108,9 +105,7 @@ pub fn migrate_closeout_from_input(input: MigrateCloseoutInput<'_>) -> MigrateCl
     MigrateCloseout {
         preserved: MigratePreserved {
             allow_entries: report.allow_entries,
-            reviewed_entries: report
-                .allow_entries
-                .saturating_sub(report.baseline_debt),
+            reviewed_entries: report.allow_entries.saturating_sub(report.baseline_debt),
             entries_with_evidence: report.entries_with_evidence,
             evidence_entries: report.evidence_entries,
             entries_with_links: report.entries_with_links,

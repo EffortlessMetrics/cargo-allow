@@ -23,7 +23,10 @@ fn migrate_closeout_summary_panic_baseline_with_evidence_preserves_legacy_proof(
     let closeout = closeout_value(&json);
 
     assert_eq!(closeout_preserved_u64(&closeout, "allow_entries"), 1);
-    assert_eq!(closeout_preserved_u64(&closeout, "entries_with_evidence"), 1);
+    assert_eq!(
+        closeout_preserved_u64(&closeout, "entries_with_evidence"),
+        1
+    );
     assert!(closeout_preserved_u64(&closeout, "evidence_entries") >= 2);
     assert_eq!(closeout_pointer_u64(&closeout, "/baseline_debt/entries"), 1);
     assert_eq!(closeout_preserved_u64(&closeout, "reviewed_entries"), 0);

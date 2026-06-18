@@ -92,6 +92,7 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
             expected_command: "migrate",
             expected_top_level_keys: &[
                 "claim_boundary",
+                "closeout",
                 "command",
                 "evidence_repair_queues",
                 "input",

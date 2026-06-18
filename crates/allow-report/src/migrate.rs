@@ -18,7 +18,10 @@ const UNSAFE_WEAK_EVIDENCE_REFERENCE_COMMAND: &str =
     "cargo-allow worklist --item-kind weak_evidence_reference --kind unsafe --format json";
 const BASELINE_DEBT_COMMAND: &str = "cargo-allow worklist --item-kind baseline_debt --format json";
 
-pub fn render_migrate_human(report: MigrateReport<'_>, closeout_input: MigrateCloseoutInput<'_>) -> String {
+pub fn render_migrate_human(
+    report: MigrateReport<'_>,
+    closeout_input: MigrateCloseoutInput<'_>,
+) -> String {
     let mut out = String::new();
     out.push_str("cargo-allow migrate summary\n");
     out.push_str(&format!("input_kind: {}\n", report.input_kind));
@@ -133,7 +136,10 @@ fn migrate_inventory_files_suffix(inventory: crate::InventoryContext<'_>) -> Str
         .unwrap_or_default()
 }
 
-pub fn render_migrate_json(report: MigrateReport<'_>, closeout_input: MigrateCloseoutInput<'_>) -> String {
+pub fn render_migrate_json(
+    report: MigrateReport<'_>,
+    closeout_input: MigrateCloseoutInput<'_>,
+) -> String {
     let mut out = String::new();
     out.push_str("{\n");
     push_json_fixed_artifact_preamble(&mut out, MIGRATE_ARTIFACT, report.inventory);
@@ -315,7 +321,9 @@ pub(crate) fn migrate_follow_up_queues(report: MigrateReport<'_>) -> Vec<Migrate
     queues
 }
 
-pub(crate) fn migrate_evidence_repair_queues(report: MigrateReport<'_>) -> Vec<MigrateEvidenceRepairQueue> {
+pub(crate) fn migrate_evidence_repair_queues(
+    report: MigrateReport<'_>,
+) -> Vec<MigrateEvidenceRepairQueue> {
     let mut queues = Vec::new();
     let broken_count = report.broken_evidence_links.unwrap_or(0);
     let unsafe_broken_count = report.unsafe_broken_evidence_links.unwrap_or(0);

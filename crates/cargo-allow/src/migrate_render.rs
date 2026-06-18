@@ -1,8 +1,6 @@
 use super::MigrateContext;
 use allow_core::{AllowConfig, FindingKind};
-use allow_report::{
-    MigrateCloseoutInput, MigrateLegacySource, policy_missing_evidence_entries,
-};
+use allow_report::{MigrateCloseoutInput, MigrateLegacySource, policy_missing_evidence_entries};
 use std::path::{Path, PathBuf};
 
 pub(super) fn render_migrate_summary(
@@ -46,7 +44,7 @@ fn migrate_legacy_sources(context: &MigrateContext) -> Vec<MigrateLegacySource> 
         .zip(context.legacy_compat_kinds.iter())
         .map(|(file_name, compat_kind)| MigrateLegacySource {
             file_name: file_name.clone(),
-            compat_kind: *compat_kind,
+            compat_kind,
         })
         .collect()
 }

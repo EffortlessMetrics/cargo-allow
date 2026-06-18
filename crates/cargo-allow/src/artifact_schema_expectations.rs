@@ -192,6 +192,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
             "migrate",
             &[
                 "claim_boundary",
+                "closeout",
                 "command",
                 "evidence_repair_queues",
                 "follow_up_queues",
@@ -395,6 +396,7 @@ pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [
             "migrate",
             &[
                 "claim_boundary",
+                "closeout",
                 "command",
                 "input",
                 "inventory",
