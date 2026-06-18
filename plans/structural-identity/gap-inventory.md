@@ -11,7 +11,7 @@ characterization tests in #1701 (merge `2165848`).
 | panic method calls | receiver fingerprint edge cases | done | method call matrix | D4 (#1726, `4f19e298`) |
 | panic macros | macro_name visibility | partial | macro invocation fixtures | D2 (done) |
 | index/slice | target_fingerprint precision | done | index expr matrix | D4 (#1726, `4f19e298`) |
-| lint attributes | attribute target identity | done | lint attr fixtures | D5 |
+| lint attributes | attribute target identity | done | lint attr fixtures | D5 (#1728, `7b2f2785`) |
 | match selectors | precision on new fields | open | matcher characterization | D6 |
 | diff posture | weakening on identity loss | open | diff characterization | D7 |
 | match selectors | precision on new fields | open | matcher characterization | D6 |

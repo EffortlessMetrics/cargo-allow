@@ -37,7 +37,7 @@ Parity status values:
 
 ## Adoption Substrate Lane (closed)
 
-10-PR cleanup queue complete on main; D4 receiver/target slice recorded in
+10-PR cleanup queue complete on main; D4-D5 structural-identity slices recorded in
 closeout extension. Closeout:
 [CARGO-ALLOW-CLOSEOUT-0003](closeouts/adoption-substrate-lane.md). Release cut
 (`0.1.10`) remains deferred; this closeout is not a publish authorization.

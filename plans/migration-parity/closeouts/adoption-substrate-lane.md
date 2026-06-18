@@ -20,11 +20,12 @@ policy_impact:
 ## Summary
 
 Closeout for the adoption-substrate cleanup queue (`adoption-substrate-pr-002`
-through `adoption-substrate-pr-011`) on the path to migration and evidence
+through `adoption-substrate-pr-012`) on the path to migration and evidence
 parity. Landed modularization, advisory ratcheting, governance split, two
 in-repository dogfood receipts, structural identity D3 container
-module-qualification (#1724, merge `ffc4a47`), and D4 receiver/target
-fingerprints (#1726, merge `4f19e298`).
+module-qualification (#1724, merge `ffc4a47`), D4 receiver/target
+fingerprints (#1726, merge `4f19e298`), and D5 lint attribute target
+identity (#1728, merge `7b2f2785`).
 
 This closeout records planning, characterization, and scanner-hardening work
 only. It does not claim full xtask replacement, side-by-side dogfood parity
@@ -80,6 +81,12 @@ implementation.
 - Fixtures: `rename_local`, `callee_same_receiver_diff`,
   `index_same_form_diff_targets`.
 
+### Structural identity D5 (adoption-substrate-pr-012)
+
+- Lint attribute target identity via `container`/`module` and
+  `inner_attribute_item` scope collection (#1728, merge `7b2f2785`).
+- Fixture: `lint_same_different_items`.
+
 ## Validation Evidence
 
 | Check | Result | Evidence |
@@ -113,6 +120,6 @@ slices only.
 
 ## Follow-Up Links
 
-- PR: #1726 (D4)
+- PR: #1728 (D5)
 - Closeout predecessor: CARGO-ALLOW-CLOSEOUT-0002
-- Next ready lane: `adoption-substrate-pr-012` (structural identity D5)
+- Next ready lane: `adoption-substrate-pr-013` (structural identity D6)
