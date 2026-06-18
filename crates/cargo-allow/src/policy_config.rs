@@ -1,6 +1,14 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
-use allow_policy::{find_config, load_policy, load_policy_with_reportable_evidence};
+use allow_policy::{
+    SkippedPolicyCandidate, discover_config, load_policy, load_policy_with_reportable_evidence,
+};
 use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ConfigDiscovery {
+    pub path: Option<PathBuf>,
+    pub skipped: Vec<SkippedPolicyCandidate>,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EvidenceValidationMode {
@@ -23,9 +31,10 @@ pub(crate) fn load_config_required_with_evidence_mode(
     config: Option<&Path>,
     evidence_validation: EvidenceValidationMode,
 ) -> CargoAllowResult<AllowConfig> {
-    let path = config_path(root, config).ok_or_else(|| {
-        CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
-    })?;
+    let discovery = discover_config_path(root, config);
+    let path = discovery
+        .path
+        .ok_or_else(|| missing_config_error(&discovery.skipped))?;
     load_policy_for_root(path, evidence_validation)
 }
 
@@ -34,9 +43,11 @@ pub(crate) fn load_config_optional_with_evidence_mode(
     config: Option<&Path>,
     evidence_validation: EvidenceValidationMode,
 ) -> CargoAllowResult<Option<AllowConfig>> {
-    match config_path(root, config) {
+    let discovery = discover_config_path(root, config);
+    match discovery.path {
         Some(path) => Ok(Some(load_policy_for_root(path, evidence_validation)?)),
-        None => Ok(None),
+        None if discovery.skipped.is_empty() => Ok(None),
+        None => Err(missing_config_error(&discovery.skipped)),
     }
 }
 
@@ -52,9 +63,39 @@ fn load_policy_for_root(
 }
 
 pub(crate) fn config_path(root: &Path, config: Option<&Path>) -> Option<PathBuf> {
-    config
-        .map(|path| root_relative_path(root, path))
-        .or_else(|| find_config(root))
+    discover_config_path(root, config).path
+}
+
+pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> ConfigDiscovery {
+    if let Some(config) = config {
+        return ConfigDiscovery {
+            path: Some(root_relative_path(root, config)),
+            skipped: Vec::new(),
+        };
+    }
+    let result = discover_config(root);
+    ConfigDiscovery {
+        path: result.selected,
+        skipped: result.skipped,
+    }
+}
+
+fn missing_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllowError {
+    if skipped.is_empty() {
+        return CargoAllowError::new(
+            "no policy config found; run `cargo-allow init` or pass --config",
+        );
+    }
+    let details = skipped
+        .iter()
+        .map(|candidate| format!("{} ({})", candidate.path.display(), candidate.reason))
+        .collect::<Vec<_>>()
+        .join("; ");
+    CargoAllowError::new(format!(
+        "no cargo-allow policy config found; skipped {} foreign-dialect candidate(s): {}; run `cargo-allow init` or pass --config",
+        skipped.len(),
+        details
+    ))
 }
 
 pub(crate) fn root_relative_path(root: &Path, path: &Path) -> PathBuf {
@@ -69,9 +110,10 @@ pub(crate) fn git_relative_config_path(
     root: &Path,
     config: Option<&Path>,
 ) -> CargoAllowResult<PathBuf> {
-    let path = config_path(root, config).ok_or_else(|| {
-        CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
-    })?;
+    let discovery = discover_config_path(root, config);
+    let path = discovery
+        .path
+        .ok_or_else(|| missing_config_error(&discovery.skipped))?;
     let root = root.canonicalize().map_err(|e| {
         CargoAllowError::new(format!("failed to canonicalize {}: {e}", root.display()))
     })?;

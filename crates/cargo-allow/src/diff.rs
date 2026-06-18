@@ -284,8 +284,13 @@ fn git_relative_config_path_for_diff(
     ))
 }
 
-fn default_diff_policy_paths() -> [&'static str; 3] {
-    ["policy/allow.toml", ".cargo/allow.toml", "allow.toml"]
+fn default_diff_policy_paths() -> [&'static str; 4] {
+    [
+        "policy/cargo-allow.toml",
+        "policy/allow.toml",
+        ".cargo/allow.toml",
+        "allow.toml",
+    ]
 }
 
 fn explicit_diff_config_path(root: &Path, config: &Path) -> CargoAllowResult<PathBuf> {
