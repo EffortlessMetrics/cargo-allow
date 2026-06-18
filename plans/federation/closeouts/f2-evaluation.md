@@ -50,7 +50,7 @@ on findings, work items, and receipts:
 ## Remaining Work
 
 - **Done:** `portable-governance-f2-federation` (F2 check evaluation and receipt provenance; #1758).
-- **Ready:** `portable-governance-f3-federation` (drain window enforcement and mirror divergence reporting).
+- **Done:** `portable-governance-f3-federation` (drain window enforcement and mirror divergence reporting; #1759).
 
 ## Claim Boundary
 

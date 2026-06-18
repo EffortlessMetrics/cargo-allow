@@ -17,8 +17,10 @@ portable-governance-c4 done). F0 multi-ledger federation design landed
 (#1755; portable-governance-f0-federation done). F1 federation config
 parse/validate landed (#1756; portable-governance-f1-federation done). F2
 multi-ledger check evaluation and receipt provenance landed (#1758;
-portable-governance-f2-federation done). F3 drain-window enforcement is ready
-and unblocked per CARGO-ALLOW-PLAN-0007 F3 slice. External `ripr`
+portable-governance-f2-federation done). F3 drain-window enforcement and mirror
+divergence reporting landed (#1759 merge `f81a9d2`; portable-governance-f3-federation
+done). I1 generic import-root model is ready and unblocked per
+CARGO-ALLOW-PLAN-0004 / allow-import-plan. External `ripr`
 migration and full import mode (#1466) remain blocked. Release automation
 (0.1.10) and OIDC publish lanes stay dormant until explicit authorization.
 """
@@ -153,20 +155,38 @@ evidence_notes = [
 
 [[work_item]]
 id = "portable-governance-f3-federation"
-status = "ready"
+status = "done"
 title = "P2 multi-ledger federation drain enforcement (F3 #1473)"
 linked_proposal = "CARGO-ALLOW-PROP-0007"
 linked_spec = "CARGO-ALLOW-SPEC-0007"
 linked_plan = "plans/federation/implementation-plan.md"
+linked_closeout = "plans/federation/closeouts/f3-drain-divergence.md"
 proof_commands = [
   "rtk cargo test -p allow-policy federation",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "F2 check evaluation merged to main; active execution slice per plans/federation/implementation-plan.md F3.",
-  "Targets drain-window enforcement and mirror divergence reporting per CARGO-ALLOW-SPEC-0007.",
-  "Does not claim release readiness or import-mode parity.",
+  "Landed in #1759 (merge `f81a9d2`): `[[drain_windows]]` config, canonical-vs-mirror comparison during active drains, visible `mirror_divergence` / `mirror_stale` / blocking `drain_expired` in doctor, receipts, worklist, and advisory counts; optional `check --deny mirror_divergence`.",
+  "Fixture-backed federation tests including canonical-mirror-drain-config.toml; does not claim import adapters or release readiness.",
+]
+
+[[work_item]]
+id = "portable-governance-i1-import"
+status = "ready"
+title = "Generic import-root model (I1 #1466)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "F3 federation slice merged (#1759 merge `f81a9d2`); next import lane per portable-governance queue.",
+  "Targets one import abstraction (owned/imported/legacy/generated) with normalized graph nodes, edges, provenance, confidence, and diagnostics per CARGO-ALLOW-SPEC-0004 allow-import-plan C5–C7.",
+  "Does not implement Kiro/Spec Kit/.rails adapters (I2+) or claim full import mode (#1466 umbrella).",
 ]
 
 [[work_item]]
