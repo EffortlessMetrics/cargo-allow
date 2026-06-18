@@ -316,9 +316,7 @@ fn spec_system_init_bootstrapped_profile_loads_via_check() {
         force: false,
         config: PathBuf::from("policy/allow.toml"),
     })
-    .unwrap_or_else(|err| {
-        std::panic::panic_any(format!("spec-system init should pass: {err}"))
-    });
+    .unwrap_or_else(|err| std::panic::panic_any(format!("spec-system init should pass: {err}")));
 
     let output = root.join("check.json");
     let result = crate::check::cmd_check(&crate::check::CheckArgs {
@@ -369,9 +367,7 @@ fn spec_system_init_does_not_write_legacy_policy_profile_paths() {
         force: false,
         config: PathBuf::from("policy/allow.toml"),
     })
-    .unwrap_or_else(|err| {
-        std::panic::panic_any(format!("spec-system init should pass: {err}"))
-    });
+    .unwrap_or_else(|err| std::panic::panic_any(format!("spec-system init should pass: {err}")));
 
     assert!(
         !root.join("policy/spec-system.toml").exists(),

@@ -299,10 +299,7 @@ fn spec_system_bootstrap_files(config_path: &Path) -> Vec<SpecSystemBootstrapFil
             active_goal_template(),
         ),
         bootstrap_file(Path::new(".allow/goals/archive/.gitkeep"), String::new()),
-        bootstrap_file(
-            Path::new(".allow/imports/README.md"),
-            imports_root_readme(),
-        ),
+        bootstrap_file(Path::new(".allow/imports/README.md"), imports_root_readme()),
         bootstrap_file(
             Path::new("docs/status/SUPPORT_TIERS.md"),
             support_tiers_template(),
