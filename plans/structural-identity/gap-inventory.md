@@ -2,15 +2,18 @@
 
 Living inventory for
 [CARGO-ALLOW-SPEC-0005](../../docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md).
-Populate during PR D1; characterize refactor pairs in D2.
+D1 populated the table below; D2 landed refactor-pair fixtures and
+characterization tests in #1701 (merge `2165848`).
 
 | Finding surface | Gap | Status | Fixture needed | PR |
 | --- | --- | --- | --- | --- |
-| unsafe | container ambiguity in nested modules | partial | refactor pair | D2 |
-| panic method calls | receiver fingerprint edge cases | partial | method call matrix | D2 |
-| panic macros | macro_name visibility | partial | macro invocation fixtures | D2 |
-| index/slice | target_fingerprint precision | partial | index expr matrix | D2 |
-| lint attributes | attribute target identity | partial | lint attr fixtures | D2 |
+| unsafe | container ambiguity in nested modules | partial | refactor pair | D2 (done) |
+| panic method calls | receiver fingerprint edge cases | partial | method call matrix | D2 (done) |
+| panic macros | macro_name visibility | partial | macro invocation fixtures | D2 (done) |
+| index/slice | target_fingerprint precision | partial | index expr matrix | D2 (done) |
+| lint attributes | attribute target identity | partial | lint attr fixtures | D2 (done) |
+| match selectors | precision on new fields | open | matcher characterization | D6 |
+| diff posture | weakening on identity loss | open | diff characterization | D7 |
 | match selectors | precision on new fields | open | matcher characterization | D6 |
 | diff posture | weakening on identity loss | open | diff characterization | D7 |
 

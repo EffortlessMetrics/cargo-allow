@@ -31,6 +31,13 @@ rewrites.
 | D7 | Verify weakening/improvement with new identity fields | `crates/allow-diff/` |
 | D8 | Scanner limitation examples and claim boundary docs | `docs/identity.md`, `docs/claim-boundaries.md` |
 
+## Execution State (2026-06-18)
+
+| PR | Status | Evidence |
+| --- | --- | --- |
+| D1 — gap inventory | done | [gap-inventory.md](gap-inventory.md), [docs/identity.md](../../docs/identity.md) |
+| D2 — refactor-pair fixture matrix | done | #1701 (merge `2165848`); `tests/fixtures/structural-identity/`, `allow-rust` `structural_identity` tests, policy allow-0215..0234 |
+
 ## Validation Baseline
 
 Targeted identity tests plus default no-new guard per PR.
