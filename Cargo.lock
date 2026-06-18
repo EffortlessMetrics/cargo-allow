@@ -74,6 +74,7 @@ name = "allow-report"
 version = "0.1.9"
 dependencies = [
  "allow-core",
+ "allow-policy-legacy",
 ]
 
 [[package]]
