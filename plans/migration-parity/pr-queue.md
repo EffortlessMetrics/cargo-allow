@@ -12,7 +12,7 @@ Actionable inventory for the `0.2.0` migration parity lane
 | B2 — no-panic-baseline evidence/lifecycle slice | done | #1691 (merge `1cd408e`) |
 | B3 — migration fixture matrix | done | #1693 (merge `cd0ab7b`) |
 | B4 — migration closeout routing | done | #1695 (merge `64832c5`); closeout goal #1696 (merge `e9b4f9f`) |
-| B5 — panic-baseline dogfood receipt | in progress | [cargo-allow-panic-baseline.md](../../docs/dogfood/cargo-allow-panic-baseline.md) |
+| B5 — panic-baseline dogfood receipt | done | #1697 (merge `26a6873`); [cargo-allow-panic-baseline.md](../../docs/dogfood/cargo-allow-panic-baseline.md) |
 
 ## Surfaces
 
@@ -105,12 +105,16 @@ Active goal work item: `migration-parity-b4`.
 
 Claim boundary: closeout routing metadata only.
 
-### PR B5 — Add side-by-side dogfood receipt on cargo-allow (in progress)
+### PR B5 — Add side-by-side dogfood receipt on cargo-allow (done, #1697)
 
 Purpose: run migration parity proof against this repository's own legacy surfaces.
 
+Status: done (merge `26a6873`).
+
 Files: `docs/dogfood/cargo-allow-panic-baseline.md`, `docs/dogfood/fixtures/`,
 `docs/dogfood/receipts/`.
+
+Active goal work item: `migration-parity-b5`.
 
 Claim boundary: dogfood evidence for this repo only; one characterized
 panic-baseline slice.
