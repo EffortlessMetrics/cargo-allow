@@ -96,7 +96,6 @@ fn migration_fixture_matrix_characterizes_supported_legacy_lanes() {
         }
 
         match case.occurrence_limit {
-            OccurrenceLimitExpect::Skip => {}
             OccurrenceLimitExpect::None => {
                 assert_eq!(
                     entry.occurrence_limit, None,
@@ -241,7 +240,6 @@ fn migration_fixture_matrix_policy_dir_batch_imports_primary_lanes() {
 
 #[derive(Clone, Copy)]
 enum OccurrenceLimitExpect {
-    Skip,
     None,
     Some(u32),
 }
