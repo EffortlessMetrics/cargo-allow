@@ -24,6 +24,7 @@ use crate::{
     load_compat_world, load_world_with_evidence_mode, policy_baseline_debt_entries, print_report,
     report_config, spec_system, write_file,
 };
+use crate::federation_report::FederationReportBundle;
 use allow_inventory::{InventorySource, resolve_source_tree_root};
 
 pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
@@ -56,13 +57,20 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
 }
 
 fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, inventory_facts) = if args.compat {
-        load_compat_world(
+    let (root, cfg, findings, inventory_facts, federation) = if args.compat {
+        let (root, cfg, findings, inventory_facts) = load_compat_world(
             args.root.root.as_deref(),
             args.config.as_deref(),
             args.kind.as_deref(),
             args.include_untracked,
-        )?
+        )?;
+        (
+            root,
+            cfg,
+            findings,
+            inventory_facts,
+            crate::world::default_federation_evaluation(),
+        )
     } else {
         load_world_with_evidence_mode(
             args.root.root.as_deref(),
@@ -73,6 +81,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             EvidenceValidationMode::ReportOnly,
         )?
     };
+    let federation_bundle = FederationReportBundle::from_evaluation(&federation);
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let mode = CheckMode::parse(
         args.mode
@@ -124,14 +133,22 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             &report_cfg.lanes,
             findings.iter().map(|finding| finding.kind),
         );
-        apply_receipt_run_metadata(&mut context, effective_mode, mode, policy_config.as_deref());
-        context.lane_posture = Some(&lane_posture);
-        write_file(
-            path,
-            &render_receipt_with_context_and_inventory(
-                "check", &findings, &outcomes, failed, context,
-            ),
-        )?;
+        let receipt = federation_bundle.with_context(|federation_context| {
+            let mut receipt_context = source_context.report(Some(baseline_debt_entries));
+            evidence.apply_to(&mut receipt_context);
+            apply_receipt_run_metadata(
+                &mut receipt_context,
+                effective_mode,
+                mode,
+                policy_config.as_deref(),
+            );
+            receipt_context.lane_posture = Some(&lane_posture);
+            receipt_context.federation = Some(federation_context);
+            render_receipt_with_context_and_inventory(
+                "check", &findings, &outcomes, failed, receipt_context,
+            )
+        });
+        write_file(path, &receipt)?;
     }
     if failed {
         process::exit(1);

@@ -18,6 +18,7 @@ pub(crate) fn build_file_finding(path: &Path, family: String, generated: bool) -
         span: Some(Span { line: 1, column: 1 }),
         identity,
         message: format!("tracked non-Rust file classified as {family}"),
+        ledger: None,
     }
 }
 

@@ -62,9 +62,10 @@ pub use starter::starter_policy;
 pub use validation::validate_policy;
 
 pub use federation::{
-    FederationConfig, FederationDiagnostic, FederationDiagnosticKind, LedgerEntry, LedgerRole,
-    ValidatedFederationConfig, load_federation_config, parse_federation_config,
-    validate_federation_config,
+    FederationConfig, FederationDiagnostic, FederationDiagnosticKind, FederationEvaluation,
+    LedgerContributor, LedgerEntry, LedgerRole, PrecedenceTier, ValidatedFederationConfig,
+    evaluate_source_exception_policy, evaluate_spec_system_ledger, load_federation_config,
+    parse_federation_config, validate_federation_config,
 };
 
 pub use discovery::{

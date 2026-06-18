@@ -72,6 +72,7 @@ fn worklist_filters_by_advisory_shortcuts() {
         message: "baseline debt".to_string(),
         suggested_actions: Vec::new(),
         proof_commands: Vec::new(),
+        ledger: WorkItemLedger::default(),
     };
     let mut broad = baseline.clone();
     broad.id = "work-broad-scope-0002".to_string();
@@ -135,6 +136,7 @@ fn worklist_filters_by_missing_evidence() {
         message: "allow-missing requires evidence".to_string(),
         suggested_actions: Vec::new(),
         proof_commands: Vec::new(),
+        ledger: WorkItemLedger::default(),
     };
     let mut evidenced = missing.clone();
     evidenced.id = "work-review-due-0002".to_string();
@@ -191,6 +193,7 @@ fn worklist_filters_by_evidence_health_shortcuts() {
         message: "broken evidence".to_string(),
         suggested_actions: Vec::new(),
         proof_commands: Vec::new(),
+        ledger: WorkItemLedger::default(),
     };
     let mut weak = broken.clone();
     weak.id = "work-weak-evidence-reference-0002".to_string();

@@ -2,6 +2,7 @@ mod add;
 mod diff;
 mod doctor;
 mod explain;
+pub(crate) mod federation;
 mod list;
 mod migrate;
 mod propose;
@@ -17,6 +18,7 @@ pub use diff::{
     DiffSelectorIdentityChange, DiffSelectorPrecisionChange,
 };
 pub use doctor::{ConfiguredLedgerSummary, DoctorReport, FederationDiagnosticSummary};
+pub use federation::{FederationReportContext, LedgerContributorSummary};
 pub use explain::{EvidenceReference, ExplainReport};
 pub use list::{ListFilters, ListRow};
 pub use migrate::MigrateReport;

@@ -10,13 +10,20 @@ inventory without executing repository code.
 
 ### Added
 
+- Multi-ledger federation F2 evaluation (#1473): evaluate canonical ledgers from
+  `.allow/config.toml` with deterministic precedence on the source-exception
+  `check` path; annotate findings, work items, and receipts with
+  `ledger_id`, `ledger_path`, `lane`, `mode`, and `role` provenance plus receipt
+  `federation.ledger_contributors` and `precedence_applied`. Spec-system work
+  items inherit doc-artifacts ledger provenance when federation config is present.
+  Does not claim mirror divergence enforcement (F3) or release readiness.
 - Multi-ledger federation F1 config (#1473): parse `[[ledgers]]` entries from
   `.allow/config.toml` with `id`, `path`, `dialect`, `role`, optional `lanes`,
   `mode`, `priority`, and mirror `mirrors` targets. Validate duplicate ledger
   IDs/paths, canonical lane collisions, mirror targets, and foreign dialect
   posture (`dialect_conflict` vs informational `dialect_skipped`). Default
   `doctor` and spec-system doctor report configured ledgers and validation
-  diagnostics; multi-ledger check evaluation remains deferred to F2.
+  diagnostics.
 - Multi-ledger federation F0 design (#1473): register CARGO-ALLOW-PROP-0007,
   CARGO-ALLOW-SPEC-0007, CARGO-ALLOW-ADR-0001, and CARGO-ALLOW-PLAN-0007.
   Define canonical/mirror/imported ledger roles, lane ownership, deterministic

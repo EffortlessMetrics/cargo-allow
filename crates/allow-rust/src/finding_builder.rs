@@ -44,6 +44,7 @@ pub(crate) fn push_finding<F>(
         }),
         identity,
         message: format!("{kind} {family} syntax found"),
+        ledger: None,
     });
 }
 

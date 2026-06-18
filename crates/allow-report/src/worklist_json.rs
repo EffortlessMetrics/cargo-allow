@@ -155,8 +155,28 @@ fn render_work_item_json(item: &WorklistItem<'_>) -> String {
         json_string_array(item.suggested_actions)
     ));
     out.push_str(&format!(
-        "      \"proof_commands\": {}\n",
+        "      \"proof_commands\": {},\n",
         json_string_array(item.proof_commands)
+    ));
+    out.push_str(&format!(
+        "      \"ledger_id\": {},\n",
+        option_json(item.ledger_id)
+    ));
+    out.push_str(&format!(
+        "      \"ledger_path\": {},\n",
+        option_json(item.ledger_path)
+    ));
+    out.push_str(&format!(
+        "      \"lane\": {},\n",
+        option_json(item.lane)
+    ));
+    out.push_str(&format!(
+        "      \"mode\": {},\n",
+        option_json(item.mode)
+    ));
+    out.push_str(&format!(
+        "      \"role\": {}\n",
+        option_json(item.role)
     ));
     out.push_str("    }");
     out

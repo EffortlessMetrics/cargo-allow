@@ -1,6 +1,7 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use allow_policy::{
-    SkippedPolicyCandidate, discover_config, load_policy, load_policy_with_reportable_evidence,
+    SkippedPolicyCandidate, discover_config, evaluate_source_exception_policy,
+    load_policy, load_policy_with_reportable_evidence, PrecedenceTier,
 };
 use std::path::{Path, PathBuf};
 
@@ -62,21 +63,37 @@ fn load_policy_for_root(
     }
 }
 
+pub(crate) fn load_policy_at_path(
+    path: PathBuf,
+    evidence_validation: EvidenceValidationMode,
+) -> CargoAllowResult<AllowConfig> {
+    load_policy_for_root(path, evidence_validation)
+}
+
 pub(crate) fn config_path(root: &Path, config: Option<&Path>) -> Option<PathBuf> {
     discover_config_path(root, config).path
 }
 
 pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> ConfigDiscovery {
-    if let Some(config) = config {
-        return ConfigDiscovery {
-            path: Some(root_relative_path(root, config)),
-            skipped: Vec::new(),
-        };
-    }
-    let result = discover_config(root);
-    ConfigDiscovery {
-        path: result.selected,
-        skipped: result.skipped,
+    match evaluate_source_exception_policy(root, config) {
+        Ok((path, evaluation)) => {
+            let skipped = if evaluation.precedence_applied == PrecedenceTier::DiscoveryFallback {
+                discover_config(root).skipped
+            } else {
+                Vec::new()
+            };
+            ConfigDiscovery {
+                path: Some(path),
+                skipped,
+            }
+        }
+        Err(_) => {
+            let discovery = discover_config(root);
+            ConfigDiscovery {
+                path: discovery.selected,
+                skipped: discovery.skipped,
+            }
+        }
     }
 }
 

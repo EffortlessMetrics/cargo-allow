@@ -106,6 +106,34 @@
       "minLength": 1,
       "description": "cargo-allow version that produced this receipt."
     },
+    "federation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "federation_version": { "type": "string" },
+        "precedence_applied": { "type": "string" },
+        "ledger_contributors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "path", "role", "dialect", "mode", "priority", "lanes"],
+            "properties": {
+              "id": { "type": "string" },
+              "path": { "type": "string" },
+              "role": { "type": "string" },
+              "dialect": { "type": "string" },
+              "mode": { "type": "string" },
+              "priority": { "type": "integer", "minimum": 0 },
+              "lanes": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
     "diagnostic": {
       "type": "string",
       "description": "Machine-readable validation or configuration error for status=error receipts."

@@ -1,6 +1,8 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_inventory::resolve_source_tree_root;
-use allow_policy::federation::{FederationLoadOutcome, load_federation_config};
+use allow_policy::federation::{
+    evaluate_spec_system_ledger, load_federation_config, FederationLoadOutcome,
+};
 use allow_policy::spec_system::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, ProfileConfigProvenance,
     ResolvedProfileConfig, SpecSystemConfig, SpecSystemMode, SpecSystemRequirements,
@@ -179,6 +181,25 @@ struct SpecSystemReport {
     findings: Vec<SpecSystemFinding>,
     work_items: Vec<SpecSystemWorkItem>,
     readiness: Option<SpecSystemReadiness>,
+    federation: Option<SpecSystemFederationSummary>,
+}
+
+#[derive(Debug, Clone)]
+struct SpecSystemFederationSummary {
+    federation_version: String,
+    precedence_applied: String,
+    ledger_contributors: Vec<SpecSystemLedgerContributor>,
+}
+
+#[derive(Debug, Clone)]
+struct SpecSystemLedgerContributor {
+    id: String,
+    path: String,
+    role: String,
+    dialect: String,
+    mode: String,
+    priority: u32,
+    lanes: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -229,6 +250,11 @@ struct SpecSystemWorkItem {
     message: String,
     suggested_actions: Vec<String>,
     proof_commands: Vec<String>,
+    ledger_id: Option<String>,
+    ledger_path: Option<String>,
+    lane: Option<String>,
+    mode: Option<String>,
+    role: Option<String>,
 }
 
 #[derive(Debug)]
@@ -584,6 +610,11 @@ fn build_spec_system_report(
                                 .to_string(),
                         ],
                         proof_commands: spec_system_proof_commands(),
+                        ledger_id: None,
+                        ledger_path: None,
+                        lane: None,
+                        mode: None,
+                        role: None,
                     });
                 }
             }
@@ -608,6 +639,11 @@ fn build_spec_system_report(
                             .to_string(),
                     ],
                     proof_commands: spec_system_proof_commands(),
+                    ledger_id: None,
+                    ledger_path: None,
+                    lane: None,
+                    mode: None,
+                    role: None,
                 });
             }
         }
@@ -616,6 +652,28 @@ fn build_spec_system_report(
     if include_work_items {
         work_items.extend(work_items_from_config_findings(&findings));
     }
+    let federation = evaluate_spec_system_ledger(&root).map(|evaluation| {
+        if let Some(provenance) = &evaluation.active_provenance {
+            apply_work_item_ledger_provenance(&mut work_items, provenance);
+        }
+        SpecSystemFederationSummary {
+            federation_version: evaluation.federation_version.to_string(),
+            precedence_applied: evaluation.precedence_applied.as_str().to_string(),
+            ledger_contributors: evaluation
+                .ledger_contributors
+                .iter()
+                .map(|contributor| SpecSystemLedgerContributor {
+                    id: contributor.id.clone(),
+                    path: contributor.path.clone(),
+                    role: contributor.role.as_str().to_string(),
+                    dialect: contributor.dialect.clone(),
+                    mode: contributor.mode.as_str().to_string(),
+                    priority: contributor.priority,
+                    lanes: contributor.lanes.clone(),
+                })
+                .collect(),
+        }
+    });
     let readiness = if include_readiness {
         Some(collect_spec_system_readiness(&root, &loaded_config))
     } else {
@@ -634,6 +692,7 @@ fn build_spec_system_report(
         findings,
         work_items,
         readiness,
+        federation,
     })
 }
 
@@ -772,7 +831,7 @@ fn federation_ledgers_readiness_check(root: &Path) -> SpecSystemReadinessCheck {
                 found: false,
                 valid: None,
                 status: "ready",
-                message: "federation ledger registry `.allow/config.toml` is not configured (optional until F2 evaluation)".to_string(),
+                message: "federation ledger registry `.allow/config.toml` is not configured".to_string(),
             },
             FederationLoadOutcome::Parsed(validated) => {
                 let count = validated.config.ledgers.len();
@@ -1250,6 +1309,11 @@ fn work_items_from_support_tiers(
                 "or lower the tier if the claim is not ready for proof-backed status".to_string(),
             ],
             proof_commands: spec_system_proof_commands(),
+            ledger_id: None,
+            ledger_path: None,
+            lane: None,
+            mode: None,
+            role: None,
         })
         .collect()
 }
@@ -1283,6 +1347,11 @@ fn active_goal_work_item(path: &str, message: &str) -> SpecSystemWorkItem {
         message: format!("active goal manifest is missing or invalid: {message}"),
         suggested_actions: active_goal_suggested_actions(kind),
         proof_commands: spec_system_proof_commands(),
+        ledger_id: None,
+        ledger_path: None,
+        lane: None,
+        mode: None,
+        role: None,
     }
 }
 
@@ -1348,6 +1417,24 @@ fn missing_node_work_item(
         message: format!("{node} is missing or invalid: {message}"),
         suggested_actions,
         proof_commands: spec_system_proof_commands(),
+        ledger_id: None,
+        ledger_path: None,
+        lane: None,
+        mode: None,
+        role: None,
+    }
+}
+
+fn apply_work_item_ledger_provenance(
+    work_items: &mut [SpecSystemWorkItem],
+    provenance: &allow_core::LedgerProvenance,
+) {
+    for item in work_items {
+        item.ledger_id = Some(provenance.ledger_id.clone());
+        item.ledger_path = Some(provenance.ledger_path.clone());
+        item.lane = Some(provenance.lane.clone());
+        item.mode = Some(provenance.mode.clone());
+        item.role = Some(provenance.role.clone());
     }
 }
 
@@ -1366,6 +1453,11 @@ fn artifact_work_item(
         message,
         suggested_actions,
         proof_commands: spec_system_proof_commands(),
+        ledger_id: None,
+        ledger_path: None,
+        lane: None,
+        mode: None,
+        role: None,
     }
 }
 
@@ -1432,6 +1524,7 @@ fn filter_spec_system_report_for_artifact(
         findings,
         work_items,
         readiness: None,
+        federation: report.federation.clone(),
     })
 }
 
@@ -1787,6 +1880,52 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
         "  \"config_provenance\": \"{}\",\n",
         json_escape(&report.config_provenance)
     ));
+    if let Some(federation) = &report.federation {
+        text.push_str("  \"federation\": {\n");
+        text.push_str(&format!(
+            "    \"federation_version\": \"{}\",\n",
+            json_escape(&federation.federation_version)
+        ));
+        text.push_str(&format!(
+            "    \"precedence_applied\": \"{}\",\n",
+            json_escape(&federation.precedence_applied)
+        ));
+        text.push_str("    \"ledger_contributors\": [\n");
+        for (index, contributor) in federation.ledger_contributors.iter().enumerate() {
+            if index > 0 {
+                text.push_str(",\n");
+            }
+            text.push_str("      {\n");
+            text.push_str(&format!(
+                "        \"id\": \"{}\",\n",
+                json_escape(&contributor.id)
+            ));
+            text.push_str(&format!(
+                "        \"path\": \"{}\",\n",
+                json_escape(&contributor.path)
+            ));
+            text.push_str(&format!(
+                "        \"role\": \"{}\",\n",
+                json_escape(&contributor.role)
+            ));
+            text.push_str(&format!(
+                "        \"dialect\": \"{}\",\n",
+                json_escape(&contributor.dialect)
+            ));
+            text.push_str(&format!(
+                "        \"mode\": \"{}\",\n",
+                json_escape(&contributor.mode)
+            ));
+            text.push_str(&format!(
+                "        \"priority\": {},\n",
+                contributor.priority
+            ));
+            text.push_str("        \"lanes\": ");
+            render_string_array(&mut text, &contributor.lanes, "        ");
+            text.push_str("\n      }");
+        }
+        text.push_str("\n    ]\n  },\n");
+    }
     if report.command == "explain" {
         if let Some(artifact) = report.artifacts.first() {
             text.push_str(&format!(
@@ -1994,6 +2133,24 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
         render_string_array(&mut text, &item.suggested_actions, "      ");
         text.push_str(",\n      \"proof_commands\": ");
         render_string_array(&mut text, &item.proof_commands, "      ");
+        if let Some(ledger_id) = &item.ledger_id {
+            text.push_str(&format!(",\n      \"ledger_id\": \"{}\"", json_escape(ledger_id)));
+        }
+        if let Some(ledger_path) = &item.ledger_path {
+            text.push_str(&format!(
+                ",\n      \"ledger_path\": \"{}\"",
+                json_escape(ledger_path)
+            ));
+        }
+        if let Some(lane) = &item.lane {
+            text.push_str(&format!(",\n      \"lane\": \"{}\"", json_escape(lane)));
+        }
+        if let Some(mode) = &item.mode {
+            text.push_str(&format!(",\n      \"mode\": \"{}\"", json_escape(mode)));
+        }
+        if let Some(role) = &item.role {
+            text.push_str(&format!(",\n      \"role\": \"{}\"", json_escape(role)));
+        }
         text.push('\n');
         text.push_str("    }");
         if index + 1 != report.work_items.len() {
@@ -2430,8 +2587,14 @@ pub(crate) fn sample_spec_system_json_for_contract_test() -> String {
                 "or correct linked_proposal in docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md".to_string(),
             ],
             proof_commands: spec_system_proof_commands(),
+            ledger_id: None,
+            ledger_path: None,
+            lane: None,
+            mode: None,
+            role: None,
         }],
         readiness: None,
+        federation: None,
     };
     render_spec_system_json(&report)
 }
@@ -2812,6 +2975,11 @@ mod tests {
             message: message.to_string(),
             suggested_actions: Vec::new(),
             proof_commands: Vec::new(),
+            ledger_id: None,
+            ledger_path: None,
+            lane: None,
+            mode: None,
+            role: None,
         }
     }
 

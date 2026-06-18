@@ -29,7 +29,7 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
             "pass either --dry-run or --write, not both",
         ));
     }
-    let (root, mut cfg, findings, inventory_facts) = load_world_with_evidence_mode(
+    let (root, mut cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
@@ -158,6 +158,7 @@ pub(crate) fn sample_refresh_json_for_contract_test() -> String {
         path: "src/lib.rs".into(),
         identity: StructuralIdentity::new("rust", "attribute"),
         message: "fixture refresh drift".to_string(),
+        ledger: None,
         span: Some(Span {
             line: 22,
             column: 4,

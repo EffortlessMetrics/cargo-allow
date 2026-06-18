@@ -15,5 +15,6 @@ pub(super) fn test_finding_at_line(
         span: Some(Span { line, column: 1 }),
         identity: StructuralIdentity::new("file", ast_kind),
         message: "test finding".to_string(),
+        ledger: None,
     }
 }

@@ -275,6 +275,7 @@ fn proposed_baseline_entry_uses_current_created_date() {
             span: Some(Span { line: 1, column: 1 }),
             identity: StructuralIdentity::new("rust", "method_call"),
             message: "test finding".to_string(),
+            ledger: None,
         },
         1,
         "2026-08-01",

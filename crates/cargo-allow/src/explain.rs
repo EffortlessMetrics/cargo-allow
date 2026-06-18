@@ -39,7 +39,7 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         });
     }
 
-    let (root, cfg, findings, inventory_facts) = load_world_with_evidence_mode(
+    let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
@@ -185,6 +185,7 @@ pub(crate) fn sample_explain_json_for_contract_test() -> String {
         span: Some(Span { line: 1, column: 1 }),
         identity: StructuralIdentity::new("file", "tracked_file"),
         message: "test finding".to_string(),
+        ledger: None,
     };
     explain_entry_json_with_source_tree_files(
         Path::new("."),

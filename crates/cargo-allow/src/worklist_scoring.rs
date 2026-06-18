@@ -379,6 +379,7 @@ mod tests {
             span: Some(Span { line: 1, column: 1 }),
             identity: StructuralIdentity::new("rust", "method_call"),
             message: "test finding".to_string(),
+            ledger: None,
         }
     }
 

@@ -75,6 +75,7 @@ pub(crate) fn generated_finding(path: PathBuf) -> Finding {
         span: Some(allow_core::Span { line: 1, column: 1 }),
         identity,
         message: "tracked generated file from .gitattributes".to_string(),
+        ledger: None,
     }
 }
 
@@ -112,6 +113,7 @@ pub(crate) fn executable_finding(path: PathBuf) -> Finding {
         span: Some(allow_core::Span { line: 1, column: 1 }),
         identity,
         message: "tracked file has git executable bit".to_string(),
+        ledger: None,
     }
 }
 

@@ -60,6 +60,11 @@ fn report_worklist_items(items: &[WorkItem]) -> Vec<allow_report::WorklistItem<'
             message: &item.message,
             suggested_actions: &item.suggested_actions,
             proof_commands: &item.proof_commands,
+            ledger_id: item.ledger.ledger_id.as_deref(),
+            ledger_path: item.ledger.ledger_path.as_deref(),
+            lane: item.ledger.lane.as_deref(),
+            mode: item.ledger.mode.as_deref(),
+            role: item.ledger.role.as_deref(),
         })
         .collect()
 }

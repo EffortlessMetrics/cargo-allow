@@ -64,6 +64,7 @@ fn panic_finding() -> Finding {
         span: None,
         identity: allow_core::StructuralIdentity::new("rust", "method_call"),
         message: "unwrap".to_string(),
+        ledger: None,
     }
 }
 
@@ -75,5 +76,6 @@ fn unsafe_finding() -> Finding {
         span: None,
         identity: allow_core::StructuralIdentity::new("rust", "unsafe_block"),
         message: "unsafe".to_string(),
+        ledger: None,
     }
 }

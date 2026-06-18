@@ -3,6 +3,7 @@ use super::worklist_item_kind::{BROKEN_EVIDENCE_LINK, WEAK_EVIDENCE_REFERENCE};
 use super::worklist_priority::DIFFICULTY_SMALL;
 use super::worklist_scoring::work_item_risk;
 use super::{WorkItem, WorkItemEvidenceReference, proof_commands};
+use super::worklist_types::WorkItemLedger;
 use crate::evidence_inventory::{
     DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE, ReferenceSource,
     policy_reference_diagnostics_for_source_tree,
@@ -110,6 +111,7 @@ fn work_item_from_evidence_diagnostic(
         ),
         suggested_actions: evidence_suggested_actions(kind, entry, &diagnostic, source),
         proof_commands,
+        ledger: WorkItemLedger::default(),
     }
 }
 
