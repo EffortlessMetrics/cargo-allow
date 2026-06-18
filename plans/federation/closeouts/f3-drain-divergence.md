@@ -50,7 +50,7 @@ visible canonical-vs-mirror divergence reporting without silent merge:
 ## Remaining Work
 
 - **Done:** `portable-governance-f3-federation` (F3 drain windows and mirror divergence; #1759).
-- **Ready:** `portable-governance-i1-import` (generic import-root model per allow-import-plan).
+- **Done:** `portable-governance-i1-import` (generic import-root model; #1761).
 
 ## Claim Boundary
 

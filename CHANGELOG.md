@@ -10,6 +10,9 @@ inventory without executing repository code.
 
 ### Added
 
+- Register I1 generic import-root model closeout (CARGO-ALLOW-CLOSEOUT-0013):
+  mark `portable-governance-i1-import` done after #1761; queue
+  `portable-governance-i2-import-adapters` ready. No release authorization.
 - Generic import-root model I1 (#1466): parse optional `[import_roots]` config on the
   spec-system profile with owned/imported/legacy/generated node roles; read-only
   discovery stub normalizes graph nodes, edges, provenance, confidence, and
