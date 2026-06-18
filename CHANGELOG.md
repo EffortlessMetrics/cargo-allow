@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- Add `scripts/verify-crate-registry-version.sh` and wire the release publish job
+  to wait for exact crates.io index visibility after each upload.
+- Fix workflow_dispatch dry-run semantics: validate all workspace crates via
+  preflight `cargo package --workspace --locked`, then run a single
+  `cargo publish --dry-run` for leaf crate `allow-core` instead of failing on
+  unpublished internal dependency versions.
 - Add `scripts/release-version-preflight.sh` and wire it into the release
   publish job to guard tag/workspace version alignment, internal dependency
   version consistency, CHANGELOG sections, and release-record artifacts before

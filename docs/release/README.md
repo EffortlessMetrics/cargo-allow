@@ -70,8 +70,10 @@ Internal crates must publish in dependency order:
 ```
 
 Each crate is dry-run verified immediately before upload. The workflow waits for
-crates.io index visibility (up to 30 attempts, 10 seconds apart) before
-publishing dependents.
+crates.io index visibility of the **exact published version** (up to 30 attempts,
+10 seconds apart) before publishing dependents. Visibility checks use
+[`scripts/verify-crate-registry-version.sh`](../../scripts/verify-crate-registry-version.sh)
+rather than a crate-name-only `cargo search` grep.
 
 ### Verifying publish order locally
 
@@ -150,9 +152,11 @@ in the `0.1.10` plan.
 4. Confirm the **publish** job authenticates (`auth: oidc` in
    `release-publish.receipt.json` when Trusted Publishing is configured, or
    `auth: secret` when using `CARGO_REGISTRY_TOKEN`).
-5. Confirm each crate step logs `Dry-run only; skipping upload` and no real
-   `cargo publish` upload occurs.
-6. Download the `release-publish-receipt` artifact and record the workflow run
+5. Confirm the publish job logs workspace packaging validation from preflight and
+   a single `allow-core` `cargo publish --dry-run` (dependent crate dry-runs
+   require index visibility and are skipped on workflow_dispatch).
+6. Confirm no real `cargo publish` upload occurs.
+7. Download the `release-publish-receipt` artifact and record the workflow run
    id in the release record or plan closeout.
 
 Tag pushes always perform real publishes once preflight succeeds. A

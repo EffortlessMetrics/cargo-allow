@@ -80,6 +80,11 @@ jobs:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
         run: |
           set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="$(awk '/^\[workspace\.package\]/{f=1;next} /^\[/{if(f) exit} f && /^version = /{gsub(/version = "/,""); gsub(/".*/,""); print; exit}' Cargo.toml)"
+          fi
           crates=(
             allow-core
             allow-policy
@@ -92,24 +97,27 @@ jobs:
             allow-diff
             cargo-allow
           )
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "Dry-run: preflight already validated all crates with cargo package --workspace --locked"
+            echo "Dry-run: validating crates.io publish mechanics for leaf crate allow-core only"
+            echo "=== allow-core (dry-run publish check) ==="
+            cargo publish --dry-run -p allow-core --locked
+            echo "Dry-run only; skipping upload and dependent publish --dry-run (requires index visibility)"
+            exit 0
+          fi
           publish_one() {
             local crate="$1"
             echo "=== ${crate} ==="
             cargo publish --dry-run -p "${crate}" --locked
-            if [ "${DRY_RUN}" = "true" ]; then
-              echo "Dry-run only; skipping upload for ${crate}"
-              return 0
-            fi
             cargo publish -p "${crate}" --locked
             for attempt in $(seq 1 30); do
-              if cargo search "${crate}" --limit 1 | grep -q "${crate} ="; then
-                echo "${crate} is visible in the crates.io index"
+              if bash scripts/verify-crate-registry-version.sh "${crate}" "${version}"; then
                 return 0
               fi
-              echo "Waiting for ${crate} index visibility (attempt ${attempt}/30)..."
+              echo "Waiting for ${crate} ${version} index visibility (attempt ${attempt}/30)..."
               sleep 10
             done
-            echo "Timed out waiting for ${crate} to appear in the crates.io index" >&2
+            echo "Timed out waiting for ${crate} ${version} in the crates.io index" >&2
             return 1
           }
           for crate in "${crates[@]}"; do
