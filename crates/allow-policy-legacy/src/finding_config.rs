@@ -213,6 +213,7 @@ mod tests {
             status: Some("active".to_string()),
             workspace: WorkspaceConfig::default(),
             requirements: Requirements::default(),
+            lanes: std::collections::BTreeMap::new(),
             allow: entries,
         }
     }
