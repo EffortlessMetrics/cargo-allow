@@ -14,6 +14,7 @@ generated = ["target/**", "vendor/**"]
 owner_required = true
 reason_required = true
 classification_required = true
+evidence_required = false
 expires_or_review_after_required = true
 allow_bare_allow_attributes = false
 lint_policy_id_required = true
@@ -78,9 +79,9 @@ path = "policy/spec-system.toml"
 owner = "core/policy"
 classification = "spec_system_profile_config"
 reason = "Enables the opt-in spec-system profile in blocking mode for selected structural dogfood checks without changing default source-exception behavior."
+evidence = ["spec:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md", "doc:plans/spec-system/implementation-plan.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["spec:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md", "doc:plans/spec-system/implementation-plan.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -101,9 +102,9 @@ path = "docs/adr/README.md"
 owner = "core/policy"
 classification = "source_truth_adr_root"
 reason = "Creates the configured ADR root for the opt-in spec-system source-of-truth graph."
+evidence = ["doc:docs/source-of-truth/artifact-taxonomy.md", "doc:docs/templates/adr.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/artifact-taxonomy.md", "doc:docs/templates/adr.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -124,9 +125,9 @@ path = "plans/spec-system/implementation-plan.md"
 owner = "core/policy"
 classification = "source_truth_implementation_plan"
 reason = "Records the completed PR-sized implementation sequence for the opt-in spec-system governance profile preview."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -147,9 +148,9 @@ path = "plans/spec-system/closeout.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records the completed closeout for the opt-in spec-system governance profile preview without claiming stable support or release publication."
+evidence = ["doc:plans/spec-system/implementation-plan.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:plans/spec-system/implementation-plan.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -170,9 +171,9 @@ path = ".codex/goals/README.md"
 owner = "core/policy"
 classification = "active_goal_documentation"
 reason = "Explains the active-goal manifest boundary for the opt-in spec-system source-of-truth profile."
+evidence = ["doc:docs/source-of-truth/agent-operating-model.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/agent-operating-model.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -193,9 +194,9 @@ path = ".codex/goals/active.toml"
 owner = "core/policy"
 classification = "active_goal_manifest"
 reason = "Records the active Codex execution state for the migration and evidence parity lane toward 0.2.0."
+evidence = ["doc:.codex/goals/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:.codex/goals/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -216,9 +217,9 @@ path = ".codex/goals/archive/.gitkeep"
 owner = "core/policy"
 classification = "active_goal_archive_placeholder"
 reason = "Keeps the active-goal archive directory present for future completed or superseded manifests."
+evidence = ["doc:.codex/goals/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:.codex/goals/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -239,9 +240,9 @@ path = "docs/status/SUPPORT_TIERS.md"
 owner = "core/policy"
 classification = "support_tier_claim_map"
 reason = "Maps current cargo-allow product surfaces and the opt-in spec-system profile to proof commands and claim boundaries."
+evidence = ["doc:docs/claim-boundaries.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/claim-boundaries.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -262,9 +263,9 @@ path = "policy/doc-artifacts.toml"
 owner = "core/policy"
 classification = "source_truth_artifact_ledger"
 reason = "Registers governed source-of-truth artifacts for the opt-in spec-system profile preview."
+evidence = ["doc:docs/source-of-truth/doc-artifact-ledger.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/doc-artifact-ledger.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -285,9 +286,9 @@ path = "docs/source-of-truth/doc-artifact-ledger.md"
 owner = "core/policy"
 classification = "source_truth_policy_guide"
 reason = "Explains the advisory doc artifact registry and its structural graph claim boundary."
+evidence = ["doc:docs/source-of-truth/linking-model.md", "doc:docs/proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/linking-model.md", "doc:docs/proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -446,9 +447,9 @@ path = "AGENTS.md"
 owner = "core/maintainers"
 classification = "agent_guidance"
 reason = "Documents repo-local operating guidance for cargo-allow agents, including PR/release workflow and source-tree claim boundaries."
+evidence = ["doc:docs/agents/cargo-allow-worklist.md", "doc:docs/claim-boundaries.md"]
 created = "2026-06-02"
 review_after = "2026-11-01"
-evidence = ["doc:docs/agents/cargo-allow-worklist.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -469,9 +470,9 @@ path = ".github/ISSUE_TEMPLATE/bug_report.yml"
 owner = "core/community"
 classification = "github_issue_template"
 reason = "Collects reproducible bug reports for cargo-allow scanner, matcher, report, and CLI behavior."
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -492,9 +493,9 @@ path = ".github/ISSUE_TEMPLATE/config.yml"
 owner = "core/community"
 classification = "github_issue_template"
 reason = "Configures GitHub issue form routing and disables blank issues so reports enter structured triage paths."
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -515,9 +516,9 @@ path = ".github/ISSUE_TEMPLATE/feature_request.yml"
 owner = "core/community"
 classification = "github_issue_template"
 reason = "Collects structured feature requests for source-tree exception governance workflows."
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -538,9 +539,9 @@ path = ".github/ISSUE_TEMPLATE/policy_model.yml"
 owner = "core/community"
 classification = "github_issue_template"
 reason = "Collects policy model and scanner gap reports for source-tree exception governance."
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -561,9 +562,9 @@ path = ".github/ISSUE_TEMPLATE/cargo-allow-adoption-friction.yml"
 owner = "core/community"
 classification = "github_issue_template"
 reason = "Collects structured adoption-friction reports for spec-system preview portability, init, doctor, worklist, schema, and CI feedback."
+evidence = ["doc:docs/profiles.md", "doc:docs/how-to/adopt-cargo-allow-across-repos.md", "doc:docs/release/0.1.8.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/profiles.md", "doc:docs/how-to/adopt-cargo-allow-across-repos.md", "doc:docs/release/0.1.8.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -584,9 +585,9 @@ path = ".github/PULL_REQUEST_TEMPLATE.md"
 owner = "core/community"
 classification = "github_pull_request_template"
 reason = "Provides the default pull request template with source-exception ledger impact and validation prompts."
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -607,9 +608,9 @@ path = ".github/PULL_REQUEST_TEMPLATE/bug_fix.md"
 owner = "core/community"
 classification = "github_pull_request_template"
 reason = "Provides bug-fix pull request prompts for regression coverage, ledger impact, and validation."
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -630,9 +631,9 @@ path = ".github/PULL_REQUEST_TEMPLATE/docs.md"
 owner = "core/community"
 classification = "github_pull_request_template"
 reason = "Provides documentation pull request prompts for accuracy checks, ledger impact, and validation."
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -653,9 +654,9 @@ path = ".github/PULL_REQUEST_TEMPLATE/feature.md"
 owner = "core/community"
 classification = "github_pull_request_template"
 reason = "Provides feature pull request prompts for design compatibility, ledger impact, and validation."
+evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:CONTRIBUTING.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -676,9 +677,9 @@ path = "CONTRIBUTING.md"
 owner = "core/community"
 classification = "contributor_documentation"
 reason = "Documents contribution workflow, product boundaries, validation expectations, and pull request requirements."
+evidence = ["doc:README.md", "doc:docs/design.md", "doc:docs/claim-boundaries.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/design.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -699,9 +700,9 @@ path = ".gitignore"
 owner = "core/policy"
 classification = "repo_hygiene_configuration"
 reason = "Keeps build output, backup files, and generated proposed policy files out of source-tree inventory."
+evidence = ["doc:CONTRIBUTING.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
-evidence = ["doc:CONTRIBUTING.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -745,9 +746,9 @@ path = "docs/onboarding.md"
 owner = "core/docs"
 classification = "product_onboarding"
 reason = "Provides a short front door that routes new users to source-exception, no-new, spec-system, CI, cross-repo adoption, and adoption-friction workflows."
+evidence = ["doc:README.md", "doc:docs/README.md", "doc:docs/how-to/adopt-cargo-allow-across-repos.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/README.md", "doc:docs/how-to/adopt-cargo-allow-across-repos.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -768,9 +769,9 @@ path = "plans/external-dogfood/ripr-spec-system-adoption.md"
 owner = "core/docs"
 classification = "external_dogfood_plan"
 reason = "Prepares the first external spec-system adoption handoff for ripr without changing ripr or making spec-system a default gate."
+evidence = ["doc:docs/how-to/adopt-cargo-allow-across-repos.md", "doc:docs/how-to/adopt-spec-system-profile.md", "doc:docs/release/0.1.8.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/how-to/adopt-cargo-allow-across-repos.md", "doc:docs/how-to/adopt-spec-system-profile.md", "doc:docs/release/0.1.8.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -791,9 +792,9 @@ path = "docs/readiness/self-hosting.md"
 owner = "core/release"
 classification = "readiness_record"
 reason = "Records the current cargo-allow self-hosting proof-stack state and the ripr+ readiness blocker without claiming proof execution or external adoption readiness."
+evidence = ["doc:docs/ci.md", "doc:docs/release/0.1.8.md", "doc:docs/claim-boundaries.md"]
 created = "2026-06-13"
 review_after = "2026-11-01"
-evidence = ["doc:docs/ci.md", "doc:docs/release/0.1.8.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1297,9 +1298,9 @@ path = "Cargo.toml"
 owner = "core/release"
 classification = "rust_package_metadata"
 reason = "Root manifest is a tracked source-tree package metadata file; cargo-allow classifies it as source text without treating it as Cargo metadata."
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1320,9 +1321,9 @@ path = "Cargo.lock"
 owner = "core/release"
 classification = "rust_package_metadata"
 reason = "Root lockfile is a tracked source-tree package metadata file; cargo-allow governs its presence without using it as build metadata."
+evidence = ["doc:README.md", "doc:docs/release/0.1.0.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1343,9 +1344,9 @@ path = "crates/allow-core/Cargo.toml"
 owner = "core/release"
 classification = "rust_package_metadata"
 reason = "allow-core manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1366,9 +1367,9 @@ path = "crates/allow-diff/Cargo.toml"
 owner = "core/release"
 classification = "rust_package_metadata"
 reason = "allow-diff manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1389,9 +1390,9 @@ path = "crates/allow-files/Cargo.toml"
 owner = "core/release"
 classification = "rust_package_metadata"
 reason = "allow-files manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1412,9 +1413,9 @@ path = "crates/allow-inventory/Cargo.toml"
 owner = "core/release"
 classification = "rust_package_metadata"
 reason = "allow-inventory manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1435,9 +1436,9 @@ path = "crates/allow-match/Cargo.toml"
 owner = "core/release"
 classification = "rust_package_metadata"
 reason = "allow-match manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1458,9 +1459,9 @@ path = "crates/allow-policy/Cargo.toml"
 owner = "core/release"
 classification = "rust_package_metadata"
 reason = "allow-policy manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1481,9 +1482,9 @@ path = "crates/allow-policy-legacy/Cargo.toml"
 owner = "core/release"
 classification = "rust_package_metadata"
 reason = "allow-policy-legacy manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1504,9 +1505,9 @@ path = "crates/allow-report/Cargo.toml"
 owner = "core/release"
 classification = "rust_package_metadata"
 reason = "allow-report manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1527,9 +1528,9 @@ path = "crates/allow-rust/Cargo.toml"
 owner = "core/release"
 classification = "rust_package_metadata"
 reason = "allow-rust manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1550,9 +1551,9 @@ path = "crates/cargo-allow/Cargo.toml"
 owner = "core/release"
 classification = "rust_package_metadata"
 reason = "cargo-allow binary manifest is tracked source-tree package metadata and must remain explicitly receipted without relying on Cargo metadata."
+evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/crate-namespace.md", "doc:docs/release/0.1.0.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1987,9 +1988,9 @@ path = "docs/dogfood/shiplog-non-rust.md"
 owner = "core/policy"
 classification = "dogfood_evidence"
 reason = "Records side-by-side file-policy compatibility evidence against shiplog's existing xtasks."
+evidence = ["doc:docs/migration-from-xtask.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-26"
 review_after = "2026-11-01"
-evidence = ["doc:docs/migration-from-xtask.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2079,9 +2080,9 @@ path = "docs/agents/cargo-allow-worklist.md"
 owner = "core/policy"
 classification = "agent_guidance"
 reason = "Documents bounded agent use of cargo-allow worklist outputs."
+evidence = ["doc:README.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2102,9 +2103,9 @@ path = "examples/README.md"
 owner = "core/docs"
 classification = "product_examples"
 reason = "Documents copyable source-tree policy examples for public users."
+evidence = ["doc:README.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
-evidence = ["doc:README.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2125,9 +2126,9 @@ path = "docs/release/0.1.0.md"
 owner = "core/release"
 classification = "release_runbook"
 reason = "Documents the reviewed 0.1.0 crates.io release sequence and rollback limits."
+evidence = ["doc:docs/claim-boundaries.md", "doc:docs/crate-namespace.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
-evidence = ["doc:docs/claim-boundaries.md", "doc:docs/crate-namespace.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2148,9 +2149,9 @@ path = "docs/identity.md"
 owner = "core/match"
 classification = "identity_contract"
 reason = "Documents the StructuralIdentity v1 contract used by matching and diff posture."
+evidence = ["doc:docs/design.md", "doc:docs/source-exception-ledger.md"]
 created = "2026-05-27"
 review_after = "2026-11-01"
-evidence = ["doc:docs/design.md", "doc:docs/source-exception-ledger.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2194,9 +2195,9 @@ path = "CODE_OF_CONDUCT.md"
 owner = "core/community"
 classification = "community_guidelines"
 reason = "Defines project community standards, reporting, and enforcement expectations for contributors."
+evidence = ["doc:CONTRIBUTING.md"]
 created = "2026-05-29"
 review_after = "2026-11-01"
-evidence = ["doc:CONTRIBUTING.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2217,9 +2218,9 @@ path = "docs/release/0.1.1.md"
 owner = "core/release"
 classification = "release_runbook"
 reason = "Prepares the reviewed 0.1.1 patch-release sequence and rollback limits before publication."
+evidence = ["doc:docs/release/0.1.0.md", "doc:docs/claim-boundaries.md"]
 created = "2026-05-30"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release/0.1.0.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2240,9 +2241,9 @@ path = "docs/release/0.1.2.md"
 owner = "core/release"
 classification = "release_runbook"
 reason = "Prepares the reviewed 0.1.2 patch-release sequence and rollback limits before publication."
+evidence = ["doc:docs/release/0.1.1.md", "doc:docs/schemas/README.md"]
 created = "2026-05-31"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release/0.1.1.md", "doc:docs/schemas/README.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2263,9 +2264,9 @@ path = "docs/release/0.1.3.md"
 owner = "core/release"
 classification = "release_runbook"
 reason = "Prepares the reviewed 0.1.3 patch-release scope and rollback limits before any publication."
+evidence = ["doc:docs/release/0.1.2.md", "doc:docs/claim-boundaries.md"]
 created = "2026-05-31"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release/0.1.2.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2286,9 +2287,9 @@ path = "docs/release/0.1.4.md"
 owner = "core/release"
 classification = "release_runbook"
 reason = "Prepares the reviewed 0.1.4 patch-release scope and rollback limits before any publication."
+evidence = ["doc:docs/release/0.1.3.md", "doc:docs/claim-boundaries.md"]
 created = "2026-06-01"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release/0.1.3.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2309,9 +2310,9 @@ path = "docs/release/0.1.5.md"
 owner = "core/release"
 classification = "release_runbook"
 reason = "Documents the completed 0.1.5 patch-release publication, registry verification, and rollback limits."
+evidence = ["doc:docs/release/0.1.4.md", "doc:docs/claim-boundaries.md"]
 created = "2026-06-02"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release/0.1.4.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2332,9 +2333,9 @@ path = "docs/release/0.1.6.md"
 owner = "core/release"
 classification = "release_runbook"
 reason = "Documents the completed 0.1.6 patch-release publication, registry verification, and rollback limits."
+evidence = ["doc:docs/release/0.1.5.md", "doc:docs/claim-boundaries.md"]
 created = "2026-06-02"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release/0.1.5.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2355,9 +2356,9 @@ path = "docs/release/0.1.7.md"
 owner = "core/release"
 classification = "release_runbook"
 reason = "Records the completed 0.1.7 spec-system preview release publication, registry verification, and rollback limits."
+evidence = ["doc:docs/release/0.1.6.md", "doc:docs/how-to/adopt-spec-system-profile.md", "doc:docs/claim-boundaries.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release/0.1.6.md", "doc:docs/how-to/adopt-spec-system-profile.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2378,9 +2379,9 @@ path = "docs/release/github/v0.1.7.md"
 owner = "core/release"
 classification = "release_notes"
 reason = "Prepares the public GitHub Release body for the v0.1.7 spec-system preview release."
+evidence = ["doc:docs/release/0.1.7.md", "doc:CHANGELOG.md", "doc:docs/claim-boundaries.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release/0.1.7.md", "doc:CHANGELOG.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2401,9 +2402,9 @@ path = "docs/release/0.1.8.md"
 owner = "core/release"
 classification = "release_runbook"
 reason = "Records the completed 0.1.8 spec-system preview cleanup release publication, registry verification, and rollback limits."
+evidence = ["doc:docs/release/0.1.7.md", "doc:docs/how-to/adopt-spec-system-profile.md", "doc:docs/claim-boundaries.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release/0.1.7.md", "doc:docs/how-to/adopt-spec-system-profile.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2424,9 +2425,9 @@ path = "docs/release/github/v0.1.8.md"
 owner = "core/release"
 classification = "release_notes"
 reason = "Prepares the public GitHub Release body for the v0.1.8 spec-system preview cleanup release."
+evidence = ["doc:docs/release/0.1.8.md", "doc:CHANGELOG.md", "doc:docs/claim-boundaries.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release/0.1.8.md", "doc:CHANGELOG.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2447,9 +2448,9 @@ path = "CHANGELOG.md"
 owner = "core/release"
 classification = "release_ledger"
 reason = "Provides the durable repo-local release ledger that maps public versions to user-facing changes and claim boundaries."
+evidence = ["doc:docs/release/0.1.7.md", "doc:docs/claim-boundaries.md"]
 created = "2026-06-04"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release/0.1.7.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2470,9 +2471,9 @@ path = "docs/source-of-truth/README.md"
 owner = "core/policy"
 classification = "product_documentation"
 reason = "Defines the planned opt-in source-of-truth stack without changing cargo-allow's default source-exception scan."
+evidence = ["doc:docs/claim-boundaries.md", "doc:docs/roadmap.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/claim-boundaries.md", "doc:docs/roadmap.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2493,9 +2494,9 @@ path = "docs/source-of-truth/artifact-taxonomy.md"
 owner = "core/policy"
 classification = "product_documentation"
 reason = "Defines distinct source-of-truth artifact responsibilities for future opt-in governance linting."
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/claim-boundaries.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2516,9 +2517,9 @@ path = "docs/source-of-truth/linking-model.md"
 owner = "core/policy"
 classification = "product_documentation"
 reason = "Documents the planned source-of-truth link graph and structural-only lint boundary."
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2539,9 +2540,9 @@ path = "docs/source-of-truth/agent-operating-model.md"
 owner = "core/policy"
 classification = "agent_guidance"
 reason = "Documents bounded agent use of the planned opt-in source-of-truth profile and its non-execution boundary."
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/agents/cargo-allow-worklist.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/agents/cargo-allow-worklist.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2562,9 +2563,9 @@ path = "docs/templates/proposal.md"
 owner = "core/policy"
 classification = "source_truth_template"
 reason = "Provides the proposal starter template for the planned opt-in source-of-truth stack."
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2585,9 +2586,9 @@ path = "docs/templates/spec.md"
 owner = "core/policy"
 classification = "source_truth_template"
 reason = "Provides the spec starter template for behavior contracts in the planned opt-in source-of-truth stack."
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2608,9 +2609,9 @@ path = "docs/templates/adr.md"
 owner = "core/policy"
 classification = "source_truth_template"
 reason = "Provides the ADR starter template for durable decisions in the planned opt-in source-of-truth stack."
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/artifact-taxonomy.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2631,9 +2632,9 @@ path = "docs/templates/implementation-plan.md"
 owner = "core/policy"
 classification = "source_truth_template"
 reason = "Provides the implementation-plan starter template for PR-sized sequencing in the planned opt-in source-of-truth stack."
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2654,9 +2655,9 @@ path = "docs/templates/plan-item.md"
 owner = "core/policy"
 classification = "source_truth_template"
 reason = "Provides the plan-item starter template for bounded agent and maintainer work in the planned opt-in source-of-truth stack."
+evidence = ["doc:docs/source-of-truth/agent-operating-model.md", "doc:docs/source-of-truth/linking-model.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/agent-operating-model.md", "doc:docs/source-of-truth/linking-model.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2677,9 +2678,9 @@ path = "docs/templates/closeout.md"
 owner = "core/policy"
 classification = "source_truth_template"
 reason = "Provides the closeout starter template for recording landed work, validation evidence, and remaining gaps."
+evidence = ["doc:docs/source-of-truth/artifact-taxonomy.md", "doc:docs/source-of-truth/linking-model.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/artifact-taxonomy.md", "doc:docs/source-of-truth/linking-model.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2700,9 +2701,9 @@ path = "docs/templates/pr-body.md"
 owner = "core/policy"
 classification = "source_truth_template"
 reason = "Provides the pull-request body starter template for source-of-truth and policy-governance PRs."
+evidence = ["doc:docs/source-of-truth/agent-operating-model.md", "doc:docs/agents/cargo-allow-worklist.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/agent-operating-model.md", "doc:docs/agents/cargo-allow-worklist.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2723,9 +2724,9 @@ path = "docs/proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md"
 owner = "core/policy"
 classification = "source_truth_proposal"
 reason = "Records the accepted product proposal for the planned opt-in spec-system source-of-truth profile."
+evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/templates/proposal.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/source-of-truth/README.md", "doc:docs/templates/proposal.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2746,9 +2747,9 @@ path = "docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md"
 owner = "core/policy"
 classification = "source_truth_spec"
 reason = "Records the accepted behavior contract for the planned opt-in spec-system source-of-truth profile."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md", "doc:docs/templates/spec.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
-evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md", "doc:docs/templates/spec.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2769,9 +2770,9 @@ path = "docs/release/0.1.9.md"
 owner = "core/release"
 classification = "release_runbook"
 reason = "Records the staged 0.1.9 receipt-adoption patch release candidate before authorized publication."
+evidence = ["doc:docs/release/0.1.8.md", "doc:CHANGELOG.md", "doc:docs/claim-boundaries.md"]
 created = "2026-06-15"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release/0.1.8.md", "doc:CHANGELOG.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2792,9 +2793,9 @@ path = "docs/release/github/v0.1.9.md"
 owner = "core/release"
 classification = "release_notes"
 reason = "Prepares the public GitHub Release body for the v0.1.9 receipt-adoption patch candidate."
+evidence = ["doc:docs/release/0.1.9.md", "doc:CHANGELOG.md", "doc:docs/claim-boundaries.md"]
 created = "2026-06-15"
 review_after = "2026-11-01"
-evidence = ["doc:docs/release/0.1.9.md", "doc:CHANGELOG.md", "doc:docs/claim-boundaries.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2838,9 +2839,9 @@ path = ".codex/goals/archive/CARGO-ALLOW-GOAL-0001-spec-system-profile.toml"
 owner = "core/policy"
 classification = "active_goal_manifest"
 reason = "Archives the completed spec-system profile active goal manifest for structural graph validation."
+evidence = ["doc:.codex/goals/README.md", "doc:plans/spec-system/closeout.md"]
 created = "2026-06-16"
 review_after = "2026-11-01"
-evidence = ["doc:.codex/goals/README.md", "doc:plans/spec-system/closeout.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2861,9 +2862,9 @@ path = "docs/proposals/CARGO-ALLOW-PROP-0002-migration-parity.md"
 owner = "core/policy"
 classification = "source_truth_proposal"
 reason = "Registers the accepted migration and evidence parity proposal for the 0.2.0 execution lane."
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md", "doc:docs/migration-from-xtask.md"]
 created = "2026-06-16"
 review_after = "2026-11-01"
-evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md", "doc:docs/migration-from-xtask.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2884,9 +2885,9 @@ path = "docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md"
 owner = "core/policy"
 classification = "source_truth_spec"
 reason = "Defines the migration and evidence parity behavior contract for the 0.2.0 execution lane."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0002-migration-parity.md", "doc:docs/migration-from-xtask.md"]
 created = "2026-06-16"
 review_after = "2026-11-01"
-evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0002-migration-parity.md", "doc:docs/migration-from-xtask.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2907,9 +2908,9 @@ path = "plans/migration-parity/implementation-plan.md"
 owner = "core/policy"
 classification = "source_truth_implementation_plan"
 reason = "Sequences PR-sized migration parity work toward the 0.2.0 milestone claim."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0002-migration-parity.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md"]
 created = "2026-06-16"
 review_after = "2026-11-01"
-evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0002-migration-parity.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2930,9 +2931,9 @@ path = "docs/proposals/CARGO-ALLOW-PROP-0003-readiness-policy.md"
 owner = "core/policy"
 classification = "source_truth_proposal"
 reason = "Registers the accepted self-hosting readiness policy proposal for strict versus provider-tracked readiness."
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md", "doc:plans/readiness/implementation-plan.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md", "doc:plans/readiness/implementation-plan.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2953,9 +2954,9 @@ path = "docs/specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md"
 owner = "core/policy"
 classification = "source_truth_spec"
 reason = "Defines the self-hosting readiness policy behavior contract and provider-tracked gap rules."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0003-readiness-policy.md", "doc:docs/readiness/self-hosting.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0003-readiness-policy.md", "doc:docs/readiness/self-hosting.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2976,9 +2977,9 @@ path = "docs/proposals/CARGO-ALLOW-PROP-0004-allow-import-profile.md"
 owner = "core/policy"
 classification = "source_truth_proposal"
 reason = "Registers the accepted `.allow` namespace and import roots proposal for the spec-system profile."
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md", "doc:plans/spec-system/allow-import-plan.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md", "doc:plans/spec-system/allow-import-plan.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -2999,9 +3000,9 @@ path = "docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"
 owner = "core/policy"
 classification = "source_truth_spec"
 reason = "Defines the `.allow` namespace and import roots design contract for the spec-system profile."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0004-allow-import-profile.md", "doc:plans/spec-system/allow-import-plan.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0004-allow-import-profile.md", "doc:plans/spec-system/allow-import-plan.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3022,9 +3023,9 @@ path = "docs/proposals/CARGO-ALLOW-PROP-0005-structural-identity-quality.md"
 owner = "core/policy"
 classification = "source_truth_proposal"
 reason = "Registers the accepted structural identity quality proposal for the 0.4.0 scanner hardening lane."
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md", "doc:plans/structural-identity/implementation-plan.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md", "doc:plans/structural-identity/implementation-plan.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3045,9 +3046,9 @@ path = "docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md"
 owner = "core/policy"
 classification = "source_truth_spec"
 reason = "Defines the structural identity quality behavior contract for scanner characterization and diff posture."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0005-structural-identity-quality.md", "doc:plans/structural-identity/implementation-plan.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0005-structural-identity-quality.md", "doc:plans/structural-identity/implementation-plan.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3068,9 +3069,9 @@ path = "docs/proposals/CARGO-ALLOW-PROP-0006-adoption-trust-0.1.10.md"
 owner = "core/policy"
 classification = "source_truth_proposal"
 reason = "Registers the accepted adoption-trust release proposal for the 0.1.10 patch lane."
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0006-adoption-trust-0.1.10.md", "doc:plans/release/0.1.10-implementation-plan.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0006-adoption-trust-0.1.10.md", "doc:plans/release/0.1.10-implementation-plan.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3091,9 +3092,9 @@ path = "docs/specs/CARGO-ALLOW-SPEC-0006-adoption-trust-0.1.10.md"
 owner = "core/policy"
 classification = "source_truth_spec"
 reason = "Defines the adoption-trust release behavior contract and proof obligations for 0.1.10."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0006-adoption-trust-0.1.10.md", "doc:plans/release/0.1.10-implementation-plan.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0006-adoption-trust-0.1.10.md", "doc:plans/release/0.1.10-implementation-plan.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3114,9 +3115,9 @@ path = "plans/migration-parity/gap-inventory.md"
 owner = "core/policy"
 classification = "source_truth_gap_inventory"
 reason = "Living gap inventory for the migration parity PR queue toward the 0.2.0 milestone."
+evidence = ["doc:plans/migration-parity/pr-queue.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:plans/migration-parity/pr-queue.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3137,9 +3138,9 @@ path = "plans/migration-parity/pr-queue.md"
 owner = "core/policy"
 classification = "source_truth_pr_queue"
 reason = "Actionable PR queue for the 0.2.0 migration and evidence parity execution lane."
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md", "doc:plans/migration-parity/implementation-plan.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md", "doc:plans/migration-parity/implementation-plan.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3160,9 +3161,9 @@ path = "plans/migration-parity/closeouts/incremental-slices.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records incremental migration parity slice closeout for goal registration, gap inventory, and no-panic-baseline import without claiming 0.2.0 milestone parity."
+evidence = ["doc:plans/migration-parity/pr-queue.md", "doc:plans/migration-parity/implementation-plan.md"]
 created = "2026-06-18"
 review_after = "2026-11-01"
-evidence = ["doc:plans/migration-parity/pr-queue.md", "doc:plans/migration-parity/implementation-plan.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3183,9 +3184,9 @@ path = "plans/readiness/implementation-plan.md"
 owner = "core/policy"
 classification = "source_truth_implementation_plan"
 reason = "Sequences PR-sized readiness policy work and self-hosting record refresh for provider-tracked gaps."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0003-readiness-policy.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0003-readiness-policy.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3206,9 +3207,9 @@ path = "plans/release/0.1.10-implementation-plan.md"
 owner = "core/policy"
 classification = "source_truth_implementation_plan"
 reason = "Sequences PR-sized adoption-trust work toward the 0.1.10 patch release claim."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0006-adoption-trust-0.1.10.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0006-adoption-trust-0.1.10.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0006-adoption-trust-0.1.10.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0006-adoption-trust-0.1.10.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3229,9 +3230,9 @@ path = "plans/spec-system/allow-import-plan.md"
 owner = "core/policy"
 classification = "source_truth_implementation_plan"
 reason = "Sequences PR-sized `.allow` namespace and import root design work for the spec-system profile."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0004-allow-import-profile.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0004-allow-import-profile.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3252,9 +3253,9 @@ path = "plans/structural-identity/gap-inventory.md"
 owner = "core/policy"
 classification = "source_truth_gap_inventory"
 reason = "Living gap inventory for structural identity quality characterization toward the 0.4.0 lane."
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md", "doc:plans/structural-identity/implementation-plan.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md", "doc:plans/structural-identity/implementation-plan.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3275,9 +3276,9 @@ path = "plans/structural-identity/implementation-plan.md"
 owner = "core/policy"
 classification = "source_truth_implementation_plan"
 reason = "Sequences PR-sized structural identity quality work toward the 0.4.0 scanner hardening milestone."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0005-structural-identity-quality.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md"]
 created = "2026-06-17"
 review_after = "2026-11-01"
-evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0005-structural-identity-quality.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3294,13 +3295,13 @@ column = 1
 id = "allow-0210"
 kind = "non_rust_file"
 family = "test_fixture"
+glob = "tests/fixtures/migration/*.toml"
 owner = "core/policy"
 classification = "migration_parity_fixture"
 reason = "Legacy migration characterization fixtures for supported compat lanes under tests/fixtures/migration/."
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "test:migration_fixture_matrix_characterizes_supported_legacy_lanes"]
 created = "2026-06-18"
 review_after = "2026-11-01"
-evidence = ["doc:plans/migration-parity/gap-inventory.md", "test:migration_fixture_matrix_characterizes_supported_legacy_lanes"]
-glob = "tests/fixtures/migration/*.toml"
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3321,9 +3322,9 @@ path = "docs/dogfood/cargo-allow-panic-baseline.md"
 owner = "core/policy"
 classification = "dogfood_evidence"
 reason = "Records in-repository side-by-side panic-baseline migration parity proof for cargo-allow B5."
+evidence = ["doc:docs/dogfood/cargo-allow-panic-baseline.md", "doc:docs/migration-from-xtask.md", "doc:plans/migration-parity/gap-inventory.md"]
 created = "2026-06-18"
 review_after = "2026-11-01"
-evidence = ["doc:docs/dogfood/cargo-allow-panic-baseline.md", "doc:docs/migration-from-xtask.md", "doc:plans/migration-parity/gap-inventory.md"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3340,13 +3341,13 @@ column = 1
 id = "allow-0212"
 kind = "non_rust_file"
 family = "test_fixture"
+glob = "docs/dogfood/fixtures/*.toml"
 owner = "core/policy"
 classification = "migration_parity_fixture"
 reason = "Staged legacy no-panic-baseline input for in-repository migration dogfood receipts."
+evidence = ["doc:docs/dogfood/cargo-allow-panic-baseline.md", "doc:plans/migration-parity/gap-inventory.md"]
 created = "2026-06-18"
 review_after = "2026-11-01"
-evidence = ["doc:docs/dogfood/cargo-allow-panic-baseline.md", "doc:plans/migration-parity/gap-inventory.md"]
-glob = "docs/dogfood/fixtures/*.toml"
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3367,9 +3368,9 @@ path = "docs/dogfood/receipts/cargo-allow-panic-baseline.migrated.toml"
 owner = "core/policy"
 classification = "dogfood_evidence"
 reason = "Committed migrated canonical policy from in-repository panic-baseline dogfood."
+evidence = ["doc:docs/dogfood/cargo-allow-panic-baseline.md", "doc:docs/schemas/migrate.schema.json"]
 created = "2026-06-18"
 review_after = "2026-11-01"
-evidence = ["doc:docs/dogfood/cargo-allow-panic-baseline.md", "doc:docs/schemas/migrate.schema.json"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3390,9 +3391,9 @@ path = "docs/dogfood/receipts/cargo-allow-panic-baseline.migrate-summary.json"
 owner = "core/policy"
 classification = "dogfood_evidence"
 reason = "Committed cargo-allow.migrate.v1 summary from in-repository panic-baseline dogfood."
+evidence = ["doc:docs/dogfood/cargo-allow-panic-baseline.md", "doc:docs/schemas/migrate.schema.json"]
 created = "2026-06-18"
 review_after = "2026-11-01"
-evidence = ["doc:docs/dogfood/cargo-allow-panic-baseline.md", "doc:docs/schemas/migrate.schema.json"]
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -3403,4 +3404,426 @@ glob = "docs/dogfood/receipts/cargo-allow-panic-baseline.migrate-summary.json"
 
 [allow.last_seen]
 line = 1
+column = 1
+
+[[allow]]
+id = "allow-0215"
+kind = "panic"
+family = "unwrap"
+path = "tests/fixtures/structural-identity/callee_same_receiver_diff/after.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+receiver_fingerprint = "other"
+normalized_snippet_hash = "fnv1a64:09d227b7d728901a"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 11
+
+[[allow]]
+id = "allow-0216"
+kind = "panic"
+family = "unwrap"
+path = "tests/fixtures/structural-identity/callee_same_receiver_diff/before.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+receiver_fingerprint = "value"
+normalized_snippet_hash = "fnv1a64:dc9ff63ad6f05c95"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 11
+
+[[allow]]
+id = "allow-0217"
+kind = "unsafe"
+family = "unsafe_block"
+path = "tests/fixtures/structural-identity/function_move/after.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "read_right"
+normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 5
+
+[[allow]]
+id = "allow-0218"
+kind = "unsafe"
+family = "unsafe_block"
+path = "tests/fixtures/structural-identity/function_move/after.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "read_left"
+normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
+line_hint = 6
+
+[allow.last_seen]
+line = 6
+column = 5
+
+[[allow]]
+id = "allow-0219"
+kind = "unsafe"
+family = "unsafe_block"
+path = "tests/fixtures/structural-identity/function_move/before.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "read_left"
+normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 5
+
+[[allow]]
+id = "allow-0220"
+kind = "unsafe"
+family = "unsafe_block"
+path = "tests/fixtures/structural-identity/function_move/before.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "read_right"
+normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
+line_hint = 6
+
+[allow.last_seen]
+line = 6
+column = 5
+
+[[allow]]
+id = "allow-0221"
+kind = "panic"
+family = "indexing"
+path = "tests/fixtures/structural-identity/index_same_form_diff_targets/after.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "load"
+symbol = "right[0]"
+receiver_fingerprint = "right"
+target_fingerprint = "right"
+normalized_snippet_hash = "fnv1a64:60ee0c428de09879"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 10
+
+[[allow]]
+id = "allow-0222"
+kind = "panic"
+family = "indexing"
+path = "tests/fixtures/structural-identity/index_same_form_diff_targets/before.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "load"
+symbol = "left[0]"
+receiver_fingerprint = "left"
+target_fingerprint = "left"
+normalized_snippet_hash = "fnv1a64:5e1ad0e511ab384a"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 9
+
+[[allow]]
+id = "allow-0223"
+kind = "panic"
+family = "expect"
+path = "tests/fixtures/structural-identity/line_move/after.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "expect"
+receiver_fingerprint = "value"
+normalized_snippet_hash = "fnv1a64:52b3fc980b9bd224"
+line_hint = 4
+
+[allow.last_seen]
+line = 4
+column = 11
+
+[[allow]]
+id = "allow-0224"
+kind = "panic"
+family = "expect"
+path = "tests/fixtures/structural-identity/line_move/before.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "expect"
+receiver_fingerprint = "value"
+normalized_snippet_hash = "fnv1a64:52b3fc980b9bd224"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 11
+
+[[allow]]
+id = "allow-0229"
+kind = "panic"
+family = "panic_macro"
+path = "tests/fixtures/structural-identity/macro_same_different_paths/after.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "load"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:50fbabeac5083a68"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 5
+
+[[allow]]
+id = "allow-0230"
+kind = "panic"
+family = "panic_macro"
+path = "tests/fixtures/structural-identity/macro_same_different_paths/before.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "load"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:50fbabeac5083a68"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 5
+
+[[allow]]
+id = "allow-0231"
+kind = "unsafe"
+family = "unsafe_block"
+path = "tests/fixtures/structural-identity/module_move/after.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "access"
+normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 5
+
+[[allow]]
+id = "allow-0232"
+kind = "unsafe"
+family = "unsafe_block"
+path = "tests/fixtures/structural-identity/module_move/before.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "access"
+normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
+line_hint = 3
+
+[allow.last_seen]
+line = 3
+column = 9
+
+[[allow]]
+id = "allow-0233"
+kind = "panic"
+family = "expect"
+path = "tests/fixtures/structural-identity/rename_local/after.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "expect"
+receiver_fingerprint = "payload"
+normalized_snippet_hash = "fnv1a64:9faea1b4aa39bd0f"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 13
+
+[[allow]]
+id = "allow-0234"
+kind = "panic"
+family = "expect"
+path = "tests/fixtures/structural-identity/rename_local/before.rs"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "expect"
+receiver_fingerprint = "value"
+normalized_snippet_hash = "fnv1a64:52b3fc980b9bd224"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 11
+
+[[allow]]
+id = "allow-0225"
+kind = "lint_exception"
+family = "expect_attribute"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "render"
+lint = "dead_code"
+symbol = "#[expect(dead_code, reason = \"policy:allow-0225: structural identity lint fixture on render\")]"
+target_fingerprint = "policy:allow-0225"
+normalized_snippet_hash = "fnv1a64:fa9243922c7f7584"
+glob = "tests/fixtures/structural-identity/lint_same_different_items/*.rs"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0226"
+kind = "lint_exception"
+family = "expect_attribute"
+owner = "core/rust-scanner"
+classification = "structural_identity_fixture"
+reason = "Structural identity refactor-pair fixture for D2 characterization tests."
+evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "parse"
+lint = "dead_code"
+symbol = "#[expect(dead_code, reason = \"policy:allow-0226: structural identity lint fixture on parse\")]"
+target_fingerprint = "policy:allow-0226"
+normalized_snippet_hash = "fnv1a64:7e13a5ebdee85d74"
+glob = "tests/fixtures/structural-identity/lint_same_different_items/*.rs"
+
+[allow.last_seen]
+line = 4
 column = 1
