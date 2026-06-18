@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- Add fixture-backed `allow-diff` posture characterization tests asserting
+  policy selector precision weakening when identity fields loosen, improvement
+  when fields tighten, equal-precision selector identity retarget review, and
+  finding identity loss between structural-identity refactor sides. Covers D2–D5
+  fixture policy entries `allow-0215`..`0234` and `allow-0243`..`0246`; existing
+  diff logic passes without changes.
 - Add fixture-backed `allow-match` selector precision characterization tests
   asserting policy selectors uniquely match intended structural-identity
   findings via `container`, `receiver_fingerprint`, `target_fingerprint`,

@@ -19,4 +19,5 @@ mod policy_workspace;
 mod revision_companions;
 mod revision_findings;
 mod revision_git_parser;
+mod structural_identity_posture;
 mod support;
