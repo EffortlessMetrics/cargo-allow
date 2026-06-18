@@ -25,9 +25,8 @@ fn unique_fixture_copy() -> PathBuf {
         .unwrap_or(0);
     let id = REFRESH_TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!("cargo-allow-refresh-{stamp}-{id}"));
-    fs::create_dir_all(&dir).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("create refresh fixture copy: {err}"))
-    });
+    fs::create_dir_all(&dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create refresh fixture copy: {err}")));
     copy_dir(&fixture_root(), &dir);
     dir
 }
@@ -36,22 +35,20 @@ fn copy_dir(from: &Path, to: &Path) {
     for entry in fs::read_dir(from).unwrap_or_else(|err| {
         std::panic::panic_any(format!("read fixture dir {}: {err}", from.display()))
     }) {
-        let entry = entry.unwrap_or_else(|err| {
-            std::panic::panic_any(format!("read fixture entry: {err}"))
-        });
+        let entry =
+            entry.unwrap_or_else(|err| std::panic::panic_any(format!("read fixture entry: {err}")));
         let target = to.join(entry.file_name());
-        let file_type = entry.file_type().unwrap_or_else(|err| {
-            std::panic::panic_any(format!("read fixture entry type: {err}"))
-        });
+        let file_type = entry
+            .file_type()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read fixture entry type: {err}")));
         if file_type.is_dir() {
             fs::create_dir_all(&target).unwrap_or_else(|err| {
                 std::panic::panic_any(format!("create fixture subdir: {err}"))
             });
             copy_dir(&entry.path(), &target);
         } else {
-            fs::copy(entry.path(), &target).unwrap_or_else(|err| {
-                std::panic::panic_any(format!("copy fixture file: {err}"))
-            });
+            fs::copy(entry.path(), &target)
+                .unwrap_or_else(|err| std::panic::panic_any(format!("copy fixture file: {err}")));
         }
     }
 }
@@ -91,14 +88,10 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
     let policy_path = root.join("policy/allow.toml");
     let config_arg = PathBuf::from("policy/allow.toml");
     let output_path = root.join("refresh-summary.json");
-    let (_loaded_root, cfg, findings, _facts) = crate::load_world(
-        Some(&root),
-        Some(&config_arg),
-        true,
-        None,
-        true,
-    )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("load refresh fixture world: {err}")));
+    let (_loaded_root, cfg, findings, _facts) =
+        crate::load_world(Some(&root), Some(&config_arg), true, None, true).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("load refresh fixture world: {err}"))
+        });
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     assert!(
         outcomes.iter().any(|outcome| {
@@ -122,15 +115,13 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("refresh dry-run: {err}")));
 
-    let summary = fs::read_to_string(&output_path).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("read refresh summary: {err}"))
-    });
+    let summary = fs::read_to_string(&output_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read refresh summary: {err}")));
     assert!(summary.contains("cargo-allow.refresh.v1"));
     assert!(summary.contains("\"lifecycle_preserved\": true"));
 
-    let before = load_policy(&policy_path).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("reload policy before write: {err}"))
-    });
+    let before = load_policy(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("reload policy before write: {err}")));
     let lifecycle_before = before
         .allow
         .iter()
@@ -152,9 +143,8 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("refresh write: {err}")));
 
-    let after = load_policy(&policy_path).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("reload policy after write: {err}"))
-    });
+    let after = load_policy(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("reload policy after write: {err}")));
     let entry = after
         .allow
         .iter()

@@ -80,9 +80,9 @@ mod artifact_schema_propose_tests;
 #[cfg(test)]
 mod artifact_schema_prune_tests;
 #[cfg(test)]
-mod artifact_schema_refresh_tests;
-#[cfg(test)]
 mod artifact_schema_receipt_tests;
+#[cfg(test)]
+mod artifact_schema_refresh_tests;
 #[cfg(test)]
 mod artifact_schema_report_diff_identity_tests;
 #[cfg(test)]

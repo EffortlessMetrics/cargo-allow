@@ -142,7 +142,10 @@ pub(crate) fn sample_refresh_json_for_contract_test() -> String {
             expires: None,
         },
         selector: Selector::default(),
-        last_seen: Some(LastSeen { line: 22, column: 4 }),
+        last_seen: Some(LastSeen {
+            line: 22,
+            column: 4,
+        }),
     };
     let finding = Finding {
         kind: FindingKind::LintException,
@@ -158,7 +161,10 @@ pub(crate) fn sample_refresh_json_for_contract_test() -> String {
     render_refresh_json(
         &entry,
         &finding,
-        Some(LastSeen { line: 14, column: 8 }),
+        Some(LastSeen {
+            line: 14,
+            column: 8,
+        }),
         "allow-drift last_seen changed from 14:8 to 22:4",
         true,
         false,

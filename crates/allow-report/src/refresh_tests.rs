@@ -1,6 +1,8 @@
 use super::*;
 use crate::{InventoryContext, RefreshModeContext, RefreshReport};
-use allow_core::{AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, Selector, Span, StructuralIdentity};
+use allow_core::{
+    AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, Selector, Span, StructuralIdentity,
+};
 
 fn sample_entry() -> AllowEntry {
     AllowEntry {
@@ -21,7 +23,10 @@ fn sample_entry() -> AllowEntry {
             expires: None,
         },
         selector: Selector::default(),
-        last_seen: Some(LastSeen { line: 22, column: 4 }),
+        last_seen: Some(LastSeen {
+            line: 22,
+            column: 4,
+        }),
     }
 }
 
@@ -49,7 +54,10 @@ fn refresh_json_records_operator_approved_drift_refresh_metadata() {
         ),
         &sample_entry(),
         &sample_finding(),
-        Some(LastSeen { line: 14, column: 8 }),
+        Some(LastSeen {
+            line: 14,
+            column: 8,
+        }),
         "allow-drift last_seen changed from 14:8 to 22:4",
         RefreshModeContext {
             explicit_dry_run: true,
@@ -71,7 +79,10 @@ fn refresh_human_mentions_lifecycle_preservation() {
         InventoryContext::source_syntax("unknown", None, None),
         &sample_entry(),
         &sample_finding(),
-        Some(LastSeen { line: 14, column: 8 }),
+        Some(LastSeen {
+            line: 14,
+            column: 8,
+        }),
         "allow-drift last_seen changed from 14:8 to 22:4",
         RefreshModeContext {
             explicit_dry_run: false,

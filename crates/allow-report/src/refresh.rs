@@ -1,8 +1,6 @@
 use crate::contracts::REFRESH_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
-use crate::{
-    CLAIM_BOUNDARY_TEXT, RefreshReport, finding_location_text, render_last_seen_json,
-};
+use crate::{CLAIM_BOUNDARY_TEXT, RefreshReport, finding_location_text, render_last_seen_json};
 use allow_core::json_escape;
 
 pub fn render_refresh_human(report: RefreshReport<'_>) -> String {
@@ -48,7 +46,9 @@ pub fn render_refresh_human(report: RefreshReport<'_>) -> String {
     if let Some(path) = report.mode.written_path {
         out.push_str(&format!("\nUpdated policy at `{path}`.\n"));
     } else {
-        out.push_str("\nNo files were changed. Pass --write to record the operator-approved refresh.\n");
+        out.push_str(
+            "\nNo files were changed. Pass --write to record the operator-approved refresh.\n",
+        );
     }
     out.push('\n');
     out.push_str(CLAIM_BOUNDARY_TEXT);
@@ -56,9 +56,7 @@ pub fn render_refresh_human(report: RefreshReport<'_>) -> String {
     out
 }
 
-fn refresh_inventory_files_suffix(
-    inventory: crate::InventoryContext<'_>,
-) -> String {
+fn refresh_inventory_files_suffix(inventory: crate::InventoryContext<'_>) -> String {
     inventory
         .files_scanned
         .map(|files| format!("; files scanned: {files}"))
@@ -99,10 +97,16 @@ pub fn render_refresh_json(report: RefreshReport<'_>) -> String {
     out.push_str("    \"lifecycle_preserved\": true\n");
     out.push_str("  },\n");
     out.push_str("  \"previous_last_seen\": ");
-    out.push_str(&render_last_seen_json(report.previous_last_seen.as_ref(), "  "));
+    out.push_str(&render_last_seen_json(
+        report.previous_last_seen.as_ref(),
+        "  ",
+    ));
     out.push_str(",\n");
     out.push_str("  \"refreshed_last_seen\": ");
-    out.push_str(&render_last_seen_json(report.entry.last_seen.as_ref(), "  "));
+    out.push_str(&render_last_seen_json(
+        report.entry.last_seen.as_ref(),
+        "  ",
+    ));
     out.push_str(",\n");
     out.push_str("  \"matched_finding\": \"");
     out.push_str(&json_escape(&finding_location_text(report.finding)));

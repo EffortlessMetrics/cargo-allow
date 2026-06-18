@@ -14,7 +14,9 @@ pub(crate) fn select_location_drift_refresh(
         .iter()
         .position(|entry| entry.id == allow_id)
         .ok_or_else(|| {
-            CargoAllowError::new(format!("allow entry id `{allow_id}` was not found in policy"))
+            CargoAllowError::new(format!(
+                "allow entry id `{allow_id}` was not found in policy"
+            ))
         })?;
     let outcome = outcomes
         .iter()
@@ -86,7 +88,10 @@ mod tests {
                 line_hint: Some(14),
                 ..Selector::default()
             },
-            last_seen: Some(LastSeen { line: 14, column: 8 }),
+            last_seen: Some(LastSeen {
+                line: 14,
+                column: 8,
+            }),
         }
     }
 

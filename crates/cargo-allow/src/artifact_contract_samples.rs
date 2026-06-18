@@ -1,4 +1,6 @@
-use crate::{add, diff, doctor, explain, list, migrate, propose, prune, refresh, spec_system, worklist};
+use crate::{
+    add, diff, doctor, explain, list, migrate, propose, prune, refresh, spec_system, worklist,
+};
 
 pub(crate) struct ArtifactSample {
     pub(crate) name: &'static str,
