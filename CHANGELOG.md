@@ -10,6 +10,14 @@ inventory without executing repository code.
 
 ### Added
 
+- Add import-parity owner/reason/evidence acceptance fixture matrix (#1717):
+  table-driven `import_parity_metadata_acceptance_tests.rs` characterizes
+  semantic-selector governance round-trip (`owner`, `reason`, `evidence`,
+  legacy `covered_by`) across no-panic, lint, and unsafe lanes; surfaces weak
+  or missing evidence as visible debt without laundering into reviewed approval;
+  and verifies multi-family batch import preserves governance metadata. Fixtures:
+  `tests/fixtures/migration/no-panic-allowlist-semantic-selectors-covered-by.toml`,
+  `lint-exception-semantic-selectors-covered-by.toml`.
 - Add multi-family legacy ledger import model (`LegacyImportBatch`,
   `LegacyImportFamily`) for policy-directory batch migration: absorbs panic-family,
   lint-attribute, and other compat lanes in deterministic lane-descriptor order

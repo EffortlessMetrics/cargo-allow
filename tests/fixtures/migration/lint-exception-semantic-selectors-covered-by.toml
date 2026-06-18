@@ -1,0 +1,19 @@
+schema_version = 1
+policy = "clippy-exceptions"
+
+[[allow]]
+id = "fixture-clippy-covered"
+path = "src/lib.rs"
+lint = "clippy::unwrap_used"
+family = "expect"
+owner = "lint"
+classification = "reviewed_lint_exception"
+reason = "Lint semantic selector with legacy covered_by governance metadata."
+covered_by = "test:lint_semantic_selector_covered_by_round_trip"
+policy_id = "fixture-clippy-covered"
+created = "2026-06-18"
+review_after = "2026-12-18"
+
+[allow.selector]
+kind = "attribute"
+target = "policy:fixture-clippy-covered"
