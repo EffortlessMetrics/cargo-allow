@@ -4,24 +4,7 @@ use std::path::Path;
 
 use crate::loader_compat::load_non_rust_compat_config;
 use crate::loaders::load_legacy_or_canonical;
-
-pub(crate) fn legacy_policy_file_names() -> &'static [&'static str] {
-    LEGACY_POLICY_FILES
-}
-
-const LEGACY_POLICY_FILES: &[&str] = &[
-    "non-rust-allowlist.toml",
-    "generated-allowlist.toml",
-    "no-panic-allowlist.toml",
-    "no-panic-baseline.toml",
-    "clippy-exceptions.toml",
-    "unsafe-allowlist.toml",
-    "executable-allowlist.toml",
-    "workflow-allowlist.toml",
-    "dependency-surface-allowlist.toml",
-    "process-allowlist.toml",
-    "network-allowlist.toml",
-];
+use crate::migration_lane_descriptors::legacy_policy_filenames;
 
 pub fn load_legacy_policy_dir(dir: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
     load_legacy_policy_dir_inner(dir.as_ref(), None)
@@ -47,12 +30,12 @@ fn load_legacy_policy_dir_inner(
 
     let mut merged = AllowConfig::empty();
     let mut loaded = 0usize;
-    for file_name in LEGACY_POLICY_FILES {
+    for file_name in legacy_policy_filenames() {
         let path = dir.join(file_name);
         if !path.is_file() {
             continue;
         }
-        let cfg = if *file_name == "non-rust-allowlist.toml" {
+        let cfg = if file_name == "non-rust-allowlist.toml" {
             if let Some(findings) = non_rust_findings {
                 load_non_rust_compat_config(&path, findings)?
             } else {

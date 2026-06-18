@@ -54,6 +54,7 @@ mod loader_source_compat;
 mod loader_source_exception_compat;
 mod loader_workflow_dependency_compat;
 mod loaders;
+mod migration_lane_descriptors;
 mod parser_clippy_entries;
 mod parser_dependency_entries;
 mod parser_executable_entries;
@@ -98,6 +99,12 @@ pub use loaders::{
     load_network_compat_config, load_no_panic_allowlist_compat_config,
     load_no_panic_baseline_compat_config, load_non_rust_compat_config, load_process_compat_config,
     load_unsafe_allowlist_compat_config, load_workflow_compat_config, migration_notes,
+};
+pub use migration_lane_descriptors::{
+    CloseoutQueueHints, CompatKind, DebtPolicy, EvidencePolicy, ExpectedCanonicalShape,
+    LegacyInputKind, LegacyLaneDescriptor, LifecyclePolicy, MigrationLane,
+    all_legacy_lane_descriptors, descriptor_for_compat_kind_id, descriptor_for_legacy_filename,
+    descriptor_for_legacy_policy_key, legacy_lane_descriptor, legacy_policy_filenames,
 };
 
 const BASELINE_DEBT_DEFAULT_DAYS: i64 = 67;
