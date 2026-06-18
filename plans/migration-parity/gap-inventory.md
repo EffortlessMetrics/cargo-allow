@@ -37,7 +37,8 @@ Parity status values:
 
 ## Adoption Substrate Lane (closed)
 
-10-PR cleanup queue complete on main. Closeout:
+10-PR cleanup queue complete on main; D4 receiver/target slice recorded in
+closeout extension. Closeout:
 [CARGO-ALLOW-CLOSEOUT-0003](closeouts/adoption-substrate-lane.md). Release cut
 (`0.1.10`) remains deferred; this closeout is not a publish authorization.
 
@@ -51,7 +52,8 @@ Parity status values:
 | `--deny <status>` escalation | Receipt advisory counts not promotable to blocking exit | done | repo-infra | `check --deny <status>` (#1474) | pr-007 |
 | per-lane posture | No per-lane advisory/shadow/blocking model | done | repo-infra | `[lanes.<kind>]` posture (#1473) | pr-008 |
 | dogfood receipts | Two in-repo side-by-side receipts (panic-baseline, unsafe-allowlist); additional lanes still open | partial | repo-infra | `docs/dogfood/cargo-allow-panic-baseline.md`; `docs/dogfood/cargo-allow-unsafe-allowlist.md` | pr-009 |
-| structural identity D3 | Container module-qualification landed; D4–D7 queued | partial | repo-infra | #1724 merge `ffc4a47`; `plans/structural-identity/gap-inventory.md` | pr-010 |
+| structural identity D3 | Container module-qualification landed | done | repo-infra | #1724 merge `ffc4a47`; `plans/structural-identity/gap-inventory.md` | pr-010 |
+| structural identity D4 | Receiver/target fingerprint hardening landed; D5–D7 queued | partial | repo-infra | #1726 merge `4f19e298`; `plans/structural-identity/gap-inventory.md` | pr-011 |
 
 ## Claim Boundary
 

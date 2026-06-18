@@ -315,17 +315,19 @@ evidence_notes = [
 
 [[work_item]]
 id = "adoption-substrate-pr-011"
-status = "ready"
+status = "done"
 title = "Improve receiver/target identity for method/index (structural identity D4)"
 linked_proposal = "CARGO-ALLOW-PROP-0005"
 linked_spec = "CARGO-ALLOW-SPEC-0005"
 linked_plan = "plans/structural-identity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo test -p allow-rust structural_identity",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Queue after D3: receiver_fingerprint and target_fingerprint hardening using structural-identity fixture matrix.",
+  "Landed in #1726 (merge 4f19e298): parameter-slot receiver fingerprints (param:N) and index selector target fingerprints; fixtures rename_local, callee_same_receiver_diff, index_same_form_diff_targets.",
+  "Does not claim lint-target (D5), matcher precision (D6), or diff posture (D7) work.",
 ]
 
 [[work_item]]
