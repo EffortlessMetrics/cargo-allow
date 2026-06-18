@@ -8,6 +8,13 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+### Added
+
+- Policy discovery prefers `policy/cargo-allow.toml` when present, recognizes the
+  `policy = "cargo-allow"` dialect marker in `policy/allow.toml`, and skips
+  foreign-dialect candidates with named diagnostics instead of hard-failing on
+  the first path hit. Explicit `--config` precedence is unchanged.
+
 ### Documentation
 
 - Add first in-repository migration parity dogfood receipt for the characterized

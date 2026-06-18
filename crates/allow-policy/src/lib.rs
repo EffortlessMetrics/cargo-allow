@@ -9,6 +9,7 @@ use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+mod discovery;
 mod entries_validation;
 mod entry_validation;
 mod evidence;
@@ -57,20 +58,12 @@ pub use render::render_policy;
 pub use starter::starter_policy;
 pub use validation::validate_policy;
 
+pub use discovery::{
+    DISCOVERY_REL_PATHS, NATIVE_LEDGER_REL_PATH, SkippedPolicyCandidate, discover_config,
+};
+
 pub fn find_config(start: impl AsRef<Path>) -> Option<PathBuf> {
-    let mut dir = start.as_ref().canonicalize().ok()?;
-    loop {
-        for rel in ["policy/allow.toml", ".cargo/allow.toml", "allow.toml"] {
-            let candidate = dir.join(rel);
-            if candidate.exists() {
-                return Some(candidate);
-            }
-        }
-        if !dir.pop() {
-            break;
-        }
-    }
-    None
+    discover_config(start).selected
 }
 
 pub fn load_policy(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
