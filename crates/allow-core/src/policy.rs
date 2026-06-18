@@ -222,7 +222,7 @@ impl MatchStatus {
     }
 
     pub fn is_failure_in_strict(self) -> bool {
-        !matches!(self, Self::Matched)
+        !matches!(self, Self::Matched | Self::LocationDrift)
     }
 
     pub fn is_failure_in_no_new(self) -> bool {
