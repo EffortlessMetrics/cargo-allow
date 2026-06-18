@@ -57,11 +57,7 @@ artifact_ledger = "policy/doc-artifacts.toml"
 fn resolve_profile_config_uses_explicit_override() -> io::Result<()> {
     let root = TempRoot::new("explicit")?;
     write_file(&root.path, "policy/spec-system.toml", MINIMAL_CONFIG)?;
-    write_file(
-        &root.path,
-        &allow_profile_rel_path(PROFILE),
-        MINIMAL_CONFIG,
-    )?;
+    write_file(&root.path, &allow_profile_rel_path(PROFILE), MINIMAL_CONFIG)?;
 
     let resolved = resolve_profile_config(&root.path, PROFILE, Some(Path::new("custom.toml")));
     assert_eq!(resolved.path.as_deref(), Some("custom.toml"));
@@ -73,13 +69,13 @@ fn resolve_profile_config_uses_explicit_override() -> io::Result<()> {
 #[test]
 fn resolve_profile_config_prefers_allow_profiles() -> io::Result<()> {
     let root = TempRoot::new("allow-profiles")?;
+    write_file(&root.path, &allow_profile_rel_path(PROFILE), MINIMAL_CONFIG)?;
+    write_file(&root.path, ALLOW_CONFIG_REL_PATH, MINIMAL_CONFIG)?;
     write_file(
         &root.path,
-        &allow_profile_rel_path(PROFILE),
+        &legacy_profile_rel_path(PROFILE),
         MINIMAL_CONFIG,
     )?;
-    write_file(&root.path, ALLOW_CONFIG_REL_PATH, MINIMAL_CONFIG)?;
-    write_file(&root.path, &legacy_profile_rel_path(PROFILE), MINIMAL_CONFIG)?;
 
     let resolved = resolve_profile_config(&root.path, PROFILE, None);
     assert_eq!(
@@ -98,7 +94,11 @@ fn resolve_profile_config_prefers_allow_profiles() -> io::Result<()> {
 fn resolve_profile_config_uses_allow_config_before_legacy() -> io::Result<()> {
     let root = TempRoot::new("allow-config")?;
     write_file(&root.path, ALLOW_CONFIG_REL_PATH, MINIMAL_CONFIG)?;
-    write_file(&root.path, &legacy_profile_rel_path(PROFILE), MINIMAL_CONFIG)?;
+    write_file(
+        &root.path,
+        &legacy_profile_rel_path(PROFILE),
+        MINIMAL_CONFIG,
+    )?;
 
     let resolved = resolve_profile_config(&root.path, PROFILE, None);
     assert_eq!(resolved.path.as_deref(), Some(ALLOW_CONFIG_REL_PATH));
@@ -113,7 +113,11 @@ fn resolve_profile_config_uses_allow_config_before_legacy() -> io::Result<()> {
 #[test]
 fn resolve_profile_config_falls_back_to_legacy_policy() -> io::Result<()> {
     let root = TempRoot::new("legacy-only")?;
-    write_file(&root.path, &legacy_profile_rel_path(PROFILE), MINIMAL_CONFIG)?;
+    write_file(
+        &root.path,
+        &legacy_profile_rel_path(PROFILE),
+        MINIMAL_CONFIG,
+    )?;
 
     let resolved = resolve_profile_config(&root.path, PROFILE, None);
     assert_eq!(

@@ -2574,10 +2574,7 @@ mod tests {
         }
         write_fixture_file(&root, &cfg.roots.artifact_ledger, "not = valid = toml")?;
 
-        let readiness = collect_spec_system_readiness(
-            &root,
-            &test_loaded_spec_system_config(cfg),
-        );
+        let readiness = collect_spec_system_readiness(&root, &test_loaded_spec_system_config(cfg));
         let _ = std::fs::remove_dir_all(&root);
 
         let ledger = readiness_check_by_kind(&readiness, "artifact_ledger");

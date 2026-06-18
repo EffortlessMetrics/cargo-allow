@@ -753,7 +753,11 @@ fn profile_resolution_uses_allow_profiles_config() {
     let output = root.join("check.json");
 
     let result = spec_system_check_json(&root, &output);
-    assert!(result.is_ok(), "allow profile config should pass: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "allow profile config should pass: {:?}",
+        result.err()
+    );
     let json = parse_spec_system_json("allow profiles", &read_to_string(&output));
     let _ = fs::remove_dir_all(&root);
 
@@ -779,7 +783,11 @@ fn profile_resolution_falls_back_to_legacy_policy_config() {
     let output = root.join("check.json");
 
     let result = spec_system_check_json(&root, &output);
-    assert!(result.is_ok(), "legacy profile config should pass: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "legacy profile config should pass: {:?}",
+        result.err()
+    );
     let json = parse_spec_system_json("legacy policy", &read_to_string(&output));
     let _ = fs::remove_dir_all(&root);
 

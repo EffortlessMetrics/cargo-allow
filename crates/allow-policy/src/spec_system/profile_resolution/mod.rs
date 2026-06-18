@@ -74,10 +74,7 @@ pub fn resolve_profile_config(
             ProfileConfigProvenance::AllowConfig,
         )
     } else if legacy_exists {
-        (
-            Some(legacy.clone()),
-            ProfileConfigProvenance::LegacyPolicy,
-        )
+        (Some(legacy.clone()), ProfileConfigProvenance::LegacyPolicy)
     } else {
         (None, ProfileConfigProvenance::BuiltInDefault)
     };
