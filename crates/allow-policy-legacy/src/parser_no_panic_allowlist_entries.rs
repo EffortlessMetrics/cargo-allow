@@ -5,6 +5,7 @@ use crate::fields::{
     legacy_evidence, optional_last_seen, optional_u32_field, required_string_field, string_field,
 };
 use crate::parser_support::normalize_legacy_expires;
+use crate::semantic_selector_fields::LegacySemanticSelectorExtras;
 use crate::types::LegacyNoPanicAllowEntry;
 use crate::{default_baseline_created, default_baseline_expires};
 
@@ -64,6 +65,7 @@ fn parse_no_panic_allowlist_entry(
             .and_then(|selector| optional_u32_field(selector, "line_hint"))
             .or_else(|| last_seen.as_ref().map(|seen| seen.line)),
         last_seen,
+        selector_semantics: LegacySemanticSelectorExtras::from_selector_table(selector),
     })
 }
 
@@ -134,6 +136,37 @@ line_hint = 7
         );
         assert_eq!(entry.line_hint, Some(7));
         assert!(entry.last_seen.is_none());
+        assert_eq!(entry.selector_semantics, LegacySemanticSelectorExtras::default());
+    }
+
+    #[test]
+    fn parser_preserves_legacy_receiver_alias_in_selector_semantics() {
+        let table = parse_table(
+            r#"
+policy = "no-panic-allowlist"
+
+[[allow]]
+id = "semantic-receiver"
+path = "src/lib.rs"
+family = "unwrap"
+
+[allow.selector]
+kind = "method_call"
+callee = "unwrap"
+container = "load"
+receiver = "optional_value"
+"#,
+        );
+
+        let entries = parse_entries(&table);
+        let [entry] = entries.as_slice() else {
+            std::panic::panic_any(format!("expected one entry, got {}", entries.len()));
+        };
+
+        assert_eq!(
+            entry.selector_semantics.receiver_fingerprint.as_deref(),
+            Some("optional_value")
+        );
     }
 
     #[test]

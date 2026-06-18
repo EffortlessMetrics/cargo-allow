@@ -117,6 +117,7 @@ status = "active"
                 line: 17,
                 column: 12,
             }),
+            selector_semantics: Default::default(),
         }];
 
         let cfg = config_from_no_panic_allowlist_entries(&table, &entries)

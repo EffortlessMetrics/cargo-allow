@@ -35,4 +35,5 @@ pub(crate) struct LegacyNoPanicAllowEntry {
     pub(crate) expires: Option<String>,
     pub(crate) line_hint: Option<u32>,
     pub(crate) last_seen: Option<LastSeen>,
+    pub(crate) selector_semantics: crate::semantic_selector_fields::LegacySemanticSelectorExtras,
 }

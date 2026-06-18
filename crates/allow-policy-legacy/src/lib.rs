@@ -73,6 +73,7 @@ mod parser_support;
 mod parser_unsafe_entries;
 mod parser_workflow_entries;
 mod parsers;
+mod semantic_selector_fields;
 mod types;
 mod types_dependency_entries;
 mod types_executable_entries;
@@ -136,6 +137,8 @@ mod lint_unsafe_tests;
 mod metadata_matrix_tests;
 #[cfg(test)]
 mod migration_fixture_matrix_tests;
+#[cfg(test)]
+mod semantic_selector_import_tests;
 #[cfg(test)]
 mod no_panic_tests;
 #[cfg(test)]
