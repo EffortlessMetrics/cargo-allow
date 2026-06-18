@@ -77,8 +77,8 @@ mod tests {
 
     #[test]
     fn panic_baseline_descriptor_routes_panic_baseline_queue_metadata() {
-        let descriptor =
-            legacy_lane_descriptor(CompatKind::PanicBaseline).expect("panic baseline descriptor");
+        let descriptor = legacy_lane_descriptor(CompatKind::PanicBaseline)
+            .unwrap_or_else(|| std::panic::panic_any("panic baseline descriptor missing"));
         let metadata = migration_closeout_baseline_debt(descriptor);
 
         assert_eq!(metadata.signal, "baseline_debt");
@@ -88,8 +88,8 @@ mod tests {
 
     #[test]
     fn lint_exception_descriptor_uses_generic_baseline_debt_metadata() {
-        let descriptor =
-            legacy_lane_descriptor(CompatKind::LintException).expect("lint exception descriptor");
+        let descriptor = legacy_lane_descriptor(CompatKind::LintException)
+            .unwrap_or_else(|| std::panic::panic_any("lint exception descriptor missing"));
         let metadata = migration_closeout_baseline_debt(descriptor);
 
         assert_eq!(metadata.signal, "baseline_debt");
@@ -103,7 +103,8 @@ mod tests {
 
     #[test]
     fn unsafe_descriptor_classifies_missing_evidence_debt() {
-        let descriptor = legacy_lane_descriptor(CompatKind::Unsafe).expect("unsafe descriptor");
+        let descriptor = legacy_lane_descriptor(CompatKind::Unsafe)
+            .unwrap_or_else(|| std::panic::panic_any("unsafe descriptor missing"));
 
         assert_eq!(
             migration_debt_classes(descriptor),
@@ -113,8 +114,8 @@ mod tests {
 
     #[test]
     fn primary_legacy_descriptor_prefers_first_known_compat_kind() {
-        let descriptor =
-            primary_legacy_descriptor(&["unknown", "panic"]).expect("panic descriptor lookup");
+        let descriptor = primary_legacy_descriptor(&["unknown", "panic"])
+            .unwrap_or_else(|| std::panic::panic_any("panic descriptor lookup missing"));
 
         assert_eq!(descriptor.lane, CompatKind::PanicBaseline);
     }
