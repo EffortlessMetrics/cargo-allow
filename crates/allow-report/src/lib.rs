@@ -144,7 +144,8 @@ pub use report_text::{
 };
 pub use sarif::{render_sarif, render_sarif_with_context};
 pub use summary::{
-    Summary, matched_policy_missing_evidence_entries, policy_baseline_debt_entries,
+    ADVISORY_DENY_FIELD_NAMES, Summary, advisory_count_for_deny_field,
+    matched_policy_missing_evidence_entries, policy_baseline_debt_entries,
     policy_missing_evidence_entries,
 };
 pub use worklist::{render_worklist_human, render_worklist_json};

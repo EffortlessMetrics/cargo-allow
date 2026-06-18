@@ -188,6 +188,46 @@ pub(crate) fn render_advisory_count_fields(
         .collect()
 }
 
+pub const ADVISORY_DENY_FIELD_NAMES: &[&str] = &[
+    "review_items",
+    "new",
+    "expired",
+    "review_due",
+    "stale",
+    "ambiguous",
+    "invalid_selector",
+    "missing_required_field",
+    "evidence_missing",
+    "baseline_debt",
+    "policy_missing_evidence",
+    "broken_evidence_links",
+    "weak_evidence_references",
+];
+
+pub fn advisory_count_for_deny_field(
+    summary: &Summary,
+    context: ReportContext<'_>,
+    field: &str,
+) -> Option<usize> {
+    let signals = ReviewSignals::from_summary(summary, context);
+    match field {
+        "review_items" => Some(signals.review_items),
+        "new" => Some(summary.count(MatchStatus::New)),
+        "expired" => Some(summary.count(MatchStatus::Expired)),
+        "review_due" => Some(summary.count(MatchStatus::ReviewDue)),
+        "stale" => Some(summary.count(MatchStatus::Stale)),
+        "ambiguous" => Some(summary.count(MatchStatus::Ambiguous)),
+        "invalid_selector" => Some(summary.count(MatchStatus::InvalidSelector)),
+        "missing_required_field" => Some(summary.count(MatchStatus::MissingRequiredField)),
+        "evidence_missing" => Some(summary.count(MatchStatus::EvidenceMissing)),
+        "baseline_debt" => Some(signals.baseline_debt),
+        "policy_missing_evidence" => Some(signals.policy_missing_evidence),
+        "broken_evidence_links" => Some(signals.broken_evidence_links),
+        "weak_evidence_references" => Some(signals.weak_evidence_references),
+        _ => None,
+    }
+}
+
 pub(crate) fn review_item_count_with_baseline(
     summary: &Summary,
     baseline_debt: usize,

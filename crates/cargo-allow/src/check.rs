@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 use allow_report::{
-    RECEIPT_ENFORCEMENT_ADVISORY, RECEIPT_ENFORCEMENT_ENFORCING, ReportContext,
+    RECEIPT_ENFORCEMENT_ADVISORY, RECEIPT_ENFORCEMENT_ENFORCING, ReportContext, Summary,
     render_error_receipt, render_receipt_with_context_and_inventory,
 };
 use std::env;
@@ -11,6 +11,9 @@ use std::process;
 #[path = "check_args.rs"]
 mod check_args;
 pub(crate) use check_args::CheckArgs;
+#[path = "check_deny.rs"]
+mod check_deny;
+use check_deny::{deny_escalation_failed, validate_deny_statuses};
 
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, ProfileArg, ReportRenderArgs,
@@ -22,7 +25,12 @@ use allow_inventory::{InventorySource, resolve_source_tree_root};
 
 pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
-        reject_source_exception_options(args.compat, args.kind.as_deref(), args.include_untracked)?;
+        reject_source_exception_options(
+            args.compat,
+            args.kind.as_deref(),
+            args.include_untracked,
+            &args.deny,
+        )?;
         return spec_system::cmd_spec_system(spec_system::SpecSystemCommandArgs {
             command: "check",
             root: &args.root,
@@ -77,9 +85,17 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         &outcomes,
         evidence_source_tree_files.as_ref(),
     );
-    let failed =
-        outcomes.iter().any(|o| mode.fails(o.status)) || evidence.has_broken_evidence_links();
+    let summary = Summary::from_outcomes(&outcomes);
     let baseline_debt_entries = policy_baseline_debt_entries(&report_cfg);
+    let source_context = SourceTreeReportContext::new(&root, inventory_facts);
+    let mut context = source_context.report(Some(baseline_debt_entries));
+    evidence.apply_to(&mut context);
+    if !args.deny.is_empty() {
+        validate_deny_statuses(&args.deny)?;
+    }
+    let failed = outcomes.iter().any(|o| mode.fails(o.status))
+        || evidence.has_broken_evidence_links()
+        || (!args.deny.is_empty() && deny_escalation_failed(&args.deny, &summary, context));
     print_report(ReportRenderArgs {
         command: "check",
         format: args.format,
@@ -99,9 +115,6 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             .mode
             .as_deref()
             .unwrap_or(report_cfg.workspace.default_mode.as_str());
-        let source_context = SourceTreeReportContext::new(&root, inventory_facts);
-        let mut context = source_context.report(Some(baseline_debt_entries));
-        evidence.apply_to(&mut context);
         apply_receipt_run_metadata(&mut context, effective_mode, mode, policy_config.as_deref());
         write_file(
             path,
@@ -169,6 +182,7 @@ fn reject_source_exception_options(
     compat: bool,
     kind: Option<&str>,
     include_untracked: bool,
+    deny: &[String],
 ) -> CargoAllowResult<()> {
     if compat {
         return Err(CargoAllowError::new(
@@ -183,6 +197,11 @@ fn reject_source_exception_options(
     if include_untracked {
         return Err(CargoAllowError::new(
             "--include-untracked is not supported with --profile spec-system",
+        ));
+    }
+    if !deny.is_empty() {
+        return Err(CargoAllowError::new(
+            "--deny is not supported with --profile spec-system",
         ));
     }
     Ok(())

@@ -34,4 +34,8 @@ pub(crate) struct CheckArgs {
     /// Check mode. Defaults to the policy-configured source-tree gate mode.
     #[arg(long, value_parser = ["audit", "no-new", "strict", "release"])]
     pub(crate) mode: Option<String>,
+    /// Promote one receipt `advisory` count class to a blocking failure.
+    /// Repeatable. `occurrence_headroom` is not available yet (#1472).
+    #[arg(long = "deny", value_name = "STATUS")]
+    pub(crate) deny: Vec<String>,
 }

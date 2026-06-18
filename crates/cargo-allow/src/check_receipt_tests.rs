@@ -14,6 +14,7 @@ fn check_args_leave_mode_unset_for_policy_default() {
         output: None,
         receipt: None,
         mode: None,
+        deny: Vec::new(),
     };
     assert!(args.mode.is_none());
 }
