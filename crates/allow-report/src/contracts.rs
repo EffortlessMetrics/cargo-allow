@@ -18,6 +18,8 @@ pub const PROPOSE_SCHEMA_VERSION: u32 = 1;
 pub const PROPOSE_SCHEMA_ID: &str = "cargo-allow.propose.v1";
 pub const ADD_SCHEMA_VERSION: u32 = 1;
 pub const ADD_SCHEMA_ID: &str = "cargo-allow.add.v1";
+pub const REFRESH_SCHEMA_VERSION: u32 = 1;
+pub const REFRESH_SCHEMA_ID: &str = "cargo-allow.refresh.v1";
 pub const MIGRATE_SCHEMA_VERSION: u32 = 1;
 pub const MIGRATE_SCHEMA_ID: &str = "cargo-allow.migrate.v1";
 pub const SPEC_SYSTEM_SCHEMA_VERSION: u32 = 1;
@@ -92,6 +94,14 @@ pub(crate) const LIST_ARTIFACT: ArtifactContract = ArtifactContract {
     fixed_command: Some("list"),
 };
 
+pub(crate) const REFRESH_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "refresh",
+    schema_id: REFRESH_SCHEMA_ID,
+    schema_version: REFRESH_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: Some("refresh"),
+};
+
 pub(crate) const MIGRATE_ARTIFACT: ArtifactContract = ArtifactContract {
     name: "migrate",
     schema_id: MIGRATE_SCHEMA_ID,
@@ -156,6 +166,7 @@ pub const ARTIFACT_CONTRACTS: &[ArtifactContract] = &[
     MIGRATE_ARTIFACT,
     PROPOSE_ARTIFACT,
     PRUNE_ARTIFACT,
+    REFRESH_ARTIFACT,
     RECEIPT_ARTIFACT,
     REPORT_ARTIFACT,
     SPEC_SYSTEM_ARTIFACT,

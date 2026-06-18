@@ -3,7 +3,8 @@ use clap::{CommandFactory, Parser, Subcommand};
 use std::env;
 
 use crate::{
-    add, audit, check, diff, doctor, explain, init, list, migrate, propose, prune, worklist,
+    add, audit, check, diff, doctor, explain, init, list, migrate, propose, prune, refresh,
+    worklist,
 };
 
 #[derive(Debug, Parser)]
@@ -39,6 +40,8 @@ pub(crate) enum CargoAllowCommand {
     Worklist(worklist::WorklistArgs),
     /// Convert compatible legacy policy files.
     Migrate(migrate::MigrateArgs),
+    /// Record operator-approved advisory drift refresh for one allow entry.
+    Refresh(refresh::RefreshArgs),
     /// Preview or remove stale allow entries.
     Prune(prune::PruneArgs),
     /// Validate local setup.
@@ -65,6 +68,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Propose(args) => propose::cmd_propose(&args),
         CargoAllowCommand::Worklist(args) => worklist::cmd_worklist(&args),
         CargoAllowCommand::Migrate(args) => migrate::cmd_migrate(&args),
+        CargoAllowCommand::Refresh(args) => refresh::cmd_refresh(&args),
         CargoAllowCommand::Prune(args) => prune::cmd_prune(&args),
         CargoAllowCommand::Doctor(args) => doctor::cmd_doctor(&args),
     }

@@ -121,7 +121,7 @@ pub(crate) fn lifecycle_change_fields() -> Vec<&'static str> {
         .collect()
 }
 
-pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static [&'static str]); 11]
+pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static [&'static str]); 12]
 {
     [
         (
@@ -239,6 +239,23 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
             ],
         ),
         (
+            "refresh",
+            &[
+                "claim_boundary",
+                "command",
+                "inventory",
+                "matched_finding",
+                "mode",
+                "previous_last_seen",
+                "refreshed_last_seen",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
             "receipt",
             &[
                 "advisory",
@@ -327,7 +344,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
     ]
 }
 
-pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [&'static str]); 11]
+pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [&'static str]); 12]
 {
     [
         (
@@ -436,6 +453,23 @@ pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [
                 "schema_id",
                 "schema_version",
                 "stale_entries",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "refresh",
+            &[
+                "claim_boundary",
+                "command",
+                "inventory",
+                "matched_finding",
+                "mode",
+                "previous_last_seen",
+                "refreshed_last_seen",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
                 "summary",
                 "tool",
             ],

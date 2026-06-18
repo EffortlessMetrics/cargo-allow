@@ -1,4 +1,4 @@
-use crate::{add, diff, doctor, explain, list, migrate, propose, prune, spec_system, worklist};
+use crate::{add, diff, doctor, explain, list, migrate, propose, prune, refresh, spec_system, worklist};
 
 pub(crate) struct ArtifactSample {
     pub(crate) name: &'static str,
@@ -139,6 +139,26 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "schema_id",
                 "schema_version",
                 "stale_entries",
+                "summary",
+                "tool",
+            ],
+        },
+        ArtifactSample {
+            name: "refresh",
+            schema_name: "refresh",
+            json: refresh::sample_refresh_json_for_contract_test(),
+            expected_command: "refresh",
+            expected_top_level_keys: &[
+                "claim_boundary",
+                "command",
+                "inventory",
+                "matched_finding",
+                "mode",
+                "previous_last_seen",
+                "refreshed_last_seen",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
                 "summary",
                 "tool",
             ],
