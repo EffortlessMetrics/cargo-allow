@@ -389,10 +389,7 @@ fn render_advisory_summary_markdown(
             signals.weak_evidence_references
         ));
     }
-    out.push_str(&format!(
-        "| Baseline debt | {} |\n",
-        signals.baseline_debt
-    ));
+    out.push_str(&format!("| Baseline debt | {} |\n", signals.baseline_debt));
 }
 
 fn render_audit_summary_markdown(
