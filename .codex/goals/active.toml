@@ -349,7 +349,7 @@ evidence_notes = [
 
 [[work_item]]
 id = "adoption-substrate-pr-013"
-status = "ready"
+status = "done"
 title = "Assert selector precision with new identity fields (structural identity D6)"
 linked_proposal = "CARGO-ALLOW-PROP-0005"
 linked_spec = "CARGO-ALLOW-SPEC-0005"
@@ -359,7 +359,8 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Queue after D5: allow-match characterization for new identity fields.",
+  "Landed in #1730 (merge 10e98453): allow-match selector_precision characterization over structural-identity fixtures; policy entries allow-0215..0234 and allow-0243..0246; no matcher logic changes.",
+  "Does not claim diff posture weakening detection (D7).",
 ]
 
 [[work_item]]

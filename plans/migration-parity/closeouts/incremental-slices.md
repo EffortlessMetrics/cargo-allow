@@ -82,7 +82,7 @@ or the `0.2.0` milestone.
 
 ## Remaining Work
 
-- Structural identity D6–D7 (`adoption-substrate-pr-013`–`014`); see
+- Structural identity D7 (`adoption-substrate-pr-014`); D6 landed #1730 (`10e98453`); see
   CARGO-ALLOW-CLOSEOUT-0003.
 - B7 `0.2.0` migration parity release notes — after remaining parity proof.
 - Per-lane `partial` rows in gap inventory — side-by-side dogfood and full lane
@@ -93,3 +93,4 @@ or the `0.2.0` milestone.
 Incremental slice evidence only. `partial` lane status in the gap inventory is
 not a parity claim. `0.1.10` release cut is deferred pending adoption/cleanup
 lane completion and explicit release authorization.
+
