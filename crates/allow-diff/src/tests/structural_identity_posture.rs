@@ -173,20 +173,19 @@ fn fixture_policy_equal_precision_receiver_retarget_reports_selector_identity_ch
         Some(vec!["receiver_fingerprint", "normalized_snippet_hash"])
     );
     assert!(
-        !changes
-            .iter()
-            .any(|change| matches!(
-                change.kind,
-                PolicyChangeKind::SelectorPrecisionDecreased
-                    | PolicyChangeKind::SelectorPrecisionIncreased
-            )),
+        !changes.iter().any(|change| matches!(
+            change.kind,
+            PolicyChangeKind::SelectorPrecisionDecreased
+                | PolicyChangeKind::SelectorPrecisionIncreased
+        )),
         "equal-precision retarget should not be classified as precision change"
     );
 }
 
 #[test]
 fn fixture_finding_posture_reports_identity_loss_between_refactor_sides() {
-    let path = PathBuf::from("tests/fixtures/structural-identity/callee_same_receiver_diff/before.rs");
+    let path =
+        PathBuf::from("tests/fixtures/structural-identity/callee_same_receiver_diff/before.rs");
     let before = scan_rust_source(&path, &read_fixture("callee_same_receiver_diff", "before"));
     let after = scan_rust_source(&path, &read_fixture("callee_same_receiver_diff", "after"));
     let before_finding = single_finding_by_receiver(&before, "param:0");
