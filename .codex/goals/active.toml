@@ -366,15 +366,17 @@ evidence_notes = [
 
 [[work_item]]
 id = "adoption-substrate-pr-014"
-status = "ready"
+status = "done"
 title = "Verify weakening/improvement with new identity fields (structural identity D7)"
 linked_proposal = "CARGO-ALLOW-PROP-0005"
 linked_spec = "CARGO-ALLOW-SPEC-0005"
 linked_plan = "plans/structural-identity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo test -p allow-diff",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Queue after D6: allow-diff posture characterization for identity field changes.",
+  "Landed in #1732 (merge 1f67fd64): allow-diff structural_identity_posture characterization for selector precision weakening/improvement and finding identity loss; no diff logic changes.",
+  "Structural identity execution lane D1–D7 complete; D8 limitation docs deferred (not queued in active.toml).",
 ]

@@ -20,12 +20,14 @@ policy_impact:
 ## Summary
 
 Closeout for the adoption-substrate cleanup queue (`adoption-substrate-pr-002`
-through `adoption-substrate-pr-013`) on the path to migration and evidence
+through `adoption-substrate-pr-014`) on the path to migration and evidence
 parity. Landed modularization, advisory ratcheting, governance split, two
 in-repository dogfood receipts, structural identity D3 container
 module-qualification (#1724, merge `ffc4a47`), D4 receiver/target
-fingerprints (#1726, merge `4f19e298`), and D5 lint attribute target
-identity (#1728, merge `7b2f2785`), and D6 matcher selector precision (#1730, merge `10e98453`).
+fingerprints (#1726, merge `4f19e298`), D5 lint attribute target
+identity (#1728, merge `7b2f2785`), D6 matcher selector precision (#1730, merge
+`10e98453`), and D7 diff posture identity characterization (#1732, merge
+`1f67fd64`).
 
 This closeout records planning, characterization, and scanner-hardening work
 only. It does not claim full xtask replacement, side-by-side dogfood parity
@@ -94,6 +96,14 @@ implementation.
 - Policy entries `allow-0215`..`0234` and `allow-0243`..`0246`; no matcher
   logic changes.
 
+### Structural identity D7 (adoption-substrate-pr-014)
+
+- `allow-diff` `structural_identity_posture` characterization for selector
+  precision weakening/improvement and finding identity loss between refactor
+  sides (#1732, merge `1f67fd64`).
+- Policy entries `allow-0215`..`0234` and `allow-0243`..`0246`; no diff logic
+  changes.
+
 ## Validation Evidence
 
 | Check | Result | Evidence |
@@ -102,6 +112,7 @@ implementation.
 | `cargo test -p cargo-allow check_deny lane_posture` | pass | PRs 7–8 |
 | `cargo test -p allow-rust structural_identity` | pass | D3-D5 fixture matrix |
 | `cargo test -p allow-match selector_precision` | pass | D6 matcher characterization |
+| `cargo test -p allow-diff structural_identity_posture` | pass | D7 diff posture characterization |
 | `cargo-allow check --mode no-new` | pass | `target/cargo-allow/check.receipt.json` |
 | `cargo-allow check --profile spec-system --mode audit` | pass | goal manifest validation |
 
@@ -110,24 +121,22 @@ implementation.
 - Version bump or release cut (`0.1.10` remains deferred).
 - Import-mode implementation for #1466 child issues.
 - Full per-lane dogfood receipts beyond panic-baseline and unsafe-allowlist.
-- Structural identity D7 diff posture characterization.
+- Structural identity D8 limitation docs (deferred; not queued in active.toml).
 
 ## Claim Boundary
 
-Adoption-substrate queue completion evidence only. `partial` dogfood and D3–D4
-rows in gap inventories are not parity claims. Receipts prove scoped in-repository
-slices only.
+Adoption-substrate queue and structural identity execution lane (D1–D7)
+completion evidence only. `partial` dogfood and D3–D4 rows in gap inventories
+are not parity claims. Receipts prove scoped in-repository slices only.
 
 ## Remaining Work
 
-- Structural identity D7 (`adoption-substrate-pr-014` in
-  `.codex/goals/active.toml`).
 - #1466 child issue execution (#1713–#1718) or deferred ripr dogfood (#1718).
 - B7 `0.2.0` migration parity release notes after remaining parity proof.
 - Per-lane `partial` compat rows — additional side-by-side dogfood still open.
 
 ## Follow-Up Links
 
-- PR: #1730 (D6)
+- PR: #1732 (D7)
 - Closeout predecessor: CARGO-ALLOW-CLOSEOUT-0002
-- Next ready lane: `adoption-substrate-pr-014` (structural identity D7)
+- Structural identity execution lane: closed (D1–D7); D8 docs deferred
