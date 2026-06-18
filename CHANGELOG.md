@@ -10,6 +10,9 @@ inventory without executing repository code.
 
 ### Added
 
+- Add second in-repository migration parity dogfood receipt for the characterized
+  `unsafe-allowlist` lane: compat check, migrate, canonical check, worklist,
+  and closeout artifacts under `docs/dogfood/`.
 - Add optional `[lanes.<kind>]` policy posture with `mode = "advisory" | "shadow" | "blocking"`.
   Check honors per-lane posture in read/report paths: shadow and advisory lanes keep
   findings visible without failing `no-new`/`strict` unless `--deny` promotes receipt advisory

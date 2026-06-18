@@ -280,14 +280,33 @@ evidence_notes = [
 
 [[work_item]]
 id = "adoption-substrate-pr-009"
-status = "ready"
-title = "Second cargo-allow dogfood receipt with per-lane posture"
+status = "done"
+title = "Second cargo-allow dogfood receipt (unsafe-allowlist lane)"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
 proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --compat --kind unsafe --config docs/dogfood/fixtures/unsafe-allowlist.toml --mode no-new",
+  "rtk cargo run -p cargo-allow -- migrate --from docs/dogfood/fixtures/unsafe-allowlist.toml --out docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrated.toml --summary-format json --summary-output docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrate-summary.json",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Queue after PR 8: scoped dogfood receipt exercising mixed lane posture on this repository.",
+  "PR 9 (pending merge): docs/dogfood/cargo-allow-unsafe-allowlist.md records one scoped unsafe-allowlist side-by-side receipt for this repository.",
+  "Dogfood evidence for this repo only; does not claim full xtask retirement or 0.2.0 milestone parity.",
+]
+
+[[work_item]]
+id = "adoption-substrate-pr-010"
+status = "ready"
+title = "Improve container identity for ambiguous contexts (structural identity D3)"
+linked_proposal = "CARGO-ALLOW-PROP-0005"
+linked_spec = "CARGO-ALLOW-SPEC-0005"
+linked_plan = "plans/structural-identity/implementation-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-rust structural_identity",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Queue after PR 9: D3 container identity hardening in allow-rust using structural-identity fixture matrix.",
 ]

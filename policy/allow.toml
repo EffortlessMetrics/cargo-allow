@@ -3988,3 +3988,72 @@ glob = "docs/release/0.1.10-readiness.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0240"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/cargo-allow-unsafe-allowlist.md"
+owner = "core/policy"
+classification = "dogfood_evidence"
+reason = "Records in-repository side-by-side unsafe-allowlist migration parity proof for cargo-allow PR 9."
+evidence = ["doc:docs/dogfood/cargo-allow-unsafe-allowlist.md", "doc:docs/migration-from-xtask.md", "doc:plans/migration-parity/gap-inventory.md"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/cargo-allow-unsafe-allowlist.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/dogfood/cargo-allow-unsafe-allowlist.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0241"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrated.toml"
+owner = "core/policy"
+classification = "dogfood_evidence"
+reason = "Committed migrated canonical policy from in-repository unsafe-allowlist dogfood."
+evidence = ["doc:docs/dogfood/cargo-allow-unsafe-allowlist.md", "doc:docs/schemas/migrate.schema.json"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrated.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrated.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0242"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrate-summary.json"
+owner = "core/policy"
+classification = "dogfood_evidence"
+reason = "Committed cargo-allow.migrate.v1 summary from in-repository unsafe-allowlist dogfood."
+evidence = ["doc:docs/dogfood/cargo-allow-unsafe-allowlist.md", "doc:docs/schemas/migrate.schema.json"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrate-summary.json"
+target_fingerprint = "json"
+line_hint = 1
+glob = "docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrate-summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1

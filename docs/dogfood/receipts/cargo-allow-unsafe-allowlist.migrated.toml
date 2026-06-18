@@ -1,0 +1,43 @@
+schema_version = "0.1"
+policy = "cargo-allow"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[workspace]
+root = "."
+inventory = "git-tracked"
+default_mode = "no-new"
+ignored = [".git/**", "target/**"]
+generated = ["target/**", "vendor/**"]
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+stale_entries_fail = false
+
+[requirements.unsafe]
+evidence_required = true
+safety_comment_required = false
+
+[[allow]]
+id = "dogfood-unsafe-read-byte-block"
+kind = "unsafe"
+family = "unsafe_block"
+path = "fixtures/unsafe/src/lib.rs"
+owner = "core/rust-scanner"
+classification = "reviewed_unsafe_boundary"
+reason = "Scoped unsafe-block baseline for cargo-allow unsafe scanner dogfood."
+evidence = ["test:detects_unsafe_blocks_from_syntax"]
+links = ["legacy-policy:dogfood-unsafe-read-byte-block"]
+created = "2026-06-18"
+review_after = "2026-09-18"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "read_byte"
+glob = "fixtures/unsafe/src/lib.rs"
