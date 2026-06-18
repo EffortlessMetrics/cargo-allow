@@ -1,0 +1,18 @@
+schema_version = 1
+policy = "clippy-exceptions"
+
+[[allow]]
+id = "dogfood-ripr-lint-load"
+path = "fixtures/lint/src/lib.rs"
+lint = "clippy::unwrap_used"
+family = "expect"
+owner = "core/rust-scanner"
+classification = "reviewed_lint_exception"
+reason = "Policy-linked expect attribute for ripr-style multi-family adoption dogfood."
+evidence = ["test:detects_outer_and_inner_lint_attributes_from_syntax"]
+created = "2026-06-18"
+review_after = "2026-09-18"
+
+[allow.selector]
+kind = "attribute"
+target = "policy:allow-0069"

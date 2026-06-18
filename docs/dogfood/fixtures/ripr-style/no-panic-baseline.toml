@@ -1,0 +1,16 @@
+schema_version = 1
+policy = "no-panic-baseline"
+
+[[entry]]
+path = "fixtures/panic/src/lib.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "unwrap"
+snippet = "std::fs::read_to_string(path).unwrap()"
+count = 1
+owner = "core/rust-scanner"
+reason = "Counted unwrap baseline for ripr-style multi-family adoption dogfood."
+evidence = ["test:detects_panic_methods_from_syntax"]
+created = "2026-06-18"
+review_after = "2026-09-18"
+expires = "2026-09-18"
