@@ -18,6 +18,7 @@ mod evidence_path;
 mod evidence_reference;
 mod evidence_validation;
 pub mod federation;
+pub mod import_roots;
 mod lane_validation;
 mod lifecycle;
 mod policy_header;
@@ -68,6 +69,14 @@ pub use federation::{
     evaluate_source_exception_policy, evaluate_spec_system_ledger,
     federation_has_blocking_divergence, load_federation_config, mirror_divergence_advisory_count,
     parse_federation_config, validate_federation_config,
+};
+
+pub use import_roots::{
+    DEFAULT_OWNED_IMPORT_ROOT, ImportConfidence, ImportDiagnostic, ImportDiagnosticKind,
+    ImportEdge, ImportEdgeKind, ImportGraph, ImportNode, ImportNodeRole, ImportProvenance,
+    ImportRootEntry, ImportRootsConfig, ValidatedImportRootsConfig, default_import_roots_config,
+    discover_import_graph, parse_import_roots_config, resolve_import_roots_config,
+    validate_import_roots_config,
 };
 
 pub use discovery::{

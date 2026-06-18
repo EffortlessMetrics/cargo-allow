@@ -3,6 +3,10 @@ use allow_inventory::resolve_source_tree_root;
 use allow_policy::federation::{
     FederationLoadOutcome, evaluate_spec_system_ledger, load_federation_config,
 };
+use allow_policy::import_roots::{
+    ImportDiagnosticKind, ImportGraph, discover_import_graph, resolve_import_roots_config,
+    validate_import_roots_config,
+};
 use allow_policy::spec_system::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, ProfileConfigProvenance,
     ResolvedProfileConfig, SpecSystemConfig, SpecSystemMode, SpecSystemRequirements,
@@ -182,6 +186,7 @@ struct SpecSystemReport {
     work_items: Vec<SpecSystemWorkItem>,
     readiness: Option<SpecSystemReadiness>,
     federation: Option<SpecSystemFederationSummary>,
+    import_graph: Option<SpecSystemImportGraphSummary>,
 }
 
 #[derive(Debug, Clone)]
@@ -200,6 +205,41 @@ struct SpecSystemLedgerContributor {
     mode: String,
     priority: u32,
     lanes: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+struct SpecSystemImportGraphSummary {
+    node_count: usize,
+    edge_count: usize,
+    diagnostic_count: usize,
+    nodes: Vec<SpecSystemImportNode>,
+    edges: Vec<SpecSystemImportEdge>,
+    diagnostics: Vec<SpecSystemImportDiagnostic>,
+}
+
+#[derive(Debug, Clone)]
+struct SpecSystemImportNode {
+    id: String,
+    path: String,
+    role: String,
+    ecosystem: String,
+    provenance: String,
+    confidence: String,
+}
+
+#[derive(Debug, Clone)]
+struct SpecSystemImportEdge {
+    source_id: String,
+    target_id: String,
+    kind: String,
+    provenance: String,
+}
+
+#[derive(Debug, Clone)]
+struct SpecSystemImportDiagnostic {
+    kind: String,
+    message: String,
+    root_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -371,6 +411,15 @@ support_tiers_required = true
 # that the active goal should link to in `.allow/artifacts/doc-artifacts.toml`.
 active_goal_required = false
 closeout_required_for_done_items = true
+
+[import_roots]
+owned = ".allow/imports"
+
+[[import_roots.entries]]
+id = "owned-imports"
+path = ".allow/imports"
+ecosystem = "cargo-allow"
+role = "owned"
 "#
     .to_string()
 }
@@ -652,6 +701,14 @@ fn build_spec_system_report(
     if include_work_items {
         work_items.extend(work_items_from_config_findings(&findings));
     }
+    let import_config = resolve_import_roots_config(cfg.import_roots.as_ref());
+    let validated_import_roots = validate_import_roots_config(import_config);
+    let import_graph = discover_import_graph(&root, &validated_import_roots);
+    findings.extend(import_graph_findings(&import_graph));
+    if include_work_items {
+        work_items.extend(work_items_from_import_graph(&import_graph));
+    }
+    let import_graph_summary = Some(import_graph_summary_from_graph(&import_graph));
     let federation = evaluate_spec_system_ledger(&root).map(|evaluation| {
         if let Some(provenance) = &evaluation.active_provenance {
             apply_work_item_ledger_provenance(&mut work_items, provenance);
@@ -693,6 +750,7 @@ fn build_spec_system_report(
         work_items,
         readiness,
         federation,
+        import_graph: import_graph_summary,
     })
 }
 
@@ -821,6 +879,116 @@ fn federation_config_findings(root: &Path) -> Vec<SpecSystemFinding> {
         .collect()
 }
 
+fn import_graph_findings(graph: &ImportGraph) -> Vec<SpecSystemFinding> {
+    graph
+        .diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.kind != ImportDiagnosticKind::MissingRoot)
+        .map(|diagnostic| {
+            SpecSystemFinding::new(
+                "import_graph",
+                format!("{}: {}", diagnostic.kind.as_str(), diagnostic.message),
+            )
+        })
+        .collect()
+}
+
+fn work_items_from_import_graph(graph: &ImportGraph) -> Vec<SpecSystemWorkItem> {
+    graph
+        .diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.kind != ImportDiagnosticKind::MissingRoot)
+        .map(|diagnostic| {
+            let kind = match diagnostic.kind {
+                ImportDiagnosticKind::MissingRoot => "missing_import_root",
+                ImportDiagnosticKind::BrokenEdge => "broken_import",
+                ImportDiagnosticKind::DuplicateRootId
+                | ImportDiagnosticKind::DuplicateRootPath
+                | ImportDiagnosticKind::UnknownRole => "broken_import",
+            };
+            let path = diagnostic
+                .root_ids
+                .first()
+                .cloned()
+                .or_else(|| Some(DEFAULT_OWNED_IMPORTS_ROOT.to_string()));
+            SpecSystemWorkItem {
+                kind,
+                artifact_id: None,
+                path,
+                owner: Some("repo-infra".to_string()),
+                status: Some(diagnostic.kind.as_str().to_string()),
+                message: diagnostic.message.clone(),
+                suggested_actions: import_graph_suggested_actions(diagnostic.kind),
+                proof_commands: spec_system_proof_commands(),
+                ledger_id: None,
+                ledger_path: None,
+                lane: Some("import".to_string()),
+                mode: Some("advisory".to_string()),
+                role: Some("imported".to_string()),
+            }
+        })
+        .collect()
+}
+
+fn import_graph_suggested_actions(kind: ImportDiagnosticKind) -> Vec<String> {
+    match kind {
+        ImportDiagnosticKind::MissingRoot => vec![
+            "create the configured import root directory".to_string(),
+            "or remove the unused import root entry from the spec-system profile config"
+                .to_string(),
+        ],
+        ImportDiagnosticKind::BrokenEdge => vec![
+            "fix the broken import reference in the foreign file".to_string(),
+            "or promote the import node into the owned artifact ledger".to_string(),
+        ],
+        ImportDiagnosticKind::DuplicateRootId | ImportDiagnosticKind::DuplicateRootPath => vec![
+            "deduplicate import root ids and paths in the spec-system profile config".to_string(),
+        ],
+        ImportDiagnosticKind::UnknownRole => {
+            vec!["use an import root role of owned, imported, legacy, or generated".to_string()]
+        }
+    }
+}
+
+fn import_graph_summary_from_graph(graph: &ImportGraph) -> SpecSystemImportGraphSummary {
+    SpecSystemImportGraphSummary {
+        node_count: graph.nodes.len(),
+        edge_count: graph.edges.len(),
+        diagnostic_count: graph.diagnostics.len(),
+        nodes: graph
+            .nodes
+            .iter()
+            .map(|node| SpecSystemImportNode {
+                id: node.id.clone(),
+                path: node.path.clone(),
+                role: node.role.as_str().to_string(),
+                ecosystem: node.ecosystem.clone(),
+                provenance: node.provenance.as_str().to_string(),
+                confidence: node.confidence.as_str().to_string(),
+            })
+            .collect(),
+        edges: graph
+            .edges
+            .iter()
+            .map(|edge| SpecSystemImportEdge {
+                source_id: edge.source_id.clone(),
+                target_id: edge.target_id.clone(),
+                kind: edge.kind.as_str().to_string(),
+                provenance: edge.provenance.as_str().to_string(),
+            })
+            .collect(),
+        diagnostics: graph
+            .diagnostics
+            .iter()
+            .map(|diagnostic| SpecSystemImportDiagnostic {
+                kind: diagnostic.kind.as_str().to_string(),
+                message: diagnostic.message.clone(),
+                root_ids: diagnostic.root_ids.clone(),
+            })
+            .collect(),
+    }
+}
+
 fn federation_ledgers_readiness_check(root: &Path) -> SpecSystemReadinessCheck {
     let path = allow_policy::federation::FEDERATION_CONFIG_REL_PATH.to_string();
     match load_federation_config(root) {
@@ -886,6 +1054,7 @@ fn default_spec_system_config() -> SpecSystemConfig {
             active_goal_required: true,
             closeout_required_for_done_items: true,
         },
+        import_roots: None,
     }
 }
 
@@ -1526,6 +1695,7 @@ fn filter_spec_system_report_for_artifact(
         work_items,
         readiness: None,
         federation: report.federation.clone(),
+        import_graph: report.import_graph.clone(),
     })
 }
 
@@ -1923,6 +2093,95 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
             ));
             text.push_str("        \"lanes\": ");
             render_string_array(&mut text, &contributor.lanes, "        ");
+            text.push_str("\n      }");
+        }
+        text.push_str("\n    ]\n  },\n");
+    }
+    if let Some(import_graph) = &report.import_graph {
+        text.push_str("  \"import_graph\": {\n");
+        text.push_str(&format!(
+            "    \"node_count\": {},\n",
+            import_graph.node_count
+        ));
+        text.push_str(&format!(
+            "    \"edge_count\": {},\n",
+            import_graph.edge_count
+        ));
+        text.push_str(&format!(
+            "    \"diagnostic_count\": {},\n",
+            import_graph.diagnostic_count
+        ));
+        text.push_str("    \"nodes\": [\n");
+        for (index, node) in import_graph.nodes.iter().enumerate() {
+            if index > 0 {
+                text.push_str(",\n");
+            }
+            text.push_str("      {\n");
+            text.push_str(&format!("        \"id\": \"{}\",\n", json_escape(&node.id)));
+            text.push_str(&format!(
+                "        \"path\": \"{}\",\n",
+                json_escape(&node.path)
+            ));
+            text.push_str(&format!(
+                "        \"role\": \"{}\",\n",
+                json_escape(&node.role)
+            ));
+            text.push_str(&format!(
+                "        \"ecosystem\": \"{}\",\n",
+                json_escape(&node.ecosystem)
+            ));
+            text.push_str(&format!(
+                "        \"provenance\": \"{}\",\n",
+                json_escape(&node.provenance)
+            ));
+            text.push_str(&format!(
+                "        \"confidence\": \"{}\"\n",
+                json_escape(&node.confidence)
+            ));
+            text.push_str("      }");
+        }
+        text.push_str("\n    ],\n");
+        text.push_str("    \"edges\": [\n");
+        for (index, edge) in import_graph.edges.iter().enumerate() {
+            if index > 0 {
+                text.push_str(",\n");
+            }
+            text.push_str("      {\n");
+            text.push_str(&format!(
+                "        \"source_id\": \"{}\",\n",
+                json_escape(&edge.source_id)
+            ));
+            text.push_str(&format!(
+                "        \"target_id\": \"{}\",\n",
+                json_escape(&edge.target_id)
+            ));
+            text.push_str(&format!(
+                "        \"kind\": \"{}\",\n",
+                json_escape(&edge.kind)
+            ));
+            text.push_str(&format!(
+                "        \"provenance\": \"{}\"\n",
+                json_escape(&edge.provenance)
+            ));
+            text.push_str("      }");
+        }
+        text.push_str("\n    ],\n");
+        text.push_str("    \"diagnostics\": [\n");
+        for (index, diagnostic) in import_graph.diagnostics.iter().enumerate() {
+            if index > 0 {
+                text.push_str(",\n");
+            }
+            text.push_str("      {\n");
+            text.push_str(&format!(
+                "        \"kind\": \"{}\",\n",
+                json_escape(&diagnostic.kind)
+            ));
+            text.push_str(&format!(
+                "        \"message\": \"{}\",\n",
+                json_escape(&diagnostic.message)
+            ));
+            text.push_str("        \"root_ids\": ");
+            render_string_array(&mut text, &diagnostic.root_ids, "        ");
             text.push_str("\n      }");
         }
         text.push_str("\n    ]\n  },\n");
@@ -2601,6 +2860,7 @@ pub(crate) fn sample_spec_system_json_for_contract_test() -> String {
         }],
         readiness: None,
         federation: None,
+        import_graph: None,
     };
     render_spec_system_json(&report)
 }

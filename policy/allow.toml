@@ -4750,6 +4750,29 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-4705"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/spec-system/closeouts/import-i1-model.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records I1 generic import-root model closeout without claiming ecosystem adapters or release readiness."
+evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/active.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/spec-system/closeouts/import-i1-model.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/spec-system/closeouts/import-i1-model.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-4702"
 kind = "non_rust_file"
 family = "configuration"
