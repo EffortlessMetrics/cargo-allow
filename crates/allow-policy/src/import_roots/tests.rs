@@ -295,6 +295,60 @@ fn discover_import_graph_spec_kit_fixture() -> io::Result<()> {
     Ok(())
 }
 
+#[test]
+fn discover_import_graph_xtask_fixture() -> io::Result<()> {
+    let root = import_fixture_root("xtask")?;
+    let validated = validate_import_roots_config(ImportRootsConfig {
+        owned: None,
+        entries: vec![ImportRootEntry {
+            id: "xtask".to_string(),
+            path: "xtask".to_string(),
+            ecosystem: "xtask".to_string(),
+            role: ImportNodeRole::Imported,
+        }],
+    });
+    let graph = discover_import_graph(&root, &validated);
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .any(|node| node.path == "xtask/commands.toml"),
+        "expected xtask registry node: {:?}",
+        graph.nodes
+    );
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .any(|node| node.id == "xtask:commands.toml:check-file-policy"),
+        "expected xtask command node: {:?}",
+        graph.nodes
+    );
+    assert!(
+        graph.edges.iter().any(|edge| {
+            edge.kind == ImportEdgeKind::References && edge.target_id == "FIXTURE-XTASK-CMD-001"
+        }),
+        "expected xtask command id reference: {:?}",
+        graph.edges
+    );
+    assert!(
+        graph.edges.iter().any(|edge| {
+            edge.kind == ImportEdgeKind::References && edge.target_id == "CARGO-ALLOW-SPEC-0002"
+        }),
+        "expected xtask linked_spec reference: {:?}",
+        graph.edges
+    );
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .find(|node| node.id == "xtask:commands.toml:check-file-policy")
+            .is_some_and(|node| node.role == ImportNodeRole::Generated),
+        "xtask command entries should use generated role"
+    );
+    Ok(())
+}
+
 fn import_fixture_root(label: &str) -> io::Result<std::path::PathBuf> {
     Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../tests/fixtures/import")

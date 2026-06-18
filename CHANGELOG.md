@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- xtask command registry import adapter I2 slice (#1466): read-only discovery for `xtask/`
+  registry TOML files (`commands.toml`, `command-registry.toml`, `registry.toml`) via
+  `allow-policy::import_roots::adapters::xtask`. Normalizes `[[commands]]` entries into
+  nodes, edges, provenance, confidence, and diagnostics on the I1 `import_graph` in
+  spec-system doctor/audit/worklist without Rust dispatch parsing. Fixture-backed tests under
+  `tests/fixtures/import/xtask`. Does not implement full import mode or claim release readiness.
 - Kiro and Spec Kit import adapters I2 slice (#1466): read-only discovery for `.kiro/`
   (`requirements.md`|`bugfix.md`, `design.md`, `tasks.md`) and `.specify/` (constitution,
   `spec.md`, `plan.md`, `tasks.md`, templates) via `allow-policy::import_roots::adapters::kiro`
