@@ -190,31 +190,36 @@ evidence_notes = [
 
 [[work_item]]
 id = "adoption-substrate-pr-004"
-status = "ready"
+status = "done"
 title = "Normalize closeout queue routing across compat kinds"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
 proof_commands = [
   "rtk cargo test -p allow-policy-legacy migration_closeout",
   "rtk cargo test -p cargo-allow migrate_closeout_summary",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Align closeout queue naming and phased next_queues across migration summaries.",
-  "Next active adoption/cleanup lane after evidence/lifecycle helpers.",
+  "Landed in #1712: shared closeout queue construction via migrate_closeout_queues and CloseoutQueueHints without migration behavior change beyond routing labels.",
+  "Panic-baseline and lint-exception closeout summaries now use consistent baseline-debt queue naming.",
 ]
 
 [[work_item]]
 id = "adoption-substrate-pr-005"
-status = "blocked"
+status = "ready"
 title = "Split and govern #1466 semantic-selector import umbrella"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
-blocker_reason = "Sequenced after adoption-substrate-pr-004 closeout queue normalization; governance split only, no import implementation."
+proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
 evidence_notes = [
   "Open umbrella issue #1466 blocks ripr-style adoption; split into owned sub-issues with explicit deferral boundaries.",
+  "Next active adoption/cleanup lane after closeout queue normalization (#1712).",
 ]
 
 [[work_item]]

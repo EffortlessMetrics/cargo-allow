@@ -94,11 +94,8 @@ pub fn migrate_closeout_from_input(input: MigrateCloseoutInput<'_>) -> MigrateCl
         missing_evidence_entries: input.missing_evidence_entries,
     };
     let blockers = migrate_closeout_blockers(report.baseline_debt, &evidence_debt);
-    let next_queues = build_migrate_closeout_next_queues(
-        report,
-        &evidence_debt,
-        &input.legacy_compat_kind_ids(),
-    );
+    let next_queues =
+        build_migrate_closeout_next_queues(report, &evidence_debt, &input.legacy_compat_kind_ids());
     let retirement_status = if blockers.is_empty() {
         "ready"
     } else {

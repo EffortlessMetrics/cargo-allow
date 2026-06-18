@@ -5,8 +5,8 @@ use crate::migrate_closeout::{
     MigrateCloseoutInput, append_migrate_closeout_human, append_migrate_closeout_json,
     migrate_closeout_from_input,
 };
-use crate::{CLAIM_BOUNDARY_TEXT, MigrateReport};
 use crate::migrate_closeout_queues::migrate_follow_up_queues_for_legacy;
+use crate::{CLAIM_BOUNDARY_TEXT, MigrateReport};
 use allow_core::json_escape;
 
 const BROKEN_EVIDENCE_LINK_COMMAND: &str =
@@ -63,7 +63,11 @@ pub fn render_migrate_human(
     {
         out.push_str(&format!("unsafe_weak_evidence_references: {count}\n"));
     }
-    append_migrate_follow_up_queues_human(report, &mut out, &closeout_input.legacy_compat_kind_ids());
+    append_migrate_follow_up_queues_human(
+        report,
+        &mut out,
+        &closeout_input.legacy_compat_kind_ids(),
+    );
     append_migrate_evidence_repair_queues_human(report, &mut out);
     let closeout = migrate_closeout_from_input(closeout_input);
     append_migrate_closeout_human(&closeout, &mut out);
@@ -213,7 +217,11 @@ pub fn render_migrate_json(
     out.push_str(&summary_tail.join(",\n"));
     out.push('\n');
     out.push_str("  },\n");
-    append_migrate_follow_up_queues_json(report, &mut out, &closeout_input.legacy_compat_kind_ids());
+    append_migrate_follow_up_queues_json(
+        report,
+        &mut out,
+        &closeout_input.legacy_compat_kind_ids(),
+    );
     append_migrate_evidence_repair_queues_json(report, &mut out);
     let closeout = migrate_closeout_from_input(closeout_input);
     append_migrate_closeout_json(&closeout, &mut out);

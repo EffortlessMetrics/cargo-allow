@@ -1,8 +1,6 @@
 //! Closeout queue routing metadata derived from migration lane descriptors.
 
-use crate::{
-    DebtPolicy, LegacyLaneDescriptor, descriptor_for_compat_kind_id,
-};
+use crate::{DebtPolicy, LegacyLaneDescriptor, descriptor_for_compat_kind_id};
 
 pub const BASELINE_DEBT_ITEM_KIND: &str = "baseline_debt";
 pub const MISSING_EVIDENCE_ITEM_KIND: &str = "missing_evidence";
@@ -79,8 +77,8 @@ mod tests {
 
     #[test]
     fn panic_baseline_descriptor_routes_panic_baseline_queue_metadata() {
-        let descriptor = legacy_lane_descriptor(CompatKind::PanicBaseline)
-            .expect("panic baseline descriptor");
+        let descriptor =
+            legacy_lane_descriptor(CompatKind::PanicBaseline).expect("panic baseline descriptor");
         let metadata = migration_closeout_baseline_debt(descriptor);
 
         assert_eq!(metadata.signal, "baseline_debt");
@@ -90,8 +88,8 @@ mod tests {
 
     #[test]
     fn lint_exception_descriptor_uses_generic_baseline_debt_metadata() {
-        let descriptor = legacy_lane_descriptor(CompatKind::LintException)
-            .expect("lint exception descriptor");
+        let descriptor =
+            legacy_lane_descriptor(CompatKind::LintException).expect("lint exception descriptor");
         let metadata = migration_closeout_baseline_debt(descriptor);
 
         assert_eq!(metadata.signal, "baseline_debt");
@@ -105,8 +103,7 @@ mod tests {
 
     #[test]
     fn unsafe_descriptor_classifies_missing_evidence_debt() {
-        let descriptor =
-            legacy_lane_descriptor(CompatKind::Unsafe).expect("unsafe descriptor");
+        let descriptor = legacy_lane_descriptor(CompatKind::Unsafe).expect("unsafe descriptor");
 
         assert_eq!(
             migration_debt_classes(descriptor),
@@ -116,8 +113,8 @@ mod tests {
 
     #[test]
     fn primary_legacy_descriptor_prefers_first_known_compat_kind() {
-        let descriptor = primary_legacy_descriptor(&["unknown", "panic"])
-            .expect("panic descriptor lookup");
+        let descriptor =
+            primary_legacy_descriptor(&["unknown", "panic"]).expect("panic descriptor lookup");
 
         assert_eq!(descriptor.lane, CompatKind::PanicBaseline);
     }

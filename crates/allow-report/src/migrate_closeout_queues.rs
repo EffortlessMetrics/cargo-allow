@@ -1,14 +1,15 @@
 use allow_policy_legacy::{
-    BASELINE_DEBT_ITEM_KIND, MISSING_EVIDENCE_ITEM_KIND, NO_NEW_GATE_ITEM_KIND,
-    NO_NEW_GATE_SIGNAL, baseline_debt_closeout_metadata, primary_legacy_descriptor,
+    BASELINE_DEBT_ITEM_KIND, MISSING_EVIDENCE_ITEM_KIND, NO_NEW_GATE_ITEM_KIND, NO_NEW_GATE_SIGNAL,
+    baseline_debt_closeout_metadata, primary_legacy_descriptor,
 };
 
 use crate::MigrateReport;
-use crate::migrate::{migrate_evidence_repair_queues, MigrateEvidenceRepairQueue, MigrateFollowUpQueue};
+use crate::migrate::{
+    MigrateEvidenceRepairQueue, MigrateFollowUpQueue, migrate_evidence_repair_queues,
+};
 use crate::migrate_closeout::{MigrateCloseoutQueue, MigrateEvidenceDebt};
 
-const CHECK_NO_NEW_COMMAND: &str =
-    "cargo-allow check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md";
+const CHECK_NO_NEW_COMMAND: &str = "cargo-allow check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md";
 const MISSING_EVIDENCE_COMMAND: &str =
     "cargo-allow worklist --item-kind missing_evidence --format json";
 
@@ -19,9 +20,7 @@ pub(crate) fn baseline_debt_follow_up_queue(
     if count == 0 {
         return None;
     }
-    let metadata = baseline_debt_closeout_metadata(primary_legacy_descriptor(
-        legacy_compat_kinds,
-    ));
+    let metadata = baseline_debt_closeout_metadata(primary_legacy_descriptor(legacy_compat_kinds));
     Some(MigrateFollowUpQueue {
         signal: metadata.signal,
         label: metadata.label,
@@ -144,7 +143,9 @@ mod tests {
         let queues = build_migrate_closeout_next_queues(report, &evidence_debt, &["panic"]);
 
         let [baseline, no_new] = queues.as_slice() else {
-            std::panic::panic_any(format!("expected baseline and no-new queues, got {queues:?}"));
+            std::panic::panic_any(format!(
+                "expected baseline and no-new queues, got {queues:?}"
+            ));
         };
         assert_eq!(baseline.label, "panic baseline debt entries");
         assert_eq!(baseline.item_kind, BASELINE_DEBT_ITEM_KIND);

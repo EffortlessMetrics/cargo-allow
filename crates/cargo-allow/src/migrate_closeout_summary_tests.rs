@@ -85,10 +85,7 @@ fn migrate_closeout_summary_panic_baseline_without_evidence_routes_baseline_debt
 
 #[test]
 fn migrate_closeout_summary_lint_exception_minimal_routes_baseline_debt() {
-    let root = stage_lane_fixture(
-        "lint-exception-minimal.toml",
-        "clippy-exceptions.toml",
-    );
+    let root = stage_lane_fixture("lint-exception-minimal.toml", "clippy-exceptions.toml");
     let policy_path = root.join("clippy-exceptions.toml");
     let cfg = load_legacy_or_canonical(&policy_path)
         .unwrap_or_else(|err| std::panic::panic_any(format!("load lint exception: {err}")));
@@ -107,7 +104,12 @@ fn migrate_closeout_summary_lint_exception_minimal_routes_baseline_debt() {
         closeout_blockers(&closeout).contains(&"baseline_debt".to_string()),
         "minimal lint entries should remain baseline debt"
     );
-    assert_legacy_source(&closeout, "clippy-exceptions.toml", "lint-exception", "blocked");
+    assert_legacy_source(
+        &closeout,
+        "clippy-exceptions.toml",
+        "lint-exception",
+        "blocked",
+    );
     assert!(
         json.contains("\"label\": \"baseline debt entries\""),
         "lint-exception closeout should use generic baseline-debt queue label"
@@ -121,10 +123,7 @@ fn migrate_closeout_summary_lint_exception_minimal_routes_baseline_debt() {
 
 #[test]
 fn migrate_closeout_summary_unsafe_without_evidence_routes_weak_evidence() {
-    let root = stage_lane_fixture(
-        "unsafe-no-evidence.toml",
-        "unsafe-allowlist.toml",
-    );
+    let root = stage_lane_fixture("unsafe-no-evidence.toml", "unsafe-allowlist.toml");
     let policy_path = root.join("unsafe-allowlist.toml");
     let cfg = load_legacy_or_canonical(&policy_path)
         .unwrap_or_else(|err| std::panic::panic_any(format!("load unsafe allowlist: {err}")));
