@@ -76,14 +76,9 @@ advisory ratcheting (#1474, #1472) is complete on main.
 | --- | --- | --- | --- | --- | --- |
 | `.allow` profile resolution (C2) | Resolver prefers `.allow/` with legacy `policy/` fallback; dogfood migrated in C4 | done | repo-infra | #1748 merge `2adb0b5e`; [CARGO-ALLOW-CLOSEOUT-0006](../spec-system/closeouts/profile-resolution-c2.md) | #1748 |
 | `init` to `.allow/` (C3) | `init --profile spec-system` bootstraps owned state under `.allow/`; dogfood migrated in C4 | done | repo-infra | #1750 merge `23ac8376`; [CARGO-ALLOW-CLOSEOUT-0007](../spec-system/closeouts/init-writes-c3.md) | #1750 |
-<<<<<<< HEAD
-| dogfood profile migration (C4) | Repository dogfood profile state lives under `.allow/`; legacy `policy/` profile paths removed | done | repo-infra | CARGO-ALLOW-CLOSEOUT-0008; `.allow/profiles/spec-system.toml` | C4 |
-| P2 multi-ledger federation F0 (#1473) | F0 design artifacts (PROP-0007 / SPEC-0007 / ADR-0001 / PLAN-0007) define roles, precedence, duplicates, dialects, drain windows, divergence, receipt provenance; no runtime code | done (design-only) | repo-infra | `portable-governance-f0-federation`; docs/source-of-truth/README.md Level 1 | F0 PR |
-| P2 multi-ledger federation F1 (#1473) | Runtime federation resolver, divergence receipts, drain enforcement | blocked | repo-infra | `portable-governance-f1-federation`; CARGO-ALLOW-PLAN-0007 F1 slice | pending F0 merge |
-=======
 | dogfood profile migration (C4) | Repository dogfood profile state lives under `.allow/`; legacy `policy/` profile paths removed | done | repo-infra | #1752 merge `651d9c90`; [CARGO-ALLOW-CLOSEOUT-0008](../spec-system/closeouts/dogfood-migration-c4.md); `.allow/profiles/spec-system.toml` | #1752 |
-| P2 multi-ledger federation (#1473) | Design ready; federation across additional legacy ledgers needs proposal/spec acceptance before implementation | blocked (design-first) | repo-infra | `portable-governance-f0-federation`; CARGO-ALLOW-PROP-0002 / CARGO-ALLOW-SPEC-0002; docs/source-of-truth/README.md Level 1 | — |
->>>>>>> origin/main
+| P2 multi-ledger federation F0 (#1473) | F0 design artifacts (PROP-0007 / SPEC-0007 / ADR-0001 / PLAN-0007) define roles, precedence, duplicates, dialects, drain windows, divergence, receipt provenance; no runtime code | done (design-only) | repo-infra | `portable-governance-f0-federation`; [CARGO-ALLOW-CLOSEOUT-0009](../federation/closeouts/f0-design.md); docs/source-of-truth/README.md Level 1 | #1755 |
+| P2 multi-ledger federation F1 (#1473) | Runtime federation resolver, divergence receipts, drain enforcement | ready | repo-infra | `portable-governance-f1-federation`; CARGO-ALLOW-PLAN-0007 F1 slice | — |
 | external ripr adoption | In-repo ripr-style dogfood closed; external repo migration unrequested | blocked | repo-infra | `docs/dogfood/cargo-allow-ripr-style-adoption.md`; `portable-governance-external-ripr` | — |
 | full import mode (#1466) | Umbrella open; characterization slices #1713–#1718 closed | blocked | repo-infra | CARGO-ALLOW-CLOSEOUT-0004; `portable-governance-full-import` | — |
 
