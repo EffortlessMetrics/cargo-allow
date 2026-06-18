@@ -10,6 +10,10 @@ inventory without executing repository code.
 
 ### Added
 
+- Register import-parity execution lane closeout (CARGO-ALLOW-CLOSEOUT-0004)
+  after #1713–#1718 characterization slices and ripr-style in-repo dogfood
+  receipt (#1741). Umbrella #1466 remains open for full import mode and external
+  adoption; gap-inventory #1466 row stays `partial`.
 - Add import-parity ripr-style multi-family adoption dogfood receipt (#1718):
   `docs/dogfood/cargo-allow-ripr-style-adoption.md` records per-lane compat
   checks, `--repo-policy` batch migrate, per-lane canonical checks, worklist

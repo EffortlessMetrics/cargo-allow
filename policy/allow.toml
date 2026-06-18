@@ -3801,7 +3801,7 @@ normalized_snippet_hash = "fnv1a64:fa9243922c7f7584"
 glob = "tests/fixtures/structural-identity/lint_same_different_items/*.rs"
 
 [allow.last_seen]
-line = 1
+line = 4
 column = 1
 
 [[allow]]
@@ -3825,7 +3825,7 @@ normalized_snippet_hash = "fnv1a64:7e13a5ebdee85d74"
 glob = "tests/fixtures/structural-identity/lint_same_different_items/*.rs"
 
 [allow.last_seen]
-line = 4
+line = 1
 column = 1
 
 [[allow]]
@@ -4353,6 +4353,29 @@ symbol = "docs/dogfood/receipts/cargo-allow-ripr-style-adoption.migrate-summary.
 target_fingerprint = "json"
 line_hint = 1
 glob = "docs/dogfood/receipts/cargo-allow-ripr-style-adoption.migrate-summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0256"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/migration-parity/closeouts/import-parity-lane.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records import-parity execution lane closeout (#1713-#1718) without claiming full import mode or closing umbrella #1466."
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.codex/goals/active.toml", "doc:policy/doc-artifacts.toml"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/migration-parity/closeouts/import-parity-lane.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/migration-parity/closeouts/import-parity-lane.md"
 
 [allow.last_seen]
 line = 1
