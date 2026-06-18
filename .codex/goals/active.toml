@@ -104,8 +104,25 @@ evidence_notes = [
 
 [[work_item]]
 id = "migration-parity-b4"
-status = "ready"
+status = "done"
 title = "Add or refresh migration closeout guide"
+linked_proposal = "CARGO-ALLOW-PROP-0002"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+linked_plan = "plans/migration-parity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
+proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in #1695 (merge 64832c5): migrate closeout routing in cargo-allow.migrate.v1 summaries and migration-evidence-cookbook.md.",
+  "Closeout queues route baseline_debt, evidence repair, and follow-up work without chat memory.",
+  "Closeout routing metadata only; not side-by-side parity proof or 0.2.0 release cut.",
+]
+
+[[work_item]]
+id = "migration-parity-b5"
+status = "ready"
+title = "Add side-by-side dogfood receipt on cargo-allow"
 linked_proposal = "CARGO-ALLOW-PROP-0002"
 linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
@@ -113,7 +130,6 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Make cargo-allow.migrate.v1 summaries actionable without chat memory.",
-  "Update docs/how-to/migration-evidence-cookbook.md and closeout routing docs per plans/migration-parity/pr-queue.md B4.",
-  "Closeout routing metadata only; not side-by-side parity proof or 0.2.0 release cut.",
+  "Run migration parity proof against this repository's own legacy surfaces per plans/migration-parity/pr-queue.md B5.",
+  "Dogfood evidence for this repo only; does not claim full xtask retirement or 0.2.0 milestone parity.",
 ]
