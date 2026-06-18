@@ -104,6 +104,18 @@ implementation.
 - Policy entries `allow-0215`..`0234` and `allow-0243`..`0246`; no diff logic
   changes.
 
+### Structural identity D8 (post-import-d8)
+
+- Scanner limitation examples and claim-boundary docs in
+  [docs/identity.md](../../docs/identity.md) and
+  [docs/claim-boundaries.md](../../docs/claim-boundaries.md).
+- Per-field stable/hint/ambiguous/missing table and fixture-backed examples
+  referencing `tests/fixtures/structural-identity/`; links from
+  [gap-inventory.md](../../plans/structural-identity/gap-inventory.md) and
+  [implementation-plan.md](../../plans/structural-identity/implementation-plan.md).
+- Documentation-only; no scanner, matcher, or diff behavior changes.
+- Closes structural identity execution lane D1–D8.
+
 ## Validation Evidence
 
 | Check | Result | Evidence |
@@ -121,13 +133,14 @@ implementation.
 - Version bump or release cut (`0.1.10` remains deferred).
 - Import-mode implementation for #1466 child issues.
 - Full per-lane dogfood receipts beyond panic-baseline and unsafe-allowlist.
-- Structural identity D8 limitation docs (deferred; not queued in active.toml).
 
 ## Claim Boundary
 
-Adoption-substrate queue and structural identity execution lane (D1–D7)
+Adoption-substrate queue and structural identity execution lane (D1–D8)
 completion evidence only. `partial` dogfood and D3–D4 rows in gap inventories
-are not parity claims. Receipts prove scoped in-repository slices only.
+are not parity claims. Receipts prove scoped in-repository slices only. D8 docs
+record scanner limits; they do not claim build, type, macro-expansion, or
+MIR-level identity.
 
 ## Remaining Work
 
@@ -139,4 +152,4 @@ are not parity claims. Receipts prove scoped in-repository slices only.
 
 - PR: #1732 (D7)
 - Closeout predecessor: CARGO-ALLOW-CLOSEOUT-0002
-- Structural identity execution lane: closed (D1–D7); D8 docs deferred
+- Structural identity execution lane: closed (D1–D8)

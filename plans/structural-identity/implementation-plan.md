@@ -42,12 +42,12 @@ rewrites.
 | D5 — lint attribute target identity | done | #1728 (merge `7b2f2785`); scope map records `inner_attribute_item` targets; characterization for same-line, cfg_attr, multiline, shared-policy, and inner module/impl lint attrs; fixture `lint_same_different_items` |
 | D6 — selector precision assertions | done | `allow-match` `selector_precision` tests; structural-identity fixture policy entries `allow-0215`..`0234`, `allow-0243`..`0246`; no matcher changes required |
 | D7 — diff posture identity characterization | done | #1732 (merge `1f67fd64`); `allow-diff` `structural_identity_posture` tests; policy selector precision weakening/improvement and finding identity loss via structural-identity fixtures; no diff logic changes required |
-| D8 — scanner limitation docs | ready | queued as `post-import-d8` in `.codex/goals/active.toml` |
+| D8 — scanner limitation docs | done | `post-import-d8`; extends [docs/identity.md](../../docs/identity.md) and [docs/claim-boundaries.md](../../docs/claim-boundaries.md); recorded in CARGO-ALLOW-CLOSEOUT-0003 |
 
 ## Lane Status
 
-Structural identity execution lane D1–D7 is closed on main. D8 limitation
-documentation is queued as `post-import-d8` (ready) in active goal execution.
+Structural identity execution lane D1–D8 is closed on main. D8 limitation
+documentation landed via `post-import-d8`.
 
 ## Validation Baseline
 

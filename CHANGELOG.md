@@ -10,6 +10,17 @@ inventory without executing repository code.
 
 ### Added
 
+- Document structural identity scanner limitations and claim boundary (D8):
+  extend [docs/identity.md](docs/identity.md) with source-syntax claim boundary,
+  per-field stable/hint/ambiguous/missing table from D2–D7 characterization,
+  and fixture-backed examples referencing
+  `tests/fixtures/structural-identity/`; link from
+  [gap-inventory.md](plans/structural-identity/gap-inventory.md) and
+  [implementation-plan.md](plans/structural-identity/implementation-plan.md);
+  cross-link [docs/claim-boundaries.md](docs/claim-boundaries.md). Mark
+  `post-import-d8` done in `.codex/goals/active.toml`; extend
+  CARGO-ALLOW-CLOSEOUT-0003. Closes structural identity execution lane D1–D8;
+  no scanner, matcher, or diff behavior changes.
 - Register post-import next execution lane in `.codex/goals/active.toml`: D8
   scanner limitation docs and #1472 `occurrence_headroom` outcomes/worklist
   marked `ready`; #1473 P2 multi-ledger federation and #1466 full import mode

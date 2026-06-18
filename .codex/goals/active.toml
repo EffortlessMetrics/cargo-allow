@@ -10,10 +10,10 @@ objective = """
 Strengthen cargo-allow migration and evidence parity on an adoption-ready
 substrate. Import parity execution lane (#1713–#1718) closed in
 CARGO-ALLOW-CLOSEOUT-0004; umbrella #1466 remains open for full import mode
-and external adoption. Post-import next lane: D8 scanner limitation docs and
-#1472 occurrence_headroom outcomes/worklist are ready; #1473 P2 multi-ledger
-federation is design-first blocked; #1466 full import mode is blocked on
-external need. Internal coherence, modularization, and documented deltas remain
+and external adoption. Post-import next lane: #1472 occurrence_headroom
+outcomes/worklist is ready; D8 scanner limitation docs closed in
+CARGO-ALLOW-CLOSEOUT-0003; #1473 P2 multi-ledger federation is design-first
+blocked; #1466 full import mode is blocked on external need. Internal coherence, modularization, and documented deltas remain
 on the path to the 0.2.0 milestone claim. Release automation (0.1.10) and OIDC
 publish lanes stay dormant until explicit authorization. `.allow` namespace
 import product behavior remains future work (CARGO-ALLOW-SPEC-0004 /
@@ -541,11 +541,12 @@ evidence_notes = [
 
 [[work_item]]
 id = "post-import-d8"
-status = "ready"
+status = "done"
 title = "Document scanner limitation examples and claim boundary (structural identity D8)"
 linked_proposal = "CARGO-ALLOW-PROP-0005"
 linked_spec = "CARGO-ALLOW-SPEC-0005"
 linked_plan = "plans/structural-identity/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
@@ -553,6 +554,7 @@ proof_commands = [
 evidence_notes = [
   "Documentation-only slice from structural identity D8 PR sequence.",
   "Extends docs/identity.md and docs/claim-boundaries.md with honest scanner limits after D1–D7 characterization.",
+  "Closes structural identity execution lane D1–D8; recorded in CARGO-ALLOW-CLOSEOUT-0003.",
   "Does not add scanner behavior, matcher logic, or diff posture changes.",
 ]
 
