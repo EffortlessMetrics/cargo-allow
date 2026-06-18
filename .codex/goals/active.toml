@@ -8,11 +8,12 @@ created = "2026-06-16"
 
 objective = """
 Strengthen cargo-allow migration and evidence parity on an adoption-ready
-substrate, now executing import parity lanes toward real repo adoption (#1466
-child issues #1713–#1718). Internal coherence, modularization, and documented
+substrate. Import parity execution lane (#1713–#1718) closed in
+CARGO-ALLOW-CLOSEOUT-0004; umbrella #1466 remains open for full import mode
+and external adoption. Internal coherence, modularization, and documented
 deltas remain on the path to the 0.2.0 milestone claim. Release automation
-(0.1.10) and OIDC publish lanes stay dormant until explicit authorization after
-import/adoption lanes land. `.allow` namespace import remains design-only
+(0.1.10) and OIDC publish lanes stay dormant until explicit authorization.
+`.allow` namespace import product behavior remains future work
 (CARGO-ALLOW-SPEC-0004 / allow-import-plan).
 """
 
@@ -391,7 +392,7 @@ title = "Register import parity execution lane starting with #1713"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
   "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
@@ -410,7 +411,7 @@ title = "Import semantic selector fields from legacy allowlists (#1466-a / #1713
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
   "rtk cargo test -p allow-policy-legacy semantic_selector",
   "rtk cargo test -p allow-policy-legacy",
@@ -429,7 +430,7 @@ title = "Import advisory drift / last_seen movement from legacy allowlists (#146
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
   "rtk cargo test -p allow-policy-legacy advisory_drift",
   "rtk cargo test -p allow-policy-legacy",
@@ -448,7 +449,7 @@ title = "Import parity recorded re-bless / refresh receipts (#1466-c / #1715)"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
   "rtk cargo test -p allow-report refresh",
   "rtk cargo test -p cargo-allow refresh",
@@ -467,7 +468,7 @@ title = "Import parity multi-family legacy ledger import model (#1466-d / #1716)
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
   "rtk cargo test -p allow-policy-legacy",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
@@ -485,7 +486,7 @@ title = "Import parity owner/reason/evidence acceptance fixture (#1466-e / #1717
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
   "rtk cargo test -p allow-policy-legacy import_parity_metadata_acceptance",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
@@ -502,7 +503,7 @@ title = "Import parity side-by-side ripr-style adoption receipt (#1466-f / #1718
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
   "rtk cargo run -p cargo-allow -- check --compat --kind panic --config docs/dogfood/fixtures/ripr-style/no-panic-baseline.toml --mode no-new",
   "rtk cargo run -p cargo-allow -- check --compat --kind unsafe --config docs/dogfood/fixtures/ripr-style/unsafe-allowlist.toml --mode no-new",
@@ -514,4 +515,23 @@ evidence_notes = [
   "In-repo dogfood only: docs/dogfood/cargo-allow-ripr-style-adoption.md records multi-family panic+unsafe+lint compat→migrate→check→worklist→closeout for cargo-allow fixtures.",
   "Does not migrate external ripr repo, execute ripr proof commands, or close umbrella #1466.",
   "Lint invalid_selector friction documented when legacy selector references canonical policy id during side-by-side compat.",
+]
+
+[[work_item]]
+id = "import-parity-lane-closeout"
+status = "done"
+title = "Close import parity execution lane (#1713–#1718)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
+proof_commands = [
+  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Governance closeout only; no import behavior change.",
+  "CARGO-ALLOW-CLOSEOUT-0004 records landed #1713–#1718 characterization slices and ripr-style in-repo dogfood.",
+  "Umbrella #1466 remains open for full import mode and external adoption.",
 ]
