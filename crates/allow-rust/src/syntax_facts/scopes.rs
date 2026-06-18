@@ -286,7 +286,7 @@ fn record_outer_module_attribute_scopes(
 ) {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        if child.kind() == "attribute_item" {
+        if matches!(child.kind(), "attribute_item" | "inner_attribute_item") {
             record_scope_lines(child, scopes, |span_len| RustLineScope {
                 container: None,
                 module_path: module_path.to_vec(),
@@ -317,7 +317,7 @@ fn record_outer_attribute_scopes(
 ) {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        if child.kind() == "attribute_item" {
+        if matches!(child.kind(), "attribute_item" | "inner_attribute_item") {
             record_scope_lines(child, scopes, |span_len| RustLineScope {
                 container: Some(name.to_string()),
                 module_path: module_path.to_vec(),

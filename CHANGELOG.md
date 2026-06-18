@@ -10,13 +10,19 @@ inventory without executing repository code.
 
 ### Added
 
+- Harden lint `#[allow(...)]` / `#[expect(...)]` attribute target identity so
+  the same lint on different items yields distinct stable keys via `container`
+  (and `module` for inner module attributes) while preserving
+  `target_fingerprint` policy references. Scope collection now records
+  `inner_attribute_item` lines alongside outer `attribute_item` targets.
+  Characterization covers same-line, `cfg_attr`, multiline, shared-policy, and
+  inner module/impl attributes. Fixture: `lint_same_different_items`.
 - Map simple Rust parameter identifiers to structural receiver fingerprints
   (`param:N`) for panic method calls and index receivers, preserving identity
   across rename-only refactors while still distinguishing different parameter
   slots. Non-identifier receivers keep normalized expression text. Index
   `target_fingerprint` now records the bracket selector instead of mirroring
   the receiver. Fixtures: `rename_local`, `callee_same_receiver_diff`,
-  `index_same_form_diff_targets`.
   `index_same_form_diff_targets`.
 - Extend adoption-substrate lane closeout (CARGO-ALLOW-CLOSEOUT-0003) after
   structural identity D4 receiver/target fingerprints land in #1726.
