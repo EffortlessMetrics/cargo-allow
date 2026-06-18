@@ -1,6 +1,7 @@
 use allow_core::CargoAllowResult;
 use allow_policy::federation::{
-    FederationLoadOutcome, FederationLoadResult, ValidatedFederationConfig, load_federation_config,
+    FederationLoadOutcome, FederationLoadResult, ValidatedFederationConfig,
+    detect_mirror_divergences, load_federation_config,
 };
 use allow_report::{ConfiguredLedgerSummary, FederationDiagnosticSummary};
 use std::path::Path;
@@ -12,6 +13,21 @@ pub(crate) struct FederationDoctorFacts {
     pub valid: Option<bool>,
     ledgers: Vec<FederationLedgerFacts>,
     diagnostics: Vec<FederationDiagnosticFacts>,
+    divergence_facts: Vec<FederationDivergenceFacts>,
+}
+
+#[derive(Debug)]
+struct FederationDiagnosticFacts {
+    kind: String,
+    message: String,
+    ledger_ids: Vec<String>,
+}
+
+#[derive(Debug)]
+struct FederationDivergenceFacts {
+    kind: String,
+    message: String,
+    ledger_ids: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -24,13 +40,6 @@ struct FederationLedgerFacts {
     priority: u32,
     lanes: Vec<String>,
     mirrors: Option<String>,
-}
-
-#[derive(Debug)]
-struct FederationDiagnosticFacts {
-    kind: String,
-    message: String,
-    ledger_ids: Vec<String>,
 }
 
 impl FederationDoctorFacts {
@@ -77,7 +86,28 @@ impl FederationDoctorFacts {
                     ledger_ids: diagnostic.ledger_ids,
                 })
                 .collect(),
+            divergence_facts: Vec::new(),
         }
+    }
+
+    pub fn enrich_runtime_divergences(&mut self, root: &Path) -> CargoAllowResult<()> {
+        if self.valid != Some(true) {
+            return Ok(());
+        }
+        let loaded = load_federation_config(root)?;
+        let Some(validated) = loaded.validated() else {
+            return Ok(());
+        };
+        let divergences = detect_mirror_divergences(root, &validated.config)?;
+        self.divergence_facts = divergences
+            .into_iter()
+            .map(|record| FederationDivergenceFacts {
+                kind: record.kind.as_str().to_string(),
+                message: record.message,
+                ledger_ids: vec![record.mirror_ledger_id, record.canonical_ledger_id],
+            })
+            .collect();
+        Ok(())
     }
 
     pub fn federation_config_path(&self) -> Option<&str> {
@@ -107,6 +137,17 @@ impl FederationDoctorFacts {
                 kind: diagnostic.kind.as_str(),
                 message: diagnostic.message.as_str(),
                 ledger_ids: diagnostic.ledger_ids.as_slice(),
+            })
+            .collect()
+    }
+
+    pub fn divergence_summaries(&self) -> Vec<FederationDiagnosticSummary<'_>> {
+        self.divergence_facts
+            .iter()
+            .map(|record| FederationDiagnosticSummary {
+                kind: record.kind.as_str(),
+                message: record.message.as_str(),
+                ledger_ids: record.ledger_ids.as_slice(),
             })
             .collect()
     }

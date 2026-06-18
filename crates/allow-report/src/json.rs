@@ -170,8 +170,79 @@ pub(crate) fn push_json_federation_context(
             out.push_str("\n      }");
         }
     }
-    out.push_str("\n    ]\n");
-    out.push_str("  },\n");
+    out.push_str("\n    ]");
+    if let Some(summary) = federation.divergence_summary {
+        out.push_str(",\n    \"divergence_summary\": {\n");
+        out.push_str("      \"counts_by_kind\": [\n");
+        if let Some(counts) = summary.counts_by_kind {
+            for (index, count) in counts.iter().enumerate() {
+                if index > 0 {
+                    out.push_str(",\n");
+                }
+                out.push_str("        {\n");
+                out.push_str(&format!(
+                    "          \"kind\": \"{}\",\n",
+                    json_escape(count.kind)
+                ));
+                out.push_str(&format!("          \"count\": {}\n", count.count));
+                out.push_str("        }");
+            }
+        }
+        out.push_str("\n      ],\n");
+        out.push_str("      \"records\": [\n");
+        if let Some(records) = summary.records {
+            for (index, record) in records.iter().enumerate() {
+                if index > 0 {
+                    out.push_str(",\n");
+                }
+                out.push_str("        {\n");
+                out.push_str(&format!(
+                    "          \"kind\": \"{}\",\n",
+                    json_escape(record.kind)
+                ));
+                out.push_str(&format!(
+                    "          \"message\": \"{}\",\n",
+                    json_escape(record.message)
+                ));
+                out.push_str(&format!(
+                    "          \"canonical_ledger_id\": \"{}\",\n",
+                    json_escape(record.canonical_ledger_id)
+                ));
+                out.push_str(&format!(
+                    "          \"mirror_ledger_id\": \"{}\",\n",
+                    json_escape(record.mirror_ledger_id)
+                ));
+                out.push_str(&format!(
+                    "          \"canonical_path\": \"{}\",\n",
+                    json_escape(record.canonical_path)
+                ));
+                out.push_str(&format!(
+                    "          \"mirror_path\": \"{}\",\n",
+                    json_escape(record.mirror_path)
+                ));
+                out.push_str(&format!(
+                    "          \"sample_entry_ids\": {},\n",
+                    json_string_array(record.sample_entry_ids)
+                ));
+                out.push_str(&format!(
+                    "          \"canonical_fingerprint\": {},\n",
+                    option_json(record.canonical_fingerprint)
+                ));
+                out.push_str(&format!(
+                    "          \"mirror_fingerprint\": {},\n",
+                    option_json(record.mirror_fingerprint)
+                ));
+                out.push_str(&format!(
+                    "          \"recommended_action\": \"{}\"\n",
+                    json_escape(record.recommended_action)
+                ));
+                out.push_str("        }");
+            }
+        }
+        out.push_str("\n      ]\n");
+        out.push_str("    }");
+    }
+    out.push_str("\n  },\n");
 }
 
 pub(crate) fn push_json_source_context_properties(

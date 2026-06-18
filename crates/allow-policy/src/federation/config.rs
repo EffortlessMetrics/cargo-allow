@@ -2,6 +2,9 @@ use allow_core::{CargoAllowError, CargoAllowResult, LaneEnforcementMode};
 use serde::Deserialize;
 use std::str::FromStr;
 
+pub use super::drain::DrainWindow;
+use super::drain::{DrainWindowToml, parse_drain_windows};
+
 pub const NATIVE_POLICY_DIALECT: &str = "cargo-allow";
 pub const DOC_ARTIFACTS_DIALECT: &str = "cargo-allow-doc-artifacts";
 
@@ -49,6 +52,7 @@ pub struct LedgerEntry {
 pub struct FederationConfig {
     pub schema_version: String,
     pub ledgers: Vec<LedgerEntry>,
+    pub drain_windows: Vec<DrainWindow>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,6 +64,8 @@ pub enum FederationDiagnosticKind {
     DialectSkipped,
     MirrorMissingTarget,
     UnknownMirrorTarget,
+    UnknownDrainMirrorLedger,
+    DrainWindowMissingField,
 }
 
 impl FederationDiagnosticKind {
@@ -72,6 +78,8 @@ impl FederationDiagnosticKind {
             Self::DialectSkipped => "dialect_skipped",
             Self::MirrorMissingTarget => "mirror_missing_target",
             Self::UnknownMirrorTarget => "unknown_mirror_target",
+            Self::UnknownDrainMirrorLedger => "unknown_drain_mirror_ledger",
+            Self::DrainWindowMissingField => "drain_window_missing_field",
         }
     }
 }
@@ -95,6 +103,8 @@ struct FederationConfigToml {
     schema_version: Option<String>,
     #[serde(default)]
     ledgers: Vec<LedgerEntryToml>,
+    #[serde(default)]
+    drain_windows: Vec<DrainWindowToml>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -121,6 +131,7 @@ impl FederationConfigToml {
         Ok(FederationConfig {
             schema_version: self.schema_version.unwrap_or_else(|| "1.0".to_string()),
             ledgers,
+            drain_windows: parse_drain_windows(&self.drain_windows),
         })
     }
 }

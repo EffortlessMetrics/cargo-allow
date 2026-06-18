@@ -102,11 +102,16 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let mut context = source_context.report(Some(baseline_debt_entries));
     evidence.apply_to(&mut context);
+    let mirror_divergence_count = federation_bundle.mirror_divergence_advisory_count();
+    if mirror_divergence_count > 0 {
+        context.mirror_divergence_entries = Some(mirror_divergence_count);
+    }
     if !args.deny.is_empty() {
         validate_deny_statuses(&args.deny)?;
     }
     let failed = check_failed_for_outcomes(&outcomes, &findings, &report_cfg, mode)
         || evidence.has_broken_evidence_links()
+        || federation_bundle.has_blocking_divergence()
         || (!args.deny.is_empty() && deny_escalation_failed(&args.deny, &summary, context));
     if should_emit_report_stdout(args.output.as_deref(), args.receipt.as_deref(), args.format) {
         print_report(ReportRenderArgs {
@@ -136,6 +141,9 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         let receipt = federation_bundle.with_context(|federation_context| {
             let mut receipt_context = source_context.report(Some(baseline_debt_entries));
             evidence.apply_to(&mut receipt_context);
+            if mirror_divergence_count > 0 {
+                receipt_context.mirror_divergence_entries = Some(mirror_divergence_count);
+            }
             apply_receipt_run_metadata(
                 &mut receipt_context,
                 effective_mode,

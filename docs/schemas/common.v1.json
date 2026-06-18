@@ -606,6 +606,11 @@
           "type": "integer",
           "minimum": 0,
           "description": "Optional count of matched allow entries whose occurrence_limit exceeds the current matched count and can be ratcheted down."
+        },
+        "mirror_divergence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of canonical versus mirror ledger divergences during active drain windows."
         }
       }
     },
@@ -661,7 +666,8 @@
             "broken_evidence_link",
             "weak_evidence_reference",
             "baseline_debt",
-            "occurrence_headroom"
+            "occurrence_headroom",
+            "mirror_divergence"
           ],
           "description": "Stable cargo-allow worklist item kind associated with this row when applicable."
         },
@@ -1615,7 +1621,8 @@
             "matched",
             "broad_scope",
             "broken_evidence_link",
-            "weak_evidence_reference"
+            "weak_evidence_reference",
+            "mirror_divergence"
           ],
           "description": "Stable queue item kind emitted by cargo-allow worklist."
         },

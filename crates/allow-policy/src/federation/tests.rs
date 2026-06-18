@@ -4,8 +4,10 @@ use super::config::{
     FederationConfig, FederationDiagnosticKind, LedgerEntry, LedgerRole, NATIVE_POLICY_DIALECT,
     ValidatedFederationConfig, parse_federation_config,
 };
+use super::divergence::FederationDivergenceKind;
 use super::precedence::ordered_ledgers_by_precedence;
 use super::validate::validate_federation_config;
+use std::fs;
 
 const VALID_CONFIG: &str = r#"
 schema_version = "1.0"
@@ -175,6 +177,7 @@ fn federation_precedence_orders_by_priority_then_declaration() {
                 mirrors: None,
             },
         ],
+        drain_windows: Vec::new(),
     };
     let validated = validate_federation_config(config);
     let ordered = ordered_ledgers_by_precedence(&validated.config.ledgers);
@@ -212,6 +215,101 @@ fn evaluate_two_canonical_ledgers_from_fixture_config() {
     assert_eq!(evaluation.ledger_contributors[0].id, "source-policy");
     assert_eq!(evaluation.ledger_contributors[1].id, "doc-artifacts");
     cleanup_fixture_root(&root);
+}
+
+#[test]
+fn detect_mirror_divergence_reports_entry_id_mismatch() {
+    let root = fixture_root_for_federation_test("mirror-divergence");
+    std::fs::create_dir_all(root.join(".allow/mirror"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("mirror dir: {err}")));
+    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/federation/canonical-mirror-drain-config.toml");
+    std::fs::copy(&fixture, root.join(".allow/config.toml")).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "copy federation fixture from {}: {err}",
+            fixture.display()
+        ))
+    });
+    std::fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    std::    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[[allow]]
+id = "canonical-only"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed"
+reason = "canonical entry"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"
+container = "load"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("canonical policy write: {err}")));
+    fs::write(
+        root.join(".allow/mirror/policy.toml"),
+        "schema_version = \"0.1\"\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("mirror policy write: {err}")));
+
+    let validated = parse_validated(
+        &std::fs::read_to_string(root.join(".allow/config.toml"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read config: {err}"))),
+    );
+    assert!(validated.valid);
+    let divergences = super::divergence::detect_mirror_divergences(&root, &validated.config)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("detect divergences: {err}")));
+    assert!(
+        divergences.iter().any(|record| {
+            record.kind == super::divergence::FederationDivergenceKind::MirrorDivergence
+                && record.sample_entry_ids.contains(&"canonical-only".to_string())
+        }),
+        "expected mirror_divergence for canonical-only entry: {:?}",
+        divergences
+    );
+
+    let (_path, evaluation) = super::evaluate::evaluate_source_exception_policy(&root, None)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("evaluate with divergences: {err}")));
+    assert!(!evaluation.divergences.is_empty());
+    cleanup_fixture_root(&root);
+}
+
+#[test]
+fn validate_drain_window_requires_known_mirror_ledger() {
+    let config = parse_validated(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+
+[[drain_windows]]
+mirror_ledger = "missing-mirror"
+drain_owner = "repo-infra"
+drain_reason = "test"
+review_after = "2026-12-01"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
+"#,
+    );
+    assert!(!config.valid);
+    assert!(
+        config.diagnostics.iter().any(|diagnostic| {
+            diagnostic.kind == FederationDiagnosticKind::UnknownDrainMirrorLedger
+        }),
+        "expected unknown_drain_mirror_ledger: {:?}",
+        config.diagnostics
+    );
 }
 
 fn fixture_root_for_federation_test(label: &str) -> std::path::PathBuf {

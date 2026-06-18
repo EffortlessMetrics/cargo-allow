@@ -4,6 +4,7 @@ use allow_core::{CargoAllowError, CargoAllowResult, LedgerProvenance};
 
 use super::FederationConfig;
 use super::config::{LedgerEntry, LedgerRole, ValidatedFederationConfig};
+use super::divergence::{FederationDivergenceRecord, detect_mirror_divergences};
 use super::load::{FederationLoadOutcome, load_federation_config};
 use super::precedence::ordered_ledgers_by_precedence;
 use crate::SkippedPolicyCandidate;
@@ -47,6 +48,7 @@ pub struct FederationEvaluation {
     pub precedence_applied: PrecedenceTier,
     pub active_provenance: Option<LedgerProvenance>,
     pub ledger_contributors: Vec<LedgerContributor>,
+    pub divergences: Vec<FederationDivergenceRecord>,
 }
 
 pub fn canonical_ledgers_in_precedence_order(config: &FederationConfig) -> Vec<&LedgerEntry> {
@@ -101,6 +103,7 @@ pub fn evaluate_source_exception_policy(
     cli_config: Option<&Path>,
 ) -> CargoAllowResult<(PathBuf, FederationEvaluation)> {
     let contributors = load_ledger_contributors(root)?;
+    let divergences = load_mirror_divergences(root)?;
     if let Some(config) = cli_config {
         let path = root.join(config);
         let active_provenance = contributors
@@ -116,6 +119,7 @@ pub fn evaluate_source_exception_policy(
                 precedence_applied: PrecedenceTier::CliOverride,
                 active_provenance,
                 ledger_contributors: contributors,
+                divergences,
             },
         ));
     }
@@ -136,6 +140,7 @@ pub fn evaluate_source_exception_policy(
                             SOURCE_EXCEPTION_LANE,
                         )),
                         ledger_contributors: ledger_contributors_from_config(&validated.config),
+                        divergences: divergences.clone(),
                     },
                 ));
             }
@@ -159,6 +164,7 @@ pub fn evaluate_source_exception_policy(
             precedence_applied: PrecedenceTier::DiscoveryFallback,
             active_provenance,
             ledger_contributors: contributors,
+            divergences,
         },
     ))
 }
@@ -169,17 +175,42 @@ pub fn evaluate_spec_system_ledger(root: &Path) -> Option<FederationEvaluation> 
         return None;
     }
     let ledger = resolve_canonical_ledger_for_lane(&validated.config, SPEC_SYSTEM_LANE)?;
+    let divergences = detect_mirror_divergences(root, &validated.config).unwrap_or_default();
     Some(FederationEvaluation {
         federation_version: FEDERATION_VERSION,
         precedence_applied: PrecedenceTier::FederationRegistry,
         active_provenance: Some(ledger_provenance_from_entry(ledger, SPEC_SYSTEM_LANE)),
         ledger_contributors: ledger_contributors_from_config(&validated.config),
+        divergences,
     })
+}
+
+pub fn mirror_divergence_advisory_count(evaluation: &FederationEvaluation) -> usize {
+    evaluation
+        .divergences
+        .iter()
+        .filter(|record| record.kind.counts_toward_mirror_divergence_deny())
+        .count()
+}
+
+pub fn federation_has_blocking_divergence(evaluation: &FederationEvaluation) -> bool {
+    evaluation
+        .divergences
+        .iter()
+        .any(|record| record.kind.is_blocking())
 }
 
 fn load_ledger_contributors(root: &Path) -> CargoAllowResult<Vec<LedgerContributor>> {
     Ok(load_validated_federation_config(root)?
         .map(|validated| ledger_contributors_from_config(&validated.config))
+        .unwrap_or_default())
+}
+
+fn load_mirror_divergences(root: &Path) -> CargoAllowResult<Vec<FederationDivergenceRecord>> {
+    Ok(load_validated_federation_config(root)?
+        .filter(|validated| validated.valid)
+        .map(|validated| detect_mirror_divergences(root, &validated.config))
+        .transpose()?
         .unwrap_or_default())
 }
 

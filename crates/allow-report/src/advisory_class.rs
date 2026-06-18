@@ -22,6 +22,7 @@ pub enum AdvisoryClass {
     BrokenEvidenceLinks,
     WeakEvidenceReferences,
     OccurrenceHeadroom,
+    MirrorDivergence,
 }
 
 impl AdvisoryClass {
@@ -41,6 +42,7 @@ impl AdvisoryClass {
         Self::BrokenEvidenceLinks,
         Self::WeakEvidenceReferences,
         Self::OccurrenceHeadroom,
+        Self::MirrorDivergence,
     ];
 
     pub const fn field_name(self) -> &'static str {
@@ -60,6 +62,7 @@ impl AdvisoryClass {
             Self::BrokenEvidenceLinks => "broken_evidence_links",
             Self::WeakEvidenceReferences => "weak_evidence_references",
             Self::OccurrenceHeadroom => "occurrence_headroom",
+            Self::MirrorDivergence => "mirror_divergence",
         }
     }
 
@@ -87,6 +90,7 @@ impl AdvisoryClass {
             Self::BrokenEvidenceLinks => signals.broken_evidence_links,
             Self::WeakEvidenceReferences => signals.weak_evidence_references,
             Self::OccurrenceHeadroom => signals.occurrence_headroom,
+            Self::MirrorDivergence => signals.mirror_divergence,
         }
     }
 
@@ -94,7 +98,8 @@ impl AdvisoryClass {
         let count = self.count(summary, signals);
         match self {
             Self::PolicyMissingEvidence => count > summary.count(MatchStatus::EvidenceMissing),
-            Self::BrokenEvidenceLinks | Self::WeakEvidenceReferences | Self::OccurrenceHeadroom => {
+            Self::BrokenEvidenceLinks | Self::WeakEvidenceReferences | Self::OccurrenceHeadroom
+            | Self::MirrorDivergence => {
                 count > 0
             }
             _ => true,
@@ -128,6 +133,7 @@ pub const ADVISORY_DENY_FIELD_NAMES: &[&str] = &[
     AdvisoryClass::BrokenEvidenceLinks.field_name(),
     AdvisoryClass::WeakEvidenceReferences.field_name(),
     AdvisoryClass::OccurrenceHeadroom.field_name(),
+    AdvisoryClass::MirrorDivergence.field_name(),
 ];
 
 pub fn advisory_count_for_deny_field(
@@ -173,6 +179,7 @@ mod tests {
             "broken_evidence_links",
             "weak_evidence_references",
             "occurrence_headroom",
+            "mirror_divergence",
         ];
         for name in prior {
             assert!(

@@ -10,6 +10,13 @@ inventory without executing repository code.
 
 ### Added
 
+- Multi-ledger federation F3 mirror divergence (#1473): compare canonical and mirror
+  policy ledgers during active `[[drain_windows]]` in `.allow/config.toml`; emit
+  visible `mirror_divergence`, `mirror_stale`, and blocking `drain_expired`
+  records in doctor, check receipts (`federation.divergence_summary`), and
+  worklist (`mirror_divergence` item kind). Optional `check --deny mirror_divergence`
+  escalates advisory mirror drift to failure. Does not claim import adapters,
+  release readiness, or external ripr parity.
 - Register F2 federation check evaluation closeout (CARGO-ALLOW-CLOSEOUT-0011):
   mark `portable-governance-f2-federation` done after #1758; queue
   `portable-governance-f3-federation` ready; reconcile

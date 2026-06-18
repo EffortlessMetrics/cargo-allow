@@ -1,0 +1,28 @@
+schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+mode = "blocking"
+priority = 10
+
+[[ledgers]]
+id = "source-policy-mirror"
+path = ".allow/mirror/policy.toml"
+dialect = "cargo-allow"
+role = "mirror"
+mirrors = "source-policy"
+lanes = ["source-exception"]
+mode = "advisory"
+priority = 15
+
+[[drain_windows]]
+mirror_ledger = "source-policy-mirror"
+drain_owner = "repo-infra"
+drain_reason = "migration sync proof during drain window"
+review_after = "2026-01-01"
+expiry = "2027-12-31"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
