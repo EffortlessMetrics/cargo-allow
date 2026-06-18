@@ -13,7 +13,7 @@ characterization tests in #1701 (merge `2165848`).
 | index/slice | target_fingerprint precision | done | index expr matrix | D4 (#1726, `4f19e298`) |
 | lint attributes | attribute target identity | done | lint attr fixtures | D5 (#1728, `7b2f2785`) |
 | match selectors | precision on new fields | done | matcher characterization | D6 |
-| diff posture | weakening on identity loss | open | diff characterization | D7 |
+| diff posture | weakening on identity loss | done | diff characterization | D7 |
 
 ## Field Classifications (D2 fixture matrix)
 
@@ -49,5 +49,6 @@ Characterization source: `tests/fixtures/structural-identity/` and
 
 `open` rows are inventory placeholders until fixture-backed characterization
 lands. `partial` rows have refactor-pair fixtures and tests but may still need
-scanner or diff hardening (D7). D6 matcher characterization is done; it is not a
-claim that diff posture weakening detection is fully closed.
+scanner or diff hardening. D6 matcher characterization is done; D7 diff posture
+characterization covers policy selector precision weakening/improvement and
+finding identity loss between refactor sides.
