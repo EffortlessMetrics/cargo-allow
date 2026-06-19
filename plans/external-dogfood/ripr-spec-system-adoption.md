@@ -1,3 +1,16 @@
+---
+id: CARGO-ALLOW-PLAN-0008
+kind: implementation_plan
+status: draft
+owner: repo-infra
+created: 2026-06-18
+linked_proposal: CARGO-ALLOW-PROP-0004
+linked_spec: CARGO-ALLOW-SPEC-0004
+linked_support_tier: CARGO-ALLOW-SUPPORT-0001
+support_tier_impact: advisory
+policy_impact: none
+---
+
 # ripr Spec-System Adoption Handoff
 
 This is the first external-dogfood handoff after the published cargo-allow
