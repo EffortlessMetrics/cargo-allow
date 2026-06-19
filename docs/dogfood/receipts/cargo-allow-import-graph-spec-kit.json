@@ -1,0 +1,345 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.spec-system.v1",
+  "tool": "cargo-allow",
+  "command": "check",
+  "profile": "spec-system",
+  "mode": "advisory",
+  "status": "passed",
+  "failed": false,
+  "claim_boundary": [
+    "source_tree_inventory",
+    "source_tree_graph_validation",
+    "proof_commands_not_executed",
+    "cargo_metadata_not_invoked",
+    "cargo_commands_not_invoked",
+    "rustc_not_invoked",
+    "clippy_not_invoked",
+    "build_scripts_not_executed",
+    "proc_macros_not_executed",
+    "macro_expansion_not_analyzed",
+    "macro_token_tree_contents_not_analyzed",
+    "type_information_not_analyzed",
+    "mir_not_analyzed",
+    "build_output_not_analyzed",
+    "control_flow_not_analyzed",
+    "data_flow_not_analyzed",
+    "external_evidence_tools_not_invoked",
+    "repository_code_not_executed",
+    "network_not_used",
+    "github_api_not_used"
+  ],
+  "scanner_limitations": [
+    "proof_commands_not_executed",
+    "cargo_metadata_not_invoked",
+    "cargo_commands_not_invoked",
+    "rustc_not_invoked",
+    "clippy_not_invoked",
+    "build_scripts_not_executed",
+    "proc_macros_not_executed",
+    "macro_expansion_not_analyzed",
+    "macro_token_tree_contents_not_analyzed",
+    "type_information_not_analyzed",
+    "mir_not_analyzed",
+    "build_output_not_analyzed",
+    "control_flow_not_analyzed",
+    "data_flow_not_analyzed",
+    "external_evidence_tools_not_invoked",
+    "repository_code_not_executed",
+    "network_not_used",
+    "github_api_not_used"
+  ],
+  "inventory": {
+    "scope": "source_tree",
+    "scanner": "source_tree_graph",
+    "source": "unknown",
+    "root": "\\\\?\\H:\\Code\\Rust\\cargo-allow\\tests\\fixtures\\import\\spec-kit"
+  },
+  "source_tree_root": "\\\\?\\H:\\Code\\Rust\\cargo-allow\\tests\\fixtures\\import\\spec-kit",
+  "config_source": "default spec-system roots",
+  "config_provenance": "built_in_default",
+  "import_graph": {
+    "node_count": 12,
+    "edge_count": 11,
+    "diagnostic_count": 12,
+    "nodes": [
+      {
+        "id": "owned-imports",
+        "path": ".allow/imports",
+        "role": "owned",
+        "ecosystem": "cargo-allow",
+        "provenance": "configured",
+        "confidence": "high"
+      },
+      {
+        "id": "kiro",
+        "path": ".kiro",
+        "role": "imported",
+        "ecosystem": "kiro",
+        "provenance": "configured",
+        "confidence": "high"
+      },
+      {
+        "id": "specify",
+        "path": ".specify",
+        "role": "imported",
+        "ecosystem": "spec-kit",
+        "provenance": "configured",
+        "confidence": "high"
+      },
+      {
+        "id": "specify:templates:spec-template.md",
+        "path": ".specify/templates/spec-template.md",
+        "role": "generated",
+        "ecosystem": "spec-kit",
+        "provenance": "discovered",
+        "confidence": "medium"
+      },
+      {
+        "id": "specify:specs:001-auth:plan.md",
+        "path": ".specify/specs/001-auth/plan.md",
+        "role": "imported",
+        "ecosystem": "spec-kit",
+        "provenance": "discovered",
+        "confidence": "medium"
+      },
+      {
+        "id": "specify:specs:001-auth:spec.md",
+        "path": ".specify/specs/001-auth/spec.md",
+        "role": "imported",
+        "ecosystem": "spec-kit",
+        "provenance": "discovered",
+        "confidence": "high"
+      },
+      {
+        "id": "specify:specs:001-auth:tasks.md",
+        "path": ".specify/specs/001-auth/tasks.md",
+        "role": "generated",
+        "ecosystem": "spec-kit",
+        "provenance": "discovered",
+        "confidence": "medium"
+      },
+      {
+        "id": "specify:memory:constitution.md",
+        "path": ".specify/memory/constitution.md",
+        "role": "imported",
+        "ecosystem": "spec-kit",
+        "provenance": "discovered",
+        "confidence": "high"
+      },
+      {
+        "id": "generic-spec",
+        "path": ".spec",
+        "role": "imported",
+        "ecosystem": "generic-spec",
+        "provenance": "configured",
+        "confidence": "high"
+      },
+      {
+        "id": "generic-rails",
+        "path": ".rails",
+        "role": "imported",
+        "ecosystem": "generic-spec",
+        "provenance": "configured",
+        "confidence": "high"
+      },
+      {
+        "id": "legacy-goals",
+        "path": ".codex/goals",
+        "role": "legacy",
+        "ecosystem": "codex",
+        "provenance": "configured",
+        "confidence": "high"
+      },
+      {
+        "id": "xtask",
+        "path": "xtask",
+        "role": "imported",
+        "ecosystem": "xtask",
+        "provenance": "configured",
+        "confidence": "high"
+      }
+    ],
+    "edges": [
+      {
+        "source_id": "specify",
+        "target_id": "specify:templates:spec-template.md",
+        "kind": "contains",
+        "provenance": "discovered"
+      },
+      {
+        "source_id": "specify",
+        "target_id": "specify:specs:001-auth:plan.md",
+        "kind": "contains",
+        "provenance": "discovered"
+      },
+      {
+        "source_id": "specify:specs:001-auth:plan.md",
+        "target_id": "FIXTURE-SPEC-KIT-PLAN-001",
+        "kind": "references",
+        "provenance": "generated_marker"
+      },
+      {
+        "source_id": "specify:specs:001-auth:plan.md",
+        "target_id": "FIXTURE-SPEC-KIT-SPEC-001",
+        "kind": "references",
+        "provenance": "discovered"
+      },
+      {
+        "source_id": "specify",
+        "target_id": "specify:specs:001-auth:spec.md",
+        "kind": "contains",
+        "provenance": "discovered"
+      },
+      {
+        "source_id": "specify:specs:001-auth:spec.md",
+        "target_id": "FIXTURE-SPEC-KIT-SPEC-001",
+        "kind": "references",
+        "provenance": "generated_marker"
+      },
+      {
+        "source_id": "specify:specs:001-auth:spec.md",
+        "target_id": "FIXTURE-SPEC-KIT-PLAN-001",
+        "kind": "references",
+        "provenance": "discovered"
+      },
+      {
+        "source_id": "specify",
+        "target_id": "specify:specs:001-auth:tasks.md",
+        "kind": "contains",
+        "provenance": "discovered"
+      },
+      {
+        "source_id": "specify:specs:001-auth:tasks.md",
+        "target_id": "FIXTURE-SPEC-KIT-TASKS-001",
+        "kind": "references",
+        "provenance": "generated_marker"
+      },
+      {
+        "source_id": "specify",
+        "target_id": "specify:memory:constitution.md",
+        "kind": "contains",
+        "provenance": "discovered"
+      },
+      {
+        "source_id": "specify:memory:constitution.md",
+        "target_id": "FIXTURE-SPEC-KIT-CONSTITUTION",
+        "kind": "references",
+        "provenance": "generated_marker"
+      }
+    ],
+    "diagnostics": [
+      {
+        "kind": "missing_root",
+        "message": "import root `owned-imports` (.allow/imports) is not present under the source tree",
+        "root_ids": [
+          "owned-imports"
+        ]
+      },
+      {
+        "kind": "missing_root",
+        "message": "import root `kiro` (.kiro) is not present under the source tree",
+        "root_ids": [
+          "kiro"
+        ]
+      },
+      {
+        "kind": "missing_root",
+        "message": "import root `generic-spec` (.spec) is not present under the source tree",
+        "root_ids": [
+          "generic-spec"
+        ]
+      },
+      {
+        "kind": "missing_root",
+        "message": "import root `generic-rails` (.rails) is not present under the source tree",
+        "root_ids": [
+          "generic-rails"
+        ]
+      },
+      {
+        "kind": "missing_root",
+        "message": "import root `legacy-goals` (.codex/goals) is not present under the source tree",
+        "root_ids": [
+          "legacy-goals"
+        ]
+      },
+      {
+        "kind": "missing_root",
+        "message": "import root `xtask` (xtask) is not present under the source tree",
+        "root_ids": [
+          "xtask"
+        ]
+      },
+      {
+        "kind": "broken_edge",
+        "message": "import edge from `specify:specs:001-auth:plan.md` references unknown target `FIXTURE-SPEC-KIT-PLAN-001`",
+        "root_ids": [
+          "specify:specs:001-auth:plan.md"
+        ]
+      },
+      {
+        "kind": "broken_edge",
+        "message": "import edge from `specify:specs:001-auth:plan.md` references unknown target `FIXTURE-SPEC-KIT-SPEC-001`",
+        "root_ids": [
+          "specify:specs:001-auth:plan.md"
+        ]
+      },
+      {
+        "kind": "broken_edge",
+        "message": "import edge from `specify:specs:001-auth:spec.md` references unknown target `FIXTURE-SPEC-KIT-SPEC-001`",
+        "root_ids": [
+          "specify:specs:001-auth:spec.md"
+        ]
+      },
+      {
+        "kind": "broken_edge",
+        "message": "import edge from `specify:specs:001-auth:spec.md` references unknown target `FIXTURE-SPEC-KIT-PLAN-001`",
+        "root_ids": [
+          "specify:specs:001-auth:spec.md"
+        ]
+      },
+      {
+        "kind": "broken_edge",
+        "message": "import edge from `specify:specs:001-auth:tasks.md` references unknown target `FIXTURE-SPEC-KIT-TASKS-001`",
+        "root_ids": [
+          "specify:specs:001-auth:tasks.md"
+        ]
+      },
+      {
+        "kind": "broken_edge",
+        "message": "import edge from `specify:memory:constitution.md` references unknown target `FIXTURE-SPEC-KIT-CONSTITUTION`",
+        "root_ids": [
+          "specify:memory:constitution.md"
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "artifacts": 0,
+    "links": 0,
+    "support_tier_rows": 0,
+    "findings": 8,
+    "blocking_eligible_findings": 1,
+    "advisory_findings": 7,
+    "work_items": 0,
+    "blocking_eligible_work_items": 0,
+    "advisory_work_items": 0
+  },
+  "artifacts": [
+  ],
+  "links": [
+  ],
+  "findings": [
+    {"kind": "doc_artifact_ledger", "message": "failed to read doc artifact ledger \\\\?\\H:\\Code\\Rust\\cargo-allow\\tests\\fixtures\\import\\spec-kit\\policy\\doc-artifacts.toml: The system cannot find the path specified. (os error 3)", "blocking_eligible": true, "blocking_reason": "doc_artifact_ledger_missing"},
+    {"kind": "support_tier", "message": "failed to read support-tier file docs/status/SUPPORT_TIERS.md: The system cannot find the path specified. (os error 3)", "blocking_eligible": false},
+    {"kind": "import_graph", "message": "broken_edge: import edge from `specify:specs:001-auth:plan.md` references unknown target `FIXTURE-SPEC-KIT-PLAN-001`", "blocking_eligible": false},
+    {"kind": "import_graph", "message": "broken_edge: import edge from `specify:specs:001-auth:plan.md` references unknown target `FIXTURE-SPEC-KIT-SPEC-001`", "blocking_eligible": false},
+    {"kind": "import_graph", "message": "broken_edge: import edge from `specify:specs:001-auth:spec.md` references unknown target `FIXTURE-SPEC-KIT-SPEC-001`", "blocking_eligible": false},
+    {"kind": "import_graph", "message": "broken_edge: import edge from `specify:specs:001-auth:spec.md` references unknown target `FIXTURE-SPEC-KIT-PLAN-001`", "blocking_eligible": false},
+    {"kind": "import_graph", "message": "broken_edge: import edge from `specify:specs:001-auth:tasks.md` references unknown target `FIXTURE-SPEC-KIT-TASKS-001`", "blocking_eligible": false},
+    {"kind": "import_graph", "message": "broken_edge: import edge from `specify:memory:constitution.md` references unknown target `FIXTURE-SPEC-KIT-CONSTITUTION`", "blocking_eligible": false}
+  ],
+  "work_items": [
+  ]
+}

@@ -1,0 +1,289 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.spec-system.v1",
+  "tool": "cargo-allow",
+  "command": "check",
+  "profile": "spec-system",
+  "mode": "advisory",
+  "status": "passed",
+  "failed": false,
+  "claim_boundary": [
+    "source_tree_inventory",
+    "source_tree_graph_validation",
+    "proof_commands_not_executed",
+    "cargo_metadata_not_invoked",
+    "cargo_commands_not_invoked",
+    "rustc_not_invoked",
+    "clippy_not_invoked",
+    "build_scripts_not_executed",
+    "proc_macros_not_executed",
+    "macro_expansion_not_analyzed",
+    "macro_token_tree_contents_not_analyzed",
+    "type_information_not_analyzed",
+    "mir_not_analyzed",
+    "build_output_not_analyzed",
+    "control_flow_not_analyzed",
+    "data_flow_not_analyzed",
+    "external_evidence_tools_not_invoked",
+    "repository_code_not_executed",
+    "network_not_used",
+    "github_api_not_used"
+  ],
+  "scanner_limitations": [
+    "proof_commands_not_executed",
+    "cargo_metadata_not_invoked",
+    "cargo_commands_not_invoked",
+    "rustc_not_invoked",
+    "clippy_not_invoked",
+    "build_scripts_not_executed",
+    "proc_macros_not_executed",
+    "macro_expansion_not_analyzed",
+    "macro_token_tree_contents_not_analyzed",
+    "type_information_not_analyzed",
+    "mir_not_analyzed",
+    "build_output_not_analyzed",
+    "control_flow_not_analyzed",
+    "data_flow_not_analyzed",
+    "external_evidence_tools_not_invoked",
+    "repository_code_not_executed",
+    "network_not_used",
+    "github_api_not_used"
+  ],
+  "inventory": {
+    "scope": "source_tree",
+    "scanner": "source_tree_graph",
+    "source": "unknown",
+    "root": "\\\\?\\H:\\Code\\Rust\\cargo-allow\\tests\\fixtures\\import\\xtask"
+  },
+  "source_tree_root": "\\\\?\\H:\\Code\\Rust\\cargo-allow\\tests\\fixtures\\import\\xtask",
+  "config_source": "default spec-system roots",
+  "config_provenance": "built_in_default",
+  "import_graph": {
+    "node_count": 10,
+    "edge_count": 7,
+    "diagnostic_count": 10,
+    "nodes": [
+      {
+        "id": "owned-imports",
+        "path": ".allow/imports",
+        "role": "owned",
+        "ecosystem": "cargo-allow",
+        "provenance": "configured",
+        "confidence": "high"
+      },
+      {
+        "id": "kiro",
+        "path": ".kiro",
+        "role": "imported",
+        "ecosystem": "kiro",
+        "provenance": "configured",
+        "confidence": "high"
+      },
+      {
+        "id": "specify",
+        "path": ".specify",
+        "role": "imported",
+        "ecosystem": "spec-kit",
+        "provenance": "configured",
+        "confidence": "high"
+      },
+      {
+        "id": "generic-spec",
+        "path": ".spec",
+        "role": "imported",
+        "ecosystem": "generic-spec",
+        "provenance": "configured",
+        "confidence": "high"
+      },
+      {
+        "id": "generic-rails",
+        "path": ".rails",
+        "role": "imported",
+        "ecosystem": "generic-spec",
+        "provenance": "configured",
+        "confidence": "high"
+      },
+      {
+        "id": "legacy-goals",
+        "path": ".codex/goals",
+        "role": "legacy",
+        "ecosystem": "codex",
+        "provenance": "configured",
+        "confidence": "high"
+      },
+      {
+        "id": "xtask",
+        "path": "xtask",
+        "role": "imported",
+        "ecosystem": "xtask",
+        "provenance": "configured",
+        "confidence": "high"
+      },
+      {
+        "id": "xtask:commands.toml",
+        "path": "xtask/commands.toml",
+        "role": "imported",
+        "ecosystem": "xtask",
+        "provenance": "discovered",
+        "confidence": "high"
+      },
+      {
+        "id": "xtask:commands.toml:check-file-policy",
+        "path": "xtask/commands.toml",
+        "role": "generated",
+        "ecosystem": "xtask",
+        "provenance": "discovered",
+        "confidence": "medium"
+      },
+      {
+        "id": "xtask:commands.toml:check-generated",
+        "path": "xtask/commands.toml",
+        "role": "generated",
+        "ecosystem": "xtask",
+        "provenance": "discovered",
+        "confidence": "medium"
+      }
+    ],
+    "edges": [
+      {
+        "source_id": "xtask",
+        "target_id": "xtask:commands.toml",
+        "kind": "contains",
+        "provenance": "discovered"
+      },
+      {
+        "source_id": "xtask:commands.toml",
+        "target_id": "xtask:commands.toml:check-file-policy",
+        "kind": "contains",
+        "provenance": "discovered"
+      },
+      {
+        "source_id": "xtask:commands.toml:check-file-policy",
+        "target_id": "FIXTURE-XTASK-CMD-001",
+        "kind": "references",
+        "provenance": "generated_marker"
+      },
+      {
+        "source_id": "xtask:commands.toml:check-file-policy",
+        "target_id": "CARGO-ALLOW-SPEC-0002",
+        "kind": "references",
+        "provenance": "discovered"
+      },
+      {
+        "source_id": "xtask:commands.toml",
+        "target_id": "xtask:commands.toml:check-generated",
+        "kind": "contains",
+        "provenance": "discovered"
+      },
+      {
+        "source_id": "xtask:commands.toml:check-generated",
+        "target_id": "FIXTURE-XTASK-CMD-002",
+        "kind": "references",
+        "provenance": "generated_marker"
+      },
+      {
+        "source_id": "xtask:commands.toml:check-generated",
+        "target_id": "CARGO-ALLOW-SPEC-0002",
+        "kind": "references",
+        "provenance": "discovered"
+      }
+    ],
+    "diagnostics": [
+      {
+        "kind": "missing_root",
+        "message": "import root `owned-imports` (.allow/imports) is not present under the source tree",
+        "root_ids": [
+          "owned-imports"
+        ]
+      },
+      {
+        "kind": "missing_root",
+        "message": "import root `kiro` (.kiro) is not present under the source tree",
+        "root_ids": [
+          "kiro"
+        ]
+      },
+      {
+        "kind": "missing_root",
+        "message": "import root `specify` (.specify) is not present under the source tree",
+        "root_ids": [
+          "specify"
+        ]
+      },
+      {
+        "kind": "missing_root",
+        "message": "import root `generic-spec` (.spec) is not present under the source tree",
+        "root_ids": [
+          "generic-spec"
+        ]
+      },
+      {
+        "kind": "missing_root",
+        "message": "import root `generic-rails` (.rails) is not present under the source tree",
+        "root_ids": [
+          "generic-rails"
+        ]
+      },
+      {
+        "kind": "missing_root",
+        "message": "import root `legacy-goals` (.codex/goals) is not present under the source tree",
+        "root_ids": [
+          "legacy-goals"
+        ]
+      },
+      {
+        "kind": "broken_edge",
+        "message": "import edge from `xtask:commands.toml:check-file-policy` references unknown target `FIXTURE-XTASK-CMD-001`",
+        "root_ids": [
+          "xtask:commands.toml:check-file-policy"
+        ]
+      },
+      {
+        "kind": "broken_edge",
+        "message": "import edge from `xtask:commands.toml:check-file-policy` references unknown target `CARGO-ALLOW-SPEC-0002`",
+        "root_ids": [
+          "xtask:commands.toml:check-file-policy"
+        ]
+      },
+      {
+        "kind": "broken_edge",
+        "message": "import edge from `xtask:commands.toml:check-generated` references unknown target `FIXTURE-XTASK-CMD-002`",
+        "root_ids": [
+          "xtask:commands.toml:check-generated"
+        ]
+      },
+      {
+        "kind": "broken_edge",
+        "message": "import edge from `xtask:commands.toml:check-generated` references unknown target `CARGO-ALLOW-SPEC-0002`",
+        "root_ids": [
+          "xtask:commands.toml:check-generated"
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "artifacts": 0,
+    "links": 0,
+    "support_tier_rows": 0,
+    "findings": 6,
+    "blocking_eligible_findings": 1,
+    "advisory_findings": 5,
+    "work_items": 0,
+    "blocking_eligible_work_items": 0,
+    "advisory_work_items": 0
+  },
+  "artifacts": [
+  ],
+  "links": [
+  ],
+  "findings": [
+    {"kind": "doc_artifact_ledger", "message": "failed to read doc artifact ledger \\\\?\\H:\\Code\\Rust\\cargo-allow\\tests\\fixtures\\import\\xtask\\policy\\doc-artifacts.toml: The system cannot find the path specified. (os error 3)", "blocking_eligible": true, "blocking_reason": "doc_artifact_ledger_missing"},
+    {"kind": "support_tier", "message": "failed to read support-tier file docs/status/SUPPORT_TIERS.md: The system cannot find the path specified. (os error 3)", "blocking_eligible": false},
+    {"kind": "import_graph", "message": "broken_edge: import edge from `xtask:commands.toml:check-file-policy` references unknown target `FIXTURE-XTASK-CMD-001`", "blocking_eligible": false},
+    {"kind": "import_graph", "message": "broken_edge: import edge from `xtask:commands.toml:check-file-policy` references unknown target `CARGO-ALLOW-SPEC-0002`", "blocking_eligible": false},
+    {"kind": "import_graph", "message": "broken_edge: import edge from `xtask:commands.toml:check-generated` references unknown target `FIXTURE-XTASK-CMD-002`", "blocking_eligible": false},
+    {"kind": "import_graph", "message": "broken_edge: import edge from `xtask:commands.toml:check-generated` references unknown target `CARGO-ALLOW-SPEC-0002`", "blocking_eligible": false}
+  ],
+  "work_items": [
+  ]
+}
