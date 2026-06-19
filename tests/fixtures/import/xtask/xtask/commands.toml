@@ -1,0 +1,13 @@
+# Fixture xtask command registry for import adapter tests.
+
+[[commands]]
+id = "FIXTURE-XTASK-CMD-001"
+name = "check-file-policy"
+description = "Fixture non-Rust file policy gate"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
+
+[[commands]]
+id = "FIXTURE-XTASK-CMD-002"
+name = "check-generated"
+description = "Fixture generated file gate"
+linked_spec = "CARGO-ALLOW-SPEC-0002"
