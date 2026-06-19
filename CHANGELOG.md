@@ -10,6 +10,10 @@ inventory without executing repository code.
 
 ### Added
 
+- Register GOAL-0003 partial progress closeout (CARGO-ALLOW-CLOSEOUT-0017):
+  record C2–C4, F0–F3, and I1–I2 done after #1765; queue
+  `portable-governance-import-dogfood` ready; keep ripr and full import mode
+  blocked. No release authorization.
 - Register I2 xtask command registry adapter closeout (CARGO-ALLOW-CLOSEOUT-0016):
   mark `portable-governance-i2-xtask-adapter` done after #1765; close I2 import
   adapter lane; queue `portable-governance-ripr-preflight-r0` blocked. No release

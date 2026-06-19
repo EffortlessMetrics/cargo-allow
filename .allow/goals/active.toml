@@ -22,8 +22,9 @@ divergence reporting landed (#1759 merge `f81a9d2`; portable-governance-f3-feder
 done). I1 generic import-root model landed (#1761 merge `3912baa6`;
 portable-governance-i1-import done). I2 import adapter lane closed: generic
 `.spec`/`.rails`/repo-spec (C10), Kiro/Spec Kit (C8–C9), and xtask command
-registry (C11 #1765) adapters landed. External `ripr` preflight R0 and full
-import mode (#1466) remain blocked. Release automation
+registry (C11 #1765) adapters landed. Import graph dogfood receipt is ready and
+unblocked. External `ripr` preflight R0 and full import mode (#1466) remain
+blocked. Release automation
 (0.1.10) and OIDC publish lanes stay dormant until explicit authorization.
 """
 
@@ -244,6 +245,23 @@ proof_commands = [
 evidence_notes = [
   "Landed in C11 PR: xtask command registry TOML discovery on the I1 graph model.",
   "Does not claim Rust dispatch parsing, full import mode (#1466), or release readiness.",
+]
+
+[[work_item]]
+id = "portable-governance-import-dogfood"
+status = "ready"
+title = "Import graph dogfood receipt (I1+I2 #1466)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "I2 import adapter lane closed (#1761–#1765); next executable slice documents spec-system `import_graph` from I1+I2 adapters on this repository.",
+  "Targets `docs/dogfood/cargo-allow-import-graph.md` with fixture-backed Kiro/Spec Kit/xtask receipts and main-repo audit output.",
+  "Does not claim external ripr migration, full import mode (#1466), or release readiness.",
 ]
 
 [[work_item]]

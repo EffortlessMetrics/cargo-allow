@@ -4932,6 +4932,29 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-4709"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/spec-system/closeouts/goal-0003-partial-progress.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records GOAL-0003 partial progress closeout (C2-C4, F0-F3, I1-I2 done; ripr/full-import blocked) without claiming release readiness."
+evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/active.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/spec-system/closeouts/goal-0003-partial-progress.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/spec-system/closeouts/goal-0003-partial-progress.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0274"
 kind = "non_rust_file"
 family = "test_fixture"
