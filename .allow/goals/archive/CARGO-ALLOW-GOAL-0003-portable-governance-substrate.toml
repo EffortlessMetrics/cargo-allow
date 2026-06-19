@@ -1,0 +1,306 @@
+schema_version = "1.0"
+
+id = "CARGO-ALLOW-GOAL-0003"
+title = "Portable governance substrate"
+status = "archived"
+owner = "codex"
+created = "2026-06-18"
+
+objective = """
+Transition cargo-allow governance profile state toward portable `.allow/`
+ownership after migration and evidence parity execution closed in
+CARGO-ALLOW-CLOSEOUT-0005. C2 `.allow` profile resolution with `policy/`
+fallback landed (#1748 merge `2adb0b5e`). C3 `init` writes spec-system state
+to `.allow/` landed (#1750 merge `23ac8376`). C4 dogfood migration moved this
+repository's profile state to `.allow/` (#1752 merge `651d9c90`;
+portable-governance-c4 done). F0 multi-ledger federation design landed
+(#1755; portable-governance-f0-federation done). F1 federation config
+parse/validate landed (#1756; portable-governance-f1-federation done). F2
+multi-ledger check evaluation and receipt provenance landed (#1758;
+portable-governance-f2-federation done). F3 drain-window enforcement and mirror
+divergence reporting landed (#1759 merge `f81a9d2`; portable-governance-f3-federation
+done). I1 generic import-root model landed (#1761 merge `3912baa6`;
+portable-governance-i1-import done). I2 import adapter lane closed: generic
+`.spec`/`.rails`/repo-spec (C10), Kiro/Spec Kit (C8–C9), and xtask command
+registry (C11 #1765) adapters landed. Import graph dogfood receipt landed
+(CARGO-ALLOW-CLOSEOUT-0018; #1767). External `ripr` preflight R0 and full
+import mode (#1466) remain blocked. Release automation
+(0.1.10) and OIDC publish lanes stay dormant until explicit authorization.
+"""
+
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_plan_status = "draft"
+
+claim_boundary = """
+This manifest is agent execution state. It does not implement profile
+resolution, import adapters, prove side-by-side parity, execute proof commands,
+or replace the proposal, spec, support-tier map, implementation plan, policy
+ledgers, or closeouts.
+"""
+
+[[work_item]]
+id = "portable-governance-c2"
+status = "done"
+title = "`.allow` profile resolution with policy fallback (C2)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0006"
+proof_commands = [
+  "rtk cargo test -p allow-policy profile_resolution",
+  "rtk cargo test -p cargo-allow profile_resolution",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in #1748 (merge `2adb0b5e`): resolver prefers `.allow/` profile config with compatibility fallback to existing `policy/` paths.",
+  "Doctor and spec-system receipts report `config_provenance`; owned plus legacy configs emit advisory conflict diagnostics.",
+  "Does not migrate dogfood profile state (C4), import external spec roots (C8–C11), or claim full import mode.",
+]
+
+[[work_item]]
+id = "portable-governance-c3"
+status = "done"
+title = "`init` writes spec-system state to `.allow/` (C3)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0007"
+proof_commands = [
+  "rtk cargo test -p cargo-allow init",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in #1750 (merge `23ac8376`): `cargo-allow init --profile spec-system` bootstraps owned profile state under `.allow/` while keeping `policy/allow.toml` as the source-exception ledger.",
+  "Legacy `policy/` profile paths remain supported via C2 resolution fallback; spec-system doctor reports `allow_profiles` provenance and `allow_imports` readiness.",
+  "Does not migrate existing dogfood profile state (C4), import external spec roots (C8–C11), or claim full import mode.",
+]
+
+[[work_item]]
+id = "portable-governance-c4"
+status = "done"
+title = "Dogfood migrate profile state to `.allow/` (C4)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0008"
+proof_commands = [
+  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in #1752 (merge `651d9c90`): migrated dogfood profile state from legacy `policy/` profile paths and `.codex/goals/` to owned `.allow/` layout.",
+  "Legacy path fixtures and C2 resolution fallback remain for compatibility; `policy/allow.toml` stays the source-exception ledger.",
+  "Does not import external spec roots (C8–C11) or claim full import mode.",
+]
+
+[[work_item]]
+id = "portable-governance-f0-federation"
+status = "done"
+title = "P2 multi-ledger federation design (F0 #1473)"
+linked_proposal = "CARGO-ALLOW-PROP-0007"
+linked_spec = "CARGO-ALLOW-SPEC-0007"
+linked_plan = "plans/federation/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0009"
+proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
+]
+evidence_notes = [
+  "F0 design-only: CARGO-ALLOW-PROP-0007, CARGO-ALLOW-SPEC-0007, CARGO-ALLOW-ADR-0001, and CARGO-ALLOW-PLAN-0007 define ledger roles, precedence, duplicate/dialect handling, drain windows, divergence reporting, and receipt provenance.",
+  "No runtime federation code in F0; no silent merging per ADR-0001.",
+  "Landed in #1755; F1 runtime slice ready and unblocked after merge.",
+]
+
+[[work_item]]
+id = "portable-governance-f1-federation"
+status = "done"
+title = "P2 multi-ledger federation config parse (F1 #1473)"
+linked_proposal = "CARGO-ALLOW-PROP-0007"
+linked_spec = "CARGO-ALLOW-SPEC-0007"
+linked_plan = "plans/federation/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0010"
+proof_commands = [
+  "rtk cargo test -p allow-policy federation",
+  "rtk cargo test -p cargo-allow doctor",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in #1756: `allow-policy::federation` parses/validates `[[ledgers]]` in `.allow/config.toml`; doctor and spec-system report configured ledgers and diagnostics.",
+  "Deterministic precedence ordering by priority; duplicate ID/path, mirror target, canonical lane collision, and dialect validation per CARGO-ALLOW-SPEC-0007.",
+  "Does not evaluate findings against multiple ledgers (F2) or enforce drain windows (F3).",
+]
+
+[[work_item]]
+id = "portable-governance-f2-federation"
+status = "done"
+title = "P2 multi-ledger federation check evaluation (F2 #1473)"
+linked_proposal = "CARGO-ALLOW-PROP-0007"
+linked_spec = "CARGO-ALLOW-SPEC-0007"
+linked_plan = "plans/federation/implementation-plan.md"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy federation",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in #1758: `allow-policy::federation::evaluate` resolves canonical ledgers with deterministic precedence; findings, work items, and receipts carry ledger provenance and `federation.ledger_contributors`.",
+  "Two-canonical-ledger fixture tests and dogfood `.allow/config.toml` registry; does not claim mirror divergence or drain-window enforcement (F3).",
+]
+
+[[work_item]]
+id = "portable-governance-f3-federation"
+status = "done"
+title = "P2 multi-ledger federation drain enforcement (F3 #1473)"
+linked_proposal = "CARGO-ALLOW-PROP-0007"
+linked_spec = "CARGO-ALLOW-SPEC-0007"
+linked_plan = "plans/federation/implementation-plan.md"
+linked_closeout = "plans/federation/closeouts/f3-drain-divergence.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy federation",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in #1759 (merge `f81a9d2`): `[[drain_windows]]` config, canonical-vs-mirror comparison during active drains, visible `mirror_divergence` / `mirror_stale` / blocking `drain_expired` in doctor, receipts, worklist, and advisory counts; optional `check --deny mirror_divergence`.",
+  "Fixture-backed federation tests including canonical-mirror-drain-config.toml; does not claim import adapters or release readiness.",
+]
+
+[[work_item]]
+id = "portable-governance-i1-import"
+status = "done"
+title = "Generic import-root model (I1 #1466)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "plans/spec-system/closeouts/import-i1-model.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy import_roots",
+  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in #1761 (merge `3912baa6`): `[import_roots]` config on spec-system profile, `allow-policy::import_roots` normalization, `import_graph` in doctor/audit/worklist, and `broken_import` work items.",
+  "Fixture-backed import_roots tests and spec-system schema contract updates; does not claim Kiro/Spec Kit/.rails adapters (I2+) or full import mode.",
+]
+
+[[work_item]]
+id = "portable-governance-i2-import-adapters"
+status = "done"
+title = "Generic import adapters narrow start (I2 #1466)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "plans/spec-system/closeouts/import-i2-generic-adapters.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy import_roots",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "I2 narrow start: generic `.spec`/`.rails`/repo-spec read-only adapters on I1 import graph.",
+  "Fixture-backed tests under `tests/fixtures/import/`; does not claim Kiro/Spec Kit/xtask adapters or full import mode.",
+]
+
+[[work_item]]
+id = "portable-governance-i2-kiro-spec-kit-adapters"
+status = "done"
+title = "Kiro and Spec Kit import adapters (I2 follow-up #1466)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "plans/spec-system/closeouts/import-i2-kiro-spec-kit-adapters.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy import_roots",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in C8–C9 PR: Kiro (`.kiro/`) and Spec Kit (`.specify/`) discovery adapters on the I1 graph model.",
+  "Does not claim xtask registry adapter, full import mode (#1466), or release readiness.",
+]
+
+[[work_item]]
+id = "portable-governance-i2-xtask-adapter"
+status = "done"
+title = "xtask command registry import adapter (I2 follow-up #1466)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "plans/spec-system/closeouts/import-i2-xtask-adapter.md"
+proof_commands = [
+  "rtk cargo test -p allow-policy import_roots",
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed in C11 PR: xtask command registry TOML discovery on the I1 graph model.",
+  "Does not claim Rust dispatch parsing, full import mode (#1466), or release readiness.",
+]
+
+[[work_item]]
+id = "portable-governance-import-dogfood"
+status = "done"
+title = "Import graph dogfood receipt (I1+I2 #1466)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0018"
+proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
+evidence_notes = [
+  "Landed: `docs/dogfood/cargo-allow-import-graph.md` with main-repo and fixture-backed Kiro/Spec Kit/xtask import_graph audit receipts.",
+  "Committed JSON receipts under `docs/dogfood/receipts/cargo-allow-import-graph-*.json`.",
+  "Does not claim external ripr migration, full import mode (#1466), or release readiness.",
+]
+
+[[work_item]]
+id = "portable-governance-ripr-preflight-r0"
+status = "blocked"
+title = "External ripr spec-system preflight (R0)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/external-dogfood/ripr-spec-system-adoption.md"
+blocker_reason = "I2 import adapter lane closed; external ripr preflight requires explicit adoption request and ripr repository access."
+evidence_notes = [
+  "Handoff at plans/external-dogfood/ripr-spec-system-adoption.md defines R0 preflight commands only.",
+  "In-repo ripr-style dogfood receipt (#1718) closed import-parity characterization without external migration.",
+  "Does not execute ripr proof commands or claim full import mode (#1466).",
+]
+
+[[work_item]]
+id = "portable-governance-external-ripr"
+status = "blocked"
+title = "External ripr repository migration and adoption proof"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+blocker_reason = "In-repo ripr-style dogfood receipt (#1718) closed import-parity characterization; external repo migration blocked on explicit adoption request."
+evidence_notes = [
+  "docs/dogfood/cargo-allow-ripr-style-adoption.md records in-repository multi-family batch only.",
+  "Does not execute ripr proof commands or migrate external repositories.",
+]
+
+[[work_item]]
+id = "portable-governance-full-import"
+status = "blocked"
+title = "Full import mode product behavior and external adoption (#1466)"
+linked_proposal = "CARGO-ALLOW-PROP-0004"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
+linked_plan = "plans/spec-system/allow-import-plan.md"
+blocker_reason = "Higher-risk product surface blocked on external adoption need; import-parity characterization (#1713–#1718) closed without claiming full import mode."
+evidence_notes = [
+  "Umbrella #1466 remains open after CARGO-ALLOW-CLOSEOUT-0004 and GOAL-0002 archive.",
+  "Requires explicit external repo adoption request before execution.",
+]

@@ -106,7 +106,10 @@ proof_commands = [
 ]
 ```
 
-The current manifest is
-[`CARGO-ALLOW-GOAL-0003`](../../.allow/goals/active.toml). Its
-`linked_plan` value points to
+The current manifest is a completed stub for
+[`CARGO-ALLOW-GOAL-0003`](../../.allow/goals/active.toml) after
+[CARGO-ALLOW-CLOSEOUT-0017](../../plans/spec-system/closeouts/goal-0003-partial-progress.md).
+Full execution history lives in
+[`.allow/goals/archive/CARGO-ALLOW-GOAL-0003-portable-governance-substrate.toml`](../../.allow/goals/archive/CARGO-ALLOW-GOAL-0003-portable-governance-substrate.toml).
+Its `linked_plan` value points to
 [`CARGO-ALLOW-PLAN-0001`](../../plans/spec-system/implementation-plan.md).
