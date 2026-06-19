@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- Canonical ledger state model in `allow-core` (GOAL-0004 PR 1): add
+  `PresenceMovement`, `PostureDelta`, `LedgerPosture`, and `NetPosture` with
+  round-trip parsing, receipt/artifact field names, and PR-summary projection
+  helpers; centralize diff string mappings in `allow-report::ledger_posture`.
+  Characterization tests lock existing finding-change and net-posture strings.
+  No user-visible semantic change; PR 2 movement classification unblocked.
 - Register GOAL-0004 core exception ledger coherence and change control
   (CARGO-ALLOW-CLOSEOUT-0019): add CARGO-ALLOW-PROP-0008, CARGO-ALLOW-SPEC-0008,
   CARGO-ALLOW-PLAN-0009, and active goal with PR 1–9 work items; reconcile

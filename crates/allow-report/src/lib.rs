@@ -47,6 +47,7 @@ mod html_tests;
 mod json;
 #[cfg(test)]
 mod json_tests;
+mod ledger_posture;
 mod list;
 #[cfg(test)]
 mod list_tests;
@@ -134,6 +135,11 @@ pub use explain::{render_explain_finding_json, render_explain_human, render_expl
 pub use html::{render_html, render_html_with_context};
 pub use json::{
     render_claim_boundary_json, render_inventory_json, render_scanner_limitations_json,
+};
+pub use ledger_posture::{
+    FINDING_CHANGE_LABELS, LedgerPosture, MOVEMENT_PROJECTION_LABELS, NET_POSTURE_LABELS,
+    NetPosture, POSTURE_DELTA_FIELD_NAMES, PostureDelta, PresenceMovement,
+    finding_change_label_for, parse_finding_change_label,
 };
 pub use list::{render_list_human, render_list_json};
 pub use migrate::{render_migrate_human, render_migrate_json};

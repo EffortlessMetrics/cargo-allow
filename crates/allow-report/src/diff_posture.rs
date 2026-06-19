@@ -1,12 +1,8 @@
 use crate::{DiffFindingChange, DiffPolicyChange, DiffPostureSummary};
+use allow_core::NetPosture;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DiffNetPosture {
-    Worse,
-    ReviewRequired,
-    Improved,
-    Unchanged,
-}
+/// Aggregate PR diff net posture for summary surfaces.
+pub type DiffNetPosture = NetPosture;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct DiffEvidenceDeltaSummary {
@@ -34,28 +30,6 @@ pub(crate) struct DiffStructuralDeltaSummary {
     pub(crate) selector_changed: usize,
     pub(crate) selector_precision_decreased: usize,
     pub(crate) selector_precision_increased: usize,
-}
-
-impl DiffNetPosture {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Worse => "worse",
-            Self::ReviewRequired => "review-required",
-            Self::Improved => "improved",
-            Self::Unchanged => "unchanged",
-        }
-    }
-
-    pub fn reviewer_action(self) -> &'static str {
-        match self {
-            Self::Worse => {
-                "block until failing source exception changes are fixed, narrowed, or receipted."
-            }
-            Self::ReviewRequired => "review the source exception posture change before merging.",
-            Self::Improved => "verify the cleanup was intentional and keep the narrower posture.",
-            Self::Unchanged => "no source exception posture change detected.",
-        }
-    }
 }
 
 pub(crate) fn diff_structural_delta_summary(
@@ -127,15 +101,17 @@ pub fn diff_posture_summary(
     finding_changes: &[DiffFindingChange<'_>],
     policy_changes: &[DiffPolicyChange<'_>],
 ) -> DiffPostureSummary {
+    use allow_core::PresenceMovement;
+
     DiffPostureSummary {
         current_failures,
         new_findings: finding_changes
             .iter()
-            .filter(|change| change.change == "new")
+            .filter(|change| change.change == PresenceMovement::Introduced.finding_change_label())
             .count(),
         removed_findings: finding_changes
             .iter()
-            .filter(|change| change.change == "removed")
+            .filter(|change| change.change == PresenceMovement::Removed.finding_change_label())
             .count(),
         policy_failures: policy_changes
             .iter()
@@ -168,6 +144,7 @@ pub fn diff_net_posture(summary: DiffPostureSummary) -> DiffNetPosture {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use allow_core::{NetPosture, PresenceMovement};
 
     fn policy_change<'a>(severity: &'a str, kind: &'a str) -> DiffPolicyChange<'a> {
         DiffPolicyChange {
@@ -224,22 +201,22 @@ mod tests {
     fn net_posture_strings_and_reviewer_actions_cover_all_variants() {
         let cases = [
             (
-                DiffNetPosture::Worse,
+                NetPosture::Worse,
                 "worse",
                 "block until failing source exception changes are fixed, narrowed, or receipted.",
             ),
             (
-                DiffNetPosture::ReviewRequired,
+                NetPosture::ReviewRequired,
                 "review-required",
                 "review the source exception posture change before merging.",
             ),
             (
-                DiffNetPosture::Improved,
+                NetPosture::Improved,
                 "improved",
                 "verify the cleanup was intentional and keep the narrower posture.",
             ),
             (
-                DiffNetPosture::Unchanged,
+                NetPosture::Unchanged,
                 "unchanged",
                 "no source exception posture change detected.",
             ),
@@ -247,6 +224,7 @@ mod tests {
 
         for (posture, as_str, action) in cases {
             assert_eq!(posture.as_str(), as_str);
+            assert_eq!(posture.net_posture_label(), as_str);
             assert_eq!(posture.reviewer_action(), action);
         }
     }
@@ -319,9 +297,9 @@ mod tests {
     #[test]
     fn posture_summary_counts_finding_and_policy_statuses() {
         let finding_changes = [
-            finding_change("new"),
-            finding_change("new"),
-            finding_change("removed"),
+            finding_change(PresenceMovement::Introduced.finding_change_label()),
+            finding_change(PresenceMovement::Introduced.finding_change_label()),
+            finding_change(PresenceMovement::Removed.finding_change_label()),
             finding_change("unchanged"),
         ];
         let policy_changes = [

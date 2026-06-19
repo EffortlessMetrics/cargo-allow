@@ -38,24 +38,30 @@ Implementation is sequenced in
 Movement describes **presence** in a diff or check context. Posture delta
 describes **quality** of the retained exception or policy entry.
 
+Internal canonical model (`allow-core`):
+
 ```text
 PresenceMovement:
-  new | resolved | inherited
+  introduced | retained | removed
 
 PostureDelta:
   improved | worsened | review_required | unchanged
 ```
 
-Rules:
+PR-summary movement projection (PR 2+; not internal storage):
 
-- Movement and posture delta are orthogonal fields on every diff row and shared
-  ledger-state projection.
-- Compact sibling projections may collapse to `new` / `worsened` / `resolved` /
-  `inherited` for PR summaries, but producers must retain both canonical fields
-  in machine-readable artifacts.
-- Detailed policy-change reasons (selector precision, scope retarget, evidence
-  removal, lifecycle extension, and similar) remain distinct from movement and
-  posture delta.
+```text
+new       = introduced
+resolved  = removed
+inherited = retained + unchanged + not touched_in_diff
+```
+
+`touched_in_diff: bool` is a separate diff-attribution field. Do not use
+`inherited` as internal presence state.
+
+Legacy compact sibling projections may collapse to `new` / `worsened` /
+`resolved` / `inherited` for PR summaries, but producers must retain both
+canonical fields in machine-readable artifacts once PR 2 lands.
 
 ## Ledger State Record (Normative)
 

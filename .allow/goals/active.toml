@@ -49,7 +49,7 @@ evidence_notes = [
 
 [[work_item]]
 id = "ledger-coherence-pr1-canonical-state-model"
-status = "ready"
+status = "done"
 title = "Canonical ledger state model in allow-core (PR 1)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
@@ -60,18 +60,17 @@ proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "Add PresenceMovement, PostureDelta, LedgerPosture in allow-core; dedupe string mappings across artifacts.",
+  "Add PresenceMovement, PostureDelta, LedgerPosture, NetPosture in allow-core; dedupe string mappings across artifacts.",
   "No user-visible semantic change in PR 1.",
 ]
 
 [[work_item]]
 id = "ledger-coherence-pr2-movement-classification"
-status = "blocked"
+status = "ready"
 title = "Movement classification in diff — implements #1471 (PR 2)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
-blocker_reason = "Blocked on PR 1 canonical ledger state model."
 evidence_notes = [
   "Orthogonal movement and posture_delta on every diff row; dual summary counts; project to human/Markdown/JSON/receipt/worklist.",
   "Does not remove detailed policy-change reasons.",
