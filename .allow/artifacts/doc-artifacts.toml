@@ -475,7 +475,7 @@ linked_plan = "CARGO-ALLOW-PLAN-0004"
 [[artifact]]
 id = "CARGO-ALLOW-CLOSEOUT-0018"
 kind = "closeout"
-path = "docs/dogfood/cargo-allow-import-graph.md"
+path = "plans/spec-system/closeouts/import-graph-dogfood.md"
 status = "done"
 owner = "repo-infra"
 created = "2026-06-18"

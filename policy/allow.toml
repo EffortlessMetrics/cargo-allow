@@ -4932,6 +4932,29 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-4715"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/spec-system/closeouts/import-graph-dogfood.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records import graph dogfood closeout for I1+I2 adapters without claiming full import mode or release readiness."
+evidence = ["doc:docs/dogfood/cargo-allow-import-graph.md", "doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/active.toml"]
+created = "2026-06-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/spec-system/closeouts/import-graph-dogfood.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/spec-system/closeouts/import-graph-dogfood.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-4710"
 kind = "non_rust_file"
 family = "documentation"
