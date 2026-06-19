@@ -10,6 +10,13 @@ inventory without executing repository code.
 
 ### Added
 
+- Register GOAL-0004 core exception ledger coherence and change control
+  (CARGO-ALLOW-CLOSEOUT-0019): add CARGO-ALLOW-PROP-0008, CARGO-ALLOW-SPEC-0008,
+  CARGO-ALLOW-PLAN-0009, and active goal with PR 1–9 work items; reconcile
+  #1473 (per-lane posture + F0–F3 federation landed); confirm #1472/#1474
+  already closed. Queue `ledger-coherence-pr1-canonical-state-model` ready; defer
+  ripr and full import mode from GOAL-0003. No behavior change or release
+  authorization.
 - Close GOAL-0003 portable governance substrate (extend CARGO-ALLOW-CLOSEOUT-0017):
   archive full execution history to
   `.allow/goals/archive/CARGO-ALLOW-GOAL-0003-portable-governance-substrate.toml`;

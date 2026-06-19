@@ -5137,3 +5137,95 @@ glob = ".allow/goals/archive/CARGO-ALLOW-GOAL-0003-portable-governance-substrate
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0276"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/proposals/CARGO-ALLOW-PROP-0008-ledger-coherence-change-control.md"
+owner = "core/policy"
+classification = "source_truth_proposal"
+reason = "Registers the accepted core exception ledger coherence and change control proposal for GOAL-0004."
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0008-ledger-coherence-change-control.md", "doc:plans/ledger-coherence/implementation-plan.md"]
+created = "2026-06-19"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/proposals/CARGO-ALLOW-PROP-0008-ledger-coherence-change-control.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/proposals/CARGO-ALLOW-PROP-0008-ledger-coherence-change-control.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0277"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/specs/CARGO-ALLOW-SPEC-0008-ledger-coherence-change-control.md"
+owner = "core/policy"
+classification = "source_truth_spec"
+reason = "Defines the core exception ledger coherence and change control contract for GOAL-0004."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0008-ledger-coherence-change-control.md", "doc:plans/ledger-coherence/implementation-plan.md"]
+created = "2026-06-19"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/specs/CARGO-ALLOW-SPEC-0008-ledger-coherence-change-control.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/specs/CARGO-ALLOW-SPEC-0008-ledger-coherence-change-control.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0278"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/ledger-coherence/implementation-plan.md"
+owner = "core/policy"
+classification = "source_truth_implementation_plan"
+reason = "Sequences PR 0–9 ledger-coherence slices for GOAL-0004."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0008-ledger-coherence-change-control.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0008-ledger-coherence-change-control.md"]
+created = "2026-06-19"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/ledger-coherence/implementation-plan.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/ledger-coherence/implementation-plan.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0279"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/ledger-coherence/closeouts/goal-0004-registration.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records GOAL-0004 governance registration closeout (PR 0) without claiming behavior implementation."
+evidence = ["doc:plans/ledger-coherence/implementation-plan.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-06-19"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/ledger-coherence/closeouts/goal-0004-registration.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/ledger-coherence/closeouts/goal-0004-registration.md"
+
+[allow.last_seen]
+line = 1
+column = 1
