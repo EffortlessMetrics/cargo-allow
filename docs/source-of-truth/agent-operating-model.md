@@ -106,7 +106,7 @@ proof_commands = [
 ]
 ```
 
-The current manifest is an archived stub for
+The current manifest is a completed stub for
 [`CARGO-ALLOW-GOAL-0003`](../../.allow/goals/active.toml) after
 [CARGO-ALLOW-CLOSEOUT-0017](../../plans/spec-system/closeouts/goal-0003-partial-progress.md).
 Full execution history lives in

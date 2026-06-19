@@ -13,8 +13,8 @@ inventory without executing repository code.
 - Close GOAL-0003 portable governance substrate (extend CARGO-ALLOW-CLOSEOUT-0017):
   archive full execution history to
   `.allow/goals/archive/CARGO-ALLOW-GOAL-0003-portable-governance-substrate.toml`;
-  slim `.allow/goals/active.toml` to archived stub with blocked ripr and full
-  import follow-ups only; no ready work items. No release authorization.
+  slim `.allow/goals/active.toml` to done stub with blocked ripr and full import
+  follow-ups only; no ready work items. No release authorization.
 - Import graph dogfood receipt: `docs/dogfood/cargo-allow-import-graph.md` with
   committed spec-system audit JSON for main-repo `import_graph` and I2 Kiro,
   Spec Kit, and xtask characterization fixtures. Marks

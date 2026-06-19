@@ -24,7 +24,7 @@ Governance closeout recording portable governance substrate execution on
 CARGO-ALLOW-GOAL-0003 after the import graph dogfood receipt closed (#1767;
 CARGO-ALLOW-CLOSEOUT-0018). Profile migration (C2–C4), multi-ledger federation
 (F0–F3), import graph model plus ecosystem adapters (I1–I2), and import graph
-dogfood are done. GOAL-0003 is archived; `.allow/goals/active.toml` retains
+dogfood are done. GOAL-0003 is complete; `.allow/goals/active.toml` retains
 blocked follow-ups only. External `ripr` preflight (R0), external ripr
 migration, and full import mode (#1466) remain blocked.
 
@@ -59,7 +59,7 @@ migration, and full import mode (#1466) remain blocked.
 | --- | --- | --- |
 | `cargo-allow check --profile spec-system --mode audit` | pass | governance PR proof |
 | `cargo-allow check --mode no-new` | pass | `target/cargo-allow/check.receipt.json` |
-| `parses_current_repository_active_goal_manifest` | pass | archived GOAL-0003 stub validation |
+| `parses_current_repository_active_goal_manifest` | pass | GOAL-0003 done stub validation |
 
 ## Non-Goals
 
@@ -69,7 +69,7 @@ migration, and full import mode (#1466) remain blocked.
 
 ## Remaining Work
 
-- **Archived goal:** CARGO-ALLOW-GOAL-0003 portable governance substrate.
+- **Completed goal:** CARGO-ALLOW-GOAL-0003 portable governance substrate.
   Full execution history:
   `.allow/goals/archive/CARGO-ALLOW-GOAL-0003-portable-governance-substrate.toml`.
 - **Blocked follow-ups in `.allow/goals/active.toml`:**

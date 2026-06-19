@@ -74,7 +74,7 @@ The first accepted spec is
 [CARGO-ALLOW-SPEC-0001](../specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md).
 The first support-tier map is
 [CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md).
-The current active goal manifest is an archived stub for
+The current active goal manifest is a completed stub for
 [CARGO-ALLOW-GOAL-0003](../../.allow/goals/active.toml) (full history in
 [archive](../../.allow/goals/archive/CARGO-ALLOW-GOAL-0003-portable-governance-substrate.toml)).
 The current implementation plan is

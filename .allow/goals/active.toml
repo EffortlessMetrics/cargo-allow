@@ -2,7 +2,7 @@ schema_version = "1.0"
 
 id = "CARGO-ALLOW-GOAL-0003"
 title = "Portable governance substrate"
-status = "archived"
+status = "done"
 owner = "codex"
 created = "2026-06-18"
 
@@ -24,7 +24,7 @@ linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_plan_status = "draft"
 
 claim_boundary = """
-Archived execution-state stub. Records blocked follow-ups only. Does not
+Completed execution-state stub. Records blocked follow-ups only. Does not
 implement import adapters, execute proof commands, or authorize release cut.
 See archive manifest and CARGO-ALLOW-CLOSEOUT-0017 for landed lanes.
 """
