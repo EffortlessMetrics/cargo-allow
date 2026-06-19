@@ -249,18 +249,19 @@ evidence_notes = [
 
 [[work_item]]
 id = "portable-governance-import-dogfood"
-status = "ready"
+status = "done"
 title = "Import graph dogfood receipt (I1+I2 #1466)"
 linked_proposal = "CARGO-ALLOW-PROP-0004"
 linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0018"
 proof_commands = [
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
-  "I2 import adapter lane closed (#1761–#1765); next executable slice documents spec-system `import_graph` from I1+I2 adapters on this repository.",
-  "Targets `docs/dogfood/cargo-allow-import-graph.md` with fixture-backed Kiro/Spec Kit/xtask receipts and main-repo audit output.",
+  "Landed: `docs/dogfood/cargo-allow-import-graph.md` with main-repo and fixture-backed Kiro/Spec Kit/xtask import_graph audit receipts.",
+  "Committed JSON receipts under `docs/dogfood/receipts/cargo-allow-import-graph-*.json`.",
   "Does not claim external ripr migration, full import mode (#1466), or release readiness.",
 ]
 

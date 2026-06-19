@@ -10,6 +10,11 @@ inventory without executing repository code.
 
 ### Added
 
+- Import graph dogfood receipt: `docs/dogfood/cargo-allow-import-graph.md` with
+  committed spec-system audit JSON for main-repo `import_graph` and I2 Kiro,
+  Spec Kit, and xtask characterization fixtures. Marks
+  `portable-governance-import-dogfood` done. Does not claim external ripr
+  migration, full import mode, or release readiness.
 - Register GOAL-0003 partial progress closeout (CARGO-ALLOW-CLOSEOUT-0017):
   record C2–C4, F0–F3, and I1–I2 done after #1765; queue
   `portable-governance-import-dogfood` ready; keep ripr and full import mode
