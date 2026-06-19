@@ -82,11 +82,7 @@ pub(crate) fn requirement_change_fields() -> Vec<&'static str> {
 }
 
 pub(crate) fn finding_posture_kinds() -> Vec<&'static str> {
-    allow_diff::FindingPostureKind::ALL
-        .iter()
-        .copied()
-        .map(allow_diff::FindingPostureKind::as_str)
-        .collect()
+    allow_report::FINDING_CHANGE_LABELS.to_vec()
 }
 
 pub(crate) fn policy_change_severities() -> Vec<&'static str> {

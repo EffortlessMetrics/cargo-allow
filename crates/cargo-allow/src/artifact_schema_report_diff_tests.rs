@@ -63,7 +63,7 @@ fn report_schema_locks_diff_posture_extension_contract() {
         "report",
         &schema,
         "/$defs/diff/properties/net_posture/enum",
-        &["worse", "review-required", "improved", "unchanged"],
+        allow_report::NET_POSTURE_LABELS,
     );
     assert_eq!(
         schema

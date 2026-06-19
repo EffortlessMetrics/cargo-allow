@@ -35,7 +35,7 @@ fn common_schema_diff_fragments_keep_source_tree_contracts() {
         "common diff net_posture",
         &schema,
         "/$defs/diff/properties/net_posture/enum",
-        &["worse", "review-required", "improved", "unchanged"],
+        allow_report::NET_POSTURE_LABELS,
     );
     assert_eq!(
         schema

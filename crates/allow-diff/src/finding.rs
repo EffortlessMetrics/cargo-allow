@@ -1,5 +1,6 @@
 use allow_core::{
-    Finding, StructuralIdentity, finding_identity_key as core_finding_identity_key, normalize_path,
+    Finding, PresenceMovement, StructuralIdentity,
+    finding_identity_key as core_finding_identity_key, normalize_path,
 };
 use std::collections::BTreeMap;
 
@@ -25,11 +26,15 @@ pub enum FindingPostureKind {
 impl FindingPostureKind {
     pub const ALL: &[Self] = &[Self::New, Self::Removed];
 
-    pub fn as_str(self) -> &'static str {
+    pub const fn presence_movement(self) -> PresenceMovement {
         match self {
-            Self::New => "new",
-            Self::Removed => "removed",
+            Self::New => PresenceMovement::Introduced,
+            Self::Removed => PresenceMovement::Removed,
         }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        self.presence_movement().finding_change_label()
     }
 }
 

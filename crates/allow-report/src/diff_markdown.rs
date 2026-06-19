@@ -5,11 +5,15 @@ use crate::diff_posture::{
     diff_structural_delta_summary,
 };
 use crate::evidence_repair::evidence_repair_queues_from_counts;
+use crate::ledger_posture::FINDING_CHANGE_LABELS;
 use crate::text::markdown_cell;
 use crate::{CLAIM_BOUNDARY_TEXT, DiffFindingChange, DiffPolicyChange};
+use allow_core::PresenceMovement;
 
 const PR_SUMMARY_HIGHLIGHT_LIMIT: usize = 8;
 const DIFF_MARKDOWN_CHANGE_LIMIT: usize = 120;
+const FINDING_ATTENTION_LABEL: &str = PresenceMovement::Introduced.finding_change_label();
+const FINDING_IMPROVEMENT_LABEL: &str = PresenceMovement::Removed.finding_change_label();
 
 pub fn render_diff_pr_summary_markdown(
     current_failures: usize,
@@ -261,16 +265,18 @@ fn render_diff_pr_summary_markdown_with_evidence_health_counts_inner(
 fn append_finding_highlights(out: &mut String, finding_changes: &[DiffFindingChange<'_>]) {
     let new_count = finding_changes
         .iter()
-        .filter(|change| change.change == "new")
+        .filter(|change| change.change == FINDING_ATTENTION_LABEL)
         .count();
     if new_count > 0 {
         out.push_str("### Finding Attention\n\n");
-        let include_source_package = finding_changes_have_source_package(finding_changes, "new");
-        let include_identity = finding_changes_have_identity(finding_changes, "new");
+        let include_source_package =
+            finding_changes_have_source_package(finding_changes, FINDING_ATTENTION_LABEL);
+        let include_identity =
+            finding_changes_have_identity(finding_changes, FINDING_ATTENTION_LABEL);
         append_finding_highlight_header(out, include_source_package, include_identity);
         for change in finding_changes
             .iter()
-            .filter(|change| change.change == "new")
+            .filter(|change| change.change == FINDING_ATTENTION_LABEL)
             .take(PR_SUMMARY_HIGHLIGHT_LIMIT)
         {
             append_finding_highlight_row(out, change, include_source_package, include_identity);
@@ -281,17 +287,18 @@ fn append_finding_highlights(out: &mut String, finding_changes: &[DiffFindingCha
 
     let removed_count = finding_changes
         .iter()
-        .filter(|change| change.change == "removed")
+        .filter(|change| change.change == FINDING_IMPROVEMENT_LABEL)
         .count();
     if removed_count > 0 {
         out.push_str("### Finding Improvements\n\n");
         let include_source_package =
-            finding_changes_have_source_package(finding_changes, "removed");
-        let include_identity = finding_changes_have_identity(finding_changes, "removed");
+            finding_changes_have_source_package(finding_changes, FINDING_IMPROVEMENT_LABEL);
+        let include_identity =
+            finding_changes_have_identity(finding_changes, FINDING_IMPROVEMENT_LABEL);
         append_finding_highlight_header(out, include_source_package, include_identity);
         for change in finding_changes
             .iter()
-            .filter(|change| change.change == "removed")
+            .filter(|change| change.change == FINDING_IMPROVEMENT_LABEL)
             .take(PR_SUMMARY_HIGHLIGHT_LIMIT)
         {
             append_finding_highlight_row(out, change, include_source_package, include_identity);
@@ -461,19 +468,28 @@ pub fn render_diff_finding_changes_markdown(changes: &[DiffFindingChange<'_>]) -
         out.push_str("No source finding posture changes detected.\n");
         return out;
     }
-    append_finding_changes_markdown_section(&mut out, "Finding Attention", changes, "new");
-    append_finding_changes_markdown_section(&mut out, "Finding Improvements", changes, "removed");
-    let known_changes = ["new", "removed"];
+    append_finding_changes_markdown_section(
+        &mut out,
+        "Finding Attention",
+        changes,
+        FINDING_ATTENTION_LABEL,
+    );
+    append_finding_changes_markdown_section(
+        &mut out,
+        "Finding Improvements",
+        changes,
+        FINDING_IMPROVEMENT_LABEL,
+    );
     if changes
         .iter()
-        .any(|change| !known_changes.contains(&change.change))
+        .any(|change| !FINDING_CHANGE_LABELS.contains(&change.change))
     {
         out.push_str("### Other Finding Changes\n\n");
         append_finding_changes_markdown_table(
             &mut out,
             changes
                 .iter()
-                .filter(|change| !known_changes.contains(&change.change)),
+                .filter(|change| !FINDING_CHANGE_LABELS.contains(&change.change)),
         );
     }
     out

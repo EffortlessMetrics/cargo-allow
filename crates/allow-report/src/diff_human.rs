@@ -5,7 +5,9 @@ use crate::diff_posture::{
     diff_structural_delta_summary,
 };
 use crate::evidence_repair::evidence_repair_queues_from_counts;
+use crate::ledger_posture::FINDING_CHANGE_LABELS;
 use crate::{DiffFindingChange, DiffPolicyChange};
+use allow_core::PresenceMovement;
 
 const DIFF_HUMAN_CHANGE_LIMIT: usize = 120;
 
@@ -250,21 +252,30 @@ pub fn render_diff_finding_changes_human(changes: &[DiffFindingChange<'_>]) -> S
         out.push_str("  none\n");
         return out;
     }
-    append_finding_changes_human_section(&mut out, "Finding attention", changes, "new");
-    append_finding_changes_human_section(&mut out, "Finding improvements", changes, "removed");
-    let known_changes = ["new", "removed"];
+    append_finding_changes_human_section(
+        &mut out,
+        "Finding attention",
+        changes,
+        PresenceMovement::Introduced.finding_change_label(),
+    );
+    append_finding_changes_human_section(
+        &mut out,
+        "Finding improvements",
+        changes,
+        PresenceMovement::Removed.finding_change_label(),
+    );
     if changes
         .iter()
-        .any(|change| !known_changes.contains(&change.change))
+        .any(|change| !FINDING_CHANGE_LABELS.contains(&change.change))
     {
         out.push_str("  Other finding changes:\n");
         let other_count = changes
             .iter()
-            .filter(|change| !known_changes.contains(&change.change))
+            .filter(|change| !FINDING_CHANGE_LABELS.contains(&change.change))
             .count();
         for change in changes
             .iter()
-            .filter(|change| !known_changes.contains(&change.change))
+            .filter(|change| !FINDING_CHANGE_LABELS.contains(&change.change))
             .take(DIFF_HUMAN_CHANGE_LIMIT)
         {
             append_finding_change_human_row(&mut out, change);

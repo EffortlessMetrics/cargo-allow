@@ -11,6 +11,7 @@ mod finding;
 mod fingerprint;
 mod json;
 mod lane_posture;
+mod ledger_posture;
 mod ledger_provenance;
 mod policy;
 mod source_tree_path;
@@ -26,6 +27,7 @@ pub use lane_posture::{
     LaneConfig, LaneEnforcementMode, effective_lane_posture_for_findings,
     lane_enforcement_mode_for_kind,
 };
+pub use ledger_posture::{LedgerPosture, NetPosture, PostureDelta, PresenceMovement};
 pub use ledger_provenance::LedgerProvenance;
 pub use policy::{
     AllowConfig, AllowEntry, LastSeen, Lifecycle, MatchOutcome, MatchStatus, Requirements,
