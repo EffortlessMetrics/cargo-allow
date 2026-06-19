@@ -12,17 +12,21 @@ linked_goal: CARGO-ALLOW-GOAL-0003
 support_tier_impact: advisory
 policy_impact:
   - .allow/goals/active.toml
+  - .allow/goals/archive/CARGO-ALLOW-GOAL-0003-portable-governance-substrate.toml
+  - .allow/artifacts/doc-artifacts.toml
 ---
 
-# Closeout: GOAL-0003 Partial Progress (C2–C4, F0–F3, I1–I2)
+# Closeout: GOAL-0003 Portable Governance Substrate
 
 ## Summary
 
-Governance closeout recording portable governance substrate progress on
-CARGO-ALLOW-GOAL-0003 after the I2 import adapter lane closed (#1761–#1765).
-Profile migration (C2–C4), multi-ledger federation (F0–F3), and import graph
-model plus ecosystem adapters (I1–I2) are done. External `ripr` preflight (R0),
-external ripr migration, and full import mode (#1466) remain blocked.
+Governance closeout recording portable governance substrate execution on
+CARGO-ALLOW-GOAL-0003 after the import graph dogfood receipt closed (#1767;
+CARGO-ALLOW-CLOSEOUT-0018). Profile migration (C2–C4), multi-ledger federation
+(F0–F3), import graph model plus ecosystem adapters (I1–I2), and import graph
+dogfood are done. GOAL-0003 is archived; `.allow/goals/active.toml` retains
+blocked follow-ups only. External `ripr` preflight (R0), external ripr
+migration, and full import mode (#1466) remain blocked.
 
 ## Completed Lanes
 
@@ -43,13 +47,19 @@ external ripr migration, and full import mode (#1466) remain blocked.
 - I2 generic `.spec`/`.rails`/repo-spec adapters, Kiro/Spec Kit adapters
   (C8–C9), and xtask command registry adapter (C11 #1765).
 
+### Import graph dogfood (I1+I2)
+
+- Import graph dogfood receipt (#1767; CARGO-ALLOW-CLOSEOUT-0018):
+  `docs/dogfood/cargo-allow-import-graph.md` with committed spec-system audit
+  JSON for main-repo and I2 characterization fixtures.
+
 ## Validation Evidence
 
 | Check | Result | Evidence |
 | --- | --- | --- |
 | `cargo-allow check --profile spec-system --mode audit` | pass | governance PR proof |
 | `cargo-allow check --mode no-new` | pass | `target/cargo-allow/check.receipt.json` |
-| `parses_current_repository_active_goal_manifest` | pass | GOAL-0003 manifest validation |
+| `parses_current_repository_active_goal_manifest` | pass | archived GOAL-0003 stub validation |
 
 ## Non-Goals
 
@@ -59,10 +69,13 @@ external ripr migration, and full import mode (#1466) remain blocked.
 
 ## Remaining Work
 
-- **Ready:** `portable-governance-import-dogfood` — in-repository import graph
-  dogfood receipt documenting spec-system `import_graph` from I1+I2 adapters.
-- **Blocked:** `portable-governance-ripr-preflight-r0`, `portable-governance-external-ripr`,
+- **Archived goal:** CARGO-ALLOW-GOAL-0003 portable governance substrate.
+  Full execution history:
+  `.allow/goals/archive/CARGO-ALLOW-GOAL-0003-portable-governance-substrate.toml`.
+- **Blocked follow-ups in `.allow/goals/active.toml`:**
+  `portable-governance-ripr-preflight-r0`, `portable-governance-external-ripr`,
   `portable-governance-full-import`.
+- **Ready:** none.
 
 ## Claim Boundary
 
