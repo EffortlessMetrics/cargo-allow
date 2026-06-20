@@ -5275,3 +5275,95 @@ glob = "plans/ledger-coherence/closeouts/pr2-movement-classification.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-4716"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md"
+owner = "core/policy"
+classification = "source_truth_adr"
+reason = "Records the durable policy revision contract design for GOAL-0004 PR 3 without claiming revision-note enforcement."
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0008-ledger-coherence-change-control.md", "doc:plans/ledger-coherence/implementation-plan.md"]
+created = "2026-06-20"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4717"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/ledger-coherence/closeouts/pr3-revision-contract-design.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records GOAL-0004 PR 3 policy revision contract design closeout without claiming revision-note enforcement."
+evidence = ["doc:plans/ledger-coherence/implementation-plan.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-06-20"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/ledger-coherence/closeouts/pr3-revision-contract-design.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/ledger-coherence/closeouts/pr3-revision-contract-design.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4718"
+kind = "non_rust_file"
+family = "documentation"
+path = ".allow/revisions/README.md"
+owner = "core/policy"
+classification = "source_truth_revision_contract"
+reason = "Documents the .allow/revisions/ change-record directory for the GOAL-0004 revision contract design; not parsed or enforced until PR 4."
+evidence = ["doc:docs/adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0008-ledger-coherence-change-control.md"]
+created = "2026-06-20"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/README.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = ".allow/revisions/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4719"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/examples/CARGO-ALLOW-REV-0001-example.toml"
+owner = "core/policy"
+classification = "revision_contract_example_fixture"
+reason = "Illustrative revision record for the GOAL-0004 revision contract design; not parsed or enforced until PR 4."
+evidence = ["doc:docs/adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md", "doc:.allow/revisions/README.md"]
+created = "2026-06-20"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/examples/CARGO-ALLOW-REV-0001-example.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = ".allow/revisions/examples/CARGO-ALLOW-REV-0001-example.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
