@@ -2,6 +2,15 @@ use crate::artifact_schema_support::{parse_schema, schema_contracts};
 use serde_json::Value;
 use std::{collections::BTreeSet, fs, path::Path};
 
+/// Schemas for policy *input record* formats, not command-output artifacts.
+///
+/// These are documented under `docs/schemas/` for consumers but are not emitted
+/// by any cargo-allow command, so they have no producer command, inventory
+/// scanner, or claim boundary and are intentionally excluded from the
+/// command-output contract registry. See CARGO-ALLOW-ADR-0002 for the revision
+/// record contract.
+const INPUT_RECORD_SCHEMAS: &[&str] = &["revision"];
+
 #[test]
 fn schema_contract_registry_covers_every_documented_artifact_schema() {
     let schema_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/schemas");
@@ -32,10 +41,29 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
         .map(|contract| contract.name.to_string())
         .collect::<BTreeSet<_>>();
 
+    let documented_artifacts = documented
+        .iter()
+        .filter(|name| !INPUT_RECORD_SCHEMAS.contains(&name.as_str()))
+        .cloned()
+        .collect::<BTreeSet<_>>();
+
     assert_eq!(
-        registered, documented,
-        "every docs/schemas/*.schema.json file should be registered for shared contract tests"
+        registered, documented_artifacts,
+        "every command-output docs/schemas/*.schema.json file should be registered for shared contract tests"
     );
+
+    // Keep the exclusion list honest: each input-record schema must exist as a
+    // file and must not masquerade as a command-output contract.
+    for input in INPUT_RECORD_SCHEMAS {
+        assert!(
+            documented.contains(*input),
+            "input record schema {input}.schema.json should exist under docs/schemas/"
+        );
+        assert!(
+            !registered.contains(*input),
+            "input record schema {input} should not be registered as a command-output contract"
+        );
+    }
 }
 
 #[test]
