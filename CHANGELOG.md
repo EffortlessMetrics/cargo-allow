@@ -10,6 +10,16 @@ inventory without executing repository code.
 
 ### Added
 
+- Policy revision contract design (GOAL-0004 PR 3, #1475): accept
+  `CARGO-ALLOW-ADR-0002` and `docs/schemas/revision.schema.json` for append-only
+  `.allow/revisions/` change notes. Fixes the governed change-kind vocabulary
+  (`selector_broadened`, `scope_widened`, `occurrence_limit_raised`,
+  `evidence_weakened`, `classification_relaxed`, `lifecycle_extended`,
+  `owner_removed`, `posture_weakened`), multi-entry coverage, fingerprint-anchored
+  diff matching, non-expiring durability, and append-only posture. Adds a
+  `.allow/revisions/` directory contract and committed example record. Design
+  only — no enforcement, parser, or CLI behavior; `diff --require-change-note`
+  lands in PR 4.
 - Movement classification in diff (GOAL-0004 PR 2, #1471): every diff row carries
   orthogonal `movement`, `posture_delta`, and `changed_in_diff` plus optional
   `subject`, `allow_id`, `ledger_id`, and `lane`; JSON diff adds dual summary blocks

@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/revision.v1.schema.json",
+  "title": "cargo-allow policy revision note v1",
+  "description": "Durable, append-only change-note record for governed weakening edits to the source-exception ledger. Design contract: CARGO-ALLOW-ADR-0002. Enforcement is deferred to GOAL-0004 PR 4; this schema fixes the record shape only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "created",
+    "owner",
+    "reason",
+    "status",
+    "allow_ids",
+    "change_kinds"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^CARGO-ALLOW-REV-[0-9]{4}$",
+      "description": "Stable revision-note ID."
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO date the note was authored."
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Accountable owner for the governed weakening edit."
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Why the governed weakening edit is authorized."
+    },
+    "status": {
+      "enum": [
+        "accepted",
+        "superseded"
+      ],
+      "description": "Append-only lifecycle. A superseded note is replaced by a later note via supersedes/superseded_by."
+    },
+    "allow_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Stable allow IDs covered by this note. Multiple IDs are allowed only when they share one logical edit (same reason and links)."
+    },
+    "change_kinds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/change_kind"
+      },
+      "description": "Union of governed weakening change kinds across the covered entries."
+    },
+    "after_fingerprints": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Optional intended post-edit selector/snippet fingerprints (for example fnv1a64:<hash>) that anchor the note to one end state for diff matching."
+    },
+    "links": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(issue|pr|doc|adr|spec):.+$"
+      },
+      "description": "References that justify the edit (issue:, pr:, doc:, adr:, spec:)."
+    },
+    "supersedes": {
+      "type": "string",
+      "pattern": "^CARGO-ALLOW-REV-[0-9]{4}$",
+      "description": "Prior note this record corrects (append-only chain)."
+    },
+    "superseded_by": {
+      "type": "string",
+      "pattern": "^CARGO-ALLOW-REV-[0-9]{4}$",
+      "description": "Later note that corrects this record."
+    }
+  },
+  "$defs": {
+    "change_kind": {
+      "type": "string",
+      "enum": [
+        "selector_broadened",
+        "scope_widened",
+        "occurrence_limit_raised",
+        "evidence_weakened",
+        "classification_relaxed",
+        "lifecycle_extended",
+        "owner_removed",
+        "posture_weakened"
+      ]
+    }
+  }
+}

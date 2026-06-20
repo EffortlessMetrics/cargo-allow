@@ -33,6 +33,9 @@ macro-expansion, or proof-level coverage.
 - [migrate.schema.json](migrate.schema.json)
 - [spec-system.schema.json](spec-system.schema.json)
 - [worklist.schema.json](worklist.schema.json)
+- [revision.schema.json](revision.schema.json) policy revision-note record under
+  `.allow/revisions/` (GOAL-0004 PR 3 design contract; enforcement deferred to
+  PR 4). Contract: `CARGO-ALLOW-ADR-0002`.
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
   tested vocabulary source for future schema consolidation. Artifact schemas
   remain self-contained for consumer portability. The shared catalog includes

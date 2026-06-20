@@ -5275,3 +5275,118 @@ glob = "plans/ledger-coherence/closeouts/pr2-movement-classification.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0282"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md"
+owner = "core/policy"
+classification = "source_truth_adr"
+reason = "Records the GOAL-0004 PR 3 policy revision-note contract design; no enforcement until PR 4."
+evidence = ["doc:docs/specs/CARGO-ALLOW-SPEC-0008-ledger-coherence-change-control.md", "doc:plans/ledger-coherence/implementation-plan.md"]
+created = "2026-06-20"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0283"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/revision.schema.json"
+owner = "core/policy"
+classification = "revision_contract_schema"
+reason = "Defines the design-only JSON Schema for .allow/revisions/ policy revision notes; enforcement deferred to GOAL-0004 PR 4."
+evidence = ["doc:docs/adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md", "doc:docs/schemas/README.md"]
+created = "2026-06-20"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/revision.schema.json"
+target_fingerprint = "json"
+line_hint = 1
+glob = "docs/schemas/revision.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0284"
+kind = "non_rust_file"
+family = "documentation"
+path = ".allow/revisions/README.md"
+owner = "core/policy"
+classification = "revision_contract_doc"
+reason = "Documents the .allow/revisions/ directory contract for GOAL-0004 PR 3 design; no enforcement until PR 4."
+evidence = ["doc:docs/adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md", "doc:docs/schemas/revision.schema.json"]
+created = "2026-06-20"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/README.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = ".allow/revisions/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0285"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/example-revision.toml"
+owner = "core/policy"
+classification = "revision_contract_example"
+reason = "Illustrative GOAL-0004 PR 3 revision-note example for docs/schemas/revision.schema.json; authorizes no real edit and is not enforced until PR 4."
+evidence = ["doc:docs/adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md", "doc:.allow/revisions/README.md"]
+created = "2026-06-20"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/example-revision.toml"
+target_fingerprint = "toml"
+line_hint = 1
+glob = ".allow/revisions/example-revision.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0286"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/ledger-coherence/closeouts/pr3-revision-contract-design.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records GOAL-0004 PR 3 revision-contract design closeout without claiming revision-note enforcement."
+evidence = ["doc:plans/ledger-coherence/implementation-plan.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-06-20"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/ledger-coherence/closeouts/pr3-revision-contract-design.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/ledger-coherence/closeouts/pr3-revision-contract-design.md"
+
+[allow.last_seen]
+line = 1
+column = 1

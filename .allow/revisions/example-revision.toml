@@ -1,0 +1,18 @@
+# Example policy revision note (GOAL-0004 PR 3 design slice).
+#
+# Illustrative only: `allow-0042` is a placeholder and this note authorizes no
+# real edit. It exists so docs/schemas/revision.schema.json has a committed
+# example and so PR 4 enforcement can characterize a well-formed record. The
+# contract is defined in docs/adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md.
+schema_version = "1.0"
+id = "CARGO-ALLOW-REV-0001"
+created = "2026-06-20"
+owner = "core/policy"
+reason = "Example: re-broaden selector after a parser refactor changed the AST shape."
+status = "accepted"
+
+allow_ids = ["allow-0042"]
+change_kinds = ["selector_broadened"]
+after_fingerprints = ["fnv1a64:d89cea4b9dc969d2"]
+
+links = ["issue:1475"]

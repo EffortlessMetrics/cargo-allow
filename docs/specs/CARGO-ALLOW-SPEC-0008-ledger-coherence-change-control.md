@@ -5,7 +5,8 @@ status: accepted
 owner: repo-infra
 created: 2026-06-19
 linked_proposal: CARGO-ALLOW-PROP-0008
-linked_adrs: []
+linked_adrs:
+  - CARGO-ALLOW-ADR-0002
 support_tier_impact: advisory
 policy_impact:
   - .allow/goals/active.toml
@@ -118,33 +119,51 @@ Summary counts must expose both vocabularies:
 The same model projects into human output, Markdown PR summary, JSON, receipt,
 and worklist without removing existing detailed policy-change reasons.
 
-## Policy Revision Contract (Design in PR 3, Enforcement in PR 4)
+## Policy Revision Contract (Accepted in PR 3, Enforcement in PR 4)
 
-Revision records live under `.allow/revisions/`:
+The revision contract is fixed by
+[CARGO-ALLOW-ADR-0002](../adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md)
+and the record schema
+[docs/schemas/revision.schema.json](../schemas/revision.schema.json). Revision
+records live as one append-only TOML file per note under `.allow/revisions/`
+(directory contract:
+[.allow/revisions/README.md](../../.allow/revisions/README.md)):
 
 ```toml
 schema_version = "1.0"
 id = "CARGO-ALLOW-REV-0001"
-created = "2026-06-19"
-owner = "repo-infra"
-reason = "Narrow selector after parser refactor."
+created = "2026-06-20"
+owner = "core/policy"
+reason = "Re-broaden selector after parser refactor changed the AST shape."
+status = "accepted"
 
 allow_ids = ["allow-0042"]
-change_kinds = ["selector_changed"]
+change_kinds = ["selector_broadened"]
+after_fingerprints = ["fnv1a64:d89cea4b9dc969d2"]
 
 links = [
-  "issue:123",
+  "issue:1475",
   "pr:456",
 ]
 ```
 
-The design slice must decide:
+The PR 3 design slice decided (ADR-0002):
 
-- which changes require a note;
-- how one note covers multiple entries;
-- how notes are matched to a diff;
-- whether notes expire after merge;
-- whether notes are append-only.
+- **Which changes require a note:** only diff rows whose `posture_delta` is
+  `worsened`, from a fixed governed change-kind vocabulary
+  (`selector_broadened`, `scope_widened`, `occurrence_limit_raised`,
+  `evidence_weakened`, `classification_relaxed`, `lifecycle_extended`,
+  `owner_removed`, `posture_weakened`).
+- **Multi-entry coverage:** one note covers several `allow_ids` only when they
+  share one logical edit; `change_kinds` is the union across covered entries.
+- **Diff matching:** a note matches a `worsened` row when it lists the row's
+  `allow_id`, covers the row's governed change kind(s), the row's after-state
+  fingerprint is in the note's `after_fingerprints` set (when declared), and the
+  note's `status` is `accepted`.
+- **Expiry:** notes are durable provenance — they do not expire and are not
+  consumed at merge.
+- **Append-only:** notes are never edited in place; corrections add a new note
+  via `supersedes`/`superseded_by`.
 
 Enforcement (`diff --require-change-note`) applies only after the contract is
 accepted. Governed weakening edits require a matching note; obvious improvements
@@ -226,6 +245,10 @@ The system must not:
   [CARGO-ALLOW-PROP-0008](../proposals/CARGO-ALLOW-PROP-0008-ledger-coherence-change-control.md)
 - Implementation plan:
   [plans/ledger-coherence/implementation-plan.md](../../plans/ledger-coherence/implementation-plan.md)
+- Revision contract ADR:
+  [CARGO-ALLOW-ADR-0002](../adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md)
+- Revision record schema:
+  [docs/schemas/revision.schema.json](../schemas/revision.schema.json)
 - Parent product boundary:
   [docs/source-exception-ledger.md](../source-exception-ledger.md)
 
