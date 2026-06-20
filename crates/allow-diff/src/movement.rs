@@ -38,17 +38,17 @@ pub struct DiffLedgerMovementSummary {
 
 pub fn classify_finding_posture_change(change: &FindingPostureChange) -> DiffRowClassification {
     DiffRowClassification {
-            movement: finding_posture_movement(change.kind),
-            posture_delta: finding_posture_delta(change.kind),
-            changed_in_diff: true,
+        movement: finding_posture_movement(change.kind),
+        posture_delta: finding_posture_delta(change.kind),
+        changed_in_diff: true,
     }
 }
 
 pub fn classify_policy_change(change: &PolicyChange) -> DiffRowClassification {
     DiffRowClassification {
-            movement: policy_change_movement(change.kind),
-            posture_delta: policy_change_posture_delta(change.severity),
-            changed_in_diff: true,
+        movement: policy_change_movement(change.kind),
+        posture_delta: policy_change_posture_delta(change.severity),
+        changed_in_diff: true,
     }
 }
 
@@ -298,8 +298,7 @@ mod tests {
             "added",
         )];
 
-        let summary =
-            diff_ledger_movement_summary(&base, &head, &finding_changes, &policy_changes);
+        let summary = diff_ledger_movement_summary(&base, &head, &finding_changes, &policy_changes);
         assert_eq!(summary.movement.introduced, 2);
         assert_eq!(summary.movement.retained, 1);
         assert_eq!(summary.posture_delta.review_required, 2);

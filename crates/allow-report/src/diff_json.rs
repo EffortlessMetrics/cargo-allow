@@ -223,14 +223,14 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
         }
         out.push_str("      {");
         out.push_str(&format!("\"change\": \"{}\", ", json_escape(change.change)));
-        append_row_classification_json(&mut out, change.movement, change.posture_delta, change.changed_in_diff);
-        append_optional_subject_json(&mut out, change.subject);
-        append_optional_provenance_json(
+        append_row_classification_json(
             &mut out,
-            change.allow_id,
-            change.ledger_id,
-            change.lane,
+            change.movement,
+            change.posture_delta,
+            change.changed_in_diff,
         );
+        append_optional_subject_json(&mut out, change.subject);
+        append_optional_provenance_json(&mut out, change.allow_id, change.ledger_id, change.lane);
         out.push_str(&format!("\"key\": \"{}\", ", json_escape(change.key)));
         out.push_str(&format!("\"kind\": \"{}\", ", json_escape(change.kind)));
         out.push_str(&format!("\"family\": {}, ", option_json(change.family)));
@@ -264,7 +264,12 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
             "\"severity\": \"{}\", ",
             json_escape(change.severity)
         ));
-        append_row_classification_json(&mut out, change.movement, change.posture_delta, change.changed_in_diff);
+        append_row_classification_json(
+            &mut out,
+            change.movement,
+            change.posture_delta,
+            change.changed_in_diff,
+        );
         append_optional_subject_json(&mut out, change.subject);
         out.push_str(&format!(
             "\"allow_id\": \"{}\", ",
@@ -401,10 +406,7 @@ fn append_optional_provenance_json(
         out.push_str(&format!("\"allow_id\": \"{}\", ", json_escape(allow_id)));
     }
     if let Some(ledger_id) = ledger_id {
-        out.push_str(&format!(
-            "\"ledger_id\": \"{}\", ",
-            json_escape(ledger_id)
-        ));
+        out.push_str(&format!("\"ledger_id\": \"{}\", ", json_escape(ledger_id)));
     }
     if let Some(lane) = lane {
         out.push_str(&format!("\"lane\": \"{}\", ", json_escape(lane)));

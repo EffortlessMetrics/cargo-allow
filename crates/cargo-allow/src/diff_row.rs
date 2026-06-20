@@ -23,12 +23,12 @@ pub fn ledger_movement_summary_from_diff(
     summary: allow_diff::DiffLedgerMovementSummary,
 ) -> DiffLedgerMovementSummary {
     DiffLedgerMovementSummary {
-            movement: DiffMovementCounts {
+        movement: DiffMovementCounts {
             introduced: summary.movement.introduced,
             retained: summary.movement.retained,
             removed: summary.movement.removed,
         },
-            posture_delta: DiffPostureDeltaCounts {
+        posture_delta: DiffPostureDeltaCounts {
             improved: summary.posture_delta.improved,
             worsened: summary.posture_delta.worsened,
             review_required: summary.posture_delta.review_required,
@@ -125,23 +125,23 @@ pub fn policy_change_rows(bundles: &[PolicyRowBundle]) -> Vec<DiffPolicyChange<'
                         changed_fields: &identity.changed_fields,
                     }
                 }),
-                selector_precision: bundle
-                    .change
-                    .selector_precision
-                    .as_ref()
-                    .map(|selector| allow_report::DiffSelectorPrecisionChange {
+                selector_precision: bundle.change.selector_precision.as_ref().map(|selector| {
+                    allow_report::DiffSelectorPrecisionChange {
                         before: selector.before,
                         after: selector.after,
                         removed_fields: &selector.removed_fields,
                         added_fields: &selector.added_fields,
-                    }),
-                scope: bundle.change.scope.as_ref().map(|scope| {
-                    allow_report::DiffScopeChange {
+                    }
+                }),
+                scope: bundle
+                    .change
+                    .scope
+                    .as_ref()
+                    .map(|scope| allow_report::DiffScopeChange {
                         field: scope.field.as_str(),
                         before: scope.before.as_deref(),
                         after: scope.after.as_deref(),
-                    }
-                }),
+                    }),
                 occurrence_limit: bundle.change.occurrence_limit.as_ref().map(|limit| {
                     allow_report::DiffOccurrenceLimitChange {
                         before: limit.before,

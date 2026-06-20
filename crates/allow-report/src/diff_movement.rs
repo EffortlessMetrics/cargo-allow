@@ -95,9 +95,13 @@ pub fn append_movement_summary_markdown(out: &mut String, summary: DiffLedgerMov
     ));
 }
 
-pub fn movement_projection_label(movement: &str, posture_delta: &str, changed_in_diff: bool) -> &'static str {
-    let movement = PresenceMovement::parse_field_name(movement)
-        .unwrap_or(PresenceMovement::Retained);
+pub fn movement_projection_label(
+    movement: &str,
+    posture_delta: &str,
+    changed_in_diff: bool,
+) -> &'static str {
+    let movement =
+        PresenceMovement::parse_field_name(movement).unwrap_or(PresenceMovement::Retained);
     let delta = PostureDelta::parse_field_name(posture_delta).unwrap_or(PostureDelta::Unchanged);
     LedgerPosture::new(movement, delta).movement_projection(changed_in_diff)
 }

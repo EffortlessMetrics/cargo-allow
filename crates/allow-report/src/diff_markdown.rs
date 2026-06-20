@@ -1,4 +1,5 @@
 use crate::diff_finding_detail::structural_identity_summary;
+use crate::diff_movement::append_movement_summary_markdown;
 use crate::diff_policy_detail::policy_change_detail;
 use crate::diff_posture::{
     diff_evidence_delta_summary, diff_net_posture, diff_posture_summary,
@@ -7,7 +8,6 @@ use crate::diff_posture::{
 use crate::evidence_repair::evidence_repair_queues_from_counts;
 use crate::ledger_posture::FINDING_CHANGE_LABELS;
 use crate::text::markdown_cell;
-use crate::diff_movement::append_movement_summary_markdown;
 use crate::{CLAIM_BOUNDARY_TEXT, DiffFindingChange, DiffLedgerMovementSummary, DiffPolicyChange};
 use allow_core::PresenceMovement;
 

@@ -1,11 +1,11 @@
 use allow_core::{AllowConfig, Finding, MatchOutcome};
 use allow_match::CheckMode;
 
-use crate::OutputFormat;
 use super::diff_row::{
     finding_change_rows, finding_row_bundles, ledger_movement_summary_from_diff,
     policy_change_rows, policy_row_bundles,
 };
+use crate::OutputFormat;
 use crate::reporting::EvidenceReportSummary;
 
 pub(super) fn insert_markdown_pr_summary(text: &mut String, summary: &str) {
@@ -120,12 +120,14 @@ pub(crate) fn render_diff_json_with_posture(
         net_posture: posture.as_str(),
         reviewer_action: posture.reviewer_action(),
         summary,
-        ledger_movement: ledger_movement_summary_from_diff(allow_diff::diff_ledger_movement_summary(
-            base_cfg,
-            head_cfg,
-            finding_changes,
-            policy_changes,
-        )),
+        ledger_movement: ledger_movement_summary_from_diff(
+            allow_diff::diff_ledger_movement_summary(
+                base_cfg,
+                head_cfg,
+                finding_changes,
+                policy_changes,
+            ),
+        ),
         finding_changes: &finding_rows,
         policy_changes: &policy_rows,
     };
@@ -162,12 +164,14 @@ pub(crate) fn render_diff_json_report(
         net_posture: posture.as_str(),
         reviewer_action: posture.reviewer_action(),
         summary,
-        ledger_movement: ledger_movement_summary_from_diff(allow_diff::diff_ledger_movement_summary(
-            base_cfg,
-            head_cfg,
-            finding_changes,
-            policy_changes,
-        )),
+        ledger_movement: ledger_movement_summary_from_diff(
+            allow_diff::diff_ledger_movement_summary(
+                base_cfg,
+                head_cfg,
+                finding_changes,
+                policy_changes,
+            ),
+        ),
         finding_changes: &finding_rows,
         policy_changes: &policy_rows,
     };

@@ -74,12 +74,12 @@ fn diff_policy_human_output_includes_structured_details() {
     let removed_fields = ["container", "normalized_snippet_hash"];
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
-            movement: "retained",
-            posture_delta: "worsened",
-            changed_in_diff: true,
-            subject: None,
-            ledger_id: None,
-            lane: None,
+        movement: "retained",
+        posture_delta: "worsened",
+        changed_in_diff: true,
+        subject: None,
+        ledger_id: None,
+        lane: None,
         allow_id: "allow-0001",
         kind: "selector_precision_decreased",
         message: "allow-0001 selector precision decreased",
@@ -206,13 +206,13 @@ fn diff_policy_human_output_groups_policy_changes_by_severity() {
 fn diff_posture_human_summary_reports_reviewer_action() {
     let finding_changes = vec![DiffFindingChange {
         change: "new",
-            movement: "introduced",
-            posture_delta: "review_required",
-            changed_in_diff: true,
-            subject: None,
-            allow_id: None,
-            ledger_id: None,
-            lane: None,
+        movement: "introduced",
+        posture_delta: "review_required",
+        changed_in_diff: true,
+        subject: None,
+        allow_id: None,
+        ledger_id: None,
+        lane: None,
         key: "panic|unwrap|src/lib.rs",
         kind: "panic",
         family: Some("unwrap"),
@@ -224,12 +224,12 @@ fn diff_posture_human_summary_reports_reviewer_action() {
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
-            movement: "retained",
-            posture_delta: "worsened",
-            changed_in_diff: true,
-            subject: None,
-            ledger_id: None,
-            lane: None,
+        movement: "retained",
+        posture_delta: "worsened",
+        changed_in_diff: true,
+        subject: None,
+        ledger_id: None,
+        lane: None,
         allow_id: "allow-0001",
         kind: "scope_broadened",
         message: "allow-0001 scope broadened",
@@ -258,7 +258,15 @@ fn diff_posture_human_summary_reports_reviewer_action() {
 
 #[test]
 fn diff_posture_human_summary_reports_evidence_health_counts() {
-    let text = render_diff_posture_summary_human_with_evidence_health_counts(0, 1, 3, 2, &[], &[], empty_ledger_movement_summary());
+    let text = render_diff_posture_summary_human_with_evidence_health_counts(
+        0,
+        1,
+        3,
+        2,
+        &[],
+        &[],
+        empty_ledger_movement_summary(),
+    );
 
     assert!(text.contains("Diff posture summary:"));
     assert!(text.contains("broken_evidence_links: 1"));

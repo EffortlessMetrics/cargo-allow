@@ -196,18 +196,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         &base_cfg,
         &head_cfg_for_diff,
     );
-    append_finding_posture_changes(
-        &mut text,
-        args.format,
-        &finding_changes,
-        &head_cfg_for_diff,
-    );
-    append_policy_changes(
-        &mut text,
-        args.format,
-        &policy_changes,
-        &head_cfg_for_diff,
-    );
+    append_finding_posture_changes(&mut text, args.format, &finding_changes, &head_cfg_for_diff);
+    append_policy_changes(&mut text, args.format, &policy_changes, &head_cfg_for_diff);
     match allow_diff::changed_files(&root, &args.base, args.head.as_deref()) {
         Ok(changed) => {
             if args.format == OutputFormat::Human {

@@ -4,13 +4,13 @@ use super::*;
 fn diff_json_renderer_appends_posture_extension() {
     let finding_changes = vec![DiffFindingChange {
         change: "new",
-            movement: "introduced",
-            posture_delta: "review_required",
-            changed_in_diff: true,
-            subject: None,
-            allow_id: None,
-            ledger_id: None,
-            lane: None,
+        movement: "introduced",
+        posture_delta: "review_required",
+        changed_in_diff: true,
+        subject: None,
+        allow_id: None,
+        ledger_id: None,
+        lane: None,
         key: "panic|unwrap|src/lib.rs",
         kind: "panic",
         family: Some("unwrap"),
@@ -22,12 +22,12 @@ fn diff_json_renderer_appends_posture_extension() {
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
-            movement: "retained",
-            posture_delta: "worsened",
-            changed_in_diff: true,
-            subject: None,
-            ledger_id: None,
-            lane: None,
+        movement: "retained",
+        posture_delta: "worsened",
+        changed_in_diff: true,
+        subject: None,
+        ledger_id: None,
+        lane: None,
         allow_id: "allow-0001",
         kind: "scope_broadened",
         message: "allow-0001 selector scope broadened",
@@ -61,8 +61,17 @@ fn diff_json_renderer_appends_posture_extension() {
                 policy_improvements: 0,
             },
             ledger_movement: DiffLedgerMovementSummary {
-                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
-                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+                movement: DiffMovementCounts {
+                    introduced: 0,
+                    retained: 0,
+                    removed: 0,
+                },
+                posture_delta: DiffPostureDeltaCounts {
+                    improved: 0,
+                    worsened: 0,
+                    review_required: 0,
+                    unchanged: 0,
+                },
             },
             finding_changes: &finding_changes,
             policy_changes: &policy_changes,
@@ -101,10 +110,19 @@ fn diff_json_renderer_appends_posture_extension() {
                     policy_review_items: 0,
                     policy_improvements: 0,
                 },
-            ledger_movement: DiffLedgerMovementSummary {
-                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
-                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
-            },
+                ledger_movement: DiffLedgerMovementSummary {
+                    movement: DiffMovementCounts {
+                        introduced: 0,
+                        retained: 0,
+                        removed: 0
+                    },
+                    posture_delta: DiffPostureDeltaCounts {
+                        improved: 0,
+                        worsened: 0,
+                        review_required: 0,
+                        unchanged: 0
+                    },
+                },
                 finding_changes: &[],
                 policy_changes: &[],
             },
@@ -125,10 +143,19 @@ fn diff_json_renderer_appends_posture_extension() {
                     policy_review_items: 0,
                     policy_improvements: 0,
                 },
-            ledger_movement: DiffLedgerMovementSummary {
-                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
-                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
-            },
+                ledger_movement: DiffLedgerMovementSummary {
+                    movement: DiffMovementCounts {
+                        introduced: 0,
+                        retained: 0,
+                        removed: 0
+                    },
+                    posture_delta: DiffPostureDeltaCounts {
+                        improved: 0,
+                        worsened: 0,
+                        review_required: 0,
+                        unchanged: 0
+                    },
+                },
                 finding_changes: &[],
                 policy_changes: &[],
             },
@@ -141,13 +168,13 @@ fn diff_json_renderer_appends_posture_extension() {
 fn diff_json_report_renderer_matches_existing_posture_extension() {
     let finding_changes = vec![DiffFindingChange {
         change: "removed",
-            movement: "removed",
-            posture_delta: "improved",
-            changed_in_diff: true,
-            subject: None,
-            allow_id: None,
-            ledger_id: None,
-            lane: None,
+        movement: "removed",
+        posture_delta: "improved",
+        changed_in_diff: true,
+        subject: None,
+        allow_id: None,
+        ledger_id: None,
+        lane: None,
         key: "panic|unwrap|src/lib.rs",
         kind: "panic",
         family: Some("unwrap"),
@@ -159,12 +186,12 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "improvement",
-            movement: "retained",
-            posture_delta: "improved",
-            changed_in_diff: true,
-            subject: None,
-            ledger_id: None,
-            lane: None,
+        movement: "retained",
+        posture_delta: "improved",
+        changed_in_diff: true,
+        subject: None,
+        ledger_id: None,
+        lane: None,
         allow_id: "allow-0001",
         kind: "selector_precision_increased",
         message: "allow-0001 selector precision increased",
@@ -190,10 +217,19 @@ fn diff_json_report_renderer_matches_existing_posture_extension() {
             policy_review_items: 0,
             policy_improvements: 1,
         },
-            ledger_movement: DiffLedgerMovementSummary {
-                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
-                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+        ledger_movement: DiffLedgerMovementSummary {
+            movement: DiffMovementCounts {
+                introduced: 0,
+                retained: 0,
+                removed: 0,
             },
+            posture_delta: DiffPostureDeltaCounts {
+                improved: 0,
+                worsened: 0,
+                review_required: 0,
+                unchanged: 0,
+            },
+        },
         finding_changes: &finding_changes,
         policy_changes: &policy_changes,
     };
@@ -224,10 +260,19 @@ fn diff_json_report_summary_includes_nonzero_evidence_health() {
             policy_review_items: 0,
             policy_improvements: 0,
         },
-            ledger_movement: DiffLedgerMovementSummary {
-                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
-                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+        ledger_movement: DiffLedgerMovementSummary {
+            movement: DiffMovementCounts {
+                introduced: 0,
+                retained: 0,
+                removed: 0,
             },
+            posture_delta: DiffPostureDeltaCounts {
+                improved: 0,
+                worsened: 0,
+                review_required: 0,
+                unchanged: 0,
+            },
+        },
         finding_changes: &[],
         policy_changes: &[],
     };
@@ -385,10 +430,19 @@ fn diff_json_report_summary_includes_nonzero_structural_delta_counts() {
             policy_review_items: 2,
             policy_improvements: 2,
         },
-            ledger_movement: DiffLedgerMovementSummary {
-                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
-                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+        ledger_movement: DiffLedgerMovementSummary {
+            movement: DiffMovementCounts {
+                introduced: 0,
+                retained: 0,
+                removed: 0,
             },
+            posture_delta: DiffPostureDeltaCounts {
+                improved: 0,
+                worsened: 0,
+                review_required: 0,
+                unchanged: 0,
+            },
+        },
         finding_changes: &[],
         policy_changes: &policy_changes,
     };
@@ -681,10 +735,19 @@ fn diff_json_report_summary_includes_nonzero_evidence_delta_counts() {
             policy_review_items: 4,
             policy_improvements: 4,
         },
-            ledger_movement: DiffLedgerMovementSummary {
-                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
-                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+        ledger_movement: DiffLedgerMovementSummary {
+            movement: DiffMovementCounts {
+                introduced: 0,
+                retained: 0,
+                removed: 0,
             },
+            posture_delta: DiffPostureDeltaCounts {
+                improved: 0,
+                worsened: 0,
+                review_required: 0,
+                unchanged: 0,
+            },
+        },
         finding_changes: &[],
         policy_changes: &policy_changes,
     };
@@ -712,13 +775,13 @@ fn diff_json_report_includes_finding_change_source_package_when_available() {
     identity.callee = Some("unwrap".to_string());
     let finding_changes = vec![DiffFindingChange {
         change: "new",
-            movement: "introduced",
-            posture_delta: "review_required",
-            changed_in_diff: true,
-            subject: None,
-            allow_id: None,
-            ledger_id: None,
-            lane: None,
+        movement: "introduced",
+        posture_delta: "review_required",
+        changed_in_diff: true,
+        subject: None,
+        allow_id: None,
+        ledger_id: None,
+        lane: None,
         key: "panic|unwrap|src/lib.rs",
         kind: "panic",
         family: Some("unwrap"),
@@ -739,10 +802,19 @@ fn diff_json_report_includes_finding_change_source_package_when_available() {
             policy_review_items: 0,
             policy_improvements: 0,
         },
-            ledger_movement: DiffLedgerMovementSummary {
-                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
-                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+        ledger_movement: DiffLedgerMovementSummary {
+            movement: DiffMovementCounts {
+                introduced: 0,
+                retained: 0,
+                removed: 0,
             },
+            posture_delta: DiffPostureDeltaCounts {
+                improved: 0,
+                worsened: 0,
+                review_required: 0,
+                unchanged: 0,
+            },
+        },
         finding_changes: &finding_changes,
         policy_changes: &[],
     };
@@ -760,13 +832,13 @@ fn diff_json_report_includes_finding_change_source_package_when_available() {
 fn diff_json_report_matches_posture_golden_contract() {
     let finding_changes = vec![DiffFindingChange {
         change: "removed",
-            movement: "removed",
-            posture_delta: "improved",
-            changed_in_diff: true,
-            subject: None,
-            allow_id: None,
-            ledger_id: None,
-            lane: None,
+        movement: "removed",
+        posture_delta: "improved",
+        changed_in_diff: true,
+        subject: None,
+        allow_id: None,
+        ledger_id: None,
+        lane: None,
         key: "panic|unwrap|src/lib.rs",
         kind: "panic",
         family: Some("unwrap"),
@@ -778,12 +850,12 @@ fn diff_json_report_matches_posture_golden_contract() {
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "improvement",
-            movement: "retained",
-            posture_delta: "improved",
-            changed_in_diff: true,
-            subject: None,
-            ledger_id: None,
-            lane: None,
+        movement: "retained",
+        posture_delta: "improved",
+        changed_in_diff: true,
+        subject: None,
+        ledger_id: None,
+        lane: None,
         allow_id: "allow-0001",
         kind: "selector_precision_increased",
         message: "allow-0001 selector precision increased",
@@ -814,10 +886,19 @@ fn diff_json_report_matches_posture_golden_contract() {
             policy_review_items: 0,
             policy_improvements: 1,
         },
-            ledger_movement: DiffLedgerMovementSummary {
-                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
-                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+        ledger_movement: DiffLedgerMovementSummary {
+            movement: DiffMovementCounts {
+                introduced: 0,
+                retained: 0,
+                removed: 0,
             },
+            posture_delta: DiffPostureDeltaCounts {
+                improved: 0,
+                worsened: 0,
+                review_required: 0,
+                unchanged: 0,
+            },
+        },
         finding_changes: &finding_changes,
         policy_changes: &policy_changes,
     };
@@ -927,10 +1008,19 @@ fn diff_json_report_renderer_rejects_non_diff_command() {
             policy_review_items: 0,
             policy_improvements: 0,
         },
-            ledger_movement: DiffLedgerMovementSummary {
-                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
-                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+        ledger_movement: DiffLedgerMovementSummary {
+            movement: DiffMovementCounts {
+                introduced: 0,
+                retained: 0,
+                removed: 0,
             },
+            posture_delta: DiffPostureDeltaCounts {
+                improved: 0,
+                worsened: 0,
+                review_required: 0,
+                unchanged: 0,
+            },
+        },
         finding_changes: &[],
         policy_changes: &[],
     };

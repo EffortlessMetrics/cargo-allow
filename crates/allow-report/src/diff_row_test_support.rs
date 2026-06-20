@@ -4,12 +4,12 @@ use crate::{DiffFindingChange, DiffLedgerMovementSummary, DiffPolicyChange};
 
 pub fn empty_ledger_movement_summary() -> DiffLedgerMovementSummary {
     DiffLedgerMovementSummary {
-            movement: crate::DiffMovementCounts {
+        movement: crate::DiffMovementCounts {
             introduced: 0,
             retained: 0,
             removed: 0,
         },
-            posture_delta: crate::DiffPostureDeltaCounts {
+        posture_delta: crate::DiffPostureDeltaCounts {
             improved: 0,
             worsened: 0,
             review_required: 0,
@@ -42,11 +42,11 @@ pub fn test_finding_change<'a>(
         change,
         movement,
         posture_delta,
-            changed_in_diff: true,
-            subject: None,
+        changed_in_diff: true,
+        subject: None,
         allow_id: None,
-            ledger_id: None,
-            lane: None,
+        ledger_id: None,
+        lane: None,
         key,
         kind,
         family: None,
@@ -89,11 +89,11 @@ pub fn test_policy_change<'a>(
         severity,
         movement,
         posture_delta,
-            changed_in_diff: true,
-            subject: Some(allow_id),
+        changed_in_diff: true,
+        subject: Some(allow_id),
         allow_id,
-            ledger_id: None,
-            lane: None,
+        ledger_id: None,
+        lane: None,
         kind,
         message: "policy changed",
         exception_identity: None,
