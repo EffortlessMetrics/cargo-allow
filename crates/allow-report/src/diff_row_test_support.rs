@@ -1,6 +1,6 @@
 use allow_core::{PostureDelta, PresenceMovement};
 
-use crate::{DiffFindingChange, DiffLedgerMovementSummary, DiffPolicyChange};
+use crate::{DiffLedgerMovementSummary, DiffPolicyChange};
 
 pub fn empty_ledger_movement_summary() -> DiffLedgerMovementSummary {
     DiffLedgerMovementSummary {
@@ -15,46 +15,6 @@ pub fn empty_ledger_movement_summary() -> DiffLedgerMovementSummary {
             review_required: 0,
             unchanged: 0,
         },
-    }
-}
-
-pub fn test_finding_change<'a>(
-    change: &'a str,
-    key: &'a str,
-    kind: &'a str,
-    path: &'a str,
-) -> DiffFindingChange<'a> {
-    let (movement, posture_delta) = match change {
-        "new" => (
-            PresenceMovement::Introduced.field_name(),
-            PostureDelta::ReviewRequired.field_name(),
-        ),
-        "removed" => (
-            PresenceMovement::Removed.field_name(),
-            PostureDelta::Improved.field_name(),
-        ),
-        _ => (
-            PresenceMovement::Retained.field_name(),
-            PostureDelta::Unchanged.field_name(),
-        ),
-    };
-    DiffFindingChange {
-        change,
-        movement,
-        posture_delta,
-        changed_in_diff: true,
-        subject: None,
-        allow_id: None,
-        ledger_id: None,
-        lane: None,
-        key,
-        kind,
-        family: None,
-        path,
-        line: None,
-        column: None,
-        source_package: None,
-        identity: None,
     }
 }
 
@@ -106,22 +66,5 @@ pub fn test_policy_change<'a>(
         metadata: None,
         requirement: None,
         policy_status: None,
-    }
-}
-
-pub fn test_diff_report<'a>(
-    net_posture: &'a str,
-    reviewer_action: &'a str,
-    summary: crate::DiffPostureSummary,
-    finding_changes: &'a [DiffFindingChange<'a>],
-    policy_changes: &'a [DiffPolicyChange<'a>],
-) -> crate::DiffReport<'a> {
-    crate::DiffReport {
-        net_posture,
-        reviewer_action,
-        summary,
-        ledger_movement: empty_ledger_movement_summary(),
-        finding_changes,
-        policy_changes,
     }
 }

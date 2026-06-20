@@ -1,5 +1,3 @@
-use allow_core::{LedgerPosture, PostureDelta, PresenceMovement};
-
 use crate::DiffLedgerMovementSummary;
 
 pub fn append_movement_summary_json(out: &mut String, summary: DiffLedgerMovementSummary) {
@@ -95,41 +93,10 @@ pub fn append_movement_summary_markdown(out: &mut String, summary: DiffLedgerMov
     ));
 }
 
-pub fn movement_projection_label(
-    movement: &str,
-    posture_delta: &str,
-    changed_in_diff: bool,
-) -> &'static str {
-    let movement =
-        PresenceMovement::parse_field_name(movement).unwrap_or(PresenceMovement::Retained);
-    let delta = PostureDelta::parse_field_name(posture_delta).unwrap_or(PostureDelta::Unchanged);
-    LedgerPosture::new(movement, delta).movement_projection(changed_in_diff)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{DiffMovementCounts, DiffPostureDeltaCounts};
-
-    #[test]
-    fn movement_projection_collapses_unchanged_retained_rows_to_inherited() {
-        assert_eq!(
-            movement_projection_label("retained", "unchanged", false),
-            "inherited"
-        );
-        assert_eq!(
-            movement_projection_label("retained", "unchanged", true),
-            "retained"
-        );
-        assert_eq!(
-            movement_projection_label("introduced", "review_required", true),
-            "new"
-        );
-        assert_eq!(
-            movement_projection_label("removed", "improved", true),
-            "resolved"
-        );
-    }
 
     #[test]
     fn movement_summary_json_emits_dual_blocks() {

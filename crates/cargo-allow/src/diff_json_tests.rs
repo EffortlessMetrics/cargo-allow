@@ -7,6 +7,12 @@ fn json_report_includes_structured_posture_changes() {
     let fixture = structured_diff_fixture();
 
     let cfg = allow_core::AllowConfig::empty();
+    let ledger = DiffLedgerContext::new(
+        &cfg,
+        &cfg,
+        &fixture.finding_changes,
+        &fixture.policy_changes,
+    );
     let json = render_diff_json_with_posture(
         allow_report::render_json_with_context(
             "diff",
@@ -17,10 +23,7 @@ fn json_report_includes_structured_posture_changes() {
         ),
         1,
         &fixture.outcomes,
-        &fixture.finding_changes,
-        &fixture.policy_changes,
-        &cfg,
-        &cfg,
+        &ledger,
     );
     let value = parse_json("diff report", &json);
 
@@ -348,7 +351,8 @@ fn json_report_includes_diff_summary_evidence_health() {
     };
 
     let cfg = allow_core::AllowConfig::empty();
-    let json = render_diff_json_report(&[], &[], true, context, 1, &[], &[], &cfg, &cfg);
+    let ledger = DiffLedgerContext::new(&cfg, &cfg, &[], &[]);
+    let json = render_diff_json_report(&[], &[], true, context, 1, &ledger);
     let value = parse_json("diff report", &json);
 
     assert_eq!(
@@ -390,7 +394,8 @@ fn json_report_keeps_base_report_when_append_fails() {
     let base = "not json".to_string();
 
     let cfg = allow_core::AllowConfig::empty();
-    let json = render_diff_json_with_posture(base.clone(), 0, &[], &[], &[], &cfg, &cfg);
+    let ledger = DiffLedgerContext::new(&cfg, &cfg, &[], &[]);
+    let json = render_diff_json_with_posture(base.clone(), 0, &[], &ledger);
 
     assert_eq!(json, base);
 }

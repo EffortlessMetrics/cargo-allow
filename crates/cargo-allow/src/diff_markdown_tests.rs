@@ -4,6 +4,14 @@ fn empty_cfg() -> allow_core::AllowConfig {
     allow_core::AllowConfig::empty()
 }
 
+fn ledger<'a>(
+    cfg: &'a allow_core::AllowConfig,
+    finding_changes: &'a [allow_diff::FindingPostureChange],
+    policy_changes: &'a [allow_diff::PolicyChange],
+) -> DiffLedgerContext<'a> {
+    DiffLedgerContext::new(cfg, cfg, finding_changes, policy_changes)
+}
+
 #[test]
 fn markdown_pr_summary_reports_unchanged_posture() {
     let cfg = empty_cfg();
@@ -11,10 +19,7 @@ fn markdown_pr_summary_reports_unchanged_posture() {
         0,
         EvidenceReportSummary::default(),
         &[],
-        &[],
-        &[],
-        &cfg,
-        &cfg,
+        &ledger(&cfg, &[], &[]),
     );
 
     assert!(text.contains("**Net posture:** `unchanged`"));
@@ -36,10 +41,7 @@ fn markdown_pr_summary_reports_review_required_for_new_source_finding() {
         0,
         EvidenceReportSummary::default(),
         &[],
-        &changes,
-        &[],
-        &cfg,
-        &cfg,
+        &ledger(&cfg, &changes, &[]),
     );
 
     assert!(text.contains("**Net posture:** `review-required`"));
@@ -59,10 +61,7 @@ fn markdown_pr_summary_reports_worse_for_policy_failure() {
         0,
         EvidenceReportSummary::default(),
         &[],
-        &[],
-        &changes,
-        &cfg,
-        &cfg,
+        &ledger(&cfg, &[], &changes),
     );
 
     assert!(text.contains("**Net posture:** `worse`"));
@@ -84,10 +83,7 @@ fn markdown_pr_summary_reports_improved_for_removed_source_finding() {
         0,
         EvidenceReportSummary::default(),
         &[],
-        &changes,
-        &[],
-        &cfg,
-        &cfg,
+        &ledger(&cfg, &changes, &[]),
     );
 
     assert!(text.contains("**Net posture:** `improved`"));
@@ -107,10 +103,7 @@ fn markdown_pr_summary_reports_improved_for_removed_policy_entry() {
         0,
         EvidenceReportSummary::default(),
         &[],
-        &[],
-        &changes,
-        &cfg,
-        &cfg,
+        &ledger(&cfg, &[], &changes),
     );
 
     assert!(text.contains("**Net posture:** `improved`"));
@@ -130,10 +123,7 @@ fn markdown_pr_summary_reports_evidence_health_counts() {
             occurrence_headroom_entries: 0,
         },
         &[],
-        &[],
-        &[],
-        &cfg,
-        &cfg,
+        &ledger(&cfg, &[], &[]),
     );
 
     assert!(text.contains("**Net posture:** `worse`"));

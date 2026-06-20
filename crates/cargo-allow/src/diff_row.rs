@@ -19,6 +19,38 @@ pub struct PolicyRowBundle {
     pub lane: Option<String>,
 }
 
+pub struct DiffLedgerContext<'a> {
+    pub base_cfg: &'a AllowConfig,
+    pub head_cfg: &'a AllowConfig,
+    pub finding_changes: &'a [allow_diff::FindingPostureChange],
+    pub policy_changes: &'a [allow_diff::PolicyChange],
+}
+
+impl<'a> DiffLedgerContext<'a> {
+    pub fn new(
+        base_cfg: &'a AllowConfig,
+        head_cfg: &'a AllowConfig,
+        finding_changes: &'a [allow_diff::FindingPostureChange],
+        policy_changes: &'a [allow_diff::PolicyChange],
+    ) -> Self {
+        Self {
+            base_cfg,
+            head_cfg,
+            finding_changes,
+            policy_changes,
+        }
+    }
+
+    pub fn ledger_movement_summary(&self) -> DiffLedgerMovementSummary {
+        ledger_movement_summary_from_diff(allow_diff::diff_ledger_movement_summary(
+            self.base_cfg,
+            self.head_cfg,
+            self.finding_changes,
+            self.policy_changes,
+        ))
+    }
+}
+
 pub fn ledger_movement_summary_from_diff(
     summary: allow_diff::DiffLedgerMovementSummary,
 ) -> DiffLedgerMovementSummary {

@@ -16,6 +16,7 @@ mod diff_render;
 #[path = "diff_row.rs"]
 mod diff_row;
 pub(crate) use diff_args::DiffArgs;
+pub(crate) use diff_render::DiffLedgerContext;
 #[cfg(test)]
 pub(crate) use diff_render::render_diff_json_with_posture;
 use diff_render::{
@@ -132,6 +133,12 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let source_context = SourceTreeReportContext::new(&root, report_inventory_facts);
     let mut report_context = source_context.report(Some(policy_baseline_debt_entries(&report_cfg)));
     evidence.apply_to(&mut report_context);
+    let ledger = DiffLedgerContext::new(
+        &base_cfg,
+        &head_cfg_for_diff,
+        &finding_changes,
+        &policy_changes,
+    );
     let mut text = match args.format {
         OutputFormat::Json => render_diff_json_report(
             &findings_for_report,
@@ -139,10 +146,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             failed,
             report_context,
             current_failures,
-            &finding_changes,
-            &policy_changes,
-            &base_cfg,
-            &head_cfg_for_diff,
+            &ledger,
         ),
         OutputFormat::Html => allow_report::render_html_with_context(
             "diff",
@@ -174,15 +178,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         ),
     };
     if args.format == OutputFormat::Markdown {
-        let summary = render_diff_pr_summary_markdown(
-            current_failures,
-            evidence,
-            &outcomes,
-            &finding_changes,
-            &policy_changes,
-            &base_cfg,
-            &head_cfg_for_diff,
-        );
+        let summary =
+            render_diff_pr_summary_markdown(current_failures, evidence, &outcomes, &ledger);
         insert_markdown_pr_summary(&mut text, &summary);
     }
     append_diff_posture_summary(
@@ -191,10 +188,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         current_failures,
         evidence,
         &outcomes,
-        &finding_changes,
-        &policy_changes,
-        &base_cfg,
-        &head_cfg_for_diff,
+        &ledger,
     );
     append_finding_posture_changes(&mut text, args.format, &finding_changes, &head_cfg_for_diff);
     append_policy_changes(&mut text, args.format, &policy_changes, &head_cfg_for_diff);

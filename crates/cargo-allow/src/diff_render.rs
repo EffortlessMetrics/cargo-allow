@@ -1,9 +1,9 @@
 use allow_core::{AllowConfig, Finding, MatchOutcome};
 use allow_match::CheckMode;
 
+pub(crate) use super::diff_row::DiffLedgerContext;
 use super::diff_row::{
-    finding_change_rows, finding_row_bundles, ledger_movement_summary_from_diff,
-    policy_change_rows, policy_row_bundles,
+    finding_change_rows, finding_row_bundles, policy_change_rows, policy_row_bundles,
 };
 use crate::OutputFormat;
 use crate::reporting::EvidenceReportSummary;
@@ -16,13 +16,10 @@ pub(super) fn render_diff_pr_summary_markdown(
     current_failures: usize,
     evidence: EvidenceReportSummary,
     outcomes: &[MatchOutcome],
-    finding_changes: &[allow_diff::FindingPostureChange],
-    policy_changes: &[allow_diff::PolicyChange],
-    base_cfg: &AllowConfig,
-    head_cfg: &AllowConfig,
+    ledger: &DiffLedgerContext<'_>,
 ) -> String {
-    let finding_bundles = finding_row_bundles(finding_changes, head_cfg);
-    let policy_bundles = policy_row_bundles(policy_changes, head_cfg);
+    let finding_bundles = finding_row_bundles(ledger.finding_changes, ledger.head_cfg);
+    let policy_bundles = policy_row_bundles(ledger.policy_changes, ledger.head_cfg);
     let finding_rows = finding_change_rows(&finding_bundles);
     let policy_rows = policy_change_rows(&policy_bundles);
     allow_report::render_diff_pr_summary_markdown_with_evidence_health_counts(
@@ -32,12 +29,7 @@ pub(super) fn render_diff_pr_summary_markdown(
         evidence.weak_evidence_references,
         &finding_rows,
         &policy_rows,
-        ledger_movement_summary_from_diff(allow_diff::diff_ledger_movement_summary(
-            base_cfg,
-            head_cfg,
-            finding_changes,
-            policy_changes,
-        )),
+        ledger.ledger_movement_summary(),
     )
 }
 
@@ -47,16 +39,13 @@ pub(super) fn append_diff_posture_summary(
     current_failures: usize,
     evidence: EvidenceReportSummary,
     outcomes: &[MatchOutcome],
-    finding_changes: &[allow_diff::FindingPostureChange],
-    policy_changes: &[allow_diff::PolicyChange],
-    base_cfg: &AllowConfig,
-    head_cfg: &AllowConfig,
+    ledger: &DiffLedgerContext<'_>,
 ) {
     if format != OutputFormat::Human {
         return;
     }
-    let finding_bundles = finding_row_bundles(finding_changes, head_cfg);
-    let policy_bundles = policy_row_bundles(policy_changes, head_cfg);
+    let finding_bundles = finding_row_bundles(ledger.finding_changes, ledger.head_cfg);
+    let policy_bundles = policy_row_bundles(ledger.policy_changes, ledger.head_cfg);
     let finding_rows = finding_change_rows(&finding_bundles);
     let policy_rows = policy_change_rows(&policy_bundles);
     text.push_str(
@@ -67,12 +56,7 @@ pub(super) fn append_diff_posture_summary(
             evidence.weak_evidence_references,
             &finding_rows,
             &policy_rows,
-            ledger_movement_summary_from_diff(allow_diff::diff_ledger_movement_summary(
-                base_cfg,
-                head_cfg,
-                finding_changes,
-                policy_changes,
-            )),
+            ledger.ledger_movement_summary(),
         ),
     );
 }
@@ -101,13 +85,10 @@ pub(crate) fn render_diff_json_with_posture(
     report_json: String,
     current_failures: usize,
     outcomes: &[MatchOutcome],
-    finding_changes: &[allow_diff::FindingPostureChange],
-    policy_changes: &[allow_diff::PolicyChange],
-    base_cfg: &AllowConfig,
-    head_cfg: &AllowConfig,
+    ledger: &DiffLedgerContext<'_>,
 ) -> String {
-    let finding_bundles = finding_row_bundles(finding_changes, head_cfg);
-    let policy_bundles = policy_row_bundles(policy_changes, head_cfg);
+    let finding_bundles = finding_row_bundles(ledger.finding_changes, ledger.head_cfg);
+    let policy_bundles = policy_row_bundles(ledger.policy_changes, ledger.head_cfg);
     let finding_rows = finding_change_rows(&finding_bundles);
     let policy_rows = policy_change_rows(&policy_bundles);
     let summary = allow_report::diff_posture_summary(
@@ -120,14 +101,7 @@ pub(crate) fn render_diff_json_with_posture(
         net_posture: posture.as_str(),
         reviewer_action: posture.reviewer_action(),
         summary,
-        ledger_movement: ledger_movement_summary_from_diff(
-            allow_diff::diff_ledger_movement_summary(
-                base_cfg,
-                head_cfg,
-                finding_changes,
-                policy_changes,
-            ),
-        ),
+        ledger_movement: ledger.ledger_movement_summary(),
         finding_changes: &finding_rows,
         policy_changes: &policy_rows,
     };
@@ -145,13 +119,10 @@ pub(crate) fn render_diff_json_report(
     failed: bool,
     report_context: allow_report::ReportContext<'_>,
     current_failures: usize,
-    finding_changes: &[allow_diff::FindingPostureChange],
-    policy_changes: &[allow_diff::PolicyChange],
-    base_cfg: &AllowConfig,
-    head_cfg: &AllowConfig,
+    ledger: &DiffLedgerContext<'_>,
 ) -> String {
-    let finding_bundles = finding_row_bundles(finding_changes, head_cfg);
-    let policy_bundles = policy_row_bundles(policy_changes, head_cfg);
+    let finding_bundles = finding_row_bundles(ledger.finding_changes, ledger.head_cfg);
+    let policy_bundles = policy_row_bundles(ledger.policy_changes, ledger.head_cfg);
     let finding_rows = finding_change_rows(&finding_bundles);
     let policy_rows = policy_change_rows(&policy_bundles);
     let summary = allow_report::diff_posture_summary(
@@ -164,14 +135,7 @@ pub(crate) fn render_diff_json_report(
         net_posture: posture.as_str(),
         reviewer_action: posture.reviewer_action(),
         summary,
-        ledger_movement: ledger_movement_summary_from_diff(
-            allow_diff::diff_ledger_movement_summary(
-                base_cfg,
-                head_cfg,
-                finding_changes,
-                policy_changes,
-            ),
-        ),
+        ledger_movement: ledger.ledger_movement_summary(),
         finding_changes: &finding_rows,
         policy_changes: &policy_rows,
     };
@@ -478,6 +442,7 @@ mod tests {
         )];
         let outcomes = vec![test_outcome(MatchStatus::New)];
         let cfg = AllowConfig::empty();
+        let ledger = DiffLedgerContext::new(&cfg, &cfg, &finding_changes, &policy_changes);
 
         let mut human = String::from("prefix");
         append_diff_posture_summary(
@@ -486,10 +451,7 @@ mod tests {
             0,
             EvidenceReportSummary::default(),
             &outcomes,
-            &finding_changes,
-            &policy_changes,
-            &cfg,
-            &cfg,
+            &ledger,
         );
         assert!(human.contains("Diff posture summary"));
         assert!(human.contains("current_check_failures: 1"));
@@ -508,10 +470,7 @@ mod tests {
                 0,
                 EvidenceReportSummary::default(),
                 &outcomes,
-                &finding_changes,
-                &policy_changes,
-                &cfg,
-                &cfg,
+                &ledger,
             );
             assert_eq!(unchanged, "prefix");
         }
