@@ -1,4 +1,4 @@
-use super::{parse_revision_record, validate_revision_ledger};
+use super::{RevisionRecord, parse_revision_record, validate_revision_ledger};
 
 const VALID: &str = r#"
 schema_version = "1.0"
@@ -13,6 +13,13 @@ change_kinds = ["selector_changed"]
 links = ["issue:123", "pr:456"]
 "#;
 
+fn parse_ok(input: &str) -> RevisionRecord {
+    match parse_revision_record(input) {
+        Ok(record) => record,
+        Err(err) => std::panic::panic_any(format!("valid record parses: {err}")),
+    }
+}
+
 fn parse_err(input: &str) -> String {
     match parse_revision_record(input) {
         Ok(_) => std::panic::panic_any("expected revision parse failure"),
@@ -22,7 +29,7 @@ fn parse_err(input: &str) -> String {
 
 #[test]
 fn parses_minimal_valid_record() {
-    let record = parse_revision_record(VALID).expect("valid record parses");
+    let record = parse_ok(VALID);
     assert_eq!(record.id, "CARGO-ALLOW-REV-0001");
     assert_eq!(record.owner, "repo-infra");
     assert_eq!(record.allow_ids, vec!["allow-0042".to_string()]);
@@ -34,7 +41,7 @@ fn parses_minimal_valid_record() {
 
 #[test]
 fn covers_matches_listed_allow_id_and_change_kind() {
-    let record = parse_revision_record(VALID).expect("valid record parses");
+    let record = parse_ok(VALID);
     assert!(record.covers("allow-0042", "selector_changed"));
     assert!(!record.covers("allow-0042", "scope_broadened"));
     assert!(!record.covers("allow-9999", "selector_changed"));
@@ -42,7 +49,7 @@ fn covers_matches_listed_allow_id_and_change_kind() {
 
 #[test]
 fn accepts_expires_never_and_supersedes_chain() {
-    let record = parse_revision_record(
+    let record = parse_ok(
         r#"
 schema_version = "1.0"
 id = "CARGO-ALLOW-REV-0002"
@@ -54,8 +61,7 @@ change_kinds = ["scope_broadened"]
 expires = "never"
 supersedes = "CARGO-ALLOW-REV-0001"
 "#,
-    )
-    .expect("record parses");
+    );
     assert_eq!(record.expires.as_deref(), Some("never"));
     assert_eq!(record.supersedes.as_deref(), Some("CARGO-ALLOW-REV-0001"));
 }
@@ -141,18 +147,20 @@ fn rejects_unknown_fields() {
 
 #[test]
 fn ledger_rejects_duplicate_ids() {
-    let first = parse_revision_record(VALID).expect("valid record parses");
-    let second = parse_revision_record(VALID).expect("valid record parses");
-    let err = validate_revision_ledger(&[first, second])
-        .expect_err("duplicate ids rejected")
-        .to_string();
+    let first = parse_ok(VALID);
+    let second = parse_ok(VALID);
+    let err = match validate_revision_ledger(&[first, second]) {
+        Ok(()) => std::panic::panic_any("duplicate ids should be rejected"),
+        Err(err) => err.to_string(),
+    };
     assert!(err.contains("duplicate revision id"), "{err}");
 }
 
 #[test]
 fn ledger_accepts_distinct_ids() {
-    let first = parse_revision_record(VALID).expect("valid record parses");
-    let second =
-        parse_revision_record(&VALID.replace("0001", "0002")).expect("valid record parses");
-    validate_revision_ledger(&[first, second]).expect("distinct ids accepted");
+    let first = parse_ok(VALID);
+    let second = parse_ok(&VALID.replace("0001", "0002"));
+    if let Err(err) = validate_revision_ledger(&[first, second]) {
+        std::panic::panic_any(format!("distinct ids accepted: {err}"));
+    }
 }
