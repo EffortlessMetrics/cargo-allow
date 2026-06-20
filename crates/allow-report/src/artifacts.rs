@@ -12,10 +12,11 @@ mod worklist;
 
 pub use add::AddReport;
 pub use diff::{
-    DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange, DiffLifecycleChange,
-    DiffMetadataChange, DiffOccurrenceLimitChange, DiffPolicyChange, DiffPolicyStatusChange,
-    DiffPostureSummary, DiffReport, DiffRequirementChange, DiffScopeChange,
-    DiffSelectorIdentityChange, DiffSelectorPrecisionChange,
+    DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange, DiffLedgerMovementSummary,
+    DiffLifecycleChange, DiffMetadataChange, DiffMovementCounts, DiffOccurrenceLimitChange,
+    DiffPolicyChange, DiffPolicyStatusChange, DiffPostureDeltaCounts, DiffPostureSummary,
+    DiffReport, DiffRequirementChange, DiffScopeChange, DiffSelectorIdentityChange,
+    DiffSelectorPrecisionChange,
 };
 pub use doctor::{ConfiguredLedgerSummary, DoctorReport, FederationDiagnosticSummary};
 pub use explain::{EvidenceReference, ExplainReport};

@@ -21,6 +21,8 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "counts",
         "current_finding",
         "diff",
+        "diff_movement_counts",
+        "diff_posture_delta_counts",
         "diff_summary",
         "evidence_change",
         "evidence_change_field",
@@ -143,6 +145,8 @@ fn artifact_local_fragments_match_common_wire_shapes() {
 
     for fragment in [
         "diff",
+        "diff_movement_counts",
+        "diff_posture_delta_counts",
         "diff_summary",
         "finding",
         "inventory",

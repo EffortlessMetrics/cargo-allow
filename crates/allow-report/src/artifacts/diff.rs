@@ -1,6 +1,27 @@
 use allow_core::StructuralIdentity;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DiffMovementCounts {
+    pub introduced: usize,
+    pub retained: usize,
+    pub removed: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DiffPostureDeltaCounts {
+    pub improved: usize,
+    pub worsened: usize,
+    pub review_required: usize,
+    pub unchanged: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DiffLedgerMovementSummary {
+    pub movement: DiffMovementCounts,
+    pub posture_delta: DiffPostureDeltaCounts,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DiffPostureSummary {
     pub current_failures: usize,
     pub new_findings: usize,
@@ -13,6 +34,13 @@ pub struct DiffPostureSummary {
 #[derive(Debug, Clone, Copy)]
 pub struct DiffFindingChange<'a> {
     pub change: &'a str,
+    pub movement: &'a str,
+    pub posture_delta: &'a str,
+    pub changed_in_diff: bool,
+    pub subject: Option<&'a str>,
+    pub allow_id: Option<&'a str>,
+    pub ledger_id: Option<&'a str>,
+    pub lane: Option<&'a str>,
     pub key: &'a str,
     pub kind: &'a str,
     pub family: Option<&'a str>,
@@ -26,7 +54,13 @@ pub struct DiffFindingChange<'a> {
 #[derive(Debug, Clone, Copy)]
 pub struct DiffPolicyChange<'a> {
     pub severity: &'a str,
+    pub movement: &'a str,
+    pub posture_delta: &'a str,
+    pub changed_in_diff: bool,
+    pub subject: Option<&'a str>,
     pub allow_id: &'a str,
+    pub ledger_id: Option<&'a str>,
+    pub lane: Option<&'a str>,
     pub kind: &'a str,
     pub message: &'a str,
     pub exception_identity: Option<DiffExceptionIdentityChange<'a>>,
@@ -113,6 +147,7 @@ pub struct DiffReport<'a> {
     pub net_posture: &'a str,
     pub reviewer_action: &'a str,
     pub summary: DiffPostureSummary,
+    pub ledger_movement: DiffLedgerMovementSummary,
     pub finding_changes: &'a [DiffFindingChange<'a>],
     pub policy_changes: &'a [DiffPolicyChange<'a>],
 }

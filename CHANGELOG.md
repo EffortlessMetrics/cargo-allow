@@ -10,6 +10,13 @@ inventory without executing repository code.
 
 ### Added
 
+- Movement classification in diff (GOAL-0004 PR 2, #1471): every diff row carries
+  orthogonal `movement`, `posture_delta`, and `changed_in_diff` plus optional
+  `subject`, `allow_id`, `ledger_id`, and `lane`; JSON diff adds dual summary blocks
+  (`movement.introduced/retained/removed`, `posture_delta.improved/worsened/
+  review_required/unchanged`) while retaining legacy `change`, `summary`, and
+  net-posture fields. Projects through human diff, Markdown PR summary, JSON,
+  receipts, and worklist routing vocabulary. Does not enforce revision notes (PR 4).
 - Canonical ledger state model in `allow-core` (GOAL-0004 PR 1): add
   `PresenceMovement`, `PostureDelta`, `LedgerPosture`, and `NetPosture` with
   round-trip parsing, receipt/artifact field names, and PR-summary projection

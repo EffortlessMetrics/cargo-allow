@@ -847,6 +847,12 @@
           "type": "string",
           "minLength": 1
         },
+        "movement": {
+          "$ref": "#/$defs/diff_movement_counts"
+        },
+        "posture_delta": {
+          "$ref": "#/$defs/diff_posture_delta_counts"
+        },
         "summary": {
           "$ref": "#/$defs/diff_summary"
         },
@@ -862,6 +868,27 @@
             "$ref": "#/$defs/policy_change"
           }
         }
+      }
+    },
+    "diff_movement_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["introduced", "retained", "removed"],
+      "properties": {
+        "introduced": { "type": "integer", "minimum": 0 },
+        "retained": { "type": "integer", "minimum": 0 },
+        "removed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "diff_posture_delta_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["improved", "worsened", "review_required", "unchanged"],
+      "properties": {
+        "improved": { "type": "integer", "minimum": 0 },
+        "worsened": { "type": "integer", "minimum": 0 },
+        "review_required": { "type": "integer", "minimum": 0 },
+        "unchanged": { "type": "integer", "minimum": 0 }
       }
     },
     "diff_summary": {
@@ -997,10 +1024,31 @@
     "finding_posture_change": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["change", "key", "kind", "family", "path"],
+      "required": ["change", "movement", "posture_delta", "changed_in_diff", "key", "kind", "family", "path"],
       "properties": {
         "change": {
           "enum": ["new", "removed"]
+        },
+        "movement": {
+          "enum": ["introduced", "retained", "removed"]
+        },
+        "posture_delta": {
+          "enum": ["improved", "worsened", "review_required", "unchanged"]
+        },
+        "changed_in_diff": {
+          "type": "boolean"
+        },
+        "subject": {
+          "type": ["string", "null"]
+        },
+        "allow_id": {
+          "type": ["string", "null"]
+        },
+        "ledger_id": {
+          "type": ["string", "null"]
+        },
+        "lane": {
+          "type": ["string", "null"]
         },
         "key": {
           "type": "string",
@@ -1046,14 +1094,32 @@
     "policy_change": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["severity", "allow_id", "kind", "message"],
+      "required": ["severity", "movement", "posture_delta", "changed_in_diff", "allow_id", "kind", "message"],
       "properties": {
         "severity": {
           "enum": ["improvement", "review", "fail"]
         },
+        "movement": {
+          "enum": ["introduced", "retained", "removed"]
+        },
+        "posture_delta": {
+          "enum": ["improved", "worsened", "review_required", "unchanged"]
+        },
+        "changed_in_diff": {
+          "type": "boolean"
+        },
+        "subject": {
+          "type": ["string", "null"]
+        },
         "allow_id": {
           "type": "string",
           "minLength": 1
+        },
+        "ledger_id": {
+          "type": ["string", "null"]
+        },
+        "lane": {
+          "type": ["string", "null"]
         },
         "kind": {
           "enum": [

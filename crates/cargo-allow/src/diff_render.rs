@@ -1,7 +1,11 @@
-use allow_core::{Finding, MatchOutcome};
+use allow_core::{AllowConfig, Finding, MatchOutcome};
 use allow_match::CheckMode;
 
 use crate::OutputFormat;
+use super::diff_row::{
+    finding_change_rows, finding_row_bundles, ledger_movement_summary_from_diff,
+    policy_change_rows, policy_row_bundles,
+};
 use crate::reporting::EvidenceReportSummary;
 
 pub(super) fn insert_markdown_pr_summary(text: &mut String, summary: &str) {
@@ -14,9 +18,13 @@ pub(super) fn render_diff_pr_summary_markdown(
     outcomes: &[MatchOutcome],
     finding_changes: &[allow_diff::FindingPostureChange],
     policy_changes: &[allow_diff::PolicyChange],
+    base_cfg: &AllowConfig,
+    head_cfg: &AllowConfig,
 ) -> String {
-    let finding_rows = finding_change_rows(finding_changes);
-    let policy_rows = policy_change_rows(policy_changes);
+    let finding_bundles = finding_row_bundles(finding_changes, head_cfg);
+    let policy_bundles = policy_row_bundles(policy_changes, head_cfg);
+    let finding_rows = finding_change_rows(&finding_bundles);
+    let policy_rows = policy_change_rows(&policy_bundles);
     allow_report::render_diff_pr_summary_markdown_with_evidence_health_counts(
         current_failures.max(current_no_new_failures(outcomes)),
         evidence.broken_evidence_links,
@@ -24,6 +32,12 @@ pub(super) fn render_diff_pr_summary_markdown(
         evidence.weak_evidence_references,
         &finding_rows,
         &policy_rows,
+        ledger_movement_summary_from_diff(allow_diff::diff_ledger_movement_summary(
+            base_cfg,
+            head_cfg,
+            finding_changes,
+            policy_changes,
+        )),
     )
 }
 
@@ -35,12 +49,16 @@ pub(super) fn append_diff_posture_summary(
     outcomes: &[MatchOutcome],
     finding_changes: &[allow_diff::FindingPostureChange],
     policy_changes: &[allow_diff::PolicyChange],
+    base_cfg: &AllowConfig,
+    head_cfg: &AllowConfig,
 ) {
     if format != OutputFormat::Human {
         return;
     }
-    let finding_rows = finding_change_rows(finding_changes);
-    let policy_rows = policy_change_rows(policy_changes);
+    let finding_bundles = finding_row_bundles(finding_changes, head_cfg);
+    let policy_bundles = policy_row_bundles(policy_changes, head_cfg);
+    let finding_rows = finding_change_rows(&finding_bundles);
+    let policy_rows = policy_change_rows(&policy_bundles);
     text.push_str(
         &allow_report::render_diff_posture_summary_human_with_evidence_health_counts(
             current_failures.max(current_no_new_failures(outcomes)),
@@ -49,6 +67,12 @@ pub(super) fn append_diff_posture_summary(
             evidence.weak_evidence_references,
             &finding_rows,
             &policy_rows,
+            ledger_movement_summary_from_diff(allow_diff::diff_ledger_movement_summary(
+                base_cfg,
+                head_cfg,
+                finding_changes,
+                policy_changes,
+            )),
         ),
     );
 }
@@ -57,8 +81,10 @@ pub(super) fn append_finding_posture_changes(
     text: &mut String,
     format: OutputFormat,
     changes: &[allow_diff::FindingPostureChange],
+    head_cfg: &AllowConfig,
 ) {
-    let rows = finding_change_rows(changes);
+    let bundles = finding_row_bundles(changes, head_cfg);
+    let rows = finding_change_rows(&bundles);
     match format {
         OutputFormat::Human => {
             text.push_str(&allow_report::render_diff_finding_changes_human(&rows))
@@ -77,9 +103,13 @@ pub(crate) fn render_diff_json_with_posture(
     outcomes: &[MatchOutcome],
     finding_changes: &[allow_diff::FindingPostureChange],
     policy_changes: &[allow_diff::PolicyChange],
+    base_cfg: &AllowConfig,
+    head_cfg: &AllowConfig,
 ) -> String {
-    let finding_rows = finding_change_rows(finding_changes);
-    let policy_rows = policy_change_rows(policy_changes);
+    let finding_bundles = finding_row_bundles(finding_changes, head_cfg);
+    let policy_bundles = policy_row_bundles(policy_changes, head_cfg);
+    let finding_rows = finding_change_rows(&finding_bundles);
+    let policy_rows = policy_change_rows(&policy_bundles);
     let summary = allow_report::diff_posture_summary(
         current_failures.max(current_no_new_failures(outcomes)),
         &finding_rows,
@@ -90,6 +120,12 @@ pub(crate) fn render_diff_json_with_posture(
         net_posture: posture.as_str(),
         reviewer_action: posture.reviewer_action(),
         summary,
+        ledger_movement: ledger_movement_summary_from_diff(allow_diff::diff_ledger_movement_summary(
+            base_cfg,
+            head_cfg,
+            finding_changes,
+            policy_changes,
+        )),
         finding_changes: &finding_rows,
         policy_changes: &policy_rows,
     };
@@ -109,9 +145,13 @@ pub(crate) fn render_diff_json_report(
     current_failures: usize,
     finding_changes: &[allow_diff::FindingPostureChange],
     policy_changes: &[allow_diff::PolicyChange],
+    base_cfg: &AllowConfig,
+    head_cfg: &AllowConfig,
 ) -> String {
-    let finding_rows = finding_change_rows(finding_changes);
-    let policy_rows = policy_change_rows(policy_changes);
+    let finding_bundles = finding_row_bundles(finding_changes, head_cfg);
+    let policy_bundles = policy_row_bundles(policy_changes, head_cfg);
+    let finding_rows = finding_change_rows(&finding_bundles);
+    let policy_rows = policy_change_rows(&policy_bundles);
     let summary = allow_report::diff_posture_summary(
         current_failures.max(current_no_new_failures(outcomes)),
         &finding_rows,
@@ -122,6 +162,12 @@ pub(crate) fn render_diff_json_report(
         net_posture: posture.as_str(),
         reviewer_action: posture.reviewer_action(),
         summary,
+        ledger_movement: ledger_movement_summary_from_diff(allow_diff::diff_ledger_movement_summary(
+            base_cfg,
+            head_cfg,
+            finding_changes,
+            policy_changes,
+        )),
         finding_changes: &finding_rows,
         policy_changes: &policy_rows,
     };
@@ -139,8 +185,10 @@ pub(super) fn append_policy_changes(
     text: &mut String,
     format: OutputFormat,
     changes: &[allow_diff::PolicyChange],
+    head_cfg: &AllowConfig,
 ) {
-    let rows = policy_change_rows(changes);
+    let bundles = policy_row_bundles(changes, head_cfg);
+    let rows = policy_change_rows(&bundles);
     match format {
         OutputFormat::Human => {
             text.push_str(&allow_report::render_diff_policy_changes_human(&rows))
@@ -152,15 +200,21 @@ pub(super) fn append_policy_changes(
     }
 }
 
-pub(super) fn render_policy_changes_human(changes: &[allow_diff::PolicyChange]) -> String {
-    let rows = policy_change_rows(changes);
+pub(super) fn render_policy_changes_human(
+    changes: &[allow_diff::PolicyChange],
+    head_cfg: &AllowConfig,
+) -> String {
+    let bundles = policy_row_bundles(changes, head_cfg);
+    let rows = policy_change_rows(&bundles);
     allow_report::render_diff_policy_changes_human(&rows)
 }
 
 pub(super) fn render_finding_posture_changes_human(
     changes: &[allow_diff::FindingPostureChange],
+    head_cfg: &AllowConfig,
 ) -> String {
-    let rows = finding_change_rows(changes);
+    let bundles = finding_row_bundles(changes, head_cfg);
+    let rows = finding_change_rows(&bundles);
     allow_report::render_diff_finding_changes_human(&rows)
 }
 
@@ -169,109 +223,6 @@ fn current_no_new_failures(outcomes: &[MatchOutcome]) -> usize {
         .iter()
         .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
         .count()
-}
-
-fn finding_change_rows(
-    changes: &[allow_diff::FindingPostureChange],
-) -> Vec<allow_report::DiffFindingChange<'_>> {
-    changes
-        .iter()
-        .map(|change| allow_report::DiffFindingChange {
-            change: change.kind.as_str(),
-            key: &change.key,
-            kind: &change.finding_kind,
-            family: change.family.as_deref(),
-            path: &change.path,
-            line: change.line,
-            column: change.column,
-            source_package: change.source_package.as_deref(),
-            identity: Some(&change.identity),
-        })
-        .collect()
-}
-
-fn policy_change_rows(
-    changes: &[allow_diff::PolicyChange],
-) -> Vec<allow_report::DiffPolicyChange<'_>> {
-    changes
-        .iter()
-        .map(|change| allow_report::DiffPolicyChange {
-            severity: change.severity.as_str(),
-            allow_id: &change.allow_id,
-            kind: change.kind.as_str(),
-            message: &change.message,
-            exception_identity: change.exception_identity.as_ref().map(|identity| {
-                allow_report::DiffExceptionIdentityChange {
-                    field: identity.field.as_str(),
-                    before: identity.before.as_deref(),
-                    after: identity.after.as_deref(),
-                }
-            }),
-            selector_identity: change.selector_identity.as_ref().map(|identity| {
-                allow_report::DiffSelectorIdentityChange {
-                    changed_fields: &identity.changed_fields,
-                }
-            }),
-            selector_precision: change.selector_precision.as_ref().map(|selector| {
-                allow_report::DiffSelectorPrecisionChange {
-                    before: selector.before,
-                    after: selector.after,
-                    removed_fields: &selector.removed_fields,
-                    added_fields: &selector.added_fields,
-                }
-            }),
-            scope: change
-                .scope
-                .as_ref()
-                .map(|scope| allow_report::DiffScopeChange {
-                    field: scope.field.as_str(),
-                    before: scope.before.as_deref(),
-                    after: scope.after.as_deref(),
-                }),
-            occurrence_limit: change.occurrence_limit.as_ref().map(|limit| {
-                allow_report::DiffOccurrenceLimitChange {
-                    before: limit.before,
-                    after: limit.after,
-                }
-            }),
-            lifecycle: change.lifecycle.as_ref().map(|lifecycle| {
-                allow_report::DiffLifecycleChange {
-                    field: lifecycle.field.as_str(),
-                    before: lifecycle.before.as_deref(),
-                    after: lifecycle.after.as_deref(),
-                }
-            }),
-            evidence: change
-                .evidence
-                .as_ref()
-                .map(|evidence| allow_report::DiffEvidenceChange {
-                    field: evidence.field.as_str(),
-                    removed: &evidence.removed,
-                    added: &evidence.added,
-                }),
-            metadata: change
-                .metadata
-                .as_ref()
-                .map(|metadata| allow_report::DiffMetadataChange {
-                    field: metadata.field.as_str(),
-                    before: metadata.before.as_deref(),
-                    after: metadata.after.as_deref(),
-                }),
-            requirement: change.requirement.as_ref().map(|requirement| {
-                allow_report::DiffRequirementChange {
-                    field: requirement.field.as_str(),
-                    before: requirement.before,
-                    after: requirement.after,
-                }
-            }),
-            policy_status: change.policy_status.as_ref().map(|policy_status| {
-                allow_report::DiffPolicyStatusChange {
-                    before: policy_status.before.as_deref(),
-                    after: policy_status.after.as_deref(),
-                }
-            }),
-        })
-        .collect()
 }
 
 #[cfg(test)]
@@ -305,13 +256,19 @@ mod tests {
             source_package: Some("parser".to_string()),
             identity,
         }];
+        let head_cfg = AllowConfig::empty();
 
-        let rows = finding_change_rows(&changes);
+        let bundles = finding_row_bundles(&changes, &head_cfg);
+        let rows = finding_change_rows(&bundles);
 
         let [row] = rows.as_slice() else {
             std::panic::panic_any(format!("expected one finding row, got {}", rows.len()));
         };
         assert_eq!(row.change, "new");
+        assert_eq!(row.movement, "introduced");
+        assert_eq!(row.posture_delta, "review_required");
+        assert!(row.changed_in_diff);
+        assert_eq!(row.subject, Some("panic.unwrap at src/lib.rs"));
         assert_eq!(row.key, "panic:src/lib.rs");
         assert_eq!(row.kind, "panic");
         assert_eq!(row.family, Some("unwrap"));
@@ -382,13 +339,18 @@ mod tests {
                 after: Some("advisory".to_string()),
             }),
         }];
+        let head_cfg = AllowConfig::empty();
 
-        let rows = policy_change_rows(&changes);
+        let bundles = policy_row_bundles(&changes, &head_cfg);
+        let rows = policy_change_rows(&bundles);
 
         let [row] = rows.as_slice() else {
             std::panic::panic_any(format!("expected one policy row, got {}", rows.len()));
         };
         assert_eq!(row.severity, "fail");
+        assert_eq!(row.movement, "retained");
+        assert_eq!(row.posture_delta, "worsened");
+        assert!(row.changed_in_diff);
         assert_eq!(row.allow_id, "allow-0001");
         assert_eq!(row.kind, "selector_precision_decreased");
         assert_eq!(row.message, "selector precision decreased");
@@ -457,20 +419,22 @@ mod tests {
     #[test]
     fn append_finding_posture_changes_renders_only_text_formats() {
         let changes = vec![finding_change(allow_diff::FindingPostureKind::New)];
+        let head_cfg = AllowConfig::empty();
 
         let mut human = String::from("prefix");
-        append_finding_posture_changes(&mut human, OutputFormat::Human, &changes);
+        append_finding_posture_changes(&mut human, OutputFormat::Human, &changes, &head_cfg);
         assert!(human.contains("Finding posture changes"));
-        assert!(human.contains("new panic.unwrap at src/lib.rs"));
+        assert!(human.contains("movement=introduced"));
+        assert!(human.contains("panic.unwrap at src/lib.rs"));
 
         let mut markdown = String::from("prefix");
-        append_finding_posture_changes(&mut markdown, OutputFormat::Markdown, &changes);
+        append_finding_posture_changes(&mut markdown, OutputFormat::Markdown, &changes, &head_cfg);
         assert!(markdown.contains("Finding Posture Changes"));
         assert!(markdown.contains("src/lib.rs"));
 
         for format in [OutputFormat::Html, OutputFormat::Json, OutputFormat::Sarif] {
             let mut unchanged = String::from("prefix");
-            append_finding_posture_changes(&mut unchanged, format, &changes);
+            append_finding_posture_changes(&mut unchanged, format, &changes, &head_cfg);
             assert_eq!(unchanged, "prefix");
         }
     }
@@ -481,20 +445,22 @@ mod tests {
             allow_diff::PolicyChangeSeverity::Fail,
             allow_diff::PolicyChangeKind::ScopeBroadened,
         )];
+        let head_cfg = AllowConfig::empty();
 
         let mut human = String::from("prefix");
-        append_policy_changes(&mut human, OutputFormat::Human, &changes);
+        append_policy_changes(&mut human, OutputFormat::Human, &changes, &head_cfg);
         assert!(human.contains("Policy posture changes"));
-        assert!(human.contains("fail allow-0001 scope_broadened"));
+        assert!(human.contains("movement=retained"));
+        assert!(human.contains("scope_broadened"));
 
         let mut markdown = String::from("prefix");
-        append_policy_changes(&mut markdown, OutputFormat::Markdown, &changes);
+        append_policy_changes(&mut markdown, OutputFormat::Markdown, &changes, &head_cfg);
         assert!(markdown.contains("Policy Posture Changes"));
         assert!(markdown.contains("allow-0001"));
 
         for format in [OutputFormat::Html, OutputFormat::Json, OutputFormat::Sarif] {
             let mut unchanged = String::from("prefix");
-            append_policy_changes(&mut unchanged, format, &changes);
+            append_policy_changes(&mut unchanged, format, &changes, &head_cfg);
             assert_eq!(unchanged, "prefix");
         }
     }
@@ -507,6 +473,7 @@ mod tests {
             allow_diff::PolicyChangeKind::ScopeBroadened,
         )];
         let outcomes = vec![test_outcome(MatchStatus::New)];
+        let cfg = AllowConfig::empty();
 
         let mut human = String::from("prefix");
         append_diff_posture_summary(
@@ -517,6 +484,8 @@ mod tests {
             &outcomes,
             &finding_changes,
             &policy_changes,
+            &cfg,
+            &cfg,
         );
         assert!(human.contains("Diff posture summary"));
         assert!(human.contains("current_check_failures: 1"));
@@ -537,6 +506,8 @@ mod tests {
                 &outcomes,
                 &finding_changes,
                 &policy_changes,
+                &cfg,
+                &cfg,
             );
             assert_eq!(unchanged, "prefix");
         }
@@ -565,14 +536,17 @@ mod tests {
             allow_diff::PolicyChangeSeverity::Improvement,
             allow_diff::PolicyChangeKind::RemovedAllow,
         )];
+        let head_cfg = AllowConfig::empty();
 
-        let finding_text = render_finding_posture_changes_human(&finding_changes);
+        let finding_text = render_finding_posture_changes_human(&finding_changes, &head_cfg);
         assert!(finding_text.contains("Finding improvements"));
-        assert!(finding_text.contains("removed panic.unwrap"));
+        assert!(finding_text.contains("movement=removed"));
+        assert!(finding_text.contains("panic.unwrap"));
 
-        let policy_text = render_policy_changes_human(&policy_changes);
+        let policy_text = render_policy_changes_human(&policy_changes, &head_cfg);
         assert!(policy_text.contains("Policy improvements"));
-        assert!(policy_text.contains("improvement allow-0001 removed_allow"));
+        assert!(policy_text.contains("movement=removed"));
+        assert!(policy_text.contains("removed_allow"));
     }
 
     fn test_outcome(status: MatchStatus) -> MatchOutcome {

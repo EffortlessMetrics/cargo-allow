@@ -5,6 +5,12 @@ use crate::diff_json::render_diff_posture_json;
 fn diff_json_renderer_includes_occurrence_limit_change() {
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
+            movement: "retained",
+            posture_delta: "worsened",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
         allow_id: "allow-0001",
         kind: "occurrence_limit_loosened",
         message: "allow-0001 occurrence_limit increased or removed",
@@ -34,6 +40,10 @@ fn diff_json_renderer_includes_occurrence_limit_change() {
             policy_review_items: 0,
             policy_improvements: 0,
         },
+            ledger_movement: DiffLedgerMovementSummary {
+                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
+                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+            },
         finding_changes: &[],
         policy_changes: &policy_changes,
     });
@@ -46,6 +56,12 @@ fn diff_json_renderer_includes_occurrence_limit_change() {
 fn diff_json_renderer_includes_lifecycle_change() {
     let policy_changes = vec![DiffPolicyChange {
         severity: "review",
+            movement: "retained",
+            posture_delta: "review_required",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
         allow_id: "allow-0001",
         kind: "expiry_extended",
         message: "allow-0001 expiry extended or removed",
@@ -76,6 +92,10 @@ fn diff_json_renderer_includes_lifecycle_change() {
             policy_review_items: 1,
             policy_improvements: 0,
         },
+            ledger_movement: DiffLedgerMovementSummary {
+                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
+                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+            },
         finding_changes: &[],
         policy_changes: &policy_changes,
     });
@@ -92,6 +112,12 @@ fn diff_json_renderer_includes_evidence_change() {
     let added = vec!["doc:docs/new-proof.md".to_string()];
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
+            movement: "retained",
+            posture_delta: "worsened",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
         allow_id: "allow-0001",
         kind: "evidence_removed",
         message: "allow-0001 evidence removed",
@@ -122,6 +148,10 @@ fn diff_json_renderer_includes_evidence_change() {
             policy_review_items: 0,
             policy_improvements: 0,
         },
+            ledger_movement: DiffLedgerMovementSummary {
+                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
+                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+            },
         finding_changes: &[],
         policy_changes: &policy_changes,
     });
@@ -136,6 +166,12 @@ fn diff_json_renderer_includes_evidence_change() {
 fn diff_json_renderer_includes_metadata_change() {
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
+            movement: "retained",
+            posture_delta: "worsened",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
         allow_id: "allow-0001",
         kind: "owner_removed",
         message: "allow-0001 owner removed",
@@ -166,6 +202,10 @@ fn diff_json_renderer_includes_metadata_change() {
             policy_review_items: 0,
             policy_improvements: 0,
         },
+            ledger_movement: DiffLedgerMovementSummary {
+                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
+                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+            },
         finding_changes: &[],
         policy_changes: &policy_changes,
     });
@@ -182,6 +222,12 @@ fn diff_json_renderer_includes_metadata_change() {
 fn diff_json_renderer_includes_requirement_change() {
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
+            movement: "retained",
+            posture_delta: "worsened",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
         allow_id: "requirements.owner_required",
         kind: "requirement_loosened",
         message: "requirements.owner_required loosened: true -> false",
@@ -212,6 +258,10 @@ fn diff_json_renderer_includes_requirement_change() {
             policy_review_items: 0,
             policy_improvements: 0,
         },
+            ledger_movement: DiffLedgerMovementSummary {
+                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
+                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+            },
         finding_changes: &[],
         policy_changes: &policy_changes,
     });
@@ -226,6 +276,12 @@ fn diff_json_renderer_includes_requirement_change() {
 fn diff_json_renderer_includes_policy_status_change() {
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
+            movement: "retained",
+            posture_delta: "worsened",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
         allow_id: "policy.status",
         kind: "policy_status_weakened",
         message: "policy.status weakened: active -> advisory",
@@ -255,6 +311,10 @@ fn diff_json_renderer_includes_policy_status_change() {
             policy_review_items: 0,
             policy_improvements: 0,
         },
+            ledger_movement: DiffLedgerMovementSummary {
+                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
+                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+            },
         finding_changes: &[],
         policy_changes: &policy_changes,
     });
@@ -267,6 +327,12 @@ fn diff_json_renderer_includes_policy_status_change() {
 fn diff_json_renderer_includes_exception_identity_change() {
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
+            movement: "retained",
+            posture_delta: "worsened",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
         allow_id: "allow-0001",
         kind: "kind_changed",
         message: "allow-0001 changed governed exception kind: panic -> unsafe",
@@ -297,6 +363,10 @@ fn diff_json_renderer_includes_exception_identity_change() {
             policy_review_items: 0,
             policy_improvements: 0,
         },
+            ledger_movement: DiffLedgerMovementSummary {
+                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
+                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+            },
         finding_changes: &[],
         policy_changes: &policy_changes,
     });
@@ -312,6 +382,12 @@ fn diff_json_renderer_includes_selector_identity_change() {
     let changed_fields = ["container", "normalized_snippet_hash"];
     let policy_changes = vec![DiffPolicyChange {
         severity: "review",
+            movement: "retained",
+            posture_delta: "review_required",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
         allow_id: "allow-0001",
         kind: "selector_changed",
         message: "allow-0001 selector identity changed",
@@ -340,6 +416,10 @@ fn diff_json_renderer_includes_selector_identity_change() {
             policy_review_items: 1,
             policy_improvements: 0,
         },
+            ledger_movement: DiffLedgerMovementSummary {
+                movement: DiffMovementCounts { introduced: 0, retained: 0, removed: 0 },
+                posture_delta: DiffPostureDeltaCounts { improved: 0, worsened: 0, review_required: 0, unchanged: 0 },
+            },
         finding_changes: &[],
         policy_changes: &policy_changes,
     });

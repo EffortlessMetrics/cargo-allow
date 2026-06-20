@@ -7,7 +7,8 @@ use crate::diff_posture::{
 use crate::evidence_repair::evidence_repair_queues_from_counts;
 use crate::ledger_posture::FINDING_CHANGE_LABELS;
 use crate::text::markdown_cell;
-use crate::{CLAIM_BOUNDARY_TEXT, DiffFindingChange, DiffPolicyChange};
+use crate::diff_movement::append_movement_summary_markdown;
+use crate::{CLAIM_BOUNDARY_TEXT, DiffFindingChange, DiffLedgerMovementSummary, DiffPolicyChange};
 use allow_core::PresenceMovement;
 
 const PR_SUMMARY_HIGHLIGHT_LIMIT: usize = 8;
@@ -36,6 +37,7 @@ pub fn render_diff_pr_summary_markdown_with_evidence_health_counts(
     weak_evidence_references: usize,
     finding_changes: &[DiffFindingChange<'_>],
     policy_changes: &[DiffPolicyChange<'_>],
+    ledger_movement: DiffLedgerMovementSummary,
 ) -> String {
     render_diff_pr_summary_markdown_with_evidence_health_counts_inner(
         current_failures,
@@ -44,6 +46,7 @@ pub fn render_diff_pr_summary_markdown_with_evidence_health_counts(
         weak_evidence_references,
         finding_changes,
         policy_changes,
+        ledger_movement,
     )
 }
 
@@ -61,6 +64,19 @@ pub fn render_diff_pr_summary_markdown_with_evidence_health(
         weak_evidence_references,
         finding_changes,
         policy_changes,
+        DiffLedgerMovementSummary {
+            movement: crate::DiffMovementCounts {
+                introduced: 0,
+                retained: 0,
+                removed: 0,
+            },
+            posture_delta: crate::DiffPostureDeltaCounts {
+                improved: 0,
+                worsened: 0,
+                review_required: 0,
+                unchanged: 0,
+            },
+        },
     )
 }
 
@@ -71,6 +87,7 @@ fn render_diff_pr_summary_markdown_with_evidence_health_counts_inner(
     weak_evidence_references: usize,
     finding_changes: &[DiffFindingChange<'_>],
     policy_changes: &[DiffPolicyChange<'_>],
+    ledger_movement: DiffLedgerMovementSummary,
 ) -> String {
     let summary = diff_posture_summary(current_failures, finding_changes, policy_changes);
     let posture = diff_net_posture(summary);
@@ -237,6 +254,7 @@ fn render_diff_pr_summary_markdown_with_evidence_health_counts_inner(
         "| Policy improvements | {} |\n",
         summary.policy_improvements
     ));
+    append_movement_summary_markdown(&mut out, ledger_movement);
     out.push_str(&format!(
         "\n**Reviewer action:** {}\n\n",
         posture.reviewer_action()

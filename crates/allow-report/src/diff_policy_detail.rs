@@ -127,6 +127,12 @@ mod tests {
     fn base_change() -> DiffPolicyChange<'static> {
         DiffPolicyChange {
             severity: "review",
+            movement: "retained",
+            posture_delta: "review_required",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-0001",
             kind: "policy_changed",
             message: "allow-0001 policy changed",

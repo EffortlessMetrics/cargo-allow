@@ -24,8 +24,11 @@ mod diff_finding_detail_tests;
 mod diff_human;
 mod diff_json;
 mod diff_markdown;
+mod diff_movement;
 mod diff_policy_detail;
 mod diff_posture;
+#[cfg(test)]
+mod diff_row_test_support;
 mod doctor;
 #[cfg(test)]
 mod doctor_tests;
@@ -92,14 +95,14 @@ pub use advisory_class::{ADVISORY_DENY_FIELD_NAMES, AdvisoryClass, advisory_coun
 pub use allow_entry_json::{render_allow_entry_json, render_last_seen_json, render_selector_json};
 pub use artifacts::{
     AddReport, ConfiguredLedgerSummary, DiffEvidenceChange, DiffExceptionIdentityChange,
-    DiffFindingChange, DiffLifecycleChange, DiffMetadataChange, DiffOccurrenceLimitChange,
-    DiffPolicyChange, DiffPolicyStatusChange, DiffPostureSummary, DiffReport,
-    DiffRequirementChange, DiffScopeChange, DiffSelectorIdentityChange,
-    DiffSelectorPrecisionChange, DoctorReport, EvidenceReference, ExplainReport,
-    FederationDiagnosticSummary, FederationDivergenceKindCount, FederationDivergenceRecordSummary,
-    FederationDivergenceSummary, FederationReportContext, LedgerContributorSummary, ListFilters,
-    ListRow, MigrateReport, ProposeReport, PruneCandidate, PruneModeContext, RefreshModeContext,
-    RefreshReport, WorklistFilters, WorklistItem,
+    DiffFindingChange, DiffLedgerMovementSummary, DiffLifecycleChange, DiffMetadataChange,
+    DiffMovementCounts, DiffOccurrenceLimitChange, DiffPolicyChange, DiffPolicyStatusChange,
+    DiffPostureDeltaCounts, DiffPostureSummary, DiffReport, DiffRequirementChange, DiffScopeChange,
+    DiffSelectorIdentityChange, DiffSelectorPrecisionChange, DoctorReport, EvidenceReference,
+    ExplainReport, FederationDiagnosticSummary, FederationDivergenceKindCount,
+    FederationDivergenceRecordSummary, FederationDivergenceSummary, FederationReportContext,
+    LedgerContributorSummary, ListFilters, ListRow, MigrateReport, ProposeReport, PruneCandidate,
+    PruneModeContext, RefreshModeContext, RefreshReport, WorklistFilters, WorklistItem,
 };
 pub use contracts::{
     ADD_SCHEMA_ID, ADD_SCHEMA_VERSION, ARTIFACT_CONTRACTS, ARTIFACT_STATUS_ERROR,

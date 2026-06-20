@@ -166,7 +166,16 @@ fn common_schema_diff_fragments_keep_source_tree_contracts() {
     assert_required_fields(
         "common finding_posture_change",
         finding_posture_change,
-        &["change", "key", "kind", "family", "path"],
+        &[
+            "change",
+            "movement",
+            "posture_delta",
+            "changed_in_diff",
+            "key",
+            "kind",
+            "family",
+            "path",
+        ],
     );
     assert_enum_equals(
         "common finding_posture_change change",
@@ -270,7 +279,15 @@ fn common_schema_diff_fragments_keep_source_tree_contracts() {
     assert_required_fields(
         "common policy_change",
         policy_change,
-        &["severity", "allow_id", "kind", "message"],
+        &[
+            "severity",
+            "movement",
+            "posture_delta",
+            "changed_in_diff",
+            "allow_id",
+            "kind",
+            "message",
+        ],
     );
     assert_enum_equals(
         "common policy_change severity",

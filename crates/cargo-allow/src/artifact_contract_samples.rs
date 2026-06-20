@@ -263,7 +263,8 @@ pub(crate) fn core_artifact_samples() -> Vec<ArtifactSample> {
             None,
         ),
     );
-    let diff_json = diff::render_diff_json_with_posture(diff_base_json, 0, &[], &[], &[]);
+    let cfg = allow_core::AllowConfig::empty();
+    let diff_json = diff::render_diff_json_with_posture(diff_base_json, 0, &[], &[], &[], &cfg, &cfg);
     vec![
         ArtifactSample {
             name: "audit_report",

@@ -1,6 +1,7 @@
 use allow_core::json_escape;
 
 use crate::DiffReport;
+use crate::diff_movement::append_movement_summary_json;
 use crate::diff_posture::{diff_evidence_delta_summary, diff_structural_delta_summary};
 use crate::explain_json::structural_identity_json;
 use crate::json::{json_string_array, option_json};
@@ -48,6 +49,7 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
         "    \"reviewer_action\": \"{}\",\n",
         json_escape(report.reviewer_action)
     ));
+    append_movement_summary_json(&mut out, report.ledger_movement);
     out.push_str("    \"summary\": {\n");
     out.push_str(&format!(
         "      \"current_failures\": {},\n",
@@ -221,6 +223,14 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
         }
         out.push_str("      {");
         out.push_str(&format!("\"change\": \"{}\", ", json_escape(change.change)));
+        append_row_classification_json(&mut out, change.movement, change.posture_delta, change.changed_in_diff);
+        append_optional_subject_json(&mut out, change.subject);
+        append_optional_provenance_json(
+            &mut out,
+            change.allow_id,
+            change.ledger_id,
+            change.lane,
+        );
         out.push_str(&format!("\"key\": \"{}\", ", json_escape(change.key)));
         out.push_str(&format!("\"kind\": \"{}\", ", json_escape(change.kind)));
         out.push_str(&format!("\"family\": {}, ", option_json(change.family)));
@@ -254,10 +264,13 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
             "\"severity\": \"{}\", ",
             json_escape(change.severity)
         ));
+        append_row_classification_json(&mut out, change.movement, change.posture_delta, change.changed_in_diff);
+        append_optional_subject_json(&mut out, change.subject);
         out.push_str(&format!(
             "\"allow_id\": \"{}\", ",
             json_escape(change.allow_id)
         ));
+        append_optional_provenance_json(&mut out, None, change.ledger_id, change.lane);
         out.push_str(&format!("\"kind\": \"{}\", ", json_escape(change.kind)));
         out.push_str(&format!("\"message\": \"{}\"", json_escape(change.message)));
         if let Some(exception_identity) = change.exception_identity {
@@ -356,4 +369,44 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
 
 fn option_u32_json(value: Option<u32>) -> String {
     value.map_or_else(|| "null".to_string(), |value| value.to_string())
+}
+
+fn append_row_classification_json(
+    out: &mut String,
+    movement: &str,
+    posture_delta: &str,
+    changed_in_diff: bool,
+) {
+    out.push_str(&format!(
+        "\"movement\": \"{}\", \"posture_delta\": \"{}\", \"changed_in_diff\": {}, ",
+        json_escape(movement),
+        json_escape(posture_delta),
+        changed_in_diff
+    ));
+}
+
+fn append_optional_subject_json(out: &mut String, subject: Option<&str>) {
+    if let Some(subject) = subject {
+        out.push_str(&format!("\"subject\": \"{}\", ", json_escape(subject)));
+    }
+}
+
+fn append_optional_provenance_json(
+    out: &mut String,
+    allow_id: Option<&str>,
+    ledger_id: Option<&str>,
+    lane: Option<&str>,
+) {
+    if let Some(allow_id) = allow_id {
+        out.push_str(&format!("\"allow_id\": \"{}\", ", json_escape(allow_id)));
+    }
+    if let Some(ledger_id) = ledger_id {
+        out.push_str(&format!(
+            "\"ledger_id\": \"{}\", ",
+            json_escape(ledger_id)
+        ));
+    }
+    if let Some(lane) = lane {
+        out.push_str(&format!("\"lane\": \"{}\", ", json_escape(lane)));
+    }
 }
