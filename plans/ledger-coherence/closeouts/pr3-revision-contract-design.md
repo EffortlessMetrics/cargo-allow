@@ -28,7 +28,7 @@ requires or consumes revision notes yet.
   (governed weakening = `worsened` / `review_required` posture delta),
   multi-entry coverage, structural diff matching on `(allow_id, change_kind)`,
   no merge-time expiry, and append-only records.
-- `docs/schemas/revision.schema.json` — record schema.
+- `.allow/revisions/revision.schema.json` — record schema.
 - `allow_policy::revision` — `RevisionRecord`, `parse_revision_record[_at]`,
   `RevisionRecord::covers`, `validate_revision_ledger`, and contract constants.
   15 fixture-backed parse/validate tests.

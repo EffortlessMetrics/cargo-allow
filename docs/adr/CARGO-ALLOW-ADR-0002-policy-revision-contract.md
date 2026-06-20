@@ -67,7 +67,7 @@ links = ["issue:123", "pr:456"]
 
 `allow-policy` owns the parse and validate contract
 (`allow_policy::revision`); the JSON schema lives at
-`docs/schemas/revision.schema.json`.
+`.allow/revisions/revision.schema.json`.
 
 ### 1. Which changes require a note
 

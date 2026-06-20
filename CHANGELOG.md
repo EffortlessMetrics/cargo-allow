@@ -17,7 +17,7 @@ inventory without executing repository code.
   diff matching is structural, records are durable (no merge expiry) and
   append-only. Adds `allow_policy::revision` (parse/validate stub with
   `RevisionRecord::covers` and `validate_revision_ledger`),
-  `docs/schemas/revision.schema.json`, and `.allow/revisions/README.md`. Design
+  `.allow/revisions/revision.schema.json`, and `.allow/revisions/README.md`. Design
   only: no command requires or consumes notes yet (enforcement is PR 4).
 - Movement classification in diff (GOAL-0004 PR 2, #1471): every diff row carries
   orthogonal `movement`, `posture_delta`, and `changed_in_diff` plus optional

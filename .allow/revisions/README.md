@@ -3,7 +3,7 @@
 Append-only records that document *why* a governed exception or policy entry
 changed posture. The contract is fixed in
 [`CARGO-ALLOW-ADR-0002`](../../docs/adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md);
-the record schema is [`docs/schemas/revision.schema.json`](../../docs/schemas/revision.schema.json).
+the record schema is [`revision.schema.json`](revision.schema.json).
 
 Each `.toml` file under this directory holds one record:
 

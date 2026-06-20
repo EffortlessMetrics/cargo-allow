@@ -217,7 +217,7 @@ fn validate_optional_ref(
 /// Validate change-kind token shape: `snake_case` over `[a-z0-9]`.
 ///
 /// Matches the `^[a-z0-9]+(_[a-z0-9]+)*$` shape published in
-/// `docs/schemas/revision.schema.json`: lowercase ascii and digits, single
+/// `.allow/revisions/revision.schema.json`: lowercase ascii and digits, single
 /// underscores between segments, no leading/trailing/consecutive underscores.
 fn validate_change_kind_token(
     id: &str,
