@@ -10,6 +10,16 @@ inventory without executing repository code.
 
 ### Added
 
+- Policy revision contract design (GOAL-0004 PR 3, #1475): add
+  CARGO-ALLOW-ADR-0002 and the `.allow/revisions/` directory defining durable,
+  append-only change records for governed exception edits. A record is required
+  only for edits the diff classifies `posture_delta = worsened`; improvements and
+  neutral edits are exempt. Records carry `allow_ids` + `change_kinds` (reusing the
+  canonical `policy_change_kind` vocabulary, no parallel taxonomy), match diffs by
+  stable `allow_id` (never by line), do not expire after merge, and are
+  corrected via `supersedes`. Design only — no parsing or enforcement; PR 4
+  implements `diff --require-change-note`. Unblocks
+  `ledger-coherence-pr4-enforce-change-notes`.
 - Movement classification in diff (GOAL-0004 PR 2, #1471): every diff row carries
   orthogonal `movement`, `posture_delta`, and `changed_in_diff` plus optional
   `subject`, `allow_id`, `ledger_id`, and `lane`; JSON diff adds dual summary blocks

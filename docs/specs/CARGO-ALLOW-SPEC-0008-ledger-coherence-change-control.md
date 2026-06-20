@@ -5,7 +5,8 @@ status: accepted
 owner: repo-infra
 created: 2026-06-19
 linked_proposal: CARGO-ALLOW-PROP-0008
-linked_adrs: []
+linked_adrs:
+  - CARGO-ALLOW-ADR-0002
 support_tier_impact: advisory
 policy_impact:
   - .allow/goals/active.toml
@@ -130,7 +131,7 @@ owner = "repo-infra"
 reason = "Narrow selector after parser refactor."
 
 allow_ids = ["allow-0042"]
-change_kinds = ["selector_changed"]
+change_kinds = ["scope_broadened"]
 
 links = [
   "issue:123",
@@ -138,13 +139,19 @@ links = [
 ]
 ```
 
-The design slice must decide:
+The design slice decides the following, recorded in
+[CARGO-ALLOW-ADR-0002](../adr/CARGO-ALLOW-ADR-0002-policy-revision-contract.md):
 
-- which changes require a note;
-- how one note covers multiple entries;
-- how notes are matched to a diff;
-- whether notes expire after merge;
-- whether notes are append-only.
+- **Which changes require a note:** edits classified `posture_delta = worsened`
+  (the note requirement is anchored to the canonical `PostureDelta`); improvements
+  and neutral edits do not.
+- **How one note covers multiple entries:** `allow_ids` and `change_kinds` are
+  arrays; a worsened row is satisfied by the union of matching records.
+- **How notes are matched to a diff:** by stable `allow_id` and change kind (never
+  by file line); records covering no current row are inert, not errors.
+- **Whether notes expire after merge:** no — records are durable; `review_after`
+  is advisory only.
+- **Whether notes are append-only:** yes — immutable, corrected via `supersedes`.
 
 Enforcement (`diff --require-change-note`) applies only after the contract is
 accepted. Governed weakening edits require a matching note; obvious improvements

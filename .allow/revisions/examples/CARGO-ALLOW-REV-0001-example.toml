@@ -1,0 +1,22 @@
+# Example revision record (design illustration only).
+#
+# Defined by CARGO-ALLOW-ADR-0002. Not parsed or enforced until GOAL-0004 PR 4.
+# This file documents a single weakening edit: raising an occurrence limit, which
+# allow-diff classifies as posture_delta = worsened and therefore requires a record.
+
+schema_version = "1.0"
+id = "CARGO-ALLOW-REV-0001"
+created = "2026-06-20"
+owner = "repo-infra"
+reason = "Raise occurrence_limit on allow-0042 to cover generated modules after the parser refactor; selector unchanged."
+
+allow_ids = ["allow-0042"]
+change_kinds = ["occurrence_limit_loosened"]
+
+# Optional: binds this record to one specific transition so a later, independent
+# increase is not silently authorized by reuse.
+before_fingerprint = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+after_fingerprint = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+
+review_after = "2026-09-01"
+links = ["issue:1475", "pr:1772"]
