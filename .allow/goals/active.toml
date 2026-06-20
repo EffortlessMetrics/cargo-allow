@@ -90,7 +90,9 @@ title = "Design policy revision contract — #1475 design slice (PR 3)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
-blocker_reason = "Blocked on PR 2 movement classification."
+proof_commands = [
+  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+]
 evidence_notes = [
   "Define .allow/revisions/ schema, matching rules, and which edits require notes.",
   "Design only; no enforcement until PR 4.",
