@@ -1,9 +1,17 @@
 use super::*;
+use crate::diff_row_test_support::empty_ledger_movement_summary;
 
 #[test]
 fn diff_pr_summary_markdown_reports_net_posture() {
     let finding_changes = vec![DiffFindingChange {
         change: "removed",
+        movement: "removed",
+        posture_delta: "improved",
+        changed_in_diff: true,
+        subject: None,
+        allow_id: None,
+        ledger_id: None,
+        lane: None,
         key: "panic|unwrap|src/lib.rs",
         kind: "panic",
         family: Some("unwrap"),
@@ -15,6 +23,12 @@ fn diff_pr_summary_markdown_reports_net_posture() {
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "improvement",
+        movement: "retained",
+        posture_delta: "improved",
+        changed_in_diff: true,
+        subject: None,
+        ledger_id: None,
+        lane: None,
         allow_id: "allow-0001",
         kind: "selector_precision_increased",
         message: "allow-0001 selector precision increased",
@@ -55,7 +69,15 @@ fn diff_pr_summary_markdown_reports_net_posture() {
 
 #[test]
 fn diff_pr_summary_markdown_reports_evidence_health_rows() {
-    let summary = render_diff_pr_summary_markdown_with_evidence_health_counts(1, 1, 3, 2, &[], &[]);
+    let summary = render_diff_pr_summary_markdown_with_evidence_health_counts(
+        1,
+        1,
+        3,
+        2,
+        &[],
+        &[],
+        empty_ledger_movement_summary(),
+    );
 
     assert!(summary.contains("**Net posture:** `worse`"));
     assert!(summary.contains("| Current check failures | 1 |"));
@@ -102,6 +124,12 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
     let policy_changes = vec![
         DiffPolicyChange {
             severity: "improvement",
+            movement: "retained",
+            posture_delta: "improved",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-added",
             kind: "evidence_added",
             message: "allow-added evidence added",
@@ -118,6 +146,12 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
         },
         DiffPolicyChange {
             severity: "fail",
+            movement: "retained",
+            posture_delta: "worsened",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-broken-added",
             kind: "evidence_added",
             message: "allow-broken-added broken local evidence added",
@@ -134,6 +168,12 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
         },
         DiffPolicyChange {
             severity: "review",
+            movement: "retained",
+            posture_delta: "review_required",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-weak-added",
             kind: "evidence_added",
             message: "allow-weak-added weak evidence added",
@@ -150,6 +190,12 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
         },
         DiffPolicyChange {
             severity: "fail",
+            movement: "retained",
+            posture_delta: "worsened",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-removed",
             kind: "evidence_removed",
             message: "allow-removed evidence removed",
@@ -166,6 +212,12 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
         },
         DiffPolicyChange {
             severity: "review",
+            movement: "retained",
+            posture_delta: "review_required",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-removed-review",
             kind: "evidence_removed",
             message: "allow-removed-review weak evidence removed",
@@ -182,6 +234,12 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
         },
         DiffPolicyChange {
             severity: "improvement",
+            movement: "retained",
+            posture_delta: "improved",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-removed-improvement",
             kind: "evidence_removed",
             message: "allow-removed-improvement weak evidence removed",
@@ -198,6 +256,12 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
         },
         DiffPolicyChange {
             severity: "improvement",
+            movement: "retained",
+            posture_delta: "improved",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-link-added",
             kind: "link_added",
             message: "allow-link-added link added",
@@ -214,6 +278,12 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
         },
         DiffPolicyChange {
             severity: "review",
+            movement: "retained",
+            posture_delta: "review_required",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-weak-link-added",
             kind: "link_added",
             message: "allow-weak-link-added weak traceability link added",
@@ -230,6 +300,12 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
         },
         DiffPolicyChange {
             severity: "fail",
+            movement: "retained",
+            posture_delta: "worsened",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-broken-link-added",
             kind: "link_added",
             message: "allow-broken-link-added broken local link added",
@@ -246,6 +322,12 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
         },
         DiffPolicyChange {
             severity: "review",
+            movement: "retained",
+            posture_delta: "review_required",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-link-removed",
             kind: "link_removed",
             message: "allow-link-removed link removed",
@@ -262,6 +344,12 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
         },
         DiffPolicyChange {
             severity: "fail",
+            movement: "retained",
+            posture_delta: "worsened",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-link-removed-fail",
             kind: "link_removed",
             message: "allow-link-removed-fail local traceability link removed",
@@ -278,6 +366,12 @@ fn diff_pr_summary_markdown_reports_evidence_delta_rows() {
         },
         DiffPolicyChange {
             severity: "improvement",
+            movement: "retained",
+            posture_delta: "improved",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-link-removed-improvement",
             kind: "link_removed",
             message: "allow-link-removed-improvement weak traceability link removed",
@@ -318,6 +412,13 @@ fn diff_posture_tables_escape_markdown_cells() {
     identity.callee = Some("unwrap`call".to_string());
     let finding_changes = vec![DiffFindingChange {
         change: "new",
+        movement: "introduced",
+        posture_delta: "review_required",
+        changed_in_diff: true,
+        subject: None,
+        allow_id: None,
+        ledger_id: None,
+        lane: None,
         key: "panic|unwrap|src/lib.rs",
         kind: "panic|custom",
         family: Some("unwrap`family"),
@@ -329,6 +430,12 @@ fn diff_posture_tables_escape_markdown_cells() {
     }];
     let policy_changes = vec![DiffPolicyChange {
         severity: "fail",
+        movement: "retained",
+        posture_delta: "worsened",
+        changed_in_diff: true,
+        subject: None,
+        ledger_id: None,
+        lane: None,
         allow_id: "allow|0001",
         kind: "scope_broadened",
         message: "message with | pipe",
@@ -364,6 +471,13 @@ fn diff_finding_markdown_groups_findings_by_change() {
     let finding_changes = vec![
         DiffFindingChange {
             change: "removed",
+            movement: "removed",
+            posture_delta: "improved",
+            changed_in_diff: true,
+            subject: None,
+            allow_id: None,
+            ledger_id: None,
+            lane: None,
             key: "panic|unwrap|src/old.rs",
             kind: "panic",
             family: Some("unwrap"),
@@ -375,6 +489,13 @@ fn diff_finding_markdown_groups_findings_by_change() {
         },
         DiffFindingChange {
             change: "new",
+            movement: "introduced",
+            posture_delta: "review_required",
+            changed_in_diff: true,
+            subject: None,
+            allow_id: None,
+            ledger_id: None,
+            lane: None,
             key: "unsafe|unsafe_block|src/new.rs",
             kind: "unsafe",
             family: Some("unsafe_block"),
@@ -410,6 +531,12 @@ fn diff_policy_markdown_groups_policy_changes_by_severity() {
     let policy_changes = vec![
         DiffPolicyChange {
             severity: "review",
+            movement: "retained",
+            posture_delta: "review_required",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-review",
             kind: "expiry_extended",
             message: "allow-review expiry extended",
@@ -426,6 +553,12 @@ fn diff_policy_markdown_groups_policy_changes_by_severity() {
         },
         DiffPolicyChange {
             severity: "improvement",
+            movement: "retained",
+            posture_delta: "improved",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-improved",
             kind: "evidence_added",
             message: "allow-improved evidence added",
@@ -442,6 +575,12 @@ fn diff_policy_markdown_groups_policy_changes_by_severity() {
         },
         DiffPolicyChange {
             severity: "fail",
+            movement: "retained",
+            posture_delta: "worsened",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-fail",
             kind: "scope_broadened",
             message: "allow-fail scope broadened",
@@ -483,6 +622,12 @@ fn diff_pr_summary_markdown_highlights_policy_review_required() {
     let removed = vec!["test:old-proof".to_string()];
     let policy_changes = vec![DiffPolicyChange {
         severity: "review",
+        movement: "retained",
+        posture_delta: "review_required",
+        changed_in_diff: true,
+        subject: None,
+        ledger_id: None,
+        lane: None,
         allow_id: "allow|0042",
         kind: "evidence_removed",
         message: "allow-0042 evidence removed from policy",
@@ -521,6 +666,12 @@ fn diff_pr_summary_markdown_highlights_policy_failures_separately() {
     let policy_changes = vec![
         DiffPolicyChange {
             severity: "fail",
+            movement: "retained",
+            posture_delta: "worsened",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-0001",
             kind: "scope_broadened",
             message: "allow-0001 scope broadened",
@@ -537,6 +688,12 @@ fn diff_pr_summary_markdown_highlights_policy_failures_separately() {
         },
         DiffPolicyChange {
             severity: "review",
+            movement: "retained",
+            posture_delta: "review_required",
+            changed_in_diff: true,
+            subject: None,
+            ledger_id: None,
+            lane: None,
             allow_id: "allow-0002",
             kind: "expiry_extended",
             message: "allow-0002 expiry extended",
@@ -568,6 +725,13 @@ fn diff_pr_summary_markdown_highlights_new_findings() {
     identity.callee = Some("unwrap".to_string());
     let finding_changes = vec![DiffFindingChange {
         change: "new",
+        movement: "introduced",
+        posture_delta: "review_required",
+        changed_in_diff: true,
+        subject: None,
+        allow_id: None,
+        ledger_id: None,
+        lane: None,
         key: "panic|unwrap|src/lib.rs",
         kind: "panic",
         family: Some("unwrap"),
@@ -594,6 +758,13 @@ fn diff_pr_summary_markdown_highlights_new_findings() {
 fn diff_pr_summary_markdown_reports_omitted_finding_highlights() {
     let finding = DiffFindingChange {
         change: "new",
+        movement: "introduced",
+        posture_delta: "review_required",
+        changed_in_diff: true,
+        subject: None,
+        allow_id: None,
+        ledger_id: None,
+        lane: None,
         key: "panic|unwrap|src/lib.rs",
         kind: "panic",
         family: Some("unwrap"),
@@ -614,6 +785,12 @@ fn diff_pr_summary_markdown_reports_omitted_finding_highlights() {
 fn diff_pr_summary_markdown_reports_omitted_policy_highlights() {
     let policy = DiffPolicyChange {
         severity: "fail",
+        movement: "retained",
+        posture_delta: "worsened",
+        changed_in_diff: true,
+        subject: None,
+        ledger_id: None,
+        lane: None,
         allow_id: "allow-0001",
         kind: "scope_broadened",
         message: "allow-0001 scope broadened",
@@ -640,20 +817,5 @@ fn bare_policy_change(
     allow_id: &'static str,
     kind: &'static str,
 ) -> DiffPolicyChange<'static> {
-    DiffPolicyChange {
-        severity,
-        allow_id,
-        kind,
-        message: "policy posture changed",
-        exception_identity: None,
-        selector_identity: None,
-        selector_precision: None,
-        scope: None,
-        occurrence_limit: None,
-        lifecycle: None,
-        evidence: None,
-        metadata: None,
-        requirement: None,
-        policy_status: None,
-    }
+    crate::diff_row_test_support::test_policy_change(severity, allow_id, kind)
 }

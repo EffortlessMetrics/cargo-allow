@@ -6,6 +6,7 @@
 //! metadata, rustc, Clippy, build scripts, proc macros, or evidence tools.
 
 mod finding;
+mod movement;
 mod policy;
 mod policy_change;
 mod policy_change_details;
@@ -29,6 +30,13 @@ mod revision_git;
 
 pub use finding::{
     FindingPostureChange, FindingPostureKind, finding_identity_key, finding_posture_changes,
+};
+pub use movement::{
+    DiffLedgerMovementSummary, DiffMovementCounts, DiffPostureDeltaCounts, DiffRowClassification,
+    classify_finding_posture_change, classify_policy_change, diff_ledger_movement_summary,
+    entry_lane, entry_ledger_id, finding_posture_delta, finding_posture_movement,
+    finding_posture_subject, policy_change_lane, policy_change_ledger_id, policy_change_movement,
+    policy_change_posture_delta, policy_change_subject,
 };
 pub use policy::{policy_changes, policy_changes_from_git, policy_config_at_revision};
 pub use policy_change::{

@@ -149,7 +149,17 @@ mod tests {
     fn policy_change<'a>(severity: &'a str, kind: &'a str) -> DiffPolicyChange<'a> {
         DiffPolicyChange {
             severity,
+            movement: "retained",
+            posture_delta: match severity {
+                "fail" => "worsened",
+                "review" => "review_required",
+                _ => "improved",
+            },
+            changed_in_diff: true,
+            subject: Some("allow-test"),
             allow_id: "allow-test",
+            ledger_id: None,
+            lane: None,
             kind,
             message: "policy changed",
             exception_identity: None,
@@ -168,6 +178,19 @@ mod tests {
     fn finding_change<'a>(change: &'a str) -> DiffFindingChange<'a> {
         DiffFindingChange {
             change,
+            movement: match change {
+                "new" => "introduced",
+                _ => "removed",
+            },
+            posture_delta: match change {
+                "new" => "review_required",
+                _ => "improved",
+            },
+            changed_in_diff: true,
+            subject: None,
+            allow_id: None,
+            ledger_id: None,
+            lane: None,
             key: "panic|unwrap|src/lib.rs",
             kind: "panic",
             family: Some("unwrap"),

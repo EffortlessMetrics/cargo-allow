@@ -13,7 +13,10 @@ use std::process;
 mod diff_args;
 #[path = "diff_render.rs"]
 mod diff_render;
+#[path = "diff_row.rs"]
+mod diff_row;
 pub(crate) use diff_args::DiffArgs;
+pub(crate) use diff_render::DiffLedgerContext;
 #[cfg(test)]
 pub(crate) use diff_render::render_diff_json_with_posture;
 use diff_render::{
@@ -130,6 +133,12 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let source_context = SourceTreeReportContext::new(&root, report_inventory_facts);
     let mut report_context = source_context.report(Some(policy_baseline_debt_entries(&report_cfg)));
     evidence.apply_to(&mut report_context);
+    let ledger = DiffLedgerContext::new(
+        &base_cfg,
+        &head_cfg_for_diff,
+        &finding_changes,
+        &policy_changes,
+    );
     let mut text = match args.format {
         OutputFormat::Json => render_diff_json_report(
             &findings_for_report,
@@ -137,8 +146,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             failed,
             report_context,
             current_failures,
-            &finding_changes,
-            &policy_changes,
+            &ledger,
         ),
         OutputFormat::Html => allow_report::render_html_with_context(
             "diff",
@@ -170,13 +178,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         ),
     };
     if args.format == OutputFormat::Markdown {
-        let summary = render_diff_pr_summary_markdown(
-            current_failures,
-            evidence,
-            &outcomes,
-            &finding_changes,
-            &policy_changes,
-        );
+        let summary =
+            render_diff_pr_summary_markdown(current_failures, evidence, &outcomes, &ledger);
         insert_markdown_pr_summary(&mut text, &summary);
     }
     append_diff_posture_summary(
@@ -185,11 +188,10 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         current_failures,
         evidence,
         &outcomes,
-        &finding_changes,
-        &policy_changes,
+        &ledger,
     );
-    append_finding_posture_changes(&mut text, args.format, &finding_changes);
-    append_policy_changes(&mut text, args.format, &policy_changes);
+    append_finding_posture_changes(&mut text, args.format, &finding_changes, &head_cfg_for_diff);
+    append_policy_changes(&mut text, args.format, &policy_changes, &head_cfg_for_diff);
     match allow_diff::changed_files(&root, &args.base, args.head.as_deref()) {
         Ok(changed) => {
             if args.format == OutputFormat::Human {
@@ -206,10 +208,16 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         }
     }
     if args.format == OutputFormat::Json && args.output.is_none() && !policy_changes.is_empty() {
-        eprintln!("{}", render_policy_changes_human(&policy_changes));
+        eprintln!(
+            "{}",
+            render_policy_changes_human(&policy_changes, &head_cfg_for_diff)
+        );
     }
     if args.format == OutputFormat::Json && args.output.is_none() && !finding_changes.is_empty() {
-        eprintln!("{}", render_finding_posture_changes_human(&finding_changes));
+        eprintln!(
+            "{}",
+            render_finding_posture_changes_human(&finding_changes, &head_cfg_for_diff)
+        );
     }
     emit_text(args.output.as_deref(), &text)?;
     if failed {
