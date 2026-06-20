@@ -28,6 +28,7 @@ mod render_last_seen;
 mod render_sections;
 mod render_selector;
 mod render_toml;
+pub mod revision;
 mod scope_validation;
 mod selector_validation;
 mod source_tree_scope;
@@ -59,6 +60,10 @@ pub use evidence_reference::{
 };
 pub use lifecycle::BASELINE_DEBT_MAX_DAYS;
 pub use render::render_policy;
+pub use revision::{
+    REVISION_ID_PREFIX, REVISION_LINK_PREFIXES, REVISION_SCHEMA_VERSION, RevisionRecord,
+    parse_revision_record, parse_revision_record_at, validate_revision_ledger,
+};
 pub use starter::starter_policy;
 pub use validation::validate_policy;
 

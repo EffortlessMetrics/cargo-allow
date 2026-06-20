@@ -10,6 +10,15 @@ inventory without executing repository code.
 
 ### Added
 
+- Policy revision contract design (GOAL-0004 PR 3, #1475 design slice):
+  `CARGO-ALLOW-ADR-0002` fixes the `.allow/revisions/` contract — notes are
+  required only for governed weakening edits (`worsened` / `review_required`
+  posture delta), one record covers multiple `(allow_id, change_kind)` cells,
+  diff matching is structural, records are durable (no merge expiry) and
+  append-only. Adds `allow_policy::revision` (parse/validate stub with
+  `RevisionRecord::covers` and `validate_revision_ledger`),
+  `docs/schemas/revision.schema.json`, and `.allow/revisions/README.md`. Design
+  only: no command requires or consumes notes yet (enforcement is PR 4).
 - Movement classification in diff (GOAL-0004 PR 2, #1471): every diff row carries
   orthogonal `movement`, `posture_delta`, and `changed_in_diff` plus optional
   `subject`, `allow_id`, `ledger_id`, and `lane`; JSON diff adds dual summary blocks

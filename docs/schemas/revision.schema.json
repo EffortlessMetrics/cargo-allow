@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/revision.v1.schema.json",
+  "title": "cargo-allow policy revision record v1",
+  "description": "Append-only record under .allow/revisions/ documenting why a governed exception or policy entry changed posture. Designed in CARGO-ALLOW-ADR-0002; enforcement is a later slice.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "created",
+    "owner",
+    "reason",
+    "allow_ids",
+    "change_kinds"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^CARGO-ALLOW-REV-.+",
+      "description": "Stable record id; append-only, never reused."
+    },
+    "created": {
+      "type": "string",
+      "description": "ISO date the record was written."
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Accountable owner for the recorded change."
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Why the posture change is justified."
+    },
+    "allow_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Stable allow ids this record covers. One record may cover multiple entries."
+    },
+    "change_kinds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$"
+      },
+      "description": "Canonical PolicyChangeKind tokens this record authorizes. Empty lists (blanket waivers) are rejected."
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(issue|pr|doc|commit|url):.+"
+      },
+      "description": "Provenance links: issue:, pr:, doc:, commit:, or url: prefixed."
+    },
+    "expires": {
+      "type": "string",
+      "description": "Optional advisory freshness bound; an ISO date or \"never\". Records do not auto-expire on merge."
+    },
+    "supersedes": {
+      "type": "string",
+      "pattern": "^CARGO-ALLOW-REV-.+",
+      "description": "Id of a prior record this one replaces (append-only correction chain)."
+    },
+    "superseded_by": {
+      "type": "string",
+      "pattern": "^CARGO-ALLOW-REV-.+",
+      "description": "Id of a later record that replaces this one."
+    }
+  }
+}
