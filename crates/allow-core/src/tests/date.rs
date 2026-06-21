@@ -11,6 +11,20 @@ fn simple_date_rejects_invalid_calendar_dates() {
 }
 
 #[test]
+fn simple_date_rejects_out_of_range_years() {
+    // Regression for #1827: unbounded years allowed typos like
+    // "99999-01-01" to silently validate, making entries immortal.
+    assert!(SimpleDate::parse("99999-01-01").is_none());
+    assert!(SimpleDate::parse("10000-01-01").is_none());
+    assert!(SimpleDate::parse("1899-12-31").is_none());
+    // Valid boundaries
+    assert!(SimpleDate::parse("1900-01-01").is_some());
+    assert!(SimpleDate::parse("9999-12-31").is_some());
+    assert!(SimpleDate::parse("3026-01-01").is_some()); // in range
+    assert!(SimpleDate::parse("2026-06-21").is_some());
+}
+
+#[test]
 fn simple_date_counts_days_between_dates() {
     let start = SimpleDate::parse("2026-05-26")
         .unwrap_or_else(|| std::panic::panic_any("valid start date"));
