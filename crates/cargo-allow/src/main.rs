@@ -37,7 +37,11 @@ pub(crate) use command_support::*;
 fn main() {
     if let Err(err) = cli::run() {
         eprintln!("error: {err}");
-        process::exit(2);
+        // Exit 1 for runtime/validation failures. Clap usage errors are
+        // handled by clap internally (exit 2) and never reach here.
+        // Policy-violation exits (check/diff gate failures) call
+        // process::exit(1) directly in their command handlers.
+        process::exit(1);
     }
 }
 

@@ -115,8 +115,8 @@ callee = "unwrap"
         .unwrap_or_else(|err| std::panic::panic_any(format!("run failing check: {err}")));
     assert_eq!(
         failing.status.code(),
-        Some(2),
-        "invalid policy should exit 2: {:?}",
+        Some(1),
+        "invalid policy should exit 1 (runtime failure, not usage error): {:?}",
         failing
     );
 
