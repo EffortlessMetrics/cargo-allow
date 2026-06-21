@@ -4,6 +4,7 @@ use serde::Deserialize;
 use crate::toml_de::string_or_vec;
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct WorkspaceToml {
     root: Option<String>,
     inventory: Option<String>,

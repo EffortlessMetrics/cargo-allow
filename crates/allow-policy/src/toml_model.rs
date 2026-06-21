@@ -9,6 +9,7 @@ use crate::toml_requirements::RequirementsToml;
 use crate::toml_workspace::WorkspaceToml;
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct PolicyToml {
     #[serde(default, deserialize_with = "option_schema_version")]
     schema_version: Option<String>,
@@ -262,6 +263,68 @@ mode = "shadow"
             Err(CargoAllowError::new(format!(
                 "failed to parse policy TOML: {e}"
             )))
+        );
+    }
+
+    #[test]
+    fn parse_policy_toml_rejects_unknown_top_level_field_typo() {
+        let err = parse_policy_toml_at(
+            None,
+            r#"
+polcy = "cargo-allow"
+"#,
+        )
+        .expect_err("unknown top-level field should be rejected");
+
+        assert!(
+            err.to_string().contains("unknown field"),
+            "error should mention unknown field: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_policy_toml_rejects_unknown_selector_field_typo() {
+        let err = parse_policy_toml_at(
+            None,
+            r#"
+policy = "cargo-allow"
+
+[[allow]]
+id = "allow-0001"
+kind = "non_rust_file"
+path = "README.md"
+owner = "core"
+classification = "fixture"
+reason = "fixture"
+
+[allow.selector]
+modlue = "alpha"
+"#,
+        )
+        .expect_err("unknown selector field should be rejected");
+
+        assert!(
+            err.to_string().contains("unknown field"),
+            "error should mention unknown field: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_policy_toml_rejects_unknown_workspace_field_typo() {
+        let err = parse_policy_toml_at(
+            None,
+            r#"
+policy = "cargo-allow"
+
+[workspace]
+defult_mode = "no-new"
+"#,
+        )
+        .expect_err("unknown workspace field should be rejected");
+
+        assert!(
+            err.to_string().contains("unknown field"),
+            "error should mention unknown field: {err}"
         );
     }
 }

@@ -10,6 +10,7 @@ pub(crate) struct LanesToml {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct LaneToml {
     pub(crate) mode: String,
 }

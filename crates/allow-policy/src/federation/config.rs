@@ -99,6 +99,7 @@ pub struct ValidatedFederationConfig {
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct FederationConfigToml {
     schema_version: Option<String>,
     #[serde(default)]
@@ -108,6 +109,7 @@ struct FederationConfigToml {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LedgerEntryToml {
     id: String,
     path: String,

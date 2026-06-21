@@ -4073,7 +4073,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "unsafe_block"
 container = "alpha::access"
-module = "alpha"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
 line_hint = 3
 
@@ -4096,7 +4095,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "unsafe_block"
 container = "beta::access"
-module = "beta"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
 line_hint = 8
 
@@ -4119,7 +4117,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "unsafe_block"
 container = "alpha::access"
-module = "alpha"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
 line_hint = 3
 
@@ -4142,7 +4139,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "unsafe_block"
 container = "beta::access"
-module = "beta"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
 line_hint = 8
 

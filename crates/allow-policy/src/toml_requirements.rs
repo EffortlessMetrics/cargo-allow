@@ -4,6 +4,7 @@ use serde::Deserialize;
 use crate::toml_de::option_bool_or_string;
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct RequirementsToml {
     #[serde(default, deserialize_with = "option_bool_or_string")]
     owner_required: Option<bool>,
@@ -26,6 +27,7 @@ pub(crate) struct RequirementsToml {
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct UnsafeRequirementsToml {
     #[serde(default, deserialize_with = "option_bool_or_string")]
     evidence_required: Option<bool>,

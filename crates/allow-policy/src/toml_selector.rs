@@ -4,6 +4,7 @@ use serde::Deserialize;
 use crate::toml_de::option_u32_or_string;
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct SelectorToml {
     #[serde(alias = "kind")]
     ast_kind: Option<String>,
