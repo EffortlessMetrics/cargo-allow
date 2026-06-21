@@ -1,13 +1,19 @@
+/// Normalize CRLF to LF so drift tests pass regardless of the checkout's line
+/// endings (Windows `core.autocrlf = true` converts LF to CRLF on checkout).
+fn normalize_lf(text: &str) -> String {
+    text.replace("\r\n", "\n")
+}
+
 #[test]
 fn readme_preserves_source_tree_boundary() {
-    let readme = include_str!("../../../README.md");
+    let readme = normalize_lf(include_str!("../../../README.md"));
 
     for required_text in [
         "`cargo-allow` is a source-tree exception ledger for Rust repositories.",
         "`cargo-allow` scans repository files directly.",
         "the primary UX is the standalone `cargo-allow` binary",
         "does **not** require a successful build",
-        "does **not** invoke\nCargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros",
+        "does **not** invoke\nCargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros,",
         "`Cargo.toml` and `Cargo.lock` are files in the scanned source tree, not required\nbuild metadata.",
         "No new unreceipted findings were found in scanned source-tree inventory.",
         "They must not claim that no unsafe, panic, lint suppression, or other exception\nexists outside the syntax-visible surface that was scanned.",
@@ -21,9 +27,9 @@ fn readme_preserves_source_tree_boundary() {
 
 #[test]
 fn readmes_preserve_green_checkmark_logo() {
-    let root_readme = include_str!("../../../README.md");
-    let crate_readme = include_str!("../README.md");
-    let logo = include_str!("../../../docs/assets/cargo-allow-checkmark.svg");
+    let root_readme = normalize_lf(include_str!("../../../README.md"));
+    let crate_readme = normalize_lf(include_str!("../README.md"));
+    let logo = normalize_lf(include_str!("../../../docs/assets/cargo-allow-checkmark.svg"));
 
     assert!(
         root_readme.contains("docs/assets/cargo-allow-checkmark.svg"),
@@ -54,11 +60,11 @@ fn readmes_preserve_green_checkmark_logo() {
 
 #[test]
 fn claim_boundary_docs_preserve_source_package_boundary() {
-    let claim_boundaries = include_str!("../../../docs/claim-boundaries.md");
+    let claim_boundaries = normalize_lf(include_str!("../../../docs/claim-boundaries.md"));
 
     for required_text in [
-        "When cargo-allow reports `source_package`, that value is optional context read\nfrom source-tree `Cargo.toml` text",
-        "Invalid, unreadable, or non-UTF8 manifests are ignored for that context so the\nsource scan can continue",
+        "When cargo-allow reports `source_package`, that value is optional context read\nfrom source-tree `Cargo.toml` text when a readable `[package].name` is present.",
+        "Invalid, unreadable, or non-UTF8 manifests are ignored for that context so the\nsource scan can continue; the value is not Cargo metadata or build-membership",
         "the value is not Cargo metadata or build-membership\nproof.",
     ] {
         assert!(
@@ -70,10 +76,10 @@ fn claim_boundary_docs_preserve_source_package_boundary() {
 
 #[test]
 fn ci_docs_preserve_source_tree_scan_boundary() {
-    let ci = include_str!("../../../docs/ci.md");
+    let ci = normalize_lf(include_str!("../../../docs/ci.md"));
 
     for required_text in [
-        "The examples install and run the standalone `cargo-allow` binary before\nscanning.",
+        "The examples install and run the standalone `cargo-allow` binary before\nscanning. They pin the published crates.io release by default:",
         "`cargo allow ...` remains optional Cargo external subcommand compatibility.",
         "The scan itself is source-tree only.",
         "It does not invoke Cargo metadata, Cargo\ncommands, rustc, Clippy, build scripts, proc macros, external evidence tools,\nor repository code.",
