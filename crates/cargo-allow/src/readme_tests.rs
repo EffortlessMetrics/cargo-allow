@@ -29,7 +29,9 @@ fn readme_preserves_source_tree_boundary() {
 fn readmes_preserve_green_checkmark_logo() {
     let root_readme = normalize_lf(include_str!("../../../README.md"));
     let crate_readme = normalize_lf(include_str!("../README.md"));
-    let logo = normalize_lf(include_str!("../../../docs/assets/cargo-allow-checkmark.svg"));
+    let logo = normalize_lf(include_str!(
+        "../../../docs/assets/cargo-allow-checkmark.svg"
+    ));
 
     assert!(
         root_readme.contains("docs/assets/cargo-allow-checkmark.svg"),
