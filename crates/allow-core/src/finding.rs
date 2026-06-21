@@ -125,7 +125,14 @@ impl StructuralIdentity {
     pub fn stable_key_parts(&self) -> Vec<(&'static str, String)> {
         vec![
             ("language", self.language.clone()),
-            ("crate_name", self.crate_name.clone().unwrap_or_default()),
+            (
+                "crate_name",
+                self.crate_name
+                    .as_deref()
+                    .map(str::trim)
+                    .unwrap_or_default()
+                    .to_string(),
+            ),
             ("module", self.module.clone().unwrap_or_default()),
             ("container", self.container.clone().unwrap_or_default()),
             ("ast_kind", self.ast_kind.clone()),
