@@ -732,19 +732,22 @@ fn saved_diff_output_covers_selector_identity_change_details() {
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let diff = artifact_dir.join("diff.json");
 
-    run_cargo_allow(&[
-        "diff",
-        "--root",
-        fixture.root_str(),
-        "--config",
-        "policy/allow.toml",
-        "--base",
-        "HEAD",
-        "--format",
-        "json",
-        "--output",
-        path_arg(&diff),
-    ]);
+    run_cargo_allow_expect_status(
+        &[
+            "diff",
+            "--root",
+            fixture.root_str(),
+            "--config",
+            "policy/allow.toml",
+            "--base",
+            "HEAD",
+            "--format",
+            "json",
+            "--output",
+            path_arg(&diff),
+        ],
+        false,
+    );
 
     let value = assert_source_syntax_artifact_with_inventory(
         &diff,
@@ -756,8 +759,8 @@ fn saved_diff_output_covers_selector_identity_change_details() {
         value
             .pointer("/diff/net_posture")
             .and_then(serde_json::Value::as_str),
-        Some("review-required"),
-        "diff selector identity change net posture"
+        Some("worse"),
+        "diff selector identity change net posture (exact-match: receiver change is identity loss)"
     );
     assert_eq!(
         value
