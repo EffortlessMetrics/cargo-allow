@@ -12,7 +12,7 @@ pub fn render_explain_finding_json(finding: &Finding, status: &str, indent: &str
     format!(
         "{indent}  {{\n{indent}    \"status\": \"{}\",\n{indent}    \"kind\": \"{}\",\n{indent}    \"family\": {},\n{indent}    \"path\": \"{}\",\n{indent}    \"line\": {},\n{indent}    \"column\": {},\n{indent}    \"source_package\": {},\n{indent}    \"identity\": {},\n{indent}    \"message\": \"{}\"{}\n{indent}  }}",
         json_escape(status),
-        finding.kind,
+        json_escape(&finding.kind.to_string()),
         option_json(finding.family.as_deref()),
         json_escape(&normalize_path(&finding.path)),
         option_u32_json(span.map(|span| span.line)),
