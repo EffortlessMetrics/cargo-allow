@@ -11,6 +11,7 @@ pub struct DrainWindow {
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct DrainWindowToml {
     mirror_ledger: String,
     drain_owner: String,

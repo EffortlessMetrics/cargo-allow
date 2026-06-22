@@ -4073,7 +4073,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "unsafe_block"
 container = "alpha::access"
-module = "alpha"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
 line_hint = 3
 
@@ -4096,7 +4095,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "unsafe_block"
 container = "beta::access"
-module = "beta"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
 line_hint = 8
 
@@ -4119,7 +4117,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "unsafe_block"
 container = "alpha::access"
-module = "alpha"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
 line_hint = 3
 
@@ -4142,7 +4139,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "unsafe_block"
 container = "beta::access"
-module = "beta"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
 line_hint = 8
 
@@ -5275,3 +5271,45 @@ glob = "plans/ledger-coherence/closeouts/pr2-movement-classification.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0282"
+kind = "panic"
+family = "expect"
+path = "crates/allow-policy/src/entries_validation.rs"
+owner = "core/policy"
+classification = "reviewed_fixture"
+reason = "Aggregated validation join_errors expects exactly one error in the single-error fast path."
+evidence = ["test:aggregated_validation"]
+created = "2026-06-22"
+review_after = "2026-09-22"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "validate_allow_entries_with_link_scope_validation"
+callee = "expect"
+
+[allow.last_seen]
+line = 67
+column = 39
+
+[[allow]]
+id = "allow-0283"
+kind = "panic"
+family = "expect"
+path = "crates/allow-policy/src/validation.rs"
+owner = "core/policy"
+classification = "reviewed_fixture"
+reason = "Top-level validation join_errors expects exactly one error in the single-error fast path."
+evidence = ["test:aggregated_validation"]
+created = "2026-06-22"
+review_after = "2026-09-22"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "join_errors"
+callee = "expect"
+
+[allow.last_seen]
+line = 53
+column = 39

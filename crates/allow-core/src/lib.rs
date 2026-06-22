@@ -16,7 +16,7 @@ mod ledger_provenance;
 mod policy;
 mod source_tree_path;
 pub use date::SimpleDate;
-pub use error::{CargoAllowError, CargoAllowResult};
+pub use error::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 pub use finding::{
     Finding, FindingKind, STRUCTURAL_IDENTITY_SCHEMA_ID, Span, StructuralIdentity,
     finding_identity_key,

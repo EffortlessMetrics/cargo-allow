@@ -2,6 +2,7 @@ use allow_core::Lifecycle;
 use serde::Deserialize;
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct LifecycleToml {
     created: Option<String>,
     review_after: Option<String>,

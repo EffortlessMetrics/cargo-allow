@@ -2,6 +2,11 @@ use crate::artifact_schema_support::{parse_schema, schema_contracts};
 use serde_json::Value;
 use std::{collections::BTreeSet, fs, path::Path};
 
+/// Normalize CRLF to LF so drift tests pass regardless of checkout line endings.
+fn normalize_lf(text: &str) -> String {
+    text.replace("\r\n", "\n")
+}
+
 #[test]
 fn schema_contract_registry_covers_every_documented_artifact_schema() {
     let schema_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/schemas");
@@ -40,7 +45,7 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
 
 #[test]
 fn schema_contract_registry_covers_schema_index_links() {
-    let index = include_str!("../../../docs/schemas/README.md");
+    let index = normalize_lf(include_str!("../../../docs/schemas/README.md"));
 
     for contract in schema_contracts() {
         let schema_file = format!("{}.schema.json", contract.name);
@@ -58,7 +63,7 @@ fn schema_contract_registry_covers_schema_index_links() {
 
 #[test]
 fn schema_index_artifact_table_matches_registered_producers() {
-    let index = include_str!("../../../docs/schemas/README.md");
+    let index = normalize_lf(include_str!("../../../docs/schemas/README.md"));
 
     for contract in schema_contracts() {
         let schema_id_text = format!("`{}`", contract.schema_id);
@@ -119,7 +124,7 @@ fn schema_index_artifact_table_matches_registered_producers() {
 
 #[test]
 fn schema_index_documents_claim_boundary_vocabulary() {
-    let index = include_str!("../../../docs/schemas/README.md");
+    let index = normalize_lf(include_str!("../../../docs/schemas/README.md"));
     assert!(
         index.contains("## Claim Boundary Vocabulary"),
         "schema index should document the claim-boundary vocabulary"
@@ -153,7 +158,7 @@ fn schema_index_documents_claim_boundary_vocabulary() {
 
 #[test]
 fn schema_index_documents_api_contract_change_rules() {
-    let index = include_str!("../../../docs/schemas/README.md");
+    let index = normalize_lf(include_str!("../../../docs/schemas/README.md"));
 
     for required_text in [
         "## Contract Change Rules",
@@ -178,7 +183,7 @@ fn schema_index_documents_api_contract_change_rules() {
 
 #[test]
 fn schema_index_documents_evidence_prefix_vocabulary() {
-    let index = include_str!("../../../docs/schemas/README.md");
+    let index = normalize_lf(include_str!("../../../docs/schemas/README.md"));
     assert!(
         index.contains("## Evidence Prefix Vocabulary"),
         "schema index should document the evidence prefix vocabulary"

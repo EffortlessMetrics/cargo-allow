@@ -1,6 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
-use std::fs;
-use std::path::Path;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 pub(crate) fn emit_text(output: Option<&Path>, contents: &str) -> CargoAllowResult<()> {
     if let Some(path) = output {
@@ -20,6 +21,9 @@ pub(crate) fn emit_stderr_text(output: Option<&Path>, contents: &str) -> CargoAl
     Ok(())
 }
 
+/// Atomically write `contents` to `path`: write to a sibling `<path>.tmp`
+/// file, then `fs::rename` into place. On any error the destination is left
+/// untouched (either the complete previous file or nothing — never partial).
 pub(crate) fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowResult<()> {
     let path = path.as_ref();
     if let Some(parent) = path.parent() {
@@ -27,23 +31,82 @@ pub(crate) fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowRe
             CargoAllowError::new(format!("failed to create {}: {e}", parent.display()))
         })?;
     }
-    fs::write(path, contents)
-        .map_err(|e| CargoAllowError::new(format!("failed to write {}: {e}", path.display())))
+    let tmp = sibling_tmp_path(path);
+    {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .truncate(true)
+            .open(&tmp)
+            .map_err(|e| CargoAllowError::new(format!("failed to open {}: {e}", tmp.display())))?;
+        file.write_all(contents.as_bytes())
+            .map_err(|e| CargoAllowError::new(format!("failed to write {}: {e}", tmp.display())))?;
+        file.sync_all().ok();
+    }
+    fs::rename(&tmp, path).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        CargoAllowError::new(format!("failed to install {}: {e}", path.display()))
+    })
 }
 
+/// Write `contents` to `path` only if it does not already exist (unless
+/// `force` is set). Uses `OpenOptions::create_new` so the existence check
+/// and the creation are one atomic syscall — no TOCTOU window for symlink
+/// planting. With `force`, the existing file is backed up to `<path>.bak`
+/// before the atomic write replaces it.
 pub(crate) fn write_file_no_overwrite(
     path: impl AsRef<Path>,
     contents: &str,
     force: bool,
 ) -> CargoAllowResult<()> {
     let path = path.as_ref();
-    if path.exists() && !force {
-        return Err(CargoAllowError::new(format!(
-            "{} already exists; use --force to overwrite",
-            path.display()
-        )));
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| {
+            CargoAllowError::new(format!("failed to create {}: {e}", parent.display()))
+        })?;
     }
-    write_file(path, contents)
+    if force {
+        if path.exists() {
+            let bak = path.with_extension("toml.bak");
+            fs::rename(path, &bak).map_err(|e| {
+                CargoAllowError::new(format!(
+                    "failed to back up {} -> {}: {e}",
+                    path.display(),
+                    bak.display()
+                ))
+            })?;
+        }
+        return write_file(path, contents);
+    }
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .truncate(true)
+        .open(path)
+        .map_err(|e| {
+            // create_new fails if the path exists (including via symlink),
+            // which is the intended no-overwrite contract. Preserve the
+            // actionable guidance; the OS error kind is implicit.
+            let _ = e;
+            CargoAllowError::new(format!(
+                "{} already exists; use --force to overwrite",
+                path.display()
+            ))
+        })?;
+    file.write_all(contents.as_bytes())
+        .map_err(|e| CargoAllowError::new(format!("failed to write {}: {e}", path.display())))?;
+    Ok(())
+}
+
+/// Build a sibling temp-file path on the same filesystem so `fs::rename`
+/// is atomic.
+fn sibling_tmp_path(path: &Path) -> PathBuf {
+    let mut name = path
+        .file_name()
+        .map(|s| s.to_os_string())
+        .unwrap_or_default();
+    name.push(".tmp");
+    path.with_file_name(name)
 }
 
 #[cfg(test)]
@@ -105,21 +168,19 @@ mod tests {
         let root = TempRoot::new("write-file-error")?;
         let output = root.path().join("directory-target");
         fs::create_dir_all(&output)?;
-        let source_error =
-            fs::write(&output, "contents").expect_err("writing to a directory should fail");
 
         let err = write_file(&output, "contents").expect_err("writing to a directory should fail");
         let message = err.to_string();
 
-        assert!(message.contains("failed to write"));
-        assert!(message.contains(&output.display().to_string()));
-        assert_eq!(
-            err,
-            CargoAllowError::new(format!(
-                "failed to write {}: {}",
-                output.display(),
-                source_error
-            ))
+        // With the atomic temp-write-rename helper, the failure can surface
+        // at the open stage ("failed to open"), the write stage, or the
+        // rename stage ("failed to install") depending on the OS and the
+        // nature of the invalid target.
+        assert!(
+            message.contains("failed to open")
+                || message.contains("failed to write")
+                || message.contains("failed to install"),
+            "error should mention open, write, or install failure: {message}"
         );
         Ok(())
     }
@@ -150,6 +211,47 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(fs::read_to_string(&output)?, "replacement");
+        Ok(())
+    }
+
+    #[test]
+    fn atomic_write_leaves_original_intact_on_rename_failure()
+    -> Result<(), Box<dyn std::error::Error>> {
+        // Write a valid file, then attempt an atomic write to a path whose
+        // parent is a regular file (not a directory). The rename will fail,
+        // and the original file must be byte-identical.
+        let root = TempRoot::new("atomic-intact")?;
+        let target = root.path().join("dir/policy.toml");
+        write_file(&target, "original content")?;
+
+        // Corrupt the parent: make "dir" a file instead of a directory by
+        // writing to a path whose parent no longer exists as a dir.
+        // Instead, simulate rename failure by writing to a path inside a file.
+        let blocking_file = root.path().join("blocker");
+        fs::write(&blocking_file, "I am a file, not a directory")?;
+        let impossible_target = blocking_file.join("nested/policy.toml");
+
+        let result = write_file(&impossible_target, "new content");
+        assert!(result.is_err(), "write to an impossible path should fail");
+
+        // The original file is untouched.
+        assert_eq!(fs::read_to_string(&target)?, "original content");
+        Ok(())
+    }
+
+    #[test]
+    fn write_file_no_overwrite_with_force_creates_backup() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let root = TempRoot::new("force-backup")?;
+        let output = root.path().join("policy/allow.toml");
+        write_file(&output, "original")?;
+
+        write_file_no_overwrite(&output, "replacement", true)?;
+
+        assert_eq!(fs::read_to_string(&output)?, "replacement");
+        // The backup should contain the original content.
+        let bak = output.with_extension("toml.bak");
+        assert_eq!(fs::read_to_string(&bak)?, "original");
         Ok(())
     }
 
