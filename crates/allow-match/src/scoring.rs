@@ -19,9 +19,10 @@ pub fn score_match(entry: &AllowEntry, finding: &Finding) -> Option<u32> {
         return None;
     }
     let mut score = 100;
-    if entry.family.is_some() {
-        score += 30;
-    }
+    // Family is already a hard filter (lines 9-13 above: mismatch returns None),
+    // so it must NOT also contribute to the score — that would double-weight
+    // a field that every surviving candidate already satisfies, making the
+    // threshold meaningless for family-specified entries (#1801).
     if let Some(ast_kind) = &sel.ast_kind {
         if &finding.identity.ast_kind != ast_kind {
             return None;
@@ -53,41 +54,28 @@ pub fn score_match(entry: &AllowEntry, finding: &Finding) -> Option<u32> {
         score += 35;
     }
     if let Some(symbol) = &sel.symbol {
-        if finding
-            .identity
-            .symbol
-            .as_deref()
-            .map(|s| s.contains(symbol))
-            .unwrap_or(false)
-        {
+        // Exact equality — substring matching caused false matches where an
+        // entry keyed on "get" matched findings with symbol "get_or_insert"
+        // or "budget" (#1800).
+        if finding.identity.symbol.as_deref() == Some(symbol.as_str()) {
             score += 20;
         } else {
             return None;
         }
     }
     if let Some(receiver) = &sel.receiver_fingerprint {
+        // Exact equality only — the previous substring fallback (+10) was
+        // inconsistent with symbol/target (which hard-gated) and caused
+        // over-broad matches (#1800).
         if finding.identity.receiver_fingerprint.as_deref() == Some(receiver.as_str()) {
             score += 25;
-        } else if finding
-            .identity
-            .receiver_fingerprint
-            .as_deref()
-            .map(|s| s.contains(receiver))
-            .unwrap_or(false)
-        {
-            score += 10;
         } else {
             return None;
         }
     }
     if let Some(target) = &sel.target_fingerprint {
-        if finding
-            .identity
-            .target_fingerprint
-            .as_deref()
-            .map(|s| s.contains(target))
-            .unwrap_or(false)
-        {
+        // Exact equality — same rationale as symbol above (#1800).
+        if finding.identity.target_fingerprint.as_deref() == Some(target.as_str()) {
             score += 20;
         } else {
             return None;

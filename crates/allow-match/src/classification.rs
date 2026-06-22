@@ -91,10 +91,16 @@ pub(crate) fn classify_matched(
             }
         }
     }
-    if entry.classification == "baseline_debt" && matches!(mode, CheckMode::Release) {
+    if entry.classification == "baseline_debt"
+        && matches!(mode, CheckMode::Strict | CheckMode::Release)
+    {
         return (
             MatchStatus::BaselineDebt,
-            format!("{} is baseline debt and cannot pass release mode", entry.id),
+            format!(
+                "{} is baseline debt and cannot pass {} mode",
+                entry.id,
+                mode.as_str()
+            ),
         );
     }
     if let Some(message) = last_seen_drift_message(entry, finding) {

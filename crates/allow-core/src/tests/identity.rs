@@ -160,3 +160,29 @@ fn finding_source_package_name_trims_source_derived_crate_name() {
     finding.identity.crate_name = Some("   ".to_string());
     assert_eq!(finding.source_package_name(), None);
 }
+
+#[test]
+fn stable_key_trims_crate_name_so_whitespace_does_not_corrupt_identity() {
+    // Regression for #1799: source_package_name() trims but stable_key_parts()
+    // did not, so a scanner-fed crate_name with stray whitespace produced a
+    // different identity than the trimmed form — silent matching failures.
+    let mut padded = Finding {
+        kind: FindingKind::Panic,
+        family: None,
+        path: PathBuf::from("src/lib.rs"),
+        span: None,
+        identity: StructuralIdentity::new("rust", "method_call"),
+        message: "test".to_string(),
+        ledger: None,
+    };
+    padded.identity.crate_name = Some("  allow-core  ".to_string());
+
+    let mut clean = padded.clone();
+    clean.identity.crate_name = Some("allow-core".to_string());
+
+    assert_eq!(
+        padded.identity.stable_key(),
+        clean.identity.stable_key(),
+        "padded and clean crate_name must produce the same stable key"
+    );
+}

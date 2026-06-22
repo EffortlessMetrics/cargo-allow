@@ -215,7 +215,7 @@ fn unsafe_evidence_requirement_fails_without_entry_evidence() {
 }
 
 #[test]
-fn baseline_debt_fails_only_in_release_mode() {
+fn baseline_debt_fails_in_strict_and_release_mode() {
     let finding = finding_with_hash("fnv1a64:actual");
     let mut entry = entry_with_hash("fnv1a64:actual");
     entry.classification = "baseline_debt".to_string();
@@ -223,15 +223,61 @@ fn baseline_debt_fails_only_in_release_mode() {
     cfg.allow.push(entry);
 
     let no_new = evaluate(&cfg, std::slice::from_ref(&finding), CheckMode::NoNew);
+    let strict = evaluate(&cfg, std::slice::from_ref(&finding), CheckMode::Strict);
     let release = evaluate(&cfg, &[finding], CheckMode::Release);
 
+    // no-new: baseline debt is allowed (debt exists, just not new debt)
     assert!(
         no_new
             .iter()
             .any(|outcome| outcome.status == MatchStatus::Matched)
     );
+    // strict: baseline debt must fail (strict is at least as restrictive as release)
+    assert!(strict.iter().any(|outcome| {
+        outcome.status == MatchStatus::BaselineDebt
+            && outcome.message.contains("cannot pass strict mode")
+    }));
+    // release: baseline debt must fail
     assert!(release.iter().any(|outcome| {
         outcome.status == MatchStatus::BaselineDebt
             && outcome.message.contains("cannot pass release mode")
     }));
+}
+
+#[test]
+fn unparseable_expires_date_is_treated_as_expired_fail_safe() {
+    // Regression for #1804: an unparseable expires date must NOT silently
+    // make the entry immortal. Fail-safe: treat as expired.
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.lifecycle.expires = Some("2026-13-40".to_string()); // invalid month/day
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry);
+
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+    assert!(
+        outcomes
+            .iter()
+            .any(|outcome| outcome.status == MatchStatus::Expired),
+        "unparseable expires must be treated as expired (fail-safe), not immortal"
+    );
+}
+
+#[test]
+fn unparseable_review_after_is_treated_as_due_fail_safe() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.lifecycle.review_after = Some("not-a-date".to_string());
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry);
+
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+    assert!(
+        outcomes
+            .iter()
+            .any(|outcome| outcome.status == MatchStatus::ReviewDue),
+        "unparseable review_after must be treated as review-due (fail-safe)"
+    );
 }

@@ -93,30 +93,45 @@ fn top_level_glob_matches_when_entry_path_is_absent() {
 }
 
 #[test]
-fn receiver_fingerprint_substring_match_scores_less_than_exact_match() {
+fn receiver_fingerprint_requires_exact_match() {
     let mut finding = finding_with_hash("fnv1a64:actual");
     finding.identity.receiver_fingerprint = Some("workspace.config.requirements".to_string());
     let mut entry = entry_with_hash("fnv1a64:actual");
-    entry.selector.receiver_fingerprint = Some("config".to_string());
 
-    let substring_score = score_match(&entry, &finding)
-        .unwrap_or_else(|| std::panic::panic_any("expected receiver substring match"));
-
+    // Exact match scores.
     entry.selector.receiver_fingerprint = Some("workspace.config.requirements".to_string());
     let exact_score = score_match(&entry, &finding)
-        .unwrap_or_else(|| std::panic::panic_any("expected exact receiver match"));
+        .unwrap_or_else(|| std::panic::panic_any("exact receiver should match"));
 
-    assert_eq!(exact_score - substring_score, 15);
+    // Substring (partial) does NOT match — exact-only (#1800).
+    entry.selector.receiver_fingerprint = Some("config".to_string());
+    assert_eq!(
+        score_match(&entry, &finding),
+        None,
+        "substring receiver must not match after #1800 fix"
+    );
+
+    // Sanity: the exact score is above threshold.
+    assert!(exact_score >= STRUCTURAL_MATCH_THRESHOLD);
 }
 
 #[test]
-fn target_fingerprint_selector_accepts_structural_substrings() {
+fn target_fingerprint_selector_requires_exact_match() {
     let mut finding = finding_with_hash("fnv1a64:actual");
     finding.identity.target_fingerprint = Some("safety-comment:present".to_string());
     let mut entry = entry_with_hash("fnv1a64:actual");
-    entry.selector.target_fingerprint = Some("comment:present".to_string());
 
+    // Exact match scores.
+    entry.selector.target_fingerprint = Some("safety-comment:present".to_string());
     assert!(score_match(&entry, &finding).is_some());
+
+    // Substring does NOT match — exact-only (#1800).
+    entry.selector.target_fingerprint = Some("comment:present".to_string());
+    assert_eq!(
+        score_match(&entry, &finding),
+        None,
+        "substring target must not match after #1800 fix"
+    );
 
     entry.selector.target_fingerprint = Some("comment:missing".to_string());
     assert_eq!(score_match(&entry, &finding), None);
@@ -134,7 +149,7 @@ fn score_match_rejects_when_no_path_or_glob_matches() {
 }
 
 #[test]
-fn score_match_scores_exact_receiver_above_partial_receiver() {
+fn score_match_requires_exact_receiver_no_partial() {
     let mut entry = entry_with_hash("fnv1a64:actual");
     entry.selector.receiver_fingerprint = Some("value".to_string());
 
@@ -145,10 +160,13 @@ fn score_match_scores_exact_receiver_above_partial_receiver() {
 
     let exact_score = score_match(&entry, &exact)
         .unwrap_or_else(|| std::panic::panic_any("exact receiver fingerprint should match"));
-    let partial_score = score_match(&entry, &partial)
-        .unwrap_or_else(|| std::panic::panic_any("partial receiver fingerprint should match"));
-
-    assert!(exact_score > partial_score);
+    // Partial (substring) receiver must NOT match after #1800.
+    assert_eq!(
+        score_match(&entry, &partial),
+        None,
+        "partial receiver must not match after #1800"
+    );
+    assert!(exact_score >= STRUCTURAL_MATCH_THRESHOLD);
 }
 
 #[test]
@@ -202,40 +220,65 @@ fn source_code_scope_only_selector_does_not_match() {
 }
 
 #[test]
-fn receiver_fingerprint_scores_exact_and_partial_matches() {
+fn receiver_fingerprint_requires_exact_match_only() {
     let mut finding = finding_with_hash("fnv1a64:actual");
     finding.identity.receiver_fingerprint = Some("config.loader.result".to_string());
     let mut entry = entry_with_hash("fnv1a64:actual");
+
+    // Exact match.
     entry.selector.receiver_fingerprint = Some("config.loader.result".to_string());
     let exact = score_match(&entry, &finding)
         .unwrap_or_else(|| std::panic::panic_any("exact receiver should match"));
 
+    // Substring (partial) does NOT match — exact-only (#1800).
     entry.selector.receiver_fingerprint = Some("loader".to_string());
-    let partial = score_match(&entry, &finding)
-        .unwrap_or_else(|| std::panic::panic_any("partial receiver should match"));
+    assert_eq!(
+        score_match(&entry, &finding),
+        None,
+        "partial receiver must not match after #1800"
+    );
 
+    // Mismatch does not match.
     entry.selector.receiver_fingerprint = Some("other".to_string());
     assert_eq!(score_match(&entry, &finding), None);
-    assert!(exact > partial);
+    assert!(exact >= STRUCTURAL_MATCH_THRESHOLD);
 }
 
 #[test]
-fn target_and_symbol_selectors_require_substring_matches() {
+fn target_and_symbol_selectors_require_exact_matches() {
     let mut finding = finding_with_hash("fnv1a64:actual");
     finding.identity.symbol =
         Some(r#"#[expect(clippy::unwrap_used, reason = "policy:allow-1")]"#.to_string());
     finding.identity.target_fingerprint = Some("policy:allow-1".to_string());
     let mut entry = entry_with_hash("fnv1a64:actual");
-    entry.selector.symbol = Some("clippy::unwrap_used".to_string());
-    entry.selector.target_fingerprint = Some("allow-1".to_string());
 
+    // Exact symbol + exact target match.
+    entry.selector.symbol =
+        Some(r#"#[expect(clippy::unwrap_used, reason = "policy:allow-1")]"#.to_string());
+    entry.selector.target_fingerprint = Some("policy:allow-1".to_string());
     assert!(score_match(&entry, &finding).is_some());
 
-    entry.selector.symbol = Some("clippy::panic".to_string());
-    assert_eq!(score_match(&entry, &finding), None);
-
+    // Substring symbol does NOT match — exact-only (#1800).
     entry.selector.symbol = Some("clippy::unwrap_used".to_string());
-    entry.selector.target_fingerprint = Some("allow-other".to_string());
+    assert_eq!(
+        score_match(&entry, &finding),
+        None,
+        "substring symbol must not match after #1800"
+    );
+
+    // Substring target does NOT match.
+    entry.selector.symbol =
+        Some(r#"#[expect(clippy::unwrap_used, reason = "policy:allow-1")]"#.to_string());
+    entry.selector.target_fingerprint = Some("allow-1".to_string());
+    assert_eq!(
+        score_match(&entry, &finding),
+        None,
+        "substring target must not match after #1800"
+    );
+
+    // Mismatch does not match.
+    entry.selector.target_fingerprint = Some("policy:allow-1".to_string());
+    entry.selector.symbol = Some("clippy::panic".to_string());
     assert_eq!(score_match(&entry, &finding), None);
 }
 
@@ -287,23 +330,29 @@ fn scoring_rejects_kind_family_and_path_mismatches() {
 }
 
 #[test]
-fn scoring_weights_exact_and_partial_fingerprints() {
+fn scoring_weights_exact_fingerprints_only() {
     let mut finding = finding_with_hash("fnv1a64:actual");
     finding.identity.receiver_fingerprint = Some("parser.load_result".to_string());
     finding.identity.target_fingerprint = Some("safety-comment:present".to_string());
     let mut exact = entry_with_hash("fnv1a64:actual");
     exact.selector.receiver_fingerprint = Some("parser.load_result".to_string());
-    exact.selector.target_fingerprint = Some("safety-comment".to_string());
-    let exact_score = score_match(&exact, &finding).unwrap_or_default();
+    exact.selector.target_fingerprint = Some("safety-comment:present".to_string());
+    let exact_score = score_match(&exact, &finding)
+        .unwrap_or_else(|| std::panic::panic_any("exact fingerprints should match"));
 
+    // Substring receiver does NOT match — exact-only (#1800).
     let mut partial = exact.clone();
     partial.selector.receiver_fingerprint = Some("load_result".to_string());
-    let partial_score = score_match(&partial, &finding).unwrap_or_default();
+    assert_eq!(
+        score_match(&partial, &finding),
+        None,
+        "substring receiver must not match after #1800"
+    );
 
+    // Mismatch does not match.
     let mut mismatch = exact;
     mismatch.selector.receiver_fingerprint = Some("other_result".to_string());
 
-    assert!(exact_score > partial_score);
-    assert!(partial_score >= STRUCTURAL_MATCH_THRESHOLD);
+    assert!(exact_score >= STRUCTURAL_MATCH_THRESHOLD);
     assert_eq!(score_match(&mismatch, &finding), None);
 }
