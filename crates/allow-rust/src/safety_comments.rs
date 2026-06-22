@@ -15,11 +15,32 @@ pub(crate) fn has_nearby_safety_comment(safety_comments: &BTreeSet<u32>, line_no
 
 fn is_safety_comment(line: &str) -> bool {
     let trimmed = line.trim_start();
-    if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('*') {
-        return trimmed.contains("SAFETY:");
+    if trimmed.starts_with("//") {
+        // The comment body (after // and optional whitespace) must START
+        // with "SAFETY:", not merely contain it — prevents false positives
+        // like "// see the SAFETY: section of the RFC" (#1797).
+        return comment_body_starts_with_safety(trimmed, "//");
     }
-    line.split_once("//")
-        .is_some_and(|(_, comment)| comment.contains("SAFETY:"))
+    if trimmed.starts_with("/*") {
+        return comment_body_starts_with_safety(trimmed, "/*");
+    }
+    if trimmed.starts_with('*') {
+        return comment_body_starts_with_safety(trimmed, "*");
+    }
+    // For inline trailing comments (code before //), extract the comment
+    // portion. Use rsplit_once to find the LAST // on the line, which handles
+    // strings containing // better than split_once (#1797).
+    line.rsplit_once("//")
+        .is_some_and(|(_, comment)| comment.trim_start().starts_with("SAFETY:"))
+}
+
+/// Check that a comment (starting with the given prefix) has a body that
+/// begins with "SAFETY:" after the prefix and optional whitespace.
+fn comment_body_starts_with_safety(comment: &str, prefix: &str) -> bool {
+    comment
+        .strip_prefix(prefix)
+        .map(|body| body.trim_start().starts_with("SAFETY:"))
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
@@ -86,5 +107,18 @@ fn main() {
         assert!(!is_safety_comment(
             "let _ = f(); /* proof without marker */"
         ));
+    }
+
+    #[test]
+    fn is_safety_comment_rejects_substring_false_positives() {
+        // Regression for #1797: "SAFETY:" as a substring anywhere in a
+        // comment is NOT a safety comment — the marker must be at the start
+        // of the comment body.
+        assert!(!is_safety_comment("// see the SAFETY: section of the RFC"));
+        assert!(!is_safety_comment("// discussing SAFETY: trade-offs"));
+        assert!(!is_safety_comment("/* note about SAFETY: not a proof */"));
+        // Note: string literals containing "// SAFETY:" still produce false
+        // positives without tree-sitter comment-node awareness. That's a
+        // separate follow-up tracked in the issue.
     }
 }
