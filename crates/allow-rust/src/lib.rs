@@ -56,7 +56,11 @@ pub fn scan_rust_files(
                 continue;
             }
         };
-        let mut findings = scan_rust_source(rel, &text);
+        // Strip leading UTF-8 BOM so crate-level #![...] attributes are
+        // detected on BOM-prefixed files (common on Windows-edited sources)
+        // (#1881).
+        let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
+        let mut findings = scan_rust_source(rel, text);
         apply_source_package_context(rel, &packages, &mut findings);
         out.extend(findings);
     }
