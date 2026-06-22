@@ -5,7 +5,10 @@ pub(crate) fn markdown_inline_code(value: &str) -> String {
 }
 
 pub(crate) fn markdown_cell(value: &str) -> String {
-    value.replace('|', "\\|").replace('`', "\\`")
+    value
+        .replace('\\', "\\\\")
+        .replace('|', "\\|")
+        .replace('`', "\\`")
 }
 
 pub(crate) fn html_escape(value: &str) -> String {
