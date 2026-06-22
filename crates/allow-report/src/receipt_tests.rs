@@ -134,6 +134,46 @@ fn receipt_counts_weak_evidence_references_context() {
 }
 
 #[test]
+fn error_receipt_is_valid_json_with_receipt_schema_id() {
+    // Regression for #1855: error-receipt path must produce valid JSON
+    // conforming to the same schema contract as the success receipt.
+    let json = render_error_receipt("policy validation failed", ReportContext::default());
+
+    // Must carry the receipt schema_id.
+    assert!(
+        json.contains("\"schema_id\": \"cargo-allow.receipt.v1\""),
+        "error receipt must carry the receipt schema_id"
+    );
+
+    // Must carry the error status.
+    assert!(
+        json.contains("\"status\": \"error\""),
+        "error receipt must have status 'error'"
+    );
+
+    // Must have the diagnostic field with the rendered message.
+    assert!(
+        json.contains("\"diagnostic\": \"policy validation failed\""),
+        "error receipt must carry the diagnostic"
+    );
+
+    // Must have the same structural keys as a success receipt.
+    for key in [
+        "schema_id",
+        "schema_version",
+        "status",
+        "failed",
+        "counts",
+        "advisory",
+    ] {
+        assert!(
+            json.contains(&format!("\"{key}\"")),
+            "error receipt must contain key '{key}'"
+        );
+    }
+}
+
+#[test]
 fn receipt_counts_policy_missing_evidence_context() {
     let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
     context.policy_missing_evidence_entries = Some(4);
