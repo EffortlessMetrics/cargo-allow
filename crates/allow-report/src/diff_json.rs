@@ -29,7 +29,7 @@ fn is_diff_report_artifact(report_json: &str) -> bool {
 /// (#1853).
 fn contains_json_string_field(json: &str, field: &str, value: &str) -> bool {
     let head = json.len().min(2048);
-    let window = &json[..head];
+    let window = json.get(..head).unwrap_or(json);
     let spaced = format!("\"{field}\": \"{value}\"");
     let compact = format!("\"{field}\":\"{value}\"");
     window.contains(&spaced) || window.contains(&compact)
