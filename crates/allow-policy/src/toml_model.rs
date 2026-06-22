@@ -39,7 +39,7 @@ impl PolicyToml {
             policy: self.policy.unwrap_or_else(|| "cargo-allow".to_string()),
             owner: self.owner,
             status: self.status,
-            workspace: self.workspace.into_workspace_config(),
+            workspace: self.workspace.into_workspace_config()?,
             requirements: self.requirements.into_requirements(),
             lanes: self.lanes.into_lane_configs()?,
             allow,
