@@ -1,4 +1,6 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, FindingKind};
+use allow_core::{
+    AllowConfig, CargoAllowError, CargoAllowResult, FindingKind, LaneEnforcementMode,
+};
 use std::str::FromStr;
 
 use crate::text_validation::validate_required_text;
@@ -11,6 +13,11 @@ pub(crate) fn validate_lanes(cfg: &AllowConfig) -> CargoAllowResult<()> {
                 "lanes.{name}.mode must not have leading or trailing whitespace"
             )));
         }
+        // Validate the mode value against the known LaneEnforcementMode enum
+        // so a typo like mode = "blockng" is caught at validation time, not
+        // silently stored and only failing later at match time (#1830).
+        LaneEnforcementMode::from_str(lane.mode.as_str())
+            .map_err(|e| CargoAllowError::new(format!("lanes.{name}.mode: {e}")))?;
         FindingKind::from_str(name).map_err(|_| {
             CargoAllowError::new(format!(
                 "unsupported lane name `{name}`; expected a finding kind such as panic or unsafe"
