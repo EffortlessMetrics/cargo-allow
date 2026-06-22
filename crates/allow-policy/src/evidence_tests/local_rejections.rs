@@ -228,7 +228,9 @@ fn rejects_escaping_local_evidence_references() {
 #[test]
 fn rejects_non_source_tree_relative_local_evidence_references() {
     let cases = [
-        ("doc:", "has empty path"),
+        // "doc:" with empty target is now caught at entry-validation time
+        // (#1832), not at the evidence-diagnostics layer.
+        ("doc:../outside.md", "parent directory segments"),
         ("doc:/absolute/safety.md", "source-tree-relative"),
         ("doc:C:/absolute/safety.md", "source-tree-relative"),
         (
@@ -272,4 +274,37 @@ fn rejects_non_source_tree_relative_local_evidence_references() {
             "expected `{evidence}` error `{err}` to contain `{expected_message}`"
         );
     }
+}
+
+#[test]
+fn rejects_empty_typed_evidence_target_at_validation_time() {
+    // Regression for #1832: "doc:" with no target should be rejected at
+    // policy validation time, not silently accepted.
+    let toml = r#"
+schema_version = "0.1"
+policy = "cargo-allow"
+
+[[allow]]
+id = "allow-empty-doc"
+kind = "panic"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed"
+reason = "fixture"
+evidence = ["doc:"]
+expires = "2026-08-01"
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"
+"#;
+    let result = crate::parse_policy(toml);
+    assert!(
+        result.is_err(),
+        "'doc:' with empty target should be rejected at validation time"
+    );
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("empty target"),
+        "error should mention empty target: {err}"
+    );
 }
