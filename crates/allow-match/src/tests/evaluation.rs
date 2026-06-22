@@ -57,12 +57,14 @@ fn evaluate_fails_closed_on_ambiguous_structural_matches() {
             .map(|outcome| outcome.score >= STRUCTURAL_MATCH_THRESHOLD)
             .unwrap_or(false)
     );
+    // Ambiguous candidates must NOT be demoted to Stale (#2042 fix).
     assert_eq!(
         outcomes
             .iter()
             .filter(|outcome| outcome.status == MatchStatus::Stale)
             .count(),
-        2
+        0,
+        "ambiguous candidates should not be demoted to Stale"
     );
 }
 
@@ -279,5 +281,78 @@ fn unparseable_review_after_is_treated_as_due_fail_safe() {
             .iter()
             .any(|outcome| outcome.status == MatchStatus::ReviewDue),
         "unparseable review_after must be treated as review-due (fail-safe)"
+    );
+}
+
+#[test]
+fn ambiguity_tiebreak_picks_unique_top_scorer() {
+    // Two entries match the same finding. Entry A has more selector fields
+    // (higher score). Entry B has fewer (lower score). The unique top scorer
+    // (A) should be taken as the match, NOT Ambiguous (#1802).
+    let mut finding = finding_with_hash("fnv1a64:actual");
+    finding.identity.callee = Some("load".to_string());
+
+    // Entry A: full selector identity (ast_kind + container + hash)
+    let mut entry_a = entry_with_hash("fnv1a64:actual");
+    entry_a.id = "allow-high-score".to_string();
+    entry_a.selector.callee = Some("load".to_string());
+
+    // Entry B: fewer selector fields (lower score)
+    let mut entry_b = entry_with_hash("fnv1a64:actual");
+    entry_b.id = "allow-low-score".to_string();
+    entry_b.selector.callee = None;
+
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry_a);
+    cfg.allow.push(entry_b);
+
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+    // The finding should be Matched (not Ambiguous) — the unique top scorer wins.
+    assert!(
+        outcomes.iter().any(|o| {
+            o.status == MatchStatus::Matched && o.allow_id.as_deref() == Some("allow-high-score")
+        }),
+        "unique top scorer should be taken as the match, not Ambiguous"
+    );
+    // No Ambiguous outcome should be produced.
+    assert!(
+        !outcomes.iter().any(|o| o.status == MatchStatus::Ambiguous),
+        "no Ambiguous when there's a unique top scorer"
+    );
+}
+
+#[test]
+fn genuine_tie_reports_ambiguous_without_demoting_to_stale() {
+    // Two entries with identical scores match the same finding. This is a
+    // genuine tie → Ambiguous. But neither entry should be demoted to Stale
+    // (they DID match — they're just ambiguous, not stale) (#2042).
+    let finding = finding_with_hash("fnv1a64:actual");
+
+    let mut entry_a = entry_with_hash("fnv1a64:actual");
+    entry_a.id = "allow-tied-a".to_string();
+
+    let mut entry_b = entry_with_hash("fnv1a64:actual");
+    entry_b.id = "allow-tied-b".to_string();
+
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry_a);
+    cfg.allow.push(entry_b);
+
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+    // The finding should be Ambiguous (genuine tie).
+    assert!(
+        outcomes.iter().any(|o| o.status == MatchStatus::Ambiguous),
+        "genuine score tie should produce Ambiguous"
+    );
+    // Neither entry should be Stale (they matched, they're just ambiguous).
+    assert!(
+        !outcomes.iter().any(|o| {
+            o.status == MatchStatus::Stale
+                && (o.allow_id.as_deref() == Some("allow-tied-a")
+                    || o.allow_id.as_deref() == Some("allow-tied-b"))
+        }),
+        "ambiguous candidates must not be demoted to Stale"
     );
 }
