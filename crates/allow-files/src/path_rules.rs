@@ -34,7 +34,7 @@ pub(crate) fn is_generated_path(path: &Path, generated_patterns: &[String]) -> b
         || text.starts_with("generated/")
         || file_name.contains(".generated.")
         || file_name.ends_with(".generated")
-        || text.contains("/gen/")
+        || text.split('/').any(|segment| segment == "gen")
         || text.starts_with("gen/")
 }
 
