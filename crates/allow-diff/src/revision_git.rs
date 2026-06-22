@@ -18,10 +18,12 @@ pub fn changed_files(
         .arg(root.as_ref())
         .arg("diff")
         .arg("--name-only")
-        .arg(base);
-    if let Some(head) = head {
-        cmd.arg(head);
-    }
+        .arg(base)
+        // Default to HEAD when head is None, so uncommitted working-tree
+        // edits don't pollute the diff. Without this, git compares <base>
+        // against the working tree (including staged/unstaged changes) rather
+        // than the committed PR state (#1931).
+        .arg(head.unwrap_or("HEAD"));
     let output = cmd
         .output()
         .map_err(|e| CargoAllowError::new(format!("failed to run git diff: {e}")))?;
