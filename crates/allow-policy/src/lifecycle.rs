@@ -67,7 +67,16 @@ pub(crate) fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
         let expires = expires.ok_or_else(|| {
             CargoAllowError::new(format!("{} baseline_debt requires expires", entry.id))
         })?;
-        let start = created.unwrap_or_else(SimpleDate::today_utc_approx);
+        // Require 'created' for baseline_debt so the day-range check is
+        // deterministic. Using today_utc_approx when created is absent made
+        // the gate pass/fail depending on the day cargo-allow was invoked
+        // — CI vs local could disagree (#1829).
+        let start = created.ok_or_else(|| {
+            CargoAllowError::new(format!(
+                "{} baseline_debt requires created date for deterministic expiry range check",
+                entry.id
+            ))
+        })?;
         let days = start.days_until(expires);
         if !(0..=BASELINE_DEBT_MAX_DAYS).contains(&days) {
             return Err(CargoAllowError::new(format!(
@@ -99,5 +108,60 @@ fn parse_expires(id: &str, value: Option<&str>) -> CargoAllowResult<Option<Simpl
             CargoAllowError::new(format!("{id} has invalid expires date `{value}`"))
         }),
         None => Ok(None),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector};
+
+    fn baseline_debt_entry(id: &str, created: Option<&str>, expires: Option<&str>) -> AllowEntry {
+        AllowEntry {
+            id: id.to_string(),
+            kind: FindingKind::Panic,
+            family: None,
+            path: Some(std::path::PathBuf::from("src/lib.rs")),
+            glob: None,
+            owner: "core".to_string(),
+            classification: "baseline_debt".to_string(),
+            reason: "test".to_string(),
+            evidence: vec![],
+            links: vec![],
+            occurrence_limit: None,
+            lifecycle: Lifecycle {
+                created: created.map(|s| s.to_string()),
+                review_after: None,
+                expires: expires.map(|s| s.to_string()),
+            },
+            selector: Selector::default(),
+            last_seen: None,
+        }
+    }
+
+    #[test]
+    fn baseline_debt_without_created_is_rejected() {
+        let entry = baseline_debt_entry("allow-1", None, Some("2026-09-01"));
+        let err = validate_lifecycle(&entry).unwrap_err();
+        assert!(
+            err.to_string().contains("requires created date"),
+            "should require created for deterministic range check: {err}"
+        );
+    }
+
+    #[test]
+    fn baseline_debt_with_created_passes_range_check() {
+        let entry = baseline_debt_entry("allow-1", Some("2026-06-01"), Some("2026-09-01"));
+        assert!(validate_lifecycle(&entry).is_ok());
+    }
+
+    #[test]
+    fn baseline_debt_range_exceeding_max_days_is_rejected() {
+        let entry = baseline_debt_entry("allow-1", Some("2026-01-01"), Some("2027-06-01"));
+        let err = validate_lifecycle(&entry).unwrap_err();
+        assert!(
+            err.to_string().contains("must be within 120 days"),
+            "should reject range exceeding max: {err}"
+        );
     }
 }
