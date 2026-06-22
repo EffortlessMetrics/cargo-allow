@@ -12,7 +12,7 @@ fn into_workspace_config_applies_explicit_root_and_default_mode() {
     };
     let default = WorkspaceConfig::default();
 
-    let cfg = workspace.into_workspace_config();
+    let cfg = workspace.into_workspace_config().unwrap();
 
     assert_eq!(cfg.root, "fixtures/policy");
     assert_eq!(cfg.default_mode, "strict");
@@ -29,7 +29,7 @@ fn into_workspace_config_normalizes_git_tracked_inventory_alias() {
         generated: Vec::new(),
     };
 
-    let cfg = workspace.into_workspace_config();
+    let cfg = workspace.into_workspace_config().unwrap();
 
     assert_eq!(cfg.inventory, "git-tracked");
 }
@@ -45,7 +45,7 @@ fn into_workspace_config_preserves_default_ignored_and_generated_globs() {
     };
     let default = WorkspaceConfig::default();
 
-    let cfg = workspace.into_workspace_config();
+    let cfg = workspace.into_workspace_config().unwrap();
 
     assert_eq!(cfg.ignored, default.ignored);
     assert_eq!(cfg.generated, default.generated);
@@ -61,7 +61,7 @@ fn into_workspace_config_preserves_custom_ignored_and_generated_globs() {
         generated: vec!["custom/generated/**".to_string()],
     };
 
-    let cfg = workspace.into_workspace_config();
+    let cfg = workspace.into_workspace_config().unwrap();
 
     assert_eq!(cfg.ignored, vec!["custom/ignored/**".to_string()]);
     assert_eq!(cfg.generated, vec!["custom/generated/**".to_string()]);
