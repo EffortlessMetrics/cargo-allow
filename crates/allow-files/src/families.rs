@@ -68,6 +68,17 @@ fn is_package_metadata(file_name: &str) -> bool {
             | "deno.lock"
             | "pyproject.toml"
             | "requirements.txt"
+            // Modern lockfiles (#1878)
+            | "uv.lock"
+            | "poetry.lock"
+            | "go.mod"
+            | "go.sum"
+            | "gemfile.lock"
+            | "composer.lock"
+            | "mix.lock"
+            | "packages.lock.json"
+            | "flake.lock"
+            | "cargo-vet.toml"
     )
 }
 
