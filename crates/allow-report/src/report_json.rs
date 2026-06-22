@@ -106,7 +106,10 @@ fn render_json_report(
             out.push_str(",\n");
         }
         out.push_str("    {");
-        out.push_str(&format!("\"kind\": \"{}\", ", finding.kind.as_str()));
+        out.push_str(&format!(
+            "\"kind\": \"{}\", ",
+            json_escape(finding.kind.as_str())
+        ));
         out.push_str(&format!(
             "\"family\": {}, ",
             option_json(finding.family.as_deref())

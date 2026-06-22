@@ -23,10 +23,16 @@ fn is_diff_report_artifact(report_json: &str) -> bool {
         && contains_json_string_field(report_json, "command", REPORT_COMMAND_DIFF)
 }
 
+/// Check whether a JSON string field is present in the document HEAD (first
+/// 2 KiB) rather than anywhere in the body. This prevents false positives
+/// where a finding message or evidence string contains the schema_id text
+/// (#1853).
 fn contains_json_string_field(json: &str, field: &str, value: &str) -> bool {
+    let head = json.len().min(2048);
+    let window = json.get(..head).unwrap_or(json);
     let spaced = format!("\"{field}\": \"{value}\"");
     let compact = format!("\"{field}\":\"{value}\"");
-    json.contains(&spaced) || json.contains(&compact)
+    window.contains(&spaced) || window.contains(&compact)
 }
 
 pub(crate) fn render_diff_posture_json(report: DiffReport<'_>) -> String {
