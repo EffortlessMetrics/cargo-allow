@@ -58,6 +58,11 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     fs::write(&path, starter_policy(args.strict))
         .map_err(|e| CargoAllowError::new(format!("failed to write {}: {e}", path.display())))?;
     println!("created {}", created_path_display(&root, &path));
+    println!();
+    println!("next steps:");
+    println!("  cargo-allow audit                  # inventory current exceptions");
+    println!("  cargo-allow check --mode no-new    # enforce no-new-debt");
+    println!("  cargo-allow worklist               # see review-due and stale entries");
     Ok(())
 }
 
