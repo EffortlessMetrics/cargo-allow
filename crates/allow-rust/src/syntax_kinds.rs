@@ -76,6 +76,9 @@ pub(crate) enum PanicMacroKind {
     Todo,
     Unimplemented,
     Unreachable,
+    Assert,
+    AssertEq,
+    AssertNe,
 }
 
 impl PanicMacroKind {
@@ -85,6 +88,9 @@ impl PanicMacroKind {
             "todo" => Some(Self::Todo),
             "unimplemented" => Some(Self::Unimplemented),
             "unreachable" => Some(Self::Unreachable),
+            "assert" => Some(Self::Assert),
+            "assert_eq" => Some(Self::AssertEq),
+            "assert_ne" => Some(Self::AssertNe),
             _ => None,
         }
     }
@@ -95,6 +101,9 @@ impl PanicMacroKind {
             Self::Todo => "todo",
             Self::Unimplemented => "unimplemented",
             Self::Unreachable => "unreachable",
+            Self::Assert => "assert",
+            Self::AssertEq => "assert_eq",
+            Self::AssertNe => "assert_ne",
         }
     }
 
@@ -104,6 +113,7 @@ impl PanicMacroKind {
             Self::Todo => "todo",
             Self::Unimplemented => "unimplemented",
             Self::Unreachable => "unreachable",
+            Self::Assert | Self::AssertEq | Self::AssertNe => "panic_macro",
         }
     }
 }
@@ -214,12 +224,14 @@ mod tests {
             ("todo", PanicMacroKind::Todo),
             ("unimplemented", PanicMacroKind::Unimplemented),
             ("unreachable", PanicMacroKind::Unreachable),
+            ("assert", PanicMacroKind::Assert),
+            ("assert_eq", PanicMacroKind::AssertEq),
+            ("assert_ne", PanicMacroKind::AssertNe),
         ];
 
         for (name, expected) in accepted {
             assert_eq!(PanicMacroKind::from_name(name), Some(expected));
         }
-        assert_eq!(PanicMacroKind::from_name("assert"), None);
         assert_eq!(PanicMacroKind::from_name("std::panic"), None);
     }
 
@@ -230,6 +242,9 @@ mod tests {
             (PanicMacroKind::Todo, "todo"),
             (PanicMacroKind::Unimplemented, "unimplemented"),
             (PanicMacroKind::Unreachable, "unreachable"),
+            (PanicMacroKind::Assert, "assert"),
+            (PanicMacroKind::AssertEq, "assert_eq"),
+            (PanicMacroKind::AssertNe, "assert_ne"),
         ];
 
         for (kind, expected) in names {
@@ -244,6 +259,9 @@ mod tests {
             (PanicMacroKind::Todo, "todo"),
             (PanicMacroKind::Unimplemented, "unimplemented"),
             (PanicMacroKind::Unreachable, "unreachable"),
+            (PanicMacroKind::Assert, "panic_macro"),
+            (PanicMacroKind::AssertEq, "panic_macro"),
+            (PanicMacroKind::AssertNe, "panic_macro"),
         ];
 
         for (kind, expected) in families {
