@@ -14,7 +14,7 @@ pub(crate) fn metadata_policy_changes(base: &AllowEntry, head: &AllowEntry) -> V
             Some(&base.classification),
             Some(&head.classification),
             PolicyChangeKind::BaselineDebtNormalized,
-            PolicyChangeSeverity::Fail,
+            PolicyChangeSeverity::Improvement,
             "baseline_debt classification changed to reviewed policy",
         ));
     }
@@ -202,7 +202,7 @@ mod tests {
                 &entry("team", "reason", "reviewed_policy"),
             ),
             PolicyChangeKind::BaselineDebtNormalized,
-            PolicyChangeSeverity::Fail,
+            PolicyChangeSeverity::Improvement,
             MetadataChangeField::Classification,
             Some("baseline_debt"),
             Some("reviewed_policy"),

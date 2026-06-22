@@ -57,7 +57,7 @@ fn detects_added_baseline_debt_as_failure() {
 }
 
 #[test]
-fn detects_baseline_debt_normalized_as_failure() {
+fn detects_baseline_debt_normalized_as_improvement() {
     let mut base_entry = entry("allow-1");
     base_entry.classification = "baseline_debt".to_string();
     let base = config_with(base_entry);
@@ -67,7 +67,7 @@ fn detects_baseline_debt_normalized_as_failure() {
 
     assert!(changes.iter().any(|change| {
         change.kind == PolicyChangeKind::BaselineDebtNormalized
-            && change.severity == PolicyChangeSeverity::Fail
+            && change.severity == PolicyChangeSeverity::Improvement
             && change.message.contains("baseline_debt")
     }));
 }
