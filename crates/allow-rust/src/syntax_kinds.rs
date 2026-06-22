@@ -29,6 +29,8 @@ pub(crate) enum UnsafeSyntaxKind {
     Trait,
     ExternBlock,
     Block,
+    Const,
+    Static,
 }
 
 impl UnsafeSyntaxKind {
@@ -39,6 +41,8 @@ impl UnsafeSyntaxKind {
             Self::Trait => "unsafe_trait",
             Self::ExternBlock => "unsafe_extern_block",
             Self::Block => "unsafe_block",
+            Self::Const => "unsafe_const",
+            Self::Static => "unsafe_static",
         }
     }
 
@@ -53,6 +57,8 @@ impl UnsafeSyntaxKind {
             Self::Trait => 2,
             Self::ExternBlock => 3,
             Self::Block => 4,
+            Self::Const => 5,
+            Self::Static => 6,
         }
     }
 }
