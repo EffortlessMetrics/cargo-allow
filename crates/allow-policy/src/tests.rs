@@ -100,8 +100,8 @@ fn parses_legacy_aliases_and_scalar_arrays() {
                 expires = "2026-08-01"
 
                 [allow.selector]
-                kind = "macro_call"
-                macro = "panic"
+                ast_kind = "macro_call"
+                macro_name = "panic"
                 line_hint = "12"
             "#,
     )
