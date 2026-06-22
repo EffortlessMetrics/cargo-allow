@@ -14,10 +14,15 @@ pub(crate) fn render_allow_entry(out: &mut String, entry: &AllowEntry) {
         entry.kind.as_str()
     ));
     render_optional_string_field(out, "family", entry.family.as_deref());
-    if let Some(path) = &entry.path {
+    // Render path OR glob, never both — validate_scope_consistency rejects
+    // entries with both path and glob, so rendering both would produce TOML
+    // that fails to round-trip through parse_policy (#1836). When both are
+    // set, prefer glob (the more general scope).
+    if entry.glob.is_some() {
+        render_optional_string_field(out, "glob", entry.glob.as_deref());
+    } else if let Some(path) = &entry.path {
         render_string_field(out, "path", path.to_string_lossy().as_ref());
     }
-    render_optional_string_field(out, "glob", entry.glob.as_deref());
     render_string_field(out, "owner", &entry.owner);
     render_string_field(out, "classification", &entry.classification);
     render_string_field(out, "reason", &entry.reason);
@@ -97,7 +102,7 @@ mod tests {
             "id = \"allow-rendered-entry\"",
             "kind = \"policy_exception\"",
             "family = \"process_spawn\"",
-            "path = \".github/workflows/ci.yml\"",
+            // When both path and glob are set, only glob is rendered (#1836)
             "glob = \".github/workflows/*.yml\"",
             "owner = \"repo-infra\"",
             "classification = \"reviewed_exception\"",
@@ -124,6 +129,11 @@ mod tests {
                 "rendered entry should contain `{expected}`:\n{out}"
             );
         }
+        // path must NOT appear when glob is set (#1836 round-trip fix)
+        assert!(
+            !out.contains("path = "),
+            "path should not render when glob is set:\n{out}"
+        );
     }
 
     #[test]
