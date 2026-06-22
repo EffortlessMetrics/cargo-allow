@@ -54,6 +54,23 @@ fn unsafe_syntax_construct(node: Node<'_>, source: &str) -> Option<(u32, UnsafeS
             extern_block_symbol(node, source),
             source,
         ),
+        // const unsafe / static unsafe items (#1794)
+        "const_item" | "static_item" => unsafe_modifier_construct(
+            node,
+            "const",
+            UnsafeSyntaxKind::Const,
+            item_name(node, source),
+            source,
+        )
+        .or_else(|| {
+            unsafe_modifier_construct(
+                node,
+                "static",
+                UnsafeSyntaxKind::Static,
+                item_name(node, source),
+                source,
+            )
+        }),
         "unsafe_block" => unsafe_child_point(node)
             .map(|point| located_construct(source, point, UnsafeSyntaxKind::Block, None)),
         _ => None,
