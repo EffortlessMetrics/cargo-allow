@@ -27,6 +27,9 @@ pub(crate) fn scan_lint_attributes(
                 match attr.kind {
                     LintAttributeKind::Allow => "allow_attribute",
                     LintAttributeKind::Expect => "expect_attribute",
+                    LintAttributeKind::Deny => "deny_attribute",
+                    LintAttributeKind::Forbid => "forbid_attribute",
+                    LintAttributeKind::Warn => "warn_attribute",
                 },
                 "attribute",
                 |id| {
