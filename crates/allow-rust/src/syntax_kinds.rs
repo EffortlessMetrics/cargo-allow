@@ -4,6 +4,9 @@ use std::collections::BTreeMap;
 pub(crate) enum LintAttributeKind {
     Allow,
     Expect,
+    Deny,
+    Forbid,
+    Warn,
 }
 
 impl LintAttributeKind {
@@ -11,6 +14,9 @@ impl LintAttributeKind {
         match self {
             Self::Allow => "allow",
             Self::Expect => "expect",
+            Self::Deny => "deny",
+            Self::Forbid => "forbid",
+            Self::Warn => "warn",
         }
     }
 }

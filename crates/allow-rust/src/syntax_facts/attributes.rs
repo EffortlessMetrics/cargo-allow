@@ -56,6 +56,12 @@ fn lint_attribute_kinds(text: &str) -> Vec<(LintAttributeKind, usize)> {
         vec![(LintAttributeKind::Allow, offset)]
     } else if let Some(offset) = attribute_name_offset(text, "expect") {
         vec![(LintAttributeKind::Expect, offset)]
+    } else if let Some(offset) = attribute_name_offset(text, "deny") {
+        vec![(LintAttributeKind::Deny, offset)]
+    } else if let Some(offset) = attribute_name_offset(text, "forbid") {
+        vec![(LintAttributeKind::Forbid, offset)]
+    } else if let Some(offset) = attribute_name_offset(text, "warn") {
+        vec![(LintAttributeKind::Warn, offset)]
     } else if attribute_name_offset(text, "cfg_attr").is_some() {
         cfg_attr_lint_kinds(text)
     } else {
