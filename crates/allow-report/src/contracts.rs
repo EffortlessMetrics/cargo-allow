@@ -362,6 +362,10 @@ pub struct ReportContext<'a> {
     pub lane_posture: Option<&'a BTreeMap<String, allow_core::LaneEnforcementMode>>,
     pub federation: Option<FederationReportContext<'a>>,
     pub mirror_divergence_entries: Option<usize>,
+    /// Git commit SHA when available, for receipt provenance binding (#1850).
+    pub git_sha: Option<&'a str>,
+    /// SHA-256 hex digest of the policy file content at scan time (#1850).
+    pub policy_digest: Option<&'a str>,
 }
 
 impl<'a> ReportContext<'a> {
@@ -389,6 +393,8 @@ impl<'a> ReportContext<'a> {
             lane_posture: None,
             federation: None,
             mirror_divergence_entries: None,
+            git_sha: None,
+            policy_digest: None,
         }
     }
 }

@@ -134,6 +134,41 @@ fn receipt_counts_weak_evidence_references_context() {
 }
 
 #[test]
+fn receipt_emits_provenance_binding_when_git_sha_and_policy_digest_present() {
+    let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
+    context.git_sha = Some("abc123def456");
+    context.policy_digest =
+        Some("sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08");
+
+    let json = render_receipt_with_context("check", &[], false, context);
+
+    assert!(
+        json.contains("\"git_sha\": \"abc123def456\""),
+        "receipt must emit git_sha when present"
+    );
+    assert!(
+        json.contains("\"policy_digest\": \"sha256:"),
+        "receipt must emit policy_digest when present"
+    );
+}
+
+#[test]
+fn receipt_omits_provenance_binding_when_absent() {
+    let context = ReportContext::source_syntax("git_tracked", None, None, None);
+
+    let json = render_receipt_with_context("check", &[], false, context);
+
+    assert!(
+        !json.contains("\"git_sha\""),
+        "receipt must not emit git_sha when absent"
+    );
+    assert!(
+        !json.contains("\"policy_digest\""),
+        "receipt must not emit policy_digest when absent"
+    );
+}
+
+#[test]
 fn receipt_counts_policy_missing_evidence_context() {
     let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
     context.policy_missing_evidence_entries = Some(4);
