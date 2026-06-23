@@ -117,6 +117,18 @@ pub(crate) fn push_json_receipt_run_metadata(out: &mut String, context: ReportCo
     if let Some(federation) = context.federation {
         push_json_federation_context(out, federation);
     }
+    // Provenance binding (#1850): emit git_sha and policy_digest when
+    // available so consumers can verify a receipt matches a specific commit
+    // and policy state.
+    if let Some(git_sha) = context.git_sha {
+        out.push_str(&format!("  \"git_sha\": \"{}\",\n", json_escape(git_sha)));
+    }
+    if let Some(policy_digest) = context.policy_digest {
+        out.push_str(&format!(
+            "  \"policy_digest\": \"{}\",\n",
+            json_escape(policy_digest)
+        ));
+    }
 }
 
 pub(crate) fn push_json_federation_context(
