@@ -34,6 +34,10 @@ pub(crate) struct ProposeArgs {
     /// Write proposal summary to a file instead of stderr.
     #[arg(long)]
     pub(super) summary_output: Option<PathBuf>,
+    /// Maximum number of new findings to propose as baseline_debt entries.
+    /// Default: 50. Use --max 0 for unlimited.
+    #[arg(long, default_value_t = 50)]
+    pub(super) max: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]

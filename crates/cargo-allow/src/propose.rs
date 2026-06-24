@@ -46,6 +46,12 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         .filter(|o| o.status == MatchStatus::New)
         .enumerate()
     {
+        // --max limits the number of proposed entries to avoid overwhelming
+        // first-hour adopters on noisy codebases (#1815). --max 0 means
+        // unlimited.
+        if args.max > 0 && n >= args.max {
+            break;
+        }
         if let Some(finding) = outcome.finding_index.and_then(|idx| findings.get(idx)) {
             if finding.kind == FindingKind::Unsafe {
                 unsafe_proposed_entries += 1;
