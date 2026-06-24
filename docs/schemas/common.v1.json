@@ -224,6 +224,36 @@
         },
         "message": {
           "type": "string"
+        },
+        "ledger_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ledger_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lane": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "role": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },
@@ -292,6 +322,36 @@
         },
         "message": {
           "type": "string"
+        },
+        "ledger_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ledger_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lane": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "role": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },
@@ -1902,22 +1962,52 @@
     "diff_movement_counts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["introduced", "retained", "removed"],
+      "required": [
+        "introduced",
+        "retained",
+        "removed"
+      ],
       "properties": {
-        "introduced": { "type": "integer", "minimum": 0 },
-        "retained": { "type": "integer", "minimum": 0 },
-        "removed": { "type": "integer", "minimum": 0 }
+        "introduced": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retained": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removed": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "diff_posture_delta_counts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["improved", "worsened", "review_required", "unchanged"],
+      "required": [
+        "improved",
+        "worsened",
+        "review_required",
+        "unchanged"
+      ],
       "properties": {
-        "improved": { "type": "integer", "minimum": 0 },
-        "worsened": { "type": "integer", "minimum": 0 },
-        "review_required": { "type": "integer", "minimum": 0 },
-        "unchanged": { "type": "integer", "minimum": 0 }
+        "improved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "worsened": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_required": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unchanged": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "diff_summary": {
@@ -2078,25 +2168,46 @@
           ]
         },
         "movement": {
-          "enum": ["introduced", "retained", "removed"]
+          "enum": [
+            "introduced",
+            "retained",
+            "removed"
+          ]
         },
         "posture_delta": {
-          "enum": ["improved", "worsened", "review_required", "unchanged"]
+          "enum": [
+            "improved",
+            "worsened",
+            "review_required",
+            "unchanged"
+          ]
         },
         "changed_in_diff": {
           "type": "boolean"
         },
         "subject": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "allow_id": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "ledger_id": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "lane": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "key": {
           "type": "string",
@@ -2228,26 +2339,44 @@
           ]
         },
         "movement": {
-          "enum": ["introduced", "retained", "removed"]
+          "enum": [
+            "introduced",
+            "retained",
+            "removed"
+          ]
         },
         "posture_delta": {
-          "enum": ["improved", "worsened", "review_required", "unchanged"]
+          "enum": [
+            "improved",
+            "worsened",
+            "review_required",
+            "unchanged"
+          ]
         },
         "changed_in_diff": {
           "type": "boolean"
         },
         "subject": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "allow_id": {
           "type": "string",
           "minLength": 1
         },
         "ledger_id": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "lane": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "kind": {
           "enum": [

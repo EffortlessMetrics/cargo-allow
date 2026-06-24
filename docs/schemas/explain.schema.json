@@ -555,6 +555,36 @@
         },
         "message": {
           "type": "string"
+        },
+        "ledger_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ledger_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lane": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "role": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },
