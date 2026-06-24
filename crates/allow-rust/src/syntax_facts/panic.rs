@@ -50,22 +50,55 @@ fn panic_method_call(node: Node<'_>, source: &str) -> Option<(u32, PanicMethodCa
         return None;
     }
     let function = node.child_by_field_name("function")?;
-    if function.kind() != "field_expression" {
-        return None;
+
+    match function.kind() {
+        "field_expression" => {
+            let field = function.child_by_field_name("field")?;
+            let method_name = node_text(source, field)?;
+            let kind = PanicMethodKind::from_name(method_name)?;
+            let receiver_fingerprint = function
+                .child_by_field_name("value")
+                .and_then(|r| structural_receiver_fingerprint(r, source));
+            let s = field.start_position();
+            Some((
+                s.row as u32 + 1,
+                PanicMethodCall {
+                    kind,
+                    column: source_column(source, s.row, s.column),
+                    receiver_fingerprint,
+                },
+            ))
+        }
+        // Path-qualified: Type::unwrap(x) or <T>::unwrap(x) (#1880)
+        "scoped_identifier" | "generic_function" => {
+            let mut last: Option<(Node, &str)> = None;
+            let mut cur = function.walk();
+            cur.reset(function);
+            if cur.goto_first_child() {
+                loop {
+                    let ch = cur.node();
+                    if let Some(t) = node_text(source, ch) {
+                        if t != "::" {
+                            last = Some((ch, t));
+                        }
+                    }
+                    if !cur.goto_next_sibling() {
+                        break;
+                    }
+                }
+            }
+            let (nn, mn) = last?;
+            let kind = PanicMethodKind::from_name(mn)?;
+            let s = nn.start_position();
+            Some((
+                s.row as u32 + 1,
+                PanicMethodCall {
+                    kind,
+                    column: source_column(source, s.row, s.column),
+                    receiver_fingerprint: None,
+                },
+            ))
+        }
+        _ => None,
     }
-    let field = function.child_by_field_name("field")?;
-    let method_name = node_text(source, field)?;
-    let kind = PanicMethodKind::from_name(method_name)?;
-    let receiver_fingerprint = function
-        .child_by_field_name("value")
-        .and_then(|receiver| structural_receiver_fingerprint(receiver, source));
-    let start = field.start_position();
-    Some((
-        start.row as u32 + 1,
-        PanicMethodCall {
-            kind,
-            column: source_column(source, start.row, start.column),
-            receiver_fingerprint,
-        },
-    ))
 }
