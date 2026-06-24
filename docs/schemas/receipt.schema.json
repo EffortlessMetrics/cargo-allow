@@ -106,6 +106,22 @@
       "minLength": 1,
       "description": "cargo-allow version that produced this receipt."
     },
+    "lane_posture": {
+      "type": ["object", "null"],
+      "description": "Per-lane enforcement posture map when a policy declares lanes.",
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["advisory", "shadow", "blocking"]
+      }
+    },
+    "git_sha": {
+      "type": ["string", "null"],
+      "description": "Git commit SHA at scan time, for receipt provenance binding."
+    },
+    "policy_digest": {
+      "type": ["string", "null"],
+      "description": "SHA-256 hex digest of the policy file content at scan time."
+    },
     "federation": {
       "type": "object",
       "additionalProperties": false,
