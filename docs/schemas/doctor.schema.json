@@ -143,7 +143,11 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["signal", "count", "command"],
+            "required": [
+              "signal",
+              "count",
+              "command"
+            ],
             "properties": {
               "signal": {
                 "enum": [
@@ -295,6 +299,34 @@
                 }
               }
             }
+          }
+        },
+        "divergences": {
+          "type": "array",
+          "description": "Runtime mirror divergences.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "ledger_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "message": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ]
           }
         }
       }
