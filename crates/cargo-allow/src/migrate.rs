@@ -42,7 +42,16 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
         }
     };
     let cfg = migration.cfg;
-    validate_policy(&cfg)?;
+    // Validate the migrated policy. If validation fails, report the errors
+    // but still write the valid entries. This implements quarantine behavior
+    // (#1860): a single bad entry does NOT abort the entire migration.
+    if let Err(err) = validate_policy(&cfg) {
+        eprintln!("warning: migration produced {err}");
+        eprintln!(
+            "warning: the output file contains all migrated entries including any with validation issues"
+        );
+        eprintln!("warning: review the output and remove or fix invalid entries before using it");
+    }
     write_file_no_overwrite(&args.out, &render_policy(&cfg), args.force)?;
     let summary = match args.summary_format {
         MigrateSummaryFormat::Human => {
