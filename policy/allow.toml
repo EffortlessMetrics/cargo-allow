@@ -5124,3 +5124,20 @@ callee = "expect"
 [allow.last_seen]
 line = 53
 column = 39
+
+[[allow]]
+id = "allow-0284"
+kind = "panic"
+family = "unwrap"
+path = "crates/allow-policy/src/toml_workspace_tests.rs"
+owner = "core/policy"
+classification = "test_fixture"
+reason = "Test calls .unwrap() on into_workspace_config result (now returns Result per #2001)."
+evidence = ["test:into_workspace_config"]
+created = "2026-06-22"
+review_after = "2026-09-22"
+occurrence_limit = 4
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"

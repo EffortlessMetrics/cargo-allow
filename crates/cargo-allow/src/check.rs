@@ -1,6 +1,4 @@
-use allow_core::{
-    CargoAllowError, CargoAllowResult, MatchStatus, effective_lane_posture_for_findings,
-};
+use allow_core::{CargoAllowError, CargoAllowResult, effective_lane_posture_for_findings};
 use allow_match::{CheckMode, evaluate};
 use allow_report::{
     RECEIPT_ENFORCEMENT_ADVISORY, RECEIPT_ENFORCEMENT_ENFORCING, ReportContext, Summary,
@@ -165,26 +163,6 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         write_file(path, &receipt)?;
     }
     if failed {
-        // When --receipt is set and format is Human, the report is suppressed
-        // from stdout. Print a one-line summary to stderr so the user knows
-        // WHY the check failed without opening the JSON receipt (#1816).
-        if args.receipt.is_some()
-            && !should_emit_report_stdout(
-                args.output.as_deref(),
-                args.receipt.as_deref(),
-                args.format,
-            )
-        {
-            let new_count = outcomes
-                .iter()
-                .filter(|o| o.status == MatchStatus::New)
-                .count();
-            let expired_count = outcomes
-                .iter()
-                .filter(|o| o.status == MatchStatus::Expired)
-                .count();
-            eprintln!("check failed: {new_count} new finding(s), {expired_count} expired entries");
-        }
         process::exit(1);
     }
     Ok(())

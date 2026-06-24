@@ -60,6 +60,7 @@ owner = "core/release"
 classification = "baseline_debt"
 reason = "Fixture caps crate manifests with counted baseline debt headroom."
 occurrence_limit = 3
+created = "2026-06-15"
 review_after = "2026-08-29"
 expires = "2026-09-30"
 evidence = ["test:e2e_occurrence_headroom"]

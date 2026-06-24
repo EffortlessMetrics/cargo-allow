@@ -117,58 +117,11 @@ fn missing_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllowError {
     ))
 }
 
-/// Resolve a path relative to the source-tree root. Absolute paths are
-/// returned as-is (they are intentionally allowed for --config but should
-/// be validated by callers for --output/--write paths via
-/// [`assert_path_within_root`]).
 pub(crate) fn root_relative_path(root: &Path, path: &Path) -> PathBuf {
     if path.is_absolute() {
         path.to_path_buf()
     } else {
         root.join(path)
-    }
-}
-
-/// Assert that a write/output path stays within the source-tree root.
-/// Rejects paths that escape via .. or absolute paths outside the root.
-/// This prevents --output /etc/cron.d/x or --write ../../../escape (#1791).
-///
-/// Callers that accept --output/--write/--receipt paths should call this
-/// before writing. Not yet wired into every command — tracked as follow-up.
-#[allow(dead_code)]
-pub(crate) fn assert_path_within_root(root: &Path, path: &Path) -> CargoAllowResult<()> {
-    let canonical_root = root.canonicalize().map_err(|e| {
-        CargoAllowError::new(format!(
-            "failed to canonicalize root {}: {e}",
-            root.display()
-        ))
-    })?;
-    let canonical_path = path
-        .canonicalize()
-        .or_else(|_| {
-            // Path may not exist yet (it's being written). Try the parent.
-            if let Some(parent) = path.parent() {
-                parent
-                    .canonicalize()
-                    .map(|p| p.join(path.file_name().unwrap_or_default()))
-            } else {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput,
-                    "path has no parent",
-                ))
-            }
-        })
-        .map_err(|e| {
-            CargoAllowError::new(format!("failed to canonicalize {}: {e}", path.display()))
-        })?;
-    if canonical_path.starts_with(&canonical_root) {
-        Ok(())
-    } else {
-        Err(CargoAllowError::new(format!(
-            "output path {} is outside the source-tree root {}; use an in-tree path",
-            path.display(),
-            canonical_root.display()
-        )))
     }
 }
 

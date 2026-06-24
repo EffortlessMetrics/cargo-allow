@@ -45,14 +45,14 @@ pub fn finding_posture_changes(base: &[Finding], head: &[Finding]) -> Vec<Findin
     for (key, counted) in &head_by_key {
         let base_count = base_by_key
             .get(key)
-            .map(|counted| counted.count())
+            .map(|counted| counted.count)
             .unwrap_or(0);
-        if counted.count() > base_count {
-            for _ in 0..(counted.count() - base_count) {
+        if counted.count > base_count {
+            for _ in 0..(counted.count - base_count) {
                 changes.push(finding_posture_change(
                     FindingPostureKind::New,
                     key,
-                    counted.finding(),
+                    counted.finding,
                 ));
             }
         }
@@ -60,14 +60,14 @@ pub fn finding_posture_changes(base: &[Finding], head: &[Finding]) -> Vec<Findin
     for (key, counted) in &base_by_key {
         let head_count = head_by_key
             .get(key)
-            .map(|counted| counted.count())
+            .map(|counted| counted.count)
             .unwrap_or(0);
-        if counted.count() > head_count {
-            for _ in 0..(counted.count() - head_count) {
+        if counted.count > head_count {
+            for _ in 0..(counted.count - head_count) {
                 changes.push(finding_posture_change(
                     FindingPostureKind::Removed,
                     key,
-                    counted.finding(),
+                    counted.finding,
                 ));
             }
         }
@@ -75,31 +75,19 @@ pub fn finding_posture_changes(base: &[Finding], head: &[Finding]) -> Vec<Findin
     changes
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 struct CountedFinding<'a> {
-    findings: Vec<&'a Finding>,
-}
-
-impl<'a> CountedFinding<'a> {
-    fn finding(&self) -> &'a Finding {
-        // Representative finding for message construction (the first).
-        self.findings[0]
-    }
-
-    fn count(&self) -> usize {
-        self.findings.len()
-    }
+    finding: &'a Finding,
+    count: usize,
 }
 
 fn findings_by_key(findings: &[Finding]) -> BTreeMap<String, CountedFinding<'_>> {
-    let mut by_key: BTreeMap<String, CountedFinding<'_>> = BTreeMap::new();
+    let mut by_key = BTreeMap::new();
     for finding in findings {
         by_key
             .entry(finding_identity_key(finding))
-            .and_modify(|counted: &mut CountedFinding<'_>| counted.findings.push(finding))
-            .or_insert(CountedFinding {
-                findings: vec![finding],
-            });
+            .and_modify(|counted: &mut CountedFinding<'_>| counted.count += 1)
+            .or_insert(CountedFinding { finding, count: 1 });
     }
     by_key
 }
@@ -147,15 +135,15 @@ mod tests {
         let counted_first = by_key
             .get(&first_key)
             .unwrap_or_else(|| std::panic::panic_any("expected counted first finding"));
-        assert_eq!(counted_first.count(), 2);
-        assert_eq!(counted_first.finding().path, PathBuf::from("src/lib.rs"));
+        assert_eq!(counted_first.count, 2);
+        assert_eq!(counted_first.finding.path, PathBuf::from("src/lib.rs"));
 
         let counted_different = by_key
             .get(&different_key)
             .unwrap_or_else(|| std::panic::panic_any("expected counted different finding"));
-        assert_eq!(counted_different.count(), 1);
+        assert_eq!(counted_different.count, 1);
         assert_eq!(
-            counted_different.finding().path,
+            counted_different.finding.path,
             PathBuf::from("src/other.rs")
         );
     }
@@ -169,11 +157,8 @@ mod tests {
             .get(&finding_identity_key(&finding))
             .unwrap_or_else(|| std::panic::panic_any("expected counted finding"));
 
-        assert_eq!(counted.count(), 1);
-        assert_eq!(
-            counted.finding().identity.container.as_deref(),
-            Some("load")
-        );
+        assert_eq!(counted.count, 1);
+        assert_eq!(counted.finding.identity.container.as_deref(), Some("load"));
     }
 
     #[test]

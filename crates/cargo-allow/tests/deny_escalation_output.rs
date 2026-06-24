@@ -193,8 +193,9 @@ classification = "baseline_debt"
 reason = "fixture counted baseline headroom"
 occurrence_limit = 2
 evidence = ["test:deny_escalation_output"]
+created = "2026-06-01"
 review_after = "2026-08-01"
-expires = "2026-09-30"
+expires = "2026-09-28"
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -225,6 +226,7 @@ owner = "core"
 classification = "fixture"
 reason = "fixture policy file"
 evidence = ["test:deny_escalation_output"]
+created = "2026-06-01"
 review_after = "2026-08-01"
 
 [allow.selector]
@@ -241,6 +243,7 @@ path = "docs/policy.md"
 owner = "core"
 classification = "fixture"
 reason = "fixture policy documentation"
+created = "2026-06-01"
 review_after = "2026-08-01"
 
 [allow.selector]

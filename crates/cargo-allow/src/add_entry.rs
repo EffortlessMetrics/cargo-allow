@@ -94,22 +94,7 @@ pub(super) fn allow_entry_from_finding(request: AddEntryRequest<'_>) -> AllowEnt
 }
 
 pub(super) fn next_allow_id(cfg: &AllowConfig) -> String {
-    // Start from the max existing numeric suffix + 1 so IDs only ever
-    // increase. Previously used cfg.allow.len() + 1, which produced
-    // non-monotonic IDs after deletions (filling backwards) and could
-    // collide with existing higher IDs (#1820).
-    let max_existing = cfg
-        .allow
-        .iter()
-        .filter_map(|entry| {
-            entry
-                .id
-                .strip_prefix("allow-")
-                .and_then(|n| n.parse::<u32>().ok())
-        })
-        .max()
-        .unwrap_or(0);
-    let mut index = max_existing + 1;
+    let mut index = cfg.allow.len() + 1;
     loop {
         let candidate = format!("allow-{index:04}");
         if !cfg.allow.iter().any(|entry| entry.id == candidate) {
