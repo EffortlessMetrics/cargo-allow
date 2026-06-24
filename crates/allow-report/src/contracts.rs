@@ -175,6 +175,13 @@ pub const ARTIFACT_CONTRACTS: &[ArtifactContract] = &[
     WORKLIST_ARTIFACT,
 ];
 
+/// Look up an artifact contract by its full schema_id.
+///
+/// The schema_id includes the major version (e.g. `cargo-allow.receipt.v1`),
+/// so a v2 reader will NOT silently accept a v1 artifact — the schema_id
+/// simply won't match (#1856). Unknown major versions are rejected by
+/// the exact-match comparison, preventing silent acceptance of future
+/// schema versions by current consumers.
 pub fn artifact_contract_for_schema_id(schema_id: &str) -> Option<ArtifactContract> {
     ARTIFACT_CONTRACTS
         .iter()
