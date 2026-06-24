@@ -75,3 +75,20 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
 
 #[cfg(test)]
 mod tests;
+
+/// Heuristically detect whether a path is a test-only source file (#1798).
+///
+/// Returns true for:
+/// - Files under a `tests/` directory (integration tests)
+/// - Files ending in `_tests.rs` (inline test modules)
+/// - Files named `tests.rs`
+///
+/// Findings from these files are typically not production exceptions
+/// and can be filtered by callers to avoid polluting production scans.
+pub fn is_likely_test_file(path: impl AsRef<Path>) -> bool {
+    let path = path.as_ref();
+    let text = path.to_string_lossy();
+    let normalized = text.replace('\\', "/");
+    let file_name = normalized.rsplit('/').next().unwrap_or("");
+    normalized.contains("/tests/") || file_name.ends_with("_tests.rs") || file_name == "tests.rs"
+}
