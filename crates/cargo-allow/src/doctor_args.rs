@@ -19,6 +19,9 @@ pub(crate) struct DoctorArgs {
     /// Write doctor output to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
+    /// Exit non-zero if the policy is invalid or evidence is broken.
+    #[arg(long)]
+    pub(super) require_clean: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]

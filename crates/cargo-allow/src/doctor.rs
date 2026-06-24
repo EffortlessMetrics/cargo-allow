@@ -110,6 +110,22 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         DoctorFormat::Json => allow_report::render_doctor_json(report),
     };
     emit_text(args.output.as_deref(), &text)?;
+    // --require-clean: exit non-zero if the policy is invalid or evidence
+    // is broken (#1817). This lets CI gates use `doctor --require-clean`
+    // as a merge blocker.
+    if args.require_clean {
+        if !matches!(config_valid, Some(true)) {
+            return Err(CargoAllowError::new(
+                "doctor --require-clean: policy config is invalid or missing",
+            ));
+        }
+        if broken_evidence_links.unwrap_or(0) > 0 {
+            let count = broken_evidence_links.unwrap_or(0);
+            return Err(CargoAllowError::new(format!(
+                "doctor --require-clean: {count} broken evidence link(s)",
+            )));
+        }
+    }
     Ok(())
 }
 

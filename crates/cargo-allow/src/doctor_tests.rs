@@ -35,6 +35,7 @@ fn clap_parses_doctor_json_output() {
             config: Some(config),
             profile: None,
             format: DoctorFormat::Json,
+        require_clean: false,
             output: Some(output),
         })) if root == Path::new(".")
             && config == Path::new("policy/custom.toml")
@@ -61,6 +62,7 @@ fn clap_parses_spec_system_profile_for_doctor() {
         Some(CargoAllowCommand::Doctor(DoctorArgs {
             profile: Some(ProfileArg::SpecSystem),
             format: DoctorFormat::Json,
+            require_clean: false,
             ..
         }))
     ));
@@ -223,6 +225,7 @@ ignored = ["policy/**", "ignored/**"]
         config: Some(policy),
         profile: None,
         format: DoctorFormat::Json,
+        require_clean: false,
         output: Some(output.clone()),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
@@ -280,6 +283,7 @@ ast_kind = "tracked_file"
         config: Some(policy),
         profile: None,
         format: DoctorFormat::Json,
+        require_clean: false,
         output: Some(output.clone()),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
@@ -343,6 +347,7 @@ ast_kind = "tracked_file"
         config: Some(policy),
         profile: None,
         format: DoctorFormat::Json,
+        require_clean: false,
         output: Some(output.clone()),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
@@ -409,6 +414,7 @@ fn doctor_reports_untracked_local_evidence_as_broken_by_default() {
         config: Some(policy),
         profile: None,
         format: DoctorFormat::Json,
+        require_clean: false,
         output: Some(output.clone()),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
@@ -450,6 +456,7 @@ fn spec_system_doctor_reports_missing_readiness() {
         config: None,
         profile: Some(ProfileArg::SpecSystem),
         format: DoctorFormat::Json,
+        require_clean: false,
         output: Some(output.clone()),
     })
     .unwrap_or_else(|err| {
@@ -498,6 +505,7 @@ fn spec_system_doctor_reports_ready_when_bootstrap_files_exist() {
         config: None,
         profile: Some(ProfileArg::SpecSystem),
         format: DoctorFormat::Json,
+        require_clean: false,
         output: Some(output.clone()),
     })
     .unwrap_or_else(|err| {
@@ -562,6 +570,7 @@ fn spec_system_doctor_recognizes_allow_init_layout() {
         config: None,
         profile: Some(ProfileArg::SpecSystem),
         format: DoctorFormat::Json,
+        require_clean: false,
         output: Some(output.clone()),
     })
     .unwrap_or_else(|err| {
@@ -606,6 +615,7 @@ fn spec_system_doctor_reports_profile_config_provenance() {
         config: None,
         profile: Some(ProfileArg::SpecSystem),
         format: DoctorFormat::Json,
+        require_clean: false,
         output: Some(output.clone()),
     })
     .unwrap_or_else(|err| {
@@ -682,6 +692,7 @@ linked_plan = "plans/spec-system/implementation-plan.md"
         config: None,
         profile: Some(ProfileArg::SpecSystem),
         format: DoctorFormat::Json,
+        require_clean: false,
         output: Some(output.clone()),
     })
     .unwrap_or_else(|err| {
@@ -739,6 +750,7 @@ fn doctor_reports_configured_federation_ledgers() {
         config: None,
         profile: None,
         format: DoctorFormat::Json,
+        require_clean: false,
         output: Some(output.clone()),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
@@ -792,6 +804,7 @@ fn spec_system_doctor_reports_federation_ledgers_readiness() {
         config: None,
         profile: Some(ProfileArg::SpecSystem),
         format: DoctorFormat::Json,
+        require_clean: false,
         output: Some(output.clone()),
     })
     .unwrap_or_else(|err| {
