@@ -21,9 +21,10 @@ use check_deny::{deny_escalation_failed, validate_deny_statuses};
 use crate::federation_report::FederationReportBundle;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, ProfileArg, ReportRenderArgs,
-    SourceTreeReportContext, config_path, evidence_inventory::current_evidence_source_tree_files,
-    load_compat_world, load_world_with_evidence_mode, policy_baseline_debt_entries, print_report,
-    report_config, spec_system, write_file,
+    SourceTreeReportContext, assert_path_within_root, config_path,
+    evidence_inventory::current_evidence_source_tree_files, load_compat_world,
+    load_world_with_evidence_mode, policy_baseline_debt_entries, print_report, report_config,
+    spec_system, write_file,
 };
 use allow_inventory::{InventorySource, resolve_source_tree_root};
 
@@ -57,6 +58,15 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
 }
 
 fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
+    // Validate --output and --receipt paths are within the source tree (#1791)
+    if let Some(output) = &args.output {
+        let root = std::env::current_dir()?;
+        assert_path_within_root(&root, output)?;
+    }
+    if let Some(receipt) = &args.receipt {
+        let root = std::env::current_dir()?;
+        assert_path_within_root(&root, receipt)?;
+    }
     let (root, cfg, findings, inventory_facts, federation) = if args.compat {
         let (root, cfg, findings, inventory_facts) = load_compat_world(
             args.root.root.as_deref(),

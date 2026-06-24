@@ -125,6 +125,43 @@ pub(crate) fn root_relative_path(root: &Path, path: &Path) -> PathBuf {
     }
 }
 
+/// Assert that a write/output path stays within the source-tree root.
+/// Rejects paths that escape via .. or absolute paths outside the root (#1791).
+pub(crate) fn assert_path_within_root(root: &Path, path: &Path) -> CargoAllowResult<()> {
+    let canonical_root = root.canonicalize().map_err(|e| {
+        CargoAllowError::new(format!(
+            "failed to canonicalize root {}: {e}",
+            root.display()
+        ))
+    })?;
+    let canonical_path = path
+        .canonicalize()
+        .or_else(|_| {
+            if let Some(parent) = path.parent() {
+                parent
+                    .canonicalize()
+                    .map(|p| p.join(path.file_name().unwrap_or_default()))
+            } else {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "path has no parent",
+                ))
+            }
+        })
+        .map_err(|e| {
+            CargoAllowError::new(format!("failed to canonicalize {}: {e}", path.display()))
+        })?;
+    if canonical_path.starts_with(&canonical_root) {
+        Ok(())
+    } else {
+        Err(CargoAllowError::new(format!(
+            "output path {} is outside the source-tree root {}",
+            path.display(),
+            canonical_root.display()
+        )))
+    }
+}
+
 pub(crate) fn git_relative_config_path(
     root: &Path,
     config: Option<&Path>,
