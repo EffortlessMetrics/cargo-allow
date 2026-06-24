@@ -39,7 +39,7 @@ impl PolicyToml {
             policy: self.policy.unwrap_or_else(|| "cargo-allow".to_string()),
             owner: self.owner,
             status: self.status,
-            workspace: self.workspace.into_workspace_config(),
+            workspace: self.workspace.into_workspace_config()?,
             requirements: self.requirements.into_requirements(),
             lanes: self.lanes.into_lane_configs()?,
             allow,
@@ -51,6 +51,20 @@ pub(crate) fn parse_policy_toml_at(
     path: Option<&Path>,
     input: &str,
 ) -> CargoAllowResult<AllowConfig> {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        let location = path
+            .map(|p| format!(" in {}", p.display()))
+            .unwrap_or_default();
+        return Err(CargoAllowError::new(format!(
+            "policy file{location} is empty; an accidentally emptied or truncated ledger parses as a permissive state"
+        )));
+    }
+    // Strip leading UTF-8 BOM so Windows-saved policy files parse correctly.
+    // The toml crate treats \u{FEFF} as part of the first bare key, making
+    // schema_version unparseable and causing the file to be skipped as a
+    // foreign dialect during discovery (#2003).
+    let input = input.strip_prefix('\u{feff}').unwrap_or(input);
     let raw = toml::from_str::<PolicyToml>(input).map_err(|e| {
         let message = match path {
             Some(path) => format!("failed to parse policy TOML in {}: {e}", path.display()),
@@ -64,6 +78,14 @@ pub(crate) fn parse_policy_toml_at(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn empty_policy_file_is_rejected_not_silent_defaults() {
+        // Regression for #2002: empty/whitespace-only policy must not
+        // silently parse as a permissive empty ledger.
+        assert!(parse_policy_toml_at(None, "").is_err());
+        assert!(parse_policy_toml_at(None, "   \n  \n").is_err());
+    }
 
     #[test]
     fn policy_toml_into_config_applies_header_and_empty_defaults() {

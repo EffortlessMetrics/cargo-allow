@@ -8,7 +8,30 @@ pub(crate) fn detect_attr<'a>(line: &'a str, name: &str) -> Option<&'a str> {
 }
 
 pub(crate) fn extract_lints(text: &str) -> Vec<String> {
-    let until_close = text.split(')').next().unwrap_or(text);
+    // Walk the text tracking paren depth so that nested parens (e.g.
+    // #[allow(clippy::foo(bar))] or #[expect(clippy::baz(reason = "x)y"))])
+    // don't truncate the lint list at the inner ')' (#1879).
+    let until_close: String = {
+        let mut depth = 1i32; // we're already inside the outer (
+        let mut out = String::new();
+        for ch in text.chars() {
+            match ch {
+                '(' => {
+                    depth += 1;
+                    out.push(ch);
+                }
+                ')' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                    out.push(ch);
+                }
+                _ => out.push(ch),
+            }
+        }
+        out
+    };
     until_close
         .split(',')
         .filter_map(|part| {

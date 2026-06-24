@@ -80,8 +80,8 @@ review_after = "2026-07-01"
 expires = "2027-01-01"
 
 [selector]
-kind = "macro_call"
-macro = "panic"
+ast_kind = "macro_call"
+macro_name = "panic"
 line_hint = 41
 
 [last_seen]

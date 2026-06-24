@@ -60,5 +60,13 @@ pub fn policy_changes(base: &AllowConfig, head: &AllowConfig) -> Vec<PolicyChang
             changes.push(removed_allow_change(base_entry));
         }
     }
+    // Sort by (allow_id, kind) so the output is deterministic regardless of
+    // input entry ordering — critical for snapshot tests and CI diff caching
+    // (#1933).
+    changes.sort_by(|a, b| {
+        a.allow_id
+            .cmp(&b.allow_id)
+            .then_with(|| format!("{:?}", a.kind).cmp(&format!("{:?}", b.kind)))
+    });
     changes
 }

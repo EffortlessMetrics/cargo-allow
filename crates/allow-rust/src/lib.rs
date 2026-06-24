@@ -5,7 +5,7 @@
 //! without invoking Cargo, rustc, Clippy, build scripts, proc macros, macro
 //! expansion, type analysis, or MIR.
 
-use allow_core::{CargoAllowError, CargoAllowResult, Finding};
+use allow_core::{CargoAllowResult, Finding};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -46,9 +46,21 @@ pub fn scan_rust_files(
             continue;
         }
         let path = root.join(rel);
-        let text = fs::read_to_string(&path)
-            .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))?;
-        let mut findings = scan_rust_source(rel, &text);
+        // Read each file independently — a single unreadable or non-UTF8
+        // file must NOT abort the entire workspace scan (#1882). Skip the
+        // file and continue scanning the rest.
+        let text = match fs::read_to_string(&path) {
+            Ok(text) => text,
+            Err(e) => {
+                eprintln!("warning: skipping {} (read error: {e})", path.display());
+                continue;
+            }
+        };
+        // Strip leading UTF-8 BOM so crate-level #![...] attributes are
+        // detected on BOM-prefixed files (common on Windows-edited sources)
+        // (#1881).
+        let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
+        let mut findings = scan_rust_source(rel, text);
         apply_source_package_context(rel, &packages, &mut findings);
         out.extend(findings);
     }

@@ -6,19 +6,22 @@ pub(crate) fn is_scannable_non_rust(path: &Path) -> bool {
 }
 
 pub fn is_rust_source(path: &Path) -> bool {
-    path.extension().and_then(|e| e.to_str()) == Some("rs")
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("rs"))
 }
 
 pub(crate) fn is_builtin_allowed(path: &Path) -> bool {
     let text = path.to_string_lossy().replace('\\', "/");
+    let lower = text.to_ascii_lowercase();
     matches!(
-        text.as_str(),
+        lower.as_str(),
         "rust-toolchain.toml" | "rustfmt.toml" | "clippy.toml"
-    ) || text.starts_with("crates/") && text.ends_with("/README.md")
-        || text == "README.md"
-        || text == "LICENSE"
-        || text == "LICENSE-MIT"
-        || text == "LICENSE-APACHE"
+    ) || lower.starts_with("crates/") && lower.ends_with("/readme.md")
+        || lower == "readme.md"
+        || lower == "license"
+        || lower == "license-mit"
+        || lower == "license-apache"
 }
 
 pub(crate) fn is_generated_path(path: &Path, generated_patterns: &[String]) -> bool {
@@ -64,9 +67,10 @@ mod tests {
     }
 
     #[test]
-    fn is_rust_source_matches_lowercase_rs_extension_only() {
+    fn is_rust_source_matches_rs_extension_case_insensitive() {
         assert!(is_rust_source(Path::new("src/lib.rs")));
-        assert!(!is_rust_source(Path::new("src/lib.RS")));
+        assert!(is_rust_source(Path::new("src/lib.RS")));
+        assert!(is_rust_source(Path::new("src/lib.Rs")));
         assert!(!is_rust_source(Path::new("src/lib.rs.bak")));
         assert!(!is_rust_source(Path::new("src/lib")));
     }
@@ -82,18 +86,26 @@ mod tests {
             "LICENSE-MIT",
             "LICENSE-APACHE",
             "crates/allow-core/README.md",
+            // Case-insensitive on case-insensitive filesystems (#1822)
+            "README.MD",
+            "readme.md",
+            "license",
         ] {
-            assert!(is_builtin_allowed(Path::new(path)), "{path}");
+            assert!(
+                is_builtin_allowed(Path::new(path)),
+                "{path} should be allowed"
+            );
         }
 
         for path in [
             "docs/README.md",
             "crates/allow-core/guide.md",
-            "README.MD",
-            "LICENSE.md",
             "tools/clippy.toml",
         ] {
-            assert!(!is_builtin_allowed(Path::new(path)), "{path}");
+            assert!(
+                !is_builtin_allowed(Path::new(path)),
+                "{path} should not be allowed"
+            );
         }
     }
 

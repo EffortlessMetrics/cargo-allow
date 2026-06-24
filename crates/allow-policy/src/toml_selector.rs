@@ -6,11 +6,9 @@ use crate::toml_de::option_u32_or_string;
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct SelectorToml {
-    #[serde(alias = "kind")]
     ast_kind: Option<String>,
     container: Option<String>,
     callee: Option<String>,
-    #[serde(alias = "macro")]
     macro_name: Option<String>,
     lint: Option<String>,
     symbol: Option<String>,

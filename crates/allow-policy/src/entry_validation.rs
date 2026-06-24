@@ -70,6 +70,19 @@ pub(crate) fn validate_allow_entry_requirements(
     validate_non_empty_values(&entry.id, "link", &entry.links)?;
     validate_unique_values(&entry.id, "evidence", &entry.evidence)?;
     validate_unique_values(&entry.id, "link", &entry.links)?;
+    // Typed evidence references (doc:, spec:, adr:, etc.) must have a
+    // non-empty target after the prefix — "doc:" with no path is invalid
+    // (#1832).
+    for evidence in &entry.evidence {
+        if let Some(reference) = EvidenceReference::parse(evidence) {
+            if reference.kind.is_local_file() && reference.value.as_os_str().is_empty() {
+                return Err(CargoAllowError::new(format!(
+                    "{} evidence reference `{}` has an empty target",
+                    entry.id, evidence
+                )));
+            }
+        }
+    }
     if link_scope_validation == LinkScopeValidation::Strict {
         validate_local_link_scopes(entry)?;
     }

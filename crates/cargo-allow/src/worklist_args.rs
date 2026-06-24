@@ -82,7 +82,7 @@ pub(crate) struct WorklistArgs {
     #[arg(long)]
     pub(super) include_untracked: bool,
     /// Output format.
-    #[arg(long, value_enum, default_value_t = WorklistFormat::Json)]
+    #[arg(long, value_enum, default_value_t = WorklistFormat::Human)]
     pub(super) format: WorklistFormat,
     /// Write worklist to a file instead of stdout.
     #[arg(long)]

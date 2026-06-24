@@ -84,7 +84,16 @@ impl SimpleDate {
     }
 }
 
+/// Accepted year range for SimpleDate. Dates outside this range are rejected
+/// at parse time so typos like `expires: "99999-01-01"` or `expires: "3026-01-01"`
+/// don't silently make entries immortal (#1827).
+pub const MIN_YEAR: i32 = 1900;
+pub const MAX_YEAR: i32 = 9999;
+
 fn valid_ymd(year: i32, month: u32, day: u32) -> bool {
+    if !(MIN_YEAR..=MAX_YEAR).contains(&year) {
+        return false;
+    }
     let max_day = match month {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
         4 | 6 | 9 | 11 => 30,

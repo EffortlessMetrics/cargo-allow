@@ -3769,7 +3769,7 @@ fn saved_diff_output_covers_baseline_debt_normalization_details() {
             "--output",
             path_arg(&diff),
         ],
-        false,
+        true,
     );
 
     let value = assert_source_syntax_artifact_with_inventory(
@@ -3782,15 +3782,15 @@ fn saved_diff_output_covers_baseline_debt_normalization_details() {
         value
             .pointer("/diff/net_posture")
             .and_then(serde_json::Value::as_str),
-        Some("worse"),
-        "diff baseline-debt normalization net posture"
+        Some("improved"),
+        "diff baseline-debt normalization net posture (Improvement per #1926)"
     );
     assert_eq!(
         value
             .pointer("/diff/summary/policy_failures")
             .and_then(serde_json::Value::as_u64),
-        Some(1),
-        "diff baseline-debt normalization failure count"
+        Some(0),
+        "diff baseline-debt normalization failure count (0 per #1926)"
     );
 
     let changes = value
@@ -3812,8 +3812,8 @@ fn saved_diff_output_covers_baseline_debt_normalization_details() {
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
-        Some("fail"),
-        "baseline-debt normalization severity"
+        Some("improvement"),
+        "baseline-debt normalization severity (Improvement per #1926)"
     );
     assert_eq!(
         change

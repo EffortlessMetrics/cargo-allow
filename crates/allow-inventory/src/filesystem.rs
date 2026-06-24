@@ -6,7 +6,11 @@ pub(crate) fn existing_regular_files(root: &Path, files: Vec<PathBuf>) -> Vec<Pa
     files
         .into_iter()
         .filter(|path| {
-            fs::symlink_metadata(root.join(path))
+            // Use fs::metadata (follows symlinks) so a symlink pointing at a
+            // regular file is included. Previously symlink_metadata was used,
+            // which reports the link itself — is_file() is always false for a
+            // symlink, silently dropping symlinked source files (#1842).
+            fs::metadata(root.join(path))
                 .map(|metadata| metadata.file_type().is_file())
                 .unwrap_or(false)
         })
@@ -30,6 +34,16 @@ fn visit(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> CargoAllowResult<()
             CargoAllowError::new(format!("failed to inspect {}: {e}", path.display()))
         })?;
         if file_type.is_symlink() {
+            // Resolve the symlink target. Include if it points to a regular
+            // file (#1842). Do NOT recurse into symlinked directories (loop
+            // safety).
+            if fs::metadata(&path)
+                .map(|m| m.file_type().is_file())
+                .unwrap_or(false)
+            {
+                let rel = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
+                out.push(rel);
+            }
             continue;
         }
         let name = entry.file_name();

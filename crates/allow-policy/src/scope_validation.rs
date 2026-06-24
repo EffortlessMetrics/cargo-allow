@@ -8,7 +8,10 @@ use crate::text_validation::validate_required_text;
 pub(crate) fn validate_workspace(workspace: &WorkspaceConfig) -> CargoAllowResult<()> {
     validate_path_scope("workspace root", Path::new(&workspace.root))?;
     validate_required_text("workspace inventory", &workspace.inventory)?;
-    if workspace.inventory != "git-tracked" {
+    if !matches!(
+        workspace.inventory.as_str(),
+        "git-tracked" | "filesystem-fallback" | "filesystem-include-untracked"
+    ) {
         return Err(CargoAllowError::new(format!(
             "unsupported workspace inventory `{}`",
             workspace.inventory

@@ -1,4 +1,4 @@
-use allow_core::WorkspaceConfig;
+use allow_core::{CargoAllowResult, WorkspaceConfig};
 use serde::Deserialize;
 
 use crate::toml_de::string_or_vec;
@@ -16,9 +16,9 @@ pub(crate) struct WorkspaceToml {
 }
 
 impl WorkspaceToml {
-    pub(crate) fn into_workspace_config(self) -> WorkspaceConfig {
+    pub(crate) fn into_workspace_config(self) -> CargoAllowResult<WorkspaceConfig> {
         let default = WorkspaceConfig::default();
-        WorkspaceConfig {
+        Ok(WorkspaceConfig {
             root: self.root.unwrap_or(default.root),
             inventory: self
                 .inventory
@@ -35,7 +35,7 @@ impl WorkspaceToml {
                 self.generated
             },
             default_mode: self.default_mode.unwrap_or(default.default_mode),
-        }
+        })
     }
 }
 

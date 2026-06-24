@@ -47,11 +47,12 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         args.include_untracked,
         EvidenceValidationMode::ReportOnly,
     )?;
-    let entry = cfg
-        .allow
-        .iter()
-        .find(|e| e.id == args.id)
-        .ok_or_else(|| CargoAllowError::new(format!("no allow entry `{}`", args.id)))?;
+    let entry = cfg.allow.iter().find(|e| e.id == args.id).ok_or_else(|| {
+        CargoAllowError::new(format!(
+            "no allow entry `{}`; run `cargo-allow list` to see valid IDs",
+            args.id
+        ))
+    })?;
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = ExplainContext {
         inventory: source_context.inventory(),
