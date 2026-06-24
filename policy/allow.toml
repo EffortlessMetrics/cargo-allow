@@ -5141,3 +5141,20 @@ occurrence_limit = 4
 [allow.selector]
 ast_kind = "method_call"
 callee = "unwrap"
+
+[[allow]]
+id = "allow-0285"
+kind = "panic"
+family = "unwrap"
+path = "crates/cargo-allow/tests/schema_conformance.rs"
+owner = "core/tests"
+classification = "test_fixture"
+reason = "Schema conformance tests use .unwrap() for file reads and JSON parsing."
+evidence = ["test:schema_conformance"]
+created = "2026-06-24"
+review_after = "2026-09-24"
+occurrence_limit = 2
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"
