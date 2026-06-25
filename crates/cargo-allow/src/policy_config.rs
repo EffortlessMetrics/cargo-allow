@@ -125,6 +125,82 @@ pub(crate) fn root_relative_path(root: &Path, path: &Path) -> PathBuf {
     }
 }
 
+/// Assert that a write/output path stays within the source-tree root.
+///
+/// Rejects paths that escape via `..` traversal or absolute paths outside the
+/// root (#1791). The check is purely lexical: it resolves the path against the
+/// root and normalizes `.`/`..` components without touching the filesystem, so
+/// it works for output paths whose parent directories do not exist yet (the
+/// common case for a fresh `--receipt`/`--output` under `target/`). This avoids
+/// `canonicalize`-based checks, which fail on missing paths and behave
+/// inconsistently across platforms in the presence of symlinks.
+pub(crate) fn assert_path_within_root(root: &Path, path: &Path) -> CargoAllowResult<()> {
+    let joined = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    };
+    let normalized = lexical_normalize(&joined);
+    let root_normalized = lexical_normalize(root);
+    if normalized.starts_with(&root_normalized) {
+        Ok(())
+    } else {
+        Err(CargoAllowError::new(format!(
+            "output path {} is outside the source-tree root {}",
+            path.display(),
+            root.display()
+        )))
+    }
+}
+
+/// Lexically normalize a path by folding `.` and `..` components, without
+/// touching the filesystem. Mirrors `Path::components` semantics: an absolute
+/// path is normalized from its root; a relative path is normalized in place.
+///
+/// On Windows the source-tree root is typically already canonicalized by
+/// `resolve_source_tree_root`, which yields a verbatim (`\\?\`) path, while an
+/// output path supplied on the CLI is not. Stripping the verbatim prefix lets
+/// both sides compare consistently without canonicalizing the output path.
+fn lexical_normalize(path: &Path) -> PathBuf {
+    use std::path::Component;
+
+    let stripped = strip_verbatim_prefix(path);
+    let mut out: Vec<Component> = Vec::new();
+    for component in stripped.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => match out.last() {
+                // Fold `..` into the preceding normal component.
+                Some(Component::Normal(_)) => {
+                    out.pop();
+                }
+                // Keep leading `..` for relative paths (no root to cancel).
+                Some(Component::ParentDir) | None => out.push(Component::ParentDir),
+                _ => {}
+            },
+            other => out.push(other),
+        }
+    }
+    out.iter().collect()
+}
+
+/// Strip the Windows verbatim (`\\?\`) prefix from a path so it can be compared
+/// lexically against a non-verbatim path. A no-op on non-Windows platforms and
+/// on paths without the prefix.
+fn strip_verbatim_prefix(path: &Path) -> PathBuf {
+    let s = path.as_os_str();
+    if let Some(rest) = s.to_str().and_then(|s| s.strip_prefix(r"\\?\")) {
+        // `\\?\UNC\server\share\...` -> `\\server\share\...`
+        if let Some(unc) = rest.strip_prefix("UNC\\") {
+            PathBuf::from(format!(r"\\{unc}"))
+        } else {
+            PathBuf::from(rest)
+        }
+    } else {
+        path.to_path_buf()
+    }
+}
+
 pub(crate) fn git_relative_config_path(
     root: &Path,
     config: Option<&Path>,
