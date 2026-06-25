@@ -58,14 +58,16 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
 }
 
 fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
-    // Validate --output and --receipt paths are within the source tree (#1791)
+    // Validate --output and --receipt paths are within the resolved source-tree
+    // root (#1791). The root must be resolved from --root + cwd, not from the
+    // process cwd alone: callers regularly run with an out-of-tree --root and a
+    // --receipt/--output nested under that root.
+    let resolved_root = resolve_check_root(args)?;
     if let Some(output) = &args.output {
-        let root = std::env::current_dir()?;
-        assert_path_within_root(&root, output)?;
+        assert_path_within_root(&resolved_root, output)?;
     }
     if let Some(receipt) = &args.receipt {
-        let root = std::env::current_dir()?;
-        assert_path_within_root(&root, receipt)?;
+        assert_path_within_root(&resolved_root, receipt)?;
     }
     let (root, cfg, findings, inventory_facts, federation) = if args.compat {
         let (root, cfg, findings, inventory_facts) = load_compat_world(
@@ -184,6 +186,10 @@ fn write_check_error_receipt(
     err: &CargoAllowError,
 ) -> CargoAllowResult<()> {
     let root = resolve_check_root(args)?;
+    // Never write an error receipt outside the source-tree root: if the run
+    // failed because --receipt escaped the root, writing the error receipt
+    // there would itself violate the containment contract (#1791).
+    assert_path_within_root(&root, path)?;
     let mode = args
         .mode
         .as_deref()
