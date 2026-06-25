@@ -6,16 +6,46 @@
 //! would write outside the resolved source-tree root. The first case is what
 //! broke when the guard compared against the process cwd instead of the
 //! resolved root and used `canonicalize` (which fails on missing parents).
-
-mod support;
+//!
+//! This is a focused test: per the repo convention for focused tests
+//! (version_output, policy_discovery) it inlines its own subprocess helpers and
+//! does not pull in the shared `tests/support` module.
 
 use std::fs;
+use std::path::PathBuf;
+use std::process::Command;
 
-use support::{cargo_allow_command, remove_temp_root, temp_root};
+fn cargo_allow_command() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+}
+
+fn temp_root(label: &str) -> PathBuf {
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-{label}-{}-{unique}",
+        std::process::id()
+    ));
+    fs::create_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
+    root
+}
+
+fn remove_temp_root(root: PathBuf) {
+    match fs::remove_dir_all(&root) {
+        Ok(()) => {}
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
+    }
+}
 
 fn write_minimal_policy(root: &std::path::Path) {
-    fs::create_dir_all(root.join("policy")).unwrap();
-    fs::write(root.join("policy/allow.toml"), "policy = \"cargo-allow\"\n").unwrap();
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(root.join("policy/allow.toml"), "policy = \"cargo-allow\"\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
 }
 
 /// A receipt nested under an out-of-tree `--root`, with a not-yet-existing
@@ -35,7 +65,7 @@ fn receipt_under_out_of_tree_root_is_accepted() {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap();
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}")));
 
     // Audit mode is informational -> check succeeds (exit 0) and writes the
     // receipt even though its parent dir did not pre-exist.
@@ -60,8 +90,8 @@ fn output_escaping_root_via_parent_traversal_is_rejected() {
     write_minimal_policy(&root);
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
     let escaping_name = format!("escape-{unique}.md");
     // `../{name}` joined to the absolute root normalizes to a sibling of the
     // root — outside the source-tree root.
@@ -80,7 +110,7 @@ fn output_escaping_root_via_parent_traversal_is_rejected() {
         .arg("--output")
         .arg(&escaping)
         .output()
-        .unwrap();
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}")));
 
     assert!(
         !result.status.success(),
@@ -108,11 +138,10 @@ fn output_escaping_root_via_parent_traversal_is_rejected() {
 fn receipt_escaping_root_via_parent_traversal_is_rejected() {
     let root = temp_root("containment-receipt-traversal");
     write_minimal_policy(&root);
-    // Unique filename so no sibling test's leftover can mask the assertion.
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
     let escaping_name = format!("escaped-{unique}.receipt.json");
     // `../{name}` (joined to an absolute root) normalizes to a sibling of the
     // root — one level above the source-tree root, i.e. outside the root.
@@ -131,7 +160,7 @@ fn receipt_escaping_root_via_parent_traversal_is_rejected() {
         .arg("--receipt")
         .arg(&escaping_arg)
         .output()
-        .unwrap();
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}")));
 
     assert!(
         !result.status.success(),

@@ -1,10 +1,3 @@
-//! Shared subprocess-test helpers for the `cargo-allow` integration tests.
-//!
-//! Not every test binary uses every helper, so the module is allowed to carry
-//! dead code; this keeps `cargo clippy --all-targets -D warnings` green for
-//! focused test files that exercise only part of the surface.
-#![allow(dead_code)]
-
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Output};
