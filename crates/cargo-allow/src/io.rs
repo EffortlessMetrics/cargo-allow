@@ -24,6 +24,12 @@ pub(crate) fn emit_stderr_text(output: Option<&Path>, contents: &str) -> CargoAl
 /// Atomically write `contents` to `path`: write to a sibling `<path>.tmp`
 /// file, then `fs::rename` into place. On any error the destination is left
 /// untouched (either the complete previous file or nothing — never partial).
+///
+/// Recovers from a leftover `<path>.tmp` from a prior interrupted write (e.g.
+/// a killed process or a transient failure) so one failed write cannot
+/// permanently block the write path: if the temp already exists when we open
+/// it, we remove it and retry the atomic create. Every failure path also
+/// removes the temp so a half-written temp never lingers.
 pub(crate) fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowResult<()> {
     let path = path.as_ref();
     if let Some(parent) = path.parent() {
@@ -32,17 +38,45 @@ pub(crate) fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowRe
         })?;
     }
     let tmp = sibling_tmp_path(path);
+    // `create_new` makes the existence check + creation one syscall (no
+    // TOCTOU for symlink planting). A leftover temp from a prior crash would
+    // make this fail with AlreadyExists; recover by removing the stale temp
+    // and retrying once so the write path self-heals.
+    let mut file = match OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .truncate(true)
+        .open(&tmp)
     {
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .truncate(true)
-            .open(&tmp)
-            .map_err(|e| CargoAllowError::new(format!("failed to open {}: {e}", tmp.display())))?;
-        file.write_all(contents.as_bytes())
-            .map_err(|e| CargoAllowError::new(format!("failed to write {}: {e}", tmp.display())))?;
-        file.sync_all().ok();
+        Ok(file) => file,
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            let _ = fs::remove_file(&tmp);
+            OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .truncate(true)
+                .open(&tmp)
+                .map_err(|e| {
+                    CargoAllowError::new(format!("failed to open {}: {e}", tmp.display()))
+                })?
+        }
+        Err(e) => {
+            return Err(CargoAllowError::new(format!(
+                "failed to open {}: {e}",
+                tmp.display()
+            )));
+        }
+    };
+    // If writing or syncing the temp fails, remove it so a partial temp never
+    // lingers to trip up the next write; the destination is still untouched.
+    if let Err(e) = file.write_all(contents.as_bytes()) {
+        let _ = fs::remove_file(&tmp);
+        return Err(CargoAllowError::new(format!(
+            "failed to write {}: {e}",
+            tmp.display()
+        )));
     }
+    let _ = file.sync_all();
     fs::rename(&tmp, path).map_err(|e| {
         let _ = fs::remove_file(&tmp);
         CargoAllowError::new(format!("failed to install {}: {e}", path.display()))
@@ -53,7 +87,8 @@ pub(crate) fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowRe
 /// `force` is set). Uses `OpenOptions::create_new` so the existence check
 /// and the creation are one atomic syscall — no TOCTOU window for symlink
 /// planting. With `force`, the existing file is backed up to `<path>.bak`
-/// before the atomic write replaces it.
+/// before the atomic write replaces it. If the write fails partway, the
+/// partial new file is removed so a half-written ledger never lingers.
 pub(crate) fn write_file_no_overwrite(
     path: impl AsRef<Path>,
     contents: &str,
@@ -93,8 +128,15 @@ pub(crate) fn write_file_no_overwrite(
                 path.display()
             ))
         })?;
-    file.write_all(contents.as_bytes())
-        .map_err(|e| CargoAllowError::new(format!("failed to write {}: {e}", path.display())))?;
+    // If writing fails partway, remove the partial file so a half-written new
+    // ledger never lingers at the target path.
+    if let Err(e) = file.write_all(contents.as_bytes()) {
+        let _ = fs::remove_file(path);
+        return Err(CargoAllowError::new(format!(
+            "failed to write {}: {e}",
+            path.display()
+        )));
+    }
     Ok(())
 }
 
@@ -236,6 +278,69 @@ mod tests {
 
         // The original file is untouched.
         assert_eq!(fs::read_to_string(&target)?, "original content");
+        Ok(())
+    }
+
+    #[test]
+    fn write_file_cleans_up_temp_after_failure() -> Result<(), Box<dyn std::error::Error>> {
+        // A failed write must not leave its sibling temp file behind. A stale
+        // `<path>.tmp` would make every later `create_new` open to the same
+        // target fail, turning one transient failure into a permanent one
+        // (the ledger could never be written again without manual cleanup).
+        let root = TempRoot::new("atomic-cleanup")?;
+        let target = root.path().join("policy/allow.toml");
+        let tmp = sibling_tmp_path(&target);
+
+        // Force a failure by making the temp path a directory, so the
+        // `create_new` open of the temp cannot succeed.
+        fs::create_dir_all(&tmp)?;
+        let result = write_file(&target, "first");
+        assert!(
+            result.is_err(),
+            "write should fail when its temp is a directory"
+        );
+
+        // After the failure the temp path must not hold a file/dir that the
+        // next write would trip over: remove our planted dir and confirm no
+        // file was created at the temp location.
+        fs::remove_dir_all(&tmp)?;
+        assert!(
+            !tmp.exists(),
+            "no stale temp file should remain after a failed write"
+        );
+
+        // The next write to the same target must succeed — the prior failure
+        // must not have poisoned the write path.
+        write_file(&target, "recovered")?;
+        assert_eq!(fs::read_to_string(&target)?, "recovered");
+        assert!(
+            !tmp.exists(),
+            "successful write must not leave its temp behind"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn write_file_recoverable_after_stale_temp_from_prior_crash()
+    -> Result<(), Box<dyn std::error::Error>> {
+        // Simulate a prior interrupted write: a `<path>.tmp` file is left on
+        // disk (e.g. the process was killed between open and rename). The next
+        // `write_file` must recover by replacing the stale temp, not fail
+        // forever because `create_new` sees the leftover.
+        let root = TempRoot::new("stale-temp-recover")?;
+        let target = root.path().join("policy/allow.toml");
+        let tmp = sibling_tmp_path(&target);
+
+        let parent = target
+            .parent()
+            .unwrap_or_else(|| std::panic::panic_any("test target must have a parent directory"));
+        fs::create_dir_all(parent)?;
+        fs::write(&tmp, "leftover from a crashed write")?;
+
+        write_file(&target, "the real content")?;
+
+        assert_eq!(fs::read_to_string(&target)?, "the real content");
+        assert!(!tmp.exists(), "the stale temp must be replaced/removed");
         Ok(())
     }
 
