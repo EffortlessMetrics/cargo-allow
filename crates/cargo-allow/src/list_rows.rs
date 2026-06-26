@@ -98,7 +98,7 @@ fn list_entry_status(
     outcomes: &[&MatchOutcome],
     today: SimpleDate,
 ) -> MatchStatus {
-    if date_is_before(entry.lifecycle.expires.as_deref(), today) {
+    if date_has_passed(entry.lifecycle.expires.as_deref(), today) {
         return MatchStatus::Expired;
     }
     if date_is_due(entry.lifecycle.review_after.as_deref(), today) {
@@ -122,8 +122,8 @@ fn list_entry_status(
     MatchStatus::Matched
 }
 
-fn date_is_before(date: Option<&str>, today: SimpleDate) -> bool {
-    SimpleDate::is_before_date_str(date, today)
+fn date_has_passed(date: Option<&str>, today: SimpleDate) -> bool {
+    SimpleDate::has_passed_date_str(date, today)
 }
 
 fn date_is_due(date: Option<&str>, today: SimpleDate) -> bool {

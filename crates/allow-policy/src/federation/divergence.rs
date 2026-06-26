@@ -69,7 +69,7 @@ pub fn detect_mirror_divergences(
         if mirror.role != LedgerRole::Mirror || canonical.role != LedgerRole::Canonical {
             continue;
         }
-        if SimpleDate::is_before_date_str(drain.expiry.as_deref(), today) {
+        if SimpleDate::has_passed_date_str(drain.expiry.as_deref(), today) {
             records.push(FederationDivergenceRecord {
                 kind: FederationDivergenceKind::DrainExpired,
                 message: format!(
