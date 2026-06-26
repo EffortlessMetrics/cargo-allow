@@ -75,10 +75,21 @@ impl SimpleDate {
         Self::from_days_since_unix_epoch((seconds / 86_400) as i64)
     }
 
-    pub fn is_before_date_str(date: Option<&str>, today: Self) -> bool {
-        date.and_then(Self::parse).is_some_and(|date| date < today)
+    /// `true` when `date` has arrived as of `today` — i.e. `date <= today`
+    /// (inclusive of the deadline day itself).
+    ///
+    /// This is the deadline/expiry predicate used for `expires` and drain
+    /// windows. The boundary is inclusive: a deadline dated *today* has passed
+    /// (#2008 — a strict `<` previously enforced expiry one day late, letting
+    /// drain windows and entries live a day past their stated expiry). The
+    /// `is_due_date_str` review predicate uses the same inclusive boundary so
+    /// the two cannot drift.
+    pub fn has_passed_date_str(date: Option<&str>, today: Self) -> bool {
+        date.and_then(Self::parse).is_some_and(|date| date <= today)
     }
 
+    /// `true` when `date` is due on or before `today` — i.e. `date <= today`
+    /// (inclusive). Used for `review_after`.
     pub fn is_due_date_str(date: Option<&str>, today: Self) -> bool {
         date.and_then(Self::parse).is_some_and(|date| date <= today)
     }
