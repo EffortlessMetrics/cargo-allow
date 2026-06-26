@@ -62,6 +62,118 @@ fn allow_config_empty_sets_document_defaults() {
 }
 
 #[test]
+fn allow_config_empty_validate_passes() {
+    // The documented-empty config must validate: programmatic core consumers
+    // building `AllowConfig::empty()` get a valid baseline.
+    assert_eq!(AllowConfig::empty().validate(), Ok(()));
+}
+
+#[test]
+fn validate_rejects_empty_schema_version() {
+    let mut config = AllowConfig::empty();
+    config.schema_version = "  ".to_string();
+    let err = config
+        .validate()
+        .expect_err("empty schema_version should fail");
+    assert!(err.to_string().contains("schema_version must not be empty"));
+    assert_eq!(err.kind(), CargoAllowErrorKind::InvalidPolicy);
+}
+
+#[test]
+fn validate_rejects_unsupported_schema_version() {
+    let mut config = AllowConfig::empty();
+    config.schema_version = "0.2".to_string();
+    let err = config
+        .validate()
+        .expect_err("unsupported schema_version should fail");
+    assert!(
+        err.to_string()
+            .contains("unsupported policy schema_version `0.2`")
+    );
+}
+
+#[test]
+fn validate_rejects_empty_policy_name() {
+    let mut config = AllowConfig::empty();
+    config.policy = String::new();
+    let err = config.validate().expect_err("empty policy should fail");
+    assert!(err.to_string().contains("policy name must not be empty"));
+}
+
+#[test]
+fn validate_rejects_unsupported_policy_name() {
+    let mut config = AllowConfig::empty();
+    config.policy = "not-cargo-allow".to_string();
+    let err = config
+        .validate()
+        .expect_err("unsupported policy name should fail");
+    assert!(
+        err.to_string()
+            .contains("unsupported policy `not-cargo-allow`")
+    );
+}
+
+#[test]
+fn validate_rejects_typoed_default_mode() {
+    // `no_new` (underscore) is a common typo for `no-new` and must be rejected
+    // at the core data-model level, not silently treated as a string.
+    let mut config = AllowConfig::empty();
+    config.workspace.default_mode = "no_new".to_string();
+    let err = config
+        .validate()
+        .expect_err("typoed default_mode should fail");
+    assert!(
+        err.to_string()
+            .contains("unsupported workspace default_mode `no_new`")
+    );
+}
+
+#[test]
+fn validate_rejects_empty_status() {
+    let mut config = AllowConfig::empty();
+    config.status = Some("  ".to_string());
+    let err = config.validate().expect_err("empty status should fail");
+    assert!(err.to_string().contains("policy status must not be empty"));
+}
+
+#[test]
+fn validate_aggregates_multiple_errors() {
+    let mut config = AllowConfig::empty();
+    config.schema_version = String::new();
+    config.policy = String::new();
+    config.workspace.default_mode = "bogus".to_string();
+    let err = config
+        .validate()
+        .expect_err("multiple problems should fail");
+    let message = err.to_string();
+    assert!(
+        message.starts_with("3 policy validation errors:"),
+        "{message}"
+    );
+    assert!(message.contains("schema_version must not be empty"));
+    assert!(message.contains("policy name must not be empty"));
+    assert!(message.contains("unsupported workspace default_mode `bogus`"));
+}
+
+#[test]
+fn workspace_mode_round_trips_and_rejects_unknown() {
+    for mode in WorkspaceMode::ALL {
+        let s = mode.as_str();
+        assert_eq!(WorkspaceMode::from_str(s), Ok(*mode), "{s}");
+    }
+    // The default is `no-new`.
+    assert_eq!(WorkspaceMode::default(), WorkspaceMode::NoNew);
+    assert_eq!(WorkspaceMode::default().as_str(), "no-new");
+    // `no_new` (underscore) must not parse — it is a distinct value from
+    // `no-new` and a common copy-paste typo.
+    let err = WorkspaceMode::from_str("no_new").expect_err("underscore form must not parse");
+    assert!(
+        err.to_string()
+            .contains("unsupported workspace default_mode `no_new`")
+    );
+}
+
+#[test]
 fn match_status_strings_and_failure_modes_cover_all_statuses() {
     for status in [
         MatchStatus::Matched,
