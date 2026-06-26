@@ -1,6 +1,9 @@
-use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, WorkspaceConfig, normalize_path};
+use allow_core::{
+    AllowEntry, CargoAllowError, CargoAllowResult, WorkspaceConfig, WorkspaceMode, normalize_path,
+};
 use std::collections::BTreeSet;
 use std::path::Path;
+use std::str::FromStr;
 
 use crate::source_tree_scope::{normalize_source_tree_scope, validate_glob, validate_path_scope};
 use crate::text_validation::validate_required_text;
@@ -17,16 +20,11 @@ pub(crate) fn validate_workspace(workspace: &WorkspaceConfig) -> CargoAllowResul
             workspace.inventory
         )));
     }
+    // default_mode is validated against the canonical WorkspaceMode enum in
+    // allow-core (single source of truth) so typos like `no_new` are rejected
+    // here and in `AllowConfig::validate`.
     validate_required_text("workspace default_mode", &workspace.default_mode)?;
-    if !matches!(
-        workspace.default_mode.as_str(),
-        "audit" | "no-new" | "strict" | "release"
-    ) {
-        return Err(CargoAllowError::new(format!(
-            "unsupported workspace default_mode `{}`",
-            workspace.default_mode
-        )));
-    }
+    WorkspaceMode::from_str(&workspace.default_mode)?;
     for pattern in &workspace.ignored {
         validate_glob("source-tree ignored glob", pattern)?;
     }
