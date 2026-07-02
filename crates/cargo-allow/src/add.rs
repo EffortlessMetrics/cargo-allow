@@ -1,5 +1,5 @@
 use allow_core::{
-    CargoAllowError, CargoAllowResult, Finding, FindingKind, MatchOutcome, SimpleDate,
+    AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, MatchOutcome, SimpleDate,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
@@ -15,8 +15,8 @@ mod add_types;
 pub(crate) use add_args::AddArgs;
 use add_args::AddSummaryFormat;
 use add_entry::{
-    AddEntryRequest, allow_entry_from_finding, ensure_addable_outcome, next_allow_id,
-    select_add_finding,
+    AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
+    count_in_scope_findings, ensure_addable_outcome, next_allow_id, select_add_finding,
 };
 use add_render::{render_add_summary, render_add_summary_json};
 pub(super) use add_types::AddContext;
@@ -31,8 +31,10 @@ use crate::{
 
 const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
 
+use std::path::Path;
+
 #[cfg(test)]
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let parsed_kind = parse_kind_filter(&args.kind)?;
@@ -43,43 +45,97 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         Some(args.kind.as_str()),
         args.include_untracked,
     )?;
-    let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
-    let (finding_index, finding) =
-        select_add_finding(&findings, parsed_kind, &args.path, args.line)?;
-    let selected_outcome = selected_add_outcome(&outcomes, finding_index)?;
-    ensure_addable_outcome(selected_outcome.status)?;
-    require_add_evidence(finding, &args.evidence)?;
     let id = args.id.clone().unwrap_or_else(|| next_allow_id(&cfg));
     if cfg.allow.iter().any(|entry| entry.id == id) {
         return Err(CargoAllowError::new(format!(
             "allow entry id `{id}` already exists"
         )));
     }
-    let entry = allow_entry_from_finding(AddEntryRequest {
-        finding,
-        id,
-        owner: args.owner.clone(),
-        classification: args.classification.clone(),
-        reason: args.reason.clone(),
-        evidence: args.evidence.clone(),
-        review_after: args
-            .review_after
-            .clone()
-            .unwrap_or_else(default_add_review_after),
-        expires: args.expires.clone(),
-    });
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = AddContext {
         inventory: source_context.inventory(),
     };
-    let summary = match args.summary_format {
-        AddSummaryFormat::Human => {
-            render_add_summary(&entry, finding, args.write.as_deref(), context)
+
+    let (entry, summary) = if let Some(glob) = args.glob.clone() {
+        // --glob: broad-scope baseline. Build a broad selector, count current
+        // in-scope findings, and pin that count as occurrence_limit so the
+        // entry is a ratchet floor (#2056).
+        if args.path.is_some() || args.line.is_some() {
+            return Err(CargoAllowError::new(
+                "--glob is mutually exclusive with --path/--line",
+            ));
         }
-        AddSummaryFormat::Json => {
-            render_add_summary_json(&entry, finding, args.write.as_deref(), args.force, context)
+        require_add_evidence_for_kind(parsed_kind.kind, &args.evidence)?;
+        let mut broad = allow_entry_broad(AddBroadRequest {
+            id,
+            kind: parsed_kind.kind,
+            family: args.family.clone(),
+            callee: args.callee.clone(),
+            glob: glob.clone(),
+            owner: args.owner.clone(),
+            classification: args.classification.clone(),
+            reason: args.reason.clone(),
+            evidence: args.evidence.clone(),
+            review_after: args
+                .review_after
+                .clone()
+                .unwrap_or_else(default_add_review_after),
+            expires: args.expires.clone(),
+        });
+        let count = count_in_scope_findings(&findings, &broad);
+        if count == 0 {
+            return Err(CargoAllowError::new(format!(
+                "no current {} findings match glob `{}`; cannot baseline an empty scope",
+                args.kind, glob
+            )));
         }
+        broad.occurrence_limit = Some(count);
+        let summary = match args.summary_format {
+            AddSummaryFormat::Human => {
+                render_add_summary_broad_human(&broad, args.write.as_deref())
+            }
+            AddSummaryFormat::Json => {
+                render_add_summary_broad_json(&broad, args.write.as_deref(), args.force)
+            }
+        };
+        (broad, summary)
+    } else {
+        // --path/--line: receipt one specific occurrence (structurally anchored).
+        let path = args.path.as_ref().ok_or_else(|| {
+            CargoAllowError::new("either --glob or --path (with --line) is required")
+        })?;
+        let line = args.line.ok_or_else(|| {
+            CargoAllowError::new("--line is required with --path (or use --glob)")
+        })?;
+        let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
+        let (finding_index, finding) = select_add_finding(&findings, parsed_kind, path, line)?;
+        let selected_outcome = selected_add_outcome(&outcomes, finding_index)?;
+        ensure_addable_outcome(selected_outcome.status)?;
+        require_add_evidence(finding, &args.evidence)?;
+        let entry = allow_entry_from_finding(AddEntryRequest {
+            finding,
+            id,
+            owner: args.owner.clone(),
+            classification: args.classification.clone(),
+            reason: args.reason.clone(),
+            evidence: args.evidence.clone(),
+            review_after: args
+                .review_after
+                .clone()
+                .unwrap_or_else(default_add_review_after),
+            expires: args.expires.clone(),
+        });
+        let summary = match args.summary_format {
+            AddSummaryFormat::Human => {
+                render_add_summary(&entry, finding, args.write.as_deref(), context)
+            }
+            AddSummaryFormat::Json => {
+                render_add_summary_json(&entry, finding, args.write.as_deref(), args.force, context)
+            }
+        };
+        (entry, summary)
     };
+
     cfg.allow.push(entry);
     validate_policy(&cfg)?;
     let evidence_source_tree_files =
@@ -93,6 +149,58 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     }
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())
+}
+
+fn require_add_evidence_for_kind(kind: FindingKind, evidence: &[String]) -> CargoAllowResult<()> {
+    let label = match kind {
+        FindingKind::Unsafe => Some("unsafe"),
+        _ => None,
+    };
+    let Some(label) = label else {
+        return Ok(());
+    };
+    if evidence.is_empty() {
+        return Err(CargoAllowError::new(format!(
+            "{label} allow entries require at least one --evidence reference"
+        )));
+    }
+    if evidence
+        .iter()
+        .any(|reference| evidence_reference_is_typed(reference))
+    {
+        return Ok(());
+    }
+    Err(CargoAllowError::new(format!(
+        "{label} allow entries require at least one typed --evidence reference with a recognized non-empty prefix:value target"
+    )))
+}
+
+fn render_add_summary_broad_human(entry: &AllowEntry, output: Option<&Path>) -> String {
+    let target = output
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| "stdout".to_string());
+    format!(
+        "added broad baseline {} (kind={}, scope={}, occurrence_limit={}); policy written to {}\n",
+        entry.id,
+        entry.kind,
+        entry.path_or_glob(),
+        entry.occurrence_limit.unwrap_or(0),
+        target
+    )
+}
+
+fn render_add_summary_broad_json(entry: &AllowEntry, output: Option<&Path>, force: bool) -> String {
+    let policy_output = output.map(|p| p.display().to_string());
+    let action = if force { "overwrite" } else { "write" };
+    format!(
+        "{{\"id\":\"{}\",\"kind\":\"{}\",\"scope\":\"{}\",\"occurrence_limit\":{},\"policy_output\":\"{}\",\"action\":\"{}\"}}",
+        entry.id,
+        entry.kind,
+        entry.path_or_glob(),
+        entry.occurrence_limit.unwrap_or(0),
+        policy_output.as_deref().unwrap_or("stdout"),
+        action,
+    )
 }
 
 fn selected_add_outcome(
