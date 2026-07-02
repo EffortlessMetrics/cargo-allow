@@ -9,6 +9,7 @@ use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+mod bare_allow_conflict;
 mod discovery;
 mod entries_validation;
 mod entry_validation;
