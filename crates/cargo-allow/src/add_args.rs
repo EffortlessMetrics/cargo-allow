@@ -13,12 +13,31 @@ pub(crate) struct AddArgs {
     /// Finding kind to add.
     #[arg(long)]
     pub(super) kind: String,
-    /// Path containing the finding.
+    /// Path containing the finding. Use with --line to receipt one specific
+    /// occurrence. Mutually exclusive with --glob.
     #[arg(long)]
-    pub(super) path: PathBuf,
-    /// Line near the finding.
+    pub(super) path: Option<PathBuf>,
+    /// Line near the finding. Use with --path to receipt one specific
+    /// occurrence. Mutually exclusive with --glob.
     #[arg(long)]
-    pub(super) line: u32,
+    pub(super) line: Option<u32>,
+    /// Glob scope for a broad baseline (e.g. `src/foo.rs`, `src/**/*.rs`).
+    /// Instead of receipting one occurrence, this receipts every current
+    /// in-scope finding and pins the count as `occurrence_limit`, so the N+1th
+    /// in-scope occurrence fails `check --mode no-new` (#2056). Mutually
+    /// exclusive with --path/--line.
+    #[arg(long)]
+    pub(super) glob: Option<String>,
+    /// Family filter for a --glob baseline (e.g. `unwrap`, `expect`). Narrows
+    /// which in-scope findings the broad selector matches. Only meaningful with
+    /// --glob.
+    #[arg(long)]
+    pub(super) family: Option<String>,
+    /// Callee filter for a --glob baseline (e.g. `unwrap`). Narrows which
+    /// in-scope findings the broad selector matches. Only meaningful with
+    /// --glob.
+    #[arg(long)]
+    pub(super) callee: Option<String>,
     /// Owner for the retained exception.
     #[arg(long)]
     pub(super) owner: String,

@@ -1,7 +1,8 @@
 use allow_core::{
-    AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, LastSeen, Lifecycle,
-    MatchStatus, SimpleDate, normalize_path,
+    AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, LastSeen,
+    Lifecycle, MatchStatus, Selector, SimpleDate, normalize_path,
 };
+use allow_match::score_match;
 use std::path::Path;
 
 use crate::{KindFilter, selector_from_finding};
@@ -91,6 +92,67 @@ pub(super) fn allow_entry_from_finding(request: AddEntryRequest<'_>) -> AllowEnt
             column: s.column,
         }),
     }
+}
+
+pub(super) struct AddBroadRequest {
+    pub id: String,
+    pub kind: FindingKind,
+    pub family: Option<String>,
+    pub callee: Option<String>,
+    pub glob: String,
+    pub owner: String,
+    pub classification: String,
+    pub reason: String,
+    pub evidence: Vec<String>,
+    pub review_after: String,
+    pub expires: Option<String>,
+}
+
+/// Build a broad-scope allow entry: a selector keyed on `glob` (+ optional
+/// `callee`) with **no** `normalized_snippet_hash`, so it matches every current
+/// in-scope occurrence. The caller pins the current in-scope count as
+/// `occurrence_limit` so the entry is a ratchet floor, not an unlimited waiver
+/// (#2056).
+pub(super) fn allow_entry_broad(request: AddBroadRequest) -> AllowEntry {
+    let selector = Selector {
+        callee: request.callee,
+        glob: Some(request.glob.clone()),
+        ..Selector::default()
+    };
+    AllowEntry {
+        id: request.id,
+        kind: request.kind,
+        family: request.family,
+        path: None,
+        glob: Some(request.glob),
+        owner: request.owner,
+        classification: request.classification,
+        reason: request.reason,
+        evidence: request.evidence,
+        links: Vec::new(),
+        // Pinned by the caller via `count_in_scope_findings`; None here is only
+        // a default that `cmd_add` overwrites before validation.
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: Some(SimpleDate::today_utc_approx().to_string()),
+            review_after: Some(request.review_after),
+            expires: request.expires,
+        },
+        selector,
+        last_seen: None,
+    }
+}
+
+/// Count how many current findings match `entry`'s selector, using the same
+/// match test `evaluate` applies (`score_match` returns `Some` iff every hard
+/// gate — kind, family, path/glob, structural identity, exact selector fields
+/// — passes). This is the baseline count pinned as `occurrence_limit` so the
+/// N+1th in-scope occurrence fails `check --mode no-new`.
+pub(super) fn count_in_scope_findings(findings: &[Finding], entry: &AllowEntry) -> u32 {
+    findings
+        .iter()
+        .filter(|finding| score_match(entry, finding).is_some())
+        .count() as u32
 }
 
 pub(super) fn next_allow_id(cfg: &AllowConfig) -> String {
