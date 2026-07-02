@@ -209,15 +209,23 @@ fn detect_drain_window_issues(
         .collect::<HashMap<_, _>>();
     let mut diagnostics = Vec::new();
     for drain in drain_windows {
+        // `expiry` is required: a drain window without one never reports
+        // DrainExpired (a None expiry never "passes"), so the mirror ledger
+        // would live forever. (#2006)
         if drain.drain_owner.trim().is_empty()
             || drain.drain_reason.trim().is_empty()
             || drain.review_after.trim().is_empty()
             || drain.linked_closeout.trim().is_empty()
+            || drain
+                .expiry
+                .as_ref()
+                .map(|expiry| expiry.trim().is_empty())
+                .unwrap_or(true)
         {
             diagnostics.push(FederationDiagnostic {
                 kind: FederationDiagnosticKind::DrainWindowMissingField,
                 message: format!(
-                    "drain window for mirror `{}` requires drain_owner, drain_reason, review_after, and linked_closeout",
+                    "drain window for mirror `{}` requires drain_owner, drain_reason, review_after, expiry, and linked_closeout",
                     drain.mirror_ledger
                 ),
                 ledger_ids: vec![drain.mirror_ledger.clone()],
