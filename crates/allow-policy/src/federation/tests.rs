@@ -313,6 +313,86 @@ linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
     );
 }
 
+#[test]
+fn validate_drain_window_requires_expiry_so_it_cannot_be_permanent() {
+    // #2006: a drain window without `expiry` never reports DrainExpired
+    // (has_passed_date_str(None, _) is false), so the mirror ledger would live
+    // forever. `expiry` must be a required field.
+    let config = parse_validated(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+
+[[ledgers]]
+id = "source-policy-mirror"
+path = ".allow/mirror/policy.toml"
+dialect = "cargo-allow"
+role = "mirror"
+mirrors = "source-policy"
+
+[[drain_windows]]
+mirror_ledger = "source-policy-mirror"
+drain_owner = "repo-infra"
+drain_reason = "test"
+review_after = "2026-12-01"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
+"#,
+    );
+    assert!(
+        !config.valid,
+        "drain window without expiry must be invalid (would be permanent): {:?}",
+        config.diagnostics
+    );
+    assert!(
+        config.diagnostics.iter().any(|diagnostic| {
+            diagnostic.kind == FederationDiagnosticKind::DrainWindowMissingField
+        }),
+        "expected drain_window_missing_field for missing expiry: {:?}",
+        config.diagnostics
+    );
+}
+
+#[test]
+fn validate_drain_window_with_expiry_is_accepted() {
+    // A complete drain window (including expiry) must validate cleanly.
+    let config = parse_validated(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+
+[[ledgers]]
+id = "source-policy-mirror"
+path = ".allow/mirror/policy.toml"
+dialect = "cargo-allow"
+role = "mirror"
+mirrors = "source-policy"
+
+[[drain_windows]]
+mirror_ledger = "source-policy-mirror"
+drain_owner = "repo-infra"
+drain_reason = "test"
+review_after = "2026-12-01"
+expiry = "2027-12-31"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
+"#,
+    );
+    assert!(
+        config.valid,
+        "complete drain window should validate: {:?}",
+        config.diagnostics
+    );
+}
+
 fn fixture_root_for_federation_test(label: &str) -> std::path::PathBuf {
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
