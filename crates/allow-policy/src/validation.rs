@@ -1,5 +1,6 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 
+use crate::bare_allow_conflict::detect_bare_allow_conflict;
 use crate::entries_validation::{
     validate_allow_entries, validate_allow_entries_with_reportable_evidence,
 };
@@ -24,6 +25,9 @@ fn collect_validation_errors(cfg: &AllowConfig) -> Vec<CargoAllowError> {
     if let Err(e) = validate_allow_entries(&cfg.allow, &cfg.requirements) {
         errors.push(e);
     }
+    if let Err(e) = detect_bare_allow_conflict(cfg) {
+        errors.push(e);
+    }
     errors
 }
 
@@ -39,6 +43,9 @@ fn collect_validation_errors_with_reportable_evidence(cfg: &AllowConfig) -> Vec<
         errors.push(e);
     }
     if let Err(e) = validate_allow_entries_with_reportable_evidence(&cfg.allow, &cfg.requirements) {
+        errors.push(e);
+    }
+    if let Err(e) = detect_bare_allow_conflict(cfg) {
         errors.push(e);
     }
     errors
