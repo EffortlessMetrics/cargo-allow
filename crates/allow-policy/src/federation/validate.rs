@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
+use allow_core::SimpleDate;
+
 use super::config::{
     DrainWindow, FederationConfig, FederationDiagnostic, FederationDiagnosticKind, LedgerEntry,
     LedgerRole, ValidatedFederationConfig, is_native_dialect,
@@ -208,7 +210,7 @@ fn detect_drain_window_issues(
         .map(|ledger| (ledger.id.as_str(), ledger))
         .collect::<HashMap<_, _>>();
     let mut diagnostics = Vec::new();
-    for drain in drain_windows {
+    for (window_index, drain) in drain_windows.iter().enumerate() {
         // `expiry` is required: a drain window without one never reports
         // DrainExpired (a None expiry never "passes"), so the mirror ledger
         // would live forever. (#2006)
@@ -227,6 +229,34 @@ fn detect_drain_window_issues(
                 message: format!(
                     "drain window for mirror `{}` requires drain_owner, drain_reason, review_after, expiry, and linked_closeout",
                     drain.mirror_ledger
+                ),
+                ledger_ids: vec![drain.mirror_ledger.clone()],
+            });
+        }
+        // Validate lifecycle dates are syntactically well-formed. The deadline
+        // predicates (`has_passed_date_str`/`is_due_date_str`) intentionally
+        // treat a malformed/missing date as "not yet due", so a typo'd format
+        // would silently disable the drain deadline. Only check non-empty
+        // values; a missing/empty field is already reported by the
+        // missing-field diagnostic above. (#2007)
+        if let Some(expiry) = drain.expiry.as_deref() {
+            if !expiry.trim().is_empty() && SimpleDate::parse(expiry).is_none() {
+                diagnostics.push(FederationDiagnostic {
+                    kind: FederationDiagnosticKind::DrainWindowInvalidDate,
+                    message: format!(
+                        "drain window {window_index} has invalid expiry `{expiry}`; expected YYYY-MM-DD",
+                    ),
+                    ledger_ids: vec![drain.mirror_ledger.clone()],
+                });
+            }
+        }
+        if !drain.review_after.trim().is_empty() && SimpleDate::parse(&drain.review_after).is_none()
+        {
+            diagnostics.push(FederationDiagnostic {
+                kind: FederationDiagnosticKind::DrainWindowInvalidDate,
+                message: format!(
+                    "drain window {window_index} has invalid review_after `{}`; expected YYYY-MM-DD",
+                    drain.review_after
                 ),
                 ledger_ids: vec![drain.mirror_ledger.clone()],
             });
