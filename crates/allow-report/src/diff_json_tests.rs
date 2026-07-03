@@ -165,6 +165,101 @@ fn diff_json_renderer_appends_posture_extension() {
 }
 
 #[test]
+fn diff_json_renderer_survives_a_brace_inside_a_string_value() {
+    // #1852: a `}` inside a string value (e.g. a finding message ending in a
+    // brace) made the old `strip_suffix('}')` text surgery strip the wrong
+    // brace, producing invalid JSON. The rendered output must be valid JSON
+    // (round-trips through serde_json) and must carry the diff field.
+    let policy_changes = vec![DiffPolicyChange {
+        severity: "fail",
+        movement: "retained",
+        posture_delta: "worsened",
+        changed_in_diff: true,
+        subject: None,
+        ledger_id: None,
+        lane: None,
+        allow_id: "allow-0001",
+        kind: "scope_broadened",
+        message: "allow-0001 selector scope broadened",
+        exception_identity: None,
+        selector_identity: None,
+        selector_precision: None,
+        scope: None,
+        occurrence_limit: None,
+        lifecycle: None,
+        evidence: None,
+        metadata: None,
+        requirement: None,
+        policy_status: None,
+    }];
+    // A report whose body contains a string value ending in `}`. The naive
+    // suffix-strip would slice inside this string.
+    let report_json = concat!(
+        "{\n",
+        "  \"schema_id\": \"cargo-allow.report.v1\",\n",
+        "  \"command\": \"diff\",\n",
+        "  \"findings\": [\n",
+        "    {\"message\": \"validation block: { }\"}\n",
+        "  ]\n",
+        "}"
+    );
+    let rendered = render_diff_json_with_posture(
+        report_json,
+        DiffReport {
+            net_posture: "worse",
+            reviewer_action: "block until fixed",
+            summary: DiffPostureSummary {
+                current_failures: 1,
+                new_findings: 0,
+                removed_findings: 0,
+                policy_failures: 1,
+                policy_review_items: 0,
+                policy_improvements: 0,
+            },
+            ledger_movement: DiffLedgerMovementSummary {
+                movement: DiffMovementCounts {
+                    introduced: 0,
+                    retained: 0,
+                    removed: 0,
+                },
+                posture_delta: DiffPostureDeltaCounts {
+                    improved: 0,
+                    worsened: 0,
+                    review_required: 0,
+                    unchanged: 0,
+                },
+            },
+            finding_changes: &[],
+            policy_changes: &policy_changes,
+        },
+    );
+    let Some(json) = rendered else {
+        return;
+    };
+    // The whole document must be valid JSON — this fails on the pre-fix
+    // text-surgery output, which sliced inside the message string.
+    let parsed: serde_json::Value = serde_json::from_str(&json).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("output is not valid JSON: {err}\n{json}"))
+    });
+    assert_eq!(
+        parsed.get("command").and_then(serde_json::Value::as_str),
+        Some("diff"),
+        "top-level command preserved"
+    );
+    assert!(
+        parsed.get("diff").is_some(),
+        "diff field present after splice"
+    );
+    assert_eq!(
+        parsed
+            .pointer("/findings/0/message")
+            .and_then(serde_json::Value::as_str),
+        Some("validation block: { }"),
+        "brace-containing message value preserved verbatim"
+    );
+}
+
+#[test]
 fn diff_json_report_renderer_matches_existing_posture_extension() {
     let finding_changes = vec![DiffFindingChange {
         change: "removed",

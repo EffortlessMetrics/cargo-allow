@@ -12,10 +12,54 @@ pub fn render_diff_json_with_posture(report_json: &str, report: DiffReport<'_>) 
         return None;
     }
     let diff_json = render_diff_posture_json(report);
-    let trimmed = report_json.trim_end();
-    trimmed
-        .strip_suffix('}')
-        .map(|prefix| format!("{prefix},\n  \"diff\": {diff_json}\n}}\n"))
+    // Splice the diff field into the report object by locating the top-level
+    // closing brace while respecting JSON string literals, so a `}` inside a
+    // string value (e.g. a finding message) does not corrupt the splice. The
+    // previous `strip_suffix('}')` text surgery stripped the wrong brace in
+    // that case and produced invalid JSON (#1852).
+    let top_level_close = top_level_object_close(report_json)?;
+    let (prefix, suffix) = report_json
+        .split_at_checked(top_level_close)
+        .unwrap_or((report_json, ""));
+    let mut out = format!("{prefix},\n  \"diff\": {diff_json}{suffix}");
+    if !out.ends_with('\n') {
+        out.push('\n');
+    }
+    Some(out)
+}
+
+/// Find the index of the `}` that closes the top-level JSON object, scanning
+/// past string literals (so a `}` inside a string is not mistaken for the
+/// close). Returns `None` if the document is not a single balanced object.
+fn top_level_object_close(json: &str) -> Option<usize> {
+    let bytes = json.as_bytes();
+    let mut depth: i64 = 0;
+    let mut in_string = false;
+    let mut escape = false;
+    for (index, &byte) in bytes.iter().enumerate() {
+        if in_string {
+            if escape {
+                escape = false;
+            } else if byte == b'\\' {
+                escape = true;
+            } else if byte == b'"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match byte {
+            b'"' => in_string = true,
+            b'{' | b'[' => depth += 1,
+            b'}' | b']' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(index);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn is_diff_report_artifact(report_json: &str) -> bool {
