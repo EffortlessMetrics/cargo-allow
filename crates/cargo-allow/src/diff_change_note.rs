@@ -11,7 +11,7 @@
 //! `after_fingerprint` equal to the fingerprint of the head entry's post-edit
 //! state, so a note authorizing one increase cannot silently authorize the next.
 
-use allow_core::{AllowConfig, AllowEntry, PostureDelta, stable_hash_hex};
+use allow_core::{AllowConfig, AllowEntry, PostureDelta, Selector, stable_hash_hex};
 use allow_diff::{PolicyChange, classify_policy_change};
 use allow_policy::{RevisionRecord, is_repeatable_change_kind, load_revision_records};
 use std::path::Path;
@@ -119,14 +119,37 @@ fn change_after_fingerprint(entry: &AllowEntry, kind: &str) -> Option<String> {
                 .as_ref()
                 .map(|p| p.to_string_lossy().replace('\\', "/"));
             format!(
-                "path={:?}|glob={:?}|selector={:?}",
-                path, entry.glob, entry.selector
+                "path={:?}|glob={:?}|{}",
+                path,
+                entry.glob,
+                selector_scope_material(&entry.selector)
             )
         }
-        "selector_precision_decreased" => format!("selector={:?}", entry.selector),
+        "selector_precision_decreased" => selector_scope_material(&entry.selector),
         _ => return None,
     };
     Some(format!("v1:{}", stable_hash_hex(&material)))
+}
+
+/// Canonical scope/identity material for a selector, excluding the cosmetic
+/// `line_hint`. `line_hint` carries no scope meaning and is rewritten by
+/// `cargo-allow refresh` whenever surrounding source lines shift, so including it
+/// would make a previously-authorized transition spuriously fail after an
+/// unrelated refresh.
+fn selector_scope_material(selector: &Selector) -> String {
+    format!(
+        "selector[ast_kind={:?}|container={:?}|callee={:?}|macro_name={:?}|lint={:?}|symbol={:?}|receiver_fingerprint={:?}|target_fingerprint={:?}|normalized_snippet_hash={:?}|glob={:?}]",
+        selector.ast_kind,
+        selector.container,
+        selector.callee,
+        selector.macro_name,
+        selector.lint,
+        selector.symbol,
+        selector.receiver_fingerprint,
+        selector.target_fingerprint,
+        selector.normalized_snippet_hash,
+        selector.glob,
+    )
 }
 
 /// Human/Markdown section describing change-note coverage and remediation.
@@ -158,60 +181,46 @@ pub(crate) fn render_change_note_section(eval: &ChangeNoteEvaluation) -> String 
 
 /// Generate a starter `.allow/revisions/` record covering the uncovered cells.
 ///
-/// The template aggregates every uncovered `allow_id` and `change_kind`. Because
-/// each *repeatable* transition needs its own `after_fingerprint`, those are
-/// emitted as comments for the operator to place on per-transition records
-/// rather than silently collapsed.
+/// Emits **one complete record per uncovered cell** rather than aggregating ids
+/// and kinds into a single record: because coverage is the cartesian product of a
+/// record's `allow_ids` × `change_kinds`, aggregating would silently pre-authorize
+/// cells that never occurred in this diff. Repeatable-kind cells carry an active
+/// `after_fingerprint` so the emitted record actually covers the transition. When
+/// there is more than one cell, each record must be saved to its own file.
 pub(crate) fn change_note_template(uncovered: &[UncoveredCell]) -> String {
     if uncovered.is_empty() {
         return "# No uncovered weakening edits in this diff; no change note is required.\n"
             .to_string();
     }
-    let mut allow_ids: Vec<&str> = uncovered.iter().map(|c| c.allow_id.as_str()).collect();
-    allow_ids.sort_unstable();
-    allow_ids.dedup();
-    let mut kinds: Vec<&str> = uncovered.iter().map(|c| c.change_kind.as_str()).collect();
-    kinds.sort_unstable();
-    kinds.dedup();
-
-    let quote_join = |items: &[&str]| {
-        items
-            .iter()
-            .map(|item| format!("\"{item}\""))
-            .collect::<Vec<_>>()
-            .join(", ")
-    };
 
     let mut out = String::new();
-    out.push_str(
-        "# Generated change-note template. Fill in id, created, owner, and reason,\n\
-         # then move this file to .allow/revisions/<id>.toml. Records are append-only.\n\n",
-    );
-    out.push_str("schema_version = \"1.0\"\n");
-    out.push_str("id = \"CARGO-ALLOW-REV-XXXX\"\n");
-    out.push_str("created = \"YYYY-MM-DD\"\n");
-    out.push_str("owner = \"TODO-owner\"\n");
-    out.push_str("reason = \"TODO: why these weakening edits are justified.\"\n\n");
-    out.push_str(&format!("allow_ids = [{}]\n", quote_join(&allow_ids)));
-    out.push_str(&format!("change_kinds = [{}]\n", quote_join(&kinds)));
-
-    let repeatable: Vec<&UncoveredCell> = uncovered
-        .iter()
-        .filter(|cell| cell.after_fingerprint.is_some())
-        .collect();
-    if !repeatable.is_empty() {
+    if uncovered.len() > 1 {
+        out.push_str(&format!(
+            "# {} uncovered weakening edits. Each block below is a separate record;\n\
+             # save each to its own .allow/revisions/<id>.toml file with a unique id.\n\
+             # Fill in id, created, owner, and reason. Records are append-only.\n\n",
+            uncovered.len()
+        ));
+    } else {
         out.push_str(
-            "\n# Repeatable weakening kinds must pin the transition with after_fingerprint.\n\
-             # A record with more than one repeatable transition must be split into one\n\
-             # file per transition, each carrying the matching fingerprint below:\n",
+            "# Fill in id, created, owner, and reason, then save this file to\n\
+             # .allow/revisions/<id>.toml. Records are append-only.\n\n",
         );
-        for cell in repeatable {
-            out.push_str(&format!(
-                "#   after_fingerprint = \"{}\"  # {} / {}\n",
-                cell.after_fingerprint.as_deref().unwrap_or_default(),
-                cell.allow_id,
-                cell.change_kind
-            ));
+    }
+
+    for (index, cell) in uncovered.iter().enumerate() {
+        if index > 0 {
+            out.push_str("\n# --- separate record: save to its own file ---\n\n");
+        }
+        out.push_str("schema_version = \"1.0\"\n");
+        out.push_str("id = \"CARGO-ALLOW-REV-XXXX\"\n");
+        out.push_str("created = \"YYYY-MM-DD\"\n");
+        out.push_str("owner = \"TODO-owner\"\n");
+        out.push_str("reason = \"TODO: why this weakening edit is justified.\"\n");
+        out.push_str(&format!("allow_ids = [\"{}\"]\n", cell.allow_id));
+        out.push_str(&format!("change_kinds = [\"{}\"]\n", cell.change_kind));
+        if let Some(fingerprint) = &cell.after_fingerprint {
+            out.push_str(&format!("after_fingerprint = \"{fingerprint}\"\n"));
         }
     }
     out

@@ -226,17 +226,51 @@ fn template_lists_uncovered_cells_and_fingerprints() {
         },
     ];
     let template = change_note_template(&cells);
+    // One record per cell (no cartesian aggregation), each with its own allow_ids.
     assert!(
-        template.contains("allow_ids = [\"allow-0042\", \"allow-0043\"]"),
+        template.contains("allow_ids = [\"allow-0042\"]"),
         "{template}"
     );
     assert!(
-        template.contains("change_kinds = [\"occurrence_limit_loosened\", \"owner_removed\"]"),
+        template.contains("allow_ids = [\"allow-0043\"]"),
         "{template}"
     );
+    assert!(
+        template.contains("change_kinds = [\"occurrence_limit_loosened\"]"),
+        "{template}"
+    );
+    assert!(
+        template.contains("change_kinds = [\"owner_removed\"]"),
+        "{template}"
+    );
+    // The repeatable cell carries an ACTIVE after_fingerprint, not a comment.
     assert!(
         template.contains("after_fingerprint = \"v1:deadbeef\""),
         "{template}"
+    );
+    assert!(template.contains("separate record"), "{template}");
+}
+
+#[test]
+fn template_record_round_trips_through_the_parser() {
+    // A single-cell template, once placeholders are filled, must parse and cover
+    // the transition it was generated for (regression for the comment-only bug).
+    let (head, changes) = loosen_limit_diff();
+    let uncovered = evaluate_with_records(&head, &changes, &[]).uncovered;
+    let template = change_note_template(&uncovered);
+    let filled = template
+        .replace("CARGO-ALLOW-REV-XXXX", "CARGO-ALLOW-REV-0001")
+        .replace("YYYY-MM-DD", "2026-06-20")
+        .replace("TODO-owner", "repo-infra")
+        .replace(
+            "TODO: why this weakening edit is justified.",
+            "Raise the occurrence limit.",
+        );
+    let note = record(&filled);
+    let eval = evaluate_with_records(&head, &changes, &[note]);
+    assert!(
+        !eval.failed(),
+        "a filled-in single-cell template must cover its own weakening: {filled}"
     );
 }
 

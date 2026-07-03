@@ -35,7 +35,11 @@ Rules (see the ADR for rationale):
 - **Repeatable** weakening kinds (`occurrence_limit_loosened`, `expiry_extended`,
   `review_after_extended`, `scope_broadened`, `selector_precision_decreased`)
   must pin the transition with `after_fingerprint`, so a note for one change does
-  not authorize the next. One-shot kinds need no fingerprint.
+  not authorize the next. Such a record must be **recorded alone** — exactly one
+  `allow_id` and one `change_kind` — so its single fingerprint pins one
+  transition. One-shot kinds need no fingerprint. Use
+  `diff --write-change-note-template` to generate records with the right
+  fingerprints pre-filled.
 - Records are **durable** and do not expire on merge; optional `expires` is
   advisory only.
 - Records are **append-only**: correct a record by adding a new one that

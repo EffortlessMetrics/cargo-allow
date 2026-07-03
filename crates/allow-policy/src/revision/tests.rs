@@ -88,9 +88,10 @@ after_fingerprint = "sha256:aaaa"
 }
 
 #[test]
-fn covers_transition_repeatable_kind_without_recorded_fingerprint_never_covers() {
-    // Record lacks after_fingerprint but claims a repeatable kind: it cannot pin a transition.
-    let record = parse_ok(
+fn rejects_repeatable_kind_without_fingerprint() {
+    // A repeatable kind with no after_fingerprint could never cover a transition,
+    // so it is rejected at parse time rather than silently uncoverable.
+    let err = parse_err(
         r#"
 schema_version = "1.0"
 id = "CARGO-ALLOW-REV-0008"
@@ -101,8 +102,25 @@ allow_ids = ["allow-0042"]
 change_kinds = ["scope_broadened"]
 "#,
     );
-    assert!(record.covers("allow-0042", "scope_broadened"));
-    assert!(!record.covers_transition("allow-0042", "scope_broadened", Some("sha256:aaaa")));
+    assert!(err.contains("requires an after_fingerprint"), "{err}");
+}
+
+#[test]
+fn rejects_repeatable_kind_recorded_with_siblings() {
+    // A repeatable kind must be recorded alone so its single fingerprint pins one transition.
+    let err = parse_err(
+        r#"
+schema_version = "1.0"
+id = "CARGO-ALLOW-REV-0009"
+created = "2026-06-20"
+owner = "repo-infra"
+reason = "Broaden scope and drop owner."
+allow_ids = ["allow-0042"]
+change_kinds = ["scope_broadened", "owner_removed"]
+after_fingerprint = "v1:abcd"
+"#,
+    );
+    assert!(err.contains("must be recorded alone"), "{err}");
 }
 
 #[test]

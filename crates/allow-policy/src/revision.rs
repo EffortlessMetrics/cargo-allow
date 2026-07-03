@@ -201,6 +201,37 @@ impl RevisionRecordToml {
             validate_change_kind_token(&id, kind, &where_)?;
         }
 
+        // A repeatable weakening kind is pinned to one transition by
+        // `after_fingerprint`, and a single fingerprint can only describe one
+        // (entry, kind) transition. Require such a record to name exactly one
+        // allow_id and one change_kind and carry a fingerprint, so it can never
+        // silently fail to cover (a repeatable cell with no fingerprint is
+        // uncoverable) or over-authorize sibling cells.
+        if let Some(kind) = self
+            .change_kinds
+            .iter()
+            .find(|kind| is_repeatable_change_kind(kind))
+        {
+            if self.change_kinds.len() != 1 || allow_ids.len() != 1 {
+                return Err(CargoAllowError::new(format!(
+                    "{}: revision {id} records repeatable change_kind `{kind}`, which must be recorded alone (exactly one allow_id and one change_kind)",
+                    where_()
+                )));
+            }
+            if self
+                .after_fingerprint
+                .as_deref()
+                .map(str::trim)
+                .unwrap_or_default()
+                .is_empty()
+            {
+                return Err(CargoAllowError::new(format!(
+                    "{}: revision {id} records repeatable change_kind `{kind}` and requires an after_fingerprint to pin the transition",
+                    where_()
+                )));
+            }
+        }
+
         for link in &self.links {
             if !REVISION_LINK_PREFIXES
                 .iter()

@@ -101,9 +101,14 @@ recur, each recurrence weakening further: `occurrence_limit_loosened`,
 `expiry_extended`, `review_after_extended`, `scope_broadened`,
 `selector_precision_decreased`. For those, a record must additionally pin the
 exact transition via an `after_fingerprint` equal to a deterministic fingerprint
-of the head entry's post-edit state. A note that authorized raising a limit from
-5 to 10 therefore does **not** silently authorize a later 10-to-20 increase — the
-fingerprint changes, and the stale record no longer covers. The same fingerprint
+of the head entry's post-edit state, and it must be **recorded alone** (exactly
+one `allow_id` and one `change_kind`) so its single fingerprint describes one
+transition; the parser rejects a repeatable record that lacks a fingerprint or
+is bundled with sibling cells. A note that authorized raising a limit from 5 to
+10 therefore does **not** silently authorize a later 10-to-20 increase — the
+fingerprint changes, and the stale record no longer covers. The fingerprint
+excludes cosmetic fields (a selector's `line_hint`) that `refresh` rewrites on
+unrelated line shifts. The same fingerprint
 function backs both enforcement and `--write-change-note-template`, so an
 operator's recorded fingerprint matches what enforcement recomputes for the
 committed head.
