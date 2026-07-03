@@ -13,6 +13,10 @@ pub(crate) struct RootArgs {
 pub(crate) struct InventoryFacts {
     pub(crate) source: InventorySource,
     pub(crate) files_scanned: Option<usize>,
+    /// Count of git-tracked paths absent from the worktree (deleted-tracked).
+    /// Surfaced as an inventory diagnostic so coverage gaps are never silent
+    /// (#2048).
+    pub(crate) deleted_tracked: Option<usize>,
 }
 
 impl InventoryFacts {
@@ -20,6 +24,7 @@ impl InventoryFacts {
         Self {
             source,
             files_scanned: None,
+            deleted_tracked: None,
         }
     }
 
@@ -27,7 +32,13 @@ impl InventoryFacts {
         Self {
             source,
             files_scanned: Some(files_scanned),
+            deleted_tracked: None,
         }
+    }
+
+    pub(crate) fn with_deleted_tracked(mut self, deleted_tracked: usize) -> Self {
+        self.deleted_tracked = Some(deleted_tracked);
+        self
     }
 }
 

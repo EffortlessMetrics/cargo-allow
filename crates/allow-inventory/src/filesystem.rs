@@ -2,19 +2,38 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub(crate) fn existing_regular_files(root: &Path, files: Vec<PathBuf>) -> Vec<PathBuf> {
-    files
-        .into_iter()
-        .filter(|path| {
-            // Use fs::metadata (follows symlinks) so a symlink pointing at a
-            // regular file is included. Previously symlink_metadata was used,
-            // which reports the link itself — is_file() is always false for a
-            // symlink, silently dropping symlinked source files (#1842).
-            fs::metadata(root.join(path))
-                .map(|metadata| metadata.file_type().is_file())
-                .unwrap_or(false)
-        })
-        .collect()
+/// Partition `files` into those that still exist on disk as regular files and
+/// those that are git-tracked but absent from the worktree (deleted-tracked).
+///
+/// A deleted-tracked file (still in `git ls-files`, missing on disk) is recorded
+/// rather than silently dropped (#2048): the caller surfaces it as an inventory
+/// diagnostic so a scan never looks complete while a tracked path disappeared
+/// from coverage. Only `NotFound` counts as deleted-tracked; other stat errors
+/// (permission denied, etc.) are treated as "not a file" and excluded from both
+/// lists, since they belong to the separate inaccessible-file disclosure.
+pub(crate) fn existing_regular_files(
+    root: &Path,
+    files: Vec<PathBuf>,
+) -> (Vec<PathBuf>, Vec<PathBuf>) {
+    let mut existing = Vec::with_capacity(files.len());
+    let mut deleted_tracked = Vec::new();
+    for path in files {
+        match fs::metadata(root.join(&path)) {
+            Ok(metadata) => {
+                if metadata.file_type().is_file() {
+                    existing.push(path);
+                }
+            }
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                deleted_tracked.push(path);
+            }
+            Err(_) => {
+                // Other stat errors: treat as not-a-file (excluded), reserved
+                // for a separate inaccessible-file diagnostic.
+            }
+        }
+    }
+    (existing, deleted_tracked)
 }
 
 pub(crate) fn recursive_files(root: &Path) -> CargoAllowResult<Vec<PathBuf>> {
