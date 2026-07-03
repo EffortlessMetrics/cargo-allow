@@ -62,3 +62,34 @@ fn receipt_schema_declares_provenance_fields() {
     assert!(props.contains("mode"), "receipt mode");
     assert!(props.contains("tool_version"), "receipt tool_version");
 }
+
+#[test]
+fn list_schema_filters_status_enum_includes_baseline_debt() {
+    // #1963: the list CLI accepts `--status baseline_debt` and the renderer
+    // emits it into `filters.status`, so the schema's filters.status enum must
+    // include `baseline_debt` (and match the row-level status enum). Pin both
+    // so the contract cannot regress.
+    let schema = load_schema("list");
+    let filters_status_enum = schema
+        .pointer("/properties/filters/properties/status/enum")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("list schema filters.status enum missing"));
+    let values: Vec<&str> = filters_status_enum
+        .iter()
+        .filter_map(Value::as_str)
+        .collect();
+    assert!(
+        values.contains(&"baseline_debt"),
+        "list filters.status enum must include baseline_debt: {values:?}"
+    );
+
+    let row_status_enum = schema
+        .pointer("/$defs/allow_entry/properties/status/enum")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("list schema allow_entry status enum missing"));
+    let row_values: Vec<&str> = row_status_enum.iter().filter_map(Value::as_str).collect();
+    assert!(
+        row_values.contains(&"baseline_debt"),
+        "list allow_entries[].status enum must include baseline_debt: {row_values:?}"
+    );
+}
