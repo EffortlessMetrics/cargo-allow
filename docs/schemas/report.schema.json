@@ -226,7 +226,8 @@
         "control_flow_not_analyzed",
         "data_flow_not_analyzed",
         "external_evidence_tools_not_invoked",
-        "repository_code_not_executed"
+        "repository_code_not_executed",
+        "source_text_in_identity_fields"
       ]
     },
     "scanner_limitation": {

@@ -21,7 +21,7 @@ fn json_contains_claim_boundary() {
     );
     assert!(CLAIM_BOUNDARY.contains(&"source_tree_inventory"));
     assert!(SCANNER_LIMITATIONS.contains(&"cargo_metadata_not_invoked"));
-    assert_eq!(CLAIM_BOUNDARY.len(), SCANNER_LIMITATIONS.len() + 2);
+    assert_eq!(CLAIM_BOUNDARY.len(), SCANNER_LIMITATIONS.len() + 3);
     assert!(json.contains("source_tree_inventory"));
     assert!(json.contains("cargo_metadata_not_invoked"));
     assert!(json.contains("cargo_commands_not_invoked"));

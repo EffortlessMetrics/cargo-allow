@@ -157,6 +157,21 @@ impl StructuralIdentity {
         cap_opt(&mut self.target_fingerprint);
     }
 
+    /// Redact the source-text-bearing identity fields (`symbol`, `callee`,
+    /// `container`, `module`, `macro_name`, `lint`) by clearing them, while
+    /// preserving the structural anchors (`normalized_snippet_hash`,
+    /// fingerprints, `ast_kind`, `line_hint`, `column_hint`) that matching
+    /// relies on. Opt-in for CI artifacts where source-text-derived fields are
+    /// an info-leak surface (#1920).
+    pub fn redact_source_text_fields(&mut self) {
+        self.symbol = None;
+        self.callee = None;
+        self.container = None;
+        self.module = None;
+        self.macro_name = None;
+        self.lint = None;
+    }
+
     pub fn stable_key(&self) -> String {
         stable_identity_key_from_parts(self.stable_key_parts())
     }

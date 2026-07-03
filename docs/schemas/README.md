@@ -281,6 +281,7 @@ artifact's scan surface, not limitations.
 | `data_flow_not_analyzed` | Yes | data-flow analysis was not performed. |
 | `external_evidence_tools_not_invoked` | Yes | External evidence tools can be referenced by policy but were not executed by the scan. |
 | `repository_code_not_executed` | Yes | Repository code was not executed by cargo-allow. |
+| `source_text_in_identity_fields` | No | Identity fields (symbol, callee, container, module, macro_name, lint) carry source-derived text and are emitted in CI artifacts; set `CARGO_ALLOW_REDACT_IDENTITY=1` to redact them. |
 
 ## Contract Change Rules
 

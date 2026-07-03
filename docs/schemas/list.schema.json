@@ -54,7 +54,8 @@
           "control_flow_not_analyzed",
           "data_flow_not_analyzed",
           "external_evidence_tools_not_invoked",
-          "repository_code_not_executed"
+          "repository_code_not_executed",
+          "source_text_in_identity_fields"
         ]
       },
       "contains": {
@@ -92,7 +93,11 @@
     "inventory": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["scope", "scanner", "source"],
+      "required": [
+        "scope",
+        "scanner",
+        "source"
+      ],
       "properties": {
         "scope": {
           "type": "string",
@@ -128,35 +133,59 @@
       "additionalProperties": false,
       "properties": {
         "kind": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Applied --kind filter, or null when all governed kinds are included."
         },
         "family": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Applied --family filter, or null when all scanner or policy families are included."
         },
         "owner": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Applied --owner filter, or null when all policy owners are included."
         },
         "classification": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Applied --classification filter, or null when all policy classifications are included."
         },
         "path": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Applied --path source-tree path or path-prefix filter, or null when all scopes are included."
         },
         "source_package": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Applied --source-package filter, or null when all scanner-provided source package contexts are included."
         },
         "allow_id": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Applied --allow-id filter, or null when all durable allow IDs are included."
         },
         "status": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "enum": [
             "matched",
             "new",
@@ -210,7 +239,9 @@
     "summary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["allow_entries"],
+      "required": [
+        "allow_entries"
+      ],
       "properties": {
         "allow_entries": {
           "type": "integer",
@@ -245,7 +276,8 @@
         "control_flow_not_analyzed",
         "data_flow_not_analyzed",
         "external_evidence_tools_not_invoked",
-        "repository_code_not_executed"
+        "repository_code_not_executed",
+        "source_text_in_identity_fields"
       ]
     },
     "scanner_limitation": {
@@ -324,7 +356,10 @@
           ]
         },
         "family": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "owner": {
           "type": "string"
@@ -336,7 +371,10 @@
           "type": "string"
         },
         "source_package": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Scanner-provided source package context; not Cargo metadata or build proof."
         },
         "evidence_count": {
@@ -363,10 +401,16 @@
           "description": "Whether this allow entry uses wildcard source-tree scope in path, glob, or selector glob."
         },
         "review_after": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "expires": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "reason": {
           "type": "string"

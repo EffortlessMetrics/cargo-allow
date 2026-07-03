@@ -207,6 +207,7 @@ pub const CLAIM_BOUNDARY: &[&str] = &[
     "data_flow_not_analyzed",
     "external_evidence_tools_not_invoked",
     "repository_code_not_executed",
+    "source_text_in_identity_fields",
 ];
 
 pub const SCANNER_LIMITATIONS: &[&str] = &[
@@ -287,7 +288,7 @@ pub fn scanner_limitations_for_schema_id(schema_id: &str) -> &'static [&'static 
     }
 }
 
-pub const CLAIM_BOUNDARY_TEXT: &str = "Claim boundary: scanned source-tree/source syntax only; cargo-allow did not invoke Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros, external evidence tools, or repository code. Macro expansion, macro token-tree contents, type information, MIR, build output, control flow, and data flow were not analyzed.";
+pub const CLAIM_BOUNDARY_TEXT: &str = "Claim boundary: scanned source-tree/source syntax only; cargo-allow did not invoke Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros, external evidence tools, or repository code. Macro expansion, macro token-tree contents, type information, MIR, build output, control flow, and data flow were not analyzed. Identity fields (symbol, callee, container, module, macro_name, lint) carry source-derived text and are emitted in CI artifacts; set CARGO_ALLOW_REDACT_IDENTITY=1 to redact them (structural hashes are preserved for matching).";
 
 #[derive(Debug, Clone, Copy)]
 pub struct InventoryContext<'a> {
