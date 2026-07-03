@@ -18,8 +18,8 @@ mod source_tree_path;
 pub use date::SimpleDate;
 pub use error::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 pub use finding::{
-    Finding, FindingKind, STRUCTURAL_IDENTITY_SCHEMA_ID, Span, StructuralIdentity,
-    finding_identity_key,
+    Finding, FindingKind, MAX_IDENTITY_FIELD_LEN, STRUCTURAL_IDENTITY_SCHEMA_ID, Span,
+    StructuralIdentity, finding_identity_key,
 };
 pub use fingerprint::{maybe_line_distance_score, normalize_snippet, stable_hash_hex};
 pub use json::json_escape;
