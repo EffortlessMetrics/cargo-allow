@@ -76,6 +76,13 @@ impl FromStr for FindingKind {
     }
 }
 
+/// Maximum length (bytes) of any source-derived string field in a
+/// [`StructuralIdentity`]. Caps the DoS / noisy-diff surface from a scanned
+/// file with a megabyte-long identifier (#1919). Generous enough for realistic
+/// Rust paths/identifiers (e.g. deeply-qualified module paths), small enough
+/// that an artifact cannot be inflated by a single field.
+pub const MAX_IDENTITY_FIELD_LEN: usize = 512;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructuralIdentity {
     pub language: String,
@@ -116,6 +123,38 @@ impl StructuralIdentity {
             line_hint: None,
             column_hint: None,
         }
+    }
+
+    /// Cap every source-derived string field at [`MAX_IDENTITY_FIELD_LEN`] so a
+    /// scanned file with a megabyte-long identifier cannot inflate report/receipt
+    /// artifacts unboundedly (DoS / noisy-diff surface) (#1919). Applied in place
+    /// at the finding-construction choke point before the identity reaches any
+    /// artifact. Hashes (e.g. `normalized_snippet_hash`) are already fixed-width
+    /// and excluded.
+    pub fn truncate_in_place(&mut self) {
+        let cap_opt = |s: &mut Option<String>| {
+            if let Some(value) = s {
+                if value.len() > MAX_IDENTITY_FIELD_LEN {
+                    value.truncate(MAX_IDENTITY_FIELD_LEN);
+                }
+            }
+        };
+        let cap_str = |s: &mut String| {
+            if s.len() > MAX_IDENTITY_FIELD_LEN {
+                s.truncate(MAX_IDENTITY_FIELD_LEN);
+            }
+        };
+        cap_str(&mut self.language);
+        cap_opt(&mut self.crate_name);
+        cap_opt(&mut self.module);
+        cap_opt(&mut self.container);
+        cap_str(&mut self.ast_kind);
+        cap_opt(&mut self.symbol);
+        cap_opt(&mut self.callee);
+        cap_opt(&mut self.macro_name);
+        cap_opt(&mut self.lint);
+        cap_opt(&mut self.receiver_fingerprint);
+        cap_opt(&mut self.target_fingerprint);
     }
 
     pub fn stable_key(&self) -> String {

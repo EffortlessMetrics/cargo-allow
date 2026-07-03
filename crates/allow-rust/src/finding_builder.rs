@@ -34,6 +34,9 @@ pub(crate) fn push_finding<F>(
     identity.line_hint = Some(site.line_no);
     identity.column_hint = Some(site.column);
     enrich(&mut identity);
+    // Cap source-derived string fields so a megabyte-long identifier cannot
+    // inflate report/receipt artifacts unboundedly (#1919).
+    identity.truncate_in_place();
     findings.push(Finding {
         kind,
         family: Some(family.to_string()),
