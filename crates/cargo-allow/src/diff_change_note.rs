@@ -111,10 +111,18 @@ fn change_after_fingerprint(entry: &AllowEntry, kind: &str) -> Option<String> {
         "occurrence_limit_loosened" => format!("occurrence_limit={:?}", entry.occurrence_limit),
         "expiry_extended" => format!("expires={:?}", entry.lifecycle.expires),
         "review_after_extended" => format!("review_after={:?}", entry.lifecycle.review_after),
-        "scope_broadened" => format!(
-            "path={:?}|glob={:?}|selector={:?}",
-            entry.path, entry.glob, entry.selector
-        ),
+        "scope_broadened" => {
+            // Slash-normalize the path so the fingerprint is platform-independent
+            // (a note written on Windows must verify on a Linux CI runner).
+            let path = entry
+                .path
+                .as_ref()
+                .map(|p| p.to_string_lossy().replace('\\', "/"));
+            format!(
+                "path={:?}|glob={:?}|selector={:?}",
+                path, entry.glob, entry.selector
+            )
+        }
         "selector_precision_decreased" => format!("selector={:?}", entry.selector),
         _ => return None,
     };

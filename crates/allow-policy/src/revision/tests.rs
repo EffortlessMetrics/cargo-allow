@@ -150,6 +150,16 @@ fn rejects_missing_reason() {
 }
 
 #[test]
+fn trims_whitespace_in_allow_ids() {
+    let record = parse_ok(&VALID.replace(
+        "allow_ids = [\"allow-0042\"]",
+        "allow_ids = [\" allow-0042 \"]",
+    ));
+    assert_eq!(record.allow_ids, vec!["allow-0042".to_string()]);
+    assert!(record.covers("allow-0042", "selector_changed"));
+}
+
+#[test]
 fn rejects_empty_allow_ids() {
     let err = parse_err(&VALID.replace("allow_ids = [\"allow-0042\"]", "allow_ids = []"));
     assert!(err.contains("requires at least one allow_id"), "{err}");

@@ -169,14 +169,21 @@ impl RevisionRecordToml {
         let owner = required(self.owner, "owner", &where_)?;
         let reason = required(self.reason, "reason", &where_)?;
 
-        if self.allow_ids.is_empty() {
+        // Trim so an accidental leading/trailing space cannot silently defeat the
+        // exact `allow_id` match at diff-evaluation time.
+        let allow_ids: Vec<String> = self
+            .allow_ids
+            .into_iter()
+            .map(|allow_id| allow_id.trim().to_string())
+            .collect();
+        if allow_ids.is_empty() {
             return Err(CargoAllowError::new(format!(
                 "{}: revision {id} requires at least one allow_id",
                 where_()
             )));
         }
-        for allow_id in &self.allow_ids {
-            if allow_id.trim().is_empty() {
+        for allow_id in &allow_ids {
+            if allow_id.is_empty() {
                 return Err(CargoAllowError::new(format!(
                     "{}: revision {id} has an empty allow_id",
                     where_()
@@ -226,7 +233,7 @@ impl RevisionRecordToml {
             created,
             owner,
             reason,
-            allow_ids: self.allow_ids,
+            allow_ids,
             change_kinds: self.change_kinds,
             links: self.links,
             expires: self.expires,
