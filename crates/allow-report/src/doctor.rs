@@ -56,6 +56,14 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
         "inventory: source_tree/source_syntax via {}; files scanned: {}\n",
         facts.inventory_source, facts.files_scanned
     ));
+    if facts.deleted_tracked_files > 0 {
+        out.push_str(&format!(
+            "inventory warning: {} tracked file(s) absent from the worktree; \
+             these paths are excluded from the scan (check out the worktree or \
+             restore the files to restore coverage)\n",
+            facts.deleted_tracked_files
+        ));
+    }
     append_federation_doctor_human(facts, &mut out);
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out
@@ -179,6 +187,12 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
     }
     if let Some(count) = facts.weak_evidence_references {
         out.push_str(&format!(",\n    \"weak_evidence_references\": {count}"));
+    }
+    if facts.deleted_tracked_files > 0 {
+        out.push_str(&format!(
+            ",\n    \"deleted_tracked_files\": {}",
+            facts.deleted_tracked_files
+        ));
     }
     append_doctor_evidence_repair_queues_json(facts, &mut out);
     out.push_str("\n  },\n");

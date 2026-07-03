@@ -88,10 +88,18 @@ fn git_tracked_inventory_skips_deleted_worktree_files() {
 
     assert_eq!(tracked_inventory.source, InventorySource::GitTracked);
     assert!(tracked_inventory.files.contains(&PathBuf::from("kept.txt")));
+    // The deleted file is excluded from the scanned set...
     assert!(
         !tracked_inventory
             .files
             .contains(&PathBuf::from("deleted.txt"))
+    );
+    // ...but it must be disclosed as a deleted-tracked inventory gap, not
+    // silently dropped (#2048).
+    assert_eq!(
+        tracked_inventory.deleted_tracked,
+        vec![PathBuf::from("deleted.txt")],
+        "deleted-tracked files must be reported as an inventory diagnostic"
     );
     remove_dir(&root);
 }
@@ -102,7 +110,7 @@ fn existing_regular_files_call_presence_observer() -> Result<(), Box<dyn std::er
     write_file(root.join("kept.txt"), "kept");
     fs::create_dir_all(root.join("directory"))?;
 
-    let existing = existing_regular_files(
+    let (existing, deleted_tracked) = existing_regular_files(
         &root,
         vec![
             PathBuf::from("kept.txt"),
@@ -112,6 +120,8 @@ fn existing_regular_files_call_presence_observer() -> Result<(), Box<dyn std::er
     );
 
     assert_eq!(existing, vec![PathBuf::from("kept.txt")]);
+    // A missing file is recorded as deleted-tracked, not silently dropped (#2048).
+    assert_eq!(deleted_tracked, vec![PathBuf::from("missing.txt")]);
     remove_dir(&root);
     Ok(())
 }

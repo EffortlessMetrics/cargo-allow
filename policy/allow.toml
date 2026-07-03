@@ -428,6 +428,28 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-4716"
+kind = "non_rust_file"
+family = "ci_declarative"
+path = ".github/workflows/ub-review.yml"
+owner = "core/ci"
+classification = "ci_configuration"
+reason = "Advisory UB review workflow triggered on pull requests; reads repo contents and writes a review check. Receipts the workflow file added in #2082."
+evidence = ["doc:docs/ci.md"]
+created = "2026-07-03"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "yml"
+line_hint = 1
+glob = ".github/workflows/ub-review.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0144"
 kind = "non_rust_file"
 family = "documentation"

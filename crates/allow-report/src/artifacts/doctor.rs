@@ -32,6 +32,9 @@ pub struct DoctorReport<'a> {
     pub weak_evidence_references: Option<usize>,
     pub inventory_source: &'a str,
     pub files_scanned: usize,
+    /// Git-tracked paths absent from the worktree (#2048). Surfaced so a scan
+    /// never looks complete while a tracked path disappeared from coverage.
+    pub deleted_tracked_files: usize,
     pub federation_config_path: Option<&'a str>,
     pub federation_config_found: bool,
     pub federation_config_valid: Option<bool>,

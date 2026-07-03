@@ -44,6 +44,11 @@ impl InventorySource {
 pub struct Inventory {
     pub files: Vec<PathBuf>,
     pub source: InventorySource,
+    /// Git-tracked paths that are absent from the worktree (deleted-tracked).
+    /// Reported as an inventory diagnostic so a scan never looks complete while
+    /// a tracked path disappeared from coverage (#2048). Empty for non-git
+    /// inventory sources.
+    pub deleted_tracked: Vec<PathBuf>,
 }
 
 #[cfg(test)]
