@@ -393,6 +393,134 @@ linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
     );
 }
 
+#[test]
+fn validate_drain_window_rejects_malformed_expiry() {
+    // #2007: a malformed expiry silently never fires DrainExpired. Each must be
+    // a blocking validation error naming the field, value, and required format.
+    for malformed in [
+        "Dec 31 2026",
+        "2026/12/31",
+        "2026.12.31",
+        "soon",
+        "2026-13-99",
+    ] {
+        let drain = format!(
+            r#"
+[[drain_windows]]
+mirror_ledger = "source-policy-mirror"
+drain_owner = "repo-infra"
+drain_reason = "test"
+review_after = "2026-12-01"
+expiry = "{malformed}"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
+"#
+        );
+        let config = parse_validated(&mirror_drain_config(&drain));
+        assert!(
+            !config.valid,
+            "malformed expiry `{malformed}` should be invalid: {:?}",
+            config.diagnostics
+        );
+        assert!(
+            config.diagnostics.iter().any(|diagnostic| {
+                diagnostic.kind == FederationDiagnosticKind::DrainWindowInvalidDate
+                    && diagnostic.message.contains("expiry")
+                    && diagnostic.message.contains(malformed)
+                    && diagnostic.message.contains("YYYY-MM-DD")
+            }),
+            "expected drain_window_invalid_date naming expiry `{malformed}` and YYYY-MM-DD: {:?}",
+            config.diagnostics
+        );
+    }
+}
+
+#[test]
+fn validate_drain_window_rejects_malformed_review_after() {
+    for malformed in ["soon", "2026.12.31", "2026/12/31", "Dec 1 2026"] {
+        let drain = format!(
+            r#"
+[[drain_windows]]
+mirror_ledger = "source-policy-mirror"
+drain_owner = "repo-infra"
+drain_reason = "test"
+review_after = "{malformed}"
+expiry = "2027-12-31"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
+"#
+        );
+        let config = parse_validated(&mirror_drain_config(&drain));
+        assert!(
+            !config.valid,
+            "malformed review_after `{malformed}` should be invalid: {:?}",
+            config.diagnostics
+        );
+        assert!(
+            config.diagnostics.iter().any(|diagnostic| {
+                diagnostic.kind == FederationDiagnosticKind::DrainWindowInvalidDate
+                    && diagnostic.message.contains("review_after")
+                    && diagnostic.message.contains(malformed)
+            }),
+            "expected drain_window_invalid_date naming review_after `{malformed}`: {:?}",
+            config.diagnostics
+        );
+    }
+}
+
+#[test]
+fn validate_drain_window_accepts_well_formed_dates() {
+    // Valid YYYY-MM-DD dates (even an expired expiry) must not trip the
+    // malformed-date diagnostic. Expired-vs-future is deadline evaluation, not
+    // validation, and is covered by the existing DrainExpired behavior.
+    let config = parse_validated(&mirror_drain_config(
+        r#"
+[[drain_windows]]
+mirror_ledger = "source-policy-mirror"
+drain_owner = "repo-infra"
+drain_reason = "test"
+review_after = "2026-12-01"
+expiry = "2026-12-31"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
+"#,
+    ));
+    assert!(
+        config.valid,
+        "well-formed dates should validate (expiry being past is a deadline concern, not validation): {:?}",
+        config.diagnostics
+    );
+    assert!(
+        !config
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.kind == FederationDiagnosticKind::DrainWindowInvalidDate),
+        "no drain_window_invalid_date for valid dates: {:?}",
+        config.diagnostics
+    );
+}
+
+/// A canonical+mirror ledger pair so a drain window for `source-policy-mirror`
+/// resolves to a real mirror ledger. `drain` is appended.
+fn mirror_drain_config(drain: &str) -> String {
+    format!(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+
+[[ledgers]]
+id = "source-policy-mirror"
+path = ".allow/mirror/policy.toml"
+dialect = "cargo-allow"
+role = "mirror"
+mirrors = "source-policy"
+{drain}
+"#
+    )
+}
+
 fn fixture_root_for_federation_test(label: &str) -> std::path::PathBuf {
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

@@ -66,6 +66,7 @@ pub enum FederationDiagnosticKind {
     UnknownMirrorTarget,
     UnknownDrainMirrorLedger,
     DrainWindowMissingField,
+    DrainWindowInvalidDate,
 }
 
 impl FederationDiagnosticKind {
@@ -80,6 +81,7 @@ impl FederationDiagnosticKind {
             Self::UnknownMirrorTarget => "unknown_mirror_target",
             Self::UnknownDrainMirrorLedger => "unknown_drain_mirror_ledger",
             Self::DrainWindowMissingField => "drain_window_missing_field",
+            Self::DrainWindowInvalidDate => "drain_window_invalid_date",
         }
     }
 }
