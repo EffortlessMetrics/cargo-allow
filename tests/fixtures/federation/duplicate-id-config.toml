@@ -5,9 +5,11 @@ id = "dup"
 path = "policy/allow.toml"
 dialect = "cargo-allow"
 role = "canonical"
+priority = 10
 
 [[ledgers]]
 id = "dup"
 path = "policy/cargo-allow.toml"
 dialect = "cargo-allow"
 role = "imported"
+priority = 20

@@ -126,6 +126,29 @@ struct LedgerEntryToml {
 
 impl FederationConfigToml {
     fn into_config(self) -> CargoAllowResult<FederationConfig> {
+        // `priority` is required: a missing value previously defaulted to the
+        // array index, so reordering the `[[ledgers]]` array silently flipped
+        // which ledger won precedence. Surface every missing priority as a
+        // single aggregated error naming the ledger(s) so the fix is actionable.
+        // (#2044)
+        let missing_priority: Vec<&str> = self
+            .ledgers
+            .iter()
+            .filter(|entry| entry.priority.is_none())
+            .map(|entry| entry.id.as_str())
+            .collect();
+        if !missing_priority.is_empty() {
+            let listed = missing_priority
+                .iter()
+                .map(|id| format!("  - {id}"))
+                .collect::<Vec<_>>()
+                .join("\n");
+            return Err(CargoAllowError::new(format!(
+                "federation ledger(s) missing required explicit `priority`; reordering the \
+                 [[ledgers]] array would silently change precedence:\n{listed}\n\
+                 Set `priority = <u32>` on every [[ledgers]] entry (lower priority wins)."
+            )));
+        }
         let ledgers = self
             .ledgers
             .into_iter()
