@@ -59,12 +59,14 @@ id = "dup"
 path = "policy/allow.toml"
 dialect = "cargo-allow"
 role = "canonical"
+priority = 10
 
 [[ledgers]]
 id = "dup"
 path = "policy/cargo-allow.toml"
 dialect = "cargo-allow"
 role = "imported"
+priority = 20
 "#,
     );
     assert!(!config.valid);
@@ -89,6 +91,7 @@ id = "legacy"
 path = "policy/non-rust-allowlist.toml"
 dialect = "non-rust-allowlist"
 role = "canonical"
+priority = 10
 "#,
     );
     assert!(!config.valid);
@@ -113,6 +116,7 @@ id = "legacy"
 path = "policy/non-rust-allowlist.toml"
 dialect = "non-rust-allowlist"
 role = "imported"
+priority = 10
 "#,
     );
     assert!(config.valid);
@@ -137,6 +141,7 @@ id = "mirror"
 path = ".allow/mirror/policy.toml"
 dialect = "cargo-allow"
 role = "mirror"
+priority = 10
 "#,
     );
     assert!(!config.valid);
@@ -294,6 +299,7 @@ id = "source-policy"
 path = "policy/allow.toml"
 dialect = "cargo-allow"
 role = "canonical"
+priority = 10
 
 [[drain_windows]]
 mirror_ledger = "missing-mirror"
@@ -327,6 +333,7 @@ id = "source-policy"
 path = "policy/allow.toml"
 dialect = "cargo-allow"
 role = "canonical"
+priority = 10
 
 [[ledgers]]
 id = "source-policy-mirror"
@@ -334,6 +341,7 @@ path = ".allow/mirror/policy.toml"
 dialect = "cargo-allow"
 role = "mirror"
 mirrors = "source-policy"
+priority = 20
 
 [[drain_windows]]
 mirror_ledger = "source-policy-mirror"
@@ -369,6 +377,7 @@ id = "source-policy"
 path = "policy/allow.toml"
 dialect = "cargo-allow"
 role = "canonical"
+priority = 10
 
 [[ledgers]]
 id = "source-policy-mirror"
@@ -376,6 +385,7 @@ path = ".allow/mirror/policy.toml"
 dialect = "cargo-allow"
 role = "mirror"
 mirrors = "source-policy"
+priority = 20
 
 [[drain_windows]]
 mirror_ledger = "source-policy-mirror"
@@ -497,6 +507,132 @@ linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
     );
 }
 
+#[test]
+fn validate_federation_rejects_ledger_without_explicit_priority() {
+    // #2044: a missing `priority` defaulted to the array index, so reordering
+    // the [[ledgers]] array silently flipped precedence. It must be a blocking
+    // parse/validation error naming the ledger instead.
+    let err = parse_federation_config(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+"#,
+    )
+    .expect_err("ledger without explicit priority should fail to parse");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("missing required explicit `priority`"),
+        "expected missing-priority error: {msg}"
+    );
+    assert!(
+        msg.contains("source-policy"),
+        "error should name the offending ledger: {msg}"
+    );
+}
+
+#[test]
+fn validate_federation_accepts_explicit_priorities() {
+    // When every ledger has an explicit priority, the config is valid and
+    // reordering the array does not change precedence.
+    let config = parse_validated(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "alpha"
+path = "policy/alpha.toml"
+dialect = "cargo-allow"
+role = "canonical"
+priority = 10
+
+[[ledgers]]
+id = "beta"
+path = "policy/beta.toml"
+dialect = "cargo-allow"
+role = "canonical"
+priority = 20
+"#,
+    );
+    assert!(
+        config.valid,
+        "explicit priorities should validate: {:?}",
+        config.diagnostics
+    );
+    let ordered: Vec<&str> = ordered_ledgers_by_precedence(&config.config.ledgers)
+        .iter()
+        .map(|ledger| ledger.id.as_str())
+        .collect();
+    assert_eq!(
+        ordered,
+        vec!["alpha", "beta"],
+        "lower explicit priority wins first"
+    );
+}
+
+#[test]
+fn explicit_priority_makes_precedence_independent_of_array_order() {
+    // Same two ledgers, opposite declaration order, same explicit priorities:
+    // the precedence winner must be identical — proving a reorder cannot flip
+    // precedence (#2044's core acceptance).
+    let first = r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "alpha"
+path = "policy/alpha.toml"
+dialect = "cargo-allow"
+role = "canonical"
+priority = 10
+
+[[ledgers]]
+id = "beta"
+path = "policy/beta.toml"
+dialect = "cargo-allow"
+role = "canonical"
+priority = 20
+"#;
+    let reordered = r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "beta"
+path = "policy/beta.toml"
+dialect = "cargo-allow"
+role = "canonical"
+priority = 20
+
+[[ledgers]]
+id = "alpha"
+path = "policy/alpha.toml"
+dialect = "cargo-allow"
+role = "canonical"
+priority = 10
+"#;
+    let winner_first = precedence_winner_id(first);
+    let winner_reordered = precedence_winner_id(reordered);
+    assert_eq!(
+        winner_first, winner_reordered,
+        "reordering [[ledgers]] with explicit priorities must not change the precedence winner"
+    );
+}
+
+/// Parse `config` and return the id of the precedence winner (first ledger by
+/// `ordered_ledgers_by_precedence`), failing the test if there is no winner.
+fn precedence_winner_id(config: &str) -> String {
+    let validated = parse_validated(config);
+    let ordered = ordered_ledgers_by_precedence(&validated.config.ledgers);
+    ordered
+        .first()
+        .map(|ledger| ledger.id.clone())
+        .unwrap_or_else(|| std::panic::panic_any("precedence ordering produced no ledgers"))
+}
+
 /// A canonical+mirror ledger pair so a drain window for `source-policy-mirror`
 /// resolves to a real mirror ledger. `drain` is appended.
 fn mirror_drain_config(drain: &str) -> String {
@@ -509,6 +645,7 @@ id = "source-policy"
 path = "policy/allow.toml"
 dialect = "cargo-allow"
 role = "canonical"
+priority = 10
 
 [[ledgers]]
 id = "source-policy-mirror"
@@ -516,6 +653,7 @@ path = ".allow/mirror/policy.toml"
 dialect = "cargo-allow"
 role = "mirror"
 mirrors = "source-policy"
+priority = 20
 {drain}
 "#
     )
