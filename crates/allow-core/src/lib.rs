@@ -14,6 +14,7 @@ mod lane_posture;
 mod ledger_posture;
 mod ledger_provenance;
 mod policy;
+mod policy_change_kind;
 mod source_tree_path;
 pub use date::SimpleDate;
 pub use error::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
@@ -34,6 +35,7 @@ pub use policy::{
     Requirements, SUPPORTED_SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSION_ALIAS, Selector,
     WorkspaceConfig, WorkspaceMode,
 };
+pub use policy_change_kind::{POLICY_CHANGE_KIND_TOKENS, is_policy_change_kind_token};
 pub use source_tree_path::{
     allow_entry_broad_scope, glob_matches, glob_matches_str, normalize_path,
     source_tree_path_is_ignored, source_tree_path_matches_filter, source_tree_scope_has_wildcard,

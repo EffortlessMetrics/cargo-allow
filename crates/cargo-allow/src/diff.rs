@@ -11,6 +11,8 @@ use std::process;
 
 #[path = "diff_args.rs"]
 mod diff_args;
+#[path = "diff_change_note.rs"]
+mod diff_change_note;
 #[path = "diff_render.rs"]
 mod diff_render;
 #[path = "diff_row.rs"]
@@ -110,6 +112,18 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         &mut policy_changes,
     )?;
     let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
+    let change_note_eval = if args.require_change_note || args.write_change_note_template.is_some()
+    {
+        Some(diff_change_note::evaluate_change_notes(
+            &root,
+            &head_cfg_for_diff,
+            &policy_changes,
+        )?)
+    } else {
+        None
+    };
+    let change_note_failed =
+        args.require_change_note && change_note_eval.as_ref().is_some_and(|eval| eval.failed());
     let evidence = evidence_summary_for_diff(
         &root,
         evidence_source_tree_files.as_ref(),
@@ -121,7 +135,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
         .count()
         + evidence.broken_evidence_links;
-    let failed = current_failures > 0 || policy_failed;
+    let failed = current_failures > 0 || policy_failed || change_note_failed;
     let report_inventory_facts = if let Some(head) = args.head.as_deref() {
         InventoryFacts::scanned(
             InventorySource::GitTracked,
@@ -192,6 +206,11 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     );
     append_finding_posture_changes(&mut text, args.format, &finding_changes, &head_cfg_for_diff);
     append_policy_changes(&mut text, args.format, &policy_changes, &head_cfg_for_diff);
+    if let Some(eval) = &change_note_eval {
+        if matches!(args.format, OutputFormat::Human | OutputFormat::Markdown) {
+            text.push_str(&diff_change_note::render_change_note_section(eval));
+        }
+    }
     match allow_diff::changed_files(&root, &args.base, args.head.as_deref()) {
         Ok(changed) => {
             if args.format == OutputFormat::Human {
@@ -218,6 +237,18 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             "{}",
             render_finding_posture_changes_human(&finding_changes, &head_cfg_for_diff)
         );
+    }
+    if let (Some(path), Some(eval)) = (
+        args.write_change_note_template.as_deref(),
+        &change_note_eval,
+    ) {
+        let template = diff_change_note::change_note_template(&eval.uncovered);
+        std::fs::write(path, template).map_err(|e| {
+            CargoAllowError::new(format!(
+                "failed to write change-note template {}: {e}",
+                path.display()
+            ))
+        })?;
     }
     emit_text(args.output.as_deref(), &text)?;
     if failed {

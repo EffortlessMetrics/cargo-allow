@@ -10,6 +10,20 @@ inventory without executing repository code.
 
 ### Added
 
+- Policy revision contract and `diff --require-change-note` enforcement
+  (GOAL-0004 PR 3+4, #1475, #2075): `CARGO-ALLOW-ADR-0002` fixes the
+  `.allow/revisions/` contract and it is now enforced. A governed weakening edit
+  (a policy change whose `posture_delta` is `worsened` or `review_required`) fails
+  `cargo-allow diff --require-change-note` unless a matching `.allow/revisions/*.toml`
+  record covers its `(allow_id, change_kind)` cell. Records reuse the canonical
+  `policy_change_kind` vocabulary (published as `allow_core::POLICY_CHANGE_KIND_TOKENS`
+  and bound to `allow-diff`'s enum by a parity test); repeatable weakening kinds
+  (`occurrence_limit_loosened`, `expiry_extended`, `review_after_extended`,
+  `scope_broadened`, `selector_precision_decreased`) must pin the transition with
+  an `after_fingerprint` so one note cannot authorize the next increase. Adds
+  `allow_policy::revision` (parse/validate/coverage), `.allow/revisions/revision.schema.json`,
+  `.allow/revisions/README.md`, and `diff --write-change-note-template`. Does not
+  mutate policy automatically or auto-approve weakening.
 - Movement classification in diff (GOAL-0004 PR 2, #1471): every diff row carries
   orthogonal `movement`, `posture_delta`, and `changed_in_diff` plus optional
   `subject`, `allow_id`, `ledger_id`, and `lane`; JSON diff adds dual summary blocks

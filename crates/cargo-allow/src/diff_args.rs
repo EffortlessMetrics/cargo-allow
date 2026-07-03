@@ -28,4 +28,12 @@ pub(crate) struct DiffArgs {
     /// Optional head git revision. Defaults to the current working tree.
     #[arg(long)]
     pub(super) head: Option<String>,
+    /// Fail the diff when a governed weakening edit lacks a matching
+    /// `.allow/revisions/` change note (CARGO-ALLOW-ADR-0002).
+    #[arg(long)]
+    pub(super) require_change_note: bool,
+    /// Write a starter change-note record covering the diff's uncovered
+    /// weakening edits to this path (does not itself fail the diff).
+    #[arg(long)]
+    pub(super) write_change_note_template: Option<PathBuf>,
 }

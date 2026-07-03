@@ -181,3 +181,23 @@ impl PolicyChangeSeverity {
         matches!(self, Self::Fail)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::PolicyChangeKind;
+    use allow_core::POLICY_CHANGE_KIND_TOKENS;
+
+    /// The canonical token list published in `allow-core` must stay in lockstep
+    /// with this enum, in order. `allow-policy` validates revision-note
+    /// `change_kinds` against the `allow-core` list; this test is the guard that
+    /// keeps the two vocabularies from drifting.
+    #[test]
+    fn policy_change_kind_tokens_match_allow_core() {
+        let enum_tokens: Vec<&str> = PolicyChangeKind::ALL.iter().map(|k| k.as_str()).collect();
+        assert_eq!(
+            enum_tokens.as_slice(),
+            POLICY_CHANGE_KIND_TOKENS,
+            "PolicyChangeKind::ALL (via as_str) must equal allow_core::POLICY_CHANGE_KIND_TOKENS in order"
+        );
+    }
+}
