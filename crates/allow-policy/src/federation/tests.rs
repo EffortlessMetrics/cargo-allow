@@ -576,6 +576,101 @@ priority = 20
 }
 
 #[test]
+fn validate_federation_rejects_absolute_ledger_path() {
+    // #2011: an absolute ledger path silently escapes the source-tree root on
+    // `root.join` (Path::join with an absolute arg replaces the base). It must
+    // be a parse error — federation ledger paths must be repo-relative.
+    let err = parse_federation_config(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "escape"
+path = "/etc/passwd"
+dialect = "cargo-allow"
+role = "canonical"
+priority = 10
+"#,
+    )
+    .expect_err("absolute ledger path should fail to parse");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("/etc/passwd"),
+        "error should name the offending path: {msg}"
+    );
+    assert!(
+        msg.contains("must be relative to the repository root"),
+        "error should explain the repo-relative contract: {msg}"
+    );
+}
+
+#[test]
+fn validate_federation_rejects_tilde_ledger_path() {
+    let err = parse_federation_config(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "home"
+path = "~/secret/policy.toml"
+dialect = "cargo-allow"
+role = "canonical"
+priority = 10
+"#,
+    )
+    .expect_err("tilde ledger path should fail to parse");
+    assert!(
+        err.to_string().contains("~/secret/policy.toml"),
+        "error should name the path: {}",
+        err
+    );
+}
+
+#[test]
+fn validate_federation_rejects_parent_traversal_ledger_path() {
+    // `..` traversal could escape the root after join; reject it.
+    let err = parse_federation_config(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "traversal"
+path = "policy/../../escape.toml"
+dialect = "cargo-allow"
+role = "canonical"
+priority = 10
+"#,
+    )
+    .expect_err("parent-traversal ledger path should fail to parse");
+    assert!(
+        err.to_string().contains("parent directory"),
+        "error should name the parent-traversal problem: {}",
+        err
+    );
+}
+
+#[test]
+fn validate_federation_accepts_relative_ledger_path() {
+    let config = parse_validated(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "ok"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+priority = 10
+"#,
+    );
+    assert!(
+        config.valid,
+        "a repo-relative ledger path should validate: {:?}",
+        config.diagnostics
+    );
+}
+
+#[test]
 fn explicit_priority_makes_precedence_independent_of_array_order() {
     // Same two ledgers, opposite declaration order, same explicit priorities:
     // the precedence winner must be identical — proving a reorder cannot flip

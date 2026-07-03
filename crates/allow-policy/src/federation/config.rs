@@ -171,9 +171,10 @@ impl LedgerEntryToml {
                 .map_err(|err| CargoAllowError::new(format!("ledgers[{}].mode: {err}", self.id)))?,
             None => default_mode_for_role(role),
         };
+        let path = normalize_repo_relative_path(&self.id, &self.path)?;
         Ok(LedgerEntry {
             id: self.id,
-            path: normalize_repo_relative_path(&self.path),
+            path,
             dialect: self.dialect,
             role,
             lanes: self.lanes,
@@ -206,6 +207,39 @@ fn default_priority(index: usize) -> u32 {
     u32::try_from((index + 1) * 10).unwrap_or(u32::MAX)
 }
 
-fn normalize_repo_relative_path(path: &str) -> String {
-    path.replace('\\', "/")
+/// Normalize a federation ledger `path` to a repo-relative, forward-slash form
+/// and reject anything that could escape the source-tree root when later joined
+/// via `root.join(path)` (#2011):
+/// - absolute paths (`/etc/passwd`, `C:\...`) — `Path::join` with an absolute
+///   arg silently *replaces* the base, pointing federation outside the repo.
+/// - home-relative paths (`~/...`) — treated as a literal relative segment,
+///   never expanded, so they silently never resolve correctly.
+/// - parent-directory traversal (`..`) — can escape the root after join.
+fn normalize_repo_relative_path(id: &str, path: &str) -> CargoAllowResult<String> {
+    let normalized = path.replace('\\', "/");
+    let trimmed = normalized.trim();
+    if trimmed.is_empty() {
+        return Err(CargoAllowError::new(format!(
+            "federation ledger `{id}` has an empty path; expected a path relative to the repository root"
+        )));
+    }
+    if trimmed.starts_with('/') || trimmed.contains(':') {
+        return Err(CargoAllowError::new(format!(
+            "federation ledger `{id}` path `{path}` must be relative to the repository root; \
+             absolute paths are rejected (root.join would escape the repo)",
+        )));
+    }
+    if trimmed.starts_with('~') {
+        return Err(CargoAllowError::new(format!(
+            "federation ledger `{id}` path `{path}` must be relative to the repository root; \
+             `~` home paths are rejected (they are never expanded)",
+        )));
+    }
+    if trimmed.split('/').any(|segment| segment == "..") {
+        return Err(CargoAllowError::new(format!(
+            "federation ledger `{id}` path `{path}` must not contain parent directory (`..`) \
+             segments; they can escape the repository root",
+        )));
+    }
+    Ok(normalized)
 }
