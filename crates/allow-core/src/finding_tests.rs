@@ -80,3 +80,42 @@ fn truncate_in_place_leaves_short_fields_unchanged() {
     assert_eq!(identity.ast_kind, "method_call");
     assert_eq!(identity.symbol.as_deref(), Some("unwrap"));
 }
+
+#[test]
+fn redact_source_text_fields_clears_text_but_preserves_anchors() {
+    // #1920: redaction clears the source-text-bearing fields (info-leak
+    // surface) while preserving the structural anchors matching relies on.
+    let mut identity = StructuralIdentity::new("rust", "method_call");
+    identity.symbol = Some("secret_token".to_string());
+    identity.callee = Some("leaky_call".to_string());
+    identity.container = Some("my_impl".to_string());
+    identity.module = Some("my_mod".to_string());
+    identity.macro_name = Some("my_macro".to_string());
+    identity.lint = Some("clippy::foo".to_string());
+    identity.normalized_snippet_hash = Some("fnv1a64:abc".to_string());
+    identity.receiver_fingerprint = Some("rx".to_string());
+    identity.target_fingerprint = Some("tx".to_string());
+    identity.line_hint = Some(42);
+    identity.column_hint = Some(7);
+
+    identity.redact_source_text_fields();
+
+    // Source-text-bearing fields cleared.
+    assert_eq!(identity.symbol, None);
+    assert_eq!(identity.callee, None);
+    assert_eq!(identity.container, None);
+    assert_eq!(identity.module, None);
+    assert_eq!(identity.macro_name, None);
+    assert_eq!(identity.lint, None);
+    // Structural anchors preserved (matching still works).
+    assert_eq!(identity.language, "rust");
+    assert_eq!(identity.ast_kind, "method_call");
+    assert_eq!(
+        identity.normalized_snippet_hash.as_deref(),
+        Some("fnv1a64:abc")
+    );
+    assert_eq!(identity.receiver_fingerprint.as_deref(), Some("rx"));
+    assert_eq!(identity.target_fingerprint.as_deref(), Some("tx"));
+    assert_eq!(identity.line_hint, Some(42));
+    assert_eq!(identity.column_hint, Some(7));
+}

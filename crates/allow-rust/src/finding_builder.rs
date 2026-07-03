@@ -37,6 +37,12 @@ pub(crate) fn push_finding<F>(
     // Cap source-derived string fields so a megabyte-long identifier cannot
     // inflate report/receipt artifacts unboundedly (#1919).
     identity.truncate_in_place();
+    // Opt-in: redact source-text-bearing identity fields for CI artifacts
+    // where they are an info-leak surface. Structural hashes are preserved.
+    // (#1920)
+    if std::env::var("CARGO_ALLOW_REDACT_IDENTITY").as_deref() == Ok("1") {
+        identity.redact_source_text_fields();
+    }
     findings.push(Finding {
         kind,
         family: Some(family.to_string()),

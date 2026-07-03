@@ -190,43 +190,89 @@
             "link_entries"
           ],
           "properties": {
-            "allow_entries": { "type": "integer", "minimum": 0 },
-            "reviewed_entries": { "type": "integer", "minimum": 0 },
-            "entries_with_evidence": { "type": "integer", "minimum": 0 },
-            "evidence_entries": { "type": "integer", "minimum": 0 },
-            "entries_with_links": { "type": "integer", "minimum": 0 },
-            "link_entries": { "type": "integer", "minimum": 0 }
+            "allow_entries": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "reviewed_entries": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "entries_with_evidence": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "evidence_entries": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "entries_with_links": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "link_entries": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         "baseline_debt": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["entries"],
+          "required": [
+            "entries"
+          ],
           "properties": {
-            "entries": { "type": "integer", "minimum": 0 }
+            "entries": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         "evidence_debt": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "broken_evidence_links": { "type": "integer", "minimum": 0 },
-            "unsafe_broken_evidence_links": { "type": "integer", "minimum": 0 },
-            "weak_evidence_references": { "type": "integer", "minimum": 0 },
-            "unsafe_weak_evidence_references": { "type": "integer", "minimum": 0 },
-            "missing_evidence_entries": { "type": "integer", "minimum": 0 }
+            "broken_evidence_links": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unsafe_broken_evidence_links": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "weak_evidence_references": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unsafe_weak_evidence_references": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "missing_evidence_entries": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         "next_queues": {
           "type": "array",
-          "items": { "$ref": "#/$defs/closeout_queue" }
+          "items": {
+            "$ref": "#/$defs/closeout_queue"
+          }
         },
         "legacy_retirement": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["ready", "blockers", "sources"],
+          "required": [
+            "ready",
+            "blockers",
+            "sources"
+          ],
           "properties": {
-            "ready": { "type": "boolean" },
+            "ready": {
+              "type": "boolean"
+            },
             "blockers": {
               "type": "array",
               "items": {
@@ -240,7 +286,9 @@
             },
             "sources": {
               "type": "array",
-              "items": { "$ref": "#/$defs/legacy_retirement_source" }
+              "items": {
+                "$ref": "#/$defs/legacy_retirement_source"
+              }
             }
           }
         }
@@ -258,26 +306,58 @@
         "command"
       ],
       "properties": {
-        "phase": { "type": "integer", "minimum": 1 },
-        "signal": { "type": "string" },
-        "label": { "type": "string" },
-        "route_kind": {
-          "enum": ["worklist_item_kind", "check_mode"]
+        "phase": {
+          "type": "integer",
+          "minimum": 1
         },
-        "item_kind": { "type": "string" },
-        "count": { "type": "integer", "minimum": 0 },
-        "command": { "type": "string" },
-        "unsafe_command": { "type": "string" }
+        "signal": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "route_kind": {
+          "enum": [
+            "worklist_item_kind",
+            "check_mode"
+          ]
+        },
+        "item_kind": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "command": {
+          "type": "string"
+        },
+        "unsafe_command": {
+          "type": "string"
+        }
       }
     },
     "legacy_retirement_source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["file_name", "compat_kind", "status"],
+      "required": [
+        "file_name",
+        "compat_kind",
+        "status"
+      ],
       "properties": {
-        "file_name": { "type": "string" },
-        "compat_kind": { "type": "string" },
-        "status": { "enum": ["ready", "blocked"] }
+        "file_name": {
+          "type": "string"
+        },
+        "compat_kind": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ready",
+            "blocked"
+          ]
+        }
       }
     },
     "claim_boundary_flag": {
@@ -299,7 +379,8 @@
         "control_flow_not_analyzed",
         "data_flow_not_analyzed",
         "external_evidence_tools_not_invoked",
-        "repository_code_not_executed"
+        "repository_code_not_executed",
+        "source_text_in_identity_fields"
       ]
     },
     "scanner_limitation": {
