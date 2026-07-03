@@ -14,3 +14,6 @@ categories.workspace = true
 [dependencies]
 allow-core.workspace = true
 allow-policy-legacy.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
