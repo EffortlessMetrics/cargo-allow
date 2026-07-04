@@ -98,6 +98,23 @@ fn parse_git_ls_tree_record_return_value_discriminator() {
 }
 
 #[test]
+fn parse_changed_files_z_preserves_embedded_newline_path() {
+    // #1918: NUL-delimited git diff output must preserve paths with embedded
+    // newlines (legal on many filesystems, storable in git). The old
+    // newline-split parsing would corrupt such a path into two entries.
+    let stdout = b"src/lib.rs\0weird\\\nname.rs\0README.md\0";
+    let files = revision_git::parse_changed_files_z(stdout);
+    assert_eq!(files.len(), 3, "three NUL-delimited paths");
+    assert_eq!(files[0], PathBuf::from("src/lib.rs"));
+    assert_eq!(
+        files[1],
+        PathBuf::from("weird\\\nname.rs"),
+        "embedded-newline path must be preserved as one entry"
+    );
+    assert_eq!(files[2], PathBuf::from("README.md"));
+}
+
+#[test]
 fn revision_git_commands_report_changed_tracked_and_missing_files() {
     let repo = TempGitRepo::new("revision-git-commands");
     repo.git(&["init"]);
