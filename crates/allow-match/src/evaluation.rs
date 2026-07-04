@@ -5,7 +5,7 @@ use crate::classification::classify_matched;
 use crate::lifecycle::unused_entry_status;
 use crate::messages::{family_suffix, finding_location};
 use crate::mode::CheckMode;
-use crate::scoring::{STRUCTURAL_MATCH_THRESHOLD, score_match};
+use crate::scoring::classify_match;
 
 pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec<MatchOutcome> {
     let mut outcomes = Vec::new();
@@ -16,10 +16,8 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
     for (finding_index, finding) in findings.iter().enumerate() {
         let mut candidates = Vec::new();
         for (entry_index, entry) in cfg.allow.iter().enumerate() {
-            if let Some(score) = score_match(entry, finding) {
-                if score >= STRUCTURAL_MATCH_THRESHOLD {
-                    candidates.push((entry_index, score));
-                }
+            if let Some(strength) = classify_match(entry, finding) {
+                candidates.push((entry_index, strength.as_priority()));
             }
         }
         match candidates.as_slice() {
