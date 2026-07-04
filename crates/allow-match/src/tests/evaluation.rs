@@ -103,6 +103,68 @@ fn unlimited_entry_matches_repeated_findings() {
 }
 
 #[test]
+fn anchored_last_seen_suppresses_drift_for_other_occurrences() {
+    // Regression: a multi-occurrence entry (glob or repeated snippet) records
+    // one last_seen anchor. The other occurrences must not report perpetual
+    // location_drift that refresh can never settle.
+    let anchored = finding_with_hash("fnv1a64:actual");
+    let mut other = finding_with_hash("fnv1a64:actual");
+    other.span = Some(Span { line: 9, column: 3 });
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.last_seen = Some(LastSeen {
+        line: 50,
+        column: 12,
+    });
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry);
+
+    // Anchor discovered after the drifting occurrence: order must not matter.
+    let outcomes = evaluate(&cfg, &[other, anchored], CheckMode::NoNew);
+
+    assert_eq!(outcomes.len(), 2);
+    assert!(
+        outcomes
+            .iter()
+            .all(|outcome| outcome.status == MatchStatus::Matched),
+        "anchored entry must not report drift for its other occurrences: {outcomes:?}"
+    );
+    assert!(outcomes.iter().any(|outcome| {
+        outcome
+            .message
+            .contains("last_seen anchored by another occurrence")
+    }));
+}
+
+#[test]
+fn drift_is_still_reported_when_no_occurrence_anchors_last_seen() {
+    let mut first = finding_with_hash("fnv1a64:actual");
+    first.span = Some(Span { line: 9, column: 3 });
+    let mut second = finding_with_hash("fnv1a64:actual");
+    second.span = Some(Span {
+        line: 20,
+        column: 5,
+    });
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.last_seen = Some(LastSeen {
+        line: 50,
+        column: 12,
+    });
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry);
+
+    let outcomes = evaluate(&cfg, &[first, second], CheckMode::NoNew);
+
+    assert_eq!(
+        outcomes
+            .iter()
+            .filter(|outcome| outcome.status == MatchStatus::LocationDrift)
+            .count(),
+        2,
+        "unanchored entry must keep reporting drift: {outcomes:?}"
+    );
+}
+
+#[test]
 fn unmatched_finding_is_reported_as_new_with_location() {
     let finding = finding_with_hash("fnv1a64:actual");
     let cfg = AllowConfig::empty();
