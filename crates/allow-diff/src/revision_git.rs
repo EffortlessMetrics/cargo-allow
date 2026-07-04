@@ -18,6 +18,9 @@ pub fn changed_files(
         .arg(root.as_ref())
         .arg("diff")
         .arg("--name-only")
+        // NUL-delimited output so paths with embedded newlines (legal on many
+        // filesystems, storable in git) are not split incorrectly (#1918).
+        .arg("-z")
         .arg(base)
         // Default to HEAD when head is None, so uncommitted working-tree
         // edits don't pollute the diff. Without this, git compares <base>
@@ -30,10 +33,13 @@ pub fn changed_files(
     if !output.status.success() {
         return Err(CargoAllowError::new("git diff --name-only failed"));
     }
-    Ok(String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .map(PathBuf::from)
+    // Parse NUL-delimited paths (same convention as git ls-files -z in
+    // allow-inventory). Each record is a path; empty records are filtered.
+    Ok(output
+        .stdout
+        .split(|byte| *byte == 0)
+        .filter(|record| !record.is_empty())
+        .map(|bytes| PathBuf::from(String::from_utf8_lossy(bytes).to_string()))
         .collect())
 }
 
@@ -106,6 +112,19 @@ pub(crate) fn parse_git_ls_tree_z(stdout: &[u8]) -> Vec<PathBuf> {
     parse_git_ls_tree_file_entries_z(stdout)
         .into_iter()
         .map(|entry| entry.path)
+        .collect()
+}
+
+/// Parse NUL-delimited `git diff -z --name-only` output into paths. Each
+/// record is a path; empty records are filtered. Paths may contain embedded
+/// newlines — those are preserved because the delimiter is NUL, not newline
+/// (#1918).
+#[cfg(test)]
+pub(crate) fn parse_changed_files_z(stdout: &[u8]) -> Vec<PathBuf> {
+    stdout
+        .split(|byte| *byte == 0)
+        .filter(|record| !record.is_empty())
+        .map(|bytes| PathBuf::from(String::from_utf8_lossy(bytes).to_string()))
         .collect()
 }
 
