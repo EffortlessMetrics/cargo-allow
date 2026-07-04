@@ -53,6 +53,11 @@ pub struct Inventory {
     /// filesystem, this carries the git error message so the fallback is never
     /// silent (#1845). `None` when git succeeded or was not attempted.
     pub git_error: Option<String>,
+    /// Directories/files skipped during filesystem traversal due to permission
+    /// errors or other I/O failures (#1844). A single unreadable sub-directory
+    /// no longer aborts the entire walk; it is recorded here and the rest of
+    /// the tree is scanned. Empty for git-tracked inventory.
+    pub skipped_paths: Vec<PathBuf>,
 }
 
 #[cfg(test)]

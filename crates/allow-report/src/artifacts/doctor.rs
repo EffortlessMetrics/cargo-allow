@@ -38,6 +38,9 @@ pub struct DoctorReport<'a> {
     /// Git error message when the inventory fell back from git-tracked to
     /// filesystem scanning (#1845). Empty string when git succeeded.
     pub git_inventory_error: Option<&'a str>,
+    /// Count of paths skipped during filesystem traversal due to I/O errors
+    /// (#1844).
+    pub skipped_paths: usize,
     pub federation_config_path: Option<&'a str>,
     pub federation_config_found: bool,
     pub federation_config_valid: Option<bool>,
