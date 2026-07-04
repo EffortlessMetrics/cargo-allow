@@ -122,6 +122,14 @@
       "type": ["string", "null"],
       "description": "SHA-256 hex digest of the policy file content at scan time."
     },
+    "started_at": {
+      "type": ["string", "null"],
+      "description": "RFC 3339 UTC timestamp of when the run started. Receipts with timestamps are NOT byte-stable across runs."
+    },
+    "run_id": {
+      "type": ["string", "null"],
+      "description": "Unique run identifier for correlating a receipt to a specific CI run/invocation."
+    },
     "federation": {
       "type": "object",
       "additionalProperties": false,

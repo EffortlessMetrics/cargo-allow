@@ -45,7 +45,7 @@ impl SimpleDate {
         era * 146_097 + day_of_era - 719_468
     }
 
-    pub(crate) fn from_days_since_unix_epoch(days: i64) -> Self {
+    pub fn from_days_since_unix_epoch(days: i64) -> Self {
         // Inverse of the civil date algorithm above.
         let z = days + 719_468;
         let era = if z >= 0 { z } else { z - 146_096 } / 146_097;

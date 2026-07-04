@@ -374,6 +374,10 @@ pub struct ReportContext<'a> {
     pub git_sha: Option<&'a str>,
     /// SHA-256 hex digest of the policy file content at scan time (#1850).
     pub policy_digest: Option<&'a str>,
+    /// RFC 3339 timestamp of when the run started (#1854).
+    pub started_at: Option<&'a str>,
+    /// Unique run identifier (process-stable) for correlating receipt to CI run (#1854).
+    pub run_id: Option<&'a str>,
 }
 
 impl<'a> ReportContext<'a> {
@@ -403,6 +407,8 @@ impl<'a> ReportContext<'a> {
             mirror_divergence_entries: None,
             git_sha: None,
             policy_digest: None,
+            started_at: None,
+            run_id: None,
         }
     }
 }
