@@ -16,7 +16,7 @@ mod scoring;
 pub use evaluation::evaluate;
 pub use messages::finding_location;
 pub use mode::CheckMode;
-pub use scoring::{STRUCTURAL_MATCH_THRESHOLD, score_match};
+pub use scoring::{MatchStrength, classify_match, score_match};
 
 #[cfg(test)]
 mod tests;

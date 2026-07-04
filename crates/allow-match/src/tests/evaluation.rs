@@ -54,7 +54,7 @@ fn evaluate_fails_closed_on_ambiguous_structural_matches() {
         outcomes
             .iter()
             .find(|outcome| outcome.status == MatchStatus::Ambiguous)
-            .map(|outcome| outcome.score >= STRUCTURAL_MATCH_THRESHOLD)
+            .map(|outcome| outcome.score > 0)
             .unwrap_or(false)
     );
     assert_eq!(

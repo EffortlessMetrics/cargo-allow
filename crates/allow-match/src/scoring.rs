@@ -1,8 +1,45 @@
-use allow_core::{AllowEntry, Finding, glob_matches, maybe_line_distance_score, normalize_path};
+use allow_core::{AllowEntry, Finding, glob_matches, normalize_path};
 
-pub const STRUCTURAL_MATCH_THRESHOLD: u32 = 80;
+/// How strongly an allow entry matches a finding. Every selector field is a
+/// hard gate (`return None` on mismatch), so a `Some(strength)` result means
+/// the entry matched. The strength describes HOW it matched, replacing the
+/// previous numeric score + dead `STRUCTURAL_MATCH_THRESHOLD` (#2041):
+///
+/// - `ExactOccurrence`: the entry pins a specific occurrence via
+///   `normalized_snippet_hash` (the strongest anchor).
+/// - `Structural`: the entry matches via typed selector fields (`callee`,
+///   `container`, `ast_kind`, `lint`, `symbol`, etc.) without a snippet hash.
+/// - `ScopedFamily`: the entry matches only by kind + family + path/glob (the
+///   broadest tier — typically a file-inventory or broad-glob receipt).
+///
+/// `as_priority()` returns a value for deterministic tie-breaking in the
+/// evaluation loop (higher = more specific).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum MatchStrength {
+    ScopedFamily,
+    Structural,
+    ExactOccurrence,
+}
 
-pub fn score_match(entry: &AllowEntry, finding: &Finding) -> Option<u32> {
+impl MatchStrength {
+    pub fn as_priority(self) -> u32 {
+        match self {
+            Self::ScopedFamily => 100,
+            Self::Structural => 200,
+            Self::ExactOccurrence => 300,
+        }
+    }
+}
+
+/// Classify how strongly `entry` matches `finding`. Returns `None` if any hard
+/// gate (kind, family, path/glob, structural-identity requirement, or an exact
+/// selector field) fails. Returns `Some(strength)` describing the match tier.
+///
+/// This replaces the previous `score_match -> Option<u32>` + dead
+/// `STRUCTURAL_MATCH_THRESHOLD` check: every surviving candidate had score
+/// ≥ 100 > 80, so the threshold was theatre. The strength enum is honest about
+/// match quality (#2041).
+pub fn classify_match(entry: &AllowEntry, finding: &Finding) -> Option<MatchStrength> {
     if entry.kind != finding.kind {
         return None;
     }
@@ -18,83 +55,79 @@ pub fn score_match(entry: &AllowEntry, finding: &Finding) -> Option<u32> {
     if entry.kind.requires_source_selector_identity() && !sel.has_structural_identity() {
         return None;
     }
-    let mut score = 100;
-    // Family is already a hard filter (lines 9-13 above: mismatch returns None),
-    // so it must NOT also contribute to the score — that would double-weight
-    // a field that every surviving candidate already satisfies, making the
-    // threshold meaningless for family-specified entries (#1801).
+
+    // Each Some(selector_field) is a hard equality gate.
+    let mut has_structural_field = false;
     if let Some(ast_kind) = &sel.ast_kind {
         if &finding.identity.ast_kind != ast_kind {
             return None;
         }
-        score += 45;
+        has_structural_field = true;
     }
     if let Some(container) = &sel.container {
         if finding.identity.container.as_deref() != Some(container.as_str()) {
             return None;
         }
-        score += 40;
+        has_structural_field = true;
     }
     if let Some(callee) = &sel.callee {
         if finding.identity.callee.as_deref() != Some(callee.as_str()) {
             return None;
         }
-        score += 35;
+        has_structural_field = true;
     }
     if let Some(macro_name) = &sel.macro_name {
         if finding.identity.macro_name.as_deref() != Some(macro_name.as_str()) {
             return None;
         }
-        score += 35;
+        has_structural_field = true;
     }
     if let Some(lint) = &sel.lint {
         if finding.identity.lint.as_deref() != Some(lint.as_str()) {
             return None;
         }
-        score += 35;
+        has_structural_field = true;
     }
     if let Some(symbol) = &sel.symbol {
-        // Exact equality — substring matching caused false matches where an
-        // entry keyed on "get" matched findings with symbol "get_or_insert"
-        // or "budget" (#1800).
-        if finding.identity.symbol.as_deref() == Some(symbol.as_str()) {
-            score += 20;
-        } else {
+        if finding.identity.symbol.as_deref() != Some(symbol.as_str()) {
             return None;
         }
+        has_structural_field = true;
     }
     if let Some(receiver) = &sel.receiver_fingerprint {
-        // Exact equality only — the previous substring fallback (+10) was
-        // inconsistent with symbol/target (which hard-gated) and caused
-        // over-broad matches (#1800).
-        if finding.identity.receiver_fingerprint.as_deref() == Some(receiver.as_str()) {
-            score += 25;
-        } else {
+        if finding.identity.receiver_fingerprint.as_deref() != Some(receiver.as_str()) {
             return None;
         }
+        has_structural_field = true;
     }
     if let Some(target) = &sel.target_fingerprint {
-        // Exact equality — same rationale as symbol above (#1800).
-        if finding.identity.target_fingerprint.as_deref() == Some(target.as_str()) {
-            score += 20;
-        } else {
+        if finding.identity.target_fingerprint.as_deref() != Some(target.as_str()) {
             return None;
         }
+        has_structural_field = true;
     }
+    // The snippet hash is the strongest anchor (pins a specific occurrence).
+    let has_snippet_hash = sel.normalized_snippet_hash.is_some();
     if let Some(hash) = &sel.normalized_snippet_hash {
-        if finding.identity.normalized_snippet_hash.as_deref() == Some(hash.as_str()) {
-            score += 35;
-        } else {
+        if finding.identity.normalized_snippet_hash.as_deref() != Some(hash.as_str()) {
             return None;
         }
     }
-    let line = finding.span.as_ref().map(|s| s.line);
-    score += maybe_line_distance_score(
-        sel.line_hint
-            .or_else(|| entry.last_seen.as_ref().map(|l| l.line)),
-        line,
-    );
-    Some(score)
+
+    let strength = if has_snippet_hash {
+        MatchStrength::ExactOccurrence
+    } else if has_structural_field {
+        MatchStrength::Structural
+    } else {
+        MatchStrength::ScopedFamily
+    };
+    Some(strength)
+}
+
+/// Backward-compatible wrapper: returns `Some(priority)` when the entry matches.
+/// External callers (`add_entry.rs`, `explain.rs`) only use `.is_some()`.
+pub fn score_match(entry: &AllowEntry, finding: &Finding) -> Option<u32> {
+    classify_match(entry, finding).map(MatchStrength::as_priority)
 }
 
 fn path_matches(entry: &AllowEntry, finding: &Finding) -> bool {

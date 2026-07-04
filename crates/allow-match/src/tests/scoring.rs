@@ -112,7 +112,7 @@ fn receiver_fingerprint_requires_exact_match() {
     );
 
     // Sanity: the exact score is above threshold.
-    assert!(exact_score >= STRUCTURAL_MATCH_THRESHOLD);
+    assert!(exact_score > 0);
 }
 
 #[test]
@@ -166,11 +166,14 @@ fn score_match_requires_exact_receiver_no_partial() {
         None,
         "partial receiver must not match after #1800"
     );
-    assert!(exact_score >= STRUCTURAL_MATCH_THRESHOLD);
+    assert!(exact_score > 0);
 }
 
 #[test]
 fn score_match_uses_last_seen_line_when_selector_line_hint_is_absent() {
+    // #2041: line-distance scoring was cosmetic and never affected matching
+    // decisions. With the MatchStrength model, last_seen no longer contributes
+    // to the priority — the entry still matches at the same strength tier.
     let finding = finding_with_hash("fnv1a64:actual");
     let mut entry = entry_with_hash("fnv1a64:actual");
     entry.selector.line_hint = None;
@@ -184,7 +187,10 @@ fn score_match_uses_last_seen_line_when_selector_line_hint_is_absent() {
     let with_last_seen = score_match(&entry, &finding)
         .unwrap_or_else(|| std::panic::panic_any("entry should match with last_seen"));
 
-    assert_eq!(with_last_seen, without_last_seen + 15);
+    assert_eq!(
+        with_last_seen, without_last_seen,
+        "MatchStrength priority is tier-based, not line-distance-adjusted"
+    );
 }
 
 #[test]
@@ -241,7 +247,7 @@ fn receiver_fingerprint_requires_exact_match_only() {
     // Mismatch does not match.
     entry.selector.receiver_fingerprint = Some("other".to_string());
     assert_eq!(score_match(&entry, &finding), None);
-    assert!(exact >= STRUCTURAL_MATCH_THRESHOLD);
+    assert!(exact > 0);
 }
 
 #[test]
@@ -284,6 +290,7 @@ fn target_and_symbol_selectors_require_exact_matches() {
 
 #[test]
 fn last_seen_line_hint_contributes_when_selector_hint_is_absent() {
+    // #2041: line-distance scoring was cosmetic; MatchStrength is tier-based.
     let finding = finding_with_hash("fnv1a64:actual");
     let mut entry = entry_with_hash("fnv1a64:actual");
     let base = score_match(&entry, &finding)
@@ -296,7 +303,10 @@ fn last_seen_line_hint_contributes_when_selector_hint_is_absent() {
     let with_last_seen = score_match(&entry, &finding)
         .unwrap_or_else(|| std::panic::panic_any("last seen match should score"));
 
-    assert_eq!(with_last_seen, base + 15);
+    assert_eq!(
+        with_last_seen, base,
+        "MatchStrength priority is tier-based, not line-distance-adjusted"
+    );
 }
 
 #[test]
@@ -353,6 +363,95 @@ fn scoring_weights_exact_fingerprints_only() {
     let mut mismatch = exact;
     mismatch.selector.receiver_fingerprint = Some("other_result".to_string());
 
-    assert!(exact_score >= STRUCTURAL_MATCH_THRESHOLD);
+    assert!(exact_score > 0);
     assert_eq!(score_match(&mismatch, &finding), None);
+}
+
+#[test]
+fn classify_match_returns_scoped_family_for_path_only_entry() {
+    // #2041: a path/family-only entry (no structural selector fields) matches
+    // at the ScopedFamily tier — the broadest, least-specific strength.
+    let entry = AllowEntry {
+        id: "test".to_string(),
+        kind: FindingKind::NonRustFile,
+        family: Some("configuration".to_string()),
+        path: Some(PathBuf::from("docs/policy.md")),
+        glob: None,
+        owner: "core".to_string(),
+        classification: "fixture".to_string(),
+        reason: "test".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle::empty(),
+        selector: Selector {
+            glob: Some("docs/policy.md".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    };
+    let finding = Finding {
+        kind: FindingKind::NonRustFile,
+        family: Some("configuration".to_string()),
+        path: PathBuf::from("docs/policy.md"),
+        span: Some(Span { line: 1, column: 1 }),
+        identity: StructuralIdentity::new("non-rust", "tracked_file"),
+        message: "test".to_string(),
+        ledger: None,
+    };
+    assert_eq!(
+        classify_match(&entry, &finding),
+        Some(MatchStrength::ScopedFamily)
+    );
+}
+
+#[test]
+fn classify_match_returns_exact_occurrence_when_snippet_hash_present() {
+    // #2041: an entry with normalized_snippet_hash matches at the
+    // ExactOccurrence tier — the strongest anchor.
+    let mut entry = AllowEntry {
+        id: "test".to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: Some(PathBuf::from("src/lib.rs")),
+        glob: None,
+        owner: "core".to_string(),
+        classification: "fixture".to_string(),
+        reason: "test".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle::empty(),
+        selector: Selector {
+            ast_kind: Some("method_call".to_string()),
+            callee: Some("unwrap".to_string()),
+            normalized_snippet_hash: Some("fnv1a64:abc".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    };
+    let _ = &mut entry;
+    let mut identity = StructuralIdentity::new("rust", "method_call");
+    identity.callee = Some("unwrap".to_string());
+    identity.normalized_snippet_hash = Some("fnv1a64:abc".to_string());
+    let finding = Finding {
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: PathBuf::from("src/lib.rs"),
+        span: Some(Span { line: 1, column: 1 }),
+        identity,
+        message: "test".to_string(),
+        ledger: None,
+    };
+    assert_eq!(
+        classify_match(&entry, &finding),
+        Some(MatchStrength::ExactOccurrence)
+    );
+}
+
+#[test]
+fn match_strength_priority_orders_correctly() {
+    // #2041: ExactOccurrence > Structural > ScopedFamily for tie-breaking.
+    assert!(MatchStrength::ExactOccurrence.as_priority() > MatchStrength::Structural.as_priority());
+    assert!(MatchStrength::Structural.as_priority() > MatchStrength::ScopedFamily.as_priority());
 }

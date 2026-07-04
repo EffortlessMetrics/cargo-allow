@@ -5,7 +5,7 @@ use allow_core::{AllowConfig, AllowEntry, Finding, MatchStatus};
 use allow_policy::parse_policy;
 use allow_rust::scan_rust_source;
 
-use crate::{CheckMode, STRUCTURAL_MATCH_THRESHOLD, evaluate, score_match};
+use crate::{CheckMode, evaluate, score_match};
 
 const FIXTURE_ROOT: &str = "../../tests/fixtures/structural-identity";
 const POLICY_PATH: &str = "../../policy/allow.toml";
@@ -77,7 +77,7 @@ fn entry_by_id<'a>(cfg: &'a AllowConfig, id: &str) -> &'a AllowEntry {
 }
 
 fn finding_matches_entry(finding: &Finding, entry: &AllowEntry) -> bool {
-    score_match(entry, finding).is_some_and(|score| score >= STRUCTURAL_MATCH_THRESHOLD)
+    score_match(entry, finding).is_some()
 }
 
 fn assert_unique_match(cfg: &AllowConfig, finding: &Finding, expected_id: &str) {
