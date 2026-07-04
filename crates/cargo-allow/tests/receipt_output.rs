@@ -47,6 +47,23 @@ fn check_receipt_includes_run_metadata() {
         env!("CARGO_PKG_VERSION"),
         "receipt tool_version",
     );
+    // #1854: receipt carries run provenance (started_at + run_id).
+    let started_at = receipt
+        .pointer("/started_at")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_else(|| std::panic::panic_any("receipt should carry started_at (RFC 3339)"));
+    assert!(
+        started_at.ends_with('Z'),
+        "started_at should be RFC 3339 UTC: {started_at}"
+    );
+    let run_id = receipt
+        .pointer("/run_id")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_else(|| std::panic::panic_any("receipt should carry run_id"));
+    assert!(
+        run_id.starts_with("cargo-allow-"),
+        "run_id should be a cargo-allow invocation id: {run_id}"
+    );
     assert!(
         receipt
             .pointer("/policy_config")

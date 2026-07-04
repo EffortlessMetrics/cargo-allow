@@ -129,6 +129,18 @@ pub(crate) fn push_json_receipt_run_metadata(out: &mut String, context: ReportCo
             json_escape(policy_digest)
         ));
     }
+    // Run provenance (#1854): started_at + run_id so a consumer can correlate a
+    // receipt to a specific CI run / wall-clock time. Receipts with timestamps
+    // are NOT byte-stable across runs (documented).
+    if let Some(started_at) = context.started_at {
+        out.push_str(&format!(
+            "  \"started_at\": \"{}\",\n",
+            json_escape(started_at)
+        ));
+    }
+    if let Some(run_id) = context.run_id {
+        out.push_str(&format!("  \"run_id\": \"{}\",\n", json_escape(run_id)));
+    }
 }
 
 pub(crate) fn push_json_federation_context(

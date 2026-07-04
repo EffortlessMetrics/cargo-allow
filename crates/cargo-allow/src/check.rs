@@ -150,6 +150,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             &report_cfg.lanes,
             findings.iter().map(|finding| finding.kind),
         );
+        let provenance = run_provenance();
         let receipt = federation_bundle.with_context(|federation_context| {
             let mut receipt_context = source_context.report(Some(baseline_debt_entries));
             evidence.apply_to(&mut receipt_context);
@@ -161,6 +162,8 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
                 effective_mode,
                 mode,
                 policy_config.as_deref(),
+                &provenance.started_at,
+                &provenance.run_id,
             );
             receipt_context.lane_posture = Some(&lane_posture);
             receipt_context.federation = Some(federation_context);
@@ -207,7 +210,15 @@ fn write_check_error_receipt(
         InventoryFacts::source_only(InventorySource::FilesystemFallback),
     );
     let mut context = source_context.report(None);
-    apply_receipt_run_metadata(&mut context, effective_mode, mode, policy_config.as_deref());
+    let provenance = run_provenance();
+    apply_receipt_run_metadata(
+        &mut context,
+        effective_mode,
+        mode,
+        policy_config.as_deref(),
+        &provenance.started_at,
+        &provenance.run_id,
+    );
     write_file(path, &render_error_receipt(&err.to_string(), context))
 }
 
@@ -227,6 +238,8 @@ fn apply_receipt_run_metadata<'a>(
     effective_mode: &'a str,
     mode: CheckMode,
     policy_config: Option<&'a str>,
+    started_at: &'a str,
+    run_id: &'a str,
 ) {
     context.mode = Some(effective_mode);
     context.enforcement = Some(if mode.is_advisory() {
@@ -236,6 +249,37 @@ fn apply_receipt_run_metadata<'a>(
     });
     context.policy_config = policy_config;
     context.tool_version = Some(env!("CARGO_PKG_VERSION"));
+    // Run provenance (#1854): started_at + run_id so a consumer can correlate a
+    // receipt to a specific CI run / wall-clock time. Receipts with timestamps
+    // are NOT byte-stable across runs (documented).
+    context.started_at = Some(started_at);
+    context.run_id = Some(run_id);
+}
+
+/// Run provenance: a UTC timestamp + a process-unique run id (#1854).
+struct RunProvenance {
+    started_at: String,
+    run_id: String,
+}
+
+fn run_provenance() -> RunProvenance {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    // RFC 3339 UTC timestamp from epoch seconds (no chrono dependency).
+    let days = (secs / 86_400) as i64;
+    let time_of_day = secs % 86_400;
+    let date = allow_core::SimpleDate::from_days_since_unix_epoch(days);
+    let h = time_of_day / 3600;
+    let m = (time_of_day % 3600) / 60;
+    let s = time_of_day % 60;
+    let started_at = format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+        date.year, date.month, date.day, h, m, s
+    );
+    let run_id = format!("cargo-allow-{}-{}", std::process::id(), secs);
+    RunProvenance { started_at, run_id }
 }
 
 fn resolve_check_root(args: &CheckArgs) -> CargoAllowResult<PathBuf> {
