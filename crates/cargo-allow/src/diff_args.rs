@@ -28,4 +28,14 @@ pub(crate) struct DiffArgs {
     /// Optional head git revision. Defaults to the current working tree.
     #[arg(long)]
     pub(super) head: Option<String>,
+    /// Require a revision note for weakening policy edits. When set, the diff
+    /// fails if any policy change with posture_delta `worsened` or
+    /// `review_required` lacks a matching note in --revisions-dir (#1475/#2075).
+    #[arg(long)]
+    pub(super) require_change_note: bool,
+    /// Directory containing revision-note TOML files. Defaults to
+    /// `.allow/revisions/`. Each file is an append-only note keyed on
+    /// `allow_id` + `change_kind`.
+    #[arg(long, default_value = ".allow/revisions")]
+    pub(super) revisions_dir: PathBuf,
 }

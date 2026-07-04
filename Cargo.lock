@@ -167,6 +167,7 @@ dependencies = [
  "allow-rust",
  "clap",
  "serde_json",
+ "toml",
 ]
 
 [[package]]

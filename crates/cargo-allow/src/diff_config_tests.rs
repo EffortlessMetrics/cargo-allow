@@ -22,6 +22,8 @@ fn cmd_diff_with_explicit_head_reports_missing_default_policy_config_with_exact_
         output: None,
         base: "HEAD~1".to_string(),
         head: Some("HEAD".to_string()),
+        require_change_note: false,
+        revisions_dir: std::path::PathBuf::from(".allow/revisions"),
     })
     .expect_err("diff without policy in compared revisions should fail");
 
@@ -50,6 +52,8 @@ fn cmd_diff_with_explicit_head_rejects_missing_explicit_config_path_with_exact_e
         output: None,
         base: "HEAD~1".to_string(),
         head: Some("HEAD".to_string()),
+        require_change_note: false,
+        revisions_dir: std::path::PathBuf::from(".allow/revisions"),
     })
     .expect_err("diff with missing explicit --config in compared revisions should fail");
 
