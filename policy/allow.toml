@@ -3686,10 +3686,11 @@ lint = "dead_code"
 symbol = "#[expect(dead_code, reason = \"policy:allow-0225: structural identity lint fixture on render\")]"
 target_fingerprint = "policy:allow-0225"
 normalized_snippet_hash = "fnv1a64:fa9243922c7f7584"
+line_hint = 1
 glob = "tests/fixtures/structural-identity/lint_same_different_items/*.rs"
 
 [allow.last_seen]
-line = 4
+line = 1
 column = 1
 
 [[allow]]
@@ -3710,10 +3711,11 @@ lint = "dead_code"
 symbol = "#[expect(dead_code, reason = \"policy:allow-0226: structural identity lint fixture on parse\")]"
 target_fingerprint = "policy:allow-0226"
 normalized_snippet_hash = "fnv1a64:7e13a5ebdee85d74"
+line_hint = 4
 glob = "tests/fixtures/structural-identity/lint_same_different_items/*.rs"
 
 [allow.last_seen]
-line = 1
+line = 4
 column = 1
 
 [[allow]]
@@ -4104,10 +4106,10 @@ review_after = "2026-11-01"
 
 [allow.selector]
 ast_kind = "attribute"
+container = "fixture_refresh_drift"
 lint = "clippy::unwrap_used"
 symbol = "#[expect(clippy::unwrap_used, reason = \"policy:allow-0250: refresh receipt fixture\")]"
 target_fingerprint = "policy:allow-0250"
-container = "fixture_refresh_drift"
 line_hint = 2
 
 [allow.last_seen]
@@ -5142,9 +5144,10 @@ review_after = "2026-09-22"
 ast_kind = "method_call"
 container = "join_errors"
 callee = "expect"
+line_hint = 60
 
 [allow.last_seen]
-line = 53
+line = 60
 column = 39
 
 [[allow]]
@@ -5156,9 +5159,9 @@ owner = "core/policy"
 classification = "test_fixture"
 reason = "Test calls .unwrap() on into_workspace_config result (now returns Result per #2001)."
 evidence = ["test:into_workspace_config"]
+occurrence_limit = 4
 created = "2026-06-22"
 review_after = "2026-09-22"
-occurrence_limit = 4
 
 [allow.selector]
 ast_kind = "method_call"
@@ -5173,9 +5176,9 @@ owner = "core/tests"
 classification = "test_fixture"
 reason = "Schema conformance tests use .unwrap() for file reads and JSON parsing."
 evidence = ["test:schema_conformance"]
+occurrence_limit = 2
 created = "2026-06-24"
 review_after = "2026-09-24"
-occurrence_limit = 2
 
 [allow.selector]
 ast_kind = "method_call"
