@@ -85,6 +85,7 @@ fn render_doctor_json_records_setup_context() {
         inventory_source: "git_tracked",
         files_scanned: 50,
         deleted_tracked_files: 0,
+        git_inventory_error: None,
         federation_config_path: None,
         federation_config_found: false,
         federation_config_valid: None,

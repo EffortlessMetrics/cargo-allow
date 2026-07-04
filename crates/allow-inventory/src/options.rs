@@ -49,6 +49,10 @@ pub struct Inventory {
     /// a tracked path disappeared from coverage (#2048). Empty for non-git
     /// inventory sources.
     pub deleted_tracked: Vec<PathBuf>,
+    /// When the git inventory source failed and the scan fell back to the
+    /// filesystem, this carries the git error message so the fallback is never
+    /// silent (#1845). `None` when git succeeded or was not attempted.
+    pub git_error: Option<String>,
 }
 
 #[cfg(test)]

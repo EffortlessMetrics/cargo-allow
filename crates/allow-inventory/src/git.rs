@@ -11,7 +11,11 @@ pub fn git_ls_files(root: impl AsRef<Path>) -> CargoAllowResult<Vec<PathBuf>> {
         .output()
         .map_err(|e| CargoAllowError::new(format!("failed to invoke git ls-files: {e}")))?;
     if !output.status.success() {
-        return Err(CargoAllowError::new("git ls-files failed"));
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let code = output.status.code().unwrap_or(-1);
+        return Err(CargoAllowError::new(format!(
+            "git ls-files failed (exit {code}): {stderr}"
+        )));
     }
     Ok(parse_git_ls_files_z(&output.stdout))
 }
