@@ -35,6 +35,9 @@ pub struct DoctorReport<'a> {
     /// Git-tracked paths absent from the worktree (#2048). Surfaced so a scan
     /// never looks complete while a tracked path disappeared from coverage.
     pub deleted_tracked_files: usize,
+    /// Git error message when the inventory fell back from git-tracked to
+    /// filesystem scanning (#1845). Empty string when git succeeded.
+    pub git_inventory_error: Option<&'a str>,
     pub federation_config_path: Option<&'a str>,
     pub federation_config_found: bool,
     pub federation_config_valid: Option<bool>,

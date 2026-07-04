@@ -34,22 +34,24 @@ pub fn inventory(
     options: &InventoryOptions,
 ) -> CargoAllowResult<Inventory> {
     let root = root.as_ref();
-    let (mut files, source, deleted_tracked) = if options.include_untracked {
+    let (mut files, source, deleted_tracked, git_error) = if options.include_untracked {
         (
             recursive_files(root)?,
             InventorySource::FilesystemIncludeUntracked,
             Vec::new(),
+            None,
         )
     } else {
         match git_ls_files(root) {
             Ok(files) => {
                 let (existing, deleted_tracked) = existing_regular_files(root, files);
-                (existing, InventorySource::GitTracked, deleted_tracked)
+                (existing, InventorySource::GitTracked, deleted_tracked, None)
             }
-            Err(_) => (
+            Err(err) => (
                 recursive_files(root)?,
                 InventorySource::FilesystemFallback,
                 Vec::new(),
+                Some(err.to_string()),
             ),
         }
     };
@@ -60,6 +62,7 @@ pub fn inventory(
         files,
         source,
         deleted_tracked,
+        git_error,
     })
 }
 

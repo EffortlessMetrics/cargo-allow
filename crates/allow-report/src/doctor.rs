@@ -64,6 +64,12 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
             facts.deleted_tracked_files
         ));
     }
+    if let Some(git_error) = facts.git_inventory_error {
+        out.push_str(&format!(
+            "inventory warning: git ls-files failed; fell back to filesystem \
+             scan — git error: {git_error}\n"
+        ));
+    }
     append_federation_doctor_human(facts, &mut out);
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out
@@ -192,6 +198,12 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
         out.push_str(&format!(
             ",\n    \"deleted_tracked_files\": {}",
             facts.deleted_tracked_files
+        ));
+    }
+    if let Some(git_error) = facts.git_inventory_error {
+        out.push_str(&format!(
+            ",\n    \"git_inventory_error\": \"{}\"",
+            json_escape(git_error)
         ));
     }
     append_doctor_evidence_repair_queues_json(facts, &mut out);
