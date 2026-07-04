@@ -41,6 +41,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let files_scanned = inventory.files.len();
     let deleted_tracked_files = inventory.deleted_tracked.len();
     let git_inventory_error = inventory.git_error.as_deref();
+    let skipped_paths = inventory.skipped_paths.len();
     let evidence_source_tree_files = current_evidence_source_tree_files(&root, false);
     let source_context = SourceTreeReportContext::new(
         &root,
@@ -91,6 +92,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         files_scanned,
         deleted_tracked_files,
         git_inventory_error,
+        skipped_paths,
         federation_config_path: federation.federation_config_path(),
         federation_config_found: federation.found,
         federation_config_valid: federation.valid,
@@ -249,6 +251,7 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
         files_scanned: 50,
         deleted_tracked_files: 0,
         git_inventory_error: None,
+        skipped_paths: 0,
         federation_config_path: None,
         federation_config_found: false,
         federation_config_valid: None,

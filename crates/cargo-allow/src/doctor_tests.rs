@@ -86,6 +86,7 @@ fn render_doctor_json_records_setup_context() {
         files_scanned: 50,
         deleted_tracked_files: 0,
         git_inventory_error: None,
+        skipped_paths: 0,
         federation_config_path: None,
         federation_config_found: false,
         federation_config_valid: None,

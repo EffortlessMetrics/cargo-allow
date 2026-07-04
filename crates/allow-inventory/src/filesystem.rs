@@ -36,22 +36,59 @@ pub(crate) fn existing_regular_files(
     (existing, deleted_tracked)
 }
 
-pub(crate) fn recursive_files(root: &Path) -> CargoAllowResult<Vec<PathBuf>> {
+pub(crate) fn recursive_files(root: &Path) -> CargoAllowResult<(Vec<PathBuf>, Vec<PathBuf>)> {
     let mut out = Vec::new();
-    visit(root, root, &mut out)?;
-    Ok(out)
+    let mut skipped = Vec::new();
+    // Top-level read_dir failure is a hard error (the root itself is
+    // inaccessible). Sub-directory failures are warnings (skip + record).
+    visit(root, root, &mut out, &mut skipped)?;
+    Ok((out, skipped))
 }
 
-fn visit(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> CargoAllowResult<()> {
-    for entry in fs::read_dir(dir)
-        .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", dir.display())))?
-    {
-        let entry = entry
-            .map_err(|e| CargoAllowError::new(format!("failed to read directory entry: {e}")))?;
+fn visit(
+    root: &Path,
+    dir: &Path,
+    out: &mut Vec<PathBuf>,
+    skipped: &mut Vec<PathBuf>,
+) -> CargoAllowResult<()> {
+    let dir_entries = match fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(e) => {
+            // The root directory must be readable; a sub-directory failure is
+            // a warning (skip + record) so one permission-denied branch does
+            // not abort the entire walk (#1844).
+            if dir == root {
+                return Err(CargoAllowError::new(format!(
+                    "failed to read {}: {e}",
+                    dir.display()
+                )));
+            }
+            let rel = dir.strip_prefix(root).unwrap_or(dir).to_path_buf();
+            skipped.push(rel);
+            return Ok(());
+        }
+    };
+    for entry in dir_entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(e) => {
+                // A single unreadable entry in a readable directory is a
+                // warning, not a hard failure (#1844).
+                let path = dir.join(e.to_string());
+                let rel = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
+                skipped.push(rel);
+                continue;
+            }
+        };
         let path = entry.path();
-        let file_type = entry.file_type().map_err(|e| {
-            CargoAllowError::new(format!("failed to inspect {}: {e}", path.display()))
-        })?;
+        let file_type = match entry.file_type() {
+            Ok(ft) => ft,
+            Err(_) => {
+                let rel = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
+                skipped.push(rel);
+                continue;
+            }
+        };
         if file_type.is_symlink() {
             // Resolve the symlink target. Include if it points to a regular
             // file (#1842). Do NOT recurse into symlinked directories (loop
@@ -71,7 +108,7 @@ fn visit(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> CargoAllowResult<()
             continue;
         }
         if file_type.is_dir() {
-            visit(root, &path, out)?;
+            visit(root, &path, out, skipped)?;
         } else if file_type.is_file() {
             let rel = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
             out.push(rel);
@@ -86,5 +123,6 @@ pub(crate) fn visit_for_test(
     dir: &Path,
     out: &mut Vec<PathBuf>,
 ) -> CargoAllowResult<()> {
-    visit(root, dir, out)
+    let mut skipped = Vec::new();
+    visit(root, dir, out, &mut skipped)
 }

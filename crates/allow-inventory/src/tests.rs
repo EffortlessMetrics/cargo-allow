@@ -318,7 +318,7 @@ fn recursive_inventory_skips_symlinked_directories() -> Result<(), Box<dyn std::
     fs::write(root.join("real/file.txt"), "tracked")?;
     symlink(&root, root.join("real/loop"))?;
 
-    let files = super::recursive_files(&root)?;
+    let (files, _skipped) = super::recursive_files(&root)?;
 
     assert_eq!(files, vec![PathBuf::from("real/file.txt")]);
     fs::remove_dir_all(root)?;
