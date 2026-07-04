@@ -11,17 +11,26 @@ use std::path::{Path, PathBuf};
 /// from coverage. Only `NotFound` counts as deleted-tracked; other stat errors
 /// (permission denied, etc.) are treated as "not a file" and excluded from both
 /// lists, since they belong to the separate inaccessible-file disclosure.
+///
+/// A tracked path that exists as a *directory* (not a file) is recorded as a
+/// submodule candidate (#1846): git ls-files reports submodule gitlinks as
+/// plain paths, but checked-out submodules are directories on disk.
 pub(crate) fn existing_regular_files(
     root: &Path,
     files: Vec<PathBuf>,
-) -> (Vec<PathBuf>, Vec<PathBuf>) {
+) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>) {
     let mut existing = Vec::with_capacity(files.len());
     let mut deleted_tracked = Vec::new();
+    let mut submodule_paths = Vec::new();
     for path in files {
         match fs::metadata(root.join(&path)) {
             Ok(metadata) => {
                 if metadata.file_type().is_file() {
                     existing.push(path);
+                } else if metadata.file_type().is_dir() {
+                    // A git-tracked path that is a directory on disk is a
+                    // checked-out submodule gitlink (#1846).
+                    submodule_paths.push(path);
                 }
             }
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
@@ -33,7 +42,7 @@ pub(crate) fn existing_regular_files(
             }
         }
     }
-    (existing, deleted_tracked)
+    (existing, deleted_tracked, submodule_paths)
 }
 
 pub(crate) fn recursive_files(root: &Path) -> CargoAllowResult<(Vec<PathBuf>, Vec<PathBuf>)> {

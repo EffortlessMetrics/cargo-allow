@@ -58,6 +58,10 @@ pub struct Inventory {
     /// no longer aborts the entire walk; it is recorded here and the rest of
     /// the tree is scanned. Empty for git-tracked inventory.
     pub skipped_paths: Vec<PathBuf>,
+    /// Git-tracked paths that are directories on disk (checked-out submodules).
+    /// Their contents are not scanned (submodule recursion is out of scope) but
+    /// the paths are surfaced so the exclusion is never silent (#1846).
+    pub submodule_paths: Vec<PathBuf>,
 }
 
 #[cfg(test)]

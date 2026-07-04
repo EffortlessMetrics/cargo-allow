@@ -110,7 +110,7 @@ fn existing_regular_files_call_presence_observer() -> Result<(), Box<dyn std::er
     write_file(root.join("kept.txt"), "kept");
     fs::create_dir_all(root.join("directory"))?;
 
-    let (existing, deleted_tracked) = existing_regular_files(
+    let (existing, deleted_tracked, submodule_paths) = existing_regular_files(
         &root,
         vec![
             PathBuf::from("kept.txt"),
@@ -122,6 +122,8 @@ fn existing_regular_files_call_presence_observer() -> Result<(), Box<dyn std::er
     assert_eq!(existing, vec![PathBuf::from("kept.txt")]);
     // A missing file is recorded as deleted-tracked, not silently dropped (#2048).
     assert_eq!(deleted_tracked, vec![PathBuf::from("missing.txt")]);
+    // A tracked path that is a directory is a submodule candidate (#1846).
+    assert_eq!(submodule_paths, vec![PathBuf::from("directory")]);
     remove_dir(&root);
     Ok(())
 }

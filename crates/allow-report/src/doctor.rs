@@ -77,6 +77,13 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
             facts.skipped_paths
         ));
     }
+    if facts.submodule_paths > 0 {
+        out.push_str(&format!(
+            "inventory note: {} submodule(s) detected; submodule contents are \
+             not scanned (run cargo-allow inside each submodule for coverage)\n",
+            facts.submodule_paths
+        ));
+    }
     append_federation_doctor_human(facts, &mut out);
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out
@@ -217,6 +224,12 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
         out.push_str(&format!(
             ",\n    \"skipped_paths\": {}",
             facts.skipped_paths
+        ));
+    }
+    if facts.submodule_paths > 0 {
+        out.push_str(&format!(
+            ",\n    \"submodule_paths\": {}",
+            facts.submodule_paths
         ));
     }
     append_doctor_evidence_repair_queues_json(facts, &mut out);
