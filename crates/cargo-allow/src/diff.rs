@@ -6,6 +6,7 @@ use allow_inventory::{InventorySource, resolve_source_tree_root};
 use allow_match::{CheckMode, evaluate};
 use std::collections::BTreeSet;
 use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -110,6 +111,16 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         &mut policy_changes,
     )?;
     let policy_failed = policy_changes.iter().any(|change| change.severity.fails());
+    // #2075: when --require-change-note is set, every weakening policy edit
+    // (severity Fail or Review) must have a matching revision note in the
+    // revisions dir. Missing notes produce a blocking diagnostic naming the
+    // allow_id + change_kind.
+    let missing_change_notes = if args.require_change_note {
+        check_change_notes(&root, &args.revisions_dir, &policy_changes)?
+    } else {
+        Vec::new()
+    };
+    let change_note_failed = !missing_change_notes.is_empty();
     let evidence = evidence_summary_for_diff(
         &root,
         evidence_source_tree_files.as_ref(),
@@ -121,7 +132,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
         .count()
         + evidence.broken_evidence_links;
-    let failed = current_failures > 0 || policy_failed;
+    let failed = current_failures > 0 || policy_failed || change_note_failed;
     let report_inventory_facts = if let Some(head) = args.head.as_deref() {
         InventoryFacts::scanned(
             InventorySource::GitTracked,
@@ -217,6 +228,17 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         eprintln!(
             "{}",
             render_finding_posture_changes_human(&finding_changes, &head_cfg_for_diff)
+        );
+    }
+    // Surface missing change notes as a clear stderr diagnostic (#2075).
+    for missing in &missing_change_notes {
+        eprintln!(
+            "change note required: {allow_id} {kind} ({severity}) — add a revision note in {dir} \
+             covering allow_id=\"{allow_id}\" change_kind=\"{kind}\"",
+            allow_id = missing.allow_id,
+            kind = missing.change_kind,
+            severity = missing.severity,
+            dir = args.revisions_dir.display()
         );
     }
     emit_text(args.output.as_deref(), &text)?;
@@ -528,6 +550,94 @@ fn local_evidence_reference(reference: &str) -> Option<LocalEvidenceReference> {
     Some(LocalEvidenceReference::SourceTreePath(normalize_path(
         target,
     )))
+}
+
+/// A weakening policy edit that lacks a matching revision note (#2075).
+struct MissingChangeNote {
+    allow_id: String,
+    change_kind: String,
+    severity: String,
+}
+
+/// Check whether every weakening policy edit (`severity == Fail` or `Review`)
+/// has a matching revision note in `revisions_dir`. Returns the list of missing
+/// notes (empty when all are covered or the flag is not set).
+///
+/// A revision note is a `.toml` file in `revisions_dir` containing at least:
+/// ```toml
+/// [[records]]
+/// allow_ids = ["allow-0001"]
+/// change_kinds = ["scope_broadened"]
+/// ```
+/// Matching is structural on `(allow_id, change_kind)` — a note covers a change
+/// if the change's `allow_id` is in `allow_ids` and the change's `kind` is in
+/// `change_kinds`. This is the simplest correct contract; `after_fingerprint`
+/// pinning for repeatable-weakening kinds is a follow-up (#2075 scope note).
+fn check_change_notes(
+    root: &std::path::Path,
+    revisions_dir: &std::path::Path,
+    policy_changes: &[allow_diff::PolicyChange],
+) -> CargoAllowResult<Vec<MissingChangeNote>> {
+    let dir = root.join(revisions_dir);
+    let mut covered: Vec<(String, String)> = Vec::new();
+    if dir.is_dir() {
+        for entry in fs::read_dir(&dir).map_err(|e| {
+            CargoAllowError::new(format!("read revisions dir {}: {e}", dir.display()))
+        })? {
+            let entry = entry.map_err(|e| CargoAllowError::new(format!("read dir entry: {e}")))?;
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) != Some("toml") {
+                continue;
+            }
+            let text = fs::read_to_string(&path)
+                .map_err(|e| CargoAllowError::new(format!("read {}: {e}", path.display())))?;
+            let table: toml::Table = toml::from_str(&text).unwrap_or_default();
+            if let Some(records) = table.get("records").and_then(|v| v.as_array()) {
+                for record in records {
+                    let allow_ids: Vec<String> = record
+                        .get("allow_ids")
+                        .and_then(|v| v.as_array())
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect();
+                    let change_kinds: Vec<String> = record
+                        .get("change_kinds")
+                        .and_then(|v| v.as_array())
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect();
+                    for aid in &allow_ids {
+                        for kind in &change_kinds {
+                            covered.push((aid.clone(), kind.clone()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let mut missing = Vec::new();
+    for change in policy_changes {
+        if !matches!(
+            change.severity,
+            allow_diff::PolicyChangeSeverity::Fail | allow_diff::PolicyChangeSeverity::Review
+        ) {
+            continue;
+        }
+        let kind_str = change.kind.as_str();
+        if !covered
+            .iter()
+            .any(|(aid, kind)| aid == &change.allow_id && kind == kind_str)
+        {
+            missing.push(MissingChangeNote {
+                allow_id: change.allow_id.clone(),
+                change_kind: kind_str.to_string(),
+                severity: change.severity.as_str().to_string(),
+            });
+        }
+    }
+    Ok(missing)
 }
 
 #[cfg(test)]
