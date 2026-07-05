@@ -13,7 +13,7 @@ mod git;
 mod options;
 mod root;
 
-pub use git::git_ls_files;
+pub use git::{git_ls_files, git_ls_files_include_untracked};
 pub use options::{Inventory, InventoryOptions, InventorySource};
 pub use root::{discover_source_tree_root, resolve_source_tree_root};
 
@@ -36,15 +36,32 @@ pub fn inventory(
     let root = root.as_ref();
     let (mut files, source, deleted_tracked, git_error, skipped_paths, submodule_paths) =
         if options.include_untracked {
-            let (files, skipped) = recursive_files(root)?;
-            (
-                files,
-                InventorySource::FilesystemIncludeUntracked,
-                Vec::new(),
-                None,
-                skipped,
-                Vec::new(),
-            )
+            // Prefer git's own .gitignore rules when available (#1843). Fall
+            // back to raw filesystem walk only when not in a git repo.
+            match git_ls_files_include_untracked(root) {
+                Ok(files) => {
+                    let (existing, deleted, submods) = existing_regular_files(root, files);
+                    (
+                        existing,
+                        InventorySource::FilesystemIncludeUntracked,
+                        deleted,
+                        None,
+                        Vec::new(),
+                        submods,
+                    )
+                }
+                Err(_) => {
+                    let (files, skipped) = recursive_files(root)?;
+                    (
+                        files,
+                        InventorySource::FilesystemIncludeUntracked,
+                        Vec::new(),
+                        None,
+                        skipped,
+                        Vec::new(),
+                    )
+                }
+            }
         } else {
             match git_ls_files(root) {
                 Ok(files) => {
