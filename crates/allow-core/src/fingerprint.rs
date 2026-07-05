@@ -1,3 +1,5 @@
+use crate::policy::AllowEntry;
+
 pub fn normalize_snippet(input: &str) -> String {
     strip_rust_comments(input)
         .split_whitespace()
@@ -139,6 +141,15 @@ pub fn stable_hash_hex(input: &str) -> String {
         hash = hash.wrapping_mul(0x100000001b3);
     }
     format!("fnv1a64:{hash:016x}")
+}
+
+/// Deterministic content fingerprint of an allow entry's full state, for
+/// mutation-receipt provenance (CARGO-ALLOW-SPEC-0008 "Mutation Receipt
+/// Envelope"). Not identity: two entries with the same content but different
+/// `id` hash differently, and any field change changes the fingerprint. Not
+/// cryptographic; advisory provenance only, not a merge or matching key.
+pub fn allow_entry_content_fingerprint(entry: &AllowEntry) -> String {
+    stable_hash_hex(&format!("{entry:?}"))
 }
 
 pub fn maybe_line_distance_score(hint: Option<u32>, actual: Option<u32>) -> u32 {

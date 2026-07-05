@@ -198,6 +198,57 @@ fn add_schema_locks_selected_finding_and_review_contract() {
     );
 }
 
+#[test]
+fn add_schema_locks_mutation_receipt_envelope() {
+    let schema = parse_schema("add", include_str!("../../../docs/schemas/add.schema.json"));
+
+    let mutation_receipt = required_schema_pointer("add", &schema, "/$defs/mutation_receipt");
+    assert_eq!(
+        mutation_receipt
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "mutation_receipt should reject unknown fields"
+    );
+    assert_required_fields(
+        "add mutation_receipt",
+        mutation_receipt,
+        &[
+            "schema_id",
+            "operation",
+            "tool_version",
+            "repo_root",
+            "config_source",
+            "ledger_ids",
+            "changed_allow_ids",
+            "before_fingerprints",
+            "after_fingerprints",
+            "result",
+            "next_commands",
+            "claim_boundary",
+        ],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/mutation_receipt/properties/schema_id/const")
+            .and_then(Value::as_str),
+        Some("cargo-allow.mutation-receipt.v1"),
+        "mutation_receipt schema_id should be pinned"
+    );
+    assert_schema_type_equals(
+        "add mutation_receipt repo_root",
+        &schema,
+        "/$defs/mutation_receipt/properties/repo_root/type",
+        &["string", "null"],
+    );
+    assert_schema_type_equals(
+        "add mutation_receipt before_fingerprints items",
+        &schema,
+        "/$defs/mutation_receipt/properties/before_fingerprints/items/type",
+        &["string", "null"],
+    );
+}
+
 fn assert_add_option_properties(options: &Value) {
     let Some(properties) = options.get("properties").and_then(Value::as_object) else {
         std::panic::panic_any("add options properties should be an object");

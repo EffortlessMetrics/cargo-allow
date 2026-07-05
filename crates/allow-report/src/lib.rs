@@ -59,6 +59,9 @@ mod migrate_closeout;
 mod migrate_closeout_queues;
 #[cfg(test)]
 mod migrate_tests;
+mod mutation_receipt;
+#[cfg(test)]
+mod mutation_receipt_tests;
 mod non_rust;
 mod path_text;
 #[cfg(test)]
@@ -148,6 +151,10 @@ pub use list::{render_list_human, render_list_json};
 pub use migrate::{render_migrate_human, render_migrate_json};
 pub use migrate_closeout::{
     MigrateCloseoutInput, MigrateLegacySource, migrate_closeout_from_input,
+};
+pub use mutation_receipt::{
+    MUTATION_RECEIPT_CLAIM_BOUNDARY, MUTATION_RECEIPT_SCHEMA_ID, MUTATION_RECEIPT_SCHEMA_VERSION,
+    MutationReceipt,
 };
 pub use path_text::source_tree_path_text;
 pub use propose::{render_propose_human, render_propose_json};

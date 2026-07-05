@@ -54,6 +54,9 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = AddContext {
         inventory: source_context.inventory(),
+        repo_root: Some(root.display().to_string()),
+        config_source: crate::policy_config::config_path(&root, args.config.as_deref())
+            .map(|path| path.display().to_string()),
     };
 
     let (entry, summary) = if let Some(glob) = args.glob.clone() {
@@ -291,6 +294,8 @@ pub(crate) fn sample_add_json_for_contract_test() -> String {
                 Some("H:/Code/Rust/cargo-allow"),
                 Some(48),
             ),
+            repo_root: Some("H:/Code/Rust/cargo-allow".to_string()),
+            config_source: Some("policy/allow.toml".to_string()),
         },
     )
 }

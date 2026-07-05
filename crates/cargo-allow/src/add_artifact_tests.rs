@@ -38,6 +38,8 @@ fn render_add_summary_json_records_entry_and_selected_finding() {
                 Some("H:/Code/Rust/cargo-allow"),
                 Some(52),
             ),
+            repo_root: Some("H:/Code/Rust/cargo-allow".to_string()),
+            config_source: Some("policy/allow.toml".to_string()),
         },
     );
     let value = parse_json_artifact("add", &json, allow_report::ADD_SCHEMA_ID, "add");
@@ -124,6 +126,8 @@ fn render_add_summary_human_records_inventory_context() {
                 Some("H:/Code/Rust/cargo-allow"),
                 Some(52),
             ),
+            repo_root: Some("H:/Code/Rust/cargo-allow".to_string()),
+            config_source: Some("policy/allow.toml".to_string()),
         },
     );
 

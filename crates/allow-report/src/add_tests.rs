@@ -1,8 +1,24 @@
 use super::*;
+use crate::MutationReceipt;
 use allow_core::{
     AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, Selector, Span, StructuralIdentity,
 };
 use std::path::PathBuf;
+
+fn sample_mutation_receipt() -> MutationReceipt<'static> {
+    MutationReceipt {
+        operation: "add",
+        tool_version: "0.1.9",
+        repo_root: Some("H:/Code/Rust/cargo-allow"),
+        config_source: Some("policy/allow.toml"),
+        ledger_ids: Vec::new(),
+        changed_allow_ids: vec!["allow-add-json"],
+        before_fingerprints: vec![None],
+        after_fingerprints: vec![Some("fnv1a64:0000000000000000".to_string())],
+        result: "written",
+        next_commands: Vec::new(),
+    }
+}
 
 #[test]
 fn add_json_renderer_records_entry_and_selected_finding() {
@@ -64,10 +80,14 @@ fn add_json_renderer_records_entry_and_selected_finding() {
         &finding,
         Some("policy/allow.proposed.toml"),
         true,
+        sample_mutation_receipt(),
     ));
 
     assert!(json.contains("\"schema_id\": \"cargo-allow.add.v1\""));
     assert!(json.contains("\"command\": \"add\""));
+    assert!(json.contains("\"mutation_receipt\": {"));
+    assert!(json.contains("\"schema_id\": \"cargo-allow.mutation-receipt.v1\""));
+    assert!(json.contains("\"changed_allow_ids\": [\"allow-add-json\"]"));
     assert!(json.contains("\"source\": \"git_tracked\""));
     assert!(json.contains("\"root\": \"H:/Code/Rust/cargo-allow\""));
     assert!(json.contains("\"files_scanned\": 52"));
@@ -98,6 +118,20 @@ fn add_json_renderer_records_entry_and_selected_finding() {
     "root": "H:/Code/Rust/cargo-allow",
     "files_scanned": 52
   }},
+  "mutation_receipt": {{
+      "schema_id": "cargo-allow.mutation-receipt.v1",
+      "operation": "add",
+      "tool_version": "0.1.9",
+      "repo_root": "H:/Code/Rust/cargo-allow",
+      "config_source": "policy/allow.toml",
+      "ledger_ids": [],
+      "changed_allow_ids": ["allow-add-json"],
+      "before_fingerprints": [null],
+      "after_fingerprints": ["fnv1a64:0000000000000000"],
+      "result": "written",
+      "next_commands": [],
+      "claim_boundary": "Provenance envelope only: records what changed and how to verify it. Does not itself validate entry correctness, authorize merge, or change command semantics (GOAL-0004 PR 5, CARGO-ALLOW-SPEC-0008)."
+    }},
   "options": {{
     "policy_output": "policy/allow.proposed.toml",
     "force": true
@@ -176,6 +210,7 @@ fn add_json_renderer_records_entry_and_selected_finding() {
         &finding,
         Some("policy/allow.proposed.toml"),
         false,
+        sample_mutation_receipt(),
     ));
 
     assert!(text.contains("cargo-allow add summary"));
