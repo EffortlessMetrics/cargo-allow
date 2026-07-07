@@ -10,6 +10,7 @@ use crate::scoring::classify_match;
 pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec<MatchOutcome> {
     let mut outcomes = Vec::new();
     let mut used_entries = BTreeSet::new();
+    let mut non_live_matched_entries = BTreeSet::new();
     let mut entry_occurrences = BTreeMap::<usize, u32>::new();
     let mut drift_outcomes = BTreeMap::<usize, Vec<usize>>::new();
     let mut anchored_entries = BTreeSet::new();
@@ -58,9 +59,13 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
                     });
                     continue;
                 }
-                used_entries.insert(*entry_index);
-                entry_occurrences.insert(*entry_index, current_count + 1);
                 let (status, message) = classify_matched(entry, finding, *score, today, cfg, mode);
+                if status_consumes_entry(status) {
+                    used_entries.insert(*entry_index);
+                    entry_occurrences.insert(*entry_index, current_count + 1);
+                } else {
+                    non_live_matched_entries.insert(*entry_index);
+                }
                 if status == MatchStatus::LocationDrift {
                     drift_outcomes
                         .entry(*entry_index)
@@ -132,7 +137,11 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
         if used_entries.contains(&entry_index) {
             continue;
         }
-        let status = unused_entry_status(entry, today);
+        let status = if non_live_matched_entries.contains(&entry_index) {
+            MatchStatus::Stale
+        } else {
+            unused_entry_status(entry, today)
+        };
         let message = match status {
             MatchStatus::Expired => format!(
                 "{} is expired on {}",
@@ -164,4 +173,14 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
         });
     }
     outcomes
+}
+
+fn status_consumes_entry(status: MatchStatus) -> bool {
+    matches!(
+        status,
+        MatchStatus::Matched
+            | MatchStatus::LocationDrift
+            | MatchStatus::ReviewDue
+            | MatchStatus::BaselineDebt
+    )
 }
