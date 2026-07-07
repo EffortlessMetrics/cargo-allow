@@ -232,6 +232,13 @@ pub(crate) fn assert_inventory_schema(name: &str, schema: &Value, expected_scann
         Some(1),
         "{name} inventory root minLength"
     );
+    assert_eq!(
+        inventory_schema
+            .pointer("/properties/empty_git_tracked/type")
+            .and_then(Value::as_str),
+        Some("boolean"),
+        "{name} inventory empty_git_tracked type"
+    );
 }
 
 pub(crate) fn assert_enum_equals(name: &str, schema: &Value, pointer: &str, expected: &[&str]) {

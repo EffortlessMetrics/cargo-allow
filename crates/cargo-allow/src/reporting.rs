@@ -96,6 +96,7 @@ impl SourceTreeReportContext {
             Some(self.source_tree_root()),
             self.inventory_files(),
         )
+        .with_empty_git_tracked(self.inventory_facts.empty_git_tracked)
     }
 
     pub(crate) fn report(
@@ -108,6 +109,7 @@ impl SourceTreeReportContext {
             self.inventory_files(),
             baseline_debt_entries,
         )
+        .with_empty_git_tracked(self.inventory_facts.empty_git_tracked)
     }
 
     pub(crate) fn source_tree_root(&self) -> &str {

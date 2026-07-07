@@ -297,6 +297,7 @@ pub struct InventoryContext<'a> {
     pub source: &'a str,
     pub root: Option<&'a str>,
     pub files_scanned: Option<usize>,
+    pub empty_git_tracked: bool,
 }
 
 impl<'a> InventoryContext<'a> {
@@ -313,6 +314,7 @@ impl<'a> InventoryContext<'a> {
             source,
             root,
             files_scanned,
+            empty_git_tracked: false,
         }
     }
 
@@ -346,6 +348,11 @@ impl<'a> InventoryContext<'a> {
             root,
             files_scanned,
         )
+    }
+
+    pub fn with_empty_git_tracked(mut self, empty_git_tracked: bool) -> Self {
+        self.empty_git_tracked = empty_git_tracked;
+        self
     }
 }
 
@@ -410,6 +417,11 @@ impl<'a> ReportContext<'a> {
             started_at: None,
             run_id: None,
         }
+    }
+
+    pub fn with_empty_git_tracked(mut self, empty_git_tracked: bool) -> Self {
+        self.inventory = self.inventory.with_empty_git_tracked(empty_git_tracked);
+        self
     }
 }
 

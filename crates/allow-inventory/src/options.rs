@@ -44,6 +44,10 @@ impl InventorySource {
 pub struct Inventory {
     pub files: Vec<PathBuf>,
     pub source: InventorySource,
+    /// Git reported an empty tracked file set for a git-tracked inventory.
+    /// This distinguishes a successful non-empty tracked scan from the fresh
+    /// `git init` case where no files were scanned (#1849).
+    pub empty_git_tracked: bool,
     /// Git-tracked paths that are absent from the worktree (deleted-tracked).
     /// Reported as an inventory diagnostic so a scan never looks complete while
     /// a tracked path disappeared from coverage (#2048). Empty for non-git

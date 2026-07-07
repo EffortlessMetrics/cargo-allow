@@ -34,67 +34,80 @@ pub fn inventory(
     options: &InventoryOptions,
 ) -> CargoAllowResult<Inventory> {
     let root = root.as_ref();
-    let (mut files, source, deleted_tracked, git_error, skipped_paths, submodule_paths) =
-        if options.include_untracked {
-            // Prefer git's own .gitignore rules when available (#1843). Fall
-            // back to raw filesystem walk only when not in a git repo.
-            match git_ls_files_include_untracked(root) {
-                Ok(files) => {
-                    let (existing, deleted, submods) = existing_regular_files(root, files);
-                    (
-                        existing,
-                        InventorySource::FilesystemIncludeUntracked,
-                        deleted,
-                        None,
-                        Vec::new(),
-                        submods,
-                    )
-                }
-                Err(_) => {
-                    let (files, skipped) = recursive_files(root)?;
-                    (
-                        files,
-                        InventorySource::FilesystemIncludeUntracked,
-                        Vec::new(),
-                        None,
-                        skipped,
-                        Vec::new(),
-                    )
-                }
+    let (
+        mut files,
+        source,
+        empty_git_tracked,
+        deleted_tracked,
+        git_error,
+        skipped_paths,
+        submodule_paths,
+    ) = if options.include_untracked {
+        // Prefer git's own .gitignore rules when available (#1843). Fall
+        // back to raw filesystem walk only when not in a git repo.
+        match git_ls_files_include_untracked(root) {
+            Ok(files) => {
+                let (existing, deleted, submods) = existing_regular_files(root, files);
+                (
+                    existing,
+                    InventorySource::FilesystemIncludeUntracked,
+                    false,
+                    deleted,
+                    None,
+                    Vec::new(),
+                    submods,
+                )
             }
-        } else {
-            match git_ls_files(root) {
-                Ok(files) => {
-                    let (existing, deleted_tracked, submodule_paths) =
-                        existing_regular_files(root, files);
-                    (
-                        existing,
-                        InventorySource::GitTracked,
-                        deleted_tracked,
-                        None,
-                        Vec::new(),
-                        submodule_paths,
-                    )
-                }
-                Err(err) => {
-                    let (files, skipped) = recursive_files(root)?;
-                    (
-                        files,
-                        InventorySource::FilesystemFallback,
-                        Vec::new(),
-                        Some(err.to_string()),
-                        skipped,
-                        Vec::new(),
-                    )
-                }
+            Err(_) => {
+                let (files, skipped) = recursive_files(root)?;
+                (
+                    files,
+                    InventorySource::FilesystemIncludeUntracked,
+                    false,
+                    Vec::new(),
+                    None,
+                    skipped,
+                    Vec::new(),
+                )
             }
-        };
+        }
+    } else {
+        match git_ls_files(root) {
+            Ok(files) => {
+                let empty_git_tracked = files.is_empty();
+                let (existing, deleted_tracked, submodule_paths) =
+                    existing_regular_files(root, files);
+                (
+                    existing,
+                    InventorySource::GitTracked,
+                    empty_git_tracked,
+                    deleted_tracked,
+                    None,
+                    Vec::new(),
+                    submodule_paths,
+                )
+            }
+            Err(err) => {
+                let (files, skipped) = recursive_files(root)?;
+                (
+                    files,
+                    InventorySource::FilesystemFallback,
+                    false,
+                    Vec::new(),
+                    Some(err.to_string()),
+                    skipped,
+                    Vec::new(),
+                )
+            }
+        }
+    };
     files.sort();
     files.dedup();
     files.retain(|path| !source_tree_path_is_ignored(path, &options.ignored));
     Ok(Inventory {
         files,
         source,
+        empty_git_tracked,
         deleted_tracked,
         git_error,
         skipped_paths,

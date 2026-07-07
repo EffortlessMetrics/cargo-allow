@@ -170,6 +170,13 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         Some(0),
         "common inventory files_scanned minimum"
     );
+    assert_eq!(
+        schema
+            .pointer("/$defs/inventory/properties/empty_git_tracked/type")
+            .and_then(Value::as_str),
+        Some("boolean"),
+        "common inventory empty_git_tracked type"
+    );
     assert_enum_equals(
         "common",
         &schema,

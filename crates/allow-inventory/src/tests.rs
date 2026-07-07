@@ -55,8 +55,24 @@ fn inventory_defaults_to_git_tracked_and_can_include_untracked() {
     assert!(tracked.contains(&PathBuf::from("tracked.txt")));
     assert!(!tracked.contains(&PathBuf::from("untracked.txt")));
     assert_eq!(tracked_inventory.source, InventorySource::GitTracked);
+    assert!(!tracked_inventory.empty_git_tracked);
     assert!(with_untracked.contains(&PathBuf::from("tracked.txt")));
     assert!(with_untracked.contains(&PathBuf::from("untracked.txt")));
+    remove_dir(&root);
+}
+
+#[test]
+fn git_tracked_inventory_reports_empty_tracked_set() {
+    let root = temp_root("empty-git-tracked");
+    write_file(root.join("untracked.txt"), "untracked");
+    run_git(&root, &["init"]);
+
+    let tracked_inventory = inventory(&root, &InventoryOptions::default())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("tracked inventory: {err}")));
+
+    assert_eq!(tracked_inventory.source, InventorySource::GitTracked);
+    assert!(tracked_inventory.files.is_empty());
+    assert!(tracked_inventory.empty_git_tracked);
     remove_dir(&root);
 }
 
