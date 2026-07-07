@@ -5,6 +5,7 @@ use crate::*;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::ColorChoice;
     use clap::CommandFactory;
     use clap::Parser;
 
@@ -13,6 +14,49 @@ mod tests {
         let normalized = normalized_args(argv(vec!["cargo-allow", "allow", "audit"]));
         let expected = argv(vec!["cargo-allow", "audit"]);
         assert_eq!(normalized, expected);
+    }
+
+    #[test]
+    fn normalized_args_accepts_root_flag_before_cargo_subcommand_prefix() {
+        let normalized = normalized_args(argv(vec![
+            "cargo-allow",
+            "--color=always",
+            "allow",
+            "audit",
+        ]));
+        let expected = argv(vec!["cargo-allow", "--color=always", "audit"]);
+        assert_eq!(normalized, expected);
+    }
+
+    #[test]
+    fn normalized_args_does_not_strip_allow_after_real_subcommand() {
+        let normalized = normalized_args(argv(vec!["cargo-allow", "add", "allow"]));
+        let expected = argv(vec!["cargo-allow", "add", "allow"]);
+        assert_eq!(normalized, expected);
+    }
+
+    #[test]
+    fn clap_parses_color_before_cargo_subcommand_prefix() {
+        let parsed = CargoAllowCli::try_parse_from(normalized_args(argv(vec![
+            "cargo-allow",
+            "--color=always",
+            "allow",
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--owner",
+            "runtime",
+            "--reason",
+            "migration smoke",
+        ])))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse root color before allow: {err}"))
+        });
+
+        assert_eq!(parsed.color, ColorChoice::Always);
+        assert!(matches!(parsed.command, Some(CargoAllowCommand::Add(_))));
     }
 
     #[test]

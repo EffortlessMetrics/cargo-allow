@@ -1,5 +1,5 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
-use clap::{CommandFactory, Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
 
 use crate::{
@@ -14,8 +14,18 @@ use crate::{
     version
 )]
 pub(crate) struct CargoAllowCli {
+    /// Accept cargo-style color preference before the subcommand.
+    #[arg(long, value_enum, default_value_t = ColorChoice::Auto)]
+    pub(crate) color: ColorChoice,
     #[command(subcommand)]
     pub(crate) command: Option<CargoAllowCommand>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum ColorChoice {
+    Auto,
+    Always,
+    Never,
 }
 
 #[derive(Debug, Subcommand)]
@@ -50,6 +60,7 @@ pub(crate) enum CargoAllowCommand {
 
 pub(crate) fn run() -> CargoAllowResult<()> {
     let cli = CargoAllowCli::parse_from(normalized_args(env::args()));
+    let _color = cli.color;
     let Some(command) = cli.command else {
         CargoAllowCli::command()
             .print_help()
@@ -76,8 +87,27 @@ pub(crate) fn run() -> CargoAllowResult<()> {
 
 pub(crate) fn normalized_args(args: impl IntoIterator<Item = String>) -> Vec<String> {
     let mut args = args.into_iter().collect::<Vec<_>>();
-    if args.get(1).map(|s| s.as_str()) == Some("allow") {
-        args.remove(1);
+    if let Some(index) = leading_cargo_allow_token_index(&args) {
+        args.remove(index);
     }
     args
+}
+
+fn leading_cargo_allow_token_index(args: &[String]) -> Option<usize> {
+    for (index, arg) in args.iter().enumerate().skip(1) {
+        if arg == "allow" {
+            return Some(index);
+        }
+        if CargoAllowCommand::SUBCOMMANDS.contains(&arg.as_str()) {
+            return None;
+        }
+    }
+    None
+}
+
+impl CargoAllowCommand {
+    const SUBCOMMANDS: &[&str] = &[
+        "init", "audit", "check", "diff", "list", "explain", "add", "propose", "worklist",
+        "migrate", "refresh", "prune", "doctor",
+    ];
 }
