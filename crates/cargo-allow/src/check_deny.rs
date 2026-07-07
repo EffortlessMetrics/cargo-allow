@@ -1,16 +1,20 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
-use allow_report::{
-    ADVISORY_DENY_FIELD_NAMES, ReportContext, Summary, advisory_count_for_deny_field,
-};
+use allow_report::{AdvisoryClass, ReportContext, Summary, advisory_count_for_deny_field};
 
-pub(crate) fn validate_deny_statuses(statuses: &[String]) -> CargoAllowResult<()> {
+pub(crate) fn validate_deny_statuses(
+    statuses: &[String],
+    summary: &Summary,
+    context: ReportContext<'_>,
+) -> CargoAllowResult<()> {
+    let supported = AdvisoryClass::receipt_fields(summary, context)
+        .into_iter()
+        .map(|(class, _)| class.field_name())
+        .collect::<Vec<_>>();
     for status in statuses {
-        if advisory_count_for_deny_field(&Summary::default(), ReportContext::default(), status)
-            .is_none()
-        {
+        if !supported.iter().any(|field| field == status) {
             return Err(CargoAllowError::new(format!(
                 "unknown --deny status `{status}`; supported advisory classes: {}",
-                ADVISORY_DENY_FIELD_NAMES.join(", ")
+                supported.join(", ")
             )));
         }
     }

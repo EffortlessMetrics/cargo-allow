@@ -14,16 +14,24 @@ fn outcome(status: MatchStatus) -> allow_core::MatchOutcome {
 
 #[test]
 fn validate_deny_statuses_accepts_receipt_advisory_fields() {
-    validate_deny_statuses(&["review_due".to_string(), "baseline_debt".to_string()])
-        .unwrap_or_else(|err| {
-            std::panic::panic_any(format!("expected valid deny statuses: {err}"))
-        });
+    let summary = Summary::from_outcomes(&[outcome(MatchStatus::ReviewDue)]);
+    validate_deny_statuses(
+        &["review_due".to_string(), "baseline_debt".to_string()],
+        &summary,
+        ReportContext::default(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("expected valid deny statuses: {err}")));
 }
 
 #[test]
 fn validate_deny_statuses_rejects_unknown_status() {
-    let err = validate_deny_statuses(&["not_a_status".to_string()])
-        .expect_err("unknown deny status should fail closed");
+    let summary = Summary::from_outcomes(&[outcome(MatchStatus::Matched)]);
+    let err = validate_deny_statuses(
+        &["not_a_status".to_string()],
+        &summary,
+        ReportContext::default(),
+    )
+    .expect_err("unknown deny status should fail closed");
     assert!(
         err.to_string()
             .contains("unknown --deny status `not_a_status`")
@@ -32,10 +40,39 @@ fn validate_deny_statuses_rejects_unknown_status() {
 }
 
 #[test]
-fn validate_deny_statuses_accepts_occurrence_headroom() {
-    validate_deny_statuses(&["occurrence_headroom".to_string()]).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("occurrence_headroom should be supported: {err}"))
-    });
+fn validate_deny_statuses_rejects_absent_optional_advisory_class() {
+    let summary = Summary::from_outcomes(&[outcome(MatchStatus::Matched)]);
+    let err = validate_deny_statuses(
+        &["occurrence_headroom".to_string()],
+        &summary,
+        ReportContext::default(),
+    )
+    .expect_err("absent optional advisory class should fail closed");
+
+    assert!(
+        err.to_string()
+            .contains("unknown --deny status `occurrence_headroom`")
+    );
+    assert!(
+        !err.to_string().contains("occurrence_headroom,"),
+        "absent optional classes should not be listed as supported: {err}"
+    );
+}
+
+#[test]
+fn validate_deny_statuses_accepts_present_optional_advisory_class() {
+    let summary = Summary::from_outcomes(&[outcome(MatchStatus::Matched)]);
+    let context = ReportContext {
+        occurrence_headroom_entries: Some(2),
+        ..ReportContext::default()
+    };
+    validate_deny_statuses(&["occurrence_headroom".to_string()], &summary, context).unwrap_or_else(
+        |err| {
+            std::panic::panic_any(format!(
+                "present occurrence_headroom should be supported: {err}"
+            ))
+        },
+    );
 }
 
 #[test]
