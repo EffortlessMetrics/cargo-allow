@@ -1,5 +1,5 @@
 use allow_core::{AllowConfig, AllowEntry, PostureDelta, PresenceMovement};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::finding::{FindingPostureChange, FindingPostureKind};
 use crate::policy_change::{PolicyChange, PolicyChangeKind, PolicyChangeSeverity};
@@ -136,13 +136,19 @@ pub fn diff_ledger_movement_summary(
         record_row(&mut summary, row);
     }
 
-    let mut touched_allow_ids = BTreeSet::new();
+    let mut policy_rows_by_allow_id = BTreeMap::<&str, DiffRowClassification>::new();
     for change in policy_changes {
-        let row = classify_policy_change(change);
-        record_row(&mut summary, row);
-        if is_allow_entry_id(change) {
-            touched_allow_ids.insert(change.allow_id.as_str());
+        if !is_allow_entry_id(change) {
+            continue;
         }
+        let row = classify_policy_change(change);
+        policy_rows_by_allow_id
+            .entry(change.allow_id.as_str())
+            .and_modify(|existing| *existing = merge_policy_summary_rows(*existing, row))
+            .or_insert(row);
+    }
+    for row in policy_rows_by_allow_id.values() {
+        record_row(&mut summary, *row);
     }
 
     let base_ids = base
@@ -154,7 +160,7 @@ pub fn diff_ledger_movement_summary(
         if !base_ids.contains(entry.id.as_str()) {
             continue;
         }
-        if touched_allow_ids.contains(entry.id.as_str()) {
+        if policy_rows_by_allow_id.contains_key(entry.id.as_str()) {
             continue;
         }
         record_row(
@@ -168,6 +174,46 @@ pub fn diff_ledger_movement_summary(
     }
 
     summary
+}
+
+fn merge_policy_summary_rows(
+    existing: DiffRowClassification,
+    incoming: DiffRowClassification,
+) -> DiffRowClassification {
+    DiffRowClassification {
+        movement: merge_presence_movement(existing.movement, incoming.movement),
+        posture_delta: worst_posture_delta(existing.posture_delta, incoming.posture_delta),
+        changed_in_diff: existing.changed_in_diff || incoming.changed_in_diff,
+    }
+}
+
+fn merge_presence_movement(
+    existing: PresenceMovement,
+    incoming: PresenceMovement,
+) -> PresenceMovement {
+    match (existing, incoming) {
+        (same, other) if same == other => same,
+        (PresenceMovement::Retained, other) => other,
+        (other, PresenceMovement::Retained) => other,
+        (other, _) => other,
+    }
+}
+
+fn worst_posture_delta(existing: PostureDelta, incoming: PostureDelta) -> PostureDelta {
+    if posture_delta_severity(incoming) > posture_delta_severity(existing) {
+        incoming
+    } else {
+        existing
+    }
+}
+
+fn posture_delta_severity(delta: PostureDelta) -> u8 {
+    match delta {
+        PostureDelta::Worsened => 3,
+        PostureDelta::ReviewRequired => 2,
+        PostureDelta::Improved => 1,
+        PostureDelta::Unchanged => 0,
+    }
 }
 
 fn is_allow_entry_id(change: &PolicyChange) -> bool {
@@ -302,6 +348,71 @@ mod tests {
         assert_eq!(summary.movement.introduced, 2);
         assert_eq!(summary.movement.retained, 1);
         assert_eq!(summary.posture_delta.review_required, 2);
+        assert_eq!(summary.posture_delta.unchanged, 1);
+    }
+
+    #[test]
+    fn movement_summary_counts_multiple_changes_for_one_entry_once() {
+        let base = AllowConfig {
+            allow: vec![entry("allow-0001")],
+            ..AllowConfig::empty()
+        };
+        let head = base.clone();
+        let policy_changes = vec![
+            PolicyChange::new(
+                "allow-0001",
+                PolicyChangeKind::ScopeBroadened,
+                PolicyChangeSeverity::Fail,
+                "scope broadened",
+            ),
+            PolicyChange::new(
+                "allow-0001",
+                PolicyChangeKind::ReasonChanged,
+                PolicyChangeSeverity::Review,
+                "reason changed",
+            ),
+        ];
+
+        let summary = diff_ledger_movement_summary(&base, &head, &[], &policy_changes);
+
+        assert_eq!(summary.movement.retained, 1);
+        assert_eq!(summary.posture_delta.worsened, 1);
+        assert_eq!(summary.posture_delta.review_required, 0);
+        assert_eq!(summary.posture_delta.unchanged, 0);
+    }
+
+    #[test]
+    fn movement_summary_excludes_non_entry_policy_changes() {
+        let base = AllowConfig {
+            allow: vec![entry("allow-0001")],
+            ..AllowConfig::empty()
+        };
+        let head = base.clone();
+        let policy_changes = vec![
+            PolicyChange::new(
+                "policy.status",
+                PolicyChangeKind::PolicyStatusWeakened,
+                PolicyChangeSeverity::Fail,
+                "policy status weakened",
+            ),
+            PolicyChange::new(
+                "requirements.unsafe_evidence_required",
+                PolicyChangeKind::RequirementLoosened,
+                PolicyChangeSeverity::Fail,
+                "requirement loosened",
+            ),
+            PolicyChange::new(
+                "workspace.ignored.target",
+                PolicyChangeKind::WorkspaceIgnoredAdded,
+                PolicyChangeSeverity::Fail,
+                "workspace ignore added",
+            ),
+        ];
+
+        let summary = diff_ledger_movement_summary(&base, &head, &[], &policy_changes);
+
+        assert_eq!(summary.movement.retained, 1);
+        assert_eq!(summary.posture_delta.worsened, 0);
         assert_eq!(summary.posture_delta.unchanged, 1);
     }
 

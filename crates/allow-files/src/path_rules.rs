@@ -30,12 +30,28 @@ pub(crate) fn is_generated_path(path: &Path, generated_patterns: &[String]) -> b
     generated_patterns
         .iter()
         .any(|pattern| glob_matches(pattern, path))
+        || is_builtin_generated_file_name(&file_name)
         || text.contains("/generated/")
         || text.starts_with("generated/")
         || file_name.contains(".generated.")
         || file_name.ends_with(".generated")
         || text.contains("/gen/")
         || text.starts_with("gen/")
+}
+
+fn is_builtin_generated_file_name(file_name: &str) -> bool {
+    matches!(
+        file_name,
+        name if name.ends_with(".pb.go")
+            || name.ends_with(".grpc.pb.go")
+            || name.ends_with(".pb.rs")
+            || name.ends_with(".pb.dart")
+            || name.ends_with(".pb.cc")
+            || name.ends_with(".pb.h")
+            || name.ends_with("_pb2.py")
+            || name.ends_with(".g.dart")
+            || name.ends_with("_mock.go")
+    )
 }
 
 pub(crate) fn lower_extension(path: &Path) -> Option<String> {

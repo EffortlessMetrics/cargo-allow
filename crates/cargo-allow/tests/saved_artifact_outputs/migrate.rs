@@ -552,7 +552,10 @@ fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
             migrated_policy.display()
         ))
     });
-    let workflow = migrated_entry(&cfg, "workflow-file-github-workflows-release-yml");
+    let workflow = migrated_entry(
+        &cfg,
+        "workflow-file-github-workflows-release-yml-2702d30def7815f5",
+    );
     assert_eq!(workflow.kind, allow_core::FindingKind::PolicyException);
     assert_eq!(workflow.family.as_deref(), Some("github_workflow"));
     assert_entry_metadata(
@@ -581,7 +584,7 @@ fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
 
     let action = migrated_entry(
         &cfg,
-        "workflow-action-github-workflows-release-yml--actions-checkout-v4",
+        "workflow-action-github-workflows-release-yml-2702d30def7815f5--actions-checkout-v4",
     );
     assert_eq!(action.family.as_deref(), Some("workflow_external_action"));
     assert_entry_metadata(

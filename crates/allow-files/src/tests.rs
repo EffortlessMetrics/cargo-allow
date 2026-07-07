@@ -67,6 +67,37 @@ fn generated_detection_covers_directory_abbreviation_and_suffixes() {
 }
 
 #[test]
+fn generated_detection_covers_common_ecosystem_markers() {
+    for path in [
+        "proto/user.pb.go",
+        "proto/user.grpc.pb.go",
+        "proto/user.pb.rs",
+        "proto/user.pb.dart",
+        "proto/user.pb.cc",
+        "proto/user.pb.h",
+        "python/user_pb2.py",
+        "lib/user.g.dart",
+        "internal/user_mock.go",
+    ] {
+        assert_classification(path, FindingKind::GeneratedCode, "generated_code");
+    }
+}
+
+#[test]
+fn generated_detection_does_not_match_loose_marker_words() {
+    assert_classification(
+        "internal/mock.go",
+        FindingKind::NonRustFile,
+        "unknown_non_rust",
+    );
+    assert_classification(
+        "internal/feedback.go",
+        FindingKind::NonRustFile,
+        "unknown_non_rust",
+    );
+}
+
+#[test]
 fn classifies_non_rust_governance_families() {
     assert_classification("Cargo.toml", FindingKind::NonRustFile, "package_metadata");
     assert_classification("Cargo.lock", FindingKind::NonRustFile, "package_metadata");

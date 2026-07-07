@@ -72,6 +72,33 @@ fn truncate_in_place_caps_over_length_identity_fields() {
 }
 
 #[test]
+fn truncate_in_place_caps_unicode_fields_on_char_boundary() {
+    let glyph = "\u{6f22}";
+    let expected_len = MAX_IDENTITY_FIELD_LEN - (MAX_IDENTITY_FIELD_LEN % glyph.len());
+    let huge = glyph.repeat(MAX_IDENTITY_FIELD_LEN);
+    let mut identity = StructuralIdentity::new(&huge, &huge);
+    identity.container = Some(huge.clone());
+
+    identity.truncate_in_place();
+
+    assert_eq!(identity.language.len(), expected_len);
+    assert!(identity.language.is_char_boundary(identity.language.len()));
+    assert_eq!(identity.ast_kind.len(), expected_len);
+    assert!(identity.ast_kind.is_char_boundary(identity.ast_kind.len()));
+    assert_eq!(
+        identity.container.as_ref().map(String::len),
+        Some(expected_len)
+    );
+    assert_eq!(
+        identity
+            .container
+            .as_ref()
+            .map(|value| value.is_char_boundary(value.len())),
+        Some(true)
+    );
+}
+
+#[test]
 fn truncate_in_place_leaves_short_fields_unchanged() {
     let mut identity = StructuralIdentity::new("rust", "method_call");
     identity.symbol = Some("unwrap".to_string());

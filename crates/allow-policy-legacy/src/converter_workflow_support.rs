@@ -1,4 +1,4 @@
-use allow_core::Lifecycle;
+use allow_core::{Lifecycle, stable_hash_hex};
 
 use crate::converter_lifecycle_support::lifecycle_from_legacy_fields;
 use crate::types::LegacyWorkflowRule;
@@ -21,6 +21,13 @@ pub(crate) fn slug_id(input: &str) -> String {
         }
     }
     out.trim_matches('-').to_string()
+}
+
+pub(crate) fn path_hash_id(path: &str) -> String {
+    let hash = stable_hash_hex(path);
+    hash.strip_prefix("fnv1a64:")
+        .unwrap_or(hash.as_str())
+        .to_string()
 }
 
 #[cfg(test)]

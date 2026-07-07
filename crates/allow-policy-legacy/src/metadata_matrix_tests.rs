@@ -123,7 +123,7 @@ created = "2026-05-09"
 review_after = "2026-09-09"
 expires = "permanent"
 "#,
-            entry_id: "workflow-action-github-workflows-release-yml--actions-checkout-v4",
+            entry_id: "workflow-action-github-workflows-release-yml-2702d30def7815f5--actions-checkout-v4",
             family: Some("workflow_external_action"),
             expected_owner: "release/ci",
             expected_classification: "workflow_external_action",

@@ -12,6 +12,10 @@ other tracked non-Rust files.
 This crate supports cargo-allow's "no mystery scripts" lane. It reports file
 surfaces so policy can require owner, reason, scope, lifecycle, and evidence.
 
+Generated files are detected from configured generated globs plus common
+ecosystem filename markers: `.pb.go`, `.grpc.pb.go`, `.pb.rs`, `.pb.dart`,
+`.pb.cc`, `.pb.h`, `_pb2.py`, `.g.dart`, and `_mock.go`.
+
 ## Who should use it
 
 Most users should use the `cargo-allow` binary. Use this crate directly only if

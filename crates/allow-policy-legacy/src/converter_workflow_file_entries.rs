@@ -1,13 +1,13 @@
 use allow_core::{AllowEntry, FindingKind, Selector, normalize_path};
 use std::path::PathBuf;
 
-use crate::converter_workflow_support::{lifecycle_from_workflow_rule, slug_id};
+use crate::converter_workflow_support::{lifecycle_from_workflow_rule, path_hash_id, slug_id};
 use crate::types::LegacyWorkflowRule;
 
 pub(crate) fn workflow_file_entry(rule: &LegacyWorkflowRule) -> AllowEntry {
     let path = normalize_path(&rule.path);
     AllowEntry {
-        id: format!("workflow-file-{}", slug_id(&path)),
+        id: workflow_file_id(&path),
         kind: FindingKind::PolicyException,
         family: Some("github_workflow".to_string()),
         path: Some(PathBuf::from(&path)),
@@ -27,6 +27,10 @@ pub(crate) fn workflow_file_entry(rule: &LegacyWorkflowRule) -> AllowEntry {
         },
         last_seen: None,
     }
+}
+
+fn workflow_file_id(path: &str) -> String {
+    format!("workflow-file-{}-{}", slug_id(path), path_hash_id(path))
 }
 
 fn workflow_evidence(rule: &LegacyWorkflowRule) -> Vec<String> {
@@ -61,7 +65,10 @@ mod tests {
         let rule = workflow_rule();
         let entry = workflow_file_entry(&rule);
 
-        assert_eq!(entry.id, "workflow-file-github-workflows-ci-yml");
+        assert_eq!(
+            entry.id,
+            "workflow-file-github-workflows-ci-yml-a8f3817ec78236ac"
+        );
         assert_eq!(entry.kind, FindingKind::PolicyException);
         assert_eq!(entry.family.as_deref(), Some("github_workflow"));
         assert_eq!(entry.path, Some(PathBuf::from(".github/workflows/ci.yml")));

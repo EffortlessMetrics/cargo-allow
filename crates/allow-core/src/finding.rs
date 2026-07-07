@@ -134,15 +134,11 @@ impl StructuralIdentity {
     pub fn truncate_in_place(&mut self) {
         let cap_opt = |s: &mut Option<String>| {
             if let Some(value) = s {
-                if value.len() > MAX_IDENTITY_FIELD_LEN {
-                    value.truncate(MAX_IDENTITY_FIELD_LEN);
-                }
+                truncate_identity_field(value);
             }
         };
         let cap_str = |s: &mut String| {
-            if s.len() > MAX_IDENTITY_FIELD_LEN {
-                s.truncate(MAX_IDENTITY_FIELD_LEN);
-            }
+            truncate_identity_field(s);
         };
         cap_str(&mut self.language);
         cap_opt(&mut self.crate_name);
@@ -208,6 +204,17 @@ impl StructuralIdentity {
             ),
         ]
     }
+}
+
+fn truncate_identity_field(value: &mut String) {
+    if value.len() <= MAX_IDENTITY_FIELD_LEN {
+        return;
+    }
+    let mut end = MAX_IDENTITY_FIELD_LEN;
+    while !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    value.truncate(end);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
