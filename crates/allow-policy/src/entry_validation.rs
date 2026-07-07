@@ -84,6 +84,7 @@ pub(crate) fn validate_allow_entry_requirements(
         }
     }
     if link_scope_validation == LinkScopeValidation::Strict {
+        validate_local_evidence_scopes(entry)?;
         validate_local_link_scopes(entry)?;
     }
     Ok(())
@@ -190,6 +191,22 @@ fn validate_unique_values(id: &str, label: &str, values: &[String]) -> CargoAllo
                 index + 1
             )));
         }
+    }
+    Ok(())
+}
+
+fn validate_local_evidence_scopes(entry: &AllowEntry) -> CargoAllowResult<()> {
+    for (index, evidence) in entry.evidence.iter().enumerate() {
+        let Some(reference) = EvidenceReference::parse(evidence) else {
+            continue;
+        };
+        if !reference.kind.is_local_file() {
+            continue;
+        }
+        validate_path_scope(
+            &format!("{} evidence entry {}", entry.id, index + 1),
+            &reference.value,
+        )?;
     }
     Ok(())
 }

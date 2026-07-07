@@ -1,5 +1,5 @@
 use allow_core::{AllowConfig, CargoAllowResult};
-use allow_policy::parse_policy;
+use allow_policy::parse_policy_with_reportable_evidence;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
@@ -28,7 +28,7 @@ pub fn policy_config_at_revision(
     let Some(text) = crate::read_file_at_revision(root, revision, policy_path)? else {
         return Ok(None);
     };
-    parse_policy(&text).map(Some)
+    parse_policy_with_reportable_evidence(&text).map(Some)
 }
 
 pub fn policy_changes(base: &AllowConfig, head: &AllowConfig) -> Vec<PolicyChange> {

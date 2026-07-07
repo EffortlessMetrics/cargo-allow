@@ -1,7 +1,9 @@
 use std::fs;
 
 use super::{escape_toml_string, remove_test_dir, unique_test_dir};
-use crate::{parse_policy, validate_local_evidence_references};
+use crate::{
+    parse_policy, parse_policy_with_reportable_evidence, validate_local_evidence_references,
+};
 
 #[test]
 fn rejects_missing_local_evidence_references() {
@@ -199,7 +201,7 @@ fn rejects_missing_unsafe_review_evidence_references() {
 
 #[test]
 fn rejects_escaping_local_evidence_references() {
-    let cfg = parse_policy(
+    let cfg = parse_policy_with_reportable_evidence(
         r#"
                 policy = "cargo-allow"
                 [[allow]]
@@ -248,7 +250,7 @@ fn rejects_non_source_tree_relative_local_evidence_references() {
     ];
 
     for (evidence, expected_message) in cases {
-        let cfg = parse_policy(&format!(
+        let cfg = parse_policy_with_reportable_evidence(&format!(
             r#"
                 policy = "cargo-allow"
                 [[allow]]

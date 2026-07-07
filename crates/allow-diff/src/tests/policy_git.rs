@@ -96,3 +96,47 @@ fn policy_config_at_revision_parses_committed_policy_not_worktree() {
     );
     fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
 }
+
+#[test]
+fn policy_config_at_revision_preserves_reportable_local_evidence_paths() {
+    let root = temp_root("policy-revision-reportable-evidence");
+    init_git_repo(&root);
+    let path = root.join("policy/allow.toml");
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy parent: {err}")));
+    }
+    fs::write(
+        &path,
+        r#"
+policy = "cargo-allow"
+
+[[allow]]
+id = "allow-reportable"
+kind = "panic"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed"
+reason = "fixture"
+evidence = ["doc:../outside.md"]
+expires = "2026-08-01"
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy file: {err}")));
+    commit_all(&root, "policy with reportable local evidence");
+
+    let cfg = policy_config_at_revision(&root, "HEAD", "policy/allow.toml")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy lookup: {err}")))
+        .unwrap_or_else(|| std::panic::panic_any("committed policy should exist"));
+    let entry = cfg
+        .allow
+        .iter()
+        .find(|entry| entry.id == "allow-reportable")
+        .unwrap_or_else(|| std::panic::panic_any("committed allow entry should parse"));
+
+    assert_eq!(entry.evidence, vec!["doc:../outside.md".to_string()]);
+    fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
+}
