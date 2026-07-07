@@ -2,6 +2,7 @@ use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, LastSeen, MatchOutcome,
     MatchStatus,
 };
+use allow_match::classify_match;
 
 pub(crate) fn select_location_drift_refresh(
     cfg: &AllowConfig,
@@ -42,6 +43,16 @@ pub(crate) fn select_location_drift_refresh(
             "allow entry `{allow_id}` location drift outcome references missing finding index {finding_index}"
         ))
     })?;
+    let entry = cfg.allow.get(entry_index).ok_or_else(|| {
+        CargoAllowError::new(format!(
+            "allow entry `{allow_id}` selection references missing policy index {entry_index}"
+        ))
+    })?;
+    if classify_match(entry, finding).is_none() {
+        return Err(CargoAllowError::new(format!(
+            "allow entry `{allow_id}` selected finding no longer matches the entry selector"
+        )));
+    }
     if finding.span.is_none() {
         return Err(CargoAllowError::new(format!(
             "allow entry `{allow_id}` matched finding has no source span for last_seen refresh"
@@ -85,6 +96,7 @@ mod tests {
                 expires: Some("2026-12-31".to_string()),
             },
             selector: Selector {
+                ast_kind: Some("attribute".to_string()),
                 line_hint: Some(14),
                 ..Selector::default()
             },
@@ -146,5 +158,26 @@ mod tests {
             .expect_err("matched status should not refresh");
 
         assert!(err.to_string().contains("location_drift"));
+    }
+
+    #[test]
+    fn select_location_drift_refresh_rejects_selector_mismatch() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(drift_entry());
+        let mut mismatched = drift_finding();
+        mismatched.identity.ast_kind = "macro_call".to_string();
+        let findings = vec![mismatched];
+        let outcomes = vec![MatchOutcome {
+            status: MatchStatus::LocationDrift,
+            allow_id: Some("allow-drift".to_string()),
+            finding_index: Some(0),
+            message: "last_seen changed".to_string(),
+            score: 1,
+        }];
+
+        let err = select_location_drift_refresh(&cfg, &outcomes, &findings, "allow-drift")
+            .expect_err("selector mismatch should not refresh");
+
+        assert!(err.to_string().contains("no longer matches"));
     }
 }
