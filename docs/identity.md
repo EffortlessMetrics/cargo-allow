@@ -75,7 +75,7 @@ Stable identity fields:
 | `lint` | Lint name for lint suppression findings. |
 | `receiver_fingerprint` | Normalized receiver-side source fingerprint. |
 | `target_fingerprint` | Normalized target-side source fingerprint. |
-| `normalized_snippet_hash` | Stable hash of normalized local source text. |
+| `normalized_snippet_hash` | Stable hash of normalized local source text. Whitespace and Rust comments (`//`, `/* */`) are ignored; string, raw-string, numeric, and other source-token edits remain identity changes. |
 
 Hint fields:
 

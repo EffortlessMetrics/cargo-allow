@@ -44,3 +44,39 @@ fn normalize_snippet_collapses_all_whitespace_runs() {
         "fn load() { value . unwrap() }"
     );
 }
+
+#[test]
+fn normalize_snippet_ignores_line_comments() {
+    assert_eq!(
+        normalize_snippet("let value = maybe.unwrap(); // reviewed in policy"),
+        "let value = maybe.unwrap();"
+    );
+}
+
+#[test]
+fn normalize_snippet_ignores_nested_block_comments() {
+    assert_eq!(
+        normalize_snippet("let value /* outer /* inner */ done */ = maybe.unwrap();"),
+        "let value = maybe.unwrap();"
+    );
+}
+
+#[test]
+fn normalize_snippet_preserves_comment_markers_inside_strings() {
+    assert_eq!(
+        normalize_snippet(r#"let url = "https://example.test/*not-comment*/"; // comment"#),
+        r#"let url = "https://example.test/*not-comment*/";"#
+    );
+    assert_eq!(
+        normalize_snippet(r##"let raw = r#"not // a comment"#; // comment"##),
+        r##"let raw = r#"not // a comment"#;"##
+    );
+}
+
+#[test]
+fn stable_hash_ignores_comment_only_snippet_edits() {
+    let before = normalize_snippet("let value = maybe.unwrap();");
+    let after = normalize_snippet("let value = maybe.unwrap(); // reviewer note");
+
+    assert_eq!(stable_hash_hex(&before), stable_hash_hex(&after));
+}
