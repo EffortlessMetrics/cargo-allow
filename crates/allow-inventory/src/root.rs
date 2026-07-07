@@ -1,5 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 pub fn resolve_source_tree_root(
     explicit_root: Option<&Path>,
@@ -13,16 +15,56 @@ pub fn resolve_source_tree_root(
 
 pub fn discover_source_tree_root(start: impl AsRef<Path>) -> CargoAllowResult<PathBuf> {
     let start = canonical_start_dir(start.as_ref())?;
-    let mut dir = start.as_path();
+    discover_source_tree_root_with_git_env(&start, &[])
+}
+
+fn discover_source_tree_root_with_git_env(
+    start: &Path,
+    extra_env: &[(OsString, OsString)],
+) -> CargoAllowResult<PathBuf> {
+    if let Some(root) = git_source_tree_root(start, extra_env)? {
+        return Ok(root);
+    }
+    discover_source_tree_root_by_marker(start)
+}
+
+fn discover_source_tree_root_by_marker(start: &Path) -> CargoAllowResult<PathBuf> {
+    let mut dir = start;
     loop {
         if dir.join(".git").exists() {
             return Ok(dir.to_path_buf());
         }
         let Some(parent) = dir.parent() else {
-            return Ok(start);
+            return Ok(start.to_path_buf());
         };
         dir = parent;
     }
+}
+
+fn git_source_tree_root(
+    start: &Path,
+    extra_env: &[(OsString, OsString)],
+) -> CargoAllowResult<Option<PathBuf>> {
+    let mut command = Command::new("git");
+    command
+        .arg("-C")
+        .arg(start)
+        .arg("rev-parse")
+        .arg("--show-toplevel");
+    for (key, value) in extra_env {
+        command.env(key, value);
+    }
+    let Ok(output) = command.output() else {
+        return Ok(None);
+    };
+    if !output.status.success() {
+        return Ok(None);
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let Some(root) = stdout.lines().find(|line| !line.trim().is_empty()) else {
+        return Ok(None);
+    };
+    canonical_dir(Path::new(root.trim())).map(Some)
 }
 
 fn canonical_dir(path: &Path) -> CargoAllowResult<PathBuf> {
@@ -103,6 +145,43 @@ mod tests {
                 .contains("failed to canonicalize start path"),
             "unexpected error: {err}"
         );
+        fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn git_source_tree_root_honors_git_work_tree_environment()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = temp_root("git-work-tree-env")?;
+        let git_dir = root.join("repo.git");
+        let work_tree = root.join("work-tree");
+        let unrelated_start = root.join("runner").join("job");
+        fs::create_dir_all(&work_tree)?;
+        fs::create_dir_all(&unrelated_start)?;
+        let status = Command::new("git")
+            .arg("-C")
+            .arg(&root)
+            .arg("init")
+            .arg("--bare")
+            .arg(&git_dir)
+            .status()?;
+        if !status.success() {
+            return Err(format!("git init --bare failed: {status}").into());
+        }
+        let env = vec![
+            (
+                OsString::from("GIT_DIR"),
+                git_dir.as_os_str().to_os_string(),
+            ),
+            (
+                OsString::from("GIT_WORK_TREE"),
+                work_tree.as_os_str().to_os_string(),
+            ),
+        ];
+
+        let discovered = discover_source_tree_root_with_git_env(&unrelated_start, &env)?;
+
+        assert_eq!(discovered, work_tree.canonicalize()?);
         fs::remove_dir_all(root)?;
         Ok(())
     }
