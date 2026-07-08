@@ -36,17 +36,33 @@ impl FederationDiagnostic {
 }
 
 fn detect_duplicate_ids(ledgers: &[LedgerEntry]) -> Vec<FederationDiagnostic> {
-    let mut counts = HashMap::<&str, usize>::new();
-    for ledger in ledgers {
-        *counts.entry(ledger.id.as_str()).or_default() += 1;
+    let mut occurrences = BTreeMap::<&str, Vec<(usize, &LedgerEntry)>>::new();
+    for (index, ledger) in ledgers.iter().enumerate() {
+        occurrences
+            .entry(ledger.id.as_str())
+            .or_default()
+            .push((index, ledger));
     }
-    counts
+
+    occurrences
         .into_iter()
-        .filter(|(_, count)| *count > 1)
-        .map(|(id, _)| FederationDiagnostic {
-            kind: FederationDiagnosticKind::DuplicateId,
-            message: format!("duplicate federation ledger id `{id}`"),
-            ledger_ids: vec![id.to_string()],
+        .filter(|(_, entries)| entries.len() > 1)
+        .map(|(id, entries)| {
+            let positions = entries
+                .iter()
+                .map(|(index, ledger)| format!("ledgers[{index}] path `{}`", ledger.path))
+                .collect::<Vec<_>>();
+            FederationDiagnostic {
+                kind: FederationDiagnosticKind::DuplicateId,
+                message: format!(
+                    "duplicate federation ledger id `{id}` at {}",
+                    positions.join(", ")
+                ),
+                ledger_ids: entries
+                    .iter()
+                    .map(|(_, ledger)| ledger.id.clone())
+                    .collect(),
+            }
         })
         .collect()
 }

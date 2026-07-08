@@ -70,11 +70,25 @@ priority = 20
 "#,
     );
     assert!(!config.valid);
+    let mut saw_duplicate_id = false;
+    for diagnostic in config
+        .diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.kind == FederationDiagnosticKind::DuplicateId)
+    {
+        saw_duplicate_id = true;
+        assert_eq!(diagnostic.ledger_ids, vec!["dup", "dup"]);
+        assert!(
+            diagnostic.message.contains("ledgers[0]")
+                && diagnostic.message.contains("policy/allow.toml")
+                && diagnostic.message.contains("ledgers[1]")
+                && diagnostic.message.contains("policy/cargo-allow.toml"),
+            "expected duplicate_id diagnostic to name both colliding ledger positions: {:?}",
+            diagnostic
+        );
+    }
     assert!(
-        config
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.kind == FederationDiagnosticKind::DuplicateId),
+        saw_duplicate_id,
         "expected duplicate_id diagnostic: {:?}",
         config.diagnostics
     );
