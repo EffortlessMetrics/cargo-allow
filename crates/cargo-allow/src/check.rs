@@ -119,7 +119,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         context.mirror_divergence_entries = Some(mirror_divergence_count);
     }
     if !args.deny.is_empty() {
-        validate_deny_statuses(&args.deny)?;
+        validate_deny_statuses(&args.deny, &summary, context)?;
     }
     let failed = check_failed_for_outcomes(&outcomes, &findings, &report_cfg, mode)
         || evidence.has_broken_evidence_links()
