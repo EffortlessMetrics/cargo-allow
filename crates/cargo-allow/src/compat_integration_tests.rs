@@ -6,6 +6,18 @@ use std::fs;
 use crate::{compat_test_support::migrate_fixture_dir, load_compat_world};
 
 #[test]
+fn unsupported_parsed_compat_kind_lists_generated_as_supported() {
+    let dir = migrate_fixture_dir();
+
+    let err = load_compat_world(Some(&dir), None, Some("policy-exception"), false)
+        .expect_err("parsed but unsupported compat kind should fail");
+    let message = err.to_string();
+
+    assert!(message.contains("--compat currently supports"));
+    assert!(message.contains("--kind generated"));
+}
+
+#[test]
 fn clippy_compat_loads_legacy_policy_and_scans_lint_findings() {
     let dir = migrate_fixture_dir();
     let policy_dir = dir.join("policy");

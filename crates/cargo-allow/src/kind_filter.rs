@@ -100,8 +100,10 @@ pub(crate) fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
 pub(crate) fn parse_kind_filter_arg(kind: &str) -> Result<String, String> {
     parse_kind_filter(kind)
         .map(|_| kind.to_string())
-        .map_err(|_| format!("unknown kind `{kind}`"))
+        .map_err(|_| format!("unknown kind `{kind}`; supported kinds: {SUPPORTED_KIND_FILTERS}"))
 }
+
+const SUPPORTED_KIND_FILTERS: &str = "panic, unsafe, lint-exception, non-rust, generated, policy-exception, no-panic-allowlist, executable, workflow, dependency-surface, process, network";
 
 pub(crate) fn is_panic_compat_kind(kind: &str) -> bool {
     matches!(

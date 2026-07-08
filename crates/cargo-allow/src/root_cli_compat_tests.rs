@@ -56,6 +56,22 @@ fn clap_parses_network_compat_check() {
     assert_parses_compat_kind("network", "network");
 }
 
+#[test]
+fn clap_unknown_compat_kind_lists_generated_as_supported() {
+    let err = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "check",
+        "--compat",
+        "--kind",
+        "typo",
+    ]))
+    .expect_err("unknown compat kind should fail closed");
+    let message = err.to_string();
+
+    assert!(message.contains("unknown kind `typo`"));
+    assert!(message.contains("generated"));
+}
+
 fn assert_parses_compat_kind(kind: &str, label: &str) {
     let parsed = CargoAllowCli::try_parse_from(argv(vec![
         "cargo-allow",
