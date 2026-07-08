@@ -88,6 +88,10 @@
           "type": "integer",
           "minimum": 0,
           "description": "Number of source-tree inventory files considered before scanner filtering, when a full inventory was collected."
+        },
+        "empty_git_tracked": {
+          "type": "boolean",
+          "description": "True when git inventory succeeded but reported no tracked files, such as a freshly initialized repo before git add."
         }
       }
     },
@@ -2686,6 +2690,10 @@
           "type": "integer",
           "minimum": 0,
           "description": "Number of source-tree inventory files considered before scanner filtering, when collected."
+        },
+        "empty_git_tracked": {
+          "type": "boolean",
+          "description": "True when git inventory succeeded but reported no tracked files, such as a freshly initialized repo before git add."
         }
       }
     },
@@ -2716,6 +2724,10 @@
           "type": "integer",
           "minimum": 0,
           "description": "Number of source-tree inventory files considered before migration output, when collected."
+        },
+        "empty_git_tracked": {
+          "type": "boolean",
+          "description": "True when git inventory succeeded but reported no tracked files, such as a freshly initialized repo before git add."
         }
       }
     }

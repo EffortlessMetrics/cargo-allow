@@ -50,6 +50,7 @@ pub fn render_human_with_context(
     if let Some(root) = context.inventory.root {
         out.push_str(&format!("Source tree root: {root}\n"));
     }
+    append_empty_git_tracked_warning_human(context, &mut out);
     for status in STATUS_COUNT_ORDER {
         let count = summary.count(status);
         if count > 0 {
@@ -252,6 +253,7 @@ pub fn render_markdown_with_context(
             markdown_inline_code(root)
         ));
     }
+    append_empty_git_tracked_warning_markdown(context, &mut out);
     out.push_str("| Status | Count |\n|---|---:|\n");
     for status in STATUS_COUNT_ORDER {
         let count = summary.count(status);
@@ -601,6 +603,22 @@ fn inventory_files_markdown_suffix(context: ReportContext<'_>) -> String {
         .files_scanned
         .map(|files| format!("; files scanned: `{files}`"))
         .unwrap_or_default()
+}
+
+fn append_empty_git_tracked_warning_human(context: ReportContext<'_>, out: &mut String) {
+    if context.inventory.empty_git_tracked {
+        out.push_str(
+            "Inventory warning: git reported no tracked files; newly initialized repos need `git add` or `--include-untracked` before cargo-allow scans source files.\n",
+        );
+    }
+}
+
+fn append_empty_git_tracked_warning_markdown(context: ReportContext<'_>, out: &mut String) {
+    if context.inventory.empty_git_tracked {
+        out.push_str(
+            "Inventory warning: Git reported no tracked files; newly initialized repos need `git add` or `--include-untracked` before cargo-allow scans source files.\n\n",
+        );
+    }
 }
 
 fn policy_baseline_debt_note(summary: &Summary, context: ReportContext<'_>) -> Option<usize> {

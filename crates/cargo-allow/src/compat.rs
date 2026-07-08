@@ -101,7 +101,7 @@ pub(crate) fn load_compat_world(
             root,
             cfg,
             findings,
-            InventoryFacts::scanned(inventory.source, inventory.files.len()),
+            InventoryFacts::scanned_inventory(&inventory),
         ));
     }
     if is_process_compat_kind(compat_kind) {

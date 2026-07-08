@@ -74,7 +74,7 @@ pub(crate) fn load_world_with_evidence_mode(
         include_untracked,
     };
     let inventory = inventory(&root, &opts)?;
-    let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
+    let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
     let files = inventory.files;
     if evidence_validation.aborts_on_broken_local_evidence() {
         let evidence_source_tree_files =
@@ -127,7 +127,7 @@ fn load_world_without_policy(
         include_untracked,
     };
     let inventory = inventory(root, &opts)?;
-    let inventory_facts = InventoryFacts::scanned(inventory.source, inventory.files.len());
+    let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
     let files = inventory.files;
     let mut findings = Vec::new();
     findings.extend(allow_rust::scan_rust_files(root, &files)?);

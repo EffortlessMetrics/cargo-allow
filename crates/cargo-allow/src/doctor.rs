@@ -39,6 +39,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let opts = doctor_inventory_options(policy.as_ref());
     let inventory = inventory(&root, &opts)?;
     let files_scanned = inventory.files.len();
+    let empty_git_tracked = inventory.empty_git_tracked;
     let deleted_tracked_files = inventory.deleted_tracked.len();
     let git_inventory_error = inventory.git_error.as_deref();
     let skipped_paths = inventory.skipped_paths.len();
@@ -46,8 +47,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let evidence_source_tree_files = current_evidence_source_tree_files(&root, false);
     let source_context = SourceTreeReportContext::new(
         &root,
-        InventoryFacts::scanned(inventory.source, files_scanned)
-            .with_deleted_tracked(deleted_tracked_files),
+        InventoryFacts::scanned_inventory(&inventory).with_deleted_tracked(deleted_tracked_files),
     );
     let config_text = config
         .as_ref()
@@ -91,6 +91,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         weak_evidence_references,
         inventory_source: source_context.inventory_source(),
         files_scanned,
+        empty_git_tracked,
         deleted_tracked_files,
         git_inventory_error,
         skipped_paths,
@@ -251,6 +252,7 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
         weak_evidence_references: Some(0),
         inventory_source: "git_tracked",
         files_scanned: 50,
+        empty_git_tracked: false,
         deleted_tracked_files: 0,
         git_inventory_error: None,
         skipped_paths: 0,

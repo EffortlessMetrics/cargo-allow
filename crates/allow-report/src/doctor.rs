@@ -56,6 +56,11 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
         "inventory: source_tree/source_syntax via {}; files scanned: {}\n",
         facts.inventory_source, facts.files_scanned
     ));
+    if facts.empty_git_tracked {
+        out.push_str(
+            "inventory warning: git reported no tracked files; newly initialized repos need `git add` or `--include-untracked` before cargo-allow scans source files\n",
+        );
+    }
     if facts.deleted_tracked_files > 0 {
         out.push_str(&format!(
             "inventory warning: {} tracked file(s) absent from the worktree; \
@@ -151,7 +156,8 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
             facts.inventory_source,
             Some(facts.source_tree_root),
             Some(facts.files_scanned),
-        ),
+        )
+        .with_empty_git_tracked(facts.empty_git_tracked),
     );
     out.push_str("  \"root\": {\n");
     out.push_str(&format!(

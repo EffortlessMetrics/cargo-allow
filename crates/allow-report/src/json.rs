@@ -387,6 +387,10 @@ pub fn render_inventory_json(context: InventoryContext<'_>, indent: &str) -> Str
         out.push_str(",\n");
         out.push_str(&format!("{indent}  \"files_scanned\": {files}"));
     }
+    if context.empty_git_tracked {
+        out.push_str(",\n");
+        out.push_str(&format!("{indent}  \"empty_git_tracked\": true"));
+    }
     out.push('\n');
     out.push_str(&format!("{indent}}}"));
     out

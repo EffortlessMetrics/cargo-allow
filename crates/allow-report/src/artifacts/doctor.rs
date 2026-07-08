@@ -32,6 +32,8 @@ pub struct DoctorReport<'a> {
     pub weak_evidence_references: Option<usize>,
     pub inventory_source: &'a str,
     pub files_scanned: usize,
+    /// Git inventory succeeded but reported no tracked files (#1849).
+    pub empty_git_tracked: bool,
     /// Git-tracked paths absent from the worktree (#2048). Surfaced so a scan
     /// never looks complete while a tracked path disappeared from coverage.
     pub deleted_tracked_files: usize,

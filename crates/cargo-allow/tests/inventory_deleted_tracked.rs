@@ -2,6 +2,8 @@
 //! diagnostic, not silently dropped. doctor must surface "N tracked file(s)
 //! absent from the worktree" so a scan never looks complete while a tracked
 //! path disappeared from coverage.
+//! #1849: a fresh git repo with no tracked paths must also be disclosed so an
+//! empty git-tracked inventory does not look like a complete scan.
 //!
 //! Focused test: self-contained subprocess helpers + a minimal git fixture.
 
@@ -60,6 +62,22 @@ fn repo_with_deleted_tracked_file(root: &Path) {
         .unwrap_or_else(|err| std::panic::panic_any(format!("delete tracked file: {err}")));
 }
 
+fn repo_with_empty_tracked_set(root: &Path) {
+    fs::write(root.join("untracked.txt"), "untracked\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write untracked.txt: {err}")));
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .arg("init")
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git init: {err}")));
+    assert!(
+        output.status.success(),
+        "git init should succeed: stderr=`{}`",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 /// doctor must report the deleted-tracked file as an inventory warning (human
 /// output) and as a JSON diagnostic, not silently scan a complete-looking set.
 #[test]
@@ -97,6 +115,46 @@ fn doctor_discloses_deleted_tracked_files() {
     assert!(
         json_text.contains("\"deleted_tracked_files\": 1"),
         "doctor JSON should report deleted_tracked_files=1: `{json_text}`"
+    );
+
+    drop_root(root);
+}
+
+#[test]
+fn doctor_discloses_empty_git_tracked_inventory() {
+    let root = temp_root("empty-git-tracked");
+    repo_with_empty_tracked_set(&root);
+
+    let human = cargo_allow()
+        .arg("doctor")
+        .arg("--root")
+        .arg(&root)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor: {err}")));
+    assert!(
+        human.status.success(),
+        "doctor should still exit 0 (advisory): stderr=`{}`",
+        String::from_utf8_lossy(&human.stderr)
+    );
+    let human_text =
+        String::from_utf8_lossy(&human.stdout) + String::from_utf8_lossy(&human.stderr);
+    assert!(
+        human_text.contains("git reported no tracked files"),
+        "doctor should disclose empty git-tracked inventory in human output: `{human_text}`"
+    );
+
+    let json = cargo_allow()
+        .arg("doctor")
+        .arg("--root")
+        .arg(&root)
+        .arg("--format")
+        .arg("json")
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor json: {err}")));
+    let json_text = String::from_utf8_lossy(&json.stdout) + String::from_utf8_lossy(&json.stderr);
+    assert!(
+        json_text.contains("\"empty_git_tracked\": true"),
+        "doctor JSON should report empty_git_tracked=true: `{json_text}`"
     );
 
     drop_root(root);

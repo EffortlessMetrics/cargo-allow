@@ -84,6 +84,7 @@ fn render_doctor_json_records_setup_context() {
         weak_evidence_references: Some(0),
         inventory_source: "git_tracked",
         files_scanned: 50,
+        empty_git_tracked: false,
         deleted_tracked_files: 0,
         git_inventory_error: None,
         skipped_paths: 0,
