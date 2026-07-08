@@ -56,6 +56,36 @@ fn blocking_lane_still_fails_no_new_on_new_findings() {
     ));
 }
 
+#[test]
+fn unresolved_outcome_does_not_inherit_policy_exception_shadow_lane() {
+    let mut lanes = BTreeMap::new();
+    lanes.insert(
+        "policy_exception".to_string(),
+        LaneConfig {
+            mode: LaneEnforcementMode::Shadow,
+        },
+    );
+    let cfg = AllowConfig {
+        lanes,
+        ..AllowConfig::empty()
+    };
+    let findings = vec![panic_finding()];
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: Some("allow-deleted".to_string()),
+        finding_index: Some(99),
+        message: "unreceipted panic with stale outcome links".to_string(),
+        score: 0,
+    }];
+
+    assert!(check_failed_for_outcomes(
+        &outcomes,
+        &findings,
+        &cfg,
+        CheckMode::NoNew
+    ));
+}
+
 fn panic_finding() -> Finding {
     Finding {
         kind: FindingKind::Panic,

@@ -7,11 +7,13 @@ pub(crate) fn check_outcome_fails(
     cfg: &AllowConfig,
     mode: CheckMode,
 ) -> bool {
-    if !cfg
-        .lane_enforcement_mode_for_kind(outcome_kind(outcome, findings, cfg))
-        .blocks_check_failure()
-    {
-        return false;
+    if let Some(kind) = outcome_kind(outcome, findings, cfg) {
+        if !cfg
+            .lane_enforcement_mode_for_kind(kind)
+            .blocks_check_failure()
+        {
+            return false;
+        }
     }
     mode.fails(outcome.status)
 }
@@ -27,18 +29,22 @@ pub(crate) fn check_failed_for_outcomes(
         .any(|outcome| check_outcome_fails(outcome, findings, cfg, mode))
 }
 
-fn outcome_kind(outcome: &MatchOutcome, findings: &[Finding], cfg: &AllowConfig) -> FindingKind {
+fn outcome_kind(
+    outcome: &MatchOutcome,
+    findings: &[Finding],
+    cfg: &AllowConfig,
+) -> Option<FindingKind> {
     if let Some(index) = outcome.finding_index {
         if let Some(finding) = findings.get(index) {
-            return finding.kind;
+            return Some(finding.kind);
         }
     }
     if let Some(allow_id) = &outcome.allow_id {
         if let Some(entry) = cfg.allow.iter().find(|entry| entry.id == *allow_id) {
-            return entry.kind;
+            return Some(entry.kind);
         }
     }
-    FindingKind::PolicyException
+    None
 }
 
 #[cfg(test)]

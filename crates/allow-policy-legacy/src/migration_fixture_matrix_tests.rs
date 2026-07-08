@@ -420,7 +420,7 @@ fn primary_migration_lane_cases() -> Vec<MigrationLaneCase> {
         primary_case_for_lane(
             CompatKind::Workflow,
             "workflow",
-            "workflow-action-github-workflows-release-yml--actions-checkout-v4",
+            "workflow-action-github-workflows-release-yml-2702d30def7815f5--actions-checkout-v4",
             PrimaryCaseExpectations {
                 family: Some("workflow_external_action"),
                 expected_owner: "release/ci",

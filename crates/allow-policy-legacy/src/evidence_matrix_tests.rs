@@ -227,7 +227,7 @@ evidence = ["doc:docs/ci.md", "issue:#456"]
 created = "2026-05-09"
 expires = "permanent"
 "#,
-            entry_id: "workflow-file-github-workflows-release-yml",
+            entry_id: "workflow-file-github-workflows-release-yml-2702d30def7815f5",
             family: Some("github_workflow"),
             expected_evidence: &["doc:docs/ci.md", "issue:#456"],
             expected_derived_evidence: &[
@@ -256,7 +256,7 @@ evidence = ["doc:docs/ci.md"]
 created = "2026-05-09"
 expires = "permanent"
 "#,
-            entry_id: "workflow-action-github-workflows-release-yml--actions-checkout-v4",
+            entry_id: "workflow-action-github-workflows-release-yml-2702d30def7815f5--actions-checkout-v4",
             family: Some("workflow_external_action"),
             expected_evidence: &["doc:docs/ci.md"],
             expected_derived_evidence: &[
@@ -284,7 +284,7 @@ covered_by = "doc:docs/workflows/release.md"
 created = "2026-05-09"
 expires = "permanent"
 "#,
-            entry_id: "workflow-file-github-workflows-release-yml",
+            entry_id: "workflow-file-github-workflows-release-yml-2702d30def7815f5",
             family: Some("github_workflow"),
             expected_evidence: &["doc:docs/workflows/release.md"],
             expected_derived_evidence: &[
@@ -313,7 +313,7 @@ covered_by = "doc:docs/workflows/actions.md"
 created = "2026-05-09"
 expires = "permanent"
 "#,
-            entry_id: "workflow-action-github-workflows-release-yml--actions-checkout-v4",
+            entry_id: "workflow-action-github-workflows-release-yml-2702d30def7815f5--actions-checkout-v4",
             family: Some("workflow_external_action"),
             expected_evidence: &["doc:docs/workflows/actions.md"],
             expected_derived_evidence: &[

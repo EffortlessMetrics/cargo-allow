@@ -328,7 +328,7 @@ evidence = ["doc:docs/ci.md"]
 created = "2026-05-09"
 review_after = "2026-09-09"
 "#,
-                entry_id: "workflow-file-github-workflows-ci-yml",
+                entry_id: "workflow-file-github-workflows-ci-yml-a8f3817ec78236ac",
                 kind: FindingKind::PolicyException,
                 family: Some("github_workflow"),
                 path: Some(".github/workflows/ci.yml"),

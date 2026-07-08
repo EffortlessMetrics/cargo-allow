@@ -80,19 +80,6 @@ pub(crate) fn assert_source_syntax_artifact_with_inventory(
     value
 }
 
-pub(crate) fn assert_policy_migration_artifact(
-    path: &Path,
-    expected_schema_id: &str,
-    expected_command: &str,
-) -> serde_json::Value {
-    assert_policy_migration_artifact_with_inventory(
-        path,
-        expected_schema_id,
-        expected_command,
-        allow_report::INVENTORY_SOURCE_UNKNOWN,
-    )
-}
-
 pub(crate) fn assert_policy_migration_artifact_with_inventory(
     path: &Path,
     expected_schema_id: &str,

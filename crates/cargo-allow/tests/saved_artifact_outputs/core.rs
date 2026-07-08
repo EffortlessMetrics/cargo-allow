@@ -193,7 +193,12 @@ fn saved_summary_outputs_keep_policy_and_summary_streams_separate() {
         path_arg(&migrate_summary),
     ]);
     assert_policy_output(&migrate_policy);
-    assert_policy_migration_artifact(&migrate_summary, allow_report::MIGRATE_SCHEMA_ID, "migrate");
+    assert_policy_migration_artifact_with_inventory(
+        &migrate_summary,
+        allow_report::MIGRATE_SCHEMA_ID,
+        "migrate",
+        "filesystem_fallback",
+    );
 }
 
 #[test]

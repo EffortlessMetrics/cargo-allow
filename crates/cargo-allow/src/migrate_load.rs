@@ -10,15 +10,16 @@ pub(super) fn load_single_file_migration_config(
     explicit_root: Option<&Path>,
     from: &Path,
 ) -> CargoAllowResult<MigrationLoad> {
-    let root = explicit_root
-        .map(|root| resolve_source_tree_root(Some(root), root))
-        .transpose()?;
+    let root = resolve_source_tree_root(explicit_root, from)?;
+    let inventory = inventory(&root, &InventoryOptions::default())?;
+    let inventory_source = inventory.source;
+    let files_scanned = inventory.files.len();
     Ok(MigrationLoad {
         cfg: allow_policy_legacy::load_legacy_or_canonical(from)?,
         context: MigrateContext {
-            inventory_source: "unknown".to_string(),
-            source_tree_root: root.as_deref().map(allow_report::source_tree_path_text),
-            inventory_files: None,
+            inventory_source: inventory_source.as_str().to_string(),
+            source_tree_root: Some(allow_report::source_tree_path_text(&root)),
+            inventory_files: Some(files_scanned),
             input_kind: "from".to_string(),
             input_path: normalize_path(from),
             legacy_source_files: legacy_source_file_names(from),
@@ -109,6 +110,9 @@ mod tests {
     #[test]
     fn load_single_file_migration_config_call_presence_observer() {
         let root = unique_test_dir("migrate-load-single");
+        let canonical_root = root
+            .canonicalize()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("canonicalize root: {err}")));
         let from = root.join("legacy.allow.toml");
         fs::write(&from, render_policy(&canonical_policy_config()))
             .unwrap_or_else(|err| std::panic::panic_any(format!("write canonical policy: {err}")));
@@ -121,12 +125,18 @@ mod tests {
             migration.cfg.allow.first().map(|entry| entry.id.as_str()),
             Some("allow-migrated-doc")
         );
-        assert_eq!(migration.context.inventory_source, "unknown");
+        assert_eq!(migration.context.inventory_source, "filesystem_fallback");
         assert_eq!(
             migration.context.source_tree_root.as_deref(),
-            Some(allow_report::source_tree_path_text(&root).as_str())
+            Some(allow_report::source_tree_path_text(&canonical_root).as_str())
         );
-        assert_eq!(migration.context.inventory_files, None);
+        assert!(
+            migration
+                .context
+                .inventory_files
+                .is_some_and(|count| count >= 1),
+            "single-file migration should report inventory file count"
+        );
         assert_eq!(migration.context.input_kind, "from");
         assert_eq!(migration.context.input_path, normalize_path(&from));
         remove_test_dir(&root);

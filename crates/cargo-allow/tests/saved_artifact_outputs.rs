@@ -30,8 +30,8 @@ mod worklist;
 
 use fixture::{SourceTreeFixture, commit_fixture_base};
 use harness::{
-    assert_policy_migration_artifact, assert_policy_migration_artifact_with_inventory,
-    assert_policy_output, assert_proof_commands_stay_cargo_allow, assert_source_syntax_artifact,
+    assert_policy_migration_artifact_with_inventory, assert_policy_output,
+    assert_proof_commands_stay_cargo_allow, assert_source_syntax_artifact,
     assert_source_syntax_artifact_with_inventory, path_arg, run_cargo_allow,
     run_cargo_allow_expect_status,
 };

@@ -24,10 +24,10 @@ pub fn classify_path(path: &Path) -> Option<Finding> {
 }
 
 pub fn classify_path_with_options(path: &Path, options: &FileScanOptions) -> Option<Finding> {
-    if !is_scannable_non_rust(path) {
+    let generated = is_generated_path(path, &options.generated);
+    if !generated && !is_scannable_non_rust(path) {
         return None;
     }
-    let generated = is_generated_path(path, &options.generated);
     let family = file_family(path, generated);
     Some(build_file_finding(path, family, generated))
 }

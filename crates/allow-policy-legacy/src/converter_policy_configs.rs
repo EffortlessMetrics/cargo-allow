@@ -1,4 +1,5 @@
-use allow_core::{AllowConfig, CargoAllowResult};
+use allow_core::{AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult};
+use std::collections::BTreeMap;
 
 use crate::converter_config::config_from_entries;
 use crate::converter_dependency_entries::entry_from_dependency_surface_rule;
@@ -21,7 +22,27 @@ pub(crate) fn config_from_workflow_rules(
     table: &toml::Table,
     rules: &[LegacyWorkflowRule],
 ) -> CargoAllowResult<AllowConfig> {
-    config_from_entries(table, rules.iter().flat_map(entries_from_workflow_rule))
+    let entries: Vec<AllowEntry> = rules.iter().flat_map(entries_from_workflow_rule).collect();
+    validate_unique_workflow_entry_ids(&entries)?;
+    config_from_entries(table, entries)
+}
+
+fn validate_unique_workflow_entry_ids(entries: &[AllowEntry]) -> CargoAllowResult<()> {
+    let mut ids = BTreeMap::<String, String>::new();
+    for entry in entries {
+        let source_path = entry
+            .path
+            .as_ref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "<missing path>".to_string());
+        if let Some(first_path) = ids.insert(entry.id.clone(), source_path.clone()) {
+            return Err(CargoAllowError::new(format!(
+                "duplicate workflow allow id `{}` from source paths `{}` and `{}`",
+                entry.id, first_path, source_path
+            )));
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn config_from_dependency_surface_rules(
@@ -139,7 +160,7 @@ status = "active"
         let file_entry = cfg
             .allow
             .iter()
-            .find(|entry| entry.id == "workflow-file-github-workflows-ci-yml")
+            .find(|entry| entry.id == "workflow-file-github-workflows-ci-yml-a8f3817ec78236ac")
             .unwrap_or_else(|| std::panic::panic_any("workflow file entry exists"));
         assert_eq!(file_entry.family.as_deref(), Some("github_workflow"));
         assert_eq!(
@@ -161,7 +182,8 @@ status = "active"
             .allow
             .iter()
             .find(|entry| {
-                entry.id == "workflow-action-github-workflows-ci-yml--actions-checkout-v4"
+                entry.id
+                    == "workflow-action-github-workflows-ci-yml-a8f3817ec78236ac--actions-checkout-v4"
             })
             .unwrap_or_else(|| std::panic::panic_any("checkout action entry exists"));
         assert_eq!(
@@ -176,6 +198,58 @@ status = "active"
             checkout_action.selector.target_fingerprint.as_deref(),
             Some("action:actions/checkout@v4")
         );
+    }
+
+    #[test]
+    fn config_from_workflow_rules_disambiguates_same_slug_workflow_paths() {
+        let table = policy_table();
+        let rules = vec![
+            workflow_rule_for_path(".github/workflows/ci-main.yml"),
+            workflow_rule_for_path(".github/workflows/ci_main.yml"),
+        ];
+
+        let cfg = config_from_workflow_rules(&table, &rules)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("config converts: {err}")));
+
+        assert_config_metadata(&cfg, 4);
+        let file_ids: Vec<&str> = cfg
+            .allow
+            .iter()
+            .map(|entry| entry.id.as_str())
+            .filter(|id| id.starts_with("workflow-file-github-workflows-ci-main-yml-"))
+            .collect();
+        assert_eq!(file_ids.len(), 2);
+        assert_ne!(
+            file_ids[0].to_ascii_lowercase(),
+            file_ids[1].to_ascii_lowercase()
+        );
+        let action_ids: Vec<&str> = cfg
+            .allow
+            .iter()
+            .map(|entry| entry.id.as_str())
+            .filter(|id| id.starts_with("workflow-action-github-workflows-ci-main-yml-"))
+            .collect();
+        assert_eq!(action_ids.len(), 2);
+        assert_ne!(
+            action_ids[0].to_ascii_lowercase(),
+            action_ids[1].to_ascii_lowercase()
+        );
+    }
+
+    #[test]
+    fn config_from_workflow_rules_duplicate_error_names_source_paths() {
+        let table = policy_table();
+        let rules = vec![
+            workflow_rule_for_path(".github/workflows/ci.yml"),
+            workflow_rule_for_path(".github\\workflows\\ci.yml"),
+        ];
+
+        let err = config_from_workflow_rules(&table, &rules)
+            .expect_err("duplicate workflow IDs should fail conversion");
+        let message = err.to_string();
+
+        assert!(message.contains("duplicate workflow allow id"));
+        assert!(message.matches(".github/workflows/ci.yml").count() >= 2);
     }
 
     #[test]
@@ -337,5 +411,21 @@ status = "active"
             std::panic::panic_any(format!("expected one allow entry, got {}", cfg.allow.len()));
         };
         entry
+    }
+
+    fn workflow_rule_for_path(path: &str) -> LegacyWorkflowRule {
+        LegacyWorkflowRule {
+            path: path.to_string(),
+            owner: "platform".to_string(),
+            reason: "required CI lane".to_string(),
+            permissions: Vec::new(),
+            secrets_used: Vec::new(),
+            external_actions: vec!["actions/checkout@v4".to_string()],
+            duplicate_of_lane: None,
+            evidence: vec!["docs/ci.md".to_string()],
+            created: Some("2026-01-02".to_string()),
+            review_after: Some("2026-07-02".to_string()),
+            expires: Some("never".to_string()),
+        }
     }
 }
