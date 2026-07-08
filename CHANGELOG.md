@@ -8,6 +8,8 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-07-08
+
 ### Added
 
 - Movement classification in diff (GOAL-0004 PR 2, #1471): every diff row carries

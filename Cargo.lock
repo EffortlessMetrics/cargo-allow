@@ -13,14 +13,14 @@ dependencies = [
 
 [[package]]
 name = "allow-core"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "proptest",
 ]
 
 [[package]]
 name = "allow-diff"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "allow-core",
  "allow-files",
@@ -31,21 +31,21 @@ dependencies = [
 
 [[package]]
 name = "allow-files"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "allow-core",
 ]
 
 [[package]]
 name = "allow-inventory"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "allow-core",
 ]
 
 [[package]]
 name = "allow-match"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "allow-core",
  "allow-policy",
@@ -54,7 +54,7 @@ dependencies = [
 
 [[package]]
 name = "allow-policy"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "allow-core",
  "serde",
@@ -63,7 +63,7 @@ dependencies = [
 
 [[package]]
 name = "allow-policy-legacy"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "allow-core",
  "allow-match",
@@ -73,7 +73,7 @@ dependencies = [
 
 [[package]]
 name = "allow-report"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "allow-core",
  "allow-policy-legacy",
@@ -82,7 +82,7 @@ dependencies = [
 
 [[package]]
 name = "allow-rust"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "allow-core",
  "toml",
@@ -154,7 +154,7 @@ checksum = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8"
 
 [[package]]
 name = "cargo-allow"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "allow-core",
  "allow-diff",

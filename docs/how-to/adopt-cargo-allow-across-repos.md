@@ -20,12 +20,12 @@ cargo install cargo-allow --locked
 For a pinned published release with the `spec-system` preview:
 
 ```bash
-cargo install cargo-allow --version 0.1.9 --locked
+cargo install cargo-allow --version 0.1.10 --locked
 ```
 
 Do not pin a release-candidate version in another repository before it is
-published. The `0.1.9` install pin in this repository is staging for the
-authorized patch release lane and is not a crates.io publication claim.
+published. Copy a pinned install command from this repository only after that
+version is visible on crates.io.
 
 ## 2. Inventory The Default Ledger
 

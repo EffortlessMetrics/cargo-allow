@@ -6,7 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
-published_version="0.1.9"
+published_version="0.1.10"
 install_root="${ROOT}/target/release-install-smoke-test"
 
 rm -rf "${install_root}"

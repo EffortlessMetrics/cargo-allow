@@ -2,12 +2,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const PUBLISHED_RELEASE_VERSION: &str = "0.1.9";
-const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.8";
-const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.9.md";
-const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.8.md";
+const PUBLISHED_RELEASE_VERSION: &str = "0.1.10";
+const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.9";
+const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.10.md";
+const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.9.md";
 const PUBLISHED_INSTALL_PIN_PHRASE: &str =
-    "Public install examples now pin the published `0.1.9` release";
+    "Public install examples now pin the published `0.1.10` release";
 
 const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
 const RELEASE_DOC: &str = "docs/release/README.md";
