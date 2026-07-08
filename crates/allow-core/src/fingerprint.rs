@@ -1,5 +1,134 @@
 pub fn normalize_snippet(input: &str) -> String {
-    input.split_whitespace().collect::<Vec<_>>().join(" ")
+    strip_rust_comments(input)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn strip_rust_comments(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    while let Some(ch) = chars.next() {
+        match ch {
+            '"' => consume_quoted_string(ch, &mut chars, &mut out),
+            'r' if consume_raw_string(&mut chars, &mut out) => {}
+            '/' => match chars.peek().copied() {
+                Some('/') => {
+                    let _ = chars.next();
+                    consume_line_comment(&mut chars);
+                    out.push(' ');
+                }
+                Some('*') => {
+                    let _ = chars.next();
+                    consume_block_comment(&mut chars);
+                    out.push(' ');
+                }
+                _ => out.push(ch),
+            },
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
+fn consume_quoted_string(
+    quote: char,
+    chars: &mut std::iter::Peekable<std::str::Chars<'_>>,
+    out: &mut String,
+) {
+    out.push(quote);
+    let mut escaped = false;
+    for ch in chars.by_ref() {
+        out.push(ch);
+        if escaped {
+            escaped = false;
+        } else if ch == '\\' {
+            escaped = true;
+        } else if ch == quote {
+            break;
+        }
+    }
+}
+
+fn consume_raw_string(
+    chars: &mut std::iter::Peekable<std::str::Chars<'_>>,
+    out: &mut String,
+) -> bool {
+    let mut lookahead = chars.clone();
+    let mut hashes = 0usize;
+    while lookahead.peek().copied() == Some('#') {
+        let _ = lookahead.next();
+        hashes += 1;
+    }
+    if lookahead.next() != Some('"') {
+        return false;
+    }
+
+    out.push('r');
+    for _ in 0..hashes {
+        let Some(hash) = chars.next() else {
+            return true;
+        };
+        out.push(hash);
+    }
+    let Some(quote) = chars.next() else {
+        return true;
+    };
+    out.push(quote);
+    consume_raw_string_tail(chars, out, hashes);
+    true
+}
+
+fn consume_raw_string_tail(
+    chars: &mut std::iter::Peekable<std::str::Chars<'_>>,
+    out: &mut String,
+    hashes: usize,
+) {
+    while let Some(ch) = chars.next() {
+        out.push(ch);
+        if ch != '"' {
+            continue;
+        }
+        let mut matched = 0usize;
+        while matched < hashes && chars.peek().copied() == Some('#') {
+            let Some(hash) = chars.next() else {
+                break;
+            };
+            out.push(hash);
+            matched += 1;
+        }
+        if matched == hashes {
+            break;
+        }
+    }
+}
+
+fn consume_line_comment(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) {
+    for ch in chars.by_ref() {
+        if ch == '\n' {
+            break;
+        }
+    }
+}
+
+fn consume_block_comment(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) {
+    let mut depth = 1usize;
+    while let Some(ch) = chars.next() {
+        match (ch, chars.peek().copied()) {
+            ('/', Some('*')) => {
+                let _ = chars.next();
+                depth += 1;
+            }
+            ('*', Some('/')) => {
+                let _ = chars.next();
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 pub fn stable_hash_hex(input: &str) -> String {

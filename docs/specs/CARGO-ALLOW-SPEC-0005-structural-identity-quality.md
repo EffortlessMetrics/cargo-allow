@@ -31,7 +31,7 @@ Stable identity fields (from `cargo-allow.structural-identity.v1`):
 | `ast_kind` | Syntax node kind |
 | `symbol` / `callee` / `macro_name` / `lint` | Surface-specific selectors |
 | `receiver_fingerprint` / `target_fingerprint` | Normalized operand fingerprints |
-| `normalized_snippet_hash` | Stable local text hash |
+| `normalized_snippet_hash` | Stable local text hash; ignores whitespace and Rust comments, but not string/raw-string/numeric/source-token edits |
 | `line_hint` / `column_hint` | Review hints only; not identity |
 | `kind` / `family` | Finding-level classification |
 | occurrence limit / scope selector | Policy weakening signals |
