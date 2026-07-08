@@ -237,8 +237,16 @@ fn expired_entry_reports_expired_even_when_structure_matches() {
 
     let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
 
+    assert_eq!(outcomes.len(), 2);
     assert!(outcomes.iter().any(|outcome| {
-        outcome.status == MatchStatus::Expired && outcome.message.contains("expired on 2020-01-01")
+        outcome.status == MatchStatus::Expired
+            && outcome.finding_index == Some(0)
+            && outcome.message.contains("expired on 2020-01-01")
+    }));
+    assert!(outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::Stale
+            && outcome.finding_index.is_none()
+            && outcome.message.contains("allow-1 is stale")
     }));
 }
 
