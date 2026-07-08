@@ -467,6 +467,33 @@ fn accepts_source_tree_relative_local_link() {
 }
 
 #[test]
+fn accepts_source_tree_relative_local_evidence() {
+    let policy = parse_policy(
+        r#"
+                policy = "cargo-allow"
+
+                [[allow]]
+                id = "relative-local-evidence"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["doc:docs/safety.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(
+        policy.is_ok(),
+        "source-tree-relative local evidence should parse"
+    );
+}
+
+#[test]
 fn rejects_local_link_with_parent_directory_segment() {
     let err = parse_err(
         r#"
@@ -493,6 +520,32 @@ fn rejects_local_link_with_parent_directory_segment() {
 }
 
 #[test]
+fn rejects_local_evidence_with_parent_directory_segment() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+
+                [[allow]]
+                id = "parent-local-evidence"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["doc:../outside.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains(
+        "parent-local-evidence evidence entry 1 path must not contain parent directory segments"
+    ));
+}
+
+#[test]
 fn rejects_local_link_with_absolute_path() {
     let err = parse_err(
         r#"
@@ -514,6 +567,32 @@ fn rejects_local_link_with_absolute_path() {
     );
 
     assert!(err.contains("absolute-local-link link entry 1 path must be source-tree-relative"));
+}
+
+#[test]
+fn rejects_local_evidence_with_absolute_path() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+
+                [[allow]]
+                id = "absolute-local-evidence"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["spec:/docs/safety.md"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(
+        err.contains("absolute-local-evidence evidence entry 1 path must be source-tree-relative")
+    );
 }
 
 #[test]
