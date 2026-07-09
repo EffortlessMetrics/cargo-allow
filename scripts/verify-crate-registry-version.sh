@@ -17,7 +17,7 @@ fail() {
   exit 1
 }
 
-search_line="$(cargo search "${crate}" --limit 1 2>/dev/null | head -n 1 || true)"
+search_line="$(CARGO_TERM_COLOR=never cargo search "${crate}" --limit 1 --color never 2>/dev/null | head -n 1 || true)"
 [[ -n "${search_line}" ]] || fail "no search results for ${crate}"
 
 expected_prefix="${crate} = \"${version}\""
