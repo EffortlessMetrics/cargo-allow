@@ -146,7 +146,7 @@ jobs:
             "event": "${{ github.event_name }}",
             "ref": "${{ github.ref_name }}",
             "sha": "${{ github.sha }}",
-            "dry_run": ${{ github.event_name == 'workflow_dispatch' }},
+            "dry_run": ${{ github.event_name == 'workflow_dispatch' && !inputs.publish_recovery }},
             "workflow_run_id": ${{ github.run_id }},
             "auth": "${{ steps.registry_token.outputs.source }}"
           }
