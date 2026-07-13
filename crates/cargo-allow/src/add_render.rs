@@ -7,7 +7,7 @@ use super::AddContext;
 /// Shared mutation-receipt envelope for `add` (GOAL-0004 PR 5A;
 /// CARGO-ALLOW-SPEC-0008 "Mutation Receipt Envelope"). Provenance and
 /// changed-entry metadata only; does not change `add`'s write behavior.
-fn add_mutation_receipt<'a, 'b>(
+pub(super) fn add_mutation_receipt<'a, 'b>(
     entry: &'a AllowEntry,
     context: &'a AddContext<'b>,
     policy_output: Option<&'a str>,

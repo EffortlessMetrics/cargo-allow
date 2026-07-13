@@ -38,7 +38,12 @@ pub struct MutationReceipt<'a> {
     pub next_commands: Vec<String>,
 }
 
-pub(crate) fn render_mutation_receipt_json(receipt: &MutationReceipt<'_>, indent: &str) -> String {
+/// Renders a [`MutationReceipt`] as a JSON object, indented to nest under a
+/// parent object whose own fields are indented by `indent`. Public so every
+/// mutation-command JSON path — including compact, non-`AddReport` shapes
+/// like `add --glob`'s summary — embeds the same envelope rather than
+/// reinventing provenance rendering per call site.
+pub fn render_mutation_receipt_json(receipt: &MutationReceipt<'_>, indent: &str) -> String {
     format!(
         "{{\n\
          {indent}    \"schema_id\": \"{}\",\n\

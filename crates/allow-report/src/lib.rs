@@ -154,7 +154,7 @@ pub use migrate_closeout::{
 };
 pub use mutation_receipt::{
     MUTATION_RECEIPT_CLAIM_BOUNDARY, MUTATION_RECEIPT_SCHEMA_ID, MUTATION_RECEIPT_SCHEMA_VERSION,
-    MutationReceipt,
+    MutationReceipt, render_mutation_receipt_json,
 };
 pub use path_text::source_tree_path_text;
 pub use propose::{render_propose_human, render_propose_json};

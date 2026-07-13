@@ -150,8 +150,10 @@ const ALLOW_ENTRY_FINGERPRINT_SCHEMA: &str = "cargo-allow.allow-entry-fingerprin
 /// mutation-receipt provenance (CARGO-ALLOW-SPEC-0008 "Mutation Receipt
 /// Envelope"). The `v1` canonical serialization is length-prefixed and has a
 /// fixed field order, so it is independent of Rust's `Debug` formatting and
-/// platform path separators. The SHA-256 digest is provenance evidence, not an
-/// identity or matching key.
+/// platform path separators — `path`, `glob`, and `selector.glob` are all
+/// slash-normalized before hashing, so semantically identical entries
+/// authored on Windows and Unix fingerprint identically. The SHA-256 digest is
+/// provenance evidence, not an identity or matching key.
 pub fn allow_entry_content_fingerprint(entry: &AllowEntry) -> String {
     let mut canonical = Vec::new();
     write_string(&mut canonical, ALLOW_ENTRY_FINGERPRINT_SCHEMA);
@@ -162,7 +164,10 @@ pub fn allow_entry_content_fingerprint(entry: &AllowEntry) -> String {
         &mut canonical,
         entry.path.as_deref().map(crate::normalize_path).as_deref(),
     );
-    write_optional_string(&mut canonical, entry.glob.as_deref());
+    write_optional_string(
+        &mut canonical,
+        entry.glob.as_deref().map(crate::normalize_path).as_deref(),
+    );
     write_string(&mut canonical, &entry.owner);
     write_string(&mut canonical, &entry.classification);
     write_string(&mut canonical, &entry.reason);
@@ -189,7 +194,15 @@ pub fn allow_entry_content_fingerprint(entry: &AllowEntry) -> String {
         entry.selector.normalized_snippet_hash.as_deref(),
     );
     write_optional_u32(&mut canonical, entry.selector.line_hint);
-    write_optional_string(&mut canonical, entry.selector.glob.as_deref());
+    write_optional_string(
+        &mut canonical,
+        entry
+            .selector
+            .glob
+            .as_deref()
+            .map(crate::normalize_path)
+            .as_deref(),
+    );
     match &entry.last_seen {
         Some(last_seen) => {
             canonical.push(1);
