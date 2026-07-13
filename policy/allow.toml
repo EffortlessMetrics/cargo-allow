@@ -117,6 +117,28 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-4724"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/ledger-coherence/closeouts/s4-native-toml-error-locations.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records the merged native policy TOML source-location slice and its bounded diagnostic claim."
+evidence = ["doc:docs/error-codes.md", "issue:2021"]
+created = "2026-07-13"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/ledger-coherence/closeouts/s4-native-toml-error-locations.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-4721"
 kind = "non_rust_file"
 family = "documentation"
