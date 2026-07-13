@@ -26,7 +26,9 @@ claim boundaries, and follow-up risks before review.
 
 This workspace uses Rust 2024 and the workspace `rust-version` declared in
 `Cargo.toml`. Install a recent stable Rust toolchain, then run commands from the
-repository root.
+repository root. `rust-toolchain.toml` pins the `stable` channel plus the
+`rustfmt` and `clippy` components, so `rustup` installs a matching toolchain
+automatically the first time you run a `cargo` command here.
 
 Useful local commands:
 
@@ -37,6 +39,11 @@ cargo test --workspace
 cargo run -p cargo-allow -- audit --format human
 cargo run -p cargo-allow -- check --mode no-new
 ```
+
+If you have [`just`](https://github.com/casey/just) installed, `just ci` runs
+the same checks as the CI workflow (`just --list` shows the individual
+recipes). This is an optional convenience; `cargo` remains the source of truth
+for every command.
 
 Keep generated build output, cargo-allow review artifacts, backup files, and
 proposed policy drafts out of commits unless a PR explicitly promotes them to
