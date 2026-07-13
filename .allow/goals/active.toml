@@ -85,43 +85,54 @@ evidence_notes = [
 
 [[work_item]]
 id = "ledger-coherence-pr3-revision-contract-design"
-status = "ready"
+status = "done"
 title = "Design policy revision contract — #1475 design slice (PR 3)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0022"
 proof_commands = [
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
 ]
 evidence_notes = [
-  "Define .allow/revisions/ schema, matching rules, and which edits require notes.",
-  "Design only; no enforcement until PR 4.",
+  "Superseded by issue #2075; implemented directly as runtime enforcement (PR 4) rather than a separate design slice.",
+  "See CARGO-ALLOW-CLOSEOUT-0022 for the reconciliation record.",
 ]
 
 [[work_item]]
 id = "ledger-coherence-pr4-enforce-change-notes"
-status = "blocked"
+status = "done"
 title = "Enforce change notes in diff (PR 4)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
-blocker_reason = "Blocked on PR 3 revision contract acceptance."
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0022"
+proof_commands = [
+  "rtk cargo test -p cargo-allow",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
 evidence_notes = [
-  "diff --require-change-note and --write-change-note-template for governed weakening edits.",
-  "No automatic approval or silent note generation.",
+  "Landed on main via #2097 (commit bc1ae6c): diff --require-change-note + --revisions-dir; check_change_notes matches (allow_id, change_kind).",
+  "Known gap (not yet landed): after_fingerprint pinning for repeatable-weakening kinds, and a published .allow/revisions/ JSON schema. See CARGO-ALLOW-CLOSEOUT-0022.",
 ]
 
 [[work_item]]
 id = "ledger-coherence-pr5-mutation-receipts"
-status = "blocked"
+status = "in_progress"
 title = "Unify mutation receipts (PR 5)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
-blocker_reason = "Blocked on PR 4 change-note enforcement."
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0023"
+proof_commands = [
+  "rtk cargo test -p allow-report",
+  "rtk cargo test -p cargo-allow",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
 evidence_notes = [
-  "Shared operation envelope for add, propose, refresh, prune, migrate.",
-  "May split 5A–5D if needed.",
+  "Shared operation envelope for add, propose, refresh, prune, migrate; split 5A-5D per plan.",
+  "5A done: allow_report::MutationReceipt envelope defined and wired into add (CARGO-ALLOW-CLOSEOUT-0023).",
+  "5B (propose), 5C (refresh), 5D (prune, migrate) remain; promote mutation_receipt into common.v1.json once a second command adopts it.",
 ]
 
 [[work_item]]

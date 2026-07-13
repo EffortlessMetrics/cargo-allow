@@ -12,6 +12,28 @@ inventory without executing repository code.
 
 ### Added
 
+- Shared mutation-receipt envelope for `add` (GOAL-0004 PR 5A, first slice of
+  #1475's provenance work): `allow_report::MutationReceipt` defines the
+  provenance envelope from CARGO-ALLOW-SPEC-0008 ("Mutation Receipt Envelope")
+  once — `operation`, `tool_version`, `repo_root`, `config_source`,
+  `ledger_ids`, `changed_allow_ids`, `before_fingerprints`,
+  `after_fingerprints`, `result`, `next_commands`, `claim_boundary` — and wires
+  it into `cargo-allow add --summary-format json` as a new `mutation_receipt`
+  object. `after_fingerprints` uses a new
+  `allow_core::allow_entry_content_fingerprint` SHA-256 digest over an
+  explicitly versioned, length-prefixed canonical entry serialization; it is
+  provenance evidence rather than an identity or matching key.
+  `propose`, `refresh`, `prune`, and `migrate` adopt the same envelope in later
+  slices instead of reinventing per-command provenance shapes. Provenance
+  metadata only; does not change `add`'s write behavior.
+- Runtime enforcement for required change notes on weakening edits (GOAL-0004
+  PR 4, #1475, #2075): `cargo-allow diff --require-change-note` fails the diff
+  when a policy edit with severity `Fail` or `Review` lacks a matching revision
+  note in `.allow/revisions/` (`--revisions-dir` overrides the default).
+  Matching is structural on `(allow_id, change_kind)` using the canonical
+  `policy_change_kind` vocabulary; improvements are exempt. Does not yet pin
+  repeatable-weakening kinds to a specific transition (tracked as a follow-up)
+  or publish a `.allow/revisions/` JSON schema.
 - Movement classification in diff (GOAL-0004 PR 2, #1471): every diff row carries
   orthogonal `movement`, `posture_delta`, and `changed_in_diff` plus optional
   `subject`, `allow_id`, `ledger_id`, and `lane`; JSON diff adds dual summary blocks

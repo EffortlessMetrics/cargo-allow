@@ -5268,6 +5268,25 @@ target_fingerprint = ".editorconfig"
 line_hint = 1
 glob = ".editorconfig"
 
+[[allow]]
+id = "allow-4718"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/ledger-coherence/closeouts/pr3-4-revision-contract-and-enforcement.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Reconciles the GOAL-0004 tracker with the revision-note enforcement actually landed via #2097."
+evidence = ["doc:plans/ledger-coherence/implementation-plan.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-05"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/ledger-coherence/closeouts/pr3-4-revision-contract-and-enforcement.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/ledger-coherence/closeouts/pr3-4-revision-contract-and-enforcement.md"
+
 [allow.last_seen]
 line = 1
 column = 1
@@ -5289,6 +5308,25 @@ ast_kind = "tracked_file"
 target_fingerprint = "justfile"
 line_hint = 1
 glob = "justfile"
+
+[[allow]]
+id = "allow-4719"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/ledger-coherence/closeouts/pr5a-mutation-receipt-envelope.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records GOAL-0004 PR 5A shared mutation-receipt envelope closeout for the add command."
+evidence = ["doc:plans/ledger-coherence/implementation-plan.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-05"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/ledger-coherence/closeouts/pr5a-mutation-receipt-envelope.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "plans/ledger-coherence/closeouts/pr5a-mutation-receipt-envelope.md"
 
 [allow.last_seen]
 line = 1

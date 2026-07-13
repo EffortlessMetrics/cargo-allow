@@ -1,5 +1,6 @@
 use crate::contracts::ADD_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
+use crate::mutation_receipt::render_mutation_receipt_json;
 use crate::{
     AddReport, CLAIM_BOUNDARY_TEXT, finding_location_text, render_explain_finding_json,
     render_last_seen_json, render_selector_json,
@@ -58,6 +59,12 @@ pub fn render_add_json(report: AddReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
     push_json_fixed_artifact_preamble(&mut out, ADD_ARTIFACT, report.inventory);
+    out.push_str("  \"mutation_receipt\": ");
+    out.push_str(&render_mutation_receipt_json(
+        &report.mutation_receipt,
+        "  ",
+    ));
+    out.push_str(",\n");
     out.push_str("  \"options\": {\n");
     out.push_str(&format!(
         "    \"policy_output\": {},\n",
