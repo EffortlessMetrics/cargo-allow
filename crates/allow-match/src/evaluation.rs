@@ -7,11 +7,42 @@ use crate::messages::{family_suffix, finding_location};
 use crate::mode::CheckMode;
 use crate::scoring::classify_match;
 
+/// Per-entry occurrence accounting produced by [`evaluate_detailed`].
+///
+/// `observed_count` includes findings that matched the entry after its limit
+/// was exhausted. That makes `exceeded_count` a direct signal from the match
+/// layer rather than a value a caller has to reconstruct from messages.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OccurrenceAccounting {
+    pub allow_id: String,
+    pub observed_count: u32,
+    pub occurrence_limit: u32,
+    pub headroom: u32,
+    pub exceeded_count: u32,
+}
+
+/// Detailed result for consumers that need occurrence-limit state in addition
+/// to the existing match outcomes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatchEvaluation {
+    pub outcomes: Vec<MatchOutcome>,
+    pub occurrence_accounting: Vec<OccurrenceAccounting>,
+}
+
 pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec<MatchOutcome> {
+    evaluate_detailed(cfg, findings, mode).outcomes
+}
+
+pub fn evaluate_detailed(
+    cfg: &AllowConfig,
+    findings: &[Finding],
+    mode: CheckMode,
+) -> MatchEvaluation {
     let mut outcomes = Vec::new();
     let mut used_entries = BTreeSet::new();
     let mut non_live_matched_entries = BTreeSet::new();
     let mut entry_occurrences = BTreeMap::<usize, u32>::new();
+    let mut observed_occurrences = BTreeMap::<usize, u32>::new();
     let mut drift_outcomes = BTreeMap::<usize, Vec<usize>>::new();
     let mut anchored_entries = BTreeSet::new();
     let today = SimpleDate::today_utc_approx();
@@ -40,6 +71,8 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
                 let Some(entry) = cfg.allow.get(*entry_index) else {
                     continue;
                 };
+                let observed_count = observed_occurrences.entry(*entry_index).or_default();
+                *observed_count = observed_count.saturating_add(1);
                 let current_count = entry_occurrences.get(entry_index).copied().unwrap_or(0);
                 if entry
                     .occurrence_limit
@@ -110,6 +143,8 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
                     let Some(entry) = cfg.allow.get(entry_index) else {
                         continue;
                     };
+                    let observed_count = observed_occurrences.entry(entry_index).or_default();
+                    *observed_count = observed_count.saturating_add(1);
                     let current_count = entry_occurrences.get(&entry_index).copied().unwrap_or(0);
                     if entry
                         .occurrence_limit
@@ -230,7 +265,28 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
             score: 0,
         });
     }
-    outcomes
+
+    let occurrence_accounting = cfg
+        .allow
+        .iter()
+        .enumerate()
+        .filter_map(|(entry_index, entry)| {
+            let limit = entry.occurrence_limit?;
+            let observed_count = observed_occurrences.get(&entry_index).copied().unwrap_or(0);
+            Some(OccurrenceAccounting {
+                allow_id: entry.id.clone(),
+                observed_count,
+                occurrence_limit: limit,
+                headroom: limit.saturating_sub(observed_count),
+                exceeded_count: observed_count.saturating_sub(limit),
+            })
+        })
+        .collect();
+
+    MatchEvaluation {
+        outcomes,
+        occurrence_accounting,
+    }
 }
 
 fn status_consumes_entry(status: MatchStatus) -> bool {

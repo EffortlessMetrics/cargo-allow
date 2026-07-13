@@ -10,6 +10,11 @@ inventory without executing repository code.
 
 ### Fixed
 
+- `allow_match::evaluate_detailed` now exposes per-entry occurrence accounting
+  (observed count, configured limit, remaining headroom, and exceeded count) so
+  library consumers do not have to reconstruct occurrence-limit state from
+  human-readable match messages. The existing `evaluate` API remains unchanged
+  and returns the same match outcomes.
 - Follow-up to the mutation-receipt envelope (GOAL-0004 PR 5A): `add --glob
   --summary-format json` now carries the same shared `mutation_receipt`
   envelope as the `--path`/`--line` JSON path (`allow_report::
