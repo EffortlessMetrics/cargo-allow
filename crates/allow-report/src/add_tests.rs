@@ -14,7 +14,10 @@ fn sample_mutation_receipt() -> MutationReceipt<'static> {
         ledger_ids: Vec::new(),
         changed_allow_ids: vec!["allow-add-json"],
         before_fingerprints: vec![None],
-        after_fingerprints: vec![Some("fnv1a64:0000000000000000".to_string())],
+        after_fingerprints: vec![Some(
+            "sha256:v1:0000000000000000000000000000000000000000000000000000000000000000"
+                .to_string(),
+        )],
         result: "written",
         next_commands: Vec::new(),
     }
@@ -127,7 +130,7 @@ fn add_json_renderer_records_entry_and_selected_finding() {
       "ledger_ids": [],
       "changed_allow_ids": ["allow-add-json"],
       "before_fingerprints": [null],
-      "after_fingerprints": ["fnv1a64:0000000000000000"],
+      "after_fingerprints": ["sha256:v1:0000000000000000000000000000000000000000000000000000000000000000"],
       "result": "written",
       "next_commands": [],
       "claim_boundary": "Provenance envelope only: records what changed and how to verify it. Does not itself validate entry correctness, authorize merge, or change command semantics (GOAL-0004 PR 5, CARGO-ALLOW-SPEC-0008)."

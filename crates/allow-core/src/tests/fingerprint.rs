@@ -1,4 +1,8 @@
-use crate::{maybe_line_distance_score, normalize_snippet, stable_hash_hex};
+use crate::{
+    AllowEntry, FindingKind, LastSeen, Lifecycle, Selector, allow_entry_content_fingerprint,
+    maybe_line_distance_score, normalize_snippet, stable_hash_hex,
+};
+use std::path::PathBuf;
 
 #[test]
 fn hash_is_stable() {
@@ -79,4 +83,55 @@ fn stable_hash_ignores_comment_only_snippet_edits() {
     let after = normalize_snippet("let value = maybe.unwrap(); // reviewer note");
 
     assert_eq!(stable_hash_hex(&before), stable_hash_hex(&after));
+}
+
+fn sample_allow_entry() -> AllowEntry {
+    AllowEntry {
+        id: "allow-0042".to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: Some(PathBuf::from("src\\lib.rs")),
+        glob: None,
+        owner: "core".to_string(),
+        classification: "test".to_string(),
+        reason: "fixture".to_string(),
+        evidence: vec!["test:sample".to_string()],
+        links: vec!["issue:42".to_string()],
+        occurrence_limit: Some(2),
+        lifecycle: Lifecycle {
+            created: Some("2026-07-13".to_string()),
+            review_after: Some("2026-10-13".to_string()),
+            expires: None,
+        },
+        selector: Selector {
+            ast_kind: Some("method_call".to_string()),
+            callee: Some("unwrap".to_string()),
+            ..Selector::default()
+        },
+        last_seen: Some(LastSeen { line: 7, column: 9 }),
+    }
+}
+
+#[test]
+fn allow_entry_fingerprint_is_versioned_sha256() {
+    let fingerprint = allow_entry_content_fingerprint(&sample_allow_entry());
+    assert!(fingerprint.starts_with("sha256:v1:"));
+    assert_eq!(fingerprint.len(), "sha256:v1:".len() + 64);
+    assert!(
+        fingerprint["sha256:v1:".len()..]
+            .chars()
+            .all(|character| character.is_ascii_hexdigit())
+    );
+}
+
+#[test]
+fn allow_entry_fingerprint_changes_when_content_changes() {
+    let first = sample_allow_entry();
+    let mut changed = first.clone();
+    changed.reason = "different fixture".to_string();
+
+    assert_ne!(
+        allow_entry_content_fingerprint(&first),
+        allow_entry_content_fingerprint(&changed)
+    );
 }

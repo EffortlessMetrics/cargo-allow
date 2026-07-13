@@ -27,9 +27,11 @@ envelope in later slices rather than reinventing per-command provenance shapes.
 
 ## Landed
 
-- `allow_core::allow_entry_content_fingerprint` — deterministic content
-  fingerprint of an `AllowEntry`'s full state, for `after_fingerprint`
-  provenance.
+- `allow_core::allow_entry_content_fingerprint` — deterministic SHA-256 content
+  fingerprint of an `AllowEntry`'s full state, using the explicitly versioned
+  `cargo-allow.allow-entry-fingerprint.v1` length-prefixed canonical
+  serialization for `after_fingerprint` provenance. It is not an identity or
+  matching key.
 - `allow_report::MutationReceipt` — the shared envelope struct:
   `operation, tool_version, repo_root, config_source, ledger_ids,
   changed_allow_ids, before_fingerprints, after_fingerprints, result,

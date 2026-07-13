@@ -20,7 +20,9 @@ inventory without executing repository code.
   `after_fingerprints`, `result`, `next_commands`, `claim_boundary` — and wires
   it into `cargo-allow add --summary-format json` as a new `mutation_receipt`
   object. `after_fingerprints` uses a new
-  `allow_core::allow_entry_content_fingerprint` deterministic content hash.
+  `allow_core::allow_entry_content_fingerprint` SHA-256 digest over an
+  explicitly versioned, length-prefixed canonical entry serialization; it is
+  provenance evidence rather than an identity or matching key.
   `propose`, `refresh`, `prune`, and `migrate` adopt the same envelope in later
   slices instead of reinventing per-command provenance shapes. Provenance
   metadata only; does not change `add`'s write behavior.

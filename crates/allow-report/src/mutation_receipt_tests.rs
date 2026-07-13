@@ -11,7 +11,7 @@ fn renders_added_entry_receipt_with_null_before_fingerprint() {
         ledger_ids: vec!["source-policy"],
         changed_allow_ids: vec!["allow-0042"],
         before_fingerprints: vec![None],
-        after_fingerprints: vec![Some("fnv1a64:abc123".to_string())],
+        after_fingerprints: vec![Some("sha256:v1:abc123".to_string())],
         result: "stdout",
         next_commands: vec!["cargo-allow explain --id allow-0042".to_string()],
     };
@@ -25,7 +25,7 @@ fn renders_added_entry_receipt_with_null_before_fingerprint() {
     assert!(json.contains("\"ledger_ids\": [\"source-policy\"]"));
     assert!(json.contains("\"changed_allow_ids\": [\"allow-0042\"]"));
     assert!(json.contains("\"before_fingerprints\": [null]"));
-    assert!(json.contains("\"after_fingerprints\": [\"fnv1a64:abc123\"]"));
+    assert!(json.contains("\"after_fingerprints\": [\"sha256:v1:abc123\"]"));
     assert!(json.contains("\"result\": \"stdout\""));
     assert!(json.contains("\"next_commands\": [\"cargo-allow explain --id allow-0042\"]"));
     assert!(json.contains("\"claim_boundary\": \"Provenance envelope only"));
@@ -41,7 +41,7 @@ fn renders_null_repo_root_and_config_source_when_unresolved() {
         ledger_ids: Vec::new(),
         changed_allow_ids: vec!["allow-0042"],
         before_fingerprints: vec![None],
-        after_fingerprints: vec![Some("fnv1a64:abc123".to_string())],
+        after_fingerprints: vec![Some("sha256:v1:abc123".to_string())],
         result: "written",
         next_commands: Vec::new(),
     };
@@ -63,7 +63,7 @@ fn escapes_special_characters_in_string_fields() {
         ledger_ids: Vec::new(),
         changed_allow_ids: vec!["allow-0042"],
         before_fingerprints: vec![None],
-        after_fingerprints: vec![Some("fnv1a64:abc123".to_string())],
+        after_fingerprints: vec![Some("sha256:v1:abc123".to_string())],
         result: "stdout",
         next_commands: Vec::new(),
     };
