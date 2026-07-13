@@ -4,6 +4,7 @@ use std::collections::BTreeSet;
 pub(crate) fn sample_string_matches_supported_pattern(value: &str, pattern: &str) -> bool {
     match pattern {
         "^cargo-allow " => value.starts_with("cargo-allow "),
+        "^sha256:v1:[0-9a-f]{64}$" => sample_string_matches_sha256_v1(value),
         "^work-[a-z0-9-]+-[0-9]{4}$" => sample_string_matches_work_item_id(value),
         _ => std::panic::panic_any(format!("unsupported schema pattern {pattern:?}")),
     }
@@ -24,11 +25,25 @@ fn sample_string_matches_work_item_id(value: &str) -> bool {
         && number.chars().all(|ch| ch.is_ascii_digit())
 }
 
+fn sample_string_matches_sha256_v1(value: &str) -> bool {
+    let Some(digest) = value.strip_prefix("sha256:v1:") else {
+        return false;
+    };
+    digest.len() == 64
+        && digest
+            .chars()
+            .all(|ch| ch.is_ascii_digit() || ('a'..='f').contains(&ch))
+}
+
 pub(crate) fn supported_schema_patterns() -> BTreeSet<String> {
-    ["^cargo-allow ", "^work-[a-z0-9-]+-[0-9]{4}$"]
-        .into_iter()
-        .map(std::string::ToString::to_string)
-        .collect()
+    [
+        "^cargo-allow ",
+        "^sha256:v1:[0-9a-f]{64}$",
+        "^work-[a-z0-9-]+-[0-9]{4}$",
+    ]
+    .into_iter()
+    .map(std::string::ToString::to_string)
+    .collect()
 }
 
 pub(crate) fn collect_schema_patterns(value: &Value, patterns: &mut BTreeSet<String>) {
@@ -111,5 +126,16 @@ mod tests {
             sample_string_matches_work_item_id("work-spec-000x"),
             accepted
         );
+    }
+
+    #[test]
+    fn sha256_v1_samples_require_a_lowercase_64_digit_digest() {
+        assert!(sample_string_matches_sha256_v1(
+            "sha256:v1:0000000000000000000000000000000000000000000000000000000000000000"
+        ));
+        assert!(!sample_string_matches_sha256_v1("sha256:v1:abc123"));
+        assert!(!sample_string_matches_sha256_v1(
+            "sha256:v1:000000000000000000000000000000000000000000000000000000000000000G"
+        ));
     }
 }
