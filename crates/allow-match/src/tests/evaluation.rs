@@ -89,6 +89,67 @@ fn occurrence_limit_caps_matched_findings() {
 }
 
 #[test]
+fn detailed_evaluation_exposes_occurrence_headroom_and_excess() -> Result<(), String> {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.id = "allow-counted".to_string();
+    entry.occurrence_limit = Some(2);
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry);
+
+    let evaluation = evaluate_detailed(
+        &cfg,
+        &[finding.clone(), finding.clone(), finding],
+        CheckMode::NoNew,
+    );
+
+    assert_eq!(evaluation.occurrence_accounting.len(), 1);
+    let accounting = evaluation
+        .occurrence_accounting
+        .first()
+        .ok_or_else(|| "limited entry should have accounting".to_string())?;
+    assert_eq!(accounting.allow_id, "allow-counted");
+    assert_eq!(accounting.observed_count, 3);
+    assert_eq!(accounting.occurrence_limit, 2);
+    assert_eq!(accounting.headroom, 0);
+    assert_eq!(accounting.exceeded_count, 1);
+    assert!(evaluation.outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::New && outcome.message.contains("occurrence_limit exceeded")
+    }));
+    Ok(())
+}
+
+#[test]
+fn detailed_evaluation_reports_headroom_without_rederivation() -> Result<(), String> {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.id = "allow-headroom".to_string();
+    entry.occurrence_limit = Some(3);
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry);
+
+    let evaluation = evaluate_detailed(&cfg, &[finding], CheckMode::NoNew);
+    let accounting = evaluation
+        .occurrence_accounting
+        .first()
+        .ok_or_else(|| "limited entry should have accounting".to_string())?;
+
+    assert_eq!(accounting.observed_count, 1);
+    assert_eq!(accounting.headroom, 2);
+    assert_eq!(accounting.exceeded_count, 0);
+
+    let empty_evaluation = evaluate_detailed(&cfg, &[], CheckMode::Audit);
+    let empty_accounting = empty_evaluation
+        .occurrence_accounting
+        .first()
+        .ok_or_else(|| "limited entry should report zero-use accounting".to_string())?;
+    assert_eq!(empty_accounting.observed_count, 0);
+    assert_eq!(empty_accounting.headroom, 3);
+    assert_eq!(empty_accounting.exceeded_count, 0);
+    Ok(())
+}
+
+#[test]
 fn unlimited_entry_matches_repeated_findings() {
     let finding = finding_with_hash("fnv1a64:actual");
     let mut cfg = AllowConfig::empty();
