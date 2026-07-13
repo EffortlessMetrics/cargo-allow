@@ -10,6 +10,7 @@ pub(crate) use crate::kind_filter::{
     is_panic_compat_kind, is_process_compat_kind, is_unsafe_compat_kind, is_workflow_compat_kind,
     parse_kind_filter, parse_kind_filter_arg,
 };
+pub(crate) use crate::mutation_lock::MutationLock;
 pub(crate) use crate::policy_config::{
     EvidenceValidationMode, assert_path_within_root, config_path, git_relative_config_path,
     load_policy_at_path, root_relative_path,
@@ -19,4 +20,5 @@ pub(crate) use crate::reporting::{
 };
 pub(crate) use crate::selector::selector_from_finding;
 pub(crate) use crate::world::{load_world, load_world_with_evidence_mode};
+pub(crate) use allow_inventory::resolve_source_tree_root;
 pub(crate) use allow_report::policy_baseline_debt_entries;

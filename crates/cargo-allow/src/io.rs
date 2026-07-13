@@ -2,6 +2,9 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
 
 pub(crate) fn emit_text(output: Option<&Path>, contents: &str) -> CargoAllowResult<()> {
     if let Some(path) = output {
@@ -37,38 +40,17 @@ pub(crate) fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowRe
             CargoAllowError::new(format!("failed to create {}: {e}", parent.display()))
         })?;
     }
-    let tmp = sibling_tmp_path(path);
-    // `create_new` makes the existence check + creation one syscall (no
-    // TOCTOU for symlink planting). A leftover temp from a prior crash would
-    // make this fail with AlreadyExists; recover by removing the stale temp
-    // and retrying once so the write path self-heals.
-    let mut file = match OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .truncate(true)
-        .open(&tmp)
-    {
-        Ok(file) => file,
-        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-            let _ = fs::remove_file(&tmp);
-            OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .truncate(true)
-                .open(&tmp)
-                .map_err(|e| {
-                    CargoAllowError::new(format!("failed to open {}: {e}", tmp.display()))
-                })?
-        }
-        Err(e) => {
+    let existing_permissions = match fs::metadata(path) {
+        Ok(metadata) => Some(metadata.permissions()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) => {
             return Err(CargoAllowError::new(format!(
-                "failed to open {}: {e}",
-                tmp.display()
+                "failed to inspect {}: {error}",
+                path.display()
             )));
         }
     };
-    // If writing or syncing the temp fails, remove it so a partial temp never
-    // lingers to trip up the next write; the destination is still untouched.
+    let (tmp, mut file) = create_unique_temp(path)?;
     if let Err(e) = file.write_all(contents.as_bytes()) {
         let _ = fs::remove_file(&tmp);
         return Err(CargoAllowError::new(format!(
@@ -76,11 +58,37 @@ pub(crate) fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowRe
             tmp.display()
         )));
     }
-    let _ = file.sync_all();
-    fs::rename(&tmp, path).map_err(|e| {
+    if let Some(permissions) = existing_permissions {
+        if let Err(error) = fs::set_permissions(&tmp, permissions) {
+            let _ = fs::remove_file(&tmp);
+            return Err(CargoAllowError::new(format!(
+                "failed to preserve permissions for {}: {error}",
+                path.display()
+            )));
+        }
+    }
+    if let Err(error) = file.flush() {
         let _ = fs::remove_file(&tmp);
-        CargoAllowError::new(format!("failed to install {}: {e}", path.display()))
-    })
+        return Err(CargoAllowError::new(format!(
+            "failed to flush {}: {error}",
+            tmp.display()
+        )));
+    }
+    if let Err(error) = file.sync_all() {
+        let _ = fs::remove_file(&tmp);
+        return Err(CargoAllowError::new(format!(
+            "failed to sync {}: {error}",
+            tmp.display()
+        )));
+    }
+    if let Err(error) = fs::rename(&tmp, path) {
+        let _ = fs::remove_file(&tmp);
+        return Err(CargoAllowError::new(format!(
+            "failed to install {}: {error}",
+            path.display()
+        )));
+    }
+    sync_parent_directory(path)
 }
 
 /// Write `contents` to `path` only if it does not already exist (unless
@@ -101,8 +109,9 @@ pub(crate) fn write_file_no_overwrite(
         })?;
     }
     if force {
+        let bak = path.with_extension("toml.bak");
+        let had_backup = path.exists();
         if path.exists() {
-            let bak = path.with_extension("toml.bak");
             fs::rename(path, &bak).map_err(|e| {
                 CargoAllowError::new(format!(
                     "failed to back up {} -> {}: {e}",
@@ -111,7 +120,21 @@ pub(crate) fn write_file_no_overwrite(
                 ))
             })?;
         }
-        return write_file(path, contents);
+        return match write_file(path, contents) {
+            Ok(()) => Ok(()),
+            Err(error) if had_backup => {
+                if let Err(restore_error) = fs::rename(&bak, path) {
+                    return Err(CargoAllowError::new(format!(
+                        "{error}; failed to restore {} from {}: {restore_error}",
+                        path.display(),
+                        bak.display()
+                    )));
+                }
+                sync_parent_directory(path)?;
+                Err(error)
+            }
+            Err(error) => Err(error),
+        };
     }
     let mut file = OpenOptions::new()
         .write(true)
@@ -137,11 +160,76 @@ pub(crate) fn write_file_no_overwrite(
             path.display()
         )));
     }
+    file.flush().map_err(|error| {
+        let _ = fs::remove_file(path);
+        CargoAllowError::new(format!("failed to flush {}: {error}", path.display()))
+    })?;
+    file.sync_all().map_err(|error| {
+        let _ = fs::remove_file(path);
+        CargoAllowError::new(format!("failed to sync {}: {error}", path.display()))
+    })?;
+    sync_parent_directory(path)
+}
+
+fn create_unique_temp(path: &Path) -> CargoAllowResult<(PathBuf, std::fs::File)> {
+    let base_name = path
+        .file_name()
+        .map(|value| value.to_os_string())
+        .unwrap_or_default();
+    for _ in 0..1024 {
+        let id = NEXT_TEMP_ID.fetch_add(1, Ordering::Relaxed);
+        let mut name = base_name.clone();
+        name.push(format!(".tmp-{}-{id}", std::process::id()));
+        let candidate = path.with_file_name(name);
+        match OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&candidate)
+        {
+            Ok(file) => return Ok((candidate, file)),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => {
+                return Err(CargoAllowError::new(format!(
+                    "failed to open {}: {error}",
+                    candidate.display()
+                )));
+            }
+        }
+    }
+    Err(CargoAllowError::new(format!(
+        "failed to allocate a unique temporary file beside {}",
+        path.display()
+    )))
+}
+
+#[cfg(unix)]
+fn sync_parent_directory(path: &Path) -> CargoAllowResult<()> {
+    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    let directory = OpenOptions::new()
+        .read(true)
+        .open(parent)
+        .map_err(|error| {
+            CargoAllowError::new(format!(
+                "failed to open parent directory {} for sync: {error}",
+                parent.display()
+            ))
+        })?;
+    directory.sync_all().map_err(|error| {
+        CargoAllowError::new(format!(
+            "failed to sync parent directory {}: {error}",
+            parent.display()
+        ))
+    })
+}
+
+#[cfg(not(unix))]
+fn sync_parent_directory(_path: &Path) -> CargoAllowResult<()> {
     Ok(())
 }
 
-/// Build a sibling temp-file path on the same filesystem so `fs::rename`
-/// is atomic.
+/// Build a legacy sibling temp-file path for tests that model an abandoned
+/// writer. Production writes use unique names and never remove this path.
+#[cfg(test)]
 fn sibling_tmp_path(path: &Path) -> PathBuf {
     let mut name = path
         .file_name()
@@ -289,11 +377,10 @@ mod tests {
         // (the ledger could never be written again without manual cleanup).
         let root = TempRoot::new("atomic-cleanup")?;
         let target = root.path().join("policy/allow.toml");
-        let tmp = sibling_tmp_path(&target);
+        fs::create_dir_all(&target)?;
 
         // Force a failure by making the temp path a directory, so the
         // `create_new` open of the temp cannot succeed.
-        fs::create_dir_all(&tmp)?;
         let result = write_file(&target, "first");
         assert!(
             result.is_err(),
@@ -303,9 +390,9 @@ mod tests {
         // After the failure the temp path must not hold a file/dir that the
         // next write would trip over: remove our planted dir and confirm no
         // file was created at the temp location.
-        fs::remove_dir_all(&tmp)?;
+        fs::remove_dir_all(&target)?;
         assert!(
-            !tmp.exists(),
+            !target.exists(),
             "no stale temp file should remain after a failed write"
         );
 
@@ -314,7 +401,7 @@ mod tests {
         write_file(&target, "recovered")?;
         assert_eq!(fs::read_to_string(&target)?, "recovered");
         assert!(
-            !tmp.exists(),
+            target.is_file(),
             "successful write must not leave its temp behind"
         );
         Ok(())
@@ -340,7 +427,10 @@ mod tests {
         write_file(&target, "the real content")?;
 
         assert_eq!(fs::read_to_string(&target)?, "the real content");
-        assert!(!tmp.exists(), "the stale temp must be replaced/removed");
+        assert!(
+            tmp.exists(),
+            "an abandoned temp must not be removed blindly"
+        );
         Ok(())
     }
 

@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_policy::{render_policy, validate_policy};
 
-use crate::{emit_stderr_text, write_file_no_overwrite};
+use crate::{MutationLock, emit_stderr_text, write_file_no_overwrite};
 
 #[path = "migrate_args.rs"]
 mod migrate_args;
@@ -25,6 +25,7 @@ use allow_core::{AllowConfig, FindingKind};
 use std::path::{Path, PathBuf};
 
 pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
+    let _mutation_lock = MutationLock::acquire(&args.out)?;
     let migration = match (&args.from, &args.repo_policy) {
         (Some(from), None) => load_single_file_migration_config(args.root.root.as_deref(), from)?,
         (None, Some(repo_policy)) => {

@@ -22,6 +22,7 @@ mod io;
 mod kind_filter;
 mod list;
 mod migrate;
+mod mutation_lock;
 mod policy_config;
 mod propose;
 mod prune;

@@ -3,11 +3,11 @@ use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 
 use crate::{
-    EvidenceValidationMode, SourceTreeReportContext, config_path, emit_text,
+    EvidenceValidationMode, MutationLock, SourceTreeReportContext, config_path, emit_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    load_world_with_evidence_mode, write_file,
+    load_world_with_evidence_mode, resolve_source_tree_root, write_file,
 };
 
 #[path = "prune_args.rs"]
@@ -45,6 +45,17 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             "pass either --dry-run or --write, not both",
         ));
     }
+    let mutation_lock = if args.write {
+        let cwd = std::env::current_dir()
+            .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
+        let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
+        let path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
+            CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
+        })?;
+        Some(MutationLock::acquire(path)?)
+    } else {
+        None
+    };
     let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
@@ -53,6 +64,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         args.include_untracked,
         EvidenceValidationMode::ReportOnly,
     )?;
+    let _mutation_lock = mutation_lock;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let candidates = prune_stale_candidates(&cfg, &outcomes);
     let rendered_policy =
