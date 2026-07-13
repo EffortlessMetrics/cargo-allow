@@ -70,7 +70,8 @@ pub(crate) fn parse_policy_toml_at(
             Some(path) => format!("failed to parse policy TOML in {}: {e}", path.display()),
             None => format!("failed to parse policy TOML: {e}"),
         };
-        CargoAllowError::new(message)
+        CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::InvalidPolicy, message)
+            .with_toml_span(path, input, e.span())
     })?;
     raw.into_config()
 }
@@ -275,17 +276,42 @@ mode = "shadow"
     }
 
     #[test]
-    fn parse_policy_toml_reports_toml_parse_errors() {
+    fn parse_policy_toml_at_preserves_structured_parse_location() -> Result<(), String> {
+        let err = match parse_policy_toml_at(
+            Some(std::path::Path::new("policy/allow.toml")),
+            "policy = \"cargo-allow\"\nowner = [",
+        ) {
+            Ok(_) => return Err("invalid TOML unexpectedly parsed".to_string()),
+            Err(err) => err,
+        };
+
+        let location = err
+            .location()
+            .ok_or_else(|| "policy parse error should have a location".to_string())?;
+        assert_eq!(location.path.as_deref(), Some("policy/allow.toml"));
+        assert_eq!(location.line, 2);
+        assert!(location.column > 0);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_policy_toml_reports_toml_parse_errors() -> Result<(), String> {
         let invalid = "policy = [";
         let e =
             toml::from_str::<PolicyToml>(invalid).expect_err("invalid TOML should fail parsing");
+        let err = match parse_policy_toml_at(None, invalid) {
+            Ok(_) => return Err("invalid TOML unexpectedly parsed".to_string()),
+            Err(err) => err,
+        };
 
-        assert_eq!(
-            parse_policy_toml_at(None, invalid).map(|_| ()),
-            Err(CargoAllowError::new(format!(
-                "failed to parse policy TOML: {e}"
-            )))
-        );
+        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidPolicy);
+        assert_eq!(err.message(), format!("failed to parse policy TOML: {e}"));
+        let location = err
+            .location()
+            .ok_or_else(|| "parse error should preserve TOML location".to_string())?;
+        assert_eq!(location.line, 1);
+        assert_eq!(location.column, 11);
+        Ok(())
     }
 
     #[test]
