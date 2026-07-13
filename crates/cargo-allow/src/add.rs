@@ -18,7 +18,7 @@ use add_entry::{
     AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
     count_in_scope_findings, ensure_addable_outcome, next_allow_id, select_add_finding,
 };
-use add_render::{render_add_summary, render_add_summary_json};
+use add_render::{add_mutation_receipt, render_add_summary, render_add_summary_json};
 pub(super) use add_types::AddContext;
 
 use crate::{
@@ -113,7 +113,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                 render_add_summary_broad_human(&broad, args.write.as_deref())
             }
             AddSummaryFormat::Json => {
-                render_add_summary_broad_json(&broad, args.write.as_deref(), args.force)
+                render_add_summary_broad_json(&broad, args.write.as_deref(), args.force, &context)
             }
         };
         (broad, summary)
@@ -207,17 +207,24 @@ fn render_add_summary_broad_human(entry: &AllowEntry, output: Option<&Path>) -> 
     )
 }
 
-fn render_add_summary_broad_json(entry: &AllowEntry, output: Option<&Path>, force: bool) -> String {
+fn render_add_summary_broad_json(
+    entry: &AllowEntry,
+    output: Option<&Path>,
+    force: bool,
+    context: &AddContext<'_>,
+) -> String {
     let policy_output = output.map(|p| p.display().to_string());
     let action = if force { "overwrite" } else { "write" };
+    let mutation_receipt = add_mutation_receipt(entry, context, policy_output.as_deref());
     format!(
-        "{{\"id\":\"{}\",\"kind\":\"{}\",\"scope\":\"{}\",\"occurrence_limit\":{},\"policy_output\":\"{}\",\"action\":\"{}\"}}",
+        "{{\"id\":\"{}\",\"kind\":\"{}\",\"scope\":\"{}\",\"occurrence_limit\":{},\"policy_output\":\"{}\",\"action\":\"{}\",\"mutation_receipt\":{}}}",
         entry.id,
         entry.kind,
         entry.path_or_glob(),
         entry.occurrence_limit.unwrap_or(0),
         policy_output.as_deref().unwrap_or("stdout"),
         action,
+        allow_report::render_mutation_receipt_json(&mutation_receipt, ""),
     )
 }
 

@@ -234,3 +234,65 @@ fn add_glob_rejects_empty_scope_fail_closed() {
 
     remove_temp_root(root);
 }
+
+/// `add --glob --summary-format json` must carry the shared `mutation_receipt`
+/// envelope too, not just the `--path`/`--line` JSON path (the envelope must
+/// not be reinvented or omitted per add mode).
+#[test]
+fn add_glob_json_summary_includes_mutation_receipt() {
+    let root = temp_root("add-glob-mutation-receipt");
+    write_source(&root, 1);
+    base_policy(&root);
+
+    let add = run(&[
+        "add",
+        "--root",
+        root.to_str().unwrap_or_default(),
+        "--config",
+        "policy/allow.toml",
+        "--kind",
+        "panic",
+        "--family",
+        "unwrap",
+        "--callee",
+        "unwrap",
+        "--glob",
+        "src/foo.rs",
+        "--owner",
+        "core",
+        "--reason",
+        "baseline one unwrap",
+        "--classification",
+        "reviewed_exception",
+        "--review-after",
+        "2027-12-01",
+        "--summary-format",
+        "json",
+        "--summary-output",
+        root.join("add-summary.json").to_str().unwrap_or_default(),
+    ])
+    .output()
+    .unwrap_or_else(|err| std::panic::panic_any(format!("run add --glob: {err}")));
+    assert!(
+        add.status.success(),
+        "add --glob should succeed; stderr=`{}`",
+        String::from_utf8_lossy(&add.stderr)
+    );
+
+    let summary = fs::read_to_string(root.join("add-summary.json"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read add summary: {err}")));
+    assert!(
+        summary.contains("\"mutation_receipt\":"),
+        "add --glob JSON summary should carry the shared mutation_receipt envelope: `{summary}`"
+    );
+    assert!(
+        summary.contains("\"schema_id\": \"cargo-allow.mutation-receipt.v1\""),
+        "mutation_receipt should be schema-identified: `{summary}`"
+    );
+    assert!(
+        summary.contains("\"operation\": \"add\""),
+        "mutation_receipt should name the add operation: `{summary}`"
+    );
+
+    remove_temp_root(root);
+}

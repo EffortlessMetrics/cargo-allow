@@ -135,3 +135,35 @@ fn allow_entry_fingerprint_changes_when_content_changes() {
         allow_entry_content_fingerprint(&changed)
     );
 }
+
+#[test]
+fn allow_entry_fingerprint_is_stable_across_glob_path_separators() {
+    // Semantically identical scopes authored on Windows vs Unix must
+    // fingerprint identically, matching the existing `path` normalization.
+    let mut windows_style = sample_allow_entry();
+    windows_style.glob = Some("docs\\**".to_string());
+    windows_style.selector.glob = Some("docs\\**".to_string());
+
+    let mut unix_style = sample_allow_entry();
+    unix_style.glob = Some("docs/**".to_string());
+    unix_style.selector.glob = Some("docs/**".to_string());
+
+    assert_eq!(
+        allow_entry_content_fingerprint(&windows_style),
+        allow_entry_content_fingerprint(&unix_style)
+    );
+}
+
+#[test]
+fn allow_entry_fingerprint_still_distinguishes_different_globs() {
+    let mut narrow = sample_allow_entry();
+    narrow.glob = Some("docs/guide.md".to_string());
+
+    let mut broad = sample_allow_entry();
+    broad.glob = Some("docs/**".to_string());
+
+    assert_ne!(
+        allow_entry_content_fingerprint(&narrow),
+        allow_entry_content_fingerprint(&broad)
+    );
+}

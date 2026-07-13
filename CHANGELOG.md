@@ -8,6 +8,18 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+### Fixed
+
+- Follow-up to the mutation-receipt envelope (GOAL-0004 PR 5A): `add --glob
+  --summary-format json` now carries the same shared `mutation_receipt`
+  envelope as the `--path`/`--line` JSON path (`allow_report::
+  render_mutation_receipt_json` is now `pub`, so it renders identically from
+  both call sites instead of the broad-baseline path omitting it). Fixed
+  `allow_core::allow_entry_content_fingerprint` to slash-normalize `glob` and
+  `selector.glob` the same way `path` already was, so semantically identical
+  scopes authored on Windows and Unix (`docs\**` vs `docs/**`) fingerprint
+  identically instead of spuriously differing by platform.
+
 ## [0.1.10] - 2026-07-08
 
 ### Added
