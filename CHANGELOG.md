@@ -10,6 +10,9 @@ inventory without executing repository code.
 
 ### Fixed
 
+- `CargoAllowError` and `CargoAllowErrorKind` now expose stable `E000x_*`
+  machine-readable codes, with a checked-in registry at
+  `docs/error-codes.md`; human-readable messages remain unchanged.
 - `allow_match::evaluate_detailed` now exposes per-entry occurrence accounting
   (observed count, configured limit, remaining headroom, and exceeded count) so
   library consumers do not have to reconstruct occurrence-limit state from
