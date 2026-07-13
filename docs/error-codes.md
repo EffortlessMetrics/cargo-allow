@@ -23,3 +23,12 @@ Adding a new code is compatible with consumers that handle the existing
 `#[non_exhaustive]` error-kind enum conservatively. The `unknown` code remains
 for `CargoAllowError::new` and other compatibility paths until those call sites
 can be assigned a more specific kind.
+
+## Located diagnostics
+
+When a parser has source text and a TOML byte span, `CargoAllowError::location()`
+returns an optional `CargoAllowErrorLocation` with the source path and one-based
+line and character column. The human-readable message remains stable for
+existing callers; machine consumers should use `code()`, `kind()`, and
+`location()` instead of parsing `Display` output. Errors created without a
+source span continue to return `None`.

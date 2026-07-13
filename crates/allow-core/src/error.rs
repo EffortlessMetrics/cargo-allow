@@ -1,4 +1,16 @@
 use std::fmt;
+use std::ops::Range;
+use std::path::Path;
+
+/// One-based source location attached to a parse or validation diagnostic.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CargoAllowErrorLocation {
+    /// Source path when the caller had one; `None` means the input was an
+    /// in-memory document without a known path.
+    pub path: Option<String>,
+    pub line: u32,
+    pub column: u32,
+}
 
 /// Structured kind for [`CargoAllowError`], enabling programmatic consumers
 /// (CI tooling, sibling tools) to branch on error class instead of
@@ -96,6 +108,7 @@ impl fmt::Display for CargoAllowErrorKind {
 pub struct CargoAllowError {
     kind: CargoAllowErrorKind,
     message: String,
+    location: Option<CargoAllowErrorLocation>,
     /// Rendered cause chain (each element is the `Display` of an underlying
     /// error). Stored as strings so the struct stays `Clone` + `PartialEq`.
     causes: Vec<String>,
@@ -107,6 +120,7 @@ impl CargoAllowError {
         Self {
             kind: CargoAllowErrorKind::Unknown,
             message: message.into(),
+            location: None,
             causes: Vec::new(),
         }
     }
@@ -116,6 +130,7 @@ impl CargoAllowError {
         Self {
             kind,
             message: message.into(),
+            location: None,
             causes: Vec::new(),
         }
     }
@@ -135,6 +150,40 @@ impl CargoAllowError {
     /// The stable machine-readable code for this error.
     pub fn code(&self) -> &'static str {
         self.kind.code()
+    }
+
+    /// Attach a one-based source location derived from a TOML byte span.
+    ///
+    /// TOML reports byte offsets. This conversion keeps the public error
+    /// contract independent of the parser's error-display text and reports a
+    /// character column suitable for editor and CI diagnostics.
+    pub fn with_toml_span(
+        mut self,
+        path: Option<&Path>,
+        source: &str,
+        span: Option<Range<usize>>,
+    ) -> Self {
+        let Some(span) = span else {
+            return self;
+        };
+        let prefix = source.get(..span.start).unwrap_or(source);
+        let line = prefix.bytes().filter(|byte| *byte == b'\n').count() + 1;
+        let column = prefix
+            .rsplit_once('\n')
+            .map(|(_, line)| line.chars().count() + 1)
+            .unwrap_or_else(|| prefix.chars().count() + 1);
+        self.location = Some(CargoAllowErrorLocation {
+            path: path.map(|value| value.display().to_string()),
+            line: u32::try_from(line).unwrap_or(u32::MAX),
+            column: u32::try_from(column).unwrap_or(u32::MAX),
+        });
+        self
+    }
+
+    /// Structured source location, when the error originated from located
+    /// input such as a TOML parse.
+    pub fn location(&self) -> Option<&CargoAllowErrorLocation> {
+        self.location.as_ref()
     }
 
     /// The human-readable message (without the cause chain).

@@ -1,4 +1,5 @@
 use super::{CargoAllowError, CargoAllowErrorKind};
+use std::path::Path;
 
 #[test]
 fn cargo_allow_error_fmt_return_value_observer() {
@@ -61,6 +62,24 @@ fn error_exposes_the_code_of_its_kind() {
     let error = CargoAllowError::with_kind(CargoAllowErrorKind::Artifact, "write failed");
 
     assert_eq!(error.code(), "E0007_ARTIFACT");
+}
+
+#[test]
+fn toml_span_preserves_path_and_one_based_line_column() -> Result<(), String> {
+    let error = CargoAllowError::with_kind(CargoAllowErrorKind::InvalidPolicy, "invalid TOML")
+        .with_toml_span(
+            Some(Path::new("policy/allow.toml")),
+            "policy = \"cargo-allow\"\nowner = [",
+            Some(29..30),
+        );
+    let location = error
+        .location()
+        .ok_or_else(|| "TOML span should produce a structured location".to_string())?;
+
+    assert_eq!(location.path.as_deref(), Some("policy/allow.toml"));
+    assert_eq!(location.line, 2);
+    assert!(location.column > 0);
+    Ok(())
 }
 
 #[test]
