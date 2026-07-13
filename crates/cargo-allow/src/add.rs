@@ -22,11 +22,11 @@ use add_render::{render_add_summary, render_add_summary_json};
 pub(super) use add_types::AddContext;
 
 use crate::{
-    SourceTreeReportContext, emit_stderr_text,
+    MutationLock, SourceTreeReportContext, config_path, emit_stderr_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    load_world, parse_kind_filter, write_file_no_overwrite,
+    load_world, parse_kind_filter, resolve_source_tree_root, write_file_no_overwrite,
 };
 
 const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
@@ -38,6 +38,21 @@ use std::path::PathBuf;
 
 pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let parsed_kind = parse_kind_filter(&args.kind)?;
+    let cwd = std::env::current_dir()
+        .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
+    let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
+    let mutation_target = args
+        .write
+        .as_deref()
+        .map(|path| {
+            if path.is_absolute() {
+                path.to_path_buf()
+            } else {
+                cwd.join(path)
+            }
+        })
+        .or_else(|| config_path(&mutation_root, args.config.as_deref()));
+    let _mutation_lock = mutation_target.map(MutationLock::acquire).transpose()?;
     let (root, mut cfg, findings, inventory_facts, _federation) = load_world(
         args.root.root.as_deref(),
         args.config.as_deref(),

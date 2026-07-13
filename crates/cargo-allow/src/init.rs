@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 mod init_args;
 pub(crate) use init_args::InitArgs;
 
-use crate::{ProfileArg, root_relative_path, spec_system};
+use crate::{MutationLock, ProfileArg, root_relative_path, spec_system};
 
 const DEFAULT_SOURCE_EXCEPTION_CONFIG: &str = "policy/allow.toml";
 
@@ -20,6 +20,16 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
                 "--strict is not supported with --profile spec-system",
             ));
         }
+        let _mutation_lock = if args.dry_run {
+            None
+        } else {
+            let cwd = env::current_dir()
+                .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
+            let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
+            Some(MutationLock::acquire(
+                root.join(".cargo-allow-spec-system.lock"),
+            )?)
+        };
         let config = spec_system_config_arg(&args.config);
         return spec_system::cmd_spec_system_init(spec_system::SpecSystemInitCommandArgs {
             root: &args.root,
@@ -44,6 +54,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         }
         return Ok(());
     }
+    let _mutation_lock = MutationLock::acquire(root.join(".cargo-allow-init.lock"))?;
     if path.exists() && !args.force {
         return Err(CargoAllowError::new(format!(
             "{} already exists; use --force to overwrite",

@@ -3,7 +3,7 @@ use allow_match::{CheckMode, evaluate};
 use allow_policy::render_policy;
 
 use crate::{
-    EvidenceValidationMode, SourceTreeReportContext, emit_stderr_text,
+    EvidenceValidationMode, MutationLock, SourceTreeReportContext, emit_stderr_text,
     load_world_with_evidence_mode, write_file_no_overwrite,
 };
 
@@ -27,6 +27,11 @@ use allow_core::{Finding, SimpleDate};
 use propose_baseline::BASELINE_DEBT_DEFAULT_DAYS;
 
 pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
+    let _mutation_lock = args
+        .write
+        .as_deref()
+        .map(MutationLock::acquire)
+        .transpose()?;
     let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
