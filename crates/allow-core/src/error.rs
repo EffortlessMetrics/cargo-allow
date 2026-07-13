@@ -30,6 +30,21 @@ pub enum CargoAllowErrorKind {
 }
 
 impl CargoAllowErrorKind {
+    /// All error kinds currently defined by this version.
+    ///
+    /// The enum is non-exhaustive; callers must still handle future kinds.
+    pub const ALL: &[Self] = &[
+        Self::Usage,
+        Self::InvalidConfig,
+        Self::InvalidPolicy,
+        Self::Inventory,
+        Self::Scan,
+        Self::PolicyViolation,
+        Self::Artifact,
+        Self::Internal,
+        Self::Unknown,
+    ];
+
     /// Render the kind as a stable, lowercase identifier suitable for
     /// machine consumption (e.g. receipt `error.kind` fields).
     pub fn as_str(self) -> &'static str {
@@ -43,6 +58,24 @@ impl CargoAllowErrorKind {
             Self::Artifact => "artifact",
             Self::Internal => "internal",
             Self::Unknown => "unknown",
+        }
+    }
+
+    /// Return the stable machine-readable error code for this kind.
+    ///
+    /// Codes are part of the public contract and must not be reused for a
+    /// different failure class. See `docs/error-codes.md` for the registry.
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::Usage => "E0001_USAGE",
+            Self::InvalidConfig => "E0002_INVALID_CONFIG",
+            Self::InvalidPolicy => "E0003_INVALID_POLICY",
+            Self::Inventory => "E0004_INVENTORY",
+            Self::Scan => "E0005_SCAN",
+            Self::PolicyViolation => "E0006_POLICY_VIOLATION",
+            Self::Artifact => "E0007_ARTIFACT",
+            Self::Internal => "E0008_INTERNAL",
+            Self::Unknown => "E0009_UNKNOWN",
         }
     }
 }
@@ -97,6 +130,11 @@ impl CargoAllowError {
     /// The structured error kind.
     pub fn kind(&self) -> CargoAllowErrorKind {
         self.kind
+    }
+
+    /// The stable machine-readable code for this error.
+    pub fn code(&self) -> &'static str {
+        self.kind.code()
     }
 
     /// The human-readable message (without the cause chain).

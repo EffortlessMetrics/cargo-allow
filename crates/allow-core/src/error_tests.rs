@@ -41,6 +41,29 @@ fn kind_renders_as_stable_lowercase_str() {
 }
 
 #[test]
+fn every_error_kind_has_a_unique_stable_code() {
+    let codes = CargoAllowErrorKind::ALL
+        .iter()
+        .map(|kind| kind.code())
+        .collect::<std::collections::BTreeSet<_>>();
+
+    assert_eq!(codes.len(), CargoAllowErrorKind::ALL.len());
+    assert_eq!(CargoAllowErrorKind::Usage.code(), "E0001_USAGE");
+    assert_eq!(
+        CargoAllowErrorKind::InvalidPolicy.code(),
+        "E0003_INVALID_POLICY"
+    );
+    assert_eq!(CargoAllowErrorKind::Unknown.code(), "E0009_UNKNOWN");
+}
+
+#[test]
+fn error_exposes_the_code_of_its_kind() {
+    let error = CargoAllowError::with_kind(CargoAllowErrorKind::Artifact, "write failed");
+
+    assert_eq!(error.code(), "E0007_ARTIFACT");
+}
+
+#[test]
 fn display_includes_cause_chain() {
     let inner = std::io::Error::new(std::io::ErrorKind::NotFound, "file missing");
     let err = CargoAllowError::with_kind(CargoAllowErrorKind::Artifact, "failed to write receipt")
