@@ -90,21 +90,79 @@ pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec
                 });
             }
             many => {
-                let ids = many
+                // Find the unique top-scoring candidate. If one entry strictly
+                // outscores all others, take it as the match (deterministic
+                // tiebreak: highest score wins). Only return Ambiguous when
+                // two or more candidates share the max score (#1802).
+                let max_score = many.iter().map(|(_, score)| *score).fold(0, u32::max);
+                let top_candidates: Vec<_> = many
                     .iter()
-                    .filter_map(|(idx, _)| cfg.allow.get(*idx).map(|entry| entry.id.clone()))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                outcomes.push(MatchOutcome {
-                    status: MatchStatus::Ambiguous,
-                    allow_id: None,
-                    finding_index: Some(finding_index),
-                    message: format!(
-                        "finding at {} matched multiple allow entries: {ids}",
-                        finding_location(finding)
-                    ),
-                    score: many.iter().map(|(_, score)| *score).max().unwrap_or(0),
-                });
+                    .filter(|(_, score)| *score == max_score)
+                    .collect();
+
+                if top_candidates.len() == 1 {
+                    // Unique winner — treat like a single-candidate match.
+                    let Some((entry_index, score)) =
+                        top_candidates.first().map(|candidate| **candidate)
+                    else {
+                        continue;
+                    };
+                    let Some(entry) = cfg.allow.get(entry_index) else {
+                        continue;
+                    };
+                    let current_count = entry_occurrences.get(&entry_index).copied().unwrap_or(0);
+                    if entry
+                        .occurrence_limit
+                        .is_some_and(|limit| current_count >= limit)
+                    {
+                        used_entries.insert(entry_index);
+                        outcomes.push(MatchOutcome {
+                            status: MatchStatus::New,
+                            allow_id: Some(entry.id.clone()),
+                            finding_index: Some(finding_index),
+                            message: format!(
+                                "{} occurrence_limit exceeded at {}",
+                                entry.id,
+                                finding_location(finding)
+                            ),
+                            score,
+                        });
+                        continue;
+                    }
+                    used_entries.insert(entry_index);
+                    entry_occurrences.insert(entry_index, current_count + 1);
+                    let (status, message) =
+                        classify_matched(entry, finding, score, today, cfg, mode);
+                    outcomes.push(MatchOutcome {
+                        status,
+                        allow_id: Some(entry.id.clone()),
+                        finding_index: Some(finding_index),
+                        message,
+                        score,
+                    });
+                } else {
+                    // Genuine tie — report Ambiguous with candidate IDs.
+                    // Mark ALL tied candidates as used so they are NOT
+                    // demoted to Stale in the unused-entry scan (#2042).
+                    let ids = top_candidates
+                        .iter()
+                        .filter_map(|(idx, _)| cfg.allow.get(*idx).map(|entry| entry.id.clone()))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    for (entry_index, _) in &top_candidates {
+                        used_entries.insert(*entry_index);
+                    }
+                    outcomes.push(MatchOutcome {
+                        status: MatchStatus::Ambiguous,
+                        allow_id: None,
+                        finding_index: Some(finding_index),
+                        message: format!(
+                            "finding at {} matched multiple allow entries with equal score: {ids}",
+                            finding_location(finding)
+                        ),
+                        score: max_score,
+                    });
+                }
             }
         }
     }
