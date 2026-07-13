@@ -7,6 +7,8 @@ created: 2026-07-13
 linked_issue: https://github.com/EffortlessMetrics/cargo-allow/issues/1807
 merged_commit: fdb457af
 support_tier_impact: advisory
+policy_impact:
+  - policy/allow.toml
 ---
 
 # Closeout: S2 Match-Layer Occurrence Accounting
