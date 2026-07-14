@@ -329,6 +329,24 @@ target_fingerprint = "md"
 line_hint = 1
 
 [[allow]]
+id = "allow-4743"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/ledger-coherence/closeouts/s23-lifecycle-corpus-seed.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records the first PR7 lifecycle corpus seed landed via #2233 and preserves the remaining lifecycle, convergence, and adoption claim boundary."
+evidence = ["issue:2232", "doc:plans/ledger-coherence/implementation-plan.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-14"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/ledger-coherence/closeouts/s23-lifecycle-corpus-seed.md"
+target_fingerprint = "md"
+line_hint = 1
+
+[[allow]]
 id = "allow-4728"
 kind = "non_rust_file"
 family = "documentation"
