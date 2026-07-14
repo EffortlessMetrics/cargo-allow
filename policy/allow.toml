@@ -221,6 +221,24 @@ target_fingerprint = "md"
 line_hint = 1
 
 [[allow]]
+id = "allow-4737"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/ledger-coherence/closeouts/s17-prune-mutation-receipt.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records prune mutation-receipt adoption landed via #2173 and preserves the remaining migrate claim boundary."
+evidence = ["issue:2162", "doc:plans/ledger-coherence/implementation-plan.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-14"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/ledger-coherence/closeouts/s17-prune-mutation-receipt.md"
+target_fingerprint = "md"
+line_hint = 1
+
+[[allow]]
 id = "allow-4728"
 kind = "non_rust_file"
 family = "documentation"
