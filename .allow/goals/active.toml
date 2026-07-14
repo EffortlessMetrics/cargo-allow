@@ -123,7 +123,7 @@ title = "Unify mutation receipts (PR 5)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0023"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0039"
 proof_commands = [
   "rtk cargo test -p allow-report",
   "rtk cargo test -p cargo-allow",
@@ -132,7 +132,7 @@ proof_commands = [
 evidence_notes = [
   "Shared operation envelope for add, propose, refresh, prune, migrate; split 5A-5D per plan.",
   "5A done: allow_report::MutationReceipt envelope defined and wired into add (CARGO-ALLOW-CLOSEOUT-0023).",
-  "5B propose done via #2156/#2157 (commit ad2c8a46); 5C refresh and 5D prune/migrate remain. Promote mutation_receipt into common.v1.json as the shared adoption set grows.",
+  "5B propose done via #2156/#2157 (commit ad2c8a46); 5C refresh done via #2159/#2160 (commit 97a36b4a); 5D prune/migrate remain. Promote mutation_receipt into common.v1.json as the shared adoption set grows.",
 ]
 
 [[work_item]]
