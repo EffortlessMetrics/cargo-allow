@@ -21,6 +21,7 @@ fn item(kind: &'static str, risk: &'static str, difficulty: &'static str) -> Wor
         difficulty,
         status: "new",
         allow_id: None,
+        candidate_ids: &[],
         finding_index: None,
         path: None,
         evidence_reference: None,

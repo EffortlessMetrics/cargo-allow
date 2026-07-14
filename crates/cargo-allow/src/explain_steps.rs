@@ -193,6 +193,7 @@ mod tests {
         let outcome = MatchOutcome {
             status: MatchStatus::New,
             allow_id: None,
+            candidate_ids: Vec::new(),
             finding_index: Some(0),
             message: "new finding".to_string(),
             score: 90,

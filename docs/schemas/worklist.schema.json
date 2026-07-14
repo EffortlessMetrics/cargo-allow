@@ -552,6 +552,14 @@
             "null"
           ]
         },
+        "candidate_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Structured candidate allow-entry IDs considered while resolving the finding. Ambiguous rows contain all tied candidates; an empty array means no policy candidates were considered."
+        },
         "finding_index": {
           "type": [
             "integer",

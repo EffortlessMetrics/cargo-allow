@@ -387,6 +387,7 @@ mod tests {
         MatchOutcome {
             status,
             allow_id: None,
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: String::new(),
             score: 0,

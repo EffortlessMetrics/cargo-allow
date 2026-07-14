@@ -98,6 +98,7 @@ fn work_item_from_evidence_diagnostic(
         difficulty: DIFFICULTY_SMALL,
         status: MatchStatus::EvidenceMissing,
         allow_id: Some(entry.id.clone()),
+        candidate_ids: Vec::new(),
         finding_index: None,
         path,
         evidence_reference: Some(evidence_reference),

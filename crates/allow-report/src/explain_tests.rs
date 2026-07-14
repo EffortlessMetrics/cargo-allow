@@ -54,6 +54,7 @@ fn explain_json_renderer_records_context_and_current_status() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::EvidenceMissing,
         allow_id: Some("allow-explain-json".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         message: "unsafe entry has missing evidence".to_string(),
         score: 9,

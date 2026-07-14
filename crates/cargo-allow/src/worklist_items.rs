@@ -61,6 +61,7 @@ fn work_item_from_outcome(
         difficulty: work_item_difficulty(&kind, finding, entry),
         status: outcome.status,
         allow_id: outcome.allow_id.clone(),
+        candidate_ids: outcome.candidate_ids.clone(),
         finding_index: outcome.finding_index,
         path,
         evidence_reference: None,
@@ -118,12 +119,13 @@ mod tests {
         );
         finding.identity.crate_name = Some("workflow".to_string());
         let findings = vec![finding];
-        let outcome = test_outcome(
+        let mut outcome = test_outcome(
             MatchStatus::EvidenceMissing,
             Some("allow-process"),
             Some(0),
             "allow-process is missing typed evidence",
         );
+        outcome.candidate_ids = vec!["allow-process".to_string()];
 
         let item = work_item_from_outcome(7, &cfg, &findings, &outcome);
 
@@ -145,6 +147,7 @@ mod tests {
         assert_eq!(item.difficulty, "small");
         assert_eq!(item.status, MatchStatus::EvidenceMissing);
         assert_eq!(item.allow_id.as_deref(), Some("allow-process"));
+        assert_eq!(item.candidate_ids, vec!["allow-process".to_string()]);
         assert_eq!(item.finding_index, Some(0));
         assert_eq!(item.path.as_deref(), Some(".github/workflows/ci.yml"));
         assert_eq!(item.source_package.as_deref(), Some("workflow"));

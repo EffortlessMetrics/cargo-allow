@@ -172,6 +172,7 @@ mod tests {
             difficulty: "small",
             status: MatchStatus::New,
             allow_id: Some("allow-1".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: Some(0),
             path: path.map(str::to_string),
             evidence_reference: None,

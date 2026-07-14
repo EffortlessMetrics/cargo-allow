@@ -232,6 +232,7 @@ fn test_outcome(
     MatchOutcome {
         status,
         allow_id: allow_id.map(str::to_string),
+        candidate_ids: Vec::new(),
         finding_index,
         message: message.to_string(),
         score: 100,

@@ -434,6 +434,10 @@ impl MatchStatus {
 pub struct MatchOutcome {
     pub status: MatchStatus,
     pub allow_id: Option<String>,
+    /// All policy entries considered for this finding, in deterministic policy
+    /// order. For an ambiguous result this is the structured candidate list;
+    /// consumers must not parse candidate IDs from `message`.
+    pub candidate_ids: Vec<String>,
     pub finding_index: Option<usize>,
     pub message: String,
     pub score: u32,

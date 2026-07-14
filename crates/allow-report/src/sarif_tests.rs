@@ -18,6 +18,7 @@ fn sarif_report_emits_non_matched_results_with_locations() {
         MatchOutcome {
             status: MatchStatus::New,
             allow_id: None,
+            candidate_ids: Vec::new(),
             finding_index: Some(0),
             message: "unreceipted shell script at scripts/new.sh".to_string(),
             score: 0,
@@ -54,6 +55,7 @@ fn sarif_result_properties_include_source_package_context() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::New,
         allow_id: None,
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         message: "unreceipted unwrap".to_string(),
         score: 0,
@@ -109,6 +111,7 @@ fn sarif_run_properties_route_outcome_evidence_missing_repair_queue() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::EvidenceMissing,
         allow_id: Some("allow-unsafe-0001".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: None,
         message: "unsafe allow entry requires evidence".to_string(),
         score: 0,
@@ -151,6 +154,7 @@ fn outcome(status: MatchStatus, finding_index: Option<usize>) -> MatchOutcome {
     MatchOutcome {
         status,
         allow_id: None,
+        candidate_ids: Vec::new(),
         finding_index,
         message: String::new(),
         score: 0,

@@ -47,6 +47,7 @@ pub(super) fn work_items_from_policy_advisories(
                 difficulty: work_item_difficulty(&kind, finding, Some(entry)),
                 status: MatchStatus::Matched,
                 allow_id: Some(entry.id.clone()),
+                candidate_ids: Vec::new(),
                 finding_index: outcome.finding_index,
                 path: finding
                     .map(|finding| normalize_path(&finding.path))
@@ -81,6 +82,7 @@ pub(super) fn work_items_from_policy_advisories(
                 difficulty: work_item_difficulty(&kind, finding, Some(entry)),
                 status: MatchStatus::BaselineDebt,
                 allow_id: Some(entry.id.clone()),
+                candidate_ids: Vec::new(),
                 finding_index: outcome.finding_index,
                 path: finding
                     .map(|finding| normalize_path(&finding.path))
@@ -117,6 +119,7 @@ pub(super) fn work_items_from_policy_advisories(
                 difficulty: work_item_difficulty(&kind, finding, Some(entry)),
                 status: MatchStatus::EvidenceMissing,
                 allow_id: Some(entry.id.clone()),
+                candidate_ids: Vec::new(),
                 finding_index: outcome.finding_index,
                 path: finding
                     .map(|finding| normalize_path(&finding.path))
@@ -150,6 +153,7 @@ pub(super) fn work_items_from_policy_advisories(
                 difficulty: DIFFICULTY_SMALL,
                 status: MatchStatus::Matched,
                 allow_id: Some(entry.id.clone()),
+                candidate_ids: Vec::new(),
                 finding_index: outcome.finding_index,
                 path: Some(scope.clone()),
                 evidence_reference: None,

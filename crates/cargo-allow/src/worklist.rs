@@ -195,6 +195,7 @@ pub(crate) fn sample_worklist_json_for_contract_test() -> String {
         difficulty: worklist_priority::DIFFICULTY_MEDIUM,
         status: allow_core::MatchStatus::BaselineDebt,
         allow_id: Some("allow-baseline".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         path: Some("src/lib.rs".to_string()),
         evidence_reference: None,

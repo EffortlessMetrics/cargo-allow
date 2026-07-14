@@ -270,6 +270,7 @@ mod tests {
         let outcomes = vec![MatchOutcome {
             status: MatchStatus::New,
             allow_id: Some(entry.id.clone()),
+            candidate_ids: Vec::new(),
             finding_index: Some(0),
             message: "new panic finding".to_string(),
             score: 72,

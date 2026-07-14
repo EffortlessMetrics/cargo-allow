@@ -4,6 +4,7 @@ use super::*;
 fn worklist_json_renderer_records_filters_summary_and_items() {
     let suggested_actions = vec!["review stale allow".to_string()];
     let proof_commands = vec!["cargo-allow check --mode no-new".to_string()];
+    let candidate_ids = vec!["allow-0001".to_string(), "allow-0002".to_string()];
     let items = vec![WorklistItem {
         id: "work-0001",
         kind: "stale_allow",
@@ -21,6 +22,7 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
         difficulty: "small",
         status: "stale",
         allow_id: Some("allow-0001"),
+        candidate_ids: &candidate_ids,
         finding_index: None,
         path: Some("crates/parser/src/lib.rs"),
         evidence_reference: None,
@@ -133,6 +135,7 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
       "difficulty": "small",
       "status": "stale",
       "allow_id": "allow-0001",
+      "candidate_ids": ["allow-0001", "allow-0002"],
       "finding_index": null,
       "path": "crates/parser/src/lib.rs",
       "source_package": "parser",
@@ -208,6 +211,7 @@ fn worklist_json_renderer_includes_optional_evidence_reference() {
         difficulty: "small",
         status: "evidence_missing",
         allow_id: Some("allow-weak"),
+        candidate_ids: &[],
         finding_index: None,
         path: None,
         evidence_reference: Some(EvidenceReference {
@@ -294,6 +298,7 @@ fn worklist_human_renderer_shows_ledger_inspection_proof_commands() {
         difficulty: "small",
         status: "matched",
         allow_id: Some("allow-broad"),
+        candidate_ids: &[],
         finding_index: None,
         path: Some("docs/**"),
         evidence_reference: None,

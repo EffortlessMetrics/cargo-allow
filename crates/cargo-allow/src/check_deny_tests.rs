@@ -6,6 +6,7 @@ fn outcome(status: MatchStatus) -> allow_core::MatchOutcome {
     allow_core::MatchOutcome {
         status,
         allow_id: None,
+        candidate_ids: Vec::new(),
         finding_index: None,
         message: status.as_str().to_string(),
         score: 0,

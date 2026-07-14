@@ -23,6 +23,7 @@ fn shadow_lane_does_not_fail_no_new_on_new_findings() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::New,
         allow_id: None,
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         message: "unreceipted unsafe".to_string(),
         score: 0,
@@ -43,6 +44,7 @@ fn blocking_lane_still_fails_no_new_on_new_findings() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::New,
         allow_id: None,
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         message: "unreceipted panic".to_string(),
         score: 0,
@@ -73,6 +75,7 @@ fn unresolved_outcome_does_not_inherit_policy_exception_shadow_lane() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::New,
         allow_id: Some("allow-deleted".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: Some(99),
         message: "unreceipted panic with stale outcome links".to_string(),
         score: 0,

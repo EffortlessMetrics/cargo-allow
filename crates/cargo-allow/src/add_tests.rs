@@ -334,6 +334,7 @@ fn selected_add_outcome_errors_when_finding_index_missing() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::Stale,
         allow_id: Some("allow-stale".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: None,
         message: "allow-stale is stale".to_string(),
         score: 0,

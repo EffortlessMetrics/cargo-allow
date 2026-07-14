@@ -38,6 +38,7 @@ pub struct WorklistItem<'a> {
     pub difficulty: &'a str,
     pub status: &'a str,
     pub allow_id: Option<&'a str>,
+    pub candidate_ids: &'a [String],
     pub finding_index: Option<usize>,
     pub path: Option<&'a str>,
     pub evidence_reference: Option<EvidenceReference<'a>>,

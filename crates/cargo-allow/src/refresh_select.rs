@@ -149,6 +149,7 @@ mod tests {
         let outcomes = vec![MatchOutcome {
             status: MatchStatus::Matched,
             allow_id: Some("allow-drift".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: Some(0),
             message: "matched".to_string(),
             score: 1,
@@ -170,6 +171,7 @@ mod tests {
         let outcomes = vec![MatchOutcome {
             status: MatchStatus::LocationDrift,
             allow_id: Some("allow-drift".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: Some(0),
             message: "last_seen changed".to_string(),
             score: 1,

@@ -58,6 +58,7 @@ pub fn evaluate_detailed(
             [] => outcomes.push(MatchOutcome {
                 status: MatchStatus::New,
                 allow_id: None,
+                candidate_ids: Vec::new(),
                 finding_index: Some(finding_index),
                 message: format!(
                     "unreceipted {}{} at {}",
@@ -82,6 +83,7 @@ pub fn evaluate_detailed(
                     outcomes.push(MatchOutcome {
                         status: MatchStatus::New,
                         allow_id: Some(entry.id.clone()),
+                        candidate_ids: vec![entry.id.clone()],
                         finding_index: Some(finding_index),
                         message: format!(
                             "{} occurrence_limit exceeded at {}",
@@ -117,6 +119,7 @@ pub fn evaluate_detailed(
                 outcomes.push(MatchOutcome {
                     status,
                     allow_id: Some(entry.id.clone()),
+                    candidate_ids: vec![entry.id.clone()],
                     finding_index: Some(finding_index),
                     message,
                     score: *score,
@@ -154,6 +157,12 @@ pub fn evaluate_detailed(
                         outcomes.push(MatchOutcome {
                             status: MatchStatus::New,
                             allow_id: Some(entry.id.clone()),
+                            candidate_ids: many
+                                .iter()
+                                .filter_map(|(idx, _)| {
+                                    cfg.allow.get(*idx).map(|candidate| candidate.id.clone())
+                                })
+                                .collect(),
                             finding_index: Some(finding_index),
                             message: format!(
                                 "{} occurrence_limit exceeded at {}",
@@ -171,6 +180,12 @@ pub fn evaluate_detailed(
                     outcomes.push(MatchOutcome {
                         status,
                         allow_id: Some(entry.id.clone()),
+                        candidate_ids: many
+                            .iter()
+                            .filter_map(|(idx, _)| {
+                                cfg.allow.get(*idx).map(|candidate| candidate.id.clone())
+                            })
+                            .collect(),
                         finding_index: Some(finding_index),
                         message,
                         score,
@@ -190,6 +205,12 @@ pub fn evaluate_detailed(
                     outcomes.push(MatchOutcome {
                         status: MatchStatus::Ambiguous,
                         allow_id: None,
+                        candidate_ids: top_candidates
+                            .iter()
+                            .filter_map(|(idx, _)| {
+                                cfg.allow.get(*idx).map(|entry| entry.id.clone())
+                            })
+                            .collect(),
                         finding_index: Some(finding_index),
                         message: format!(
                             "finding at {} matched multiple allow entries with equal score: {ids}",
@@ -260,6 +281,7 @@ pub fn evaluate_detailed(
         outcomes.push(MatchOutcome {
             status,
             allow_id: Some(entry.id.clone()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message,
             score: 0,

@@ -13,6 +13,9 @@ inventory without executing repository code.
 - Policy validation failures now retain structured diagnostic details on
   `CargoAllowError`, including stable code, category, severity, entry ID, and
   validation field, while preserving the existing human-readable aggregate.
+- Match outcomes now carry deterministic structured candidate allow IDs, and
+  worklist JSON exposes those IDs for ambiguous findings without requiring
+  consumers to parse human-readable messages.
 - `CargoAllowError` and `CargoAllowErrorKind` now expose stable `E000x_*`
   machine-readable codes, with a checked-in registry at
   `docs/error-codes.md`; human-readable messages remain unchanged.
