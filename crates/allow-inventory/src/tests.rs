@@ -150,11 +150,16 @@ fn visit_call_presence_observer() -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(root.join("src"))?;
     fs::create_dir_all(root.join(".git"))?;
     fs::create_dir_all(root.join("target"))?;
+    fs::create_dir_all(root.join("src").join("target"))?;
     fs::create_dir_all(root.join("empty"))?;
     write_file(root.join("README.md"), "readme");
     write_file(root.join("src").join("lib.rs"), "pub fn demo() {}\n");
     write_file(root.join(".git").join("config"), "ignored");
     write_file(root.join("target").join("debug.txt"), "ignored");
+    write_file(
+        root.join("src").join("target").join("mod.rs"),
+        "pub fn target_module() {}\n",
+    );
     let mut files = Vec::new();
 
     visit_for_test(&root, &root, &mut files)?;
@@ -162,9 +167,62 @@ fn visit_call_presence_observer() -> Result<(), Box<dyn std::error::Error>> {
 
     assert_eq!(
         files,
-        vec![PathBuf::from("README.md"), PathBuf::from("src/lib.rs")]
+        vec![
+            PathBuf::from("README.md"),
+            PathBuf::from("src/lib.rs"),
+            PathBuf::from("src/target/mod.rs"),
+        ]
     );
     remove_dir(&root);
+    Ok(())
+}
+
+#[test]
+fn nested_target_is_inventoried_in_all_sources() -> Result<(), Box<dyn std::error::Error>> {
+    let git_root = temp_root("nested-target-git");
+    fs::create_dir_all(git_root.join("src").join("target"))?;
+    fs::create_dir_all(git_root.join("target"))?;
+    write_file(
+        git_root.join("src").join("target").join("mod.rs"),
+        "pub fn target_module() {}\n",
+    );
+    write_file(git_root.join("target").join("debug.txt"), "ignored\n");
+    run_git(&git_root, &["init"]);
+    run_git(&git_root, &["add", "src/target/mod.rs"]);
+
+    let tracked = inventory(&git_root, &InventoryOptions::default())?;
+    let with_untracked = inventory(
+        &git_root,
+        &InventoryOptions {
+            include_untracked: true,
+            ..InventoryOptions::default()
+        },
+    )?;
+    let nested = Path::new("src/target/mod.rs");
+    assert_eq!(tracked.source, InventorySource::GitTracked);
+    assert!(tracked.files.contains(&nested.to_path_buf()));
+    assert!(with_untracked.files.contains(&nested.to_path_buf()));
+    assert!(!tracked.files.contains(&PathBuf::from("target/debug.txt")));
+    assert!(
+        !with_untracked
+            .files
+            .contains(&PathBuf::from("target/debug.txt"))
+    );
+    remove_dir(&git_root);
+
+    let fallback_root = temp_root("nested-target-fallback");
+    fs::create_dir_all(fallback_root.join("src").join("target"))?;
+    fs::create_dir_all(fallback_root.join("target"))?;
+    write_file(
+        fallback_root.join("src").join("target").join("mod.rs"),
+        "pub fn target_module() {}\n",
+    );
+    write_file(fallback_root.join("target").join("debug.txt"), "ignored\n");
+    let fallback = inventory(&fallback_root, &InventoryOptions::default())?;
+    assert_eq!(fallback.source, InventorySource::FilesystemFallback);
+    assert!(fallback.files.contains(&nested.to_path_buf()));
+    assert!(!fallback.files.contains(&PathBuf::from("target/debug.txt")));
+    remove_dir(&fallback_root);
     Ok(())
 }
 
