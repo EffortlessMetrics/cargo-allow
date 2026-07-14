@@ -10,6 +10,8 @@ inventory without executing repository code.
 
 ### Fixed
 
+- Include-untracked filesystem fallback now preserves the Git inventory error
+  in the returned inventory metadata for diagnostics and receipts.
 - Filesystem fallback inventory now prunes only the repository-root `target/`
   directory, preserving legitimate nested source directories named `target`.
 - Policy validation failures now retain structured diagnostic details on
