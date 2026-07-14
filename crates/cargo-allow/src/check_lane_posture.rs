@@ -1,8 +1,9 @@
-use allow_core::{AllowConfig, Finding, FindingKind, MatchOutcome};
+use allow_core::{AllowConfig, Finding, FindingKind, MatchOutcome, MatchStatus};
 use allow_match::CheckMode;
 
 pub(crate) fn check_outcome_fails(
     outcome: &MatchOutcome,
+    status: MatchStatus,
     findings: &[Finding],
     cfg: &AllowConfig,
     mode: CheckMode,
@@ -15,7 +16,7 @@ pub(crate) fn check_outcome_fails(
             return false;
         }
     }
-    mode.fails(outcome.status)
+    mode.fails(status)
 }
 
 pub(crate) fn check_failed_for_outcomes(
@@ -24,9 +25,20 @@ pub(crate) fn check_failed_for_outcomes(
     cfg: &AllowConfig,
     mode: CheckMode,
 ) -> bool {
-    outcomes
-        .iter()
-        .any(|outcome| check_outcome_fails(outcome, findings, cfg, mode))
+    let projected_statuses = allow_report::ledger_read_statuses(
+        cfg,
+        outcomes,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
+
+    outcomes.iter().any(|outcome| {
+        let status = outcome
+            .allow_id
+            .as_deref()
+            .and_then(|allow_id| projected_statuses.get(allow_id).copied())
+            .unwrap_or(outcome.status);
+        check_outcome_fails(outcome, status, findings, cfg, mode)
+    })
 }
 
 fn outcome_kind(

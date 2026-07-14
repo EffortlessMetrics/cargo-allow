@@ -4,39 +4,19 @@ use super::worklist_scoring::{
     exception_family, work_item_difficulty, work_item_kind_for_status, work_item_risk,
 };
 use super::worklist_types::WorkItemLedger;
-use allow_core::{
-    AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, SimpleDate, normalize_path,
-};
+use allow_core::{AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path};
 use allow_diff::selector_precision_score;
-use std::collections::HashMap;
 
 pub(super) fn work_items_from_outcomes(
     cfg: &AllowConfig,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
 ) -> Vec<WorkItem> {
-    let today = SimpleDate::today_utc_approx();
-    let mut entries_by_id = HashMap::new();
-    for entry in &cfg.allow {
-        entries_by_id.entry(entry.id.as_str()).or_insert(entry);
-    }
-    let mut outcomes_by_allow_id = HashMap::<&str, Vec<&MatchOutcome>>::new();
-    for outcome in outcomes {
-        if let Some(allow_id) = outcome.allow_id.as_deref() {
-            outcomes_by_allow_id
-                .entry(allow_id)
-                .or_default()
-                .push(outcome);
-        }
-    }
-    let projected_statuses = entries_by_id
-        .iter()
-        .filter_map(|(allow_id, entry)| {
-            let entry_outcomes = outcomes_by_allow_id.get(allow_id).map(Vec::as_slice)?;
-            let status = allow_report::ledger_read_state(entry, entry_outcomes, today).status;
-            Some((*allow_id, status))
-        })
-        .collect::<HashMap<_, _>>();
+    let projected_statuses = allow_report::ledger_read_statuses(
+        cfg,
+        outcomes,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     outcomes
         .iter()
