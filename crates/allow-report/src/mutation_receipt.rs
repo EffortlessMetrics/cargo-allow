@@ -2,8 +2,8 @@
 //! `refresh`, `prune`, `migrate`), per CARGO-ALLOW-SPEC-0008 "Mutation Receipt
 //! Envelope" (GOAL-0004 PR 5). Command-specific payloads remain outside this
 //! envelope; provenance and changed-entry metadata must not be independently
-//! reinvented per command. This slice (5A) defines the envelope and wires it
-//! into `add`; `propose`/`refresh`/`prune`/`migrate` adopt it in later slices.
+//! reinvented per command. The envelope is wired into `add`, `propose`, and
+//! `refresh`; `prune` and `migrate` adopt it in later slices.
 
 use allow_core::json_escape;
 

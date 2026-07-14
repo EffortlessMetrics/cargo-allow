@@ -29,12 +29,12 @@ macro-expansion, or proof-level coverage.
 - [prune.schema.json](prune.schema.json)
 - [refresh.schema.json](refresh.schema.json)
 - [propose.schema.json](propose.schema.json)
-- [add.schema.json](add.schema.json) and [propose.schema.json](propose.schema.json) embed the shared `mutation_receipt`
+- [add.schema.json](add.schema.json), [propose.schema.json](propose.schema.json), and [refresh.schema.json](refresh.schema.json) embed the shared `mutation_receipt`
   fragment (`cargo-allow.mutation-receipt.v1`): a provenance envelope
   (`operation`, `tool_version`, `repo_root`, `config_source`, `ledger_ids`,
   `changed_allow_ids`, `before_fingerprints`, `after_fingerprints`, `result`,
   `next_commands`, `claim_boundary`) per CARGO-ALLOW-SPEC-0008 "Mutation
-  Receipt Envelope" (GOAL-0004 PR 5). `refresh`, `prune`, and `migrate` adopt
+  Receipt Envelope" (GOAL-0004 PR 5). `prune` and `migrate` adopt
   the same fragment in later slices rather than reinventing per-command
   provenance shapes.
 - [migrate.schema.json](migrate.schema.json)

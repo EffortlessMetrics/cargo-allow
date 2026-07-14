@@ -1,5 +1,5 @@
 use allow_core::{AllowEntry, Finding, LastSeen};
-use allow_report::InventoryContext;
+use allow_report::{InventoryContext, MutationReceipt};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct RefreshContext<'a> {
@@ -15,6 +15,7 @@ pub(super) struct RefreshRenderInput<'a> {
     pub write_requested: bool,
     pub written_path: Option<&'a str>,
     pub context: RefreshContext<'a>,
+    pub mutation_receipt: MutationReceipt<'a>,
 }
 
 pub(super) struct RefreshEmitInput<'a> {
@@ -25,4 +26,5 @@ pub(super) struct RefreshEmitInput<'a> {
     pub root: &'a std::path::Path,
     pub inventory_facts: crate::InventoryFacts,
     pub written_path: Option<&'a std::path::Path>,
+    pub mutation_receipt: MutationReceipt<'a>,
 }
