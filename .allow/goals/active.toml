@@ -153,6 +153,8 @@ evidence_notes = [
   "First PR6 slice landed via #2203 as fc1c00f5: list and worklist now share lifecycle status projection; occurrence count/limit are retained internally for later convergence slices.",
   "Current-main focused proof passes: allow-report 223 tests, worklist 113 tests, list_rows 22 tests, Clippy, formatting, and no-new guard. The unfiltered cargo-allow package suite exceeded ten minutes without a result.",
   "Hosted test passed; UB Review remains advisory and stops at the repository MINIMAX_API_KEY preflight tracked by #2084.",
+  "Second PR6 slice landed via #2212 as 87de4d69: explain human and JSON summary status now consume the shared lifecycle projection; baseline_debt summaries align with the canonical read-model vocabulary.",
+  "Current-main PR6B proof passes: allow-report 225 tests, cargo-allow explain 35 tests, Clippy, active-goal parser, and no-new guard.",
 ]
 
 [[work_item]]
