@@ -208,6 +208,7 @@ fn explain_json_renderer_records_context_and_current_status() {
     {{
       "status": "evidence_missing",
       "allow_id": "allow-explain-json",
+      "candidate_ids": [],
       "finding_index": 0,
       "score": 9,
       "message": "unsafe entry has missing evidence"
