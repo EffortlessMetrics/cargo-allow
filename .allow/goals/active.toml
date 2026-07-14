@@ -150,6 +150,9 @@ proof_commands = [
 evidence_notes = [
   "Shared view model for list, explain, worklist, audit, check, diff.",
   "Agreed status, posture, movement, headroom, and repair routing.",
+  "First PR6 slice landed via #2203 as fc1c00f5: list and worklist now share lifecycle status projection; occurrence count/limit are retained internally for later convergence slices.",
+  "Current-main focused proof passes: allow-report 223 tests, worklist 113 tests, list_rows 22 tests, Clippy, formatting, and no-new guard. The unfiltered cargo-allow package suite exceeded ten minutes without a result.",
+  "Hosted test passed; UB Review remains advisory and stops at the repository MINIMAX_API_KEY preflight tracked by #2084.",
 ]
 
 [[work_item]]
