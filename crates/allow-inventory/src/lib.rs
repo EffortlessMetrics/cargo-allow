@@ -58,14 +58,14 @@ pub fn inventory(
                     submods,
                 )
             }
-            Err(_) => {
+            Err(err) => {
                 let (files, skipped) = recursive_files(root)?;
                 (
                     files,
                     InventorySource::FilesystemIncludeUntracked,
                     false,
                     Vec::new(),
-                    None,
+                    Some(err.to_string()),
                     skipped,
                     Vec::new(),
                 )

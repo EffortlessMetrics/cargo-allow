@@ -270,6 +270,31 @@ fn inventory_reports_filesystem_fallback_source_without_git() {
 }
 
 #[test]
+fn include_untracked_fallback_preserves_git_error() {
+    let root = temp_root("include-untracked-fallback");
+    write_file(root.join("untracked.txt"), "untracked");
+
+    let snapshot = inventory(
+        &root,
+        &InventoryOptions {
+            include_untracked: true,
+            ..InventoryOptions::default()
+        },
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("snapshot inventory: {err}")));
+
+    assert_eq!(snapshot.source, InventorySource::FilesystemIncludeUntracked);
+    assert!(snapshot.files.contains(&PathBuf::from("untracked.txt")));
+    assert!(
+        snapshot
+            .git_error
+            .as_deref()
+            .is_some_and(|error| !error.is_empty())
+    );
+    remove_dir(&root);
+}
+
+#[test]
 fn inventory_applies_custom_ignored_globs() {
     let opts = InventoryOptions {
         ignored: vec!["scripts/**".to_string()],
