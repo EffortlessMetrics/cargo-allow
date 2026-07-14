@@ -97,6 +97,11 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         current_world_loaded(&current_world)?.findings.clone()
     };
     let outcomes = evaluate(&report_cfg, &findings_for_report, CheckMode::NoNew);
+    let projected_outcomes = allow_report::ledger_project_outcomes(
+        &report_cfg,
+        &outcomes,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
     let finding_changes =
         allow_diff::finding_posture_changes(&base_findings, &head_findings_for_diff);
     let mut policy_changes = policy_changes_for_diff(
@@ -127,7 +132,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         &report_cfg,
         &outcomes,
     );
-    let current_failures = outcomes
+    let current_failures = projected_outcomes
         .iter()
         .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
         .count()
@@ -153,7 +158,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let mut text = match args.format {
         OutputFormat::Json => render_diff_json_report(
             &findings_for_report,
-            &outcomes,
+            &projected_outcomes,
             failed,
             report_context,
             current_failures,
@@ -162,35 +167,39 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         OutputFormat::Html => allow_report::render_html_with_context(
             "diff",
             &findings_for_report,
-            &outcomes,
+            &projected_outcomes,
             failed,
             report_context,
         ),
         OutputFormat::Sarif => allow_report::render_sarif_with_context(
             "diff",
             &findings_for_report,
-            &outcomes,
+            &projected_outcomes,
             failed,
             report_context,
         ),
         OutputFormat::Markdown => allow_report::render_markdown_with_context(
             "diff",
             &findings_for_report,
-            &outcomes,
+            &projected_outcomes,
             failed,
             report_context,
         ),
         OutputFormat::Human => allow_report::render_human_with_context(
             "diff",
             &findings_for_report,
-            &outcomes,
+            &projected_outcomes,
             failed,
             report_context,
         ),
     };
     if args.format == OutputFormat::Markdown {
-        let summary =
-            render_diff_pr_summary_markdown(current_failures, evidence, &outcomes, &ledger);
+        let summary = render_diff_pr_summary_markdown(
+            current_failures,
+            evidence,
+            &projected_outcomes,
+            &ledger,
+        );
         insert_markdown_pr_summary(&mut text, &summary);
     }
     append_diff_posture_summary(
@@ -198,7 +207,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         args.format,
         current_failures,
         evidence,
-        &outcomes,
+        &projected_outcomes,
         &ledger,
     );
     append_finding_posture_changes(&mut text, args.format, &finding_changes, &head_cfg_for_diff);

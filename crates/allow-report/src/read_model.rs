@@ -70,6 +70,28 @@ pub fn ledger_read_statuses<'a>(
         .collect()
 }
 
+pub fn ledger_project_outcomes(
+    cfg: &AllowConfig,
+    outcomes: &[MatchOutcome],
+    today: SimpleDate,
+) -> Vec<MatchOutcome> {
+    let projected_statuses = ledger_read_statuses(cfg, outcomes, today);
+    outcomes
+        .iter()
+        .map(|outcome| {
+            let mut projected = outcome.clone();
+            if let Some(status) = outcome
+                .allow_id
+                .as_deref()
+                .and_then(|allow_id| projected_statuses.get(allow_id).copied())
+            {
+                projected.status = status;
+            }
+            projected
+        })
+        .collect()
+}
+
 fn lifecycle_status(
     entry: &AllowEntry,
     outcomes: &[&MatchOutcome],
@@ -135,6 +157,33 @@ mod tests {
         assert_eq!(state.status, MatchStatus::Stale);
         assert_eq!(state.matched_count, 1);
         assert_eq!(state.occurrence_limit, Some(3));
+    }
+
+    #[test]
+    fn projected_outcomes_replace_lifecycle_status_without_match_detail_loss() {
+        let mut entry = test_entry(None);
+        entry.lifecycle.expires = Some("2020-01-01".to_string());
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(entry);
+        let mut matched = test_outcome(MatchStatus::Matched);
+        matched.candidate_ids = vec!["candidate-a".to_string()];
+        matched.finding_index = Some(4);
+        matched.message = "matched detail".to_string();
+
+        let projected = ledger_project_outcomes(
+            &cfg,
+            &[matched.clone()],
+            SimpleDate {
+                year: 2026,
+                month: 7,
+                day: 14,
+            },
+        );
+
+        assert_eq!(projected[0].status, MatchStatus::Expired);
+        assert_eq!(projected[0].candidate_ids, matched.candidate_ids);
+        assert_eq!(projected[0].finding_index, matched.finding_index);
+        assert_eq!(projected[0].message, matched.message);
     }
 
     fn test_entry(occurrence_limit: Option<u32>) -> AllowEntry {

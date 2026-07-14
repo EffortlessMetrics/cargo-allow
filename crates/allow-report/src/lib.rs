@@ -161,7 +161,8 @@ pub use path_text::source_tree_path_text;
 pub use propose::{render_propose_human, render_propose_json};
 pub use prune::{render_prune_human, render_prune_human_with_context, render_prune_json};
 pub use read_model::{
-    LedgerReadState, ledger_read_state, ledger_read_state_for_outcomes, ledger_read_statuses,
+    LedgerReadState, ledger_project_outcomes, ledger_read_state, ledger_read_state_for_outcomes,
+    ledger_read_statuses,
 };
 pub use receipt::{
     render_error_receipt, render_receipt, render_receipt_with_context,
