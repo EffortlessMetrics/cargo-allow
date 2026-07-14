@@ -1,8 +1,7 @@
 use super::ListRow;
 use crate::evidence_inventory::policy_reference_diagnostics_for_source_tree;
 use allow_core::{
-    AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, SimpleDate,
-    allow_entry_broad_scope,
+    AllowConfig, AllowEntry, Finding, MatchOutcome, SimpleDate, allow_entry_broad_scope,
 };
 use allow_diff::selector_precision_score;
 use std::collections::BTreeSet;
@@ -40,7 +39,7 @@ pub(super) fn list_rows_with_source_tree_files(
                 .collect::<Vec<_>>();
             ListRow {
                 id: entry.id.clone(),
-                status: list_entry_status(entry, &entry_outcomes, today),
+                status: allow_report::ledger_read_state(entry, &entry_outcomes, today).status,
                 matches: entry_outcomes
                     .iter()
                     .filter(|outcome| outcome.finding_index.is_some())
@@ -91,43 +90,6 @@ fn entry_reference_diagnostics_for_source_tree(
         .into_iter()
         .map(|reference| reference.diagnostic)
         .collect()
-}
-
-fn list_entry_status(
-    entry: &AllowEntry,
-    outcomes: &[&MatchOutcome],
-    today: SimpleDate,
-) -> MatchStatus {
-    if date_has_passed(entry.lifecycle.expires.as_deref(), today) {
-        return MatchStatus::Expired;
-    }
-    if date_is_due(entry.lifecycle.review_after.as_deref(), today) {
-        return MatchStatus::ReviewDue;
-    }
-    for status in [
-        MatchStatus::New,
-        MatchStatus::Ambiguous,
-        MatchStatus::EvidenceMissing,
-        MatchStatus::MissingRequiredField,
-        MatchStatus::InvalidSelector,
-        MatchStatus::Stale,
-    ] {
-        if outcomes.iter().any(|outcome| outcome.status == status) {
-            return status;
-        }
-    }
-    if entry.classification == "baseline_debt" {
-        return MatchStatus::BaselineDebt;
-    }
-    MatchStatus::Matched
-}
-
-fn date_has_passed(date: Option<&str>, today: SimpleDate) -> bool {
-    SimpleDate::has_passed_date_str(date, today)
-}
-
-fn date_is_due(date: Option<&str>, today: SimpleDate) -> bool {
-    SimpleDate::is_due_date_str(date, today)
 }
 
 #[cfg(test)]

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use allow_core::{AllowConfig, FindingKind, MatchStatus};
 
 use super::{list_rows, list_rows_with_source_tree_files};
-use crate::list::test_support::{test_entry, test_outcome};
+use crate::list::test_support::{test_entry, test_finding, test_outcome};
 
 fn list_fixture_dir() -> PathBuf {
     let mut path = std::env::temp_dir();
@@ -60,5 +60,31 @@ fn list_entry_status_call_presence_observer() {
     match rows.as_slice() {
         [row] => assert_eq!(row.status, MatchStatus::New),
         other => assert_eq!(other.len(), 1),
+    }
+}
+
+#[test]
+fn list_and_worklist_share_expired_status_for_matched_entry() {
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-expired", FindingKind::Panic);
+    entry.lifecycle.expires = Some("2020-01-01".to_string());
+    cfg.allow.push(entry);
+    let outcomes = vec![test_outcome(
+        MatchStatus::Matched,
+        Some("allow-expired"),
+        Some(0),
+        "allow-expired matched",
+    )];
+    let findings = vec![test_finding(
+        FindingKind::Panic,
+        Some("unwrap"),
+        "tracked.file",
+        "unwrap",
+    )];
+
+    let rows = list_rows(Path::new("."), &cfg, &findings, &outcomes);
+    match rows.as_slice() {
+        [row] => assert_eq!(row.status, MatchStatus::Expired),
+        rows => assert_eq!(rows.len(), 1),
     }
 }

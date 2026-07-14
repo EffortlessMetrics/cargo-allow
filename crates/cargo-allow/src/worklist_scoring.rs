@@ -14,7 +14,16 @@ pub(crate) fn work_item_kind(
     finding: Option<&Finding>,
     entry: Option<&AllowEntry>,
 ) -> String {
-    match outcome.status {
+    work_item_kind_for_status(outcome.status, outcome, finding, entry)
+}
+
+pub(crate) fn work_item_kind_for_status(
+    status: MatchStatus,
+    outcome: &MatchOutcome,
+    finding: Option<&Finding>,
+    entry: Option<&AllowEntry>,
+) -> String {
+    match status {
         MatchStatus::New if outcome.allow_id.is_some() => OCCURRENCE_LIMIT_EXCEEDED.to_string(),
         MatchStatus::New => NEW_UNRECEIPTED_FINDING.to_string(),
         MatchStatus::Expired => EXPIRED_ALLOW.to_string(),

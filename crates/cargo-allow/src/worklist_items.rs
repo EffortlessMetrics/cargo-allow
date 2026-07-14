@@ -1,37 +1,85 @@
 use super::WorkItem;
 use super::worklist_actions::{proof_commands, suggested_actions_for_context};
 use super::worklist_scoring::{
-    exception_family, work_item_difficulty, work_item_kind, work_item_risk,
+    exception_family, work_item_difficulty, work_item_kind_for_status, work_item_risk,
 };
 use super::worklist_types::WorkItemLedger;
-use allow_core::{AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path};
+use allow_core::{
+    AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, SimpleDate, normalize_path,
+};
 use allow_diff::selector_precision_score;
+use std::collections::HashMap;
 
 pub(super) fn work_items_from_outcomes(
     cfg: &AllowConfig,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
 ) -> Vec<WorkItem> {
+    let today = SimpleDate::today_utc_approx();
+    let mut entries_by_id = HashMap::new();
+    for entry in &cfg.allow {
+        entries_by_id.entry(entry.id.as_str()).or_insert(entry);
+    }
+    let mut outcomes_by_allow_id = HashMap::<&str, Vec<&MatchOutcome>>::new();
+    for outcome in outcomes {
+        if let Some(allow_id) = outcome.allow_id.as_deref() {
+            outcomes_by_allow_id
+                .entry(allow_id)
+                .or_default()
+                .push(outcome);
+        }
+    }
+    let projected_statuses = entries_by_id
+        .iter()
+        .filter_map(|(allow_id, entry)| {
+            let entry_outcomes = outcomes_by_allow_id.get(allow_id).map(Vec::as_slice)?;
+            let status = allow_report::ledger_read_state(entry, entry_outcomes, today).status;
+            Some((*allow_id, status))
+        })
+        .collect::<HashMap<_, _>>();
+
     outcomes
         .iter()
-        .filter(|outcome| outcome.status != MatchStatus::Matched)
+        .filter_map(|outcome| {
+            let status = outcome
+                .allow_id
+                .as_deref()
+                .and_then(|id| projected_statuses.get(id).copied())
+                .unwrap_or(outcome.status);
+            let actionable = outcome.status != MatchStatus::Matched
+                || matches!(status, MatchStatus::Expired | MatchStatus::ReviewDue);
+            actionable.then_some((status, outcome))
+        })
         .enumerate()
-        .map(|(index, outcome)| work_item_from_outcome(index + 1, cfg, findings, outcome))
+        .map(|(index, (status, outcome))| {
+            work_item_from_outcome_with_status(index + 1, cfg, findings, outcome, status)
+        })
         .collect()
 }
 
+#[cfg(test)]
 fn work_item_from_outcome(
     item_index: usize,
     cfg: &AllowConfig,
     findings: &[Finding],
     outcome: &MatchOutcome,
 ) -> WorkItem {
+    work_item_from_outcome_with_status(item_index, cfg, findings, outcome, outcome.status)
+}
+
+fn work_item_from_outcome_with_status(
+    item_index: usize,
+    cfg: &AllowConfig,
+    findings: &[Finding],
+    outcome: &MatchOutcome,
+    status: MatchStatus,
+) -> WorkItem {
     let finding = outcome.finding_index.and_then(|idx| findings.get(idx));
     let entry = outcome
         .allow_id
         .as_deref()
         .and_then(|id| cfg.allow.iter().find(|entry| entry.id == id));
-    let kind = work_item_kind(outcome, finding, entry);
+    let kind = work_item_kind_for_status(status, outcome, finding, entry);
     let path = finding
         .map(|finding| normalize_path(&finding.path))
         .or_else(|| entry.map(|entry| entry.path_or_glob()));
@@ -57,16 +105,24 @@ fn work_item_from_outcome(
         expires: entry.and_then(|entry| entry.lifecycle.expires.clone()),
         evidence_count: entry.map(|entry| entry.evidence.len()),
         selector_precision: entry.map(selector_precision_score),
-        risk: work_item_risk(&kind, outcome.status, finding, entry),
+        risk: work_item_risk(&kind, status, finding, entry),
         difficulty: work_item_difficulty(&kind, finding, entry),
-        status: outcome.status,
+        status,
         allow_id: outcome.allow_id.clone(),
         candidate_ids: outcome.candidate_ids.clone(),
         finding_index: outcome.finding_index,
         path,
         evidence_reference: None,
         source_package,
-        message: outcome.message.clone(),
+        message: if status == outcome.status {
+            outcome.message.clone()
+        } else {
+            format!(
+                "{} is {}",
+                outcome.allow_id.as_deref().unwrap_or("policy entry"),
+                status.as_str()
+            )
+        },
         suggested_actions,
         proof_commands: proof_commands(&kind, finding, entry),
         ledger: WorkItemLedger::from_finding(finding),
@@ -193,5 +249,71 @@ mod tests {
         assert_eq!(item.path.as_deref(), Some("fixtures/generated/**"));
         assert_eq!(item.source_package, None);
         assert_eq!(item.message, "allow-stale is stale");
+    }
+
+    #[test]
+    fn matched_outcome_for_expired_entry_remains_actionable() {
+        let mut cfg = AllowConfig::empty();
+        let mut entry = test_entry("allow-expired", FindingKind::Panic);
+        entry.lifecycle.expires = Some("2020-01-01".to_string());
+        cfg.allow.push(entry);
+        let outcome = test_outcome(
+            MatchStatus::Matched,
+            Some("allow-expired"),
+            Some(0),
+            "allow-expired matched",
+        );
+
+        let items = super::super::work_items_from_outcomes(
+            &cfg,
+            &[test_finding(
+                FindingKind::Panic,
+                Some("unwrap"),
+                "tracked.file",
+                "unwrap",
+            )],
+            &[outcome],
+        );
+
+        match items.as_slice() {
+            [item] => {
+                assert_eq!(item.status, MatchStatus::Expired);
+                assert_eq!(item.kind, "expired_allow");
+            }
+            items => assert_eq!(items.len(), 1),
+        }
+    }
+
+    #[test]
+    fn matched_outcome_for_review_due_entry_remains_actionable() {
+        let mut cfg = AllowConfig::empty();
+        let mut entry = test_entry("allow-review", FindingKind::Panic);
+        entry.lifecycle.review_after = Some("2020-01-01".to_string());
+        cfg.allow.push(entry);
+        let outcome = test_outcome(
+            MatchStatus::Matched,
+            Some("allow-review"),
+            Some(0),
+            "allow-review matched",
+        );
+
+        let items = super::super::work_items_from_outcomes(
+            &cfg,
+            &[test_finding(
+                FindingKind::Panic,
+                Some("unwrap"),
+                "tracked.file",
+                "unwrap",
+            )],
+            &[outcome],
+        );
+
+        match items.as_slice() {
+            [item] => {
+                assert_eq!(item.status, MatchStatus::ReviewDue);
+                assert_eq!(item.kind, "review_due");
+            }
+            items => assert_eq!(items.len(), 1),
+        }
     }
 }
