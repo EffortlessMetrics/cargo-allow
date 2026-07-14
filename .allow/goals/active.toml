@@ -163,15 +163,20 @@ evidence_notes = [
 
 [[work_item]]
 id = "ledger-coherence-pr7-lifecycle-corpus"
-status = "blocked"
+status = "in_progress"
 title = "Ledger lifecycle scenario corpus (PR 7)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
-blocker_reason = "Blocked on PR 6 read-surface convergence."
+proof_commands = [
+  "rtk cargo test -p cargo-allow --test lifecycle_corpus --locked",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
 evidence_notes = [
   "Fixture corpus for matched, stale, expired, review_due, drift, headroom, evidence debt, weakening, improvement, and mirror divergence states.",
   "Semantic-consistency oracles across audit, check, diff, list, explain, worklist, refresh, prune.",
+  "Seed landed via #2233 as b6ecccfc: subprocess artifacts now agree on expired and review_due status across list, explain, worklist, audit, check, and diff; a separate fixture proves review_due is advisory in no-new and blocking in strict.",
+  "Full lifecycle matrix and cross-command movement/posture/evidence/repair convergence remain open; see CARGO-ALLOW-CLOSEOUT-0046.",
 ]
 
 [[work_item]]
