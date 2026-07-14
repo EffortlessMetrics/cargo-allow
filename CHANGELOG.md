@@ -10,6 +10,9 @@ inventory without executing repository code.
 
 ### Fixed
 
+- Policy validation failures now retain structured diagnostic details on
+  `CargoAllowError`, including stable code, category, severity, entry ID, and
+  validation field, while preserving the existing human-readable aggregate.
 - `CargoAllowError` and `CargoAllowErrorKind` now expose stable `E000x_*`
   machine-readable codes, with a checked-in registry at
   `docs/error-codes.md`; human-readable messages remain unchanged.

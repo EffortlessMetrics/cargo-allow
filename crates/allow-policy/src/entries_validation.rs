@@ -1,4 +1,6 @@
-use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, Requirements};
+use allow_core::{
+    AllowEntry, CargoAllowDiagnostic, CargoAllowError, CargoAllowResult, Requirements,
+};
 use std::collections::BTreeSet;
 
 use crate::entry_validation::{
@@ -44,19 +46,36 @@ fn validate_allow_entries_with_link_scope_validation(
         // short-circuiting on the first one. This lets an adopter with N
         // broken entries see all N errors in a single run instead of
         // fixing one, re-running, fixing the next, etc.
-        let checks: [CargoAllowResult<()>; 8] = [
-            validate_allow_entry_identity(entry, &mut ids),
-            validate_allow_entry_scope(entry),
-            validate_selector(entry),
-            validate_source_hints(entry),
-            validate_lifecycle(entry),
-            validate_allow_entry_requirements(entry, requirements, link_scope_validation),
-            validate_lifecycle_requirements(entry, requirements),
-            validate_allow_entry_evidence_and_limit(entry, requirements),
+        let checks: [(&str, CargoAllowResult<()>); 8] = [
+            ("identity", validate_allow_entry_identity(entry, &mut ids)),
+            ("scope", validate_allow_entry_scope(entry)),
+            ("selector", validate_selector(entry)),
+            ("source_hints", validate_source_hints(entry)),
+            ("lifecycle", validate_lifecycle(entry)),
+            (
+                "requirements",
+                validate_allow_entry_requirements(entry, requirements, link_scope_validation),
+            ),
+            (
+                "lifecycle_requirements",
+                validate_lifecycle_requirements(entry, requirements),
+            ),
+            (
+                "evidence_and_limit",
+                validate_allow_entry_evidence_and_limit(entry, requirements),
+            ),
         ];
-        for check in checks {
+        for (field, check) in checks {
             if let Err(err) = check {
-                errors.push(err);
+                let code = err.code();
+                let message = err.message().to_owned();
+                errors.push(err.with_diagnostic(CargoAllowDiagnostic::error(
+                    code,
+                    "policy_validation",
+                    Some(&entry.id),
+                    Some(field),
+                    message,
+                )));
             }
         }
     }
@@ -71,10 +90,18 @@ fn validate_allow_entries_with_link_scope_validation(
             .map(|e| format!("  - {e}"))
             .collect::<Vec<_>>()
             .join("\n");
-        Err(CargoAllowError::new(format!(
-            "{count} policy validation errors:\n{summary}",
-            count = errors.len()
-        )))
+        let diagnostics = errors
+            .iter()
+            .flat_map(|error| error.diagnostics().iter().cloned())
+            .collect::<Vec<_>>();
+        Err(CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::InvalidPolicy,
+            format!(
+                "{count} policy validation errors:\n{summary}",
+                count = errors.len()
+            ),
+        )
+        .with_diagnostics(diagnostics))
     }
 }
 

@@ -1,4 +1,6 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
+use allow_core::{
+    AllowConfig, CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult,
+};
 
 use crate::bare_allow_conflict::detect_bare_allow_conflict;
 use crate::entries_validation::{
@@ -14,19 +16,19 @@ use crate::scope_validation::validate_workspace;
 fn collect_validation_errors(cfg: &AllowConfig) -> Vec<CargoAllowError> {
     let mut errors = Vec::new();
     if let Err(e) = validate_policy_header(cfg) {
-        errors.push(e);
+        errors.push(with_validation_diagnostic(e, "header", None));
     }
     if let Err(e) = validate_workspace(&cfg.workspace) {
-        errors.push(e);
+        errors.push(with_validation_diagnostic(e, "workspace", None));
     }
     if let Err(e) = validate_lanes(cfg) {
-        errors.push(e);
+        errors.push(with_validation_diagnostic(e, "lanes", None));
     }
     if let Err(e) = validate_allow_entries(&cfg.allow, &cfg.requirements) {
         errors.push(e);
     }
     if let Err(e) = detect_bare_allow_conflict(cfg) {
-        errors.push(e);
+        errors.push(with_validation_diagnostic(e, "bare_allow_conflict", None));
     }
     errors
 }
@@ -34,19 +36,19 @@ fn collect_validation_errors(cfg: &AllowConfig) -> Vec<CargoAllowError> {
 fn collect_validation_errors_with_reportable_evidence(cfg: &AllowConfig) -> Vec<CargoAllowError> {
     let mut errors = Vec::new();
     if let Err(e) = validate_policy_header(cfg) {
-        errors.push(e);
+        errors.push(with_validation_diagnostic(e, "header", None));
     }
     if let Err(e) = validate_workspace(&cfg.workspace) {
-        errors.push(e);
+        errors.push(with_validation_diagnostic(e, "workspace", None));
     }
     if let Err(e) = validate_lanes(cfg) {
-        errors.push(e);
+        errors.push(with_validation_diagnostic(e, "lanes", None));
     }
     if let Err(e) = validate_allow_entries_with_reportable_evidence(&cfg.allow, &cfg.requirements) {
         errors.push(e);
     }
     if let Err(e) = detect_bare_allow_conflict(cfg) {
-        errors.push(e);
+        errors.push(with_validation_diagnostic(e, "bare_allow_conflict", None));
     }
     errors
 }
@@ -64,11 +66,35 @@ fn join_errors(errors: Vec<CargoAllowError>) -> CargoAllowResult<()> {
             .map(|e| format!("  - {e}"))
             .collect::<Vec<_>>()
             .join("\n");
-        Err(CargoAllowError::new(format!(
-            "{count} policy validation errors:\n{summary}",
-            count = errors.len()
-        )))
+        let diagnostics = errors
+            .iter()
+            .flat_map(|error| error.diagnostics().iter().cloned())
+            .collect::<Vec<_>>();
+        Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidPolicy,
+            format!(
+                "{count} policy validation errors:\n{summary}",
+                count = errors.len()
+            ),
+        )
+        .with_diagnostics(diagnostics))
     }
+}
+
+fn with_validation_diagnostic(
+    error: CargoAllowError,
+    field: &str,
+    entry_id: Option<&str>,
+) -> CargoAllowError {
+    let code = error.code();
+    let message = error.message().to_owned();
+    error.with_diagnostic(CargoAllowDiagnostic::error(
+        code,
+        "policy_validation",
+        entry_id,
+        Some(field),
+        message,
+    ))
 }
 
 pub fn validate_policy(cfg: &AllowConfig) -> CargoAllowResult<()> {

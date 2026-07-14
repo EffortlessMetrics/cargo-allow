@@ -85,3 +85,36 @@ fn validate_allow_entries_with_reportable_evidence_accepts_invalid_local_links()
 
     assert_eq!(result, Ok(()));
 }
+
+#[test]
+fn validate_allow_entries_preserves_structured_diagnostics_for_each_failure() {
+    let mut invalid = valid_entry("same-id");
+    invalid.path = None;
+    invalid.reason.clear();
+    let requirements = relaxed_requirements();
+
+    let error = validate_allow_entries(&[valid_entry("same-id"), invalid], &requirements)
+        .expect_err("duplicate and malformed entry should fail validation");
+
+    let diagnostics = error.diagnostics();
+    assert!(diagnostics.len() >= 3);
+    assert!(diagnostics.iter().all(|diagnostic| {
+        diagnostic.category == "policy_validation"
+            && diagnostic.entry_id.as_deref() == Some("same-id")
+    }));
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.field.as_deref() == Some("identity"))
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.field.as_deref() == Some("scope"))
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.field.as_deref() == Some("requirements"))
+    );
+}

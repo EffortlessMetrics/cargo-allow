@@ -12,6 +12,56 @@ pub struct CargoAllowErrorLocation {
     pub column: u32,
 }
 
+/// Severity for a machine-readable diagnostic carried by a command error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CargoAllowDiagnosticSeverity {
+    Error,
+    Warning,
+    Info,
+}
+
+/// Structured validation or execution detail.
+///
+/// The fields are intentionally owned and optional so diagnostics can be
+/// produced by policy, federation, import, and command layers without making
+/// those layers depend on a parser-specific representation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CargoAllowDiagnostic {
+    pub code: String,
+    pub category: String,
+    pub severity: CargoAllowDiagnosticSeverity,
+    pub path: Option<String>,
+    pub span: Option<CargoAllowErrorLocation>,
+    pub entry_id: Option<String>,
+    pub field: Option<String>,
+    pub message: String,
+    pub help: Option<String>,
+    pub causes: Vec<String>,
+}
+
+impl CargoAllowDiagnostic {
+    pub fn error(
+        code: impl Into<String>,
+        category: impl Into<String>,
+        entry_id: Option<&str>,
+        field: Option<&str>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            code: code.into(),
+            category: category.into(),
+            severity: CargoAllowDiagnosticSeverity::Error,
+            path: None,
+            span: None,
+            entry_id: entry_id.map(str::to_owned),
+            field: field.map(str::to_owned),
+            message: message.into(),
+            help: None,
+            causes: Vec::new(),
+        }
+    }
+}
+
 /// Structured kind for [`CargoAllowError`], enabling programmatic consumers
 /// (CI tooling, sibling tools) to branch on error class instead of
 /// string-matching the rendered message.
@@ -109,6 +159,7 @@ pub struct CargoAllowError {
     kind: CargoAllowErrorKind,
     message: String,
     location: Option<CargoAllowErrorLocation>,
+    diagnostics: Vec<CargoAllowDiagnostic>,
     /// Rendered cause chain (each element is the `Display` of an underlying
     /// error). Stored as strings so the struct stays `Clone` + `PartialEq`.
     causes: Vec<String>,
@@ -121,6 +172,7 @@ impl CargoAllowError {
             kind: CargoAllowErrorKind::Unknown,
             message: message.into(),
             location: None,
+            diagnostics: Vec::new(),
             causes: Vec::new(),
         }
     }
@@ -131,6 +183,7 @@ impl CargoAllowError {
             kind,
             message: message.into(),
             location: None,
+            diagnostics: Vec::new(),
             causes: Vec::new(),
         }
     }
@@ -140,6 +193,26 @@ impl CargoAllowError {
     pub fn with_cause(mut self, cause: &(impl std::error::Error + ?Sized)) -> Self {
         self.causes.push(cause.to_string());
         self
+    }
+
+    /// Attach one structured diagnostic detail, returning a new value.
+    pub fn with_diagnostic(mut self, diagnostic: CargoAllowDiagnostic) -> Self {
+        self.diagnostics.push(diagnostic);
+        self
+    }
+
+    /// Attach multiple structured diagnostic details, returning a new value.
+    pub fn with_diagnostics(
+        mut self,
+        diagnostics: impl IntoIterator<Item = CargoAllowDiagnostic>,
+    ) -> Self {
+        self.diagnostics.extend(diagnostics);
+        self
+    }
+
+    /// Machine-readable details associated with this error.
+    pub fn diagnostics(&self) -> &[CargoAllowDiagnostic] {
+        &self.diagnostics
     }
 
     /// The structured error kind.
@@ -177,6 +250,10 @@ impl CargoAllowError {
             line: u32::try_from(line).unwrap_or(u32::MAX),
             column: u32::try_from(column).unwrap_or(u32::MAX),
         });
+        for diagnostic in &mut self.diagnostics {
+            diagnostic.path = path.map(|value| value.display().to_string());
+            diagnostic.span = self.location.clone();
+        }
         self
     }
 

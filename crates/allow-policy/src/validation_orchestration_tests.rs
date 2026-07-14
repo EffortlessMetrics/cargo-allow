@@ -86,3 +86,30 @@ fn validate_policy_with_reportable_evidence_accepts_invalid_local_links() {
 
     assert_eq!(validate_policy_with_reportable_evidence(&cfg), Ok(()));
 }
+
+#[test]
+fn validate_policy_aggregates_stage_diagnostics() {
+    let mut cfg = valid_policy();
+    cfg.schema_version = "9.9".to_string();
+    cfg.allow.push(valid_entry("allow-1"));
+
+    let error = validate_policy(&cfg).expect_err("invalid header and duplicate id should fail");
+    let diagnostics = error.diagnostics();
+
+    assert!(diagnostics.len() >= 2);
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.category == "policy_validation")
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.field.as_deref() == Some("header"))
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.entry_id.as_deref() == Some("allow-1"))
+    );
+}

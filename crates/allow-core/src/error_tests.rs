@@ -65,6 +65,27 @@ fn error_exposes_the_code_of_its_kind() {
 }
 
 #[test]
+fn error_exposes_structured_diagnostic_details() -> Result<(), String> {
+    let error = CargoAllowError::with_kind(CargoAllowErrorKind::InvalidPolicy, "missing owner")
+        .with_diagnostic(super::CargoAllowDiagnostic::error(
+            "E0003_INVALID_POLICY",
+            "policy_validation",
+            Some("allow-1"),
+            Some("owner"),
+            "allow-1 missing owner",
+        ));
+
+    let diagnostic = error
+        .diagnostics()
+        .first()
+        .ok_or_else(|| "diagnostic should be present".to_string())?;
+    assert_eq!(diagnostic.code, "E0003_INVALID_POLICY");
+    assert_eq!(diagnostic.entry_id.as_deref(), Some("allow-1"));
+    assert_eq!(diagnostic.field.as_deref(), Some("owner"));
+    Ok(())
+}
+
+#[test]
 fn toml_span_preserves_path_and_one_based_line_column() -> Result<(), String> {
     let error = CargoAllowError::with_kind(CargoAllowErrorKind::InvalidPolicy, "invalid TOML")
         .with_toml_span(
