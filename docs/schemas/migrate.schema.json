@@ -16,6 +16,7 @@
     "output",
     "summary",
     "closeout",
+    "mutation_receipt",
     "notes"
   ],
   "properties": {
@@ -162,11 +163,53 @@
     "closeout": {
       "$ref": "#/$defs/closeout"
     },
+    "mutation_receipt": {
+      "$ref": "#/$defs/mutation_receipt"
+    },
     "notes": {
       "type": "string"
     }
   },
   "$defs": {
+    "mutation_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Shared provenance envelope for migrate (CARGO-ALLOW-SPEC-0008 Mutation Receipt Envelope, GOAL-0004 PR 5). Provenance and changed-entry metadata only; migration semantics remain in the command-specific summary and closeout fields.",
+      "required": [
+        "schema_id",
+        "operation",
+        "tool_version",
+        "repo_root",
+        "config_source",
+        "ledger_ids",
+        "changed_allow_ids",
+        "before_fingerprints",
+        "after_fingerprints",
+        "result",
+        "next_commands",
+        "claim_boundary"
+      ],
+      "properties": {
+        "schema_id": { "const": "cargo-allow.mutation-receipt.v1" },
+        "operation": { "const": "migrate" },
+        "tool_version": { "type": "string", "minLength": 1 },
+        "repo_root": { "type": ["string", "null"] },
+        "config_source": { "type": ["string", "null"] },
+        "ledger_ids": { "type": "array", "items": { "type": "string" } },
+        "changed_allow_ids": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "before_fingerprints": {
+          "type": "array",
+          "items": { "type": ["string", "null"], "pattern": "^sha256:v1:[0-9a-f]{64}$" }
+        },
+        "after_fingerprints": {
+          "type": "array",
+          "items": { "type": ["string", "null"], "pattern": "^sha256:v1:[0-9a-f]{64}$" }
+        },
+        "result": { "const": "written" },
+        "next_commands": { "type": "array", "items": { "type": "string" } },
+        "claim_boundary": { "type": "string", "minLength": 1 }
+      }
+    },
     "closeout": {
       "type": "object",
       "additionalProperties": false,

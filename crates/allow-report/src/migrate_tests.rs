@@ -30,7 +30,7 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     };
 
     let closeout_input = sample_closeout_input(report, 0, &[]);
-    let json = render_migrate_json(report, closeout_input);
+    let json = render_migrate_json(report, closeout_input, &sample_mutation_receipt());
 
     assert!(json.contains("\"schema_id\": \"cargo-allow.migrate.v1\""));
     assert!(json.contains("\"command\": \"migrate\""));
@@ -221,7 +221,7 @@ fn migrate_report_from_config_counts_summary_fields() {
         "clean migration summaries should not route repair queues"
     );
     let closeout_input = sample_closeout_input(report, 0, &[]);
-    let json = render_migrate_json(report, closeout_input);
+    let json = render_migrate_json(report, closeout_input, &sample_mutation_receipt());
     assert!(
         json.contains("\"follow_up_queues\""),
         "baseline-debt migration JSON should emit follow-up queues"
@@ -266,7 +266,7 @@ fn migrate_repair_queues_omit_unsafe_command_without_unsafe_count() {
     };
 
     let closeout_input = sample_closeout_input(report, 0, &[]);
-    let json = render_migrate_json(report, closeout_input);
+    let json = render_migrate_json(report, closeout_input, &sample_mutation_receipt());
 
     assert!(json.contains("\"evidence_repair_queues\""));
     assert!(
@@ -320,7 +320,7 @@ fn migrate_repair_queues_normalize_unsafe_subset_counts() {
     };
 
     let closeout_input = sample_closeout_input(report, 0, &[]);
-    let json = render_migrate_json(report, closeout_input);
+    let json = render_migrate_json(report, closeout_input, &sample_mutation_receipt());
 
     assert!(json.contains("\"count\": 1"));
     assert!(json.contains("\"unsafe_count\": 1"));
@@ -351,5 +351,23 @@ fn allow_entry(
         lifecycle: allow_core::Lifecycle::empty(),
         selector: allow_core::Selector::default(),
         last_seen: None,
+    }
+}
+
+fn sample_mutation_receipt() -> MutationReceipt<'static> {
+    MutationReceipt {
+        operation: "migrate",
+        tool_version: "0.1.10",
+        repo_root: Some("H:/Code/Rust/cargo-allow"),
+        config_source: Some("policy/allow.toml"),
+        ledger_ids: Vec::new(),
+        changed_allow_ids: vec!["allow-migrated"],
+        before_fingerprints: vec![None],
+        after_fingerprints: vec![Some(
+            "sha256:v1:0000000000000000000000000000000000000000000000000000000000000000"
+                .to_string(),
+        )],
+        result: "written",
+        next_commands: vec!["cargo-allow check --mode no-new".to_string()],
     }
 }

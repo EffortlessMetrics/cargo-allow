@@ -29,12 +29,41 @@ pub(super) fn render_migrate_summary_json(
     let output = output.display().to_string();
     let legacy_sources = migrate_legacy_sources(context);
     let report = migrate_report(cfg, context, &output, force);
+    let mutation_receipt = migrate_mutation_receipt(cfg, context, &output);
     let closeout_input = MigrateCloseoutInput {
         report,
         missing_evidence_entries: policy_missing_evidence_entries(cfg),
         legacy_sources: &legacy_sources,
     };
-    allow_report::render_migrate_json(report, closeout_input)
+    allow_report::render_migrate_json(report, closeout_input, &mutation_receipt)
+}
+
+fn migrate_mutation_receipt<'a>(
+    cfg: &'a AllowConfig,
+    context: &'a MigrateContext,
+    output: &'a str,
+) -> allow_report::MutationReceipt<'a> {
+    let mut entries = cfg.allow.iter().collect::<Vec<_>>();
+    entries.sort_by(|left, right| left.id.cmp(&right.id));
+
+    allow_report::MutationReceipt {
+        operation: "migrate",
+        tool_version: env!("CARGO_PKG_VERSION"),
+        repo_root: context.source_tree_root.as_deref(),
+        config_source: Some(output),
+        ledger_ids: Vec::new(),
+        changed_allow_ids: entries.iter().map(|entry| entry.id.as_str()).collect(),
+        before_fingerprints: vec![None; entries.len()],
+        after_fingerprints: entries
+            .iter()
+            .map(|entry| Some(allow_core::allow_entry_content_fingerprint(entry)))
+            .collect(),
+        result: "written",
+        next_commands: vec![
+            format!("git diff -- {}", output.replace('\\', "/")),
+            "cargo-allow check --mode no-new".to_string(),
+        ],
+    }
 }
 
 fn migrate_legacy_sources(context: &MigrateContext) -> Vec<MigrateLegacySource> {

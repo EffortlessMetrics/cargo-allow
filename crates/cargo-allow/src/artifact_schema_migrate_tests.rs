@@ -25,6 +25,7 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
             "output",
             "summary",
             "closeout",
+            "mutation_receipt",
             "notes",
         ],
     );
@@ -300,5 +301,39 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
             .and_then(Value::as_str),
         Some("string"),
         "migrate notes should be a string"
+    );
+
+    let mutation_receipt = required_schema_pointer("migrate", &schema, "/$defs/mutation_receipt");
+    assert_eq!(
+        mutation_receipt
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "migrate mutation receipt should reject unknown fields"
+    );
+    assert_required_fields(
+        "migrate mutation receipt",
+        mutation_receipt,
+        &[
+            "schema_id",
+            "operation",
+            "tool_version",
+            "repo_root",
+            "config_source",
+            "ledger_ids",
+            "changed_allow_ids",
+            "before_fingerprints",
+            "after_fingerprints",
+            "result",
+            "next_commands",
+            "claim_boundary",
+        ],
+    );
+    assert_eq!(
+        mutation_receipt
+            .pointer("/properties/operation/const")
+            .and_then(Value::as_str),
+        Some("migrate"),
+        "migrate mutation receipt operation should be pinned"
     );
 }

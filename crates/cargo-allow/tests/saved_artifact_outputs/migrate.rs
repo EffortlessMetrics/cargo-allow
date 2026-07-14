@@ -44,6 +44,59 @@ fn saved_migrate_output_covers_policy_migration_summary_contract() {
         "migrate",
         "filesystem_fallback",
     );
+    let receipt = value.pointer("/mutation_receipt").unwrap_or_else(|| {
+        std::panic::panic_any("migrate summary should include mutation receipt")
+    });
+    assert_eq!(
+        receipt.get("operation").and_then(serde_json::Value::as_str),
+        Some("migrate"),
+        "migrate receipt operation"
+    );
+    assert_eq!(
+        receipt.get("result").and_then(serde_json::Value::as_str),
+        Some("written"),
+        "migrate receipt result"
+    );
+    let changed_ids = receipt
+        .get("changed_allow_ids")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("migrate receipt should include changed allow IDs")
+        });
+    assert_eq!(changed_ids.len(), 2, "migrate receipt changed ID count");
+    assert_eq!(
+        changed_ids[0].as_str(),
+        Some("proc-bash-package-proof"),
+        "migrate receipt IDs should be sorted deterministically"
+    );
+    assert_eq!(
+        changed_ids[1].as_str(),
+        Some("unsafe-ffi-boundary"),
+        "migrate receipt IDs should identify the migrated entries"
+    );
+    assert_eq!(
+        receipt
+            .get("before_fingerprints")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(changed_ids.len()),
+        "migrate receipt before fingerprints align with IDs"
+    );
+    assert_eq!(
+        receipt
+            .get("after_fingerprints")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(changed_ids.len()),
+        "migrate receipt after fingerprints align with IDs"
+    );
+    assert!(
+        receipt
+            .pointer("/next_commands/1")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|command| command == "cargo-allow check --mode no-new"),
+        "migrate receipt should route post-migration validation"
+    );
     assert_eq!(
         value
             .pointer("/summary/allow_entries")
