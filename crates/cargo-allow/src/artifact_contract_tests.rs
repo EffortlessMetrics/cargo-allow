@@ -77,3 +77,38 @@ fn core_json_artifact_renderers_emit_parseable_v1_contracts() {
         "diff net posture"
     );
 }
+
+#[test]
+fn receipt_result_classes_preserve_status_and_error_diagnostic() {
+    let failed_json = allow_report::render_receipt_with_context(
+        "check",
+        &[],
+        true,
+        allow_report::ReportContext::source_syntax("git_tracked", None, None, None),
+    );
+    let failed = parse_json_artifact(
+        "receipt_failed",
+        &failed_json,
+        allow_report::RECEIPT_SCHEMA_ID,
+        "check",
+    );
+    assert_eq!(failed.get("status").and_then(Value::as_str), Some("failed"));
+    assert_eq!(failed.get("failed").and_then(Value::as_bool), Some(true));
+
+    let error_json = allow_report::render_error_receipt(
+        "invalid policy field: \"mode\"",
+        allow_report::ReportContext::source_syntax("filesystem_fallback", None, None, None),
+    );
+    let error = parse_json_artifact(
+        "receipt_error",
+        &error_json,
+        allow_report::RECEIPT_SCHEMA_ID,
+        "check",
+    );
+    assert_eq!(error.get("status").and_then(Value::as_str), Some("error"));
+    assert_eq!(error.get("failed").and_then(Value::as_bool), Some(true));
+    assert_eq!(
+        error.get("diagnostic").and_then(Value::as_str),
+        Some("invalid policy field: \"mode\"")
+    );
+}
