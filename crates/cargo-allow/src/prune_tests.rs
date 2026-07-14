@@ -231,8 +231,8 @@ fn cmd_prune_write_removes_only_stale_entries_from_policy_file() {
         dry_run: false,
         write: true,
         include_untracked: false,
-        format: PruneFormat::Human,
-        output: None,
+        format: PruneFormat::Json,
+        output: Some(root.join("prune.json")),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("prune write: {err}")));
 
@@ -245,6 +245,39 @@ fn cmd_prune_write_removes_only_stale_entries_from_policy_file() {
     assert!(!rendered.contains("allow-stale"));
     assert_eq!(loaded.allow.len(), 1);
     assert!(loaded.allow.iter().any(|entry| entry.id == "allow-live"));
+    let artifact_path = root.join("prune.json");
+    let artifact = fs::read_to_string(&artifact_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("prune artifact read: {err}")));
+    let parsed = serde_json::from_str::<serde_json::Value>(&artifact);
+    assert!(
+        parsed.is_ok(),
+        "prune write artifact must remain valid JSON"
+    );
+    let Some(parsed) = parsed.ok() else {
+        return;
+    };
+    assert_eq!(
+        parsed
+            .pointer("/mode/write_requested")
+            .and_then(serde_json::Value::as_bool),
+        Some(true)
+    );
+    assert_eq!(
+        parsed
+            .pointer("/mutation_receipt/result")
+            .and_then(serde_json::Value::as_str),
+        Some("written")
+    );
+    assert_eq!(
+        parsed
+            .pointer("/mutation_receipt/changed_allow_ids/0")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-stale")
+    );
+    assert_eq!(
+        parsed.pointer("/mutation_receipt/after_fingerprints/0"),
+        Some(&serde_json::Value::Null)
+    );
 
     fs::remove_dir_all(&root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
