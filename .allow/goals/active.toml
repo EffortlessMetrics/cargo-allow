@@ -179,6 +179,7 @@ evidence_notes = [
   "Stale/location-drift slice landed via #2236 as 8713ee72: the same six read surfaces now expose stale and location_drift by allow ID; isolated mode proof keeps stale blocking only in strict and location_drift advisory. See CARGO-ALLOW-CLOSEOUT-0047.",
   "Occurrence-headroom slice landed via #2239 as b9d96ece: the helper now reports limit minus current matches, and the lifecycle corpus proves list, explain, worklist, audit, check, and diff projections for two matches under a limit of three. See CARGO-ALLOW-CLOSEOUT-0048.",
   "Evidence-health slice landed via #2242 as 7e6bc37a: the lifecycle corpus now distinguishes missing evidence, broken local references, and weak untyped references across list, explain, worklist, audit, check, and diff. See CARGO-ALLOW-CLOSEOUT-0049.",
+  "Baseline-debt slice landed via #2245 as 0fa3313e: the lifecycle corpus now proves list, explain, worklist, audit, check, and diff projections plus no-new advisory versus strict blocking posture. See CARGO-ALLOW-CLOSEOUT-0050.",
   "Full lifecycle matrix and cross-command movement/posture/evidence/repair convergence remain open; see CARGO-ALLOW-CLOSEOUT-0046.",
 ]
 
