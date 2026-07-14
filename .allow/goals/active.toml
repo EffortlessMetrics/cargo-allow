@@ -118,12 +118,12 @@ evidence_notes = [
 
 [[work_item]]
 id = "ledger-coherence-pr5-mutation-receipts"
-status = "in_progress"
+status = "done"
 title = "Unify mutation receipts (PR 5)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
-linked_closeout = "CARGO-ALLOW-CLOSEOUT-0040"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0041"
 proof_commands = [
   "rtk cargo test -p allow-report",
   "rtk cargo test -p cargo-allow",
@@ -132,17 +132,16 @@ proof_commands = [
 evidence_notes = [
   "Shared operation envelope for add, propose, refresh, prune, migrate; split 5A-5D per plan.",
   "5A done: allow_report::MutationReceipt envelope defined and wired into add (CARGO-ALLOW-CLOSEOUT-0023).",
-  "5B propose done via #2156/#2157 (commit ad2c8a46); 5C refresh done via #2159/#2160 (commit 97a36b4a); 5D prune done via #2162/#2173 (commit 30729290); migrate remains. Promote mutation_receipt into common.v1.json as the shared adoption set grows.",
+  "5B propose done via #2156/#2157 (commit ad2c8a46); 5C refresh done via #2159/#2160 (commit 97a36b4a); 5D prune done via #2162/#2173 (commit 30729290); 5E migrate done via #2182/#2187 (commit 731afb19). The shared envelope is adopted by all five PR 5 mutators; promote its schema fragment into common.v1.json in the later artifact-contract lane.",
 ]
 
 [[work_item]]
 id = "ledger-coherence-pr6-read-surface-convergence"
-status = "blocked"
+status = "in_progress"
 title = "Converge read surfaces (PR 6)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
-blocker_reason = "Blocked on PR 5 mutation receipt envelope."
 evidence_notes = [
   "Shared view model for list, explain, worklist, audit, check, diff.",
   "Agreed status, posture, movement, headroom, and repair routing.",
