@@ -6,7 +6,7 @@ use crate::migrate_closeout::{
     migrate_closeout_from_input,
 };
 use crate::migrate_closeout_queues::migrate_follow_up_queues_for_legacy;
-use crate::{CLAIM_BOUNDARY_TEXT, MigrateReport};
+use crate::{CLAIM_BOUNDARY_TEXT, MigrateReport, MutationReceipt, render_mutation_receipt_json};
 use allow_core::json_escape;
 
 const BROKEN_EVIDENCE_LINK_COMMAND: &str =
@@ -149,6 +149,7 @@ fn migrate_inventory_files_suffix(inventory: crate::InventoryContext<'_>) -> Str
 pub fn render_migrate_json(
     report: MigrateReport<'_>,
     closeout_input: MigrateCloseoutInput<'_>,
+    mutation_receipt: &MutationReceipt<'_>,
 ) -> String {
     let mut out = String::new();
     out.push_str("{\n");
@@ -227,7 +228,12 @@ pub fn render_migrate_json(
     append_migrate_evidence_repair_queues_json(report, &mut out);
     let closeout = migrate_closeout_from_input(closeout_input);
     append_migrate_closeout_json(&closeout, &mut out);
-    out.push_str(&format!("  \"notes\": \"{}\"\n", json_escape(report.notes)));
+    out.push_str("  \"mutation_receipt\": ");
+    out.push_str(&render_mutation_receipt_json(mutation_receipt, "  "));
+    out.push_str(&format!(
+        ",\n  \"notes\": \"{}\"\n",
+        json_escape(report.notes)
+    ));
     out.push_str("}\n");
     out
 }

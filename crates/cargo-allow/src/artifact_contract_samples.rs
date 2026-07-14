@@ -101,6 +101,7 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "evidence_repair_queues",
                 "input",
                 "inventory",
+                "mutation_receipt",
                 "notes",
                 "output",
                 "scanner_limitations",
