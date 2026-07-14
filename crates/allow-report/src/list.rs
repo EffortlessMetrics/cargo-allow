@@ -74,10 +74,12 @@ pub fn render_list_human(rows: &[ListRow<'_>], inventory: InventoryContext<'_>) 
 }
 
 fn list_inventory_files_suffix(inventory: InventoryContext<'_>) -> String {
-    inventory
+    let mut suffix = inventory
         .files_scanned
         .map(|files| format!("; files scanned: {files}"))
-        .unwrap_or_default()
+        .unwrap_or_default();
+    suffix.push_str(&inventory.completeness_suffix());
+    suffix
 }
 
 fn empty_as_dash(value: &str) -> &str {

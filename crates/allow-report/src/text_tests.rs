@@ -52,6 +52,20 @@ fn human_report_summarizes_non_rust_inventory() {
 }
 
 #[test]
+fn human_report_discloses_inventory_completeness() {
+    let context = ReportContext::source_syntax(
+        "filesystem_fallback",
+        Some("fixtures/snapshot"),
+        Some(2),
+        None,
+    )
+    .with_inventory_completeness("fallback");
+    let text = render_human_with_context("audit", &[], &[], false, context);
+
+    assert!(text.contains("completeness: fallback"));
+}
+
+#[test]
 fn markdown_report_summarizes_non_rust_inventory() {
     let findings = vec![file_finding(
         FindingKind::NonRustFile,

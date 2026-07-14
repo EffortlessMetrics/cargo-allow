@@ -24,6 +24,27 @@ pub enum InventorySource {
     FilesystemIncludeUntracked,
 }
 
+/// Whether an inventory is complete, intentionally scoped, obtained through
+/// fallback, or missing material paths.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InventoryCompleteness {
+    Complete,
+    Scoped,
+    Fallback,
+    Partial,
+}
+
+impl InventoryCompleteness {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Complete => "complete",
+            Self::Scoped => "scoped",
+            Self::Fallback => "fallback",
+            Self::Partial => "partial",
+        }
+    }
+}
+
 impl InventorySource {
     pub const ALL: &[Self] = &[
         Self::GitTracked,
@@ -44,6 +65,7 @@ impl InventorySource {
 pub struct Inventory {
     pub files: Vec<PathBuf>,
     pub source: InventorySource,
+    pub completeness: InventoryCompleteness,
     /// Git reported an empty tracked file set for a git-tracked inventory.
     /// This distinguishes a successful non-empty tracked scan from the fresh
     /// `git init` case where no files were scanned (#1849).

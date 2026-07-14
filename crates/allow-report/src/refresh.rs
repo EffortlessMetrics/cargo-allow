@@ -57,10 +57,12 @@ pub fn render_refresh_human(report: RefreshReport<'_>) -> String {
 }
 
 fn refresh_inventory_files_suffix(inventory: crate::InventoryContext<'_>) -> String {
-    inventory
+    let mut suffix = inventory
         .files_scanned
         .map(|files| format!("; files scanned: {files}"))
-        .unwrap_or_default()
+        .unwrap_or_default();
+    suffix.push_str(&inventory.completeness_suffix());
+    suffix
 }
 
 pub fn render_refresh_json(report: RefreshReport<'_>) -> String {

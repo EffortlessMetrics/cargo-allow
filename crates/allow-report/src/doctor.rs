@@ -53,8 +53,8 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
         )),
     }
     out.push_str(&format!(
-        "inventory: source_tree/source_syntax via {}; files scanned: {}\n",
-        facts.inventory_source, facts.files_scanned
+        "inventory: source_tree/source_syntax via {}; files scanned: {}; completeness: {}\n",
+        facts.inventory_source, facts.files_scanned, facts.inventory_completeness
     ));
     if facts.empty_git_tracked {
         out.push_str(
@@ -157,7 +157,8 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
             Some(facts.source_tree_root),
             Some(facts.files_scanned),
         )
-        .with_empty_git_tracked(facts.empty_git_tracked),
+        .with_empty_git_tracked(facts.empty_git_tracked)
+        .with_completeness(facts.inventory_completeness),
     );
     out.push_str("  \"root\": {\n");
     out.push_str(&format!(
