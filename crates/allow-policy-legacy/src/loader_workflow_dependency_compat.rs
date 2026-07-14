@@ -5,12 +5,12 @@ use toml::Value;
 use crate::converter_policy_configs::{
     config_from_dependency_surface_rules, config_from_workflow_rules,
 };
-use crate::io::{legacy_table, read_policy};
+use crate::io::{legacy_table_at, read_policy};
 use crate::parsers::{parse_dependency_surface_rules, parse_workflow_rules};
 
 pub fn load_workflow_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
     let text = read_policy(path.as_ref())?;
-    let table = legacy_table(&text)?.ok_or_else(|| {
+    let table = legacy_table_at(Some(path.as_ref()), &text)?.ok_or_else(|| {
         CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
     })?;
     if table.get("policy").and_then(Value::as_str) != Some("workflow-allowlist") {
@@ -27,7 +27,7 @@ pub fn load_dependency_surface_compat_config(
     path: impl AsRef<Path>,
 ) -> CargoAllowResult<AllowConfig> {
     let text = read_policy(path.as_ref())?;
-    let table = legacy_table(&text)?.ok_or_else(|| {
+    let table = legacy_table_at(Some(path.as_ref()), &text)?.ok_or_else(|| {
         CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
     })?;
     if table.get("policy").and_then(Value::as_str) != Some("dependency-surface-allowlist") {

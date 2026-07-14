@@ -67,8 +67,19 @@ pub enum ArtifactStatus {
 }
 
 pub fn parse_doc_artifact_ledger(input: &str) -> CargoAllowResult<DocArtifactLedger> {
+    parse_doc_artifact_ledger_at(None, input)
+}
+
+pub fn parse_doc_artifact_ledger_at(
+    path: Option<&Path>,
+    input: &str,
+) -> CargoAllowResult<DocArtifactLedger> {
     let ledger = toml::from_str::<DocArtifactLedger>(input).map_err(|e| {
-        CargoAllowError::new(format!("failed to parse doc artifact ledger TOML: {e}"))
+        CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::InvalidConfig,
+            format!("failed to parse doc artifact ledger TOML: {e}"),
+        )
+        .with_toml_span(path, input, e.span())
     })?;
     validate_doc_artifact_ledger(&ledger)?;
     Ok(ledger)
@@ -81,7 +92,7 @@ pub fn load_doc_artifacts(path: impl AsRef<Path>) -> CargoAllowResult<DocArtifac
             path.as_ref().display()
         ))
     })?;
-    parse_doc_artifact_ledger(&text)
+    parse_doc_artifact_ledger_at(Some(path.as_ref()), &text)
 }
 
 fn validate_doc_artifact_ledger(ledger: &DocArtifactLedger) -> CargoAllowResult<()> {

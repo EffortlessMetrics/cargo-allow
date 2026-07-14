@@ -1,5 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowResult, LaneEnforcementMode};
 use serde::Deserialize;
+use std::path::Path;
 use std::str::FromStr;
 
 pub use super::drain::DrainWindow;
@@ -186,8 +187,19 @@ impl LedgerEntryToml {
 }
 
 pub fn parse_federation_config(input: &str) -> CargoAllowResult<FederationConfig> {
+    parse_federation_config_at(None, input)
+}
+
+pub fn parse_federation_config_at(
+    path: Option<&Path>,
+    input: &str,
+) -> CargoAllowResult<FederationConfig> {
     let parsed = toml::from_str::<FederationConfigToml>(input).map_err(|err| {
-        CargoAllowError::new(format!("failed to parse federation config TOML: {err}"))
+        CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::InvalidConfig,
+            format!("failed to parse federation config TOML: {err}"),
+        )
+        .with_toml_span(path, input, err.span())
     })?;
     parsed.into_config()
 }

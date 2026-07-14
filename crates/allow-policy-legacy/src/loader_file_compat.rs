@@ -5,7 +5,7 @@ use toml::Value;
 use crate::converter_file_configs::{
     config_from_current_non_rust_findings, config_from_generated_rules,
 };
-use crate::io::{legacy_table, read_policy};
+use crate::io::{legacy_table_at, read_policy};
 use crate::parsers::{parse_generated_rules, parse_non_rust_rules};
 
 pub fn load_non_rust_compat_config(
@@ -13,7 +13,7 @@ pub fn load_non_rust_compat_config(
     findings: &[Finding],
 ) -> CargoAllowResult<AllowConfig> {
     let text = read_policy(path.as_ref())?;
-    let table = legacy_table(&text)?.ok_or_else(|| {
+    let table = legacy_table_at(Some(path.as_ref()), &text)?.ok_or_else(|| {
         CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
     })?;
     if table.get("policy").and_then(Value::as_str) != Some("non-rust-allowlist") {
@@ -29,7 +29,7 @@ pub fn load_non_rust_compat_config(
 
 pub fn load_generated_compat_config(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
     let text = read_policy(path.as_ref())?;
-    let table = legacy_table(&text)?.ok_or_else(|| {
+    let table = legacy_table_at(Some(path.as_ref()), &text)?.ok_or_else(|| {
         CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
     })?;
     if table.get("policy").and_then(Value::as_str) != Some("generated-allowlist") {

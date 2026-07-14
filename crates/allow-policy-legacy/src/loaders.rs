@@ -2,7 +2,7 @@ use allow_core::{AllowConfig, CargoAllowResult};
 use allow_policy::parse_policy;
 use std::path::Path;
 
-use crate::io::{legacy_table, read_policy};
+use crate::io::{legacy_table_at, read_policy};
 pub use crate::loader_compat::{
     load_clippy_exceptions_compat_config, load_dependency_surface_compat_config,
     load_executable_compat_config, load_generated_compat_config, load_network_compat_config,
@@ -17,7 +17,7 @@ pub use crate::loader_policy_dir::{
 
 pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
     let text = read_policy(path.as_ref())?;
-    if let Some(table) = legacy_table(&text)?
+    if let Some(table) = legacy_table_at(Some(path.as_ref()), &text)?
         && let Some(config) = config_from_legacy_table(&table)?
     {
         return Ok(config);

@@ -15,15 +15,16 @@ mod validate;
 
 pub use active_goal::{
     ActiveGoalManifest, ActiveGoalStatus, ActiveGoalWorkItem, ActiveGoalWorkItemStatus,
-    parse_active_goal_manifest, validate_active_goal_manifest, validate_active_goal_manifest_text,
+    parse_active_goal_manifest, parse_active_goal_manifest_at, validate_active_goal_manifest,
+    validate_active_goal_manifest_text, validate_active_goal_manifest_text_at,
 };
 pub use config::{
     SpecSystemConfig, SpecSystemMode, SpecSystemRequirements, SpecSystemRoots,
-    parse_spec_system_config,
+    parse_spec_system_config, parse_spec_system_config_at,
 };
 pub use doc_artifacts::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, load_doc_artifacts,
-    parse_doc_artifact_ledger,
+    parse_doc_artifact_ledger, parse_doc_artifact_ledger_at,
 };
 pub use profile_resolution::{
     ALLOW_CONFIG_REL_PATH, ProfileConfigProvenance, ResolvedProfileConfig, allow_profile_rel_path,
