@@ -31,6 +31,7 @@ pub struct DoctorReport<'a> {
     pub broken_evidence_links: Option<usize>,
     pub weak_evidence_references: Option<usize>,
     pub inventory_source: &'a str,
+    pub inventory_completeness: &'a str,
     pub files_scanned: usize,
     /// Git inventory succeeded but reported no tracked files (#1849).
     pub empty_git_tracked: bool,

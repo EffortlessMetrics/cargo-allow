@@ -97,6 +97,7 @@ impl SourceTreeReportContext {
             self.inventory_files(),
         )
         .with_empty_git_tracked(self.inventory_facts.empty_git_tracked)
+        .with_completeness(self.inventory_facts.completeness.as_str())
     }
 
     pub(crate) fn report(
@@ -110,6 +111,7 @@ impl SourceTreeReportContext {
             baseline_debt_entries,
         )
         .with_empty_git_tracked(self.inventory_facts.empty_git_tracked)
+        .with_inventory_completeness(self.inventory_facts.completeness.as_str())
     }
 
     pub(crate) fn source_tree_root(&self) -> &str {
@@ -118,6 +120,10 @@ impl SourceTreeReportContext {
 
     pub(crate) fn inventory_source(&self) -> &str {
         self.inventory_facts.source.as_str()
+    }
+
+    pub(crate) fn inventory_completeness(&self) -> &str {
+        self.inventory_facts.completeness.as_str()
     }
 
     pub(crate) fn inventory_files(&self) -> Option<usize> {

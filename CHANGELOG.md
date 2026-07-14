@@ -10,6 +10,10 @@ inventory without executing repository code.
 
 ### Fixed
 
+- Inventory reports now disclose whether source coverage is complete, scoped,
+  obtained through fallback, or partial across shared report artifacts and
+  schemas.
+
 - Include-untracked filesystem fallback now preserves the Git inventory error
   in the returned inventory metadata for diagnostics and receipts.
 - Filesystem fallback inventory now prunes only the repository-root `target/`

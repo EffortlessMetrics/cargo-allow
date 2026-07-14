@@ -72,10 +72,12 @@ pub fn render_prune_human_with_context(
 }
 
 fn prune_inventory_files_suffix(inventory: InventoryContext<'_>) -> String {
-    inventory
+    let mut suffix = inventory
         .files_scanned
         .map(|files| format!("; files scanned: {files}"))
-        .unwrap_or_default()
+        .unwrap_or_default();
+    suffix.push_str(&inventory.completeness_suffix());
+    suffix
 }
 
 pub fn render_prune_json(

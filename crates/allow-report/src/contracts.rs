@@ -298,6 +298,7 @@ pub struct InventoryContext<'a> {
     pub root: Option<&'a str>,
     pub files_scanned: Option<usize>,
     pub empty_git_tracked: bool,
+    pub completeness: Option<&'a str>,
 }
 
 impl<'a> InventoryContext<'a> {
@@ -315,6 +316,7 @@ impl<'a> InventoryContext<'a> {
             root,
             files_scanned,
             empty_git_tracked: false,
+            completeness: None,
         }
     }
 
@@ -353,6 +355,17 @@ impl<'a> InventoryContext<'a> {
     pub fn with_empty_git_tracked(mut self, empty_git_tracked: bool) -> Self {
         self.empty_git_tracked = empty_git_tracked;
         self
+    }
+
+    pub fn with_completeness(mut self, completeness: &'a str) -> Self {
+        self.completeness = Some(completeness);
+        self
+    }
+
+    pub fn completeness_suffix(self) -> String {
+        self.completeness
+            .map(|completeness| format!("; completeness: {completeness}"))
+            .unwrap_or_default()
     }
 }
 
@@ -421,6 +434,11 @@ impl<'a> ReportContext<'a> {
 
     pub fn with_empty_git_tracked(mut self, empty_git_tracked: bool) -> Self {
         self.inventory = self.inventory.with_empty_git_tracked(empty_git_tracked);
+        self
+    }
+
+    pub fn with_inventory_completeness(mut self, completeness: &'a str) -> Self {
+        self.inventory = self.inventory.with_completeness(completeness);
         self
     }
 }

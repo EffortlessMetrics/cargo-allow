@@ -356,6 +356,11 @@
         "empty_git_tracked": {
           "type": "boolean",
           "description": "True when git inventory succeeded but reported no tracked files, such as a freshly initialized repo before git add."
+        },
+        "completeness": {
+          "type": "string",
+          "enum": ["complete", "scoped", "fallback", "partial"],
+          "description": "Authoritative inventory coverage classification for this artifact."
         }
       }
     },

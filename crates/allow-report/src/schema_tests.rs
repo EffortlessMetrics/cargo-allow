@@ -150,6 +150,17 @@ fn schemas_reference_current_contract_ids() {
     assert!(add_schema.contains("\"files_scanned\""));
     assert!(migrate_schema.contains("\"files_scanned\""));
     assert!(spec_system_schema.contains("\"files_scanned\""));
+    assert!(report_schema.contains("\"completeness\""));
+    assert!(receipt_schema.contains("\"completeness\""));
+    assert!(list_schema.contains("\"completeness\""));
+    assert!(explain_schema.contains("\"completeness\""));
+    assert!(prune_schema.contains("\"completeness\""));
+    assert!(refresh_schema.contains("\"completeness\""));
+    assert!(doctor_schema.contains("\"completeness\""));
+    assert!(propose_schema.contains("\"completeness\""));
+    assert!(add_schema.contains("\"completeness\""));
+    assert!(migrate_schema.contains("\"completeness\""));
+    assert!(spec_system_schema.contains("\"completeness\""));
     assert!(report_schema.contains("\"root\""));
     assert!(receipt_schema.contains("\"root\""));
     assert!(list_schema.contains("\"root\""));

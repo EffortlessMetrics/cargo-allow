@@ -129,10 +129,12 @@ pub fn render_worklist_human(
 }
 
 fn worklist_inventory_files_suffix(inventory: InventoryContext<'_>) -> String {
-    inventory
+    let mut suffix = inventory
         .files_scanned
         .map(|files| format!("; files scanned: {files}"))
-        .unwrap_or_default()
+        .unwrap_or_default();
+    suffix.push_str(&inventory.completeness_suffix());
+    suffix
 }
 
 fn worklist_filters_human(filters: WorklistFilters<'_>) -> String {

@@ -590,19 +590,25 @@ fn audit_recommended_next_step(
 }
 
 fn inventory_files_suffix(context: ReportContext<'_>) -> String {
-    context
+    let mut suffix = context
         .inventory
         .files_scanned
         .map(|files| format!("; files scanned: {files}"))
-        .unwrap_or_default()
+        .unwrap_or_default();
+    suffix.push_str(&context.inventory.completeness_suffix());
+    suffix
 }
 
 fn inventory_files_markdown_suffix(context: ReportContext<'_>) -> String {
-    context
+    let mut suffix = context
         .inventory
         .files_scanned
         .map(|files| format!("; files scanned: `{files}`"))
-        .unwrap_or_default()
+        .unwrap_or_default();
+    if let Some(completeness) = context.inventory.completeness {
+        suffix.push_str(&format!("; completeness: `{completeness}`"));
+    }
+    suffix
 }
 
 fn append_empty_git_tracked_warning_human(context: ReportContext<'_>, out: &mut String) {

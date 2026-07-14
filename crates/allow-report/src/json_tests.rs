@@ -64,6 +64,20 @@ fn json_report_exposes_v1_schema_contract() {
 }
 
 #[test]
+fn json_report_exposes_inventory_completeness() {
+    let context = ReportContext::source_syntax(
+        "filesystem_fallback",
+        Some("fixtures/source-snapshot"),
+        Some(7),
+        None,
+    )
+    .with_inventory_completeness("fallback");
+    let json = render_json_with_context("audit", &[], &[], false, context);
+
+    assert!(json.contains("\"completeness\": \"fallback\""));
+}
+
+#[test]
 fn json_report_matches_empty_audit_golden_contract() {
     let json = render_json_with_context(
         "audit",

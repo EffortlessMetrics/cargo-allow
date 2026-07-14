@@ -15,6 +15,7 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
         broken_evidence_links: Some(0),
         weak_evidence_references: Some(0),
         inventory_source: "git_tracked",
+        inventory_completeness: "scoped",
         files_scanned: 50,
         empty_git_tracked: false,
         deleted_tracked_files: 0,
@@ -62,7 +63,8 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
     "scanner": "source_syntax",
     "source": "git_tracked",
     "root": "H:/Code/Rust/cargo-allow",
-    "files_scanned": 50
+    "files_scanned": 50,
+    "completeness": "scoped"
   }},
   "root": {{
     "path": "H:/Code/Rust/cargo-allow",
@@ -108,6 +110,7 @@ fn doctor_human_renderer_records_root_config_and_inventory() {
         broken_evidence_links: None,
         weak_evidence_references: None,
         inventory_source: "filesystem_fallback",
+        inventory_completeness: "fallback",
         files_scanned: 7,
         empty_git_tracked: false,
         deleted_tracked_files: 0,
@@ -130,7 +133,7 @@ fn doctor_human_renderer_records_root_config_and_inventory() {
         )
     );
     assert!(text.contains(
-        "inventory: source_tree/source_syntax via filesystem_fallback; files scanned: 7"
+        "inventory: source_tree/source_syntax via filesystem_fallback; files scanned: 7; completeness: fallback"
     ));
     assert!(text.contains("did not invoke Cargo metadata"));
     assert!(text.contains("external evidence tools"));
@@ -151,6 +154,7 @@ fn doctor_json_renderer_suggests_init_when_config_is_missing() {
         broken_evidence_links: None,
         weak_evidence_references: None,
         inventory_source: "filesystem_fallback",
+        inventory_completeness: "fallback",
         files_scanned: 7,
         empty_git_tracked: false,
         deleted_tracked_files: 0,
@@ -189,6 +193,7 @@ fn doctor_human_renderer_reports_invalid_config_status() {
         broken_evidence_links: Some(2),
         weak_evidence_references: Some(1),
         inventory_source: "git_tracked",
+        inventory_completeness: "scoped",
         files_scanned: 7,
         empty_git_tracked: false,
         deleted_tracked_files: 0,
@@ -234,6 +239,7 @@ fn doctor_json_renderer_includes_optional_evidence_health_counts() {
         broken_evidence_links: Some(2),
         weak_evidence_references: Some(1),
         inventory_source: "git_tracked",
+        inventory_completeness: "scoped",
         files_scanned: 7,
         empty_git_tracked: false,
         deleted_tracked_files: 0,
@@ -267,6 +273,7 @@ fn doctor_json_renderer_routes_evidence_repair_queues() {
         broken_evidence_links: Some(2),
         weak_evidence_references: Some(1),
         inventory_source: "git_tracked",
+        inventory_completeness: "scoped",
         files_scanned: 7,
         empty_git_tracked: false,
         deleted_tracked_files: 0,
@@ -312,6 +319,7 @@ fn doctor_json_renderer_omits_evidence_repair_queues_when_clean() {
         broken_evidence_links: Some(0),
         weak_evidence_references: Some(0),
         inventory_source: "git_tracked",
+        inventory_completeness: "scoped",
         files_scanned: 7,
         empty_git_tracked: false,
         deleted_tracked_files: 0,
@@ -345,6 +353,7 @@ fn doctor_json_renderer_records_configured_federation_ledgers() {
         broken_evidence_links: Some(0),
         weak_evidence_references: Some(0),
         inventory_source: "git_tracked",
+        inventory_completeness: "scoped",
         files_scanned: 7,
         empty_git_tracked: false,
         deleted_tracked_files: 0,

@@ -311,9 +311,16 @@ fn render_non_matched_html(outcomes: &[MatchOutcome], out: &mut String) {
 }
 
 fn inventory_files_html_suffix(context: ReportContext<'_>) -> String {
-    context
+    let mut suffix = context
         .inventory
         .files_scanned
         .map(|files| format!("; files scanned: <code>{files}</code>"))
-        .unwrap_or_default()
+        .unwrap_or_default();
+    if let Some(completeness) = context.inventory.completeness {
+        suffix.push_str(&format!(
+            "; completeness: <code>{}</code>",
+            html_escape(completeness)
+        ));
+    }
+    suffix
 }

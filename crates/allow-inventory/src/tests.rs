@@ -55,9 +55,34 @@ fn inventory_defaults_to_git_tracked_and_can_include_untracked() {
     assert!(tracked.contains(&PathBuf::from("tracked.txt")));
     assert!(!tracked.contains(&PathBuf::from("untracked.txt")));
     assert_eq!(tracked_inventory.source, InventorySource::GitTracked);
+    assert_eq!(
+        tracked_inventory.completeness,
+        InventoryCompleteness::Scoped
+    );
     assert!(!tracked_inventory.empty_git_tracked);
     assert!(with_untracked.contains(&PathBuf::from("tracked.txt")));
     assert!(with_untracked.contains(&PathBuf::from("untracked.txt")));
+    remove_dir(&root);
+}
+
+#[test]
+fn inventory_without_scope_reports_complete() {
+    let root = temp_root("complete-inventory");
+    write_file(root.join("tracked.txt"), "tracked");
+    run_git(&root, &["init"]);
+    run_git(&root, &["add", "tracked.txt"]);
+
+    let inventory = inventory(
+        &root,
+        &InventoryOptions {
+            ignored: Vec::new(),
+            generated: Vec::new(),
+            include_untracked: false,
+        },
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("complete inventory: {err}")));
+
+    assert_eq!(inventory.completeness, InventoryCompleteness::Complete);
     remove_dir(&root);
 }
 
@@ -71,6 +96,10 @@ fn git_tracked_inventory_reports_empty_tracked_set() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("tracked inventory: {err}")));
 
     assert_eq!(tracked_inventory.source, InventorySource::GitTracked);
+    assert_eq!(
+        tracked_inventory.completeness,
+        InventoryCompleteness::Scoped
+    );
     assert!(tracked_inventory.files.is_empty());
     assert!(tracked_inventory.empty_git_tracked);
     remove_dir(&root);
@@ -103,6 +132,10 @@ fn git_tracked_inventory_skips_deleted_worktree_files() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("tracked inventory: {err}")));
 
     assert_eq!(tracked_inventory.source, InventorySource::GitTracked);
+    assert_eq!(
+        tracked_inventory.completeness,
+        InventoryCompleteness::Partial
+    );
     assert!(tracked_inventory.files.contains(&PathBuf::from("kept.txt")));
     // The deleted file is excluded from the scanned set...
     assert!(
@@ -265,6 +298,7 @@ fn inventory_reports_filesystem_fallback_source_without_git() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("snapshot inventory: {err}")));
 
     assert_eq!(snapshot.source, InventorySource::FilesystemFallback);
+    assert_eq!(snapshot.completeness, InventoryCompleteness::Fallback);
     assert!(snapshot.files.contains(&PathBuf::from("tracked.txt")));
     remove_dir(&root);
 }
@@ -284,6 +318,7 @@ fn include_untracked_fallback_preserves_git_error() {
     .unwrap_or_else(|err| std::panic::panic_any(format!("snapshot inventory: {err}")));
 
     assert_eq!(snapshot.source, InventorySource::FilesystemIncludeUntracked);
+    assert_eq!(snapshot.completeness, InventoryCompleteness::Fallback);
     assert!(snapshot.files.contains(&PathBuf::from("untracked.txt")));
     assert!(
         snapshot

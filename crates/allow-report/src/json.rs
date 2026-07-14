@@ -403,6 +403,13 @@ pub fn render_inventory_json(context: InventoryContext<'_>, indent: &str) -> Str
         out.push_str(",\n");
         out.push_str(&format!("{indent}  \"empty_git_tracked\": true"));
     }
+    if let Some(completeness) = context.completeness {
+        out.push_str(",\n");
+        out.push_str(&format!(
+            "{indent}  \"completeness\": \"{}\"",
+            json_escape(completeness)
+        ));
+    }
     out.push('\n');
     out.push_str(&format!("{indent}}}"));
     out

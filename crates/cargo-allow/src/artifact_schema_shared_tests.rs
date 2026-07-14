@@ -142,6 +142,12 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
             "filesystem_include_untracked",
         ],
     );
+    assert_enum_equals(
+        "common inventory completeness",
+        &schema,
+        "/$defs/inventory/properties/completeness/enum",
+        &["complete", "scoped", "fallback", "partial"],
+    );
     assert_eq!(
         schema
             .pointer("/$defs/inventory/properties/root/type")

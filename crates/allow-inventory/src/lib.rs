@@ -14,7 +14,7 @@ mod options;
 mod root;
 
 pub use git::{git_ls_files, git_ls_files_include_untracked};
-pub use options::{Inventory, InventoryOptions, InventorySource};
+pub use options::{Inventory, InventoryCompleteness, InventoryOptions, InventorySource};
 pub use root::{discover_source_tree_root, resolve_source_tree_root};
 
 use filesystem::{existing_regular_files, recursive_files};
@@ -104,9 +104,22 @@ pub fn inventory(
     files.sort();
     files.dedup();
     files.retain(|path| !source_tree_path_is_ignored(path, &options.ignored));
+    let completeness = if git_error.is_some() {
+        options::InventoryCompleteness::Fallback
+    } else if !deleted_tracked.is_empty()
+        || !submodule_paths.is_empty()
+        || !skipped_paths.is_empty()
+    {
+        options::InventoryCompleteness::Partial
+    } else if !options.ignored.is_empty() || !options.generated.is_empty() {
+        options::InventoryCompleteness::Scoped
+    } else {
+        options::InventoryCompleteness::Complete
+    };
     Ok(Inventory {
         files,
         source,
+        completeness,
         empty_git_tracked,
         deleted_tracked,
         git_error,
