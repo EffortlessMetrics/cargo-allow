@@ -1,4 +1,5 @@
-use allow_core::{AllowEntry, MatchOutcome, MatchStatus, SimpleDate};
+use allow_core::{AllowConfig, AllowEntry, MatchOutcome, MatchStatus, SimpleDate};
+use std::collections::BTreeMap;
 
 /// The canonical lifecycle and capacity projection shared by read surfaces.
 ///
@@ -37,6 +38,36 @@ pub fn ledger_read_state_for_outcomes(
 ) -> LedgerReadState {
     let outcome_refs = outcomes.iter().collect::<Vec<_>>();
     ledger_read_state(entry, &outcome_refs, today)
+}
+
+pub fn ledger_read_statuses(
+    cfg: &AllowConfig,
+    outcomes: &[MatchOutcome],
+    today: SimpleDate,
+) -> BTreeMap<String, MatchStatus> {
+    let mut entries_by_id = BTreeMap::new();
+    for entry in &cfg.allow {
+        entries_by_id.entry(entry.id.as_str()).or_insert(entry);
+    }
+
+    let mut outcomes_by_allow_id = BTreeMap::<&str, Vec<&MatchOutcome>>::new();
+    for outcome in outcomes {
+        if let Some(allow_id) = outcome.allow_id.as_deref() {
+            outcomes_by_allow_id
+                .entry(allow_id)
+                .or_default()
+                .push(outcome);
+        }
+    }
+
+    entries_by_id
+        .iter()
+        .filter_map(|(allow_id, entry)| {
+            let entry_outcomes = outcomes_by_allow_id.get(allow_id).map(Vec::as_slice)?;
+            let status = ledger_read_state(entry, entry_outcomes, today).status;
+            Some(((*allow_id).to_string(), status))
+        })
+        .collect()
 }
 
 fn lifecycle_status(
