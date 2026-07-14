@@ -15,6 +15,9 @@ const REVIEW_DUE_ID: &str = "allow-review";
 const STALE_ID: &str = "allow-stale";
 const DRIFT_ID: &str = "allow-drift";
 const HEADROOM_ID: &str = "allow-headroom";
+const MISSING_EVIDENCE_ID: &str = "allow-missing-evidence";
+const BROKEN_EVIDENCE_ID: &str = "allow-broken-evidence";
+const WEAK_EVIDENCE_ID: &str = "allow-weak-evidence";
 const AUDIT_ARGS: &[&str] = &["audit"];
 const CHECK_NO_NEW_ARGS: &[&str] = &["check", "--mode", "no-new"];
 const DIFF_ARGS: &[&str] = &["diff", "--base", "HEAD"];
@@ -32,6 +35,10 @@ fn lifecycle_statuses_converge_across_read_artifacts() {
     assert_entry_status(&list, "/allow_entries", STALE_ID, "stale");
     assert_entry_status(&list, "/allow_entries", DRIFT_ID, "location_drift");
     assert_entry_matches(&list, HEADROOM_ID, 2);
+    assert_entry_status(&list, "/allow_entries", MISSING_EVIDENCE_ID, "matched");
+    assert_entry_count(&list, MISSING_EVIDENCE_ID, "evidence_count", 0);
+    assert_entry_count(&list, BROKEN_EVIDENCE_ID, "broken_evidence_references", 1);
+    assert_entry_count(&list, WEAK_EVIDENCE_ID, "weak_evidence_references", 1);
 
     let (expired_path, expired_result) =
         run_report(&root, "explain-expired", &["explain", EXPIRED_ID]);
@@ -83,6 +90,49 @@ fn lifecycle_statuses_converge_across_read_artifacts() {
         "explain should expose the current matched count"
     );
 
+    let (missing_evidence_path, missing_evidence_result) = run_report(
+        &root,
+        "explain-missing-evidence",
+        &["explain", MISSING_EVIDENCE_ID],
+    );
+    assert_status("explain missing evidence", &missing_evidence_result, true);
+    assert_quiet("explain missing evidence", &missing_evidence_result);
+    let missing_evidence = assert_saved_json_artifact(
+        &missing_evidence_path,
+        "explain missing evidence",
+        "cargo-allow.explain.v1",
+        "explain",
+    );
+    assert_explain_status(&missing_evidence, MISSING_EVIDENCE_ID, "matched");
+    assert_eq!(
+        missing_evidence
+            .pointer("/evidence_references")
+            .and_then(Value::as_array)
+            .map(Vec::len),
+        Some(0),
+        "explain should show that the entry has no evidence references"
+    );
+
+    for (allow_id, evidence_status) in [
+        (BROKEN_EVIDENCE_ID, "local_file_missing"),
+        (WEAK_EVIDENCE_ID, "unstructured"),
+    ] {
+        let (path, result) = run_report(
+            &root,
+            &format!("explain-{allow_id}"),
+            &["explain", allow_id],
+        );
+        assert_status(&format!("explain {allow_id}"), &result, true);
+        assert_quiet(&format!("explain {allow_id}"), &result);
+        let explanation = assert_saved_json_artifact(
+            &path,
+            &format!("explain {allow_id}"),
+            "cargo-allow.explain.v1",
+            "explain",
+        );
+        assert_explain_evidence_status(&explanation, evidence_status);
+    }
+
     for (allow_id, status) in [(STALE_ID, "stale"), (DRIFT_ID, "location_drift")] {
         let (path, result) = run_report(
             &root,
@@ -115,6 +165,9 @@ fn lifecycle_statuses_converge_across_read_artifacts() {
     assert_entry_status(&worklist, "/work_items", DRIFT_ID, "location_drift");
     assert_work_item_kind(&worklist, HEADROOM_ID, "occurrence_headroom");
     assert_work_item_message(&worklist, HEADROOM_ID, "1 remaining");
+    assert_work_item_kind(&worklist, MISSING_EVIDENCE_ID, "missing_evidence");
+    assert_work_item_kind(&worklist, BROKEN_EVIDENCE_ID, "broken_evidence_link");
+    assert_work_item_kind(&worklist, WEAK_EVIDENCE_ID, "weak_evidence_reference");
 
     for (command, args, should_succeed) in [
         ("audit", AUDIT_ARGS, true),
@@ -130,6 +183,9 @@ fn lifecycle_statuses_converge_across_read_artifacts() {
         assert_entry_status(&report, "/outcomes", STALE_ID, "stale");
         assert_entry_status(&report, "/outcomes", DRIFT_ID, "location_drift");
         assert_report_advisory_count(&report, "occurrence_headroom", 1);
+        assert_report_advisory_count(&report, "policy_missing_evidence", 1);
+        assert_report_advisory_count(&report, "broken_evidence_links", 1);
+        assert_report_advisory_count(&report, "weak_evidence_references", 1);
     }
 
     remove_temp_root(root);
@@ -233,7 +289,7 @@ fn create_fixture(label: &str, include_expired: bool) -> PathBuf {
     fs::create_dir_all(root.join("policy"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
     let source = if include_expired {
-        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\npub fn reload(value: Option<u8>) -> u8 { value.unwrap() }\npub fn relocate(value: Option<u8>) -> u8 { value.unwrap() }\npub fn reserve(value: Option<u8>) -> u8 { let first = value.unwrap(); first + value.unwrap() }\n"
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\npub fn reload(value: Option<u8>) -> u8 { value.unwrap() }\npub fn relocate(value: Option<u8>) -> u8 { value.unwrap() }\npub fn reserve(value: Option<u8>) -> u8 { let first = value.unwrap(); first + value.unwrap() }\npub fn missing_evidence(value: Option<u8>) -> u8 { value.unwrap() }\npub fn broken_evidence(value: Option<u8>) -> u8 { value.unwrap() }\npub fn weak_evidence(value: Option<u8>) -> u8 { value.unwrap() }\n"
     } else {
         "pub fn reload(value: Option<u8>) -> u8 { value.unwrap() }\n"
     };
@@ -338,6 +394,56 @@ review_after = "2099-01-01"
 [allow.selector]
 ast_kind = "method_call"
 container = "reserve"
+callee = "unwrap"
+
+[[allow]]
+id = "{MISSING_EVIDENCE_ID}"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "The fixture keeps one matched entry without evidence for lifecycle repair."
+created = "2019-01-01"
+review_after = "2099-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "missing_evidence"
+callee = "unwrap"
+
+[[allow]]
+id = "{BROKEN_EVIDENCE_ID}"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "The fixture keeps one broken local evidence reference for lifecycle repair."
+evidence = ["doc:docs/missing-evidence.md"]
+created = "2019-01-01"
+review_after = "2099-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "broken_evidence"
+callee = "unwrap"
+
+[[allow]]
+id = "{WEAK_EVIDENCE_ID}"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "The fixture keeps one weak evidence reference for lifecycle repair."
+evidence = ["spreadsheet:manual-review"]
+created = "2019-01-01"
+review_after = "2099-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "weak_evidence"
 callee = "unwrap"
 "#
         )
@@ -540,6 +646,34 @@ fn assert_entry_matches(value: &Value, allow_id: &str, matches: u64) {
         entry.get("matches").and_then(Value::as_u64),
         Some(matches),
         "{allow_id} current match count"
+    );
+}
+
+fn assert_entry_count(value: &Value, allow_id: &str, field: &str, count: u64) {
+    let entries = value
+        .pointer("/allow_entries")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("/allow_entries should be an array"));
+    let entry = entries
+        .iter()
+        .find(|entry| entry.get("id").and_then(Value::as_str) == Some(allow_id))
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!("{allow_id} missing from /allow_entries"))
+        });
+    assert_eq!(
+        entry.get(field).and_then(Value::as_u64),
+        Some(count),
+        "{allow_id} {field}"
+    );
+}
+
+fn assert_explain_evidence_status(value: &Value, status: &str) {
+    assert_eq!(
+        value
+            .pointer("/evidence_references/0/status")
+            .and_then(Value::as_str),
+        Some(status),
+        "explain evidence status"
     );
 }
 
