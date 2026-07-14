@@ -210,16 +210,18 @@ mod tests {
         let mut cfg = AllowConfig::empty();
         cfg.allow.push(entry);
         let matched = test_outcome(MatchStatus::Matched);
+        let today = SimpleDate {
+            year: 2026,
+            month: 7,
+            day: 14,
+        };
 
-        let projected = ledger_project_outcomes(
-            &cfg,
-            &[matched],
-            SimpleDate {
-                year: 2026,
-                month: 7,
-                day: 14,
-            },
+        assert_eq!(
+            ledger_read_statuses(&cfg, std::slice::from_ref(&matched), today).get("allow-test"),
+            Some(&MatchStatus::BaselineDebt)
         );
+
+        let projected = ledger_project_outcomes(&cfg, &[matched], today);
 
         assert_eq!(projected[0].status, MatchStatus::Matched);
     }
