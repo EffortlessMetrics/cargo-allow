@@ -1,9 +1,10 @@
 use allow_core::FindingKind;
 use std::path::Path;
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone)]
 pub(super) struct PruneContext<'a> {
     pub(super) inventory: allow_report::InventoryContext<'a>,
+    pub(super) mutation_receipt: allow_report::MutationReceipt<'a>,
 }
 
 pub(super) struct PruneRenderMode {

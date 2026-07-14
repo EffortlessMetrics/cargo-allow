@@ -1,7 +1,9 @@
 use crate::contracts::PRUNE_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
 use crate::text::markdown_cell;
-use crate::{CLAIM_BOUNDARY_TEXT, InventoryContext, PruneCandidate, PruneModeContext};
+use crate::{
+    CLAIM_BOUNDARY_TEXT, InventoryContext, MutationReceipt, PruneCandidate, PruneModeContext,
+};
 use allow_core::json_escape;
 
 pub fn render_prune_human(candidates: &[PruneCandidate<'_>], mode: PruneModeContext<'_>) -> String {
@@ -84,6 +86,7 @@ pub fn render_prune_json(
     candidates: &[PruneCandidate<'_>],
     mode: PruneModeContext<'_>,
     inventory: InventoryContext<'_>,
+    mutation_receipt: &MutationReceipt<'_>,
 ) -> String {
     let mut out = String::new();
     out.push_str("{\n");
@@ -117,7 +120,10 @@ pub fn render_prune_json(
         }
         out.push_str(&render_prune_candidate_json(candidate, "  "));
     }
-    out.push_str("\n  ]\n");
+    out.push_str("\n  ],\n");
+    out.push_str("  \"mutation_receipt\": ");
+    out.push_str(&crate::render_mutation_receipt_json(mutation_receipt, "  "));
+    out.push('\n');
     out.push_str("}\n");
     out
 }

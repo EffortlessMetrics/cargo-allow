@@ -14,7 +14,8 @@
     "inventory",
     "mode",
     "summary",
-    "stale_entries"
+    "stale_entries",
+    "mutation_receipt"
   ],
   "properties": {
     "schema_version": {
@@ -89,6 +90,9 @@
       "items": {
         "$ref": "#/$defs/stale_entry"
       }
+    },
+    "mutation_receipt": {
+      "$ref": "#/$defs/mutation_receipt"
     }
   },
   "$defs": {
@@ -223,6 +227,44 @@
         "reason": {
           "type": "string"
         }
+      }
+    },
+    "mutation_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "operation",
+        "tool_version",
+        "repo_root",
+        "config_source",
+        "ledger_ids",
+        "changed_allow_ids",
+        "before_fingerprints",
+        "after_fingerprints",
+        "result",
+        "next_commands",
+        "claim_boundary"
+      ],
+      "properties": {
+        "schema_id": { "const": "cargo-allow.mutation-receipt.v1" },
+        "operation": { "const": "prune" },
+        "tool_version": { "type": "string", "minLength": 1 },
+        "repo_root": { "type": ["string", "null"] },
+        "config_source": { "type": ["string", "null"] },
+        "ledger_ids": { "type": "array", "items": { "type": "string" } },
+        "changed_allow_ids": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "before_fingerprints": {
+          "type": "array",
+          "items": { "type": ["string", "null"], "pattern": "^sha256:v1:[0-9a-f]{64}$" }
+        },
+        "after_fingerprints": {
+          "type": "array",
+          "items": { "type": ["string", "null"], "pattern": "^sha256:v1:[0-9a-f]{64}$" }
+        },
+        "result": { "enum": ["stdout", "written"] },
+        "next_commands": { "type": "array", "items": { "type": "string" } },
+        "claim_boundary": { "type": "string", "minLength": 1 }
       }
     }
   }

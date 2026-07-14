@@ -11,7 +11,11 @@ fn prune_schema_locks_stale_cleanup_artifact_contract() {
         include_str!("../../../docs/schemas/prune.schema.json"),
     );
 
-    assert_required_fields("prune", &schema, &["mode", "summary", "stale_entries"]);
+    assert_required_fields(
+        "prune",
+        &schema,
+        &["mode", "summary", "stale_entries", "mutation_receipt"],
+    );
 
     let mode = required_schema_pointer("prune", &schema, "/properties/mode");
     assert_eq!(
@@ -105,5 +109,38 @@ fn prune_schema_locks_stale_cleanup_artifact_contract() {
         &schema,
         "/$defs/stale_entry/properties/kind/enum",
         &governed_kind_enum(),
+    );
+    let mutation_receipt = required_schema_pointer("prune", &schema, "/$defs/mutation_receipt");
+    assert_eq!(
+        mutation_receipt
+            .get("additionalProperties")
+            .and_then(Value::as_bool),
+        Some(false),
+        "prune mutation receipt should reject unknown fields"
+    );
+    assert_required_fields(
+        "prune mutation receipt",
+        mutation_receipt,
+        &[
+            "schema_id",
+            "operation",
+            "tool_version",
+            "repo_root",
+            "config_source",
+            "ledger_ids",
+            "changed_allow_ids",
+            "before_fingerprints",
+            "after_fingerprints",
+            "result",
+            "next_commands",
+            "claim_boundary",
+        ],
+    );
+    assert_eq!(
+        mutation_receipt
+            .pointer("/properties/operation/const")
+            .and_then(Value::as_str),
+        Some("prune"),
+        "prune mutation receipt operation should be pinned"
     );
 }
