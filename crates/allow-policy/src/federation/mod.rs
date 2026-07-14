@@ -14,7 +14,7 @@ mod validate;
 
 pub use config::{
     DrainWindow, FederationConfig, FederationDiagnostic, FederationDiagnosticKind, LedgerEntry,
-    LedgerRole, ValidatedFederationConfig, parse_federation_config,
+    LedgerRole, ValidatedFederationConfig, parse_federation_config, parse_federation_config_at,
 };
 pub use divergence::{
     FederationDivergenceKind, FederationDivergenceRecord, detect_mirror_divergences,

@@ -3,7 +3,7 @@ use std::path::Path;
 
 use allow_core::{CargoAllowError, CargoAllowResult};
 
-use super::config::{ValidatedFederationConfig, parse_federation_config};
+use super::config::{ValidatedFederationConfig, parse_federation_config_at};
 use super::validate::validate_federation_config;
 
 pub const FEDERATION_CONFIG_REL_PATH: &str = ".allow/config.toml";
@@ -47,7 +47,7 @@ pub fn load_federation_config(root: &Path) -> CargoAllowResult<FederationLoadRes
             FEDERATION_CONFIG_REL_PATH
         ))
     })?;
-    let config = parse_federation_config(&text)?;
+    let config = parse_federation_config_at(Some(&path), &text)?;
     let validated = validate_federation_config(config);
     Ok(FederationLoadResult {
         path: FEDERATION_CONFIG_REL_PATH.to_string(),

@@ -10,10 +10,10 @@ use allow_policy::import_roots::{
 use allow_policy::spec_system::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, ProfileConfigProvenance,
     ResolvedProfileConfig, SpecSystemConfig, SpecSystemMode, SpecSystemRequirements,
-    SpecSystemRoots, SupportTierLevel, load_doc_artifacts, parse_spec_system_config,
+    SpecSystemRoots, SupportTierLevel, load_doc_artifacts, parse_spec_system_config_at,
     parse_support_tier_claims, profile_config_conflict_message, resolve_profile_config,
-    validate_active_goal_manifest_text, validate_doc_artifact_files, validate_doc_artifact_links,
-    validate_support_tier_claims,
+    validate_active_goal_manifest_text_at, validate_doc_artifact_files,
+    validate_doc_artifact_links, validate_support_tier_claims,
 };
 use std::env;
 use std::fs;
@@ -800,7 +800,7 @@ fn load_spec_system_config(root: &Path, config: Option<&Path>) -> LoadedSpecSyst
     }
 
     match fs::read_to_string(&config_path) {
-        Ok(text) => match parse_spec_system_config(&text) {
+        Ok(text) => match parse_spec_system_config_at(Some(&config_path), &text) {
             Ok(cfg) => LoadedSpecSystemConfig {
                 cfg,
                 source: config_path_text.clone(),
@@ -1085,7 +1085,7 @@ fn validate_active_goal_file(
             "failed to read active goal manifest {source_path}: {err}"
         ))
     })?;
-    validate_active_goal_manifest_text(&text, ledger).map(|_| ())
+    validate_active_goal_manifest_text_at(Some(&active_goal_path), &text, ledger).map(|_| ())
 }
 
 fn collect_spec_system_readiness(

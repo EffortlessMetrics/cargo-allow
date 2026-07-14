@@ -1,5 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use serde::Deserialize;
+use std::path::Path;
 
 use crate::import_roots::ImportRootsConfig;
 
@@ -52,6 +53,18 @@ pub struct SpecSystemRequirements {
 }
 
 pub fn parse_spec_system_config(input: &str) -> CargoAllowResult<SpecSystemConfig> {
-    toml::from_str::<SpecSystemConfig>(input)
-        .map_err(|e| CargoAllowError::new(format!("failed to parse spec-system config TOML: {e}")))
+    parse_spec_system_config_at(None, input)
+}
+
+pub fn parse_spec_system_config_at(
+    path: Option<&Path>,
+    input: &str,
+) -> CargoAllowResult<SpecSystemConfig> {
+    toml::from_str::<SpecSystemConfig>(input).map_err(|e| {
+        CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::InvalidConfig,
+            format!("failed to parse spec-system config TOML: {e}"),
+        )
+        .with_toml_span(path, input, e.span())
+    })
 }

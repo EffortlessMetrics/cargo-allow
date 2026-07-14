@@ -1,5 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use serde::Deserialize;
+use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -117,8 +118,19 @@ struct ImportRootEntryToml {
 }
 
 pub fn parse_import_roots_config(input: &str) -> CargoAllowResult<ImportRootsConfig> {
+    parse_import_roots_config_at(None, input)
+}
+
+pub fn parse_import_roots_config_at(
+    path: Option<&Path>,
+    input: &str,
+) -> CargoAllowResult<ImportRootsConfig> {
     let parsed = toml::from_str::<ImportRootsConfigToml>(input).map_err(|err| {
-        CargoAllowError::new(format!("failed to parse import roots config TOML: {err}"))
+        CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::InvalidConfig,
+            format!("failed to parse import roots config TOML: {err}"),
+        )
+        .with_toml_span(path, input, err.span())
     })?;
     let mut entries = Vec::with_capacity(parsed.entries.len());
     for entry in parsed.entries {

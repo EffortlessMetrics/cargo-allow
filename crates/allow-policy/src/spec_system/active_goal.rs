@@ -1,5 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use serde::Deserialize;
+use std::path::Path;
 
 use super::{ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger};
 
@@ -63,8 +64,20 @@ pub enum ActiveGoalWorkItemStatus {
 }
 
 pub fn parse_active_goal_manifest(input: &str) -> CargoAllowResult<ActiveGoalManifest> {
-    toml::from_str::<ActiveGoalManifest>(input)
-        .map_err(|e| CargoAllowError::new(format!("failed to parse active goal TOML: {e}")))
+    parse_active_goal_manifest_at(None, input)
+}
+
+pub fn parse_active_goal_manifest_at(
+    path: Option<&Path>,
+    input: &str,
+) -> CargoAllowResult<ActiveGoalManifest> {
+    toml::from_str::<ActiveGoalManifest>(input).map_err(|e| {
+        CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::InvalidConfig,
+            format!("failed to parse active goal TOML: {e}"),
+        )
+        .with_toml_span(path, input, e.span())
+    })
 }
 
 pub fn validate_active_goal_manifest(
@@ -138,7 +151,15 @@ pub fn validate_active_goal_manifest_text(
     input: &str,
     ledger: &DocArtifactLedger,
 ) -> CargoAllowResult<ActiveGoalManifest> {
-    let manifest = parse_active_goal_manifest(input)?;
+    validate_active_goal_manifest_text_at(None, input, ledger)
+}
+
+pub fn validate_active_goal_manifest_text_at(
+    path: Option<&Path>,
+    input: &str,
+    ledger: &DocArtifactLedger,
+) -> CargoAllowResult<ActiveGoalManifest> {
+    let manifest = parse_active_goal_manifest_at(path, input)?;
     validate_active_goal_manifest(&manifest, ledger)?;
     Ok(manifest)
 }

@@ -13,6 +13,7 @@ mod validate;
 pub use config::{
     DEFAULT_OWNED_IMPORT_ROOT, ImportConfidence, ImportEdgeKind, ImportNodeRole, ImportProvenance,
     ImportRootEntry, ImportRootsConfig, default_import_roots_config, parse_import_roots_config,
+    parse_import_roots_config_at,
 };
 pub use discover::{
     ImportEdge, ImportGraph, ImportNode, discover_import_graph, resolve_import_roots_config,

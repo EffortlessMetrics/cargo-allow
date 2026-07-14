@@ -1,6 +1,7 @@
 use super::*;
 use crate::import_roots::ImportNodeRole;
 use allow_core::CargoAllowError;
+use std::path::Path;
 
 #[test]
 fn parses_minimal_spec_system_config() {
@@ -45,6 +46,28 @@ fn parses_minimal_spec_system_config() {
     );
     assert!(cfg.requirements.ledger_required);
     assert!(cfg.requirements.closeout_required_for_done_items);
+}
+
+#[test]
+fn parse_spec_system_config_at_preserves_location() -> Result<(), String> {
+    let err = match parse_spec_system_config_at(
+        Some(Path::new(".allow/profiles/spec-system.toml")),
+        "mode = [",
+    ) {
+        Ok(_) => return Err("invalid spec-system TOML unexpectedly parsed".to_string()),
+        Err(err) => err,
+    };
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+    let location = err
+        .location()
+        .ok_or_else(|| "spec-system parse error should have a location".to_string())?;
+    assert_eq!(
+        location.path.as_deref(),
+        Some(".allow/profiles/spec-system.toml")
+    );
+    assert_eq!(location.line, 1);
+    assert!(location.column > 0);
+    Ok(())
 }
 
 #[test]

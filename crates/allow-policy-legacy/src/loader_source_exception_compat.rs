@@ -3,14 +3,14 @@ use std::path::Path;
 use toml::Value;
 
 use crate::converter_source_configs::{config_from_clippy_rules, config_from_unsafe_rules};
-use crate::io::{legacy_table, read_policy};
+use crate::io::{legacy_table_at, read_policy};
 use crate::parsers::{is_clippy_exceptions_policy, parse_clippy_rules, parse_unsafe_rules};
 
 pub fn load_clippy_exceptions_compat_config(
     path: impl AsRef<Path>,
 ) -> CargoAllowResult<AllowConfig> {
     let text = read_policy(path.as_ref())?;
-    let table = legacy_table(&text)?.ok_or_else(|| {
+    let table = legacy_table_at(Some(path.as_ref()), &text)?.ok_or_else(|| {
         CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
     })?;
     if !is_clippy_exceptions_policy(&table) {
@@ -27,7 +27,7 @@ pub fn load_unsafe_allowlist_compat_config(
     path: impl AsRef<Path>,
 ) -> CargoAllowResult<AllowConfig> {
     let text = read_policy(path.as_ref())?;
-    let table = legacy_table(&text)?.ok_or_else(|| {
+    let table = legacy_table_at(Some(path.as_ref()), &text)?.ok_or_else(|| {
         CargoAllowError::new(format!("{} is not a TOML table", path.as_ref().display()))
     })?;
     if table.get("policy").and_then(Value::as_str) != Some("unsafe-allowlist") {

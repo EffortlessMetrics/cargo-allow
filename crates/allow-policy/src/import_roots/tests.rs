@@ -1,5 +1,5 @@
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::config::default_import_roots_config;
 use super::*;
@@ -22,6 +22,23 @@ fn parse_import_roots_config_reads_entries() {
     assert_eq!(config.entries.len(), 1);
     assert_eq!(config.entries[0].id, "kiro");
     assert_eq!(config.entries[0].role, ImportNodeRole::Imported);
+}
+
+#[test]
+fn parse_import_roots_config_at_preserves_location() -> Result<(), String> {
+    let err = match parse_import_roots_config_at(Some(Path::new(".allow/config.toml")), "owned = [")
+    {
+        Ok(_) => return Err("invalid import-roots TOML unexpectedly parsed".to_string()),
+        Err(err) => err,
+    };
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+    let location = err
+        .location()
+        .ok_or_else(|| "import-roots parse error should have a location".to_string())?;
+    assert_eq!(location.path.as_deref(), Some(".allow/config.toml"));
+    assert_eq!(location.line, 1);
+    assert!(location.column > 0);
+    Ok(())
 }
 
 #[test]

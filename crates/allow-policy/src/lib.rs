@@ -76,8 +76,8 @@ pub use import_roots::{
     DEFAULT_OWNED_IMPORT_ROOT, ImportConfidence, ImportDiagnostic, ImportDiagnosticKind,
     ImportEdge, ImportEdgeKind, ImportGraph, ImportNode, ImportNodeRole, ImportProvenance,
     ImportRootEntry, ImportRootsConfig, ValidatedImportRootsConfig, default_import_roots_config,
-    discover_import_graph, parse_import_roots_config, resolve_import_roots_config,
-    validate_import_roots_config,
+    discover_import_graph, parse_import_roots_config, parse_import_roots_config_at,
+    resolve_import_roots_config, validate_import_roots_config,
 };
 
 pub use discovery::{

@@ -11,10 +11,17 @@ pub(crate) fn read_policy(path: &Path) -> CargoAllowResult<String> {
     })
 }
 
-pub(crate) fn legacy_table(input: &str) -> CargoAllowResult<Option<toml::Table>> {
-    toml::from_str::<toml::Table>(input)
-        .map(Some)
-        .map_err(|e| CargoAllowError::new(format!("failed to parse legacy policy TOML: {e}")))
+pub(crate) fn legacy_table_at(
+    path: Option<&Path>,
+    input: &str,
+) -> CargoAllowResult<Option<toml::Table>> {
+    toml::from_str::<toml::Table>(input).map(Some).map_err(|e| {
+        CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::InvalidPolicy,
+            format!("failed to parse legacy policy TOML: {e}"),
+        )
+        .with_toml_span(path, input, e.span())
+    })
 }
 
 #[cfg(test)]
@@ -43,7 +50,7 @@ mod tests {
 
     #[test]
     fn legacy_table_parses_toml_or_reports_parse_error() {
-        let table = legacy_table("policy = \"workflow-allowlist\"\n")
+        let table = legacy_table_at(None, "policy = \"workflow-allowlist\"\n")
             .unwrap_or_else(|err| std::panic::panic_any(format!("legacy TOML parses: {err}")))
             .unwrap_or_else(|| std::panic::panic_any("legacy table exists"));
 
@@ -52,11 +59,27 @@ mod tests {
             Some("workflow-allowlist")
         );
 
-        let err = legacy_table("policy = [").expect_err("invalid TOML should fail");
+        let err = legacy_table_at(None, "policy = [").expect_err("invalid TOML should fail");
         assert!(
             err.to_string()
                 .contains("failed to parse legacy policy TOML")
         );
+    }
+
+    #[test]
+    fn legacy_table_at_preserves_location() -> Result<(), String> {
+        let err = match legacy_table_at(Some(Path::new("legacy/policy.toml")), "policy = [") {
+            Ok(_) => return Err("invalid legacy TOML unexpectedly parsed".to_string()),
+            Err(err) => err,
+        };
+        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidPolicy);
+        let location = err
+            .location()
+            .ok_or_else(|| "legacy parse error should have a location".to_string())?;
+        assert_eq!(location.path.as_deref(), Some("legacy/policy.toml"));
+        assert_eq!(location.line, 1);
+        assert!(location.column > 0);
+        Ok(())
     }
 
     fn temp_policy_path(name: &str) -> std::path::PathBuf {

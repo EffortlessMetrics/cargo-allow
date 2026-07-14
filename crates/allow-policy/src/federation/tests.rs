@@ -2,11 +2,12 @@ use allow_core::LaneEnforcementMode;
 
 use super::config::{
     FederationConfig, FederationDiagnosticKind, LedgerEntry, LedgerRole, NATIVE_POLICY_DIALECT,
-    ValidatedFederationConfig, parse_federation_config,
+    ValidatedFederationConfig, parse_federation_config, parse_federation_config_at,
 };
 use super::precedence::ordered_ledgers_by_precedence;
 use super::validate::validate_federation_config;
 use std::fs;
+use std::path::Path;
 
 const VALID_CONFIG: &str = r#"
 schema_version = "1.0"
@@ -46,6 +47,22 @@ fn parse_federation_config_reads_ledgers_table() {
         validated.config.ledgers[1].mode,
         LaneEnforcementMode::Blocking
     );
+}
+
+#[test]
+fn parse_federation_config_at_preserves_location() -> Result<(), String> {
+    let err = match parse_federation_config_at(Some(Path::new(".allow/config.toml")), "mode = [") {
+        Ok(_) => return Err("invalid federation TOML unexpectedly parsed".to_string()),
+        Err(err) => err,
+    };
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+    let location = err
+        .location()
+        .ok_or_else(|| "federation parse error should have a location".to_string())?;
+    assert_eq!(location.path.as_deref(), Some(".allow/config.toml"));
+    assert_eq!(location.line, 1);
+    assert!(location.column > 0);
+    Ok(())
 }
 
 #[test]
