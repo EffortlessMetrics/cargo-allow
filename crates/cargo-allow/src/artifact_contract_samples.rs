@@ -252,6 +252,26 @@ pub(crate) fn core_artifact_samples() -> Vec<ArtifactSample> {
     receipt_context.tool_version = Some(env!("CARGO_PKG_VERSION"));
     let receipt_json =
         allow_report::render_receipt_with_context("check", &[], false, receipt_context);
+    let failed_receipt_json = allow_report::render_receipt_with_context(
+        "check",
+        &[],
+        true,
+        allow_report::ReportContext::source_syntax(
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(42),
+            None,
+        ),
+    );
+    let error_receipt_json = allow_report::render_error_receipt(
+        "invalid policy field: \"mode\"",
+        allow_report::ReportContext::source_syntax(
+            "filesystem_fallback",
+            Some("fixtures/source-snapshot"),
+            Some(7),
+            None,
+        ),
+    );
     let diff_base_json = allow_report::render_json_with_context(
         "diff",
         &[],
@@ -331,6 +351,45 @@ pub(crate) fn core_artifact_samples() -> Vec<ArtifactSample> {
                 "status",
                 "tool",
                 "tool_version",
+            ],
+        },
+        ArtifactSample {
+            name: "receipt_failed",
+            schema_name: "receipt",
+            json: failed_receipt_json,
+            expected_command: "check",
+            expected_top_level_keys: &[
+                "advisory",
+                "claim_boundary",
+                "command",
+                "counts",
+                "failed",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "status",
+                "tool",
+            ],
+        },
+        ArtifactSample {
+            name: "receipt_error",
+            schema_name: "receipt",
+            json: error_receipt_json,
+            expected_command: "check",
+            expected_top_level_keys: &[
+                "advisory",
+                "claim_boundary",
+                "command",
+                "counts",
+                "diagnostic",
+                "failed",
+                "inventory",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "status",
+                "tool",
             ],
         },
         ArtifactSample {
