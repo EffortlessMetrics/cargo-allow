@@ -89,8 +89,10 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         })
         .collect::<CargoAllowResult<Vec<_>>>()?;
     let repo_root = root.display().to_string();
-    let config_source = policy_path.display().to_string();
-    let recovery_command = format!("git diff -- {}", policy_path.display());
+    let config_source = crate::policy_config::git_relative_config_path(&root, Some(&policy_path))?
+        .to_string_lossy()
+        .replace('\\', "/");
+    let recovery_command = format!("git diff -- {config_source}");
     let mutation_receipt = MutationReceipt {
         operation: "prune",
         tool_version: env!("CARGO_PKG_VERSION"),

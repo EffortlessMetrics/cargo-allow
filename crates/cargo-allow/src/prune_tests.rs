@@ -264,9 +264,21 @@ fn cmd_prune_write_removes_only_stale_entries_from_policy_file() {
     );
     assert_eq!(
         parsed
+            .pointer("/mutation_receipt/config_source")
+            .and_then(serde_json::Value::as_str),
+        Some("policy/allow.toml")
+    );
+    assert_eq!(
+        parsed
             .pointer("/mutation_receipt/result")
             .and_then(serde_json::Value::as_str),
         Some("written")
+    );
+    assert_eq!(
+        parsed
+            .pointer("/mutation_receipt/next_commands/0")
+            .and_then(serde_json::Value::as_str),
+        Some("git diff -- policy/allow.toml")
     );
     assert_eq!(
         parsed
