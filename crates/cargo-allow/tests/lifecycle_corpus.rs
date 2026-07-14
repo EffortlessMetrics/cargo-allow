@@ -14,6 +14,7 @@ const EXPIRED_ID: &str = "allow-expired";
 const REVIEW_DUE_ID: &str = "allow-review";
 const STALE_ID: &str = "allow-stale";
 const DRIFT_ID: &str = "allow-drift";
+const HEADROOM_ID: &str = "allow-headroom";
 const AUDIT_ARGS: &[&str] = &["audit"];
 const CHECK_NO_NEW_ARGS: &[&str] = &["check", "--mode", "no-new"];
 const DIFF_ARGS: &[&str] = &["diff", "--base", "HEAD"];
@@ -30,6 +31,7 @@ fn lifecycle_statuses_converge_across_read_artifacts() {
     assert_entry_status(&list, "/allow_entries", REVIEW_DUE_ID, "review_due");
     assert_entry_status(&list, "/allow_entries", STALE_ID, "stale");
     assert_entry_status(&list, "/allow_entries", DRIFT_ID, "location_drift");
+    assert_entry_matches(&list, HEADROOM_ID, 2);
 
     let (expired_path, expired_result) =
         run_report(&root, "explain-expired", &["explain", EXPIRED_ID]);
@@ -54,6 +56,32 @@ fn lifecycle_statuses_converge_across_read_artifacts() {
         "explain",
     );
     assert_explain_status(&review, REVIEW_DUE_ID, "review_due");
+
+    let (headroom_path, headroom_result) =
+        run_report(&root, "explain-headroom", &["explain", HEADROOM_ID]);
+    assert_status("explain headroom", &headroom_result, true);
+    assert_quiet("explain headroom", &headroom_result);
+    let headroom = assert_saved_json_artifact(
+        &headroom_path,
+        "explain headroom",
+        "cargo-allow.explain.v1",
+        "explain",
+    );
+    assert_explain_status(&headroom, HEADROOM_ID, "matched");
+    assert_eq!(
+        headroom
+            .pointer("/allow_entry/occurrence_limit")
+            .and_then(Value::as_u64),
+        Some(3),
+        "explain should expose the configured occurrence limit"
+    );
+    assert_eq!(
+        headroom
+            .pointer("/summary/current_matches")
+            .and_then(Value::as_u64),
+        Some(2),
+        "explain should expose the current matched count"
+    );
 
     for (allow_id, status) in [(STALE_ID, "stale"), (DRIFT_ID, "location_drift")] {
         let (path, result) = run_report(
@@ -85,6 +113,8 @@ fn lifecycle_statuses_converge_across_read_artifacts() {
     assert_entry_status(&worklist, "/work_items", REVIEW_DUE_ID, "review_due");
     assert_entry_status(&worklist, "/work_items", STALE_ID, "stale");
     assert_entry_status(&worklist, "/work_items", DRIFT_ID, "location_drift");
+    assert_work_item_kind(&worklist, HEADROOM_ID, "occurrence_headroom");
+    assert_work_item_message(&worklist, HEADROOM_ID, "1 remaining");
 
     for (command, args, should_succeed) in [
         ("audit", AUDIT_ARGS, true),
@@ -99,6 +129,7 @@ fn lifecycle_statuses_converge_across_read_artifacts() {
         assert_entry_status(&report, "/outcomes", REVIEW_DUE_ID, "review_due");
         assert_entry_status(&report, "/outcomes", STALE_ID, "stale");
         assert_entry_status(&report, "/outcomes", DRIFT_ID, "location_drift");
+        assert_report_advisory_count(&report, "occurrence_headroom", 1);
     }
 
     remove_temp_root(root);
@@ -202,7 +233,7 @@ fn create_fixture(label: &str, include_expired: bool) -> PathBuf {
     fs::create_dir_all(root.join("policy"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
     let source = if include_expired {
-        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\npub fn reload(value: Option<u8>) -> u8 { value.unwrap() }\npub fn relocate(value: Option<u8>) -> u8 { value.unwrap() }\n"
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\npub fn reload(value: Option<u8>) -> u8 { value.unwrap() }\npub fn relocate(value: Option<u8>) -> u8 { value.unwrap() }\npub fn reserve(value: Option<u8>) -> u8 { let first = value.unwrap(); first + value.unwrap() }\n"
     } else {
         "pub fn reload(value: Option<u8>) -> u8 { value.unwrap() }\n"
     };
@@ -290,6 +321,24 @@ callee = "unwrap"
 [allow.last_seen]
 line = 99
 column = 1
+
+[[allow]]
+id = "{HEADROOM_ID}"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "The fixture reserves one additional occurrence for a later match."
+evidence = ["test:lifecycle_corpus"]
+occurrence_limit = 3
+created = "2019-01-01"
+review_after = "2099-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "reserve"
+callee = "unwrap"
 "#
         )
     } else {
@@ -473,6 +522,69 @@ fn assert_entry_status(value: &Value, collection_pointer: &str, allow_id: &str, 
         entry.get("status").and_then(Value::as_str),
         Some(status),
         "{allow_id} status in {collection_pointer}"
+    );
+}
+
+fn assert_entry_matches(value: &Value, allow_id: &str, matches: u64) {
+    let entries = value
+        .pointer("/allow_entries")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("/allow_entries should be an array"));
+    let entry = entries
+        .iter()
+        .find(|entry| entry.get("id").and_then(Value::as_str) == Some(allow_id))
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!("{allow_id} missing from /allow_entries"))
+        });
+    assert_eq!(
+        entry.get("matches").and_then(Value::as_u64),
+        Some(matches),
+        "{allow_id} current match count"
+    );
+}
+
+fn assert_work_item_kind(value: &Value, allow_id: &str, kind: &str) {
+    let items = value
+        .pointer("/work_items")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("/work_items should be an array"));
+    let item = items
+        .iter()
+        .find(|item| item.get("allow_id").and_then(Value::as_str) == Some(allow_id))
+        .unwrap_or_else(|| std::panic::panic_any(format!("{allow_id} missing from /work_items")));
+    assert_eq!(
+        item.get("kind").and_then(Value::as_str),
+        Some(kind),
+        "{allow_id} work item kind"
+    );
+}
+
+fn assert_work_item_message(value: &Value, allow_id: &str, fragment: &str) {
+    let items = value
+        .pointer("/work_items")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("/work_items should be an array"));
+    let item = items
+        .iter()
+        .find(|item| item.get("allow_id").and_then(Value::as_str) == Some(allow_id))
+        .unwrap_or_else(|| std::panic::panic_any(format!("{allow_id} missing from /work_items")));
+    let message = item
+        .get("message")
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| std::panic::panic_any(format!("{allow_id} work item has no message")));
+    assert!(
+        message.contains(fragment),
+        "{allow_id} work item message should contain {fragment:?}: {message}"
+    );
+}
+
+fn assert_report_advisory_count(value: &Value, advisory: &str, count: u64) {
+    assert_eq!(
+        value
+            .pointer(&format!("/trend/{advisory}"))
+            .and_then(Value::as_u64),
+        Some(count),
+        "report trend should expose {advisory} count"
     );
 }
 

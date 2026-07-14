@@ -27,7 +27,8 @@ pub(super) fn work_items_from_policy_advisories(
         };
         let finding = outcome.finding_index.and_then(|idx| findings.get(idx));
         let matched_count = matched_counts.get(&entry.id).copied().unwrap_or(0);
-        if let Some(limit) = occurrence_headroom_for_entry(entry, matched_count) {
+        if let Some(headroom) = occurrence_headroom_for_entry(entry, matched_count) {
+            let limit = entry.occurrence_limit.unwrap_or(matched_count);
             let item_index = start_index + items.len();
             let kind = OCCURRENCE_HEADROOM.to_string();
             items.push(WorkItem {
@@ -55,8 +56,8 @@ pub(super) fn work_items_from_policy_advisories(
                 evidence_reference: None,
                 source_package: source_package_name(finding),
                 message: format!(
-                    "{} has occurrence_limit {limit} but only {matched_count} current matches",
-                    entry.id
+                    "{} has occurrence_limit {limit}, {matched_count} current matches, and {headroom} remaining",
+                    entry.id,
                 ),
                 suggested_actions: suggested_actions_for_context(&kind, finding, Some(entry)),
                 proof_commands: proof_commands(&kind, finding, Some(entry)),
