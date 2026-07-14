@@ -1,5 +1,6 @@
 use allow_core::{
     AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, MatchOutcome, SimpleDate,
+    json_escape,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
@@ -218,12 +219,12 @@ fn render_add_summary_broad_json(
     let mutation_receipt = add_mutation_receipt(entry, context, policy_output.as_deref());
     format!(
         "{{\"id\":\"{}\",\"kind\":\"{}\",\"scope\":\"{}\",\"occurrence_limit\":{},\"policy_output\":\"{}\",\"action\":\"{}\",\"mutation_receipt\":{}}}",
-        entry.id,
-        entry.kind,
-        entry.path_or_glob(),
+        json_escape(&entry.id),
+        json_escape(&entry.kind.to_string()),
+        json_escape(&entry.path_or_glob()),
         entry.occurrence_limit.unwrap_or(0),
-        policy_output.as_deref().unwrap_or("stdout"),
-        action,
+        json_escape(policy_output.as_deref().unwrap_or("stdout")),
+        json_escape(action),
         allow_report::render_mutation_receipt_json(&mutation_receipt, ""),
     )
 }

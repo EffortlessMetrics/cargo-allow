@@ -4,6 +4,61 @@ use crate::artifact_contract_support::{assert_inventory_contract, parse_json_art
 use serde_json::Value;
 
 #[test]
+fn render_broad_add_summary_json_escapes_string_fields() {
+    let mut entry = allow_entry_broad(AddBroadRequest {
+        id: "allow-\\\"quoted".to_string(),
+        kind: FindingKind::Panic,
+        family: Some("family\\\"quoted".to_string()),
+        callee: None,
+        glob: "src/\\\"quoted\\\\path\n.rs".to_string(),
+        owner: "owner".to_string(),
+        classification: "classification".to_string(),
+        reason: "reason".to_string(),
+        evidence: vec!["test:json".to_string()],
+        review_after: "2026-11-01".to_string(),
+        expires: None,
+    });
+    entry.occurrence_limit = Some(2);
+
+    let json = render_add_summary_broad_json(
+        &entry,
+        Some(Path::new("policy/\\\"quoted\\\\output.toml")),
+        true,
+        &AddContext {
+            inventory: allow_report::InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(52),
+            ),
+            repo_root: Some("H:/Code/Rust/cargo-allow".to_string()),
+            config_source: Some("policy/allow.toml".to_string()),
+        },
+    );
+    let value: Value = serde_json::from_str(&json).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "broad add summary should parse as JSON: {err}\n{json}"
+        ))
+    });
+
+    assert_eq!(
+        value.get("id").and_then(Value::as_str),
+        Some(entry.id.as_str())
+    );
+    assert_eq!(
+        value.get("scope").and_then(Value::as_str),
+        Some(entry.path_or_glob().as_str())
+    );
+    assert_eq!(
+        value.get("policy_output").and_then(Value::as_str),
+        Some("policy/\\\"quoted\\\\output.toml")
+    );
+    assert_eq!(
+        value.get("action").and_then(Value::as_str),
+        Some("overwrite")
+    );
+}
+
+#[test]
 fn render_add_summary_json_records_entry_and_selected_finding() {
     let mut finding = test_finding_at_line(
         FindingKind::Panic,
