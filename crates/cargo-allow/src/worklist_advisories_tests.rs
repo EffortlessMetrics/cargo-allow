@@ -41,6 +41,30 @@ fn matched_outcome_for_entry_call_presence_observer() {
 }
 
 #[test]
+fn occurrence_headroom_work_item_reports_remaining_capacity() {
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-capped", FindingKind::NonRustFile);
+    entry.occurrence_limit = Some(3);
+    cfg.allow.push(entry);
+    let outcomes = vec![test_outcome(
+        MatchStatus::Matched,
+        Some("allow-capped"),
+        Some(0),
+        "matched",
+    )];
+
+    let items = work_items_from_policy_advisories(&cfg, &[], &outcomes, 0);
+
+    let item = items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected occurrence headroom work item"));
+    assert_eq!(item.kind, "occurrence_headroom");
+    assert!(item.message.contains("occurrence_limit 3"));
+    assert!(item.message.contains("1 current matches"));
+    assert!(item.message.contains("2 remaining"));
+}
+
+#[test]
 fn source_package_name_call_presence_observer() {
     let mut cfg = AllowConfig::empty();
     let mut entry = test_entry("allow-baseline", FindingKind::Panic);

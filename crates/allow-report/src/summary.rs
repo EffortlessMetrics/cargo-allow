@@ -230,7 +230,7 @@ pub fn matched_occurrence_counts(outcomes: &[MatchOutcome]) -> BTreeMap<String, 
 
 pub fn occurrence_headroom_for_entry(entry: &AllowEntry, matched_count: u32) -> Option<u32> {
     let limit = entry.occurrence_limit?;
-    (matched_count > 0 && matched_count < limit).then_some(limit)
+    (matched_count > 0 && matched_count < limit).then_some(limit - matched_count)
 }
 
 pub fn occurrence_headroom_entries(cfg: &AllowConfig, outcomes: &[MatchOutcome]) -> usize {
@@ -562,8 +562,8 @@ mod tests {
         assert_eq!(occurrence_headroom_entries(&cfg, &outcomes), 1);
         assert_eq!(
             occurrence_headroom_for_entry(&capped, 2),
-            Some(5),
-            "headroom should exist below the limit"
+            Some(3),
+            "headroom should report the remaining capacity below the limit"
         );
         assert_eq!(
             occurrence_headroom_for_entry(&at_limit, 2),
