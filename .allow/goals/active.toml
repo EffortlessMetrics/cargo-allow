@@ -157,6 +157,8 @@ evidence_notes = [
   "Current-main PR6B proof passes: allow-report 225 tests, cargo-allow explain 35 tests, Clippy, active-goal parser, and no-new guard.",
   "Third PR6 slice landed via #2222 as d0bff084: check now projects lifecycle status through the shared read model before applying no-new/strict posture; worklist now consumes the same status map without duplicate grouping.",
   "Current-main PR6C proof passes: hosted test (workspace fmt, Clippy, workspace/unit/doc tests, docs, audit, no-new, and spec-system checks), focused check_lane_posture 5 tests, allow-match 70 tests, cargo-allow Clippy, and no-new guard.",
+  "Fourth PR6 slice landed via #2230 as 521d60d3: audit, check, and diff reports now consume per-outcome lifecycle overrides for expired/review-due matched entries; evidence accounting and dedicated baseline-debt counts remain unchanged.",
+  "Current-main PR6D proof passes: hosted test (workspace fmt, Clippy, workspace/unit/doc tests, docs, audit, no-new, and spec-system checks), allow-report read_model 3 tests, audit_output 7 tests, e2e_occurrence_limit 1 test, diff_render 8 tests, check_lane_posture 5 tests, and cargo-allow Clippy.",
 ]
 
 [[work_item]]
