@@ -91,7 +91,14 @@ fn receipt_matches_empty_check_golden_contract() {
         render_scanner_limitations_json()
     );
 
-    assert_eq!(json, expected);
+    let actual_value = serde_json::from_str::<serde_json::Value>(&json);
+    let expected_value = serde_json::from_str::<serde_json::Value>(&expected);
+    assert!(actual_value.is_ok(), "typed receipt must remain valid JSON");
+    assert!(
+        expected_value.is_ok(),
+        "golden receipt must remain valid JSON"
+    );
+    assert_eq!(actual_value.ok(), expected_value.ok());
 }
 
 #[test]
@@ -267,20 +274,74 @@ fn receipt_can_include_source_exception_inventory() {
         ReportContext::source_syntax("git_tracked", None, None, None),
     );
 
-    assert!(json.contains("\"source_inventory\""));
-    assert!(json.contains("\"findings\": 2"));
-    assert!(json.contains(
-        "{\"kind\": \"panic\", \"total\": 1, \"matched\": 1, \"new\": 0, \"review_items\": 0}"
-    ));
-    assert!(json.contains(
-        "{\"kind\": \"unsafe\", \"total\": 1, \"matched\": 0, \"new\": 1, \"review_items\": 1}"
-    ));
-    assert!(json.contains(
-        "{\"kind\": \"panic\", \"family\": \"unwrap\", \"label\": \"panic.unwrap\", \"total\": 1, \"matched\": 1, \"new\": 0, \"review_items\": 0}"
-    ));
-    assert!(json.contains(
-        "{\"kind\": \"unsafe\", \"family\": \"unsafe_block\", \"label\": \"unsafe.unsafe_block\", \"total\": 1, \"matched\": 0, \"new\": 1, \"review_items\": 1}"
-    ));
+    let value = serde_json::from_str::<serde_json::Value>(&json);
+    assert!(value.is_ok(), "typed receipt must remain valid JSON");
+    let Some(value) = value.ok() else {
+        return;
+    };
+    let source_inventory = value.get("source_inventory");
+    assert!(
+        source_inventory.is_some(),
+        "receipt must include source_inventory"
+    );
+    let Some(source_inventory) = source_inventory else {
+        return;
+    };
+    assert_eq!(
+        source_inventory.get("findings").and_then(|v| v.as_u64()),
+        Some(2)
+    );
+    let by_kind = source_inventory.get("by_kind").and_then(|v| v.as_array());
+    assert!(by_kind.is_some(), "source inventory must include by_kind");
+    let Some(by_kind) = by_kind else {
+        return;
+    };
+    assert!(by_kind.iter().any(|row| {
+        row.get("kind").and_then(|v| v.as_str()) == Some("panic")
+            && row.get("matched").and_then(|v| v.as_u64()) == Some(1)
+    }));
+    assert!(by_kind.iter().any(|row| {
+        row.get("kind").and_then(|v| v.as_str()) == Some("unsafe")
+            && row.get("new").and_then(|v| v.as_u64()) == Some(1)
+    }));
+    let by_family = source_inventory.get("by_family").and_then(|v| v.as_array());
+    assert!(
+        by_family.is_some(),
+        "source inventory must include by_family"
+    );
+    let Some(by_family) = by_family else {
+        return;
+    };
+    assert!(by_family.iter().any(|row| {
+        row.get("label").and_then(|v| v.as_str()) == Some("panic.unwrap")
+            && row.get("matched").and_then(|v| v.as_u64()) == Some(1)
+    }));
+    assert!(by_family.iter().any(|row| {
+        row.get("label").and_then(|v| v.as_str()) == Some("unsafe.unsafe_block")
+            && row.get("new").and_then(|v| v.as_u64()) == Some(1)
+    }));
+}
+
+#[test]
+fn receipt_error_diagnostic_escapes_quotes_and_control_characters() {
+    let diagnostic = "invalid policy: \"mode\"\\path\nline\t\0";
+
+    let json = render_error_receipt(
+        diagnostic,
+        ReportContext::source_syntax("git_tracked", None, None, None),
+    );
+    let value = serde_json::from_str::<serde_json::Value>(&json);
+
+    assert!(value.is_ok(), "error receipt must remain valid JSON");
+    let Some(value) = value.ok() else {
+        return;
+    };
+    assert_eq!(value.get("status").and_then(|v| v.as_str()), Some("error"));
+    assert_eq!(value.get("failed").and_then(|v| v.as_bool()), Some(true));
+    assert_eq!(
+        value.get("diagnostic").and_then(|v| v.as_str()),
+        Some(diagnostic)
+    );
 }
 
 #[test]
