@@ -203,6 +203,24 @@ target_fingerprint = "md"
 line_hint = 1
 
 [[allow]]
+id = "allow-4736"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/ledger-coherence/closeouts/s16-refresh-mutation-receipt.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records refresh mutation-receipt adoption landed via #2160 and preserves the remaining prune and migrate claim boundary."
+evidence = ["issue:2159", "doc:plans/ledger-coherence/implementation-plan.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-14"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/ledger-coherence/closeouts/s16-refresh-mutation-receipt.md"
+target_fingerprint = "md"
+line_hint = 1
+
+[[allow]]
 id = "allow-4728"
 kind = "non_rust_file"
 family = "documentation"
