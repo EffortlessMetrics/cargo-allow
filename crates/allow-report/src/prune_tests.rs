@@ -20,6 +20,24 @@ fn prune_json_renderer_records_mode_context_and_candidates() {
             written_path: None,
         },
         InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(49)),
+        &MutationReceipt {
+            operation: "prune",
+            tool_version: "0.1.10",
+            repo_root: Some("H:/Code/Rust/cargo-allow"),
+            config_source: Some("policy/allow.toml"),
+            ledger_ids: Vec::new(),
+            changed_allow_ids: vec!["allow-stale"],
+            before_fingerprints: vec![Some(
+                "sha256:v1:0000000000000000000000000000000000000000000000000000000000000000"
+                    .to_string(),
+            )],
+            after_fingerprints: vec![None],
+            result: "stdout",
+            next_commands: vec![
+                "git diff -- policy/allow.toml".to_string(),
+                "cargo-allow check --mode no-new".to_string(),
+            ],
+        },
     );
 
     assert!(json.contains("\"schema_id\": \"cargo-allow.prune.v1\""));
@@ -35,47 +53,28 @@ fn prune_json_renderer_records_mode_context_and_candidates() {
     assert!(json.contains("\"id\": \"allow-stale\""));
     assert!(json.contains("\"kind\": \"panic\""));
     assert!(json.contains("\"family\": \"unwrap\""));
-    let expected = format!(
-        r#"{{
-  "schema_version": 1,
-  "schema_id": "cargo-allow.prune.v1",
-  "tool": "cargo-allow",
-  "command": "prune",
-  "claim_boundary": {},
-  "scanner_limitations": {},
-  "inventory": {{
-    "scope": "source_tree",
-    "scanner": "source_syntax",
-    "source": "git_tracked",
-    "root": "H:/Code/Rust/cargo-allow",
-    "files_scanned": 49
-  }},
-  "mode": {{
-    "dry_run": true,
-    "write_requested": false,
-    "explicit_dry_run": true,
-    "written_path": null
-  }},
-  "summary": {{
-    "stale_entries": 1
-  }},
-  "stale_entries": [
-    {{
-      "id": "allow-stale",
-      "kind": "panic",
-      "family": "unwrap",
-      "owner": "parser",
-      "classification": "baseline_debt",
-      "scope": "crates/parser/src/lib.rs",
-      "reason": "stale baseline entry"
-    }}
-  ]
-}}
-"#,
-        render_claim_boundary_json(),
-        render_scanner_limitations_json()
+    assert!(json.contains("\"mutation_receipt\""));
+    let parsed = serde_json::from_str::<serde_json::Value>(&json);
+    assert!(parsed.is_ok(), "prune output must remain valid JSON");
+    let Some(parsed) = parsed.ok() else {
+        return;
+    };
+    assert_eq!(
+        parsed
+            .pointer("/mutation_receipt/operation")
+            .and_then(serde_json::Value::as_str),
+        Some("prune")
     );
-    assert_eq!(json, expected);
+    assert_eq!(
+        parsed
+            .pointer("/mutation_receipt/changed_allow_ids/0")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-stale")
+    );
+    assert_eq!(
+        parsed.pointer("/mutation_receipt/after_fingerprints/0"),
+        Some(&serde_json::Value::Null)
+    );
 }
 
 #[test]

@@ -63,6 +63,21 @@ fn render_prune_stale_json_records_context_and_candidates() {
                 Some("H:/Code/Rust/cargo-allow"),
                 Some(49),
             ),
+            mutation_receipt: allow_report::MutationReceipt {
+                operation: "prune",
+                tool_version: "0.1.10",
+                repo_root: Some("H:/Code/Rust/cargo-allow"),
+                config_source: Some("policy/allow.toml"),
+                ledger_ids: Vec::new(),
+                changed_allow_ids: vec!["allow-stale"],
+                before_fingerprints: vec![Some(
+                    "sha256:v1:0000000000000000000000000000000000000000000000000000000000000000"
+                        .to_string(),
+                )],
+                after_fingerprints: vec![None],
+                result: "stdout",
+                next_commands: vec!["cargo-allow check --mode no-new".to_string()],
+            },
         },
     );
 
@@ -85,6 +100,27 @@ fn render_prune_stale_json_records_context_and_candidates() {
     assert!(json.contains("\"id\": \"allow-stale\""));
     assert!(json.contains("\"kind\": \"panic\""));
     assert!(json.contains("\"family\": \"unwrap\""));
+    let parsed = serde_json::from_str::<serde_json::Value>(&json);
+    assert!(parsed.is_ok(), "prune output must remain valid JSON");
+    let Some(parsed) = parsed.ok() else {
+        return;
+    };
+    assert_eq!(
+        parsed
+            .pointer("/mutation_receipt/operation")
+            .and_then(serde_json::Value::as_str),
+        Some("prune")
+    );
+    assert_eq!(
+        parsed
+            .pointer("/mutation_receipt/changed_allow_ids/0")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-stale")
+    );
+    assert_eq!(
+        parsed.pointer("/mutation_receipt/after_fingerprints/0"),
+        Some(&serde_json::Value::Null)
+    );
 }
 
 #[test]
@@ -139,5 +175,20 @@ fn test_prune_context() -> PruneContext<'static> {
             Some("H:/Code/Rust/cargo-allow"),
             Some(49),
         ),
+        mutation_receipt: allow_report::MutationReceipt {
+            operation: "prune",
+            tool_version: "0.1.10",
+            repo_root: Some("H:/Code/Rust/cargo-allow"),
+            config_source: Some("policy/allow.toml"),
+            ledger_ids: Vec::new(),
+            changed_allow_ids: vec!["allow-stale"],
+            before_fingerprints: vec![Some(
+                "sha256:v1:0000000000000000000000000000000000000000000000000000000000000000"
+                    .to_string(),
+            )],
+            after_fingerprints: vec![None],
+            result: "stdout",
+            next_commands: vec!["cargo-allow check --mode no-new".to_string()],
+        },
     }
 }

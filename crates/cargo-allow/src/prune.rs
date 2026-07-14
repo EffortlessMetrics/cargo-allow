@@ -1,6 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
+use allow_report::MutationReceipt;
 
 use crate::{
     EvidenceValidationMode, MutationLock, SourceTreeReportContext, config_path, emit_text,
@@ -67,6 +68,51 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
     let _mutation_lock = mutation_lock;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let candidates = prune_stale_candidates(&cfg, &outcomes);
+    let policy_path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
+        CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
+    })?;
+    let mut receipt_candidates = candidates.iter().collect::<Vec<_>>();
+    receipt_candidates.sort_by(|left, right| left.id.cmp(&right.id));
+    let before_fingerprints = receipt_candidates
+        .iter()
+        .map(|candidate| {
+            cfg.allow
+                .iter()
+                .find(|entry| entry.id == candidate.id)
+                .ok_or_else(|| {
+                    CargoAllowError::new(format!(
+                        "internal error: stale candidate {} is missing from policy",
+                        candidate.id
+                    ))
+                })
+                .map(|entry| Some(allow_core::allow_entry_content_fingerprint(entry)))
+        })
+        .collect::<CargoAllowResult<Vec<_>>>()?;
+    let repo_root = root.display().to_string();
+    let config_source = policy_path.display().to_string();
+    let recovery_command = format!("git diff -- {}", policy_path.display());
+    let mutation_receipt = MutationReceipt {
+        operation: "prune",
+        tool_version: env!("CARGO_PKG_VERSION"),
+        repo_root: Some(&repo_root),
+        config_source: Some(&config_source),
+        ledger_ids: Vec::new(),
+        changed_allow_ids: receipt_candidates
+            .iter()
+            .map(|candidate| candidate.id.as_str())
+            .collect(),
+        before_fingerprints,
+        after_fingerprints: vec![None; receipt_candidates.len()],
+        result: if args.write && !candidates.is_empty() {
+            "written"
+        } else {
+            "stdout"
+        },
+        next_commands: vec![
+            recovery_command,
+            "cargo-allow check --mode no-new".to_string(),
+        ],
+    };
     let rendered_policy =
         (args.format == PruneFormat::Human && !candidates.is_empty()).then(|| render_policy(&cfg));
     let removed_toml_blocks = rendered_policy
@@ -74,9 +120,6 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         .map(|rendered| stale_removed_toml_blocks(rendered, &candidates))
         .unwrap_or_default();
     let written_path = if args.write && !candidates.is_empty() {
-        let path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
-            CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
-        })?;
         let pruned = config_without_prune_candidates(&cfg, &candidates);
         validate_policy(&pruned)?;
         let evidence_source_tree_files =
@@ -86,14 +129,15 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             &pruned,
             evidence_source_tree_files.as_ref(),
         )?;
-        write_file(&path, &render_policy(&pruned))?;
-        Some(path)
+        write_file(&policy_path, &render_policy(&pruned))?;
+        Some(policy_path.clone())
     } else {
         None
     };
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = PruneContext {
         inventory: source_context.inventory(),
+        mutation_receipt,
     };
     let text = match args.format {
         PruneFormat::Human => render_prune_stale_result(
@@ -130,6 +174,18 @@ pub(crate) fn sample_prune_json_for_contract_test() -> String {
                 Some("H:/Code/Rust/cargo-allow"),
                 Some(49),
             ),
+            mutation_receipt: allow_report::MutationReceipt {
+                operation: "prune",
+                tool_version: env!("CARGO_PKG_VERSION"),
+                repo_root: Some("H:/Code/Rust/cargo-allow"),
+                config_source: Some("policy/allow.toml"),
+                ledger_ids: Vec::new(),
+                changed_allow_ids: Vec::new(),
+                before_fingerprints: Vec::new(),
+                after_fingerprints: Vec::new(),
+                result: "stdout",
+                next_commands: vec!["cargo-allow check --mode no-new".to_string()],
+            },
         },
     )
 }

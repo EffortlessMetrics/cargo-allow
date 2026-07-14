@@ -28,7 +28,12 @@ pub(super) fn render_prune_stale_json(
 ) -> String {
     let mode = PruneRenderMode::new(explicit_dry_run, write_requested, written_path);
     let report_candidates = report_prune_candidates(candidates);
-    allow_report::render_prune_json(&report_candidates, mode.context(), context.inventory)
+    allow_report::render_prune_json(
+        &report_candidates,
+        mode.context(),
+        context.inventory,
+        &context.mutation_receipt,
+    )
 }
 
 fn report_prune_candidates(candidates: &[PruneCandidate]) -> Vec<allow_report::PruneCandidate<'_>> {

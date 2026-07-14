@@ -140,6 +140,7 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "command",
                 "inventory",
                 "mode",
+                "mutation_receipt",
                 "scanner_limitations",
                 "schema_id",
                 "schema_version",

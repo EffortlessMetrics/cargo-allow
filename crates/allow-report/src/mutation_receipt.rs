@@ -3,7 +3,7 @@
 //! Envelope" (GOAL-0004 PR 5). Command-specific payloads remain outside this
 //! envelope; provenance and changed-entry metadata must not be independently
 //! reinvented per command. The envelope is wired into `add`, `propose`, and
-//! `refresh`; `prune` and `migrate` adopt it in later slices.
+//! `refresh` and `prune`; `migrate` adopts it in the remaining slice.
 
 use allow_core::json_escape;
 
