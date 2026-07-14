@@ -17,7 +17,6 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
         unsafe_baseline_debt_entries_proposed: 1,
         mutation_receipt: sample_mutation_receipt(),
     };
-
     let json = render_propose_json(report.clone());
 
     assert!(json.contains("\"schema_id\": \"cargo-allow.propose.v1\""));
@@ -148,7 +147,7 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
 
 #[test]
 fn propose_renderer_omits_follow_up_queues_when_nothing_proposed() {
-    let report = ProposeReport {
+    let mut report = ProposeReport {
         inventory: InventoryContext::source_syntax("git_tracked", None, Some(12)),
         kind: None,
         expires: "2026-08-02",
@@ -159,6 +158,10 @@ fn propose_renderer_omits_follow_up_queues_when_nothing_proposed() {
         unsafe_baseline_debt_entries_proposed: 0,
         mutation_receipt: sample_mutation_receipt(),
     };
+    report.mutation_receipt.result = "stdout";
+    report.mutation_receipt.changed_allow_ids.clear();
+    report.mutation_receipt.before_fingerprints.clear();
+    report.mutation_receipt.after_fingerprints.clear();
 
     let json = render_propose_json(report.clone());
     let text = render_propose_human(report);
