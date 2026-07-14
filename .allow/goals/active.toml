@@ -155,6 +155,8 @@ evidence_notes = [
   "Hosted test passed; UB Review remains advisory and stops at the repository MINIMAX_API_KEY preflight tracked by #2084.",
   "Second PR6 slice landed via #2212 as 87de4d69: explain human and JSON summary status now consume the shared lifecycle projection; baseline_debt summaries align with the canonical read-model vocabulary.",
   "Current-main PR6B proof passes: allow-report 225 tests, cargo-allow explain 35 tests, Clippy, active-goal parser, and no-new guard.",
+  "Third PR6 slice landed via #2222 as d0bff084: check now projects lifecycle status through the shared read model before applying no-new/strict posture; worklist now consumes the same status map without duplicate grouping.",
+  "Current-main PR6C proof passes: hosted test (workspace fmt, Clippy, workspace/unit/doc tests, docs, audit, no-new, and spec-system checks), focused check_lane_posture 5 tests, allow-match 70 tests, cargo-allow Clippy, and no-new guard.",
 ]
 
 [[work_item]]
