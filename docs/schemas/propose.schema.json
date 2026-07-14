@@ -14,6 +14,7 @@
     "inventory",
     "options",
     "summary",
+    "mutation_receipt",
     "generated_entry_defaults"
   ],
   "properties": {
@@ -99,6 +100,9 @@
         "$ref": "#/$defs/follow_up_queue"
       }
     },
+    "mutation_receipt": {
+      "$ref": "#/$defs/mutation_receipt"
+    },
     "generated_entry_defaults": {
       "type": "object",
       "additionalProperties": false,
@@ -125,6 +129,45 @@
     }
   },
   "$defs": {
+    "mutation_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Shared provenance envelope for mutation commands (CARGO-ALLOW-SPEC-0008 Mutation Receipt Envelope, GOAL-0004 PR 5).",
+      "required": [
+        "schema_id",
+        "operation",
+        "tool_version",
+        "repo_root",
+        "config_source",
+        "ledger_ids",
+        "changed_allow_ids",
+        "before_fingerprints",
+        "after_fingerprints",
+        "result",
+        "next_commands",
+        "claim_boundary"
+      ],
+      "properties": {
+        "schema_id": { "const": "cargo-allow.mutation-receipt.v1" },
+        "operation": { "const": "propose" },
+        "tool_version": { "type": "string" },
+        "repo_root": { "type": ["string", "null"] },
+        "config_source": { "type": ["string", "null"] },
+        "ledger_ids": { "type": "array", "items": { "type": "string" } },
+        "changed_allow_ids": { "type": "array", "items": { "type": "string" } },
+        "before_fingerprints": {
+          "type": "array",
+          "items": { "type": ["string", "null"], "pattern": "^sha256:v1:[0-9a-f]{64}$" }
+        },
+        "after_fingerprints": {
+          "type": "array",
+          "items": { "type": ["string", "null"], "pattern": "^sha256:v1:[0-9a-f]{64}$" }
+        },
+        "result": { "type": "string" },
+        "next_commands": { "type": "array", "items": { "type": "string" } },
+        "claim_boundary": { "type": "string" }
+      }
+    },
     "claim_boundary_flag": {
       "type": "string",
       "enum": [

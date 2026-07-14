@@ -1,6 +1,7 @@
 use allow_core::{CargoAllowResult, FindingKind, MatchStatus};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::render_policy;
+use allow_report::MutationReceipt;
 
 use crate::{
     EvidenceValidationMode, MutationLock, SourceTreeReportContext, emit_stderr_text,
@@ -68,6 +69,41 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         }
     }
     let rendered = render_policy(&proposed);
+    let original_allow_count = cfg.allow.len();
+    let changed_allow_ids = proposed
+        .allow
+        .iter()
+        .skip(original_allow_count)
+        .map(|entry| entry.id.as_str())
+        .collect::<Vec<_>>();
+    let after_fingerprints = proposed
+        .allow
+        .iter()
+        .skip(original_allow_count)
+        .map(|entry| Some(allow_core::allow_entry_content_fingerprint(entry)))
+        .collect::<Vec<_>>();
+    let repo_root = root.display().to_string();
+    let config_source = crate::policy_config::config_path(&root, args.config.as_deref())
+        .map(|path| path.display().to_string());
+    let mutation_receipt = MutationReceipt {
+        operation: "propose",
+        tool_version: env!("CARGO_PKG_VERSION"),
+        repo_root: Some(repo_root.as_str()),
+        config_source: config_source.as_deref(),
+        ledger_ids: Vec::new(),
+        before_fingerprints: vec![None; changed_allow_ids.len()],
+        changed_allow_ids,
+        after_fingerprints,
+        result: if args.write.is_some() {
+            "written"
+        } else {
+            "stdout"
+        },
+        next_commands: vec![
+            "cargo-allow worklist --baseline-debt --format json".to_string(),
+            "cargo-allow check --mode no-new".to_string(),
+        ],
+    };
     if let Some(path) = &args.write {
         write_file_no_overwrite(path, &rendered, args.force)?;
     } else {
@@ -77,6 +113,7 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     let context = ProposeContext {
         inventory: source_context.inventory(),
         kind_filter: args.kind.as_deref(),
+        mutation_receipt,
     };
     let summary = match args.summary_format {
         ProposeSummaryFormat::Human => render_propose_summary(
@@ -119,6 +156,25 @@ pub(crate) fn sample_propose_json_for_contract_test() -> String {
                 Some(51),
             ),
             kind_filter: Some("panic"),
+            mutation_receipt: MutationReceipt {
+                operation: "propose",
+                tool_version: env!("CARGO_PKG_VERSION"),
+                repo_root: Some("H:/Code/Rust/cargo-allow"),
+                config_source: Some("policy/allow.toml"),
+                ledger_ids: Vec::new(),
+                changed_allow_ids: vec!["allow-0001", "allow-0002", "allow-0003"],
+                before_fingerprints: vec![None, None, None],
+                after_fingerprints: vec![
+                    Some("sha256:v1:0000000000000000000000000000000000000000000000000000000000000001".to_string()),
+                    Some("sha256:v1:0000000000000000000000000000000000000000000000000000000000000002".to_string()),
+                    Some("sha256:v1:0000000000000000000000000000000000000000000000000000000000000003".to_string()),
+                ],
+                result: "written",
+                next_commands: vec![
+                    "cargo-allow worklist --baseline-debt --format json".to_string(),
+                    "cargo-allow check --mode no-new".to_string(),
+                ],
+            },
         },
     )
 }

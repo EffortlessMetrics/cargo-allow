@@ -1,6 +1,6 @@
 use crate::contracts::PROPOSE_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
-use crate::{CLAIM_BOUNDARY_TEXT, ProposeReport};
+use crate::{CLAIM_BOUNDARY_TEXT, ProposeReport, render_mutation_receipt_json};
 use allow_core::json_escape;
 
 pub fn render_propose_human(report: ProposeReport<'_>) -> String {
@@ -37,7 +37,7 @@ pub fn render_propose_human(report: ProposeReport<'_>) -> String {
     } else {
         out.push_str("output: stdout\n");
     }
-    append_propose_follow_up_queues_human(report, &mut out);
+    append_propose_follow_up_queues_human(&report, &mut out);
     out.push_str(
         "claim boundary: proposal only; generated debt still requires human review and evidence.\n",
     );
@@ -85,7 +85,13 @@ pub fn render_propose_json(report: ProposeReport<'_>) -> String {
         report.unsafe_baseline_debt_entries_proposed
     ));
     out.push_str("  },\n");
-    append_propose_follow_up_queues_json(report, &mut out);
+    append_propose_follow_up_queues_json(&report, &mut out);
+    out.push_str("  \"mutation_receipt\": ");
+    out.push_str(&render_mutation_receipt_json(
+        &report.mutation_receipt,
+        "  ",
+    ));
+    out.push_str(",\n");
     out.push_str("  \"generated_entry_defaults\": {\n");
     out.push_str("    \"owner\": \"unowned\",\n");
     out.push_str("    \"classification\": \"baseline_debt\",\n");
@@ -99,7 +105,7 @@ pub fn render_propose_json(report: ProposeReport<'_>) -> String {
     out
 }
 
-fn append_propose_follow_up_queues_human(report: ProposeReport<'_>, out: &mut String) {
+fn append_propose_follow_up_queues_human(report: &ProposeReport<'_>, out: &mut String) {
     let queues = propose_follow_up_queues(report);
     if queues.is_empty() {
         return;
@@ -110,7 +116,7 @@ fn append_propose_follow_up_queues_human(report: ProposeReport<'_>, out: &mut St
     }
 }
 
-fn append_propose_follow_up_queues_json(report: ProposeReport<'_>, out: &mut String) {
+fn append_propose_follow_up_queues_json(report: &ProposeReport<'_>, out: &mut String) {
     let queues = propose_follow_up_queues(report);
     if queues.is_empty() {
         return;
@@ -153,7 +159,7 @@ fn append_propose_follow_up_queues_json(report: ProposeReport<'_>, out: &mut Str
     out.push_str("\n  ],\n");
 }
 
-fn propose_follow_up_queues(report: ProposeReport<'_>) -> Vec<ProposeFollowUpQueue> {
+fn propose_follow_up_queues(report: &ProposeReport<'_>) -> Vec<ProposeFollowUpQueue> {
     let mut queues = Vec::new();
     push_propose_follow_up_queue_if(
         &mut queues,

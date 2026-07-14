@@ -29,14 +29,14 @@ macro-expansion, or proof-level coverage.
 - [prune.schema.json](prune.schema.json)
 - [refresh.schema.json](refresh.schema.json)
 - [propose.schema.json](propose.schema.json)
-- [add.schema.json](add.schema.json) embeds the shared `mutation_receipt`
+- [add.schema.json](add.schema.json) and [propose.schema.json](propose.schema.json) embed the shared `mutation_receipt`
   fragment (`cargo-allow.mutation-receipt.v1`): a provenance envelope
   (`operation`, `tool_version`, `repo_root`, `config_source`, `ledger_ids`,
   `changed_allow_ids`, `before_fingerprints`, `after_fingerprints`, `result`,
   `next_commands`, `claim_boundary`) per CARGO-ALLOW-SPEC-0008 "Mutation
-  Receipt Envelope" (GOAL-0004 PR 5). `propose`, `refresh`, `prune`, and
-  `migrate` adopt the same fragment in later slices rather than reinventing
-  per-command provenance shapes.
+  Receipt Envelope" (GOAL-0004 PR 5). `refresh`, `prune`, and `migrate` adopt
+  the same fragment in later slices rather than reinventing per-command
+  provenance shapes.
 - [migrate.schema.json](migrate.schema.json)
 - [spec-system.schema.json](spec-system.schema.json)
 - [worklist.schema.json](worklist.schema.json)
@@ -593,8 +593,9 @@ Schema compatibility tests also lock:
   vocabularies; and
 - `worklist` and `explain` proof commands remain standalone `cargo-allow`
   commands; and
-- the `add` artifact's `mutation_receipt` envelope (GOAL-0004 PR 5) keeps its
-  required field set and `cargo-allow.mutation-receipt.v1` `schema_id`.
+- the `add` and `propose` artifacts' `mutation_receipt` envelopes (GOAL-0004
+  PR 5) keep the required field set and
+  `cargo-allow.mutation-receipt.v1` `schema_id`.
 
 This is not a promise that every field is permanently frozen. Breaking changes
 should either preserve the existing `*.v1` contract or introduce a new schema ID

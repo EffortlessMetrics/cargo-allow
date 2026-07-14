@@ -121,6 +121,7 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "follow_up_queues",
                 "generated_entry_defaults",
                 "inventory",
+                "mutation_receipt",
                 "options",
                 "scanner_limitations",
                 "schema_id",

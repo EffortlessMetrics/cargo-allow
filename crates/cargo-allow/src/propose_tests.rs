@@ -104,6 +104,18 @@ fn propose_summary_reports_generated_baseline_boundary() {
                 Some(51),
             ),
             kind_filter: Some("panic"),
+            mutation_receipt: allow_report::MutationReceipt {
+                operation: "propose",
+                tool_version: "0.1.10",
+                repo_root: Some("H:/Code/Rust/cargo-allow"),
+                config_source: Some("policy/allow.toml"),
+                ledger_ids: Vec::new(),
+                changed_allow_ids: Vec::new(),
+                before_fingerprints: Vec::new(),
+                after_fingerprints: Vec::new(),
+                result: "stdout",
+                next_commands: Vec::new(),
+            },
         },
     );
 
