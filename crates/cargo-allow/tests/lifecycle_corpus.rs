@@ -12,6 +12,9 @@ use support::{
 
 const EXPIRED_ID: &str = "allow-expired";
 const REVIEW_DUE_ID: &str = "allow-review";
+const AUDIT_ARGS: &[&str] = &["audit"];
+const CHECK_NO_NEW_ARGS: &[&str] = &["check", "--mode", "no-new"];
+const DIFF_ARGS: &[&str] = &["diff", "--base", "HEAD"];
 
 #[test]
 fn lifecycle_statuses_converge_across_read_artifacts() {
@@ -61,9 +64,9 @@ fn lifecycle_statuses_converge_across_read_artifacts() {
     assert_entry_status(&worklist, "/work_items", REVIEW_DUE_ID, "review_due");
 
     for (command, args, should_succeed) in [
-        ("audit", &["audit"][..], true),
-        ("check", &["check", "--mode", "no-new"][..], false),
-        ("diff", &["diff", "--base", "HEAD"][..], false),
+        ("audit", AUDIT_ARGS, true),
+        ("check", CHECK_NO_NEW_ARGS, false),
+        ("diff", DIFF_ARGS, false),
     ] {
         let (path, result) = run_report(&root, command, args);
         assert_status(command, &result, should_succeed);
