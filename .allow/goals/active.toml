@@ -178,6 +178,7 @@ evidence_notes = [
   "Seed landed via #2233 as b6ecccfc: subprocess artifacts now agree on expired and review_due status across list, explain, worklist, audit, check, and diff; a separate fixture proves review_due is advisory in no-new and blocking in strict.",
   "Stale/location-drift slice landed via #2236 as 8713ee72: the same six read surfaces now expose stale and location_drift by allow ID; isolated mode proof keeps stale blocking only in strict and location_drift advisory. See CARGO-ALLOW-CLOSEOUT-0047.",
   "Occurrence-headroom slice landed via #2239 as b9d96ece: the helper now reports limit minus current matches, and the lifecycle corpus proves list, explain, worklist, audit, check, and diff projections for two matches under a limit of three. See CARGO-ALLOW-CLOSEOUT-0048.",
+  "Evidence-health slice landed via #2242 as 7e6bc37a: the lifecycle corpus now distinguishes missing evidence, broken local references, and weak untyped references across list, explain, worklist, audit, check, and diff. See CARGO-ALLOW-CLOSEOUT-0049.",
   "Full lifecycle matrix and cross-command movement/posture/evidence/repair convergence remain open; see CARGO-ALLOW-CLOSEOUT-0046.",
 ]
 
