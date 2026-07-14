@@ -153,6 +153,12 @@ fn validate_aggregates_multiple_errors() {
     assert!(message.contains("schema_version must not be empty"));
     assert!(message.contains("policy name must not be empty"));
     assert!(message.contains("unsupported workspace default_mode `bogus`"));
+    assert_eq!(err.diagnostics().len(), 3);
+    assert!(
+        err.diagnostics()
+            .iter()
+            .all(|diagnostic| diagnostic.category == "policy_validation")
+    );
 }
 
 #[test]

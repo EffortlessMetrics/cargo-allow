@@ -1,6 +1,6 @@
 use crate::{
-    CargoAllowError, CargoAllowErrorKind, CargoAllowResult, FindingKind, normalize_path,
-    source_tree_path::normalize_source_tree_scope,
+    CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, FindingKind,
+    normalize_path, source_tree_path::normalize_source_tree_scope,
 };
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -256,16 +256,16 @@ impl AllowConfig {
     pub fn validation_errors(&self) -> Vec<CargoAllowError> {
         let mut errors = Vec::new();
         if let Err(e) = validate_schema_version(&self.schema_version) {
-            errors.push(e);
+            errors.push(with_core_validation_diagnostic(e, "schema_version"));
         }
         if let Err(e) = validate_policy_name(&self.policy) {
-            errors.push(e);
+            errors.push(with_core_validation_diagnostic(e, "policy"));
         }
         if let Err(e) = validate_optional_status(self.status.as_deref()) {
-            errors.push(e);
+            errors.push(with_core_validation_diagnostic(e, "status"));
         }
         if let Err(e) = WorkspaceMode::from_str(&self.workspace.default_mode) {
-            errors.push(e);
+            errors.push(with_core_validation_diagnostic(e, "workspace.default_mode"));
         }
         errors
     }
@@ -281,15 +281,32 @@ fn join_errors(errors: Vec<CargoAllowError>) -> CargoAllowResult<()> {
                 .map(|e| format!("  - {e}"))
                 .collect::<Vec<_>>()
                 .join("\n");
+            let diagnostics = errors
+                .iter()
+                .flat_map(|error| error.diagnostics().iter().cloned())
+                .collect::<Vec<_>>();
             Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::InvalidPolicy,
                 format!(
                     "{count} policy validation errors:\n{summary}",
                     count = errors.len()
                 ),
-            ))
+            )
+            .with_diagnostics(diagnostics))
         }
     }
+}
+
+fn with_core_validation_diagnostic(error: CargoAllowError, field: &str) -> CargoAllowError {
+    let code = error.code();
+    let message = error.message().to_owned();
+    error.with_diagnostic(CargoAllowDiagnostic::error(
+        code,
+        "policy_validation",
+        None,
+        Some(field),
+        message,
+    ))
 }
 
 /// Supported policy schema versions. `"1"` is accepted as a legacy alias.

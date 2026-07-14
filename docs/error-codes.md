@@ -32,3 +32,12 @@ line and character column. The human-readable message remains stable for
 existing callers; machine consumers should use `code()`, `kind()`, and
 `location()` instead of parsing `Display` output. Errors created without a
 source span continue to return `None`.
+
+## Validation diagnostics
+
+Policy validation errors expose `CargoAllowError::diagnostics()` as a stable
+machine-readable list. Each `CargoAllowDiagnostic` carries its error code,
+category, severity, optional source path/span, allow-entry ID, validation field,
+message, help text, and causes. Aggregated validation keeps one diagnostic per
+independent failure; the existing `Display` text remains an operator-oriented
+summary for compatibility.
