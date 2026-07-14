@@ -18,6 +18,7 @@ const HEADROOM_ID: &str = "allow-headroom";
 const MISSING_EVIDENCE_ID: &str = "allow-missing-evidence";
 const BROKEN_EVIDENCE_ID: &str = "allow-broken-evidence";
 const WEAK_EVIDENCE_ID: &str = "allow-weak-evidence";
+const BASELINE_DEBT_ID: &str = "allow-baseline-debt";
 const AUDIT_ARGS: &[&str] = &["audit"];
 const CHECK_NO_NEW_ARGS: &[&str] = &["check", "--mode", "no-new"];
 const DIFF_ARGS: &[&str] = &["diff", "--base", "HEAD"];
@@ -39,6 +40,7 @@ fn lifecycle_statuses_converge_across_read_artifacts() {
     assert_entry_count(&list, MISSING_EVIDENCE_ID, "evidence_count", 0);
     assert_entry_count(&list, BROKEN_EVIDENCE_ID, "broken_evidence_references", 1);
     assert_entry_count(&list, WEAK_EVIDENCE_ID, "weak_evidence_references", 1);
+    assert_entry_status(&list, "/allow_entries", BASELINE_DEBT_ID, "baseline_debt");
 
     let (expired_path, expired_result) =
         run_report(&root, "explain-expired", &["explain", EXPIRED_ID]);
@@ -113,6 +115,21 @@ fn lifecycle_statuses_converge_across_read_artifacts() {
         "explain should show that the entry has no evidence references"
     );
 
+    let (baseline_path, baseline_result) = run_report(
+        &root,
+        "explain-baseline-debt",
+        &["explain", BASELINE_DEBT_ID],
+    );
+    assert_status("explain baseline debt", &baseline_result, true);
+    assert_quiet("explain baseline debt", &baseline_result);
+    let baseline = assert_saved_json_artifact(
+        &baseline_path,
+        "explain baseline debt",
+        "cargo-allow.explain.v1",
+        "explain",
+    );
+    assert_explain_status(&baseline, BASELINE_DEBT_ID, "baseline_debt");
+
     for (allow_id, evidence_status) in [
         (BROKEN_EVIDENCE_ID, "local_file_missing"),
         (WEAK_EVIDENCE_ID, "unstructured"),
@@ -168,6 +185,7 @@ fn lifecycle_statuses_converge_across_read_artifacts() {
     assert_work_item_kind(&worklist, MISSING_EVIDENCE_ID, "missing_evidence");
     assert_work_item_kind(&worklist, BROKEN_EVIDENCE_ID, "broken_evidence_link");
     assert_work_item_kind(&worklist, WEAK_EVIDENCE_ID, "weak_evidence_reference");
+    assert_work_item_kind(&worklist, BASELINE_DEBT_ID, "baseline_debt");
 
     for (command, args, should_succeed) in [
         ("audit", AUDIT_ARGS, true),
@@ -186,6 +204,8 @@ fn lifecycle_statuses_converge_across_read_artifacts() {
         assert_report_advisory_count(&report, "policy_missing_evidence", 1);
         assert_report_advisory_count(&report, "broken_evidence_links", 1);
         assert_report_advisory_count(&report, "weak_evidence_references", 1);
+        assert_report_advisory_count(&report, "baseline_debt", 1);
+        assert_report_summary_count(&report, "policy_baseline_debt", 1);
     }
 
     remove_temp_root(root);
@@ -282,6 +302,59 @@ fn review_due_is_advisory_in_no_new_and_blocking_in_strict() {
     remove_temp_root(root);
 }
 
+#[test]
+fn baseline_debt_is_advisory_in_no_new_and_blocking_in_strict() {
+    let root = create_fixture("baseline-debt-mode", false);
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn baseline(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write baseline source: {err}")));
+    fs::write(root.join("policy/allow.toml"), baseline_debt_policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write baseline policy: {err}")));
+
+    let no_new_output = root.join("target/cargo-allow/no-new.json");
+    let no_new = run_command(&root, &["check", "--mode", "no-new"], &no_new_output);
+    assert_status("baseline debt no-new", &no_new, true);
+    assert_quiet("baseline debt no-new", &no_new);
+    let no_new_report = assert_saved_json_artifact(
+        &no_new_output,
+        "baseline debt no-new",
+        "cargo-allow.report.v1",
+        "check",
+    );
+    assert_eq!(
+        no_new_report.pointer("/failed").and_then(Value::as_bool),
+        Some(false),
+        "baseline debt is advisory in no-new mode"
+    );
+    assert_entry_status(&no_new_report, "/outcomes", BASELINE_DEBT_ID, "matched");
+
+    let strict_output = root.join("target/cargo-allow/strict.json");
+    let strict = run_command(&root, &["check", "--mode", "strict"], &strict_output);
+    assert_status("baseline debt strict", &strict, false);
+    assert_quiet("baseline debt strict", &strict);
+    let strict_report = assert_saved_json_artifact(
+        &strict_output,
+        "baseline debt strict",
+        "cargo-allow.report.v1",
+        "check",
+    );
+    assert_eq!(
+        strict_report.pointer("/failed").and_then(Value::as_bool),
+        Some(true),
+        "baseline debt is blocking in strict mode"
+    );
+    assert_entry_status(
+        &strict_report,
+        "/outcomes",
+        BASELINE_DEBT_ID,
+        "baseline_debt",
+    );
+
+    remove_temp_root(root);
+}
+
 fn create_fixture(label: &str, include_expired: bool) -> PathBuf {
     let root = temp_root(label);
     fs::create_dir_all(root.join("src"))
@@ -289,7 +362,7 @@ fn create_fixture(label: &str, include_expired: bool) -> PathBuf {
     fs::create_dir_all(root.join("policy"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
     let source = if include_expired {
-        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\npub fn reload(value: Option<u8>) -> u8 { value.unwrap() }\npub fn relocate(value: Option<u8>) -> u8 { value.unwrap() }\npub fn reserve(value: Option<u8>) -> u8 { let first = value.unwrap(); first + value.unwrap() }\npub fn missing_evidence(value: Option<u8>) -> u8 { value.unwrap() }\npub fn broken_evidence(value: Option<u8>) -> u8 { value.unwrap() }\npub fn weak_evidence(value: Option<u8>) -> u8 { value.unwrap() }\n"
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\npub fn reload(value: Option<u8>) -> u8 { value.unwrap() }\npub fn relocate(value: Option<u8>) -> u8 { value.unwrap() }\npub fn reserve(value: Option<u8>) -> u8 { let first = value.unwrap(); first + value.unwrap() }\npub fn missing_evidence(value: Option<u8>) -> u8 { value.unwrap() }\npub fn broken_evidence(value: Option<u8>) -> u8 { value.unwrap() }\npub fn weak_evidence(value: Option<u8>) -> u8 { value.unwrap() }\npub fn baseline(value: Option<u8>) -> u8 { value.unwrap() }\n"
     } else {
         "pub fn reload(value: Option<u8>) -> u8 { value.unwrap() }\n"
     };
@@ -445,6 +518,22 @@ review_after = "2099-01-01"
 ast_kind = "method_call"
 container = "weak_evidence"
 callee = "unwrap"
+
+[[allow]]
+id = "{BASELINE_DEBT_ID}"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "generated"
+classification = "baseline_debt"
+reason = "The fixture keeps generated baseline debt for human review."
+created = "2026-07-14"
+expires = "2026-10-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "baseline"
+callee = "unwrap"
 "#
         )
     } else {
@@ -561,6 +650,48 @@ callee = "unwrap"
 [allow.last_seen]
 line = 99
 column = 1
+"#
+    )
+}
+
+fn baseline_debt_policy() -> String {
+    format!(
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+owner = "core/policy"
+status = "active"
+
+[workspace]
+root = "."
+inventory = "git-tracked"
+ignored = ["policy/**", "target/**"]
+generated = ["target/**", "vendor/**"]
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+stale_entries_fail = false
+
+[[allow]]
+id = "{BASELINE_DEBT_ID}"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "generated"
+classification = "baseline_debt"
+reason = "Generated baseline debt remains for human review."
+created = "2026-07-14"
+expires = "2026-10-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "baseline"
+callee = "unwrap"
 "#
     )
 }
@@ -719,6 +850,16 @@ fn assert_report_advisory_count(value: &Value, advisory: &str, count: u64) {
             .and_then(Value::as_u64),
         Some(count),
         "report trend should expose {advisory} count"
+    );
+}
+
+fn assert_report_summary_count(value: &Value, field: &str, count: u64) {
+    assert_eq!(
+        value
+            .pointer(&format!("/summary/{field}"))
+            .and_then(Value::as_u64),
+        Some(count),
+        "report summary should expose {field} count"
     );
 }
 
