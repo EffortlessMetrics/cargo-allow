@@ -7,7 +7,8 @@ created: 2026-07-14
 linked_issue: https://github.com/EffortlessMetrics/cargo-allow/issues/1803
 merged_commit: 700bba24
 support_tier_impact: advisory
-policy_impact: []
+policy_impact:
+  - policy/allow.toml
 ---
 
 # Closeout: Structured Match Candidates
