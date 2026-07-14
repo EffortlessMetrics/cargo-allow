@@ -19,6 +19,7 @@ pub(super) fn render_propose_summary(
         findings_scanned: findings,
         baseline_debt_entries_proposed: proposed_entries,
         unsafe_baseline_debt_entries_proposed: unsafe_proposed_entries,
+        mutation_receipt: context.mutation_receipt,
     })
 }
 
@@ -41,5 +42,6 @@ pub(super) fn render_propose_summary_json(
         findings_scanned: findings,
         baseline_debt_entries_proposed: proposed_entries,
         unsafe_baseline_debt_entries_proposed: unsafe_proposed_entries,
+        mutation_receipt: context.mutation_receipt,
     })
 }

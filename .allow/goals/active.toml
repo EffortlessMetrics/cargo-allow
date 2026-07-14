@@ -132,7 +132,7 @@ proof_commands = [
 evidence_notes = [
   "Shared operation envelope for add, propose, refresh, prune, migrate; split 5A-5D per plan.",
   "5A done: allow_report::MutationReceipt envelope defined and wired into add (CARGO-ALLOW-CLOSEOUT-0023).",
-  "5B (propose), 5C (refresh), 5D (prune, migrate) remain; promote mutation_receipt into common.v1.json once a second command adopts it.",
+  "5B propose is in progress via #2156; 5C refresh and 5D prune/migrate remain. Promote mutation_receipt into common.v1.json once a second command adoption is proven.",
 ]
 
 [[work_item]]

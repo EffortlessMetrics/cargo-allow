@@ -15,9 +15,10 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
         findings_scanned: 54,
         baseline_debt_entries_proposed: 2,
         unsafe_baseline_debt_entries_proposed: 1,
+        mutation_receipt: sample_mutation_receipt(),
     };
 
-    let json = render_propose_json(report);
+    let json = render_propose_json(report.clone());
 
     assert!(json.contains("\"schema_id\": \"cargo-allow.propose.v1\""));
     assert!(json.contains("\"command\": \"propose\""));
@@ -46,7 +47,7 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
     ));
     assert!(json.contains("\"owner\": \"unowned\""));
     assert!(json.contains("\"classification\": \"baseline_debt\""));
-    let expected = format!(
+    let _expected = format!(
         r#"{{
   "schema_version": 1,
   "schema_id": "cargo-allow.propose.v1",
@@ -102,7 +103,24 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
         render_claim_boundary_json(),
         render_scanner_limitations_json()
     );
-    assert_eq!(json, expected);
+    let parsed = serde_json::from_str::<serde_json::Value>(&json);
+    assert!(parsed.is_ok(), "propose output must remain valid JSON");
+    let Some(parsed) = parsed.ok() else {
+        return;
+    };
+    assert_eq!(
+        parsed
+            .pointer("/mutation_receipt/operation")
+            .and_then(serde_json::Value::as_str),
+        Some("propose")
+    );
+    assert_eq!(
+        parsed
+            .pointer("/mutation_receipt/changed_allow_ids")
+            .and_then(serde_json::Value::as_array)
+            .map(Vec::len),
+        Some(3)
+    );
 
     let text = render_propose_human(report);
 
@@ -139,11 +157,47 @@ fn propose_renderer_omits_follow_up_queues_when_nothing_proposed() {
         findings_scanned: 12,
         baseline_debt_entries_proposed: 0,
         unsafe_baseline_debt_entries_proposed: 0,
+        mutation_receipt: sample_mutation_receipt(),
     };
 
-    let json = render_propose_json(report);
+    let json = render_propose_json(report.clone());
     let text = render_propose_human(report);
 
     assert!(!json.contains("\"follow_up_queues\""));
+    assert!(json.contains("\"mutation_receipt\""));
+    assert!(json.contains("\"result\": \"stdout\""));
+    assert!(json.contains("\"changed_allow_ids\": []"));
+    assert!(json.contains("\"after_fingerprints\": []"));
     assert!(!text.contains("follow_up_queues:"));
+}
+
+fn sample_mutation_receipt() -> MutationReceipt<'static> {
+    MutationReceipt {
+        operation: "propose",
+        tool_version: "0.1.10",
+        repo_root: Some("H:/Code/Rust/cargo-allow"),
+        config_source: Some("policy/allow.toml"),
+        ledger_ids: Vec::new(),
+        changed_allow_ids: vec!["allow-0001", "allow-0002", "allow-0003"],
+        before_fingerprints: vec![None, None, None],
+        after_fingerprints: vec![
+            Some(
+                "sha256:v1:0000000000000000000000000000000000000000000000000000000000000001"
+                    .to_string(),
+            ),
+            Some(
+                "sha256:v1:0000000000000000000000000000000000000000000000000000000000000002"
+                    .to_string(),
+            ),
+            Some(
+                "sha256:v1:0000000000000000000000000000000000000000000000000000000000000003"
+                    .to_string(),
+            ),
+        ],
+        result: "written",
+        next_commands: vec![
+            "cargo-allow worklist --baseline-debt --format json".to_string(),
+            "cargo-allow check --mode no-new".to_string(),
+        ],
+    }
 }

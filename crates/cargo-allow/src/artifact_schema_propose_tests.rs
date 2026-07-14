@@ -25,6 +25,7 @@ fn propose_schema_locks_generated_baseline_summary_contract() {
             "inventory",
             "options",
             "summary",
+            "mutation_receipt",
             "generated_entry_defaults",
         ],
     );

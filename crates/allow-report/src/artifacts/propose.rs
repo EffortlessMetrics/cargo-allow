@@ -1,6 +1,6 @@
-use crate::InventoryContext;
+use crate::{InventoryContext, MutationReceipt};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ProposeReport<'a> {
     pub inventory: InventoryContext<'a>,
     pub kind: Option<&'a str>,
@@ -10,4 +10,5 @@ pub struct ProposeReport<'a> {
     pub findings_scanned: usize,
     pub baseline_debt_entries_proposed: usize,
     pub unsafe_baseline_debt_entries_proposed: usize,
+    pub mutation_receipt: MutationReceipt<'a>,
 }
