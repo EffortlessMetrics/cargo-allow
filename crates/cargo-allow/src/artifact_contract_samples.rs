@@ -159,6 +159,7 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "inventory",
                 "matched_finding",
                 "mode",
+                "mutation_receipt",
                 "previous_last_seen",
                 "refreshed_last_seen",
                 "scanner_limitations",

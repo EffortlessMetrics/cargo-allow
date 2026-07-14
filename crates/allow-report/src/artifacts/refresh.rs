@@ -1,6 +1,6 @@
 use allow_core::{AllowEntry, Finding, LastSeen};
 
-use crate::InventoryContext;
+use crate::{InventoryContext, MutationReceipt};
 
 #[derive(Debug, Clone, Copy)]
 pub struct RefreshModeContext<'a> {
@@ -17,6 +17,7 @@ pub struct RefreshReport<'a> {
     pub previous_last_seen: Option<LastSeen>,
     pub drift_message: &'a str,
     pub mode: RefreshModeContext<'a>,
+    pub mutation_receipt: MutationReceipt<'a>,
 }
 
 impl<'a> RefreshReport<'a> {
@@ -27,6 +28,7 @@ impl<'a> RefreshReport<'a> {
         previous_last_seen: Option<LastSeen>,
         drift_message: &'a str,
         mode: RefreshModeContext<'a>,
+        mutation_receipt: MutationReceipt<'a>,
     ) -> Self {
         Self {
             inventory,
@@ -35,6 +37,7 @@ impl<'a> RefreshReport<'a> {
             previous_last_seen,
             drift_message,
             mode,
+            mutation_receipt,
         }
     }
 }

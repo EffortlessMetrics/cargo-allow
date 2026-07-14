@@ -4,6 +4,27 @@ use allow_core::{
     AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, Selector, Span, StructuralIdentity,
 };
 
+fn sample_mutation_receipt() -> crate::MutationReceipt<'static> {
+    crate::MutationReceipt {
+        operation: "refresh",
+        tool_version: "0.1.10",
+        repo_root: Some("tests/fixtures/refresh/advisory-drift"),
+        config_source: Some("policy/allow.toml"),
+        ledger_ids: Vec::new(),
+        changed_allow_ids: vec!["fixture-refresh-drift"],
+        before_fingerprints: vec![Some(
+            "sha256:v1:0000000000000000000000000000000000000000000000000000000000000000"
+                .to_string(),
+        )],
+        after_fingerprints: vec![Some(
+            "sha256:v1:1111111111111111111111111111111111111111111111111111111111111111"
+                .to_string(),
+        )],
+        result: "stdout",
+        next_commands: vec!["cargo-allow check --mode no-new".to_string()],
+    }
+}
+
 fn sample_entry() -> AllowEntry {
     AllowEntry {
         id: "fixture-refresh-drift".to_string(),
@@ -65,6 +86,7 @@ fn refresh_json_records_operator_approved_drift_refresh_metadata() {
             write_requested: false,
             written_path: None,
         },
+        sample_mutation_receipt(),
     ));
 
     assert!(json.contains(REFRESH_SCHEMA_ID));
@@ -72,6 +94,31 @@ fn refresh_json_records_operator_approved_drift_refresh_metadata() {
     assert!(json.contains("\"previous_last_seen\""));
     assert!(json.contains("\"refreshed_last_seen\""));
     assert!(json.contains("\"drift_message\""));
+    assert!(json.contains("\"mutation_receipt\""));
+    let parsed = serde_json::from_str::<serde_json::Value>(&json);
+    assert!(parsed.is_ok(), "refresh output must remain valid JSON");
+    let Some(parsed) = parsed.ok() else {
+        return;
+    };
+    let receipt = parsed.pointer("/mutation_receipt");
+    assert!(
+        receipt.is_some(),
+        "refresh JSON should contain a mutation receipt"
+    );
+    let Some(receipt) = receipt else {
+        return;
+    };
+    assert_eq!(receipt["operation"], "refresh");
+    assert_eq!(receipt["changed_allow_ids"][0], "fixture-refresh-drift");
+    assert_eq!(
+        receipt["before_fingerprints"].as_array().map(Vec::len),
+        Some(1)
+    );
+    assert_eq!(
+        receipt["after_fingerprints"].as_array().map(Vec::len),
+        Some(1)
+    );
+    assert_eq!(receipt["result"], "stdout");
 }
 
 #[test]
@@ -90,6 +137,7 @@ fn refresh_human_mentions_lifecycle_preservation() {
             write_requested: false,
             written_path: None,
         },
+        sample_mutation_receipt(),
     ));
 
     assert!(text.contains("lifecycle: preserved"));

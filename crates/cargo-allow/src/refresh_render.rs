@@ -18,6 +18,7 @@ pub(super) fn render_refresh_result(input: RefreshRenderInput<'_>) -> String {
         input.previous_last_seen,
         input.drift_message,
         mode,
+        input.mutation_receipt,
     );
     render_refresh_human(report)
 }
@@ -35,6 +36,7 @@ pub(super) fn render_refresh_json(input: RefreshRenderInput<'_>) -> String {
         input.previous_last_seen,
         input.drift_message,
         mode,
+        input.mutation_receipt,
     );
     render_refresh_artifact_json(report)
 }

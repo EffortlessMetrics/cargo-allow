@@ -1,6 +1,9 @@
 use crate::contracts::REFRESH_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
-use crate::{CLAIM_BOUNDARY_TEXT, RefreshReport, finding_location_text, render_last_seen_json};
+use crate::{
+    CLAIM_BOUNDARY_TEXT, RefreshReport, finding_location_text, render_last_seen_json,
+    render_mutation_receipt_json,
+};
 use allow_core::json_escape;
 
 pub fn render_refresh_human(report: RefreshReport<'_>) -> String {
@@ -96,7 +99,11 @@ pub fn render_refresh_json(report: RefreshReport<'_>) -> String {
         "    \"drift_message\": \"{}\",\n",
         json_escape(report.drift_message)
     ));
-    out.push_str("    \"lifecycle_preserved\": true\n");
+    out.push_str("    \"lifecycle_preserved\": true,\n");
+    out.push_str(&format!(
+        "    \"operator_approved\": {}\n",
+        bool_json(report.mode.write_requested)
+    ));
     out.push_str("  },\n");
     out.push_str("  \"previous_last_seen\": ");
     out.push_str(&render_last_seen_json(
@@ -112,7 +119,12 @@ pub fn render_refresh_json(report: RefreshReport<'_>) -> String {
     out.push_str(",\n");
     out.push_str("  \"matched_finding\": \"");
     out.push_str(&json_escape(&finding_location_text(report.finding)));
-    out.push_str("\"\n");
+    out.push_str("\",\n");
+    out.push_str("  \"mutation_receipt\": ");
+    out.push_str(&render_mutation_receipt_json(
+        &report.mutation_receipt,
+        "  ",
+    ));
     out.push_str("}\n");
     out
 }

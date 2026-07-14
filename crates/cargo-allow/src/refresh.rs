@@ -10,6 +10,7 @@ mod refresh_render;
 mod refresh_select;
 #[path = "refresh_types.rs"]
 mod refresh_types;
+use allow_report::MutationReceipt;
 pub(crate) use refresh_args::{RefreshArgs, RefreshFormat};
 use refresh_render::{render_refresh_json, render_refresh_result};
 use refresh_select::{apply_last_seen_refresh, select_location_drift_refresh};
@@ -55,6 +56,16 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
     let finding = findings.get(finding_index).ok_or_else(|| {
         CargoAllowError::new("internal error: selected finding index out of range")
     })?;
+    let policy_path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
+        CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
+    })?;
+    let original_entry = cfg
+        .allow
+        .get(entry_index)
+        .ok_or_else(|| {
+            CargoAllowError::new("internal error: selected allow entry index out of range")
+        })?
+        .clone();
     let previous_last_seen = cfg
         .allow
         .get(entry_index)
@@ -84,11 +95,8 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
             &cfg,
             evidence_source_tree_files.as_ref(),
         )?;
-        let path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
-            CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
-        })?;
-        write_file(&path, &render_policy(&cfg))?;
-        Some(path)
+        write_file(&policy_path, &render_policy(&cfg))?;
+        Some(policy_path.clone())
     } else {
         None
     };
@@ -98,6 +106,27 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
         })?
     } else {
         &preview_entry
+    };
+    let repo_root = root.display().to_string();
+    let config_source = policy_path.display().to_string();
+    let mutation_receipt = MutationReceipt {
+        operation: "refresh",
+        tool_version: env!("CARGO_PKG_VERSION"),
+        repo_root: Some(&repo_root),
+        config_source: Some(&config_source),
+        ledger_ids: Vec::new(),
+        changed_allow_ids: vec![original_entry.id.as_str()],
+        before_fingerprints: vec![Some(allow_core::allow_entry_content_fingerprint(
+            &original_entry,
+        ))],
+        after_fingerprints: vec![Some(allow_core::allow_entry_content_fingerprint(
+            &preview_entry,
+        ))],
+        result: if args.write { "written" } else { "stdout" },
+        next_commands: vec![
+            format!("cargo-allow explain --id {}", original_entry.id),
+            "cargo-allow check --mode no-new".to_string(),
+        ],
     };
     render_and_emit(
         args,
@@ -109,6 +138,7 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
             root: &root,
             inventory_facts,
             written_path: written_path.as_deref(),
+            mutation_receipt,
         },
     )
 }
@@ -129,6 +159,7 @@ fn render_and_emit(args: &RefreshArgs, input: RefreshEmitInput<'_>) -> CargoAllo
         write_requested: args.write,
         written_path: written_ref,
         context,
+        mutation_receipt: input.mutation_receipt,
     };
     let text = match args.format {
         RefreshFormat::Human => render_refresh_result(render_input),
@@ -193,6 +224,24 @@ pub(crate) fn sample_refresh_json_for_contract_test() -> String {
                 Some("tests/fixtures/refresh/advisory-drift"),
                 Some(2),
             ),
+        },
+        mutation_receipt: allow_report::MutationReceipt {
+            operation: "refresh",
+            tool_version: env!("CARGO_PKG_VERSION"),
+            repo_root: Some("tests/fixtures/refresh/advisory-drift"),
+            config_source: Some("policy/allow.toml"),
+            ledger_ids: Vec::new(),
+            changed_allow_ids: vec!["allow-0250"],
+            before_fingerprints: vec![Some(
+                "sha256:v1:0000000000000000000000000000000000000000000000000000000000000000"
+                    .to_string(),
+            )],
+            after_fingerprints: vec![Some(
+                "sha256:v1:1111111111111111111111111111111111111111111111111111111111111111"
+                    .to_string(),
+            )],
+            result: "stdout",
+            next_commands: vec!["cargo-allow check --mode no-new".to_string()],
         },
     })
 }
