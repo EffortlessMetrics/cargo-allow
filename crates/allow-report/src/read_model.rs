@@ -40,11 +40,11 @@ pub fn ledger_read_state_for_outcomes(
     ledger_read_state(entry, &outcome_refs, today)
 }
 
-pub fn ledger_read_statuses(
-    cfg: &AllowConfig,
+pub fn ledger_read_statuses<'a>(
+    cfg: &'a AllowConfig,
     outcomes: &[MatchOutcome],
     today: SimpleDate,
-) -> BTreeMap<String, MatchStatus> {
+) -> BTreeMap<&'a str, MatchStatus> {
     let mut entries_by_id = BTreeMap::new();
     for entry in &cfg.allow {
         entries_by_id.entry(entry.id.as_str()).or_insert(entry);
@@ -65,7 +65,7 @@ pub fn ledger_read_statuses(
         .filter_map(|(allow_id, entry)| {
             let entry_outcomes = outcomes_by_allow_id.get(allow_id).map(Vec::as_slice)?;
             let status = ledger_read_state(entry, entry_outcomes, today).status;
-            Some(((*allow_id).to_string(), status))
+            Some((*allow_id, status))
         })
         .collect()
 }
