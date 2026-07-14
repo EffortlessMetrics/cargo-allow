@@ -101,6 +101,11 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             .unwrap_or(report_cfg.workspace.default_mode.as_str()),
     );
     let outcomes = evaluate(&report_cfg, &findings, mode);
+    let projected_outcomes = allow_report::ledger_project_outcomes(
+        &report_cfg,
+        &outcomes,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
     let evidence = EvidenceReportSummary::from_policy_with_source_tree_files(
@@ -109,7 +114,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         &outcomes,
         evidence_source_tree_files.as_ref(),
     );
-    let summary = Summary::from_outcomes(&outcomes);
+    let summary = Summary::from_outcomes(&projected_outcomes);
     let baseline_debt_entries = policy_baseline_debt_entries(&report_cfg);
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let mut context = source_context.report(Some(baseline_debt_entries));
@@ -132,7 +137,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             baseline_debt_entries,
             evidence,
             findings: &findings,
-            outcomes: &outcomes,
+            outcomes: &projected_outcomes,
             failed,
             output: args.output.as_deref(),
             root: &root,
@@ -170,7 +175,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             render_receipt_with_context_and_inventory(
                 "check",
                 &findings,
-                &outcomes,
+                &projected_outcomes,
                 failed,
                 receipt_context,
             )

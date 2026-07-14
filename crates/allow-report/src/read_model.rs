@@ -70,19 +70,45 @@ pub fn ledger_read_statuses<'a>(
         .collect()
 }
 
+pub fn ledger_project_outcomes(
+    cfg: &AllowConfig,
+    outcomes: &[MatchOutcome],
+    today: SimpleDate,
+) -> Vec<MatchOutcome> {
+    let mut entries_by_id = BTreeMap::new();
+    for entry in &cfg.allow {
+        entries_by_id.entry(entry.id.as_str()).or_insert(entry);
+    }
+    outcomes
+        .iter()
+        .map(|outcome| {
+            let mut projected = outcome.clone();
+            if outcome.status == MatchStatus::Matched
+                && let Some(status) = outcome
+                    .allow_id
+                    .as_deref()
+                    .and_then(|allow_id| entries_by_id.get(allow_id).copied())
+                    .and_then(|entry| entry_lifecycle_status(entry, today))
+            {
+                projected.status = status;
+            }
+            projected
+        })
+        .collect()
+}
+
 fn lifecycle_status(
     entry: &AllowEntry,
     outcomes: &[&MatchOutcome],
     today: SimpleDate,
 ) -> MatchStatus {
-    if SimpleDate::has_passed_date_str(entry.lifecycle.expires.as_deref(), today)
-        || has_outcome_status(outcomes, MatchStatus::Expired)
-    {
+    if let Some(status) = entry_lifecycle_status(entry, today) {
+        return status;
+    }
+    if has_outcome_status(outcomes, MatchStatus::Expired) {
         return MatchStatus::Expired;
     }
-    if SimpleDate::is_due_date_str(entry.lifecycle.review_after.as_deref(), today)
-        || has_outcome_status(outcomes, MatchStatus::ReviewDue)
-    {
+    if has_outcome_status(outcomes, MatchStatus::ReviewDue) {
         return MatchStatus::ReviewDue;
     }
 
@@ -104,6 +130,16 @@ fn lifecycle_status(
         return MatchStatus::BaselineDebt;
     }
     MatchStatus::Matched
+}
+
+fn entry_lifecycle_status(entry: &AllowEntry, today: SimpleDate) -> Option<MatchStatus> {
+    if SimpleDate::has_passed_date_str(entry.lifecycle.expires.as_deref(), today) {
+        return Some(MatchStatus::Expired);
+    }
+    if SimpleDate::is_due_date_str(entry.lifecycle.review_after.as_deref(), today) {
+        return Some(MatchStatus::ReviewDue);
+    }
+    None
 }
 
 fn has_outcome_status(outcomes: &[&MatchOutcome], status: MatchStatus) -> bool {
@@ -135,6 +171,59 @@ mod tests {
         assert_eq!(state.status, MatchStatus::Stale);
         assert_eq!(state.matched_count, 1);
         assert_eq!(state.occurrence_limit, Some(3));
+    }
+
+    #[test]
+    fn projected_outcomes_replace_lifecycle_status_without_match_detail_loss() {
+        let mut entry = test_entry(None);
+        entry.lifecycle.expires = Some("2020-01-01".to_string());
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(entry);
+        let mut matched = test_outcome(MatchStatus::Matched);
+        matched.candidate_ids = vec!["candidate-a".to_string()];
+        matched.finding_index = Some(4);
+        matched.message = "matched detail".to_string();
+
+        let mut new = test_outcome(MatchStatus::New);
+        new.message = "new occurrence".to_string();
+        let projected = ledger_project_outcomes(
+            &cfg,
+            &[matched.clone(), new],
+            SimpleDate {
+                year: 2026,
+                month: 7,
+                day: 14,
+            },
+        );
+
+        assert_eq!(projected[0].status, MatchStatus::Expired);
+        assert_eq!(projected[0].candidate_ids, matched.candidate_ids);
+        assert_eq!(projected[0].finding_index, matched.finding_index);
+        assert_eq!(projected[0].message, matched.message);
+        assert_eq!(projected[1].status, MatchStatus::New);
+    }
+
+    #[test]
+    fn projected_outcomes_preserve_dedicated_baseline_debt_accounting() {
+        let mut entry = test_entry(None);
+        entry.classification = "baseline_debt".to_string();
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(entry);
+        let matched = test_outcome(MatchStatus::Matched);
+        let today = SimpleDate {
+            year: 2026,
+            month: 7,
+            day: 14,
+        };
+
+        assert_eq!(
+            ledger_read_statuses(&cfg, std::slice::from_ref(&matched), today).get("allow-test"),
+            Some(&MatchStatus::BaselineDebt)
+        );
+
+        let projected = ledger_project_outcomes(&cfg, &[matched], today);
+
+        assert_eq!(projected[0].status, MatchStatus::Matched);
     }
 
     fn test_entry(occurrence_limit: Option<u32>) -> AllowEntry {

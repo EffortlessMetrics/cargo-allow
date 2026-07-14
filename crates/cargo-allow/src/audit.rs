@@ -53,6 +53,11 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
     };
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::Audit);
+    let projected_outcomes = allow_report::ledger_project_outcomes(
+        &report_cfg,
+        &outcomes,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
     let evidence = EvidenceReportSummary::from_policy_with_source_tree_files(
@@ -67,7 +72,7 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         baseline_debt_entries: policy_baseline_debt_entries(&report_cfg),
         evidence,
         findings: &findings,
-        outcomes: &outcomes,
+        outcomes: &projected_outcomes,
         failed: false,
         output: args.output.as_deref(),
         root: &root,
