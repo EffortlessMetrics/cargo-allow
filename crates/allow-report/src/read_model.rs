@@ -85,7 +85,16 @@ pub fn ledger_project_outcomes(
                 .as_deref()
                 .and_then(|allow_id| projected_statuses.get(allow_id).copied())
             {
-                projected.status = status;
+                let is_classified_baseline_debt = status == MatchStatus::BaselineDebt
+                    && outcome.status == MatchStatus::Matched
+                    && outcome.allow_id.as_deref().is_some_and(|allow_id| {
+                        cfg.allow.iter().any(|entry| {
+                            entry.id == allow_id && entry.classification == "baseline_debt"
+                        })
+                    });
+                if !is_classified_baseline_debt {
+                    projected.status = status;
+                }
             }
             projected
         })
@@ -184,6 +193,27 @@ mod tests {
         assert_eq!(projected[0].candidate_ids, matched.candidate_ids);
         assert_eq!(projected[0].finding_index, matched.finding_index);
         assert_eq!(projected[0].message, matched.message);
+    }
+
+    #[test]
+    fn projected_outcomes_preserve_dedicated_baseline_debt_accounting() {
+        let mut entry = test_entry(None);
+        entry.classification = "baseline_debt".to_string();
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(entry);
+        let matched = test_outcome(MatchStatus::Matched);
+
+        let projected = ledger_project_outcomes(
+            &cfg,
+            &[matched],
+            SimpleDate {
+                year: 2026,
+                month: 7,
+                day: 14,
+            },
+        );
+
+        assert_eq!(projected[0].status, MatchStatus::Matched);
     }
 
     fn test_entry(occurrence_limit: Option<u32>) -> AllowEntry {
