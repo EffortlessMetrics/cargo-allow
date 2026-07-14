@@ -347,6 +347,24 @@ target_fingerprint = "md"
 line_hint = 1
 
 [[allow]]
+id = "allow-4744"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/ledger-coherence/closeouts/s24-lifecycle-stale-drift.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records the stale and location-drift PR7 corpus slice landed via #2236 and preserves the remaining lifecycle, convergence, and adoption claim boundary."
+evidence = ["issue:2235", "doc:plans/ledger-coherence/implementation-plan.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-14"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/ledger-coherence/closeouts/s24-lifecycle-stale-drift.md"
+target_fingerprint = "md"
+line_hint = 1
+
+[[allow]]
 id = "allow-4728"
 kind = "non_rust_file"
 family = "documentation"

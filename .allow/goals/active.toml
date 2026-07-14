@@ -176,6 +176,7 @@ evidence_notes = [
   "Fixture corpus for matched, stale, expired, review_due, drift, headroom, evidence debt, weakening, improvement, and mirror divergence states.",
   "Semantic-consistency oracles across audit, check, diff, list, explain, worklist, refresh, prune.",
   "Seed landed via #2233 as b6ecccfc: subprocess artifacts now agree on expired and review_due status across list, explain, worklist, audit, check, and diff; a separate fixture proves review_due is advisory in no-new and blocking in strict.",
+  "Stale/location-drift slice landed via #2236 as 8713ee72: the same six read surfaces now expose stale and location_drift by allow ID; isolated mode proof keeps stale blocking only in strict and location_drift advisory. See CARGO-ALLOW-CLOSEOUT-0047.",
   "Full lifecycle matrix and cross-command movement/posture/evidence/repair convergence remain open; see CARGO-ALLOW-CLOSEOUT-0046.",
 ]
 
