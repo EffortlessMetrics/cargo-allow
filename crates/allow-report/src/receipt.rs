@@ -1,17 +1,13 @@
-use crate::contracts::RECEIPT_ARTIFACT;
-use crate::evidence_repair::{
-    evidence_repair_queues_from_context, push_evidence_repair_queue_json_fields,
-};
-use crate::json::{
-    push_json_artifact_header, push_json_artifact_source_context, push_json_receipt_run_metadata,
-    push_json_status_fields, push_json_status_fields_with_status,
-};
+use crate::advisory_class::AdvisoryClass;
+use crate::artifacts::federation::FederationReportContext;
+use crate::contracts::{CLAIM_BOUNDARY, RECEIPT_ARTIFACT, SCANNER_LIMITATIONS};
+use crate::evidence_repair::evidence_repair_queues_from_context;
+use crate::source_inventory::render_source_inventory_value;
 use crate::{
-    ARTIFACT_STATUS_ERROR, RECEIPT_COMMAND_CHECK, ReportContext, Summary, baseline_debt_count,
-    render_advisory_count_fields, render_count_fields_with_policy_context,
-    render_source_inventory_json,
+    ARTIFACT_STATUS_ERROR, RECEIPT_COMMAND_CHECK, ReportContext, STATUS_COUNT_ORDER, Summary,
 };
-use allow_core::{Finding, MatchOutcome, json_escape};
+use allow_core::{Finding, MatchOutcome};
+use serde_json::{Map, Value};
 
 pub fn render_receipt(command: &str, outcomes: &[MatchOutcome], failed: bool) -> String {
     render_receipt_with_context(command, outcomes, failed, ReportContext::default())
@@ -37,35 +33,16 @@ pub fn render_receipt_with_context_and_inventory(
 }
 
 pub fn render_error_receipt(diagnostic: &str, context: ReportContext<'_>) -> String {
-    let mut out = String::new();
-    out.push_str("{\n");
-    push_json_artifact_header(&mut out, RECEIPT_ARTIFACT, RECEIPT_COMMAND_CHECK);
-    push_json_status_fields_with_status(&mut out, ARTIFACT_STATUS_ERROR, true);
-    push_json_receipt_run_metadata(&mut out, context);
-    out.push_str(&format!(
-        "  \"diagnostic\": \"{}\",\n",
-        json_escape(diagnostic)
-    ));
-    push_json_artifact_source_context(&mut out, context.into());
-    out.push_str("  \"counts\": {\n");
-    out.push_str(&render_count_fields_with_policy_context(
-        &Summary::default(),
-        None,
-        None,
-        None,
-        None,
-        "    ",
-    ));
-    out.push_str("  },\n");
-    out.push_str("  \"advisory\": {\n");
-    out.push_str(&render_advisory_count_fields(
-        &Summary::default(),
+    render_receipt_value(ReceiptRenderInput {
+        command: RECEIPT_COMMAND_CHECK,
+        findings: None,
+        outcomes: &[],
+        summary: &Summary::default(),
+        status: ARTIFACT_STATUS_ERROR,
+        failed: true,
+        diagnostic: Some(diagnostic),
         context,
-        "    ",
-    ));
-    out.push_str("  }\n");
-    out.push_str("}\n");
-    out
+    })
 }
 
 fn render_receipt_json(
@@ -80,57 +57,390 @@ fn render_receipt_json(
         "receipt artifacts support only the check command"
     );
     let summary = Summary::from_outcomes(outcomes);
-    let mut out = String::new();
-    out.push_str("{\n");
-    push_json_artifact_header(&mut out, RECEIPT_ARTIFACT, command);
-    push_json_status_fields(&mut out, failed);
-    push_json_receipt_run_metadata(&mut out, context);
-    push_json_artifact_source_context(&mut out, context.into());
-    out.push_str("  \"counts\": {\n");
-    out.push_str(&render_count_fields_with_policy_context(
-        &summary,
-        Some(baseline_debt_count(&summary, context)),
-        context.policy_missing_evidence_entries,
-        context.broken_evidence_links,
-        context.weak_evidence_references,
-        "    ",
-    ));
-    out.push_str("  },\n");
-    out.push_str("  \"advisory\": {\n");
-    out.push_str(&render_advisory_count_fields(&summary, context, "    "));
-    out.push_str("  }");
-    append_evidence_repair_queues_json(&summary, context, &mut out);
-    if let Some(source_inventory) =
-        findings.and_then(|findings| render_source_inventory_json(findings, outcomes, "  "))
-    {
-        out.push_str(",\n  \"source_inventory\": ");
-        out.push_str(&source_inventory);
-        out.push('\n');
-    } else {
-        out.push('\n');
-    }
-    out.push_str("}\n");
-    out
+    render_receipt_value(ReceiptRenderInput {
+        command,
+        findings,
+        outcomes,
+        summary: &summary,
+        status: if failed {
+            crate::ARTIFACT_STATUS_FAILED
+        } else {
+            crate::ARTIFACT_STATUS_PASSED
+        },
+        failed,
+        diagnostic: None,
+        context,
+    })
 }
 
-fn append_evidence_repair_queues_json(
-    summary: &Summary,
-    context: ReportContext<'_>,
-    out: &mut String,
-) {
-    let queues = evidence_repair_queues_from_context(summary, context);
-    if queues.is_empty() {
-        return;
+struct ReceiptRenderInput<'a> {
+    command: &'a str,
+    findings: Option<&'a [Finding]>,
+    outcomes: &'a [MatchOutcome],
+    summary: &'a Summary,
+    status: &'a str,
+    failed: bool,
+    diagnostic: Option<&'a str>,
+    context: ReportContext<'a>,
+}
+
+fn render_receipt_value(input: ReceiptRenderInput<'_>) -> String {
+    let ReceiptRenderInput {
+        command,
+        findings,
+        outcomes,
+        summary,
+        status,
+        failed,
+        diagnostic,
+        context,
+    } = input;
+    let mut artifact = Map::new();
+    artifact.insert(
+        "schema_version".to_string(),
+        Value::from(RECEIPT_ARTIFACT.schema_version),
+    );
+    artifact.insert(
+        "schema_id".to_string(),
+        Value::String(RECEIPT_ARTIFACT.schema_id.to_string()),
+    );
+    artifact.insert("tool".to_string(), Value::String("cargo-allow".to_string()));
+    artifact.insert("command".to_string(), Value::String(command.to_string()));
+    artifact.insert("status".to_string(), Value::String(status.to_string()));
+    artifact.insert("failed".to_string(), Value::Bool(failed));
+
+    insert_run_metadata(&mut artifact, context);
+    artifact.insert(
+        "claim_boundary".to_string(),
+        string_array_value(CLAIM_BOUNDARY),
+    );
+    artifact.insert(
+        "scanner_limitations".to_string(),
+        string_array_value(SCANNER_LIMITATIONS),
+    );
+    artifact.insert("inventory".to_string(), inventory_value(context));
+
+    if let Some(diagnostic) = diagnostic {
+        artifact.insert(
+            "diagnostic".to_string(),
+            Value::String(diagnostic.to_string()),
+        );
     }
 
-    out.push_str(",\n  \"evidence_repair_queues\": [\n");
-    for (index, queue) in queues.iter().enumerate() {
-        if index > 0 {
-            out.push_str(",\n");
-        }
-        out.push_str("    {\n");
-        push_evidence_repair_queue_json_fields(out, queue, "      ");
-        out.push_str("    }");
+    artifact.insert("counts".to_string(), counts_value(summary, context));
+    artifact.insert("advisory".to_string(), advisory_value(summary, context));
+
+    let queues = evidence_repair_queues_from_context(summary, context);
+    if !queues.is_empty() {
+        artifact.insert(
+            "evidence_repair_queues".to_string(),
+            Value::Array(queues.into_iter().map(queue_value).collect()),
+        );
     }
-    out.push_str("\n  ]");
+
+    if let Some(source_inventory) =
+        findings.and_then(|findings| render_source_inventory_value(findings, outcomes))
+    {
+        artifact.insert("source_inventory".to_string(), source_inventory);
+    }
+
+    serialize_artifact(Value::Object(artifact))
+}
+
+fn insert_run_metadata(artifact: &mut Map<String, Value>, context: ReportContext<'_>) {
+    insert_optional_string(artifact, "mode", context.mode);
+    insert_optional_string(artifact, "enforcement", context.enforcement);
+    insert_optional_string(artifact, "policy_config", context.policy_config);
+    insert_optional_string(artifact, "tool_version", context.tool_version);
+
+    if let Some(lane_posture) = context.lane_posture {
+        let mut posture = Map::new();
+        for (lane, mode) in lane_posture {
+            posture.insert(lane.clone(), Value::String(mode.as_str().to_string()));
+        }
+        artifact.insert("lane_posture".to_string(), Value::Object(posture));
+    }
+    if let Some(federation) = context.federation {
+        artifact.insert("federation".to_string(), federation_value(federation));
+    }
+    insert_optional_string(artifact, "git_sha", context.git_sha);
+    insert_optional_string(artifact, "policy_digest", context.policy_digest);
+    insert_optional_string(artifact, "started_at", context.started_at);
+    insert_optional_string(artifact, "run_id", context.run_id);
+}
+
+fn insert_optional_string(artifact: &mut Map<String, Value>, name: &str, value: Option<&str>) {
+    if let Some(value) = value {
+        artifact.insert(name.to_string(), Value::String(value.to_string()));
+    }
+}
+
+fn inventory_value(context: ReportContext<'_>) -> Value {
+    let inventory = context.inventory;
+    let mut value = Map::new();
+    value.insert(
+        "scope".to_string(),
+        Value::String(inventory.scope.to_string()),
+    );
+    value.insert(
+        "scanner".to_string(),
+        Value::String(inventory.scanner.to_string()),
+    );
+    value.insert(
+        "source".to_string(),
+        Value::String(inventory.source.to_string()),
+    );
+    if let Some(root) = inventory.root {
+        value.insert("root".to_string(), Value::String(root.to_string()));
+    }
+    if let Some(files_scanned) = inventory.files_scanned {
+        value.insert("files_scanned".to_string(), Value::from(files_scanned));
+    }
+    if inventory.empty_git_tracked {
+        value.insert("empty_git_tracked".to_string(), Value::Bool(true));
+    }
+    if let Some(completeness) = inventory.completeness {
+        value.insert(
+            "completeness".to_string(),
+            Value::String(completeness.to_string()),
+        );
+    }
+    Value::Object(value)
+}
+
+fn counts_value(summary: &Summary, context: ReportContext<'_>) -> Value {
+    let mut counts = Map::new();
+    for status in STATUS_COUNT_ORDER {
+        counts.insert(
+            status.as_str().to_string(),
+            Value::from(summary.count(status)),
+        );
+    }
+
+    let optional_fields = [
+        (
+            "policy_baseline_debt",
+            context
+                .baseline_debt_entries
+                .filter(|count| *count > summary.count(allow_core::MatchStatus::BaselineDebt)),
+        ),
+        (
+            "policy_missing_evidence",
+            context
+                .policy_missing_evidence_entries
+                .filter(|count| *count > summary.count(allow_core::MatchStatus::EvidenceMissing)),
+        ),
+        (
+            "broken_evidence_links",
+            context.broken_evidence_links.filter(|count| *count > 0),
+        ),
+        (
+            "weak_evidence_references",
+            context.weak_evidence_references.filter(|count| *count > 0),
+        ),
+    ];
+    for (name, value) in optional_fields
+        .into_iter()
+        .filter_map(|(name, value)| value.map(|value| (name, value)))
+    {
+        counts.insert(name.to_string(), Value::from(value));
+    }
+    Value::Object(counts)
+}
+
+fn advisory_value(summary: &Summary, context: ReportContext<'_>) -> Value {
+    let mut advisory = Map::new();
+    for (class, value) in AdvisoryClass::receipt_fields(summary, context) {
+        advisory.insert(class.field_name().to_string(), Value::from(value));
+    }
+    Value::Object(advisory)
+}
+
+fn queue_value(queue: crate::evidence_repair::EvidenceRepairQueue) -> Value {
+    let mut value = Map::new();
+    value.insert(
+        "signal".to_string(),
+        Value::String(queue.signal.to_string()),
+    );
+    value.insert("label".to_string(), Value::String(queue.label.to_string()));
+    value.insert(
+        "route_kind".to_string(),
+        Value::String(queue.route_kind.to_string()),
+    );
+    if let Some(item_kind) = queue.item_kind {
+        value.insert(
+            "item_kind".to_string(),
+            Value::String(item_kind.to_string()),
+        );
+    }
+    if let Some(worklist_filter) = queue.worklist_filter {
+        value.insert(
+            "worklist_filter".to_string(),
+            Value::String(worklist_filter.to_string()),
+        );
+    }
+    value.insert("count".to_string(), Value::from(queue.count));
+    value.insert(
+        "command".to_string(),
+        Value::String(queue.command.to_string()),
+    );
+    Value::Object(value)
+}
+
+fn federation_value(federation: FederationReportContext<'_>) -> Value {
+    let mut value = Map::new();
+    value.insert(
+        "federation_version".to_string(),
+        optional_string_value(federation.federation_version),
+    );
+    value.insert(
+        "precedence_applied".to_string(),
+        optional_string_value(federation.precedence_applied),
+    );
+
+    let contributors = federation
+        .ledger_contributors
+        .unwrap_or(&[])
+        .iter()
+        .map(|contributor| {
+            let mut item = Map::new();
+            item.insert("id".to_string(), Value::String(contributor.id.to_string()));
+            item.insert(
+                "path".to_string(),
+                Value::String(contributor.path.to_string()),
+            );
+            item.insert(
+                "role".to_string(),
+                Value::String(contributor.role.to_string()),
+            );
+            item.insert(
+                "dialect".to_string(),
+                Value::String(contributor.dialect.to_string()),
+            );
+            item.insert(
+                "mode".to_string(),
+                Value::String(contributor.mode.to_string()),
+            );
+            item.insert("priority".to_string(), Value::from(contributor.priority));
+            item.insert("lanes".to_string(), string_array_value(contributor.lanes));
+            Value::Object(item)
+        })
+        .collect();
+    value.insert(
+        "ledger_contributors".to_string(),
+        Value::Array(contributors),
+    );
+
+    if let Some(summary) = federation.divergence_summary {
+        let mut divergence = Map::new();
+        let counts = summary
+            .counts_by_kind
+            .unwrap_or(&[])
+            .iter()
+            .map(|count| {
+                let mut item = Map::new();
+                item.insert("kind".to_string(), Value::String(count.kind.to_string()));
+                item.insert("count".to_string(), Value::from(count.count));
+                Value::Object(item)
+            })
+            .collect();
+        divergence.insert("counts_by_kind".to_string(), Value::Array(counts));
+
+        let records = summary
+            .records
+            .unwrap_or(&[])
+            .iter()
+            .map(|record| {
+                let mut item = Map::new();
+                item.insert("kind".to_string(), Value::String(record.kind.to_string()));
+                item.insert(
+                    "message".to_string(),
+                    Value::String(record.message.to_string()),
+                );
+                item.insert(
+                    "canonical_ledger_id".to_string(),
+                    Value::String(record.canonical_ledger_id.to_string()),
+                );
+                item.insert(
+                    "mirror_ledger_id".to_string(),
+                    Value::String(record.mirror_ledger_id.to_string()),
+                );
+                item.insert(
+                    "canonical_path".to_string(),
+                    Value::String(record.canonical_path.to_string()),
+                );
+                item.insert(
+                    "mirror_path".to_string(),
+                    Value::String(record.mirror_path.to_string()),
+                );
+                item.insert(
+                    "sample_entry_ids".to_string(),
+                    string_array_value(record.sample_entry_ids),
+                );
+                item.insert(
+                    "canonical_fingerprint".to_string(),
+                    optional_string_value(record.canonical_fingerprint),
+                );
+                item.insert(
+                    "mirror_fingerprint".to_string(),
+                    optional_string_value(record.mirror_fingerprint),
+                );
+                item.insert(
+                    "recommended_action".to_string(),
+                    Value::String(record.recommended_action.to_string()),
+                );
+                Value::Object(item)
+            })
+            .collect();
+        divergence.insert("records".to_string(), Value::Array(records));
+        value.insert("divergence_summary".to_string(), Value::Object(divergence));
+    }
+    Value::Object(value)
+}
+
+fn optional_string_value(value: Option<&str>) -> Value {
+    value
+        .map(|value| Value::String(value.to_string()))
+        .unwrap_or(Value::Null)
+}
+
+fn string_array_value<T: AsRef<str>>(values: &[T]) -> Value {
+    Value::Array(
+        values
+            .iter()
+            .map(|value| Value::String(value.as_ref().to_string()))
+            .collect(),
+    )
+}
+
+fn serialize_artifact(value: Value) -> String {
+    match serde_json::to_string_pretty(&value) {
+        Ok(json) => format!("{json}\n"),
+        Err(error) => {
+            let mut fallback = Map::new();
+            fallback.insert(
+                "schema_version".to_string(),
+                Value::from(RECEIPT_ARTIFACT.schema_version),
+            );
+            fallback.insert(
+                "schema_id".to_string(),
+                Value::String(RECEIPT_ARTIFACT.schema_id.to_string()),
+            );
+            fallback.insert("tool".to_string(), Value::String("cargo-allow".to_string()));
+            fallback.insert(
+                "command".to_string(),
+                Value::String(RECEIPT_COMMAND_CHECK.to_string()),
+            );
+            fallback.insert(
+                "status".to_string(),
+                Value::String(ARTIFACT_STATUS_ERROR.to_string()),
+            );
+            fallback.insert("failed".to_string(), Value::Bool(true));
+            fallback.insert(
+                "diagnostic".to_string(),
+                Value::String(format!("receipt serialization failed: {error}")),
+            );
+            format!("{}\n", Value::Object(fallback))
+        }
+    }
 }

@@ -1,4 +1,5 @@
 use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape};
+use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 
 use crate::text::{html_escape, markdown_cell};
@@ -234,6 +235,57 @@ pub(crate) fn render_source_inventory_json(
     out.push_str(&format!("\n{indent}  ]\n"));
     out.push_str(&format!("{indent}}}"));
     Some(out)
+}
+
+pub(crate) fn render_source_inventory_value(
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+) -> Option<Value> {
+    let inventory = SourceInventory::from_report(findings, outcomes);
+    if !inventory.has_findings() {
+        return None;
+    }
+
+    let by_kind = inventory
+        .by_kind
+        .iter()
+        .map(|(kind, row)| row_value([("kind", kind.as_str())], row))
+        .collect();
+    let by_family = inventory
+        .by_family
+        .iter()
+        .map(|(family, row)| {
+            let mut value = row_value(
+                [
+                    ("kind", family.kind.as_str()),
+                    ("family", family.family.as_str()),
+                ],
+                row,
+            );
+            if let Value::Object(object) = &mut value {
+                object.insert("label".to_string(), Value::String(family.label()));
+            }
+            value
+        })
+        .collect();
+
+    let mut value = Map::new();
+    value.insert("findings".to_string(), Value::from(inventory.total));
+    value.insert("by_kind".to_string(), Value::Array(by_kind));
+    value.insert("by_family".to_string(), Value::Array(by_family));
+    Some(Value::Object(value))
+}
+
+fn row_value<const N: usize>(labels: [(&str, &str); N], row: &SourceInventoryRow) -> Value {
+    let mut value = Map::new();
+    for (name, label) in labels {
+        value.insert(name.to_string(), Value::String(label.to_string()));
+    }
+    value.insert("total".to_string(), Value::from(row.total));
+    value.insert("matched".to_string(), Value::from(row.matched));
+    value.insert("new".to_string(), Value::from(row.new));
+    value.insert("review_items".to_string(), Value::from(row.review_items));
+    Value::Object(value)
 }
 
 fn finding_family_key(finding: &Finding) -> SourceInventoryFamilyKey {
