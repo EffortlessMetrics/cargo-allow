@@ -113,7 +113,7 @@ fn visit(
         }
         let name = entry.file_name();
         let name = name.to_string_lossy();
-        if name == ".git" || name == "target" {
+        if name == ".git" || (name == "target" && dir == root) {
             continue;
         }
         if file_type.is_dir() {

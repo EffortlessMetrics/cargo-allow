@@ -10,6 +10,8 @@ inventory without executing repository code.
 
 ### Fixed
 
+- Filesystem fallback inventory now prunes only the repository-root `target/`
+  directory, preserving legitimate nested source directories named `target`.
 - Policy validation failures now retain structured diagnostic details on
   `CargoAllowError`, including stable code, category, severity, entry ID, and
   validation field, while preserving the existing human-readable aggregate.
