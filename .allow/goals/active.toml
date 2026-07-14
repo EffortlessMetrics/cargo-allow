@@ -142,6 +142,11 @@ title = "Converge read surfaces (PR 6)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
+proof_commands = [
+  "rtk cargo test -p allow-report",
+  "rtk cargo test -p cargo-allow",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+]
 evidence_notes = [
   "Shared view model for list, explain, worklist, audit, check, diff.",
   "Agreed status, posture, movement, headroom, and repair routing.",
