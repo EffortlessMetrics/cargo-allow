@@ -6,6 +6,106 @@ use allow_core::{
 use std::path::PathBuf;
 
 #[test]
+fn explain_projects_expired_matched_entry_lifecycle_status() {
+    let entry = AllowEntry {
+        id: "allow-explain-expired".to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: Some(PathBuf::from("src/lib.rs")),
+        glob: None,
+        owner: "owner".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "test policy entry".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: None,
+            review_after: None,
+            expires: Some("2020-01-01".to_string()),
+        },
+        selector: Selector::default(),
+        last_seen: None,
+    };
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Matched,
+        allow_id: Some(entry.id.clone()),
+        candidate_ids: Vec::new(),
+        finding_index: None,
+        message: "matched".to_string(),
+        score: 100,
+    }];
+    let report = ExplainReport {
+        inventory: InventoryContext::default(),
+        entry: &entry,
+        selector_precision: 0,
+        broad_scope: false,
+        current_findings: &[],
+        match_outcomes: &outcomes,
+        evidence_references: &[],
+        link_references: &[],
+        suggested_actions: &[],
+        proof_commands: &[],
+    };
+
+    let human = render_explain_human(report);
+    let json = render_explain_json(report);
+
+    assert!(human.contains("current_status: expired"));
+    assert!(json.contains("\"current_status\": \"expired\""));
+}
+
+#[test]
+fn explain_projects_review_due_matched_entry_lifecycle_status() {
+    let entry = AllowEntry {
+        id: "allow-explain-review-due".to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: Some(PathBuf::from("src/lib.rs")),
+        glob: None,
+        owner: "owner".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "test policy entry".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: None,
+            review_after: Some("2020-01-01".to_string()),
+            expires: None,
+        },
+        selector: Selector::default(),
+        last_seen: None,
+    };
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Matched,
+        allow_id: Some(entry.id.clone()),
+        candidate_ids: Vec::new(),
+        finding_index: None,
+        message: "matched".to_string(),
+        score: 100,
+    }];
+    let report = ExplainReport {
+        inventory: InventoryContext::default(),
+        entry: &entry,
+        selector_precision: 0,
+        broad_scope: false,
+        current_findings: &[],
+        match_outcomes: &outcomes,
+        evidence_references: &[],
+        link_references: &[],
+        suggested_actions: &[],
+        proof_commands: &[],
+    };
+
+    let human = render_explain_human(report);
+    let json = render_explain_json(report);
+
+    assert!(human.contains("current_status: review_due"));
+    assert!(json.contains("\"current_status\": \"review_due\""));
+}
+
+#[test]
 fn explain_json_renderer_records_context_and_current_status() {
     let entry = AllowEntry {
         id: "allow-explain-json".to_string(),

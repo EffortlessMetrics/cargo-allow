@@ -59,7 +59,7 @@ pub fn render_explain_human(report: ExplainReport<'_>) -> String {
     out.push_str(&format!("broad_scope: {}\n\n", report.broad_scope));
     out.push_str(&format!(
         "current_status: {}\n",
-        explain_report_status(report.match_outcomes).as_str()
+        explain_report_status(report.entry, report.match_outcomes).as_str()
     ));
     out.push_str(&format!(
         "current_matches: {}\n",

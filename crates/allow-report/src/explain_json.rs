@@ -67,7 +67,7 @@ pub fn render_explain_json(report: ExplainReport<'_>) -> String {
     out.push_str(",\n");
     out.push_str(&format!(
         "  \"summary\": {{\n    \"current_status\": \"{}\",\n    \"current_matches\": {},\n    \"match_outcomes\": {},\n    \"selector_precision\": {},\n    \"broad_scope\": {}\n  }},\n",
-        explain_report_status(report.match_outcomes).as_str(),
+        explain_report_status(report.entry, report.match_outcomes).as_str(),
         report.current_findings.len(),
         report.match_outcomes.len(),
         report.selector_precision,

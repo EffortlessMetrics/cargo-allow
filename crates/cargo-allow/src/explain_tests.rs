@@ -326,7 +326,7 @@ fn explain_entry_text_reports_baseline_debt_next_actions() {
 
     let text = explain_entry_text(Path::new("."), &cfg, &entry, &[finding]);
 
-    assert!(text.contains("current_status: matched"));
+    assert!(text.contains("current_status: baseline_debt"));
     assert!(text.contains("baseline_debt and still needs human review"));
     assert!(text.contains("next:"));
     assert!(text.contains("action: replace generated baseline debt"));
