@@ -30,6 +30,15 @@ pub fn ledger_read_state(
     }
 }
 
+pub fn ledger_read_state_for_outcomes(
+    entry: &AllowEntry,
+    outcomes: &[MatchOutcome],
+    today: SimpleDate,
+) -> LedgerReadState {
+    let outcome_refs = outcomes.iter().collect::<Vec<_>>();
+    ledger_read_state(entry, &outcome_refs, today)
+}
+
 fn lifecycle_status(
     entry: &AllowEntry,
     outcomes: &[&MatchOutcome],

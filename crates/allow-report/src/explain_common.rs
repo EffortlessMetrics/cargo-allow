@@ -1,4 +1,4 @@
-use allow_core::{Finding, MatchOutcome, MatchStatus, normalize_path};
+use allow_core::{AllowEntry, Finding, MatchOutcome, MatchStatus, SimpleDate, normalize_path};
 
 pub(crate) fn finding_location_text(finding: &Finding) -> String {
     match &finding.span {
@@ -12,22 +12,6 @@ pub(crate) fn finding_location_text(finding: &Finding) -> String {
     }
 }
 
-pub(crate) fn explain_report_status(outcomes: &[MatchOutcome]) -> MatchStatus {
-    for status in [
-        MatchStatus::New,
-        MatchStatus::Expired,
-        MatchStatus::EvidenceMissing,
-        MatchStatus::MissingRequiredField,
-        MatchStatus::InvalidSelector,
-        MatchStatus::Ambiguous,
-        MatchStatus::BaselineDebt,
-        MatchStatus::Stale,
-        MatchStatus::ReviewDue,
-        MatchStatus::LocationDrift,
-    ] {
-        if outcomes.iter().any(|outcome| outcome.status == status) {
-            return status;
-        }
-    }
-    MatchStatus::Matched
+pub(crate) fn explain_report_status(entry: &AllowEntry, outcomes: &[MatchOutcome]) -> MatchStatus {
+    crate::ledger_read_state_for_outcomes(entry, outcomes, SimpleDate::today_utc_approx()).status
 }
