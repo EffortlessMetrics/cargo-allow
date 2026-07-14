@@ -7,8 +7,8 @@ fn worklist_json_emits_stale_allow_actions() {
     let mut cfg = AllowConfig::empty();
     let mut entry = test_entry("allow-file", FindingKind::NonRustFile);
     entry.lifecycle.created = Some("2026-05-01".to_string());
-    entry.lifecycle.review_after = Some("2026-06-01".to_string());
-    entry.lifecycle.expires = Some("2026-08-01".to_string());
+    entry.lifecycle.review_after = Some("2030-06-01".to_string());
+    entry.lifecycle.expires = Some("2030-08-01".to_string());
     entry.evidence = vec!["doc:docs/policy/file.md".to_string()];
     cfg.allow.push(entry);
     let outcomes = vec![test_outcome(
@@ -40,8 +40,8 @@ fn worklist_json_emits_stale_allow_actions() {
     assert!(json.contains("\"classification\": \"classification\""));
     assert!(json.contains("\"reason\": \"reason\""));
     assert!(json.contains("\"created\": \"2026-05-01\""));
-    assert!(json.contains("\"review_after\": \"2026-06-01\""));
-    assert!(json.contains("\"expires\": \"2026-08-01\""));
+    assert!(json.contains("\"review_after\": \"2030-06-01\""));
+    assert!(json.contains("\"expires\": \"2030-08-01\""));
     assert!(json.contains("\"evidence_count\": 1"));
     assert!(json.contains("\"risk\": \"low\""));
     assert!(json.contains("\"small_difficulty\": 1"));
@@ -53,8 +53,8 @@ fn worklist_json_emits_stale_allow_actions() {
     assert!(human.contains("classification: classification"));
     assert!(human.contains("reason: reason"));
     assert!(human.contains("created: 2026-05-01"));
-    assert!(human.contains("review_after: 2026-06-01"));
-    assert!(human.contains("expires: 2026-08-01"));
+    assert!(human.contains("review_after: 2030-06-01"));
+    assert!(human.contains("expires: 2030-08-01"));
     assert!(human.contains("evidence: 1 reference(s)"));
 }
 
