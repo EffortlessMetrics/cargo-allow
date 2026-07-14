@@ -131,6 +131,10 @@ fn render_work_item_json(item: &WorklistItem<'_>) -> String {
         option_json(item.allow_id)
     ));
     out.push_str(&format!(
+        "      \"candidate_ids\": {},\n",
+        json_string_array(item.candidate_ids)
+    ));
+    out.push_str(&format!(
         "      \"finding_index\": {},\n",
         item.finding_index
             .map(|index| index.to_string())
@@ -281,6 +285,7 @@ mod tests {
             difficulty: "small",
             status: "evidence_missing",
             allow_id: Some("allow-0001"),
+            candidate_ids: &[],
             finding_index: Some(3),
             path: Some("src/lib.rs"),
             evidence_reference: Some(crate::EvidenceReference {
@@ -389,6 +394,7 @@ mod tests {
             evidence_count: None,
             selector_precision: None,
             allow_id: None,
+            candidate_ids: &[],
             finding_index: None,
             path: None,
             evidence_reference: None,

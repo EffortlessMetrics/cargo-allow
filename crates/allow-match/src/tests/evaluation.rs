@@ -455,7 +455,7 @@ fn ambiguity_tiebreak_picks_unique_top_scorer() {
 }
 
 #[test]
-fn genuine_tie_reports_ambiguous_without_demoting_to_stale() {
+fn genuine_tie_reports_ambiguous_without_demoting_to_stale() -> Result<(), String> {
     // Two entries with identical scores match the same finding. This is a
     // genuine tie → Ambiguous. But neither entry should be demoted to Stale
     // (they DID match — they're just ambiguous, not stale) (#2042).
@@ -478,6 +478,15 @@ fn genuine_tie_reports_ambiguous_without_demoting_to_stale() {
         outcomes.iter().any(|o| o.status == MatchStatus::Ambiguous),
         "genuine score tie should produce Ambiguous"
     );
+    let ambiguous = outcomes
+        .iter()
+        .find(|outcome| outcome.status == MatchStatus::Ambiguous)
+        .ok_or_else(|| "ambiguous outcome should be present".to_string())?;
+    assert_eq!(
+        ambiguous.candidate_ids,
+        vec!["allow-tied-a".to_string(), "allow-tied-b".to_string()]
+    );
+    assert_eq!(ambiguous.allow_id, None);
     // Neither entry should be Stale (they matched, they're just ambiguous).
     assert!(
         !outcomes.iter().any(|o| {
@@ -487,4 +496,5 @@ fn genuine_tie_reports_ambiguous_without_demoting_to_stale() {
         }),
         "ambiguous candidates must not be demoted to Stale"
     );
+    Ok(())
 }

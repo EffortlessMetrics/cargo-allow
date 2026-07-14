@@ -52,6 +52,7 @@ pub(crate) struct WorkItem {
     pub(super) difficulty: &'static str,
     pub(super) status: MatchStatus,
     pub(super) allow_id: Option<String>,
+    pub(super) candidate_ids: Vec<String>,
     pub(super) finding_index: Option<usize>,
     pub(super) path: Option<String>,
     pub(super) evidence_reference: Option<WorkItemEvidenceReference>,

@@ -149,6 +149,7 @@ fn markdown_audit_report_includes_review_summary() {
         MatchOutcome {
             status: MatchStatus::New,
             allow_id: None,
+            candidate_ids: Vec::new(),
             finding_index: Some(0),
             message: "unreceipted shell script at scripts/new.sh".to_string(),
             score: 0,
@@ -156,6 +157,7 @@ fn markdown_audit_report_includes_review_summary() {
         MatchOutcome {
             status: MatchStatus::EvidenceMissing,
             allow_id: Some("allow-unsafe-ffi".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: Some(1),
             message: "allow-unsafe-ffi matched unsafe finding but has no evidence".to_string(),
             score: 0,
@@ -264,6 +266,7 @@ fn human_report_discloses_omitted_non_matched_outcomes() {
         .map(|index| MatchOutcome {
             status: MatchStatus::New,
             allow_id: None,
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: format!("new source exception {index}"),
             score: 0,
@@ -281,6 +284,7 @@ fn markdown_report_discloses_omitted_non_matched_outcomes() {
         .map(|index| MatchOutcome {
             status: MatchStatus::New,
             allow_id: None,
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: format!("new source exception {index}"),
             score: 0,
@@ -302,6 +306,7 @@ fn human_audit_report_includes_review_summary() {
         MatchOutcome {
             status: MatchStatus::New,
             allow_id: None,
+            candidate_ids: Vec::new(),
             finding_index: Some(0),
             message: "unreceipted shell script at scripts/new.sh".to_string(),
             score: 0,
@@ -309,6 +314,7 @@ fn human_audit_report_includes_review_summary() {
         MatchOutcome {
             status: MatchStatus::EvidenceMissing,
             allow_id: Some("allow-unsafe-ffi".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: Some(1),
             message: "allow-unsafe-ffi matched unsafe finding but has no evidence".to_string(),
             score: 0,
@@ -350,6 +356,7 @@ fn human_audit_report_routes_evidence_repairs_even_with_review_queue() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::New,
         allow_id: None,
+        candidate_ids: Vec::new(),
         finding_index: None,
         message: "unreceipted source exception".to_string(),
         score: 0,
@@ -391,6 +398,7 @@ fn markdown_audit_report_routes_evidence_repairs_even_with_review_queue() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::New,
         allow_id: None,
+        candidate_ids: Vec::new(),
         finding_index: None,
         message: "unreceipted source exception".to_string(),
         score: 0,
@@ -443,6 +451,7 @@ fn markdown_audit_report_routes_lifecycle_and_selector_remediation() {
         MatchOutcome {
             status: MatchStatus::Expired,
             allow_id: Some("allow-expired".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-expired is expired".to_string(),
             score: 0,
@@ -450,6 +459,7 @@ fn markdown_audit_report_routes_lifecycle_and_selector_remediation() {
         MatchOutcome {
             status: MatchStatus::ReviewDue,
             allow_id: Some("allow-review".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-review is due for review".to_string(),
             score: 0,
@@ -457,6 +467,7 @@ fn markdown_audit_report_routes_lifecycle_and_selector_remediation() {
         MatchOutcome {
             status: MatchStatus::Stale,
             allow_id: Some("allow-stale".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-stale is stale".to_string(),
             score: 0,
@@ -464,6 +475,7 @@ fn markdown_audit_report_routes_lifecycle_and_selector_remediation() {
         MatchOutcome {
             status: MatchStatus::Ambiguous,
             allow_id: Some("allow-ambiguous".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-ambiguous is ambiguous".to_string(),
             score: 0,
@@ -471,6 +483,7 @@ fn markdown_audit_report_routes_lifecycle_and_selector_remediation() {
         MatchOutcome {
             status: MatchStatus::InvalidSelector,
             allow_id: Some("allow-invalid".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-invalid selector is invalid".to_string(),
             score: 0,
@@ -478,6 +491,7 @@ fn markdown_audit_report_routes_lifecycle_and_selector_remediation() {
         MatchOutcome {
             status: MatchStatus::MissingRequiredField,
             allow_id: Some("allow-missing".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-missing lacks required policy fields".to_string(),
             score: 0,
@@ -568,6 +582,7 @@ fn text_reports_include_review_due_and_invalid_selector_counts() {
         MatchOutcome {
             status: MatchStatus::ReviewDue,
             allow_id: Some("allow-review".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-review is due for review".to_string(),
             score: 0,
@@ -575,6 +590,7 @@ fn text_reports_include_review_due_and_invalid_selector_counts() {
         MatchOutcome {
             status: MatchStatus::InvalidSelector,
             allow_id: Some("allow-invalid".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-invalid selector is invalid".to_string(),
             score: 0,
@@ -673,6 +689,7 @@ fn outcome(status: MatchStatus, finding_index: Option<usize>) -> MatchOutcome {
     MatchOutcome {
         status,
         allow_id: None,
+        candidate_ids: Vec::new(),
         finding_index,
         message: String::new(),
         score: 0,
@@ -684,6 +701,7 @@ fn audit_review_queue_outcomes(count: usize) -> Vec<MatchOutcome> {
         .map(|index| MatchOutcome {
             status: MatchStatus::New,
             allow_id: None,
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: format!("new source exception {index}"),
             score: 0,

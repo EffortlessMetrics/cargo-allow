@@ -16,6 +16,7 @@ fn html_report_summarizes_audit_posture() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::New,
         allow_id: None,
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         message: "unreceipted shell script at scripts/new.sh".to_string(),
         score: 0,
@@ -100,6 +101,7 @@ fn html_audit_report_routes_evidence_repairs_even_with_review_queue() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::New,
         allow_id: None,
+        candidate_ids: Vec::new(),
         finding_index: None,
         message: "unreceipted source exception".to_string(),
         score: 0,
@@ -152,6 +154,7 @@ fn html_audit_report_routes_lifecycle_and_selector_remediation() {
         MatchOutcome {
             status: MatchStatus::Expired,
             allow_id: Some("allow-expired".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-expired is expired".to_string(),
             score: 0,
@@ -159,6 +162,7 @@ fn html_audit_report_routes_lifecycle_and_selector_remediation() {
         MatchOutcome {
             status: MatchStatus::ReviewDue,
             allow_id: Some("allow-review".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-review is due for review".to_string(),
             score: 0,
@@ -166,6 +170,7 @@ fn html_audit_report_routes_lifecycle_and_selector_remediation() {
         MatchOutcome {
             status: MatchStatus::Stale,
             allow_id: Some("allow-stale".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-stale is stale".to_string(),
             score: 0,
@@ -173,6 +178,7 @@ fn html_audit_report_routes_lifecycle_and_selector_remediation() {
         MatchOutcome {
             status: MatchStatus::Ambiguous,
             allow_id: Some("allow-ambiguous".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-ambiguous is ambiguous".to_string(),
             score: 0,
@@ -180,6 +186,7 @@ fn html_audit_report_routes_lifecycle_and_selector_remediation() {
         MatchOutcome {
             status: MatchStatus::InvalidSelector,
             allow_id: Some("allow-invalid".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-invalid selector is invalid".to_string(),
             score: 0,
@@ -187,6 +194,7 @@ fn html_audit_report_routes_lifecycle_and_selector_remediation() {
         MatchOutcome {
             status: MatchStatus::MissingRequiredField,
             allow_id: Some("allow-missing".to_string()),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: "allow-missing lacks required policy fields".to_string(),
             score: 0,

@@ -195,6 +195,7 @@ mod tests {
         MatchOutcome {
             status,
             allow_id: allow_id.map(str::to_string),
+            candidate_ids: Vec::new(),
             finding_index: None,
             message: status.as_str().to_string(),
             score: 0,

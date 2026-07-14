@@ -429,6 +429,7 @@ fn outcome(status: MatchStatus, finding_index: Option<usize>) -> MatchOutcome {
     MatchOutcome {
         status,
         allow_id: None,
+        candidate_ids: Vec::new(),
         finding_index,
         message: String::new(),
         score: 0,
@@ -439,6 +440,7 @@ fn outcome_with_allow(status: MatchStatus, allow_id: Option<&str>) -> MatchOutco
     MatchOutcome {
         status,
         allow_id: allow_id.map(ToOwned::to_owned),
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         message: String::new(),
         score: 0,

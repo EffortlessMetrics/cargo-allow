@@ -48,6 +48,7 @@ fn worklist_items_report_broad_scope_advisories() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::Matched,
         allow_id: Some("allow-scripts".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         message: "matched".to_string(),
         score: 100,
@@ -103,6 +104,7 @@ fn worklist_broad_scope_advisories_use_exception_risk() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::Matched,
         allow_id: Some("allow-unsafe-glob".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         message: "matched".to_string(),
         score: 100,
@@ -137,6 +139,7 @@ fn worklist_items_report_matched_baseline_debt_advisories() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::Matched,
         allow_id: Some("allow-baseline".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         message: "matched".to_string(),
         score: 100,
@@ -192,6 +195,7 @@ fn worklist_policy_advisories_ignore_exact_selector_globs() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::Matched,
         allow_id: Some("allow-doc".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         message: "matched".to_string(),
         score: 100,
@@ -219,6 +223,7 @@ fn worklist_policy_advisories_report_missing_evidence_by_default() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::Matched,
         allow_id: Some("allow-doc".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         message: "matched".to_string(),
         score: 100,
@@ -261,6 +266,7 @@ fn worklist_policy_advisories_specialize_high_risk_policy_missing_evidence_actio
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::Matched,
         allow_id: Some("allow-process".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         message: "matched".to_string(),
         score: 100,
@@ -313,6 +319,7 @@ fn worklist_policy_advisories_report_unsafe_missing_evidence_when_requested() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::Matched,
         allow_id: Some("allow-unsafe".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: Some(0),
         message: "matched".to_string(),
         score: 100,
@@ -360,6 +367,7 @@ fn worklist_policy_advisories_ignore_unmatched_broad_scopes() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::Stale,
         allow_id: Some("allow-scripts".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: None,
         message: "stale".to_string(),
         score: 0,

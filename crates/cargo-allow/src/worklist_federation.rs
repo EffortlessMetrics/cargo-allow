@@ -27,6 +27,7 @@ pub(super) fn work_items_from_federation_divergences(
                 difficulty: super::worklist_priority::DIFFICULTY_SMALL,
                 status: allow_core::MatchStatus::Stale,
                 allow_id: record.sample_entry_ids.first().cloned(),
+                candidate_ids: Vec::new(),
                 finding_index: None,
                 path: Some(record.mirror_path.clone()),
                 evidence_reference: None,

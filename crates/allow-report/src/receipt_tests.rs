@@ -221,6 +221,7 @@ fn receipt_advisory_counts_policy_context() {
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::ReviewDue,
         allow_id: Some("review".to_string()),
+        candidate_ids: Vec::new(),
         finding_index: None,
         message: "review_due".to_string(),
         score: 0,
@@ -310,6 +311,7 @@ fn outcome(status: MatchStatus, finding_index: Option<usize>) -> MatchOutcome {
     MatchOutcome {
         status,
         allow_id: None,
+        candidate_ids: Vec::new(),
         finding_index,
         message: String::new(),
         score: 0,

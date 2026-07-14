@@ -44,6 +44,7 @@ fn report_worklist_items(items: &[WorkItem]) -> Vec<allow_report::WorklistItem<'
             difficulty: item.difficulty,
             status: item.status.as_str(),
             allow_id: item.allow_id.as_deref(),
+            candidate_ids: &item.candidate_ids,
             finding_index: item.finding_index,
             path: item.path.as_deref(),
             evidence_reference: item.evidence_reference.as_ref().map(|reference| {

@@ -290,6 +290,20 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         "/$defs/work_item/properties/source_package/type",
         &["string", "null"],
     );
+    assert_eq!(
+        schema
+            .pointer("/$defs/work_item/properties/candidate_ids/type")
+            .and_then(Value::as_str),
+        Some("array"),
+        "worklist item candidate_ids should be an array"
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/work_item/properties/candidate_ids/items/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "worklist item candidate_ids should contain strings"
+    );
     assert_schema_type_equals(
         "worklist item path",
         &schema,
