@@ -39,27 +39,22 @@ fn git_tree_revision_parser_preserves_executable_modes() {
 }
 
 #[test]
-fn git_tree_revision_parser_filters_malformed_records() {
+fn git_tree_revision_parser_filters_malformed_and_non_file_records() {
     let output = b"record without separator\0\
 \tpath-without-mode\0\
 040000 tree abc123\tsrc\0\
-100644 blob abc123\tvalid.txt\0\
-100644 blob def456\tinvalid-\xff.txt\0";
+100644 blob abc123\tvalid.txt\0";
 
     let files = revision_git::parse_git_ls_tree_file_entries_z(output);
 
     assert_eq!(
         files,
-        vec![
-            revision_git::GitTreeFile {
-                mode: "100644".to_string(),
-                path: PathBuf::from("valid.txt"),
-            },
-            revision_git::GitTreeFile {
-                mode: "100644".to_string(),
-                path: PathBuf::from("invalid-\u{fffd}.txt"),
-            },
-        ]
+        vec![revision_git::GitTreeFile {
+            mode: "100644".to_string(),
+            object_oid: "abc123".to_string(),
+            path: PathBuf::from("valid.txt"),
+            raw_path: b"valid.txt".to_vec(),
+        },]
     );
 }
 
@@ -78,14 +73,27 @@ fn parse_git_ls_tree_record_call_presence_observer() {
         None
     );
 
-    let entry =
-        revision_git::parse_git_ls_tree_record_for_test(b"100644 blob abc123\tinvalid-\xff.txt")
-            .unwrap_or_else(|| std::panic::panic_any("file record should parse"));
-    assert_eq!(entry.mode, "100644");
-    let lossy_path = entry.path.to_string_lossy();
-    assert!(lossy_path.starts_with("invalid-"));
-    assert!(lossy_path.contains('\u{fffd}'));
-    assert!(lossy_path.ends_with(".txt"));
+    let non_utf8 = b"100644 blob abc123\tinvalid-\xff.txt";
+    #[cfg(unix)]
+    {
+        let entry = revision_git::parse_git_ls_tree_record_for_test(non_utf8)
+            .unwrap_or_else(|| std::panic::panic_any("unix should preserve non-UTF-8 path bytes"));
+        assert_eq!(entry.mode, "100644");
+        assert_eq!(entry.raw_path, b"invalid-\xff.txt");
+        assert_eq!(entry.object_oid, "abc123");
+    }
+    #[cfg(windows)]
+    {
+        assert_eq!(
+            revision_git::parse_git_ls_tree_record_for_test(non_utf8),
+            None,
+            "Windows must not invent a lossy PathBuf for non-UTF-8 Git paths"
+        );
+        assert_eq!(
+            revision_git::parse_git_tree_record_outcome_for_test(non_utf8),
+            Some(("unsupported", b"invalid-\xff.txt".to_vec()))
+        );
+    }
 }
 
 #[test]
@@ -96,6 +104,51 @@ fn parse_git_ls_tree_record_return_value_discriminator() {
 
     assert_eq!(entry.mode, "100755");
     assert_eq!(entry.path, PathBuf::from("scripts/run.sh"));
+    assert_eq!(entry.object_oid, "def456");
+    assert_eq!(entry.raw_path, b"scripts/run.sh");
+}
+
+#[test]
+fn parse_git_tree_record_outcome_distinguishes_entry_and_malformed() {
+    assert_eq!(
+        revision_git::parse_git_tree_record_outcome_for_test(b"100644 blob abc123\tnotes/ok.txt"),
+        Some(("entry", b"notes/ok.txt".to_vec()))
+    );
+    assert_eq!(
+        revision_git::parse_git_tree_record_outcome_for_test(b"record without separator"),
+        None
+    );
+}
+
+#[test]
+fn parse_git_ls_tree_record_preserves_colon_and_literal_backslash_path_bytes() {
+    let colon = revision_git::parse_git_ls_tree_record_for_test(
+        b"100644 blob abc123\tnotes/file:with:colons.txt",
+    )
+    .unwrap_or_else(|| std::panic::panic_any("colon path should parse"));
+    assert_eq!(colon.raw_path, b"notes/file:with:colons.txt");
+    assert_eq!(colon.path, PathBuf::from("notes/file:with:colons.txt"));
+
+    let backslash_record = b"100644 blob def456\tweird\\name.txt";
+    #[cfg(unix)]
+    {
+        let backslash = revision_git::parse_git_ls_tree_record_for_test(backslash_record)
+            .unwrap_or_else(|| std::panic::panic_any("literal backslash path should parse"));
+        assert_eq!(backslash.raw_path, b"weird\\name.txt");
+        assert_eq!(backslash.path, PathBuf::from("weird\\name.txt"));
+    }
+    #[cfg(windows)]
+    {
+        assert_eq!(
+            revision_git::parse_git_ls_tree_record_for_test(backslash_record),
+            None,
+            "Windows must not reinterpret literal backslash Git path bytes as separators"
+        );
+        assert_eq!(
+            revision_git::parse_git_tree_record_outcome_for_test(backslash_record),
+            Some(("unsupported", b"weird\\name.txt".to_vec()))
+        );
+    }
 }
 
 #[test]
@@ -103,13 +156,13 @@ fn parse_changed_files_z_preserves_embedded_newline_path() {
     // #1918: NUL-delimited git diff output must preserve paths with embedded
     // newlines (legal on many filesystems, storable in git). The old
     // newline-split parsing would corrupt such a path into two entries.
-    let stdout = b"src/lib.rs\0weird\\\nname.rs\0README.md\0";
+    let stdout = b"src/lib.rs\0weird\nname.rs\0README.md\0";
     let files = revision_git::parse_changed_files_z(stdout);
     assert_eq!(files.len(), 3, "three NUL-delimited paths");
     assert_eq!(files[0], PathBuf::from("src/lib.rs"));
     assert_eq!(
         files[1],
-        PathBuf::from("weird\\\nname.rs"),
+        PathBuf::from("weird\nname.rs"),
         "embedded-newline path must be preserved as one entry"
     );
     assert_eq!(files[2], PathBuf::from("README.md"));
@@ -150,7 +203,13 @@ fn revision_git_commands_report_changed_tracked_and_missing_files() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("readme read: {err}")));
     assert_eq!(readme.as_deref(), Some("initial readme\n"));
 
-    let lib = revision_git::read_file_at_revision(repo.path(), &base, PathBuf::from("src\\lib.rs"))
+    // On Windows, host paths may use `\`; source_tree_path_bytes maps separators
+    // to Git's `/` form. On Unix, `\` is a literal filename byte, so use `/`.
+    #[cfg(windows)]
+    let lib_path = PathBuf::from("src\\lib.rs");
+    #[cfg(not(windows))]
+    let lib_path = PathBuf::from("src/lib.rs");
+    let lib = revision_git::read_file_at_revision(repo.path(), &base, lib_path)
         .unwrap_or_else(|err| std::panic::panic_any(format!("lib read: {err}")));
     assert_eq!(lib.as_deref(), Some("pub fn version() -> u8 { 1 }\n"));
 
@@ -249,6 +308,137 @@ fn assert_diagnostic_code(err: &CargoAllowError, code: &str) {
     );
 }
 
+#[cfg(unix)]
+#[test]
+fn read_file_at_revision_uses_blob_oid_for_colon_paths() {
+    let repo = TempGitRepo::new("revision-git-colon-blob");
+    repo.git(&["init"]);
+    repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
+    repo.git(&["config", "user.name", "cargo-allow"]);
+    // Create the colon path via plumbing so the OS filesystem does not need to
+    // accept `:` in a filename. Windows Git rejects these paths in the index.
+    let blob = repo.hash_blob("colon-blob-content\n");
+    let cacheinfo = format!("100644,{blob},notes/file:with:colons.txt");
+    repo.git(&["update-index", "--add", "--cacheinfo", &cacheinfo]);
+    let tree = repo.git_stdout(&["write-tree"]);
+    let commit = repo.git_stdout(&["commit-tree", &tree, "-m", "colon path via plumbing"]);
+    repo.git(&["update-ref", "HEAD", &commit]);
+
+    let value =
+        revision_git::read_file_at_revision(repo.path(), "HEAD", "notes/file:with:colons.txt")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("colon path read: {err}")));
+    assert_eq!(value.as_deref(), Some("colon-blob-content\n"));
+
+    let tracked = revision_git::git_tracked_files_at_revision(repo.path(), "HEAD")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("tracked colon path: {err}")));
+    assert_eq!(tracked, vec![PathBuf::from("notes/file:with:colons.txt")]);
+}
+
+#[test]
+fn read_file_at_revision_no_longer_rejects_colon_in_normalize() {
+    // Even when the host Git index cannot store colon paths, caller path
+    // validation must not reject `:` merely because `commit:path` syntax once
+    // required disambiguation. A missing tree entry returns None.
+    let repo = TempGitRepo::new("revision-git-colon-normalize");
+    repo.git(&["init"]);
+    repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
+    repo.git(&["config", "user.name", "cargo-allow"]);
+    repo.write("README.md", "fixture\n");
+    repo.git(&["add", "."]);
+    repo.git(&["commit", "-m", "fixture"]);
+
+    let missing =
+        revision_git::read_file_at_revision(repo.path(), "HEAD", "notes/file:with:colons.txt")
+            .unwrap_or_else(|err| {
+                std::panic::panic_any(format!(
+                    "colon characters must not fail path validation: {err}"
+                ))
+            });
+    assert_eq!(missing, None);
+}
+
+#[test]
+fn read_file_at_revision_distinguishes_symlink_directory_and_missing_paths() {
+    let repo = TempGitRepo::new("revision-git-mode-discrimination");
+    repo.git(&["init"]);
+    repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
+    repo.git(&["config", "user.name", "cargo-allow"]);
+
+    let blob = repo.hash_blob("regular\n");
+    repo.git(&[
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        &format!("100644,{blob},regular.txt"),
+    ]);
+    let link_blob = repo.hash_blob("regular.txt");
+    repo.git(&[
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        &format!("120000,{link_blob},link.txt"),
+    ]);
+    // Nested tree entry for a directory-shaped path: stage a blob under nested/
+    // and also attempt to read the directory path itself.
+    repo.git(&[
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        &format!("100644,{blob},nested/child.txt"),
+    ]);
+    let tree = repo.git_stdout(&["write-tree"]);
+    let commit = repo.git_stdout(&["commit-tree", &tree, "-m", "modes"]);
+    repo.git(&["update-ref", "HEAD", &commit]);
+
+    let regular = revision_git::read_file_at_revision(repo.path(), "HEAD", "regular.txt")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("regular read: {err}")));
+    assert_eq!(regular.as_deref(), Some("regular\n"));
+
+    let link = revision_git::read_file_at_revision(repo.path(), "HEAD", "link.txt")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("symlink read: {err}")));
+    assert_eq!(link, None, "symlinks are not regular source-tree files");
+
+    let nested_dir = revision_git::read_file_at_revision(repo.path(), "HEAD", "nested")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("directory read: {err}")));
+    assert_eq!(
+        nested_dir, None,
+        "directories are not regular source-tree files"
+    );
+
+    let missing = revision_git::read_file_at_revision(repo.path(), "HEAD", "absent.txt")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("missing read: {err}")));
+    assert_eq!(missing, None);
+}
+
+#[test]
+fn read_file_at_revision_rejects_parent_and_absolute_paths() {
+    let repo = TempGitRepo::new("revision-git-invalid-paths");
+    repo.git(&["init"]);
+    repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
+    repo.git(&["config", "user.name", "cargo-allow"]);
+    repo.write("README.md", "fixture\n");
+    repo.git(&["add", "."]);
+    repo.git(&["commit", "-m", "fixture"]);
+
+    for path in ["../escape.txt", "/abs.txt", ""] {
+        let err = revision_git::read_file_at_revision(repo.path(), "HEAD", path)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any(format!("path `{path}` should fail")));
+        assert_eq!(err.kind(), CargoAllowErrorKind::InvalidConfig);
+        assert_diagnostic_code(&err, "invalid_source_tree_path");
+    }
+}
+
+#[test]
+fn parse_git_ls_tree_record_preserves_embedded_newline_raw_path() {
+    let entry = revision_git::parse_git_ls_tree_record_for_test(
+        b"100644 blob abc123\tfixtures/line\nbreak.rs",
+    )
+    .unwrap_or_else(|| std::panic::panic_any("newline path should parse"));
+    assert_eq!(entry.raw_path, b"fixtures/line\nbreak.rs");
+    assert_eq!(entry.path, PathBuf::from("fixtures/line\nbreak.rs"));
+}
+
 struct TempGitRepo {
     path: PathBuf,
 }
@@ -283,6 +473,41 @@ impl TempGitRepo {
         }
         fs::write(&path, contents)
             .unwrap_or_else(|err| std::panic::panic_any(format!("test file written: {err}")));
+    }
+
+    fn hash_blob(&self, contents: &str) -> String {
+        let mut child = Command::new("git")
+            .arg("-C")
+            .arg(&self.path)
+            .arg("hash-object")
+            .arg("-w")
+            .arg("--stdin")
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("hash-object starts: {err}")));
+        {
+            let stdin = child
+                .stdin
+                .as_mut()
+                .unwrap_or_else(|| std::panic::panic_any("hash-object stdin"));
+            use std::io::Write;
+            stdin
+                .write_all(contents.as_bytes())
+                .unwrap_or_else(|err| std::panic::panic_any(format!("hash-object write: {err}")));
+        }
+        let output = child
+            .wait_with_output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("hash-object waits: {err}")));
+        if !output.status.success() {
+            std::panic::panic_any(format!(
+                "hash-object failed: stdout=`{}` stderr=`{}`",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+        String::from_utf8_lossy(&output.stdout).trim().to_string()
     }
 
     fn git(&self, args: &[&str]) {

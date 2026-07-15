@@ -3,13 +3,43 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+#[cfg(unix)]
+use std::ffi::OsStr;
+#[cfg(unix)]
+use std::os::unix::ffi::OsStrExt;
+
 const GIT_DIAGNOSTIC_CATEGORY: &str = "git_revision";
 const MAX_DISAMBIGUATION_CANDIDATES: usize = 64;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct GitTreeFile {
     pub(crate) mode: String,
+    pub(crate) object_oid: String,
     pub(crate) path: PathBuf,
+    /// Exact repository-relative path bytes from Git tree output.
+    pub(crate) raw_path: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum TreePathLookup {
+    Found {
+        mode: String,
+        blob_oid: String,
+        raw_path: Vec<u8>,
+    },
+    Missing,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum TreeRecordParse {
+    Entry(GitTreeFile),
+    /// Path bytes are valid in Git but not representable as a host `Path`.
+    UnsupportedPath {
+        mode: String,
+        object_oid: String,
+        raw_path: Vec<u8>,
+    },
+    Malformed,
 }
 
 pub fn changed_files(
@@ -41,7 +71,7 @@ pub fn changed_files(
         return Err(git_status_error("git diff --name-only", &output));
     }
 
-    Ok(parse_nul_paths(&output.stdout))
+    parse_nul_paths_checked(&output.stdout)
 }
 
 pub fn git_tracked_files_at_revision(
@@ -76,24 +106,28 @@ pub fn read_file_at_revision(
 ) -> CargoAllowResult<Option<String>> {
     let root = root.as_ref();
     let oid = resolve_commit_oid(root, revision)?;
-    let path = normalize_object_path(path.as_ref())?;
+    let path_bytes = source_tree_path_bytes(path.as_ref())?;
 
-    if !regular_file_exists_at_revision(root, &oid, &path)? {
-        return Ok(None);
+    match lookup_tree_path(root, &oid, &path_bytes)? {
+        TreePathLookup::Missing => Ok(None),
+        TreePathLookup::Found {
+            mode,
+            blob_oid,
+            raw_path,
+        } => {
+            if raw_path != path_bytes {
+                return Err(git_error(
+                    CargoAllowErrorKind::Inventory,
+                    "git_output_malformed",
+                    "git ls-tree returned path bytes that do not match the requested source-tree path",
+                ));
+            }
+            if !mode.starts_with("100") {
+                return Ok(None);
+            }
+            read_blob_by_oid(root, &blob_oid).map(Some)
+        }
     }
-
-    // The object expression starts with a fully resolved hexadecimal object ID,
-    // so even a repository path beginning with '-' cannot become a Git option.
-    // Source-tree paths containing ':' are rejected by normalize_object_path.
-    let object = format!("{oid}:{path}");
-    let mut cmd = git_command(root);
-    cmd.arg("cat-file").arg("blob").arg(&object);
-    let output = run_git(cmd, "git cat-file blob")?;
-    if !output.status.success() {
-        return Err(git_status_error("git cat-file blob", &output));
-    }
-
-    Ok(Some(String::from_utf8_lossy(&output.stdout).to_string()))
 }
 
 fn resolve_commit_oid(root: &Path, revision: &str) -> CargoAllowResult<String> {
@@ -246,36 +280,82 @@ fn is_full_oid(value: &str) -> bool {
     matches!(value.len(), 40 | 64) && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
-fn normalize_object_path(path: &Path) -> CargoAllowResult<String> {
-    let text = path.to_string_lossy().replace('\\', "/");
-    let invalid = text.is_empty()
-        || text.starts_with('/')
-        || text.contains(':')
-        || text.contains('\0')
-        || text
-            .split('/')
-            .any(|segment| segment.is_empty() || matches!(segment, "." | ".."));
-    if invalid {
-        return Err(git_error(
-            CargoAllowErrorKind::InvalidConfig,
-            "invalid_source_tree_path",
-            format!(
-                "source-tree path `{}` cannot be read from a Git revision",
-                path.display()
-            ),
-        ));
+/// Convert a caller `Path` into exact Git tree path bytes for literal lookup.
+///
+/// On Windows, OS path separators (`\`) are mapped to Git's `/` form so callers
+/// can pass ordinary host paths. Literal backslash *filename* bytes that exist
+/// only inside a Git tree are preserved when they arrive from Git output, not
+/// from this conversion.
+fn source_tree_path_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
+    #[cfg(unix)]
+    {
+        let bytes = path.as_os_str().as_bytes().to_vec();
+        validate_source_tree_path_bytes(&bytes, path)?;
+        Ok(bytes)
     }
-    Ok(text)
+    #[cfg(windows)]
+    {
+        let Some(text) = path.to_str() else {
+            return Err(git_error(
+                CargoAllowErrorKind::InvalidConfig,
+                "tree_path_unsupported_on_platform",
+                format!(
+                    "source-tree path `{}` is not UTF-8 representable on this platform and cannot be read from a Git revision",
+                    path.display()
+                ),
+            ));
+        };
+        let git_text = text.replace('\\', "/");
+        let bytes = git_text.into_bytes();
+        validate_source_tree_path_bytes(&bytes, path)?;
+        Ok(bytes)
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = path;
+        Err(git_error(
+            CargoAllowErrorKind::InvalidConfig,
+            "tree_path_unsupported_on_platform",
+            "source-tree Git path reads are unsupported on this platform",
+        ))
+    }
 }
 
-fn regular_file_exists_at_revision(root: &Path, oid: &str, path: &str) -> CargoAllowResult<bool> {
+fn validate_source_tree_path_bytes(bytes: &[u8], path: &Path) -> CargoAllowResult<()> {
+    if bytes.is_empty() || bytes.contains(&0) || bytes.starts_with(b"/") {
+        return Err(invalid_source_tree_path(path));
+    }
+    for segment in bytes.split(|byte| *byte == b'/') {
+        if segment.is_empty() || segment == b"." || segment == b".." {
+            return Err(invalid_source_tree_path(path));
+        }
+    }
+    Ok(())
+}
+
+fn invalid_source_tree_path(path: &Path) -> CargoAllowError {
+    git_error(
+        CargoAllowErrorKind::InvalidConfig,
+        "invalid_source_tree_path",
+        format!(
+            "source-tree path `{}` cannot be read from a Git revision",
+            path.display()
+        ),
+    )
+}
+
+fn lookup_tree_path(
+    root: &Path,
+    commit_oid: &str,
+    path_bytes: &[u8],
+) -> CargoAllowResult<TreePathLookup> {
     let mut cmd = literal_pathspec_git_command(root);
     cmd.arg("ls-tree")
         .arg("-z")
         .arg("--full-tree")
-        .arg(oid)
-        .arg("--")
-        .arg(path);
+        .arg(commit_oid)
+        .arg("--");
+    append_literal_path_arg(&mut cmd, path_bytes)?;
     let output = run_git(cmd, "git ls-tree exact path")?;
     if !output.status.success() {
         return Err(git_status_error("git ls-tree exact path", &output));
@@ -287,13 +367,13 @@ fn regular_file_exists_at_revision(root: &Path, oid: &str, path: &str) -> CargoA
         .filter(|record| !record.is_empty())
         .collect::<Vec<_>>();
     if records.is_empty() {
-        return Ok(false);
+        return Ok(TreePathLookup::Missing);
     }
     if records.len() != 1 {
         return Err(git_error(
             CargoAllowErrorKind::Inventory,
             "git_output_malformed",
-            format!("git ls-tree returned multiple records for exact path `{path}`"),
+            "git ls-tree returned multiple records for an exact path lookup",
         ));
     }
 
@@ -301,27 +381,92 @@ fn regular_file_exists_at_revision(root: &Path, oid: &str, path: &str) -> CargoA
         git_error(
             CargoAllowErrorKind::Inventory,
             "git_output_malformed",
-            format!("git ls-tree returned no record for exact path `{path}`"),
+            "git ls-tree returned no record for an exact path lookup",
         )
     })?;
-    let entry = parse_git_tree_record_any(record).ok_or_else(|| {
-        git_error(
+    match parse_git_tree_record_any(record) {
+        TreeRecordParse::Entry(entry) => {
+            if entry.raw_path != path_bytes {
+                return Err(git_error(
+                    CargoAllowErrorKind::Inventory,
+                    "git_output_malformed",
+                    format!(
+                        "git ls-tree returned `{}` for the requested exact path",
+                        entry.path.display()
+                    ),
+                ));
+            }
+            Ok(TreePathLookup::Found {
+                mode: entry.mode,
+                blob_oid: entry.object_oid,
+                raw_path: entry.raw_path,
+            })
+        }
+        TreeRecordParse::UnsupportedPath { raw_path, .. } => Err(git_error(
+            CargoAllowErrorKind::InvalidConfig,
+            "tree_path_unsupported_on_platform",
+            format!(
+                "git tree path `{}` is not representable on this platform",
+                display_raw_path(&raw_path)
+            ),
+        )),
+        TreeRecordParse::Malformed => Err(git_error(
             CargoAllowErrorKind::Inventory,
             "git_output_malformed",
-            format!("git ls-tree returned a malformed record for exact path `{path}`"),
-        )
-    })?;
-    if entry.path.as_path() != Path::new(path) {
+            "git ls-tree returned a malformed record for an exact path lookup",
+        )),
+    }
+}
+
+fn read_blob_by_oid(root: &Path, blob_oid: &str) -> CargoAllowResult<String> {
+    if !is_full_oid(blob_oid) {
         return Err(git_error(
             CargoAllowErrorKind::Inventory,
             "git_output_malformed",
-            format!(
-                "git ls-tree returned `{}` for requested exact path `{path}`",
-                entry.path.display()
-            ),
+            "git ls-tree returned a malformed blob object identity",
         ));
     }
-    Ok(entry.mode.starts_with("100"))
+    let mut cmd = git_command(root);
+    // Read by object identity only. Do not reconstruct `commit:path`, which is
+    // ambiguous for paths containing ':' and loses the exact tree binding.
+    cmd.arg("cat-file").arg("blob").arg(blob_oid);
+    let output = run_git(cmd, "git cat-file blob")?;
+    if !output.status.success() {
+        return Err(git_status_error("git cat-file blob", &output));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+fn append_literal_path_arg(cmd: &mut Command, path_bytes: &[u8]) -> CargoAllowResult<()> {
+    #[cfg(unix)]
+    {
+        cmd.arg(OsStr::from_bytes(path_bytes));
+        Ok(())
+    }
+    #[cfg(windows)]
+    {
+        let text = std::str::from_utf8(path_bytes).map_err(|_| {
+            git_error(
+                CargoAllowErrorKind::InvalidConfig,
+                "tree_path_unsupported_on_platform",
+                format!(
+                    "git tree path `{}` is not UTF-8 representable on this platform",
+                    display_raw_path(path_bytes)
+                ),
+            )
+        })?;
+        cmd.arg(text);
+        Ok(())
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = (cmd, path_bytes);
+        Err(git_error(
+            CargoAllowErrorKind::InvalidConfig,
+            "tree_path_unsupported_on_platform",
+            "source-tree Git path reads are unsupported on this platform",
+        ))
+    }
 }
 
 fn parse_git_ls_tree_file_entries_z_checked(stdout: &[u8]) -> CargoAllowResult<Vec<GitTreeFile>> {
@@ -330,15 +475,28 @@ fn parse_git_ls_tree_file_entries_z_checked(stdout: &[u8]) -> CargoAllowResult<V
         .split(|byte| *byte == 0)
         .filter(|record| !record.is_empty())
     {
-        let entry = parse_git_tree_record_any(record).ok_or_else(|| {
-            git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
-                "git ls-tree returned a malformed record",
-            )
-        })?;
-        if entry.mode.starts_with("100") {
-            files.push(entry);
+        match parse_git_tree_record_any(record) {
+            TreeRecordParse::Entry(entry) if entry.mode.starts_with("100") => {
+                files.push(entry);
+            }
+            TreeRecordParse::Entry(_) => {}
+            TreeRecordParse::UnsupportedPath { raw_path, .. } => {
+                return Err(git_error(
+                    CargoAllowErrorKind::InvalidConfig,
+                    "tree_path_unsupported_on_platform",
+                    format!(
+                        "git tree path `{}` is not representable on this platform",
+                        display_raw_path(&raw_path)
+                    ),
+                ));
+            }
+            TreeRecordParse::Malformed => {
+                return Err(git_error(
+                    CargoAllowErrorKind::Inventory,
+                    "git_output_malformed",
+                    "git ls-tree returned a malformed record",
+                ));
+            }
         }
     }
     Ok(files)
@@ -408,6 +566,33 @@ fn git_error(kind: CargoAllowErrorKind, code: &str, message: impl Into<String>) 
     ))
 }
 
+fn display_raw_path(raw_path: &[u8]) -> String {
+    String::from_utf8_lossy(raw_path).into_owned()
+}
+
+fn path_buf_from_git_bytes(raw_path: &[u8]) -> Result<PathBuf, ()> {
+    #[cfg(unix)]
+    {
+        Ok(PathBuf::from(OsStr::from_bytes(raw_path)))
+    }
+    #[cfg(windows)]
+    {
+        let text = std::str::from_utf8(raw_path).map_err(|_| ())?;
+        // A literal `\` byte in a Git path is a filename character, not an OS
+        // separator. Windows `Path` would reinterpret it as a separator and
+        // fabricate a different path identity.
+        if text.as_bytes().contains(&b'\\') {
+            return Err(());
+        }
+        Ok(PathBuf::from(text))
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = raw_path;
+        Err(())
+    }
+}
+
 #[cfg(test)]
 pub(crate) fn parse_git_ls_tree_z(stdout: &[u8]) -> Vec<PathBuf> {
     parse_git_ls_tree_file_entries_z(stdout)
@@ -416,20 +601,40 @@ pub(crate) fn parse_git_ls_tree_z(stdout: &[u8]) -> Vec<PathBuf> {
         .collect()
 }
 
-fn parse_nul_paths(stdout: &[u8]) -> Vec<PathBuf> {
-    stdout
+fn parse_nul_paths_checked(stdout: &[u8]) -> CargoAllowResult<Vec<PathBuf>> {
+    let mut paths = Vec::new();
+    for bytes in stdout
         .split(|byte| *byte == 0)
         .filter(|record| !record.is_empty())
-        .map(|bytes| PathBuf::from(String::from_utf8_lossy(bytes).to_string()))
-        .collect()
+    {
+        match path_buf_from_git_bytes(bytes) {
+            Ok(path) => paths.push(path),
+            Err(()) => {
+                return Err(git_error(
+                    CargoAllowErrorKind::InvalidConfig,
+                    "tree_path_unsupported_on_platform",
+                    format!(
+                        "git diff path `{}` is not representable on this platform",
+                        display_raw_path(bytes)
+                    ),
+                ));
+            }
+        }
+    }
+    Ok(paths)
 }
 
 /// Parse NUL-delimited `git diff -z --name-only` output into paths. Each
 /// record is a path; empty records are filtered. Paths may contain embedded
-/// newlines (#1918).
+/// newlines (#1918). Unsupported host representations are skipped in this
+/// test helper; production uses [`parse_nul_paths_checked`].
 #[cfg(test)]
 pub(crate) fn parse_changed_files_z(stdout: &[u8]) -> Vec<PathBuf> {
-    parse_nul_paths(stdout)
+    stdout
+        .split(|byte| *byte == 0)
+        .filter(|record| !record.is_empty())
+        .filter_map(|bytes| path_buf_from_git_bytes(bytes).ok())
+        .collect()
 }
 
 #[cfg(test)]
@@ -437,32 +642,78 @@ pub(crate) fn parse_git_ls_tree_file_entries_z(stdout: &[u8]) -> Vec<GitTreeFile
     stdout
         .split(|byte| *byte == 0)
         .filter(|record| !record.is_empty())
-        .filter_map(parse_git_ls_tree_record)
+        .filter_map(|record| match parse_git_tree_record_any(record) {
+            TreeRecordParse::Entry(entry) if entry.mode.starts_with("100") => Some(entry),
+            _ => None,
+        })
         .collect()
 }
 
 #[cfg(test)]
 pub(crate) fn parse_git_ls_tree_record_for_test(record: &[u8]) -> Option<GitTreeFile> {
-    parse_git_ls_tree_record(record)
+    match parse_git_tree_record_any(record) {
+        TreeRecordParse::Entry(entry) if entry.mode.starts_with("100") => Some(entry),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
-fn parse_git_ls_tree_record(record: &[u8]) -> Option<GitTreeFile> {
-    parse_git_tree_record_any(record).filter(|entry| entry.mode.starts_with("100"))
+pub(crate) fn parse_git_tree_record_outcome_for_test(
+    record: &[u8],
+) -> Option<(&'static str, Vec<u8>)> {
+    match parse_git_tree_record_any(record) {
+        TreeRecordParse::Entry(entry) => Some(("entry", entry.raw_path)),
+        TreeRecordParse::UnsupportedPath { raw_path, .. } => Some(("unsupported", raw_path)),
+        TreeRecordParse::Malformed => None,
+    }
 }
 
-fn parse_git_tree_record_any(record: &[u8]) -> Option<GitTreeFile> {
-    let record = String::from_utf8_lossy(record);
-    let (metadata, path) = record.split_once('\t')?;
-    let mut fields = metadata.split_whitespace();
-    let mode = fields.next()?;
-    let _object_type = fields.next()?;
-    let _object_id = fields.next()?;
-    if fields.next().is_some() {
-        return None;
+fn parse_git_tree_record_any(record: &[u8]) -> TreeRecordParse {
+    let Some(tab) = record.iter().position(|byte| *byte == b'\t') else {
+        return TreeRecordParse::Malformed;
+    };
+    let (metadata, path_with_tab) = record.split_at(tab);
+    let Some(raw_path) = path_with_tab.get(1..) else {
+        return TreeRecordParse::Malformed;
+    };
+    if raw_path.is_empty() {
+        return TreeRecordParse::Malformed;
     }
-    Some(GitTreeFile {
-        mode: mode.to_string(),
-        path: PathBuf::from(path),
-    })
+
+    let Ok(metadata) = std::str::from_utf8(metadata) else {
+        return TreeRecordParse::Malformed;
+    };
+    let mut fields = metadata.split_whitespace();
+    let Some(mode) = fields.next() else {
+        return TreeRecordParse::Malformed;
+    };
+    let Some(object_type) = fields.next() else {
+        return TreeRecordParse::Malformed;
+    };
+    let Some(object_oid) = fields.next() else {
+        return TreeRecordParse::Malformed;
+    };
+    // Tests use short placeholder OIDs like `abc123`; production Git emits full
+    // OIDs. Accept any non-empty hex object id after a known object type.
+    if fields.next().is_some()
+        || !matches!(object_type, "blob" | "tree" | "commit")
+        || object_oid.is_empty()
+        || !object_oid.bytes().all(|byte| byte.is_ascii_hexdigit())
+    {
+        return TreeRecordParse::Malformed;
+    }
+
+    match path_buf_from_git_bytes(raw_path) {
+        Ok(path) => TreeRecordParse::Entry(GitTreeFile {
+            mode: mode.to_string(),
+            object_oid: object_oid.to_ascii_lowercase(),
+            path,
+            raw_path: raw_path.to_vec(),
+        }),
+        Err(()) => TreeRecordParse::UnsupportedPath {
+            mode: mode.to_string(),
+            object_oid: object_oid.to_ascii_lowercase(),
+            raw_path: raw_path.to_vec(),
+        },
+    }
 }
