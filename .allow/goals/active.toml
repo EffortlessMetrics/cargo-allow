@@ -168,6 +168,7 @@ title = "Ledger lifecycle scenario corpus (PR 7)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0051"
 proof_commands = [
   "rtk cargo test -p cargo-allow --test lifecycle_corpus --locked",
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
@@ -192,6 +193,11 @@ linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
 evidence_notes = [
   "Fixture-only selector change on policy/allow.toml; prove diff classification, missing note reporting, note addition, and receipt.",
+]
+proof_commands = [
+  "rtk cargo test -p cargo-allow --test lifecycle_corpus --locked",
+  "rtk cargo test -p cargo-allow diff_change_note --locked",
+  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 
 [[work_item]]
