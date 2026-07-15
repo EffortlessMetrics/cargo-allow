@@ -25,8 +25,8 @@ pub use active_goal::{
     validate_active_goal_manifest_text, validate_active_goal_manifest_text_at,
 };
 pub use config::{
-    SpecSystemConfig, SpecSystemMode, SpecSystemRequirements, SpecSystemRoots,
-    parse_spec_system_config, parse_spec_system_config_at,
+    SpecSystemConfig, SpecSystemGeneration, SpecSystemMode, SpecSystemRequirements,
+    SpecSystemRoots, parse_spec_system_config, parse_spec_system_config_at,
 };
 pub use doc_artifacts::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, load_doc_artifacts,

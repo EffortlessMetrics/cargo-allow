@@ -9,10 +9,10 @@ use allow_policy::import_roots::{
 };
 use allow_policy::spec_system::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, ProfileConfigProvenance,
-    ResolvedProfileConfig, SpecSystemConfig, SpecSystemMode, SpecSystemRequirements,
-    SpecSystemRoots, SupportTierLevel, load_doc_artifacts, parse_spec_system_config_at,
-    parse_support_tier_claims, profile_config_conflict_message, resolve_profile_config,
-    validate_active_goal_manifest_text_at, validate_doc_artifact_files,
+    ResolvedProfileConfig, SpecSystemConfig, SpecSystemGeneration, SpecSystemMode,
+    SpecSystemRequirements, SpecSystemRoots, SupportTierLevel, load_doc_artifacts,
+    parse_spec_system_config_at, parse_support_tier_claims, profile_config_conflict_message,
+    resolve_profile_config, validate_active_goal_manifest_text_at, validate_doc_artifact_files,
     validate_doc_artifact_links, validate_support_tier_claims,
 };
 use std::env;
@@ -568,6 +568,45 @@ fn build_spec_system_report(
     let mut support_tier_rows = 0;
     let mut work_items = Vec::new();
 
+    if matches!(cfg.generation, SpecSystemGeneration::CurrentV2) {
+        let legacy_active_goal = root.join(".allow/goals/active.toml");
+        if legacy_active_goal.is_file() {
+            let message = format!(
+                "legacy active goal manifest {} is historical-only; it cannot select current work, authorize mutation, or promote implementation/support state",
+                legacy_active_goal
+                    .strip_prefix(&root)
+                    .unwrap_or(&legacy_active_goal)
+                    .display()
+            );
+            findings.push(SpecSystemFinding::new(
+                "legacy_active_goal_present",
+                message.clone(),
+            ));
+            if include_work_items {
+                work_items.push(SpecSystemWorkItem {
+                    kind: "legacy_goal_historical_only",
+                    artifact_id: None,
+                    path: Some(".allow/goals/active.toml".to_string()),
+                    owner: None,
+                    status: Some("historical_only".to_string()),
+                    message,
+                    suggested_actions: vec![
+                        "archive or remove the legacy active-goal file after preserving its closeout history"
+                            .to_string(),
+                        "do not use the legacy file as a current issue, implementation, or mutation authority"
+                            .to_string(),
+                    ],
+                    proof_commands: spec_system_proof_commands(),
+                    ledger_id: None,
+                    ledger_path: None,
+                    lane: Some("migration".to_string()),
+                    mode: Some("advisory".to_string()),
+                    role: Some("legacy".to_string()),
+                });
+            }
+        }
+    }
+
     let ledger_path = root_relative_path(&root, Path::new(&cfg.roots.artifact_ledger));
     match load_doc_artifacts(&ledger_path) {
         Ok(ledger) => {
@@ -592,12 +631,13 @@ fn build_spec_system_report(
                 validate_doc_artifact_links(&ledger),
             );
             if cfg.requirements.active_goal_required {
-                let active_goal_path = active_goal_manifest_source_path(&cfg);
                 let active_goal_result = validate_active_goal_file(&root, &cfg, &ledger);
                 if let Err(err) = active_goal_result {
                     let message = err.to_string();
                     findings.push(SpecSystemFinding::new("active_goal", message.clone()));
                     if include_work_items {
+                        let active_goal_path = active_goal_manifest_source_path(&cfg)
+                            .unwrap_or_else(|| ".allow/goals/active.toml".to_string());
                         work_items.push(active_goal_work_item(&active_goal_path, &message));
                     }
                 }
@@ -1038,12 +1078,13 @@ fn default_spec_system_config() -> SpecSystemConfig {
         schema_version: "1.0".to_string(),
         profile: PROFILE_NAME.to_string(),
         mode: SpecSystemMode::Advisory,
+        generation: SpecSystemGeneration::CurrentV2,
         roots: SpecSystemRoots {
             proposals: "docs/proposals".to_string(),
             specs: "docs/specs".to_string(),
             adrs: "docs/adr".to_string(),
             plans: "plans".to_string(),
-            goals: ".codex/goals".to_string(),
+            goals: None,
             support_tiers: "docs/status/SUPPORT_TIERS.md".to_string(),
             artifact_ledger: "policy/doc-artifacts.toml".to_string(),
         },
@@ -1051,7 +1092,7 @@ fn default_spec_system_config() -> SpecSystemConfig {
             ledger_required: true,
             templates_required: true,
             support_tiers_required: true,
-            active_goal_required: true,
+            active_goal_required: false,
             closeout_required_for_done_items: true,
         },
         import_roots: None,
@@ -1068,9 +1109,9 @@ fn collect_validation(
     }
 }
 
-fn active_goal_manifest_source_path(cfg: &SpecSystemConfig) -> String {
-    let goals = cfg.roots.goals.trim_end_matches(['/', '\\']);
-    format!("{goals}/active.toml")
+fn active_goal_manifest_source_path(cfg: &SpecSystemConfig) -> Option<String> {
+    let goals = cfg.roots.goals.as_deref()?.trim_end_matches(['/', '\\']);
+    Some(format!("{goals}/active.toml"))
 }
 
 fn validate_active_goal_file(
@@ -1078,7 +1119,9 @@ fn validate_active_goal_file(
     cfg: &SpecSystemConfig,
     ledger: &DocArtifactLedger,
 ) -> CargoAllowResult<()> {
-    let source_path = active_goal_manifest_source_path(cfg);
+    let source_path = active_goal_manifest_source_path(cfg).ok_or_else(|| {
+        CargoAllowError::new("legacy active-goal validation requires an explicit legacy goals root")
+    })?;
     let active_goal_path = root_relative_path(root, Path::new(&source_path));
     let text = fs::read_to_string(&active_goal_path).map_err(|err| {
         CargoAllowError::new(format!(
@@ -1115,12 +1158,15 @@ fn collect_spec_system_readiness(
     ));
 
     for (label, path) in [
-        ("artifact_root", cfg.roots.proposals.as_str()),
-        ("artifact_root", cfg.roots.specs.as_str()),
-        ("artifact_root", cfg.roots.adrs.as_str()),
-        ("artifact_root", cfg.roots.plans.as_str()),
-        ("artifact_root", cfg.roots.goals.as_str()),
+        ("artifact_root", Some(cfg.roots.proposals.as_str())),
+        ("artifact_root", Some(cfg.roots.specs.as_str())),
+        ("artifact_root", Some(cfg.roots.adrs.as_str())),
+        ("artifact_root", Some(cfg.roots.plans.as_str())),
+        ("artifact_root", cfg.roots.goals.as_deref()),
     ] {
+        let Some(path) = path else {
+            continue;
+        };
         let full_path = root_relative_path(root, Path::new(path));
         checks.push(readiness_check(
             label,
@@ -1169,38 +1215,41 @@ fn collect_spec_system_readiness(
         },
     ));
 
-    let active_goal = active_goal_manifest_source_path(cfg);
-    let active_goal_path = root_relative_path(root, Path::new(&active_goal));
-    if cfg.requirements.active_goal_required {
-        let active_goal_result = match &ledger_result {
-            Ok(ledger) => {
-                validate_active_goal_file(root, cfg, ledger).map_err(|err| err.to_string())
-            }
-            Err(err) => Err(format!(
-                "active goal manifest cannot be validated until doc artifact ledger parses: {err}"
-            )),
-        };
-        let active_goal_valid = active_goal_result.is_ok();
-        checks.push(readiness_check(
-            "active_goal",
-            Some(active_goal.clone()),
-            active_goal_path.is_file(),
-            Some(active_goal_valid),
-            match active_goal_result {
-                Ok(()) => format!("active goal manifest {active_goal} parsed"),
-                Err(err) => err,
-            },
-        ));
-    } else {
-        checks.push(SpecSystemReadinessCheck {
-            kind: "active_goal",
-            path: Some(active_goal.clone()),
-            found: active_goal_path.is_file(),
-            valid: None,
-            status: "ready",
-            message: "active goal validation is optional because active_goal_required = false"
-                .to_string(),
-        });
+    if matches!(cfg.generation, SpecSystemGeneration::LegacyV1) {
+        let active_goal = active_goal_manifest_source_path(cfg)
+            .unwrap_or_else(|| ".allow/goals/active.toml".to_string());
+        let active_goal_path = root_relative_path(root, Path::new(&active_goal));
+        if cfg.requirements.active_goal_required {
+            let active_goal_result = match &ledger_result {
+                Ok(ledger) => {
+                    validate_active_goal_file(root, cfg, ledger).map_err(|err| err.to_string())
+                }
+                Err(err) => Err(format!(
+                    "active goal manifest cannot be validated until doc artifact ledger parses: {err}"
+                )),
+            };
+            let active_goal_valid = active_goal_result.is_ok();
+            checks.push(readiness_check(
+                "active_goal",
+                Some(active_goal.clone()),
+                active_goal_path.is_file(),
+                Some(active_goal_valid),
+                match active_goal_result {
+                    Ok(()) => format!("active goal manifest {active_goal} parsed"),
+                    Err(err) => err,
+                },
+            ));
+        } else {
+            checks.push(SpecSystemReadinessCheck {
+                kind: "active_goal",
+                path: Some(active_goal.clone()),
+                found: active_goal_path.is_file(),
+                valid: None,
+                status: "ready",
+                message: "active goal validation is optional because active_goal_required = false"
+                    .to_string(),
+            });
+        }
     }
 
     let missing_templates = EXPECTED_TEMPLATE_FILES
@@ -2887,6 +2936,14 @@ mod tests {
         }
     }
 
+    fn legacy_test_config() -> SpecSystemConfig {
+        let mut cfg = default_spec_system_config();
+        cfg.generation = SpecSystemGeneration::LegacyV1;
+        cfg.roots.goals = Some(".codex/goals".to_string());
+        cfg.requirements.active_goal_required = true;
+        cfg
+    }
+
     #[test]
     fn spec_system_name_helpers_cover_all_variants() {
         assert_eq!(artifact_kind_name(ArtifactKind::Proposal), "proposal");
@@ -3095,7 +3152,7 @@ mod tests {
     #[test]
     fn validate_active_goal_file_reports_source_path_read_errors() -> std::io::Result<()> {
         let root = temp_root("missing-active-goal")?;
-        let cfg = default_spec_system_config();
+        let cfg = legacy_test_config();
         let ledger = empty_doc_artifact_ledger();
 
         let err = match validate_active_goal_file(&root, &cfg, &ledger) {
@@ -3119,14 +3176,17 @@ mod tests {
     #[test]
     fn collect_spec_system_readiness_discriminates_invalid_inputs() -> std::io::Result<()> {
         let root = temp_root("invalid-readiness")?;
-        let cfg = default_spec_system_config();
+        let cfg = legacy_test_config();
         for path in [
-            cfg.roots.proposals.as_str(),
-            cfg.roots.specs.as_str(),
-            cfg.roots.adrs.as_str(),
-            cfg.roots.plans.as_str(),
-            cfg.roots.goals.as_str(),
-        ] {
+            Some(cfg.roots.proposals.as_str()),
+            Some(cfg.roots.specs.as_str()),
+            Some(cfg.roots.adrs.as_str()),
+            Some(cfg.roots.plans.as_str()),
+            cfg.roots.goals.as_deref(),
+        ]
+        .into_iter()
+        .flatten()
+        {
             std::fs::create_dir_all(root.join(path))?;
         }
         write_fixture_file(&root, &cfg.roots.artifact_ledger, "not = valid = toml")?;
@@ -3207,7 +3267,7 @@ mod tests {
 
         let readiness = collect_spec_system_readiness(
             &root,
-            &test_loaded_spec_system_config(default_spec_system_config()),
+            &test_loaded_spec_system_config(legacy_test_config()),
         );
         let _ = std::fs::remove_dir_all(&root);
 

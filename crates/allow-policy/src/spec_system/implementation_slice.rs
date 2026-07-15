@@ -269,6 +269,27 @@ state = "unchanged"
     }
 
     #[test]
+    fn several_independent_implementation_slices_can_coexist() -> Result<(), String> {
+        let first = parse_implementation_slice(SLICE).map_err(|error| error.to_string())?;
+        let second_text = SLICE
+            .replace(
+                "cargo-allow.slice.self-hosted-runtime-promotion.v1",
+                "cargo-allow.slice.other-requirement.v1",
+            )
+            .replace("issue:2206", "issue:2215");
+        let second = parse_implementation_slice(&second_text).map_err(|error| error.to_string())?;
+
+        let ids = [first.id, second.id]
+            .into_iter()
+            .map(|slice_id| slice_id.as_str().to_string())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(ids.len(), 2);
+        assert_eq!(first.source_issue, "issue:2206");
+        assert_eq!(second.source_issue, "issue:2215");
+        Ok(())
+    }
+
+    #[test]
     fn implementation_slice_rejects_mutable_execution_state() {
         let result = parse_implementation_slice(&format!("{SLICE}\nbranch = \"main\"\n"));
         assert!(result.is_err());

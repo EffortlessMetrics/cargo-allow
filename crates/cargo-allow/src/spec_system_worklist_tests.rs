@@ -317,6 +317,11 @@ fn fixture_root(label: &str) -> PathBuf {
 fn write_valid_spec_system_fixture(root: &Path) {
     write_file(
         root,
+        "policy/spec-system.toml",
+        &legacy_spec_system_config(),
+    );
+    write_file(
+        root,
         "policy/doc-artifacts.toml",
         &valid_doc_artifact_ledger(),
     );
@@ -346,6 +351,31 @@ fn write_valid_spec_system_fixture(root: &Path) {
         "plans/spec-system/closeout.md",
         "CARGO-ALLOW-CLOSEOUT-0001\n",
     );
+}
+
+fn legacy_spec_system_config() -> String {
+    r#"
+schema_version = "1.0"
+profile = "spec-system"
+mode = "advisory"
+
+[roots]
+proposals = "docs/proposals"
+specs = "docs/specs"
+adrs = "docs/adr"
+plans = "plans"
+goals = ".codex/goals"
+support_tiers = "docs/status/SUPPORT_TIERS.md"
+artifact_ledger = "policy/doc-artifacts.toml"
+
+[requirements]
+ledger_required = true
+templates_required = true
+support_tiers_required = true
+active_goal_required = true
+closeout_required_for_done_items = true
+"#
+    .to_string()
 }
 
 fn valid_doc_artifact_ledger() -> String {
