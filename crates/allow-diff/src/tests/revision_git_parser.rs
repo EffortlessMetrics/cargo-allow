@@ -111,9 +111,7 @@ fn parse_git_ls_tree_record_return_value_discriminator() {
 #[test]
 fn parse_git_tree_record_outcome_distinguishes_entry_and_malformed() {
     assert_eq!(
-        revision_git::parse_git_tree_record_outcome_for_test(
-            b"100644 blob abc123\tnotes/ok.txt"
-        ),
+        revision_git::parse_git_tree_record_outcome_for_test(b"100644 blob abc123\tnotes/ok.txt"),
         Some(("entry", b"notes/ok.txt".to_vec()))
     );
     assert_eq!(
