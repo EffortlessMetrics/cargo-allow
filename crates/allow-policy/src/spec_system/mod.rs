@@ -13,6 +13,7 @@ mod doc_artifacts;
 mod implementation_slice;
 mod profile_resolution;
 mod requirement;
+mod ripr_dialect;
 mod runtime_promotion;
 mod support_tiers;
 mod validate;
@@ -43,7 +44,13 @@ pub use profile_resolution::{
 pub use requirement::{
     REQUIREMENT_BLOCK_SCHEMA_VERSION, RequirementClaimClass, RequirementGraph, RequirementId,
     RequirementLifecycle, RequirementSource, SpecRequirement, parse_requirement_blocks,
-    parse_requirement_blocks_at,
+    parse_requirement_blocks_at, parse_requirement_blocks_for_document,
+    parse_requirement_blocks_for_document_at,
+};
+pub use ripr_dialect::{
+    RIPR_SPEC_DIALECT_ID, RiprSpecDocument, RiprSpecLinks, RiprSpecSource,
+    RiprSpecSourceClass, RiprSpecStatus, parse_ripr_implementation_slice,
+    parse_ripr_implementation_slice_at, parse_ripr_spec, parse_ripr_spec_at,
 };
 pub use runtime_promotion::{
     RuntimePromotionFinding, RuntimePromotionFindingCode, ValidatedRuntimeTransition,
