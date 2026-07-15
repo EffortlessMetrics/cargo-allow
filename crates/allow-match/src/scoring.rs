@@ -130,6 +130,142 @@ pub fn score_match(entry: &AllowEntry, finding: &Finding) -> Option<u32> {
     classify_match(entry, finding).map(MatchStrength::as_priority)
 }
 
+/// Explain why `entry` does not match `finding`.
+///
+/// Returns an empty vector when the entry matches (same gates as
+/// [`classify_match`]). Otherwise returns one human-readable reason per failed
+/// hard gate so operators can see the full selector mismatch picture rather
+/// than only the first failing check.
+pub fn explain_match_failure(entry: &AllowEntry, finding: &Finding) -> Vec<String> {
+    let mut reasons = Vec::new();
+
+    if entry.kind != finding.kind {
+        reasons.push(format!(
+            "kind mismatch: entry is `{}`, finding is `{}`",
+            entry.kind.as_str(),
+            finding.kind.as_str()
+        ));
+    }
+
+    if let Some(family) = &entry.family {
+        let finding_family = finding.family.as_deref().unwrap_or("<none>");
+        if finding.family.as_deref() != Some(family.as_str()) {
+            reasons.push(format!(
+                "family mismatch: entry requires `{family}`, finding has `{finding_family}`"
+            ));
+        }
+    }
+
+    if !path_matches(entry, finding) {
+        reasons.push(path_mismatch_reason(entry, finding));
+    }
+
+    let sel = &entry.selector;
+    if entry.kind.requires_source_selector_identity() && !sel.has_structural_identity() {
+        reasons.push(format!(
+            "entry lacks structural selector identity required for `{}` findings",
+            entry.kind.as_str()
+        ));
+    }
+
+    push_field_mismatch(
+        &mut reasons,
+        "ast_kind",
+        sel.ast_kind.as_deref(),
+        Some(finding.identity.ast_kind.as_str()),
+    );
+    push_field_mismatch(
+        &mut reasons,
+        "container",
+        sel.container.as_deref(),
+        finding.identity.container.as_deref(),
+    );
+    push_field_mismatch(
+        &mut reasons,
+        "callee",
+        sel.callee.as_deref(),
+        finding.identity.callee.as_deref(),
+    );
+    push_field_mismatch(
+        &mut reasons,
+        "macro_name",
+        sel.macro_name.as_deref(),
+        finding.identity.macro_name.as_deref(),
+    );
+    push_field_mismatch(
+        &mut reasons,
+        "lint",
+        sel.lint.as_deref(),
+        finding.identity.lint.as_deref(),
+    );
+    push_field_mismatch(
+        &mut reasons,
+        "symbol",
+        sel.symbol.as_deref(),
+        finding.identity.symbol.as_deref(),
+    );
+    push_field_mismatch(
+        &mut reasons,
+        "receiver_fingerprint",
+        sel.receiver_fingerprint.as_deref(),
+        finding.identity.receiver_fingerprint.as_deref(),
+    );
+    push_field_mismatch(
+        &mut reasons,
+        "target_fingerprint",
+        sel.target_fingerprint.as_deref(),
+        finding.identity.target_fingerprint.as_deref(),
+    );
+    push_field_mismatch(
+        &mut reasons,
+        "normalized_snippet_hash",
+        sel.normalized_snippet_hash.as_deref(),
+        finding.identity.normalized_snippet_hash.as_deref(),
+    );
+
+    reasons
+}
+
+fn push_field_mismatch(
+    reasons: &mut Vec<String>,
+    field: &str,
+    required: Option<&str>,
+    actual: Option<&str>,
+) {
+    let Some(required) = required else {
+        return;
+    };
+    if actual == Some(required) {
+        return;
+    }
+    let actual = actual.unwrap_or("<none>");
+    reasons.push(format!(
+        "{field} mismatch: entry requires `{required}`, finding has `{actual}`"
+    ));
+}
+
+fn path_mismatch_reason(entry: &AllowEntry, finding: &Finding) -> String {
+    let finding_path = normalize_path(&finding.path);
+    let mut scopes = Vec::new();
+    if let Some(path) = &entry.path {
+        scopes.push(format!("path=`{}`", normalize_path(path)));
+    }
+    if let Some(glob) = &entry.glob {
+        scopes.push(format!("glob=`{glob}`"));
+    }
+    if let Some(glob) = &entry.selector.glob {
+        scopes.push(format!("selector.glob=`{glob}`"));
+    }
+    if scopes.is_empty() {
+        format!("path mismatch: entry has no path/glob scope; finding is at `{finding_path}`")
+    } else {
+        format!(
+            "path mismatch: finding `{finding_path}` is outside entry scope ({})",
+            scopes.join(", ")
+        )
+    }
+}
+
 fn path_matches(entry: &AllowEntry, finding: &Finding) -> bool {
     if let Some(path) = &entry.path {
         if normalize_path(path) == normalize_path(&finding.path) {

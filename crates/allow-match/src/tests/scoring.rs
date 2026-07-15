@@ -455,3 +455,49 @@ fn match_strength_priority_orders_correctly() {
     assert!(MatchStrength::ExactOccurrence.as_priority() > MatchStrength::Structural.as_priority());
     assert!(MatchStrength::Structural.as_priority() > MatchStrength::ScopedFamily.as_priority());
 }
+
+#[test]
+fn explain_match_failure_reports_kind_family_path_and_selector_gates() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:expected");
+    entry.kind = FindingKind::Panic;
+    entry.family = Some("unwrap".to_string());
+    entry.path = Some(PathBuf::from("src/other.rs"));
+    entry.selector.container = Some("other_container".to_string());
+
+    let reasons = explain_match_failure(&entry, &finding);
+    assert!(
+        reasons.iter().any(|reason| reason.contains("kind mismatch")),
+        "{reasons:?}"
+    );
+    assert!(
+        reasons
+            .iter()
+            .any(|reason| reason.contains("family mismatch")),
+        "{reasons:?}"
+    );
+    assert!(
+        reasons.iter().any(|reason| reason.contains("path mismatch")),
+        "{reasons:?}"
+    );
+    assert!(
+        reasons
+            .iter()
+            .any(|reason| reason.contains("container mismatch")),
+        "{reasons:?}"
+    );
+    assert!(
+        reasons
+            .iter()
+            .any(|reason| reason.contains("normalized_snippet_hash mismatch")),
+        "{reasons:?}"
+    );
+}
+
+#[test]
+fn explain_match_failure_empty_when_entry_matches() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let entry = entry_with_hash("fnv1a64:actual");
+    assert!(explain_match_failure(&entry, &finding).is_empty());
+    assert!(classify_match(&entry, &finding).is_some());
+}

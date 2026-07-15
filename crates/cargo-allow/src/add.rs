@@ -17,8 +17,9 @@ pub(crate) use add_args::AddArgs;
 use add_args::AddSummaryFormat;
 use add_entry::{
     AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
-    count_in_scope_findings, ensure_addable_outcome, next_allow_id, select_add_finding,
+    count_in_scope_findings, ensure_addable_outcome, next_allow_id,
 };
+pub(crate) use add_entry::select_add_finding;
 use add_render::{add_mutation_receipt, render_add_summary, render_add_summary_json};
 pub(super) use add_types::AddContext;
 

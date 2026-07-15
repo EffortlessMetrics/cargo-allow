@@ -40,6 +40,8 @@ governance profile model around it.
   reviewer-facing posture.
 - [Explain an allow entry](how-to/explain-an-allow.md): inspect one retained
   exception receipt.
+- [Explain why a finding is unreceipted](how-to/explain-why-a-finding.md):
+  inverse of `explain` for a path/line finding.
 - [Fix broken evidence](how-to/fix-broken-evidence.md): repair local evidence
   references.
 - [Prune stale allows](how-to/prune-stale-allows.md): remove expired or unused

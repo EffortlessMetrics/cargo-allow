@@ -16,7 +16,7 @@ mod scoring;
 pub use evaluation::{MatchEvaluation, OccurrenceAccounting, evaluate, evaluate_detailed};
 pub use messages::finding_location;
 pub use mode::CheckMode;
-pub use scoring::{MatchStrength, classify_match, score_match};
+pub use scoring::{MatchStrength, classify_match, explain_match_failure, score_match};
 
 #[cfg(test)]
 mod tests;

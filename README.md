@@ -90,6 +90,7 @@ cargo-allow check --mode no-new
 cargo-allow diff --base origin/main
 cargo-allow list
 cargo-allow explain allow-0042
+cargo-allow why --kind panic --path src/lib.rs --line 42
 cargo-allow worklist --format json
 ```
 
@@ -170,7 +171,7 @@ Most users start from the surface they already own.
 | New adopter | Choose the closest path: source exceptions, no-new, spec-system, CI, or cross-repo rollout. | [Onboarding](docs/onboarding.md) |
 | CI owner | Add `cargo-allow check --mode no-new` and upload the receipt. | [CI guide](docs/how-to/run-in-ci.md) |
 | Reviewer | Run `cargo-allow diff --base origin/main`. | [PR posture](docs/pr-posture.md) |
-| Auditor | Run `cargo-allow list` and `cargo-allow explain <id>`. | [Explain an allow](docs/how-to/explain-an-allow.md) |
+| Auditor | Run `cargo-allow list`, `cargo-allow explain <id>`, and `cargo-allow why --kind <kind> --path <path> --line <line>`. | [Explain an allow](docs/how-to/explain-an-allow.md), [Explain why a finding](docs/how-to/explain-why-a-finding.md) |
 | Migrator | Run `cargo-allow migrate --repo-policy <dir>`. | [Migration](docs/how-to/migrate-from-xtask.md) |
 | Agent operator | Run `cargo-allow worklist --format json`. | [Agent worklists](docs/how-to/feed-agent-worklists.md) |
 
@@ -357,6 +358,7 @@ pass CI.
 | Claim boundaries | [Claim boundaries](docs/claim-boundaries.md) |
 | Run in CI | [CI guide](docs/how-to/run-in-ci.md) |
 | Explain retained exceptions | [Explain an allow](docs/how-to/explain-an-allow.md) |
+| Explain unreceipted findings | [Explain why a finding](docs/how-to/explain-why-a-finding.md) |
 | Repair evidence | [Fix broken evidence](docs/how-to/fix-broken-evidence.md) |
 | Feed agents work | [Agent worklists](docs/how-to/feed-agent-worklists.md) |
 | Migrate legacy policy | [Migration from xtask](docs/how-to/migrate-from-xtask.md) |
