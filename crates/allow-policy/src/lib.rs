@@ -46,6 +46,7 @@ mod toml_requirements;
 mod toml_selector;
 mod toml_workspace;
 mod validation;
+pub use entry_validation::OCCURRENCE_LIMIT_MAX;
 pub use evidence::{
     broken_evidence_link_count, validate_local_evidence_references, weak_evidence_reference_count,
 };
@@ -58,7 +59,6 @@ pub use evidence_reference::{
     canonical_evidence_prefixes, local_file_evidence_prefixes, recognized_evidence_prefixes,
     traceability_evidence_prefixes,
 };
-pub use entry_validation::OCCURRENCE_LIMIT_MAX;
 pub use lifecycle::BASELINE_DEBT_MAX_DAYS;
 pub use render::render_policy;
 pub use starter::starter_policy;
