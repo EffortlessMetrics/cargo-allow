@@ -8,6 +8,7 @@
 //! behavior.
 
 mod active_goal;
+mod compiled_graph;
 mod config;
 mod doc_artifacts;
 mod implementation_slice;
@@ -21,6 +22,14 @@ pub use active_goal::{
     ActiveGoalManifest, ActiveGoalStatus, ActiveGoalWorkItem, ActiveGoalWorkItemStatus,
     parse_active_goal_manifest, parse_active_goal_manifest_at, validate_active_goal_manifest,
     validate_active_goal_manifest_text, validate_active_goal_manifest_text_at,
+};
+pub use compiled_graph::{
+    CompiledSpecGraph, EvidenceClaimId, EvidenceClaimNode, EvidenceClaimRegistration,
+    EvidencePurpose, GraphCompileInput, GraphDiagnostic, GraphDiagnosticCode, GraphSnapshotId,
+    ImplementationSeamId, ImplementationSeamNode, ImplementationSeamRegistration,
+    ImplementationSliceNode, ProofCommandId, ProofCommandNode, ProofCommandRegistration,
+    RequirementNode, RustTestSubjectId, RustTestSubjectNode, RustTestSubjectRegistration,
+    SourceLocation, TestSubjectRole, compile_spec_graph,
 };
 pub use config::{
     SpecSystemConfig, SpecSystemMode, SpecSystemRequirements, SpecSystemRoots,
