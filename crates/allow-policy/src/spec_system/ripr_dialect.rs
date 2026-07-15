@@ -138,9 +138,7 @@ pub fn parse_ripr_spec_at(
     })
 }
 
-pub fn parse_ripr_implementation_slice(
-    input: &str,
-) -> CargoAllowResult<ImplementationSliceV1> {
+pub fn parse_ripr_implementation_slice(input: &str) -> CargoAllowResult<ImplementationSliceV1> {
     parse_ripr_implementation_slice_at(None, input)
 }
 
@@ -392,10 +390,7 @@ claim_class = "runtime_behavior"
             .first()
             .ok_or_else(|| "expected one parsed requirement".to_string())?;
 
-        assert_eq!(
-            document.source_class,
-            RiprSpecSourceClass::V2Requirements
-        );
+        assert_eq!(document.source_class, RiprSpecSourceClass::V2Requirements);
         assert_eq!(
             requirement.id.as_str(),
             "RIPR-SPEC-0124#spec-only-runtime-promotion"
@@ -412,7 +407,10 @@ claim_class = "runtime_behavior"
         let windows = parse_ripr_spec_at(Some(Path::new("docs\\spec.md")), &windows_text)
             .map_err(|error| error.to_string())?;
 
-        assert_eq!(unix.source.content_identity, windows.source.content_identity);
+        assert_eq!(
+            unix.source.content_identity,
+            windows.source.content_identity
+        );
         assert_eq!(unix.source.path, windows.source.path);
         assert_eq!(
             unix.requirements

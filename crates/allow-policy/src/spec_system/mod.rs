@@ -51,9 +51,9 @@ pub use requirement_adapter::{
     parse_requirement_blocks_for_document, parse_requirement_blocks_for_document_at,
 };
 pub use ripr_dialect::{
-    RIPR_SPEC_DIALECT_ID, RiprSpecDocument, RiprSpecLinks, RiprSpecSource,
-    RiprSpecSourceClass, RiprSpecStatus, parse_ripr_implementation_slice,
-    parse_ripr_implementation_slice_at, parse_ripr_spec, parse_ripr_spec_at,
+    RIPR_SPEC_DIALECT_ID, RiprSpecDocument, RiprSpecLinks, RiprSpecSource, RiprSpecSourceClass,
+    RiprSpecStatus, parse_ripr_implementation_slice, parse_ripr_implementation_slice_at,
+    parse_ripr_spec, parse_ripr_spec_at,
 };
 pub use runtime_promotion::{
     RuntimePromotionFinding, RuntimePromotionFindingCode, ValidatedRuntimeTransition,
