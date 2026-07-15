@@ -203,7 +203,13 @@ fn revision_git_commands_report_changed_tracked_and_missing_files() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("readme read: {err}")));
     assert_eq!(readme.as_deref(), Some("initial readme\n"));
 
-    let lib = revision_git::read_file_at_revision(repo.path(), &base, PathBuf::from("src\\lib.rs"))
+    // On Windows, host paths may use `\`; source_tree_path_bytes maps separators
+    // to Git's `/` form. On Unix, `\` is a literal filename byte, so use `/`.
+    #[cfg(windows)]
+    let lib_path = PathBuf::from("src\\lib.rs");
+    #[cfg(not(windows))]
+    let lib_path = PathBuf::from("src/lib.rs");
+    let lib = revision_git::read_file_at_revision(repo.path(), &base, lib_path)
         .unwrap_or_else(|err| std::panic::panic_any(format!("lib read: {err}")));
     assert_eq!(lib.as_deref(), Some("pub fn version() -> u8 { 1 }\n"));
 
