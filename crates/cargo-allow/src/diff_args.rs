@@ -77,9 +77,10 @@ mod tests {
             "refs/tags/v0.1.10",
             "0123456789abcdef0123456789abcdef01234567",
         ] {
-            let args = DiffArgs::try_parse_from(["diff", "--base", revision]).unwrap_or_else(|err| {
-                std::panic::panic_any(format!("revision `{revision}` should parse: {err}"))
-            });
+            let args =
+                DiffArgs::try_parse_from(["diff", "--base", revision]).unwrap_or_else(|err| {
+                    std::panic::panic_any(format!("revision `{revision}` should parse: {err}"))
+                });
             assert_eq!(args.base, revision);
         }
     }
