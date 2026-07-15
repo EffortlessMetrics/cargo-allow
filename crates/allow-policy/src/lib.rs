@@ -46,6 +46,7 @@ mod toml_requirements;
 mod toml_selector;
 mod toml_workspace;
 mod validation;
+pub use entry_validation::OCCURRENCE_LIMIT_MAX;
 pub use evidence::{
     broken_evidence_link_count, validate_local_evidence_references, weak_evidence_reference_count,
 };

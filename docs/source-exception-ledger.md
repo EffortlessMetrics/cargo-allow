@@ -369,7 +369,10 @@ occurrence_limit = 3
 
 The limit preserves no-new semantics during migration. Matching the same
 structural selector more times than the baseline allowed becomes new debt
-instead of silently broadening the exception.
+instead of silently broadening the exception. Policy load rejects
+`occurrence_limit = 0` and values above the documented ceiling
+(`OCCURRENCE_LIMIT_MAX = 10000`) so typos like `999999999` cannot disable the
+cap.
 
 Diff mode reports occurrence-limit increases or removals as policy weakening
 and occurrence-limit additions or reductions as policy improvements. It also
