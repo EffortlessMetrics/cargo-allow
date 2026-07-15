@@ -115,6 +115,20 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
+For cheaper iteration on the `cargo-allow` package, use the explicit proof
+classes:
+
+```bash
+cargo test -p cargo-allow --bins --locked
+cargo test -p cargo-allow --tests --locked
+```
+
+The first command is the fast package proof for binary-unit, parser, rendering,
+schema, and command-unit tests. The second is the contract integration proof
+for real-binary, temporary-repository, lifecycle, saved-artifact, and
+first-hour targets. The hosted workflow retains both classes and the full
+workspace union; neither class is a replacement for the release gate.
+
 If the change affects CLI output or source-tree posture, also run the relevant
 local `cargo run -p cargo-allow -- ...` command and include any generated
 review artifacts in the PR discussion when useful.

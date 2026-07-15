@@ -16,7 +16,31 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo test --workspace
+      - name: Verify cargo-allow proof classes are non-empty
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target/cargo-allow
+          fast_start=$(date +%s)
+          fast_count=$(cargo test -p cargo-allow --bins --locked -- --list | grep -cE ': test$' || true)
+          fast_end=$(date +%s)
+          contract_start=$(date +%s)
+          contract_count=$(cargo test -p cargo-allow --tests --locked -- --list | grep -cE ': test$' || true)
+          contract_end=$(date +%s)
+          test "$fast_count" -gt 0
+          test "$contract_count" -gt 0
+          {
+            echo "fast_tests=$fast_count"
+            echo "fast_seconds=$((fast_end-fast_start))"
+            echo "contract_tests=$contract_count"
+            echo "contract_seconds=$((contract_end-contract_start))"
+          } | tee target/cargo-allow/test-proof-classes.txt
+      - name: Fast cargo-allow package proof
+        run: cargo test -p cargo-allow --bins --locked
+      - name: Contract cargo-allow package proof
+        run: cargo test -p cargo-allow --tests --locked
+      - name: Full workspace proof union
+        run: cargo test --workspace --locked
       - run: cargo test --doc --workspace
       - run: cargo doc --workspace --no-deps
         env:
