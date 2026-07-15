@@ -121,7 +121,13 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     // revisions dir. Missing notes produce a blocking diagnostic naming the
     // allow_id + change_kind.
     let missing_change_notes = if args.require_change_note {
-        check_change_notes(&root, &args.revisions_dir, &policy_changes)?
+        check_change_notes(
+            &root,
+            &args.revisions_dir,
+            &base_cfg,
+            &head_cfg_for_diff,
+            &policy_changes,
+        )?
     } else {
         Vec::new()
     };
@@ -137,7 +143,11 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
         .count()
         + evidence.broken_evidence_links;
-    let failed = current_failures > 0 || policy_failed || change_note_failed;
+    // A required note is the authorization for a bounded weakening. Without
+    // the flag, preserve the ordinary posture failure. With the flag, only a
+    // missing or stale note keeps the diff blocked.
+    let policy_change_failure = policy_failed && (!args.require_change_note || change_note_failed);
+    let failed = current_failures > 0 || policy_change_failure || change_note_failed;
     let report_inventory_facts = if let Some(head) = args.head.as_deref() {
         InventoryFacts::scanned(
             InventorySource::GitTracked,
@@ -241,6 +251,10 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     }
     // Surface missing change notes as a clear stderr diagnostic (#2075).
     for missing in &missing_change_notes {
+        let fingerprint_hint = format_fingerprint_hint(
+            missing.before_fingerprint.as_deref(),
+            missing.after_fingerprint.as_deref(),
+        );
         eprintln!(
             "change note required: {allow_id} {kind} ({severity}) — add a revision note in {dir} \
              covering allow_id=\"{allow_id}\" change_kind=\"{kind}\"",
@@ -249,6 +263,9 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             severity = missing.severity,
             dir = args.revisions_dir.display()
         );
+        if !fingerprint_hint.is_empty() {
+            eprintln!("change note fingerprint template:{fingerprint_hint}");
+        }
     }
     emit_text(args.output.as_deref(), &text)?;
     if failed {
@@ -566,6 +583,8 @@ struct MissingChangeNote {
     allow_id: String,
     change_kind: String,
     severity: String,
+    before_fingerprint: Option<String>,
+    after_fingerprint: Option<String>,
 }
 
 /// Check whether every weakening policy edit (`severity == Fail` or `Review`)
@@ -577,18 +596,22 @@ struct MissingChangeNote {
 /// [[records]]
 /// allow_ids = ["allow-0001"]
 /// change_kinds = ["scope_broadened"]
+/// before_fingerprint = "sha256:v1:..."
+/// after_fingerprint = "sha256:v1:..."
 /// ```
-/// Matching is structural on `(allow_id, change_kind)` — a note covers a change
-/// if the change's `allow_id` is in `allow_ids` and the change's `kind` is in
-/// `change_kinds`. This is the simplest correct contract; `after_fingerprint`
-/// pinning for repeatable-weakening kinds is a follow-up (#2075 scope note).
+/// Matching is structural on `(allow_id, change_kind, before_fingerprint,
+/// after_fingerprint)` for retained entries. A note covers a change if the
+/// change's identity and transition are both exact. Added entries have no
+/// before fingerprint and remain keyed by `(allow_id, change_kind)`.
 fn check_change_notes(
     root: &std::path::Path,
     revisions_dir: &std::path::Path,
+    base_cfg: &AllowConfig,
+    head_cfg: &AllowConfig,
     policy_changes: &[allow_diff::PolicyChange],
 ) -> CargoAllowResult<Vec<MissingChangeNote>> {
     let dir = root.join(revisions_dir);
-    let mut covered: Vec<(String, String)> = Vec::new();
+    let mut covered: Vec<(String, String, Option<String>, Option<String>)> = Vec::new();
     if dir.is_dir() {
         for entry in fs::read_dir(&dir).map_err(|e| {
             CargoAllowError::new(format!("read revisions dir {}: {e}", dir.display()))
@@ -600,7 +623,9 @@ fn check_change_notes(
             }
             let text = fs::read_to_string(&path)
                 .map_err(|e| CargoAllowError::new(format!("read {}: {e}", path.display())))?;
-            let table: toml::Table = toml::from_str(&text).unwrap_or_default();
+            let table: toml::Table = toml::from_str(&text).map_err(|error| {
+                CargoAllowError::new(format!("parse revision note {}: {error}", path.display()))
+            })?;
             if let Some(records) = table.get("records").and_then(|v| v.as_array()) {
                 for record in records {
                     let allow_ids: Vec<String> = record
@@ -617,9 +642,22 @@ fn check_change_notes(
                         .flatten()
                         .filter_map(|v| v.as_str().map(str::to_string))
                         .collect();
+                    let before_fingerprint = record
+                        .get("before_fingerprint")
+                        .and_then(|v| v.as_str())
+                        .map(str::to_string);
+                    let after_fingerprint = record
+                        .get("after_fingerprint")
+                        .and_then(|v| v.as_str())
+                        .map(str::to_string);
                     for aid in &allow_ids {
                         for kind in &change_kinds {
-                            covered.push((aid.clone(), kind.clone()));
+                            covered.push((
+                                aid.clone(),
+                                kind.clone(),
+                                before_fingerprint.clone(),
+                                after_fingerprint.clone(),
+                            ));
                         }
                     }
                 }
@@ -635,18 +673,43 @@ fn check_change_notes(
             continue;
         }
         let kind_str = change.kind.as_str();
-        if !covered
+        let before_fingerprint = base_cfg
+            .allow
             .iter()
-            .any(|(aid, kind)| aid == &change.allow_id && kind == kind_str)
-        {
+            .find(|entry| entry.id == change.allow_id)
+            .map(allow_core::allow_entry_content_fingerprint);
+        let after_fingerprint = head_cfg
+            .allow
+            .iter()
+            .find(|entry| entry.id == change.allow_id)
+            .map(allow_core::allow_entry_content_fingerprint);
+        if !covered.iter().any(|(aid, kind, before, after)| {
+            aid == &change.allow_id
+                && kind == kind_str
+                && before == &before_fingerprint
+                && after == &after_fingerprint
+        }) {
             missing.push(MissingChangeNote {
                 allow_id: change.allow_id.clone(),
                 change_kind: kind_str.to_string(),
                 severity: change.severity.as_str().to_string(),
+                before_fingerprint,
+                after_fingerprint,
             });
         }
     }
     Ok(missing)
+}
+
+fn format_fingerprint_hint(before: Option<&str>, after: Option<&str>) -> String {
+    let mut hint = String::new();
+    if let Some(before) = before {
+        hint.push_str(&format!(" before_fingerprint=\"{before}\""));
+    }
+    if let Some(after) = after {
+        hint.push_str(&format!(" after_fingerprint=\"{after}\""));
+    }
+    hint
 }
 
 #[cfg(test)]

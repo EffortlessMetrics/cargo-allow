@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+use allow_core::allow_entry_content_fingerprint;
 use serde_json::Value;
 use support::{
     assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
@@ -24,6 +25,148 @@ const MIRROR_LEDGER_PATH: &str = ".allow/mirror/policy.toml";
 const AUDIT_ARGS: &[&str] = &["audit"];
 const CHECK_NO_NEW_ARGS: &[&str] = &["check", "--mode", "no-new"];
 const DIFF_ARGS: &[&str] = &["diff", "--base", "HEAD"];
+
+#[test]
+fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
+    let weakening_root = create_policy_change_fixture("policy-weakening", "src/lib.rs");
+    let weakening_base = policy_with_occurrence_limit(1);
+    git(&weakening_root, &["add", "policy/allow.toml"]);
+    fs::write(weakening_root.join("policy/allow.toml"), &weakening_base)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write weakening base policy: {err}")));
+    git(&weakening_root, &["add", "policy/allow.toml"]);
+    git(
+        &weakening_root,
+        &["commit", "--no-gpg-sign", "-m", "set weakening base"],
+    );
+    let weakening_head = policy_with_occurrence_limit(3);
+    fs::write(weakening_root.join("policy/allow.toml"), &weakening_head)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write weakening policy: {err}")));
+
+    let missing_output = weakening_root.join("target/cargo-allow/weakening-missing.json");
+    let missing = run_diff_with_note_requirement(
+        &weakening_root,
+        &weakening_base,
+        &weakening_head,
+        &missing_output,
+    );
+    assert_status("weakening without note", &missing, false);
+    assert_saved_json_artifact(
+        &missing_output,
+        "weakening without note",
+        "cargo-allow.report.v1",
+        "diff",
+    );
+    let missing_changes = policy_changes(&missing_output);
+    assert_eq!(
+        missing_changes.len(),
+        1,
+        "unexpected weakening rows: {missing_changes:?}"
+    );
+    assert_policy_change_fields(
+        &missing_output,
+        "occurrence_limit_loosened",
+        "allow-transition",
+        "fail",
+        "retained",
+        "worsened",
+    );
+    let (before_fingerprint, after_fingerprint) =
+        transition_fingerprints(&weakening_base, &weakening_head);
+    let missing_stderr = String::from_utf8_lossy(&missing.stderr);
+    assert!(
+        missing_stderr.contains("change note required: allow-transition occurrence_limit_loosened"),
+        "missing-note diagnostic should identify the transition: {missing_stderr}"
+    );
+    assert!(
+        missing_stderr.contains(&before_fingerprint) && missing_stderr.contains(&after_fingerprint),
+        "missing-note diagnostic should provide the exact fingerprint route: {missing_stderr}"
+    );
+
+    fs::create_dir_all(weakening_root.join(".allow/revisions"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create revision directory: {err}")));
+    write_revision_note(&weakening_root, &before_fingerprint, &after_fingerprint);
+    let matching_output = weakening_root.join("target/cargo-allow/weakening-matching.json");
+    let matching = run_diff_with_note_requirement(
+        &weakening_root,
+        &weakening_base,
+        &weakening_head,
+        &matching_output,
+    );
+    assert_status("weakening with exact note", &matching, true);
+    assert_saved_json_artifact(
+        &matching_output,
+        "weakening with exact note",
+        "cargo-allow.report.v1",
+        "diff",
+    );
+    assert_eq!(policy_changes(&matching_output).len(), 1);
+
+    write_revision_note(&weakening_root, "sha256:v1:stale", &after_fingerprint);
+    let stale_output = weakening_root.join("target/cargo-allow/weakening-stale.json");
+    let stale = run_diff_with_note_requirement(
+        &weakening_root,
+        &weakening_base,
+        &weakening_head,
+        &stale_output,
+    );
+    assert_status("weakening with stale note", &stale, false);
+    assert!(
+        String::from_utf8_lossy(&stale.stderr).contains("change note required"),
+        "stale fingerprint should reopen the note obligation"
+    );
+    remove_temp_root(weakening_root);
+
+    let improvement_root = create_policy_change_fixture("policy-improvement", "src/lib.rs");
+    let improvement_base = policy_with_occurrence_limit(3);
+    fs::write(
+        improvement_root.join("policy/allow.toml"),
+        &improvement_base,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write improvement base policy: {err}")));
+    git(&improvement_root, &["add", "policy/allow.toml"]);
+    git(
+        &improvement_root,
+        &["commit", "--no-gpg-sign", "-m", "set improvement base"],
+    );
+    let improvement_head = policy_with_occurrence_limit(1);
+    fs::write(
+        improvement_root.join("policy/allow.toml"),
+        &improvement_head,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write improvement policy: {err}")));
+    let improvement_output = improvement_root.join("target/cargo-allow/improvement.json");
+    let improvement = run_diff(&improvement_root, &improvement_output, false);
+    assert_status("policy improvement", &improvement, true);
+    assert_saved_json_artifact(
+        &improvement_output,
+        "policy improvement",
+        "cargo-allow.report.v1",
+        "diff",
+    );
+    assert_eq!(policy_changes(&improvement_output).len(), 1);
+    assert_policy_change_fields(
+        &improvement_output,
+        "occurrence_limit_tightened",
+        "allow-transition",
+        "improvement",
+        "retained",
+        "improved",
+    );
+    remove_temp_root(improvement_root);
+
+    let formatting_root = create_policy_change_fixture("policy-formatting", "src/lib.rs");
+    let formatting_output = formatting_root.join("target/cargo-allow/formatting.json");
+    let formatting_policy = policy_with_scope("src/lib.rs").replace(
+        "reason = \"fixture transition\"",
+        "reason = \"fixture transition\"\n\n",
+    );
+    fs::write(formatting_root.join("policy/allow.toml"), formatting_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write formatting policy: {err}")));
+    let formatting = run_diff(&formatting_root, &formatting_output, true);
+    assert_status("formatting-only policy edit", &formatting, true);
+    assert_eq!(policy_changes(&formatting_output).len(), 0);
+    remove_temp_root(formatting_root);
+}
 
 #[test]
 fn lifecycle_statuses_converge_across_read_artifacts() {
@@ -524,6 +667,187 @@ fn create_mirror_divergence_fixture() -> PathBuf {
         &["commit", "--no-gpg-sign", "-m", "mirror divergence fixture"],
     );
     root
+}
+
+fn create_policy_change_fixture(label: &str, base_scope: &str) -> PathBuf {
+    let root = temp_root(label);
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source directory: {err}")));
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write transition source: {err}")));
+    let policy = if base_scope.contains('*') {
+        policy_with_glob(base_scope)
+    } else {
+        policy_with_scope(base_scope)
+    };
+    fs::write(root.join("policy/allow.toml"), policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write transition policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(
+        &root,
+        &["commit", "--no-gpg-sign", "-m", "policy transition fixture"],
+    );
+    root
+}
+
+fn policy_with_scope(scope: &str) -> String {
+    transition_policy(&format!("path = \"{scope}\""))
+}
+
+fn policy_with_glob(glob: &str) -> String {
+    transition_policy(&format!("glob = \"{glob}\""))
+}
+
+fn policy_with_occurrence_limit(limit: u32) -> String {
+    policy_with_scope("src/lib.rs").replace(
+        "reason = \"fixture transition\"",
+        &format!("occurrence_limit = {limit}\nreason = \"fixture transition\""),
+    )
+}
+
+fn transition_policy(scope: &str) -> String {
+    format!(
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[workspace]
+ignored = ["policy/**", "target/**"]
+
+[[allow]]
+id = "allow-transition"
+kind = "panic"
+family = "unwrap"
+{scope}
+owner = "core"
+classification = "reviewed_exception"
+reason = "fixture transition"
+evidence = ["test:lifecycle_corpus"]
+created = "2026-06-01"
+review_after = "2099-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    )
+}
+
+fn transition_fingerprints(base_policy: &str, head_policy: &str) -> (String, String) {
+    let base = allow_policy::parse_policy(base_policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("parse base transition policy: {err}"))
+    });
+    let head = allow_policy::parse_policy(head_policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("parse head transition policy: {err}"))
+    });
+    let base_entry = base
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("base transition policy has no entry"));
+    let head_entry = head
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("head transition policy has no entry"));
+    (
+        allow_entry_content_fingerprint(base_entry),
+        allow_entry_content_fingerprint(head_entry),
+    )
+}
+
+fn write_revision_note(root: &Path, before_fingerprint: &str, after_fingerprint: &str) {
+    let note = format!(
+        r#"[[records]]
+allow_ids = ["allow-transition"]
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "{before_fingerprint}"
+after_fingerprint = "{after_fingerprint}"
+"#
+    );
+    fs::write(root.join(".allow/revisions/transition.toml"), note)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write revision note: {err}")));
+}
+
+fn run_diff_with_note_requirement(
+    root: &Path,
+    _base_policy: &str,
+    _head_policy: &str,
+    output: &Path,
+) -> Output {
+    run_diff(root, output, true)
+}
+
+fn run_diff(root: &Path, output: &Path, require_change_note: bool) -> Output {
+    let mut command = cargo_allow_command();
+    command
+        .args(["diff", "--base", "HEAD"])
+        .arg("--root")
+        .arg(root)
+        .arg("--config")
+        .arg(root.join("policy/allow.toml"))
+        .args(["--format", "json", "--output"])
+        .arg(output);
+    if require_change_note {
+        command
+            .arg("--require-change-note")
+            .args(["--revisions-dir", ".allow/revisions"]);
+    }
+    command
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run transition diff: {err}")))
+}
+
+fn policy_changes(output: &Path) -> Vec<Value> {
+    let text = fs::read_to_string(output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read diff output: {err}")));
+    let value: Value = serde_json::from_str(&text)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse diff output: {err}")));
+    value
+        .pointer("/diff/policy_changes")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"))
+}
+
+fn assert_policy_change_fields(
+    output: &Path,
+    kind: &str,
+    allow_id: &str,
+    severity: &str,
+    movement: &str,
+    posture_delta: &str,
+) {
+    let changes = policy_changes(output);
+    let change = changes
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one policy change"));
+    assert_eq!(change.get("kind").and_then(Value::as_str), Some(kind));
+    assert_eq!(
+        change.get("allow_id").and_then(Value::as_str),
+        Some(allow_id)
+    );
+    assert_eq!(
+        change.get("severity").and_then(Value::as_str),
+        Some(severity)
+    );
+    assert_eq!(
+        change.get("movement").and_then(Value::as_str),
+        Some(movement)
+    );
+    assert_eq!(
+        change.get("posture_delta").and_then(Value::as_str),
+        Some(posture_delta)
+    );
 }
 
 fn mirror_canonical_policy() -> &'static str {

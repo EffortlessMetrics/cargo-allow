@@ -35,7 +35,8 @@ pub(crate) struct DiffArgs {
     pub(super) require_change_note: bool,
     /// Directory containing revision-note TOML files. Defaults to
     /// `.allow/revisions/`. Each file is an append-only note keyed on
-    /// `allow_id` + `change_kind`.
+    /// `allow_id` + `change_kind` and, for retained entries, exact
+    /// before/after content fingerprints.
     #[arg(long, default_value = ".allow/revisions")]
     pub(super) revisions_dir: PathBuf,
 }
