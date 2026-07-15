@@ -22,11 +22,19 @@ pub(crate) struct DiffArgs {
     /// Write report to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
-    /// Base git revision for policy, finding, and changed-file posture comparison.
-    #[arg(long)]
+    /// Base Git revision; resolves to an exact commit before comparison.
+    #[arg(
+        long,
+        value_parser = parse_revision_arg,
+        allow_hyphen_values = true
+    )]
     pub(super) base: String,
-    /// Optional head git revision. Defaults to the current working tree.
-    #[arg(long)]
+    /// Optional head Git revision; defaults to committed HEAD and resolves first.
+    #[arg(
+        long,
+        value_parser = parse_revision_arg,
+        allow_hyphen_values = true
+    )]
     pub(super) head: Option<String>,
     /// Require a revision note for weakening policy edits. When set, the diff
     /// fails if any policy change with posture_delta `worsened` or
@@ -39,4 +47,50 @@ pub(crate) struct DiffArgs {
     /// before/after content fingerprints.
     #[arg(long, default_value = ".allow/revisions")]
     pub(super) revisions_dir: PathBuf,
+}
+
+fn parse_revision_arg(value: &str) -> Result<String, String> {
+    if value.is_empty() {
+        return Err("revision must not be empty".to_string());
+    }
+    if value.trim() != value {
+        return Err("revision must not have leading or trailing whitespace".to_string());
+    }
+    if value.starts_with('-') {
+        return Err("revision must not start with `-`".to_string());
+    }
+    if value.chars().any(char::is_control) {
+        return Err("revision must not contain control characters".to_string());
+    }
+    Ok(value.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn diff_args_accept_common_revision_forms() {
+        for revision in [
+            "HEAD",
+            "HEAD~1",
+            "origin/main",
+            "refs/tags/v0.1.10",
+            "0123456789abcdef0123456789abcdef01234567",
+        ] {
+            let args =
+                DiffArgs::try_parse_from(["diff", "--base", revision]).unwrap_or_else(|err| {
+                    std::panic::panic_any(format!("revision `{revision}` should parse: {err}"))
+                });
+            assert_eq!(args.base, revision);
+        }
+    }
+
+    #[test]
+    fn diff_args_reject_option_like_and_malformed_revisions() {
+        for revision in ["--output=owned", "-O", "", " HEAD", "HEAD ", "HEAD\nmain"] {
+            let result = DiffArgs::try_parse_from(["diff", &format!("--base={revision}")]);
+            assert!(result.is_err(), "revision `{revision}` should be rejected");
+        }
+    }
 }
