@@ -1,14 +1,16 @@
 ---
 id: CARGO-ALLOW-CLOSEOUT-0051
 kind: closeout
-status: accepted
+status: done
 owner: repo-infra
 created: 2026-07-15
-linked_plan: plans/ledger-coherence/implementation-plan.md
+linked_plan: CARGO-ALLOW-PLAN-0009
 linked_plan_item: ledger-coherence-pr7-lifecycle-corpus
 linked_pr: "#2294"
 linked_proposal: CARGO-ALLOW-PROP-0008
 linked_spec: CARGO-ALLOW-SPEC-0008
+linked_support_tier: CARGO-ALLOW-SUPPORT-0001
+linked_goal: CARGO-ALLOW-GOAL-0004
 support_tier_impact: advisory
 policy_impact: .allow/goals/active.toml
 ---

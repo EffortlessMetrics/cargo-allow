@@ -567,7 +567,7 @@ linked_plan = "CARGO-ALLOW-PLAN-0009"
 [[artifact]]
 id = "CARGO-ALLOW-CLOSEOUT-0051"
 kind = "closeout"
-path = "docs/closeouts/CARGO-ALLOW-CLOSEOUT-0051-lifecycle-repair-route-convergence.md"
+path = "plans/ledger-coherence/closeouts/CARGO-ALLOW-CLOSEOUT-0051-lifecycle-repair-route-convergence.md"
 status = "done"
 owner = "repo-infra"
 created = "2026-07-15"
