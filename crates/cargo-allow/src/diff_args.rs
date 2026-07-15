@@ -22,14 +22,14 @@ pub(crate) struct DiffArgs {
     /// Write report to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
-    /// Base git revision for policy, finding, and changed-file posture comparison.
+    /// Base Git revision; resolves to an exact commit before comparison.
     #[arg(
         long,
         value_parser = parse_revision_arg,
         allow_hyphen_values = true
     )]
     pub(super) base: String,
-    /// Optional head git revision. Defaults to the current committed HEAD.
+    /// Optional head Git revision; defaults to committed HEAD and resolves first.
     #[arg(
         long,
         value_parser = parse_revision_arg,
@@ -77,8 +77,9 @@ mod tests {
             "refs/tags/v0.1.10",
             "0123456789abcdef0123456789abcdef01234567",
         ] {
-            let args = DiffArgs::try_parse_from(["diff", "--base", revision])
-                .unwrap_or_else(|err| panic!("revision `{revision}` should parse: {err}"));
+            let args = DiffArgs::try_parse_from(["diff", "--base", revision]).unwrap_or_else(|err| {
+                std::panic::panic_any(format!("revision `{revision}` should parse: {err}"))
+            });
             assert_eq!(args.base, revision);
         }
     }
