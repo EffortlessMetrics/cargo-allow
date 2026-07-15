@@ -10,6 +10,7 @@ plans = "plans"
 goals = ".allow/goals"
 support_tiers = "docs/status/SUPPORT_TIERS.md"
 artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
+implementation_slices = ".allow/spec-system/slices"
 
 [requirements]
 ledger_required = true
