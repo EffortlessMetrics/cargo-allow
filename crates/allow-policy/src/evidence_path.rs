@@ -18,8 +18,8 @@ impl EvidencePathInspectionError {
         &self.component
     }
 
-    pub(crate) fn kind(&self) -> io::ErrorKind {
-        self.source.kind()
+    pub(crate) fn source_error(&self) -> &io::Error {
+        &self.source
     }
 }
 
@@ -153,7 +153,7 @@ mod tests {
         .unwrap_or_else(|| panic!("permission failure should be retained"));
 
         assert_eq!(err.component(), Path::new("docs/private"));
-        assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+        assert_eq!(err.source_error().kind(), io::ErrorKind::PermissionDenied);
         assert!(err.to_string().contains("fixture permission denied"));
     }
 }
