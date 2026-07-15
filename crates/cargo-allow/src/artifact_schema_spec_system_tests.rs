@@ -177,6 +177,7 @@ fn spec_system_schema_locks_profile_commands_and_readiness() {
             "missing_proof_command",
             "claim_without_support_tier",
             "stale_active_goal",
+            "legacy_goal_historical_only",
             "missing_closeout",
             "superseded_target_missing",
             "broken_import",
