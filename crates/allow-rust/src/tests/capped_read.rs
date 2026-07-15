@@ -1,6 +1,5 @@
 use allow_core::{SOURCE_FILE_READ_MAX_BYTES, read_text_file_capped};
-use std::fs::{self, File};
-use std::io::Write;
+use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -30,19 +29,10 @@ fn scan_rust_files_skips_oversized_sources_without_aborting() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("write ok.rs: {err}")));
 
     let oversized_path = src.join("huge.rs");
-    let mut huge = File::create(&oversized_path)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create huge.rs: {err}")));
     // One byte over the documented production ceiling (#1916).
     let oversized_len = (SOURCE_FILE_READ_MAX_BYTES as usize).saturating_add(1);
-    let chunk = vec![b'a'; 64 * 1024];
-    let mut written = 0usize;
-    while written < oversized_len {
-        let end = (written + chunk.len()).min(oversized_len);
-        huge.write_all(&chunk[..end - written])
-            .unwrap_or_else(|err| std::panic::panic_any(format!("write huge.rs: {err}")));
-        written = end;
-    }
-    drop(huge);
+    fs::write(&oversized_path, vec![b'a'; oversized_len])
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write huge.rs: {err}")));
 
     let err = read_text_file_capped(&oversized_path).unwrap_err();
     assert!(
