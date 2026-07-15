@@ -72,6 +72,29 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9005"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/0.1.11-readiness.md"
+owner = "release/qualification"
+classification = "release_qualification_report"
+reason = "Records the current ReleaseQualificationV1 capability, platform, MSRV, safety, package, authentication, and provenance dispositions without claiming candidate or tag readiness."
+evidence = ["issue:2262", "issue:2261", "issue:2258"]
+created = "2026-07-15"
+review_after = "2026-08-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/0.1.11-readiness.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/release/0.1.11-readiness.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9004"
 kind = "non_rust_file"
 family = "documentation"

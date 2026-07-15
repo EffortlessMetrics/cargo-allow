@@ -10,6 +10,10 @@ prerequisites. Sequencing for the `0.1.10` adoption-trust cut lives in
 (PR E1 documents prerequisites here; PR E2 records workflow_dispatch dry-run
 evidence).
 
+The current qualification snapshot is
+[0.1.11-readiness.md](0.1.11-readiness.md). It is a go/no-go input, not a tag
+or publication authorization.
+
 ## Prerequisites
 
 Complete these checks before the first tag-triggered automated release:
