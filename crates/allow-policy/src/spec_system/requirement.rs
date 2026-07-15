@@ -1,4 +1,6 @@
-use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, normalize_path, stable_hash_hex};
+use allow_core::{
+    CargoAllowError, CargoAllowErrorKind, CargoAllowResult, normalize_path, stable_hash_hex,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -290,7 +292,10 @@ claim_class = "runtime_behavior"
             "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion"
         );
         assert_eq!(graph.requirements[0].generation, 1);
-        assert_eq!(graph.requirements[0].lifecycle, RequirementLifecycle::Accepted);
+        assert_eq!(
+            graph.requirements[0].lifecycle,
+            RequirementLifecycle::Accepted
+        );
         assert_eq!(graph.source.path.as_deref(), Some("docs/spec.md"));
         assert!(graph.source.start_line < graph.source.end_line);
         assert!(graph.source.content_identity.starts_with("fnv1a64:"));
@@ -311,10 +316,9 @@ claim_class = "runtime_behavior"
 
     #[test]
     fn rejects_unknown_requirement_generation() {
-        let result = parse_requirement_blocks(&SPEC.replace(
-            "schema_version = \"1.0\"",
-            "schema_version = \"2.0\"",
-        ));
+        let result = parse_requirement_blocks(
+            &SPEC.replace("schema_version = \"1.0\"", "schema_version = \"2.0\""),
+        );
         assert!(result.is_err());
     }
 }
