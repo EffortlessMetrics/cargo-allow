@@ -1,5 +1,6 @@
 use allow_core::AllowEntry;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::evidence_path::{first_symlink_component, normalize_local_evidence_path};
@@ -204,18 +205,31 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
         };
     }
     let path = root.join(&target);
-    if let Some(component) = first_symlink_component(root, &target) {
-        return EvidenceReferenceDiagnostic {
-            raw: raw.to_string(),
-            prefix,
-            target: Some(target),
-            status: EvidenceReferenceStatus::InvalidLocalPath,
-            category: EvidenceReferenceCategory::InvalidLocalPath,
-            message: format!(
-                "local evidence path contains symlink component {}; reference regular source-tree files",
-                component.display()
-            ),
-        };
+    match first_symlink_component(root, &target) {
+        Ok(Some(component)) => {
+            return EvidenceReferenceDiagnostic {
+                raw: raw.to_string(),
+                prefix,
+                target: Some(target),
+                status: EvidenceReferenceStatus::InvalidLocalPath,
+                category: EvidenceReferenceCategory::InvalidLocalPath,
+                message: format!(
+                    "local evidence path contains symlink component {}; reference regular source-tree files",
+                    component.display()
+                ),
+            };
+        }
+        Ok(None) => {}
+        Err(err) => {
+            return EvidenceReferenceDiagnostic {
+                raw: raw.to_string(),
+                prefix,
+                target: Some(target),
+                status: EvidenceReferenceStatus::InvalidLocalPath,
+                category: EvidenceReferenceCategory::InvalidLocalPath,
+                message: format!("local evidence path inspection failed: {err}"),
+            };
+        }
     }
     match fs::symlink_metadata(&path) {
         Ok(metadata) if metadata.file_type().is_symlink() => EvidenceReferenceDiagnostic {
@@ -243,13 +257,24 @@ fn evidence_reference_diagnostic(root: &Path, raw: &str) -> EvidenceReferenceDia
             category: EvidenceReferenceCategory::InvalidLocalPath,
             message: "local evidence path exists but is not a file".to_string(),
         },
-        Err(_) => EvidenceReferenceDiagnostic {
+        Err(err) if err.kind() == io::ErrorKind::NotFound => EvidenceReferenceDiagnostic {
             raw: raw.to_string(),
             prefix,
             target: Some(target),
             status: EvidenceReferenceStatus::LocalFileMissing,
             category: EvidenceReferenceCategory::Missing,
             message: "local evidence file is missing".to_string(),
+        },
+        Err(err) => EvidenceReferenceDiagnostic {
+            raw: raw.to_string(),
+            prefix,
+            target: Some(target),
+            status: EvidenceReferenceStatus::InvalidLocalPath,
+            category: EvidenceReferenceCategory::InvalidLocalPath,
+            message: format!(
+                "unable to inspect local evidence path {}: {err}",
+                path.display()
+            ),
         },
     }
 }
