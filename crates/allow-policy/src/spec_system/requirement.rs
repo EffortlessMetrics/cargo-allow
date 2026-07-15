@@ -157,7 +157,7 @@ pub fn parse_requirement_blocks_at(
         schema_version: raw.schema_version,
         document_id,
         source: RequirementSource {
-            path: path.map(|value| normalize_path(&value.display().to_string())),
+            path: path.map(|value| normalize_path(value.display().to_string())),
             start_line: block.start_line,
             end_line: block.end_line,
             content_identity: stable_hash_hex(&block.body),
