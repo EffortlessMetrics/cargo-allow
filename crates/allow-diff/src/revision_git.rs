@@ -304,7 +304,7 @@ fn regular_file_exists_at_revision(root: &Path, oid: &str, path: &str) -> CargoA
             format!("git ls-tree returned a malformed record for exact path `{path}`"),
         )
     })?;
-    if entry.path != PathBuf::from(path) {
+    if entry.path.as_path() != Path::new(path) {
         return Err(git_error(
             CargoAllowErrorKind::Inventory,
             "git_output_malformed",
@@ -425,6 +425,7 @@ pub(crate) fn parse_changed_files_z(stdout: &[u8]) -> Vec<PathBuf> {
     parse_nul_paths(stdout)
 }
 
+#[cfg(test)]
 pub(crate) fn parse_git_ls_tree_file_entries_z(stdout: &[u8]) -> Vec<GitTreeFile> {
     stdout
         .split(|byte| *byte == 0)
@@ -438,6 +439,7 @@ pub(crate) fn parse_git_ls_tree_record_for_test(record: &[u8]) -> Option<GitTree
     parse_git_ls_tree_record(record)
 }
 
+#[cfg(test)]
 fn parse_git_ls_tree_record(record: &[u8]) -> Option<GitTreeFile> {
     parse_git_tree_record_any(record).filter(|entry| entry.mode.starts_with("100"))
 }
