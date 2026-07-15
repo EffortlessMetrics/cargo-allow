@@ -1,0 +1,35 @@
+name: Temporary clippy RIPR dialect
+
+on:
+  push:
+    branches:
+      - agent/ripr-spec-v2-dialect
+
+permissions:
+  contents: read
+
+jobs:
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: agent/ripr-spec-v2-dialect
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Run Clippy and capture diagnostics
+        shell: bash
+        run: |
+          set +e
+          cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee clippy-ripr-dialect.log
+          status=${PIPESTATUS[0]}
+          echo "CLIPPY_STATUS=$status" >> "$GITHUB_ENV"
+          exit 0
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: clippy-ripr-dialect
+          path: clippy-ripr-dialect.log
+      - name: Preserve Clippy result
+        shell: bash
+        run: exit "$CLIPPY_STATUS"
