@@ -19,6 +19,8 @@ const MISSING_EVIDENCE_ID: &str = "allow-missing-evidence";
 const BROKEN_EVIDENCE_ID: &str = "allow-broken-evidence";
 const WEAK_EVIDENCE_ID: &str = "allow-weak-evidence";
 const BASELINE_DEBT_ID: &str = "allow-baseline-debt";
+const MIRROR_LEDGER_ID: &str = "source-policy-mirror";
+const MIRROR_LEDGER_PATH: &str = ".allow/mirror/policy.toml";
 const AUDIT_ARGS: &[&str] = &["audit"];
 const CHECK_NO_NEW_ARGS: &[&str] = &["check", "--mode", "no-new"];
 const DIFF_ARGS: &[&str] = &["diff", "--base", "HEAD"];
@@ -355,6 +357,104 @@ fn baseline_debt_is_advisory_in_no_new_and_blocking_in_strict() {
     remove_temp_root(root);
 }
 
+#[test]
+fn mirror_divergence_projects_across_check_worklist_and_doctor() {
+    let root = create_mirror_divergence_fixture();
+    let check_output = root.join("target/cargo-allow/check.json");
+    let check_receipt = root.join("target/cargo-allow/check.receipt.json");
+    let check = run_command_with_receipt(&root, CHECK_NO_NEW_ARGS, &check_output, &check_receipt);
+    assert_status("mirror divergence no-new", &check, true);
+    assert_quiet("mirror divergence no-new", &check);
+    let check_report = assert_saved_json_artifact(
+        &check_output,
+        "mirror divergence no-new",
+        "cargo-allow.report.v1",
+        "check",
+    );
+    assert_eq!(
+        check_report.pointer("/failed").and_then(Value::as_bool),
+        Some(false),
+        "mirror divergence remains advisory in no-new mode"
+    );
+
+    let check_receipt = assert_saved_json_artifact(
+        &check_receipt,
+        "mirror divergence receipt",
+        allow_report::RECEIPT_SCHEMA_ID,
+        "check",
+    );
+    assert_eq!(
+        check_receipt
+            .pointer("/federation/divergence_summary/counts_by_kind/0/kind")
+            .and_then(Value::as_str),
+        Some("mirror_divergence"),
+        "check receipt should retain the divergence kind"
+    );
+    assert_eq!(
+        check_receipt
+            .pointer("/federation/divergence_summary/counts_by_kind/0/count")
+            .and_then(Value::as_u64),
+        Some(1),
+        "check receipt should retain the divergence count"
+    );
+    assert_eq!(
+        check_receipt
+            .pointer("/advisory/mirror_divergence")
+            .and_then(Value::as_u64),
+        Some(1),
+        "check receipt should report mirror divergence as advisory"
+    );
+
+    let (worklist_path, worklist_result) = run_report(&root, "mirror-worklist", &["worklist"]);
+    assert_status("mirror divergence worklist", &worklist_result, true);
+    assert_quiet("mirror divergence worklist", &worklist_result);
+    let worklist = assert_saved_json_artifact(
+        &worklist_path,
+        "mirror divergence worklist",
+        "cargo-allow.worklist.v1",
+        "worklist",
+    );
+    assert_work_item_ledger(
+        &worklist,
+        "mirror_divergence",
+        MIRROR_LEDGER_ID,
+        MIRROR_LEDGER_PATH,
+        "mirror",
+        "advisory",
+    );
+
+    let (doctor_path, doctor_result) = run_report(&root, "mirror-doctor", &["doctor"]);
+    assert_status("mirror divergence doctor", &doctor_result, true);
+    assert_quiet("mirror divergence doctor", &doctor_result);
+    let doctor = assert_saved_json_artifact(
+        &doctor_path,
+        "mirror divergence doctor",
+        "cargo-allow.doctor.v1",
+        "doctor",
+    );
+    assert_eq!(
+        doctor
+            .pointer("/federation/divergences/0/kind")
+            .and_then(Value::as_str),
+        Some("mirror_divergence"),
+        "doctor should report the runtime divergence kind"
+    );
+    let ledger_ids = doctor
+        .pointer("/federation/divergences/0/ledger_ids")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("doctor divergence ledger IDs should be an array")
+        });
+    assert!(
+        ledger_ids
+            .iter()
+            .any(|id| id.as_str() == Some(MIRROR_LEDGER_ID)),
+        "doctor should retain mirror ledger provenance: {doctor}"
+    );
+
+    remove_temp_root(root);
+}
+
 fn create_fixture(label: &str, include_expired: bool) -> PathBuf {
     let root = temp_root(label);
     fs::create_dir_all(root.join("src"))
@@ -383,6 +483,92 @@ fn create_fixture(label: &str, include_expired: bool) -> PathBuf {
         &["commit", "--no-gpg-sign", "-m", "lifecycle corpus fixture"],
     );
     root
+}
+
+fn create_mirror_divergence_fixture() -> PathBuf {
+    let root = temp_root("mirror-divergence");
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source directory: {err}")));
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
+    fs::create_dir_all(root.join(".allow/mirror"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create mirror directory: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
+    fs::write(root.join("policy/allow.toml"), mirror_canonical_policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write canonical policy: {err}")));
+    fs::write(
+        root.join(MIRROR_LEDGER_PATH),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write mirror policy: {err}")));
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/federation/canonical-mirror-drain-config.toml"),
+        root.join(".allow/config.toml"),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("copy federation config: {err}")));
+
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(
+        &root,
+        &["commit", "--no-gpg-sign", "-m", "mirror divergence fixture"],
+    );
+    root
+}
+
+fn mirror_canonical_policy() -> &'static str {
+    r#"schema_version = "0.1"
+policy = "cargo-allow"
+owner = "core/policy"
+status = "active"
+
+[workspace]
+root = "."
+inventory = "git-tracked"
+ignored = [".allow/**", "policy/**", "target/**"]
+generated = ["target/**", "vendor/**"]
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+stale_entries_fail = false
+
+[requirements.unsafe]
+evidence_required = true
+safety_comment_required = false
+
+[[allow]]
+id = "canonical-only"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "The canonical fixture entry is intentionally absent from the mirror."
+evidence = ["test:lifecycle_corpus"]
+created = "2026-07-14"
+review_after = "2099-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
 }
 
 fn policy(include_expired: bool) -> String {
@@ -717,6 +903,25 @@ fn run_command(root: &Path, args: &[&str], output: &Path) -> Output {
         .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow {args:?}: {err}")))
 }
 
+fn run_command_with_receipt(root: &Path, args: &[&str], output: &Path, receipt: &Path) -> Output {
+    cargo_allow_command()
+        .args(args)
+        .arg("--root")
+        .arg(root)
+        .arg("--config")
+        .arg(root.join("policy/allow.toml"))
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(output)
+        .arg("--receipt")
+        .arg(receipt)
+        .output()
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("run cargo-allow {args:?} with receipt: {err}"))
+        })
+}
+
 fn assert_quiet(command: &str, result: &Output) {
     assert_stdout_empty(command, result, "--output should not emit report JSON");
     assert_stderr_empty(command, result, "--output should not emit status text");
@@ -822,6 +1027,36 @@ fn assert_work_item_kind(value: &Value, allow_id: &str, kind: &str) {
         Some(kind),
         "{allow_id} work item kind"
     );
+}
+
+fn assert_work_item_ledger(
+    value: &Value,
+    kind: &str,
+    ledger_id: &str,
+    ledger_path: &str,
+    role: &str,
+    mode: &str,
+) {
+    let items = value
+        .pointer("/work_items")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("/work_items should be an array"));
+    let item = items
+        .iter()
+        .find(|item| item.get("kind").and_then(Value::as_str) == Some(kind))
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!("{kind} missing from /work_items: {items:?}"))
+        });
+    assert_eq!(
+        item.get("ledger_id").and_then(Value::as_str),
+        Some(ledger_id)
+    );
+    assert_eq!(
+        item.get("ledger_path").and_then(Value::as_str),
+        Some(ledger_path)
+    );
+    assert_eq!(item.get("role").and_then(Value::as_str), Some(role));
+    assert_eq!(item.get("mode").and_then(Value::as_str), Some(mode));
 }
 
 fn assert_work_item_message(value: &Value, allow_id: &str, fragment: &str) {
