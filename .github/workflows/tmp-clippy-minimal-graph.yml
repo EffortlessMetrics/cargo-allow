@@ -1,0 +1,35 @@
+name: Temporary clippy minimal graph
+
+on:
+  push:
+    branches:
+      - agent/spec-system-minimal-graph
+
+permissions:
+  contents: read
+
+jobs:
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: agent/spec-system-minimal-graph
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Run Clippy and capture diagnostics
+        shell: bash
+        run: |
+          set +e
+          cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee clippy-minimal-graph.log
+          status=${PIPESTATUS[0]}
+          echo "CLIPPY_STATUS=$status" >> "$GITHUB_ENV"
+          exit 0
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: clippy-minimal-graph
+          path: clippy-minimal-graph.log
+      - name: Preserve Clippy result
+        shell: bash
+        run: exit "$CLIPPY_STATUS"
