@@ -1,7 +1,10 @@
 use allow_core::FindingKind;
+use std::fs;
+use std::path::PathBuf;
 
 use super::*;
 
+mod capped_read;
 mod finding_builder;
 mod indexing;
 mod lint;

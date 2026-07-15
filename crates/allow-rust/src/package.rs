@@ -1,5 +1,4 @@
-use allow_core::{CargoAllowResult, Finding, normalize_path};
-use std::fs;
+use allow_core::{CargoAllowResult, Finding, normalize_path, read_text_file_capped};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,7 +17,7 @@ pub(crate) fn source_package_contexts(
             continue;
         }
         let path = root.join(rel);
-        let text = match fs::read_to_string(&path) {
+        let text = match read_text_file_capped(&path) {
             Ok(text) => text,
             Err(_) => continue,
         };

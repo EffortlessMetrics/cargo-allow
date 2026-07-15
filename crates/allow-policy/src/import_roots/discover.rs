@@ -2,6 +2,8 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
+use allow_core::read_text_file_capped;
+
 use super::adapters::{
     GENERIC_SPEC_ECOSYSTEM, KIRO_ECOSYSTEM, SPEC_KIT_ECOSYSTEM, XTASK_ECOSYSTEM,
     discover_auto_repo_spec_roots, discover_generic_spec_root, discover_kiro_root,
@@ -197,14 +199,13 @@ fn discover_directory_children(
             kind: ImportEdgeKind::Contains,
             provenance: ImportProvenance::Discovered,
         });
-        if let Ok(text) = fs::read_to_string(&child_path) {
-            collect_reference_edges(&child_id, &text, edges);
-        } else {
-            diagnostics.push(ImportDiagnostic {
+        match read_text_file_capped(&child_path) {
+            Ok(text) => collect_reference_edges(&child_id, &text, edges),
+            Err(err) => diagnostics.push(ImportDiagnostic {
                 kind: ImportDiagnosticKind::BrokenEdge,
-                message: format!("failed to read discovered import node `{relative}`"),
+                message: format!("failed to read discovered import node `{relative}`: {err}"),
                 root_ids: vec![entry.id.clone(), child_id],
-            });
+            }),
         }
     }
 }

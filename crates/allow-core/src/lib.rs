@@ -5,6 +5,7 @@
 //! the cargo-allow crate family. It does not scan source files, invoke Cargo,
 //! compile code, or execute repository artifacts.
 
+mod capped_read;
 mod date;
 mod error;
 mod finding;
@@ -15,6 +16,10 @@ mod ledger_posture;
 mod ledger_provenance;
 mod policy;
 mod source_tree_path;
+pub use capped_read::{
+    CappedReadError, SOURCE_FILE_READ_MAX_BYTES, read_text_file_capped,
+    read_text_file_capped_with_limit,
+};
 pub use date::SimpleDate;
 pub use error::{
     CargoAllowDiagnostic, CargoAllowDiagnosticSeverity, CargoAllowError, CargoAllowErrorKind,
