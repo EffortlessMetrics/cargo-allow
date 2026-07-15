@@ -109,9 +109,11 @@ mod tests {
             std::process::id()
         ));
         assert_eq!(
-            first_symlink_component(&root, Path::new("docs/safety.md")).unwrap_or_else(
-                |err| panic!("missing path should not be an inspection error: {err}")
-            ),
+            first_symlink_component(&root, Path::new("docs/safety.md")).unwrap_or_else(|err| {
+                std::panic::panic_any(format!(
+                    "missing path should not be an inspection error: {err}"
+                ))
+            }),
             None
         );
     }
@@ -126,7 +128,11 @@ mod tests {
                 Ok(EvidencePathComponentKind::Other)
             }
         })
-        .unwrap_or_else(|err| panic!("simulated symlink inspection should succeed: {err}"));
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!(
+                "simulated symlink inspection should succeed: {err}"
+            ))
+        });
 
         assert_eq!(result, Some(PathBuf::from("docs/link")));
     }
@@ -145,7 +151,7 @@ mod tests {
             }
         })
         .err()
-        .unwrap_or_else(|| panic!("permission failure should be retained"));
+        .unwrap_or_else(|| std::panic::panic_any("permission failure should be retained"));
 
         assert_eq!(err.component(), Path::new("docs/private"));
         assert_eq!(err.source_error().kind(), io::ErrorKind::PermissionDenied);
