@@ -5904,7 +5904,7 @@ line_hint = 1
 [[allow]]
 id = "allow-4751"
 kind = "non_rust_file"
-family = "policy_metadata"
+family = "configuration"
 path = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
 owner = "core/policy"
 classification = "normative_implementation_slice"
@@ -5918,4 +5918,5 @@ ast_kind = "tracked_file"
 symbol = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
 target_fingerprint = "toml"
 line_hint = 1
+glob = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
 
