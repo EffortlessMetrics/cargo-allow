@@ -48,7 +48,9 @@ fn render_why_lists_mismatch_reasons_for_new_findings() {
     };
     let reasons = explain_match_failure(&entry, &finding);
     assert!(
-        reasons.iter().any(|reason| reason.contains("callee mismatch")),
+        reasons
+            .iter()
+            .any(|reason| reason.contains("callee mismatch")),
         "expected callee mismatch, got {reasons:?}"
     );
     let text = render_why_text(
@@ -92,7 +94,10 @@ fn sample_finding() -> Finding {
         kind: FindingKind::Panic,
         family: Some("unwrap".to_string()),
         path: PathBuf::from("src/lib.rs"),
-        span: Some(Span { line: 10, column: 1 }),
+        span: Some(Span {
+            line: 10,
+            column: 1,
+        }),
         identity,
         message: "unwrap call".to_string(),
         ledger: None,

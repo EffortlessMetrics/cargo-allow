@@ -70,11 +70,7 @@ The finding is unreceipted because no policy entry covers it.\n\n",
                     out.push_str(&format!(
                         "- kind/family: {} / {}\n",
                         candidate.entry.kind.as_str(),
-                        candidate
-                            .entry
-                            .family
-                            .as_deref()
-                            .unwrap_or("<none>")
+                        candidate.entry.family.as_deref().unwrap_or("<none>")
                     ));
                     out.push_str(&format!(
                         "- path: {}\n",

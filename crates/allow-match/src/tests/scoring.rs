@@ -467,7 +467,9 @@ fn explain_match_failure_reports_kind_family_path_and_selector_gates() {
 
     let reasons = explain_match_failure(&entry, &finding);
     assert!(
-        reasons.iter().any(|reason| reason.contains("kind mismatch")),
+        reasons
+            .iter()
+            .any(|reason| reason.contains("kind mismatch")),
         "{reasons:?}"
     );
     assert!(
@@ -477,7 +479,9 @@ fn explain_match_failure_reports_kind_family_path_and_selector_gates() {
         "{reasons:?}"
     );
     assert!(
-        reasons.iter().any(|reason| reason.contains("path mismatch")),
+        reasons
+            .iter()
+            .any(|reason| reason.contains("path mismatch")),
         "{reasons:?}"
     );
     assert!(
