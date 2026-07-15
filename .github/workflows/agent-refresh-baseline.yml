@@ -1,0 +1,53 @@
+name: Agent refresh baseline
+
+on:
+  push:
+    branches:
+      - agent/refresh-current-main-drift
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.event.head_commit.message != 'chore: record refreshed no-new baseline'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Refresh exact drifted entries and verify no-new
+        run: |
+          set -euo pipefail
+          cargo run -p cargo-allow -- refresh \
+            --allow-id allow-0282 \
+            --write \
+            --format json \
+            --output /tmp/refresh-0282.json
+          cargo run -p cargo-allow -- refresh \
+            --allow-id allow-0283 \
+            --write \
+            --format json \
+            --output /tmp/refresh-0283.json
+          cargo run -p cargo-allow -- check \
+            --mode no-new \
+            --format markdown \
+            --receipt /tmp/check.receipt.json \
+            --output /tmp/check.md
+          {
+            echo '=== refresh allow-0282 ==='
+            cat /tmp/refresh-0282.json
+            echo
+            echo '=== refresh allow-0283 ==='
+            cat /tmp/refresh-0283.json
+            echo
+            echo '=== no-new check ==='
+            cat /tmp/check.md
+          } > .agent-refresh-evidence.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add policy/allow.toml .agent-refresh-evidence.txt
+          git commit -m "chore: record refreshed no-new baseline"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
