@@ -5,6 +5,15 @@ use crate::evidence_reference::{EvidenceReference, recognized_evidence_prefixes}
 use crate::source_tree_scope::validate_path_scope;
 use crate::text_validation::{validate_no_surrounding_whitespace, validate_required_text};
 
+/// Hard ceiling for `occurrence_limit` on allow entries.
+///
+/// Values above this defeat counted no-new semantics (for example a typo of
+/// `999999999` or `u32::MAX`) and are rejected at policy load. Real counted
+/// baselines in this repository stay in the low single digits; the ceiling is
+/// intentionally generous for unusual monorepos while still failing closed on
+/// implausible limits.
+pub const OCCURRENCE_LIMIT_MAX: u32 = 10_000;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum LinkScopeValidation {
     Strict,
@@ -120,11 +129,19 @@ pub(crate) fn validate_allow_entry_evidence_and_limit(
             entry.id
         )));
     }
-    if entry.occurrence_limit == Some(0) {
-        return Err(CargoAllowError::new(format!(
-            "{} occurrence_limit must be greater than zero",
-            entry.id
-        )));
+    if let Some(limit) = entry.occurrence_limit {
+        if limit == 0 {
+            return Err(CargoAllowError::new(format!(
+                "{} occurrence_limit must be greater than zero",
+                entry.id
+            )));
+        }
+        if limit > OCCURRENCE_LIMIT_MAX {
+            return Err(CargoAllowError::new(format!(
+                "{} occurrence_limit must be at most {OCCURRENCE_LIMIT_MAX}",
+                entry.id
+            )));
+        }
     }
     Ok(())
 }
@@ -472,6 +489,22 @@ mod tests {
             ))
             .contains("zero-limit occurrence_limit must be greater than zero")
         );
+
+        let mut oversized_limit = entry("oversized-limit");
+        oversized_limit.occurrence_limit = Some(OCCURRENCE_LIMIT_MAX + 1);
+        assert!(
+            err_text(validate_allow_entry_evidence_and_limit(
+                &oversized_limit,
+                &requirements
+            ))
+            .contains(&format!(
+                "oversized-limit occurrence_limit must be at most {OCCURRENCE_LIMIT_MAX}"
+            ))
+        );
+
+        let mut ceiling_limit = entry("ceiling-limit");
+        ceiling_limit.occurrence_limit = Some(OCCURRENCE_LIMIT_MAX);
+        assert!(validate_allow_entry_evidence_and_limit(&ceiling_limit, &requirements).is_ok());
     }
 
     #[test]
@@ -659,6 +692,18 @@ mod tests {
             CargoAllowError::new(format!(
                 "{} occurrence_limit must be greater than zero",
                 zero_limit.id
+            ))
+        );
+
+        let mut oversized_limit = entry("oversized-limit");
+        oversized_limit.occurrence_limit = Some(OCCURRENCE_LIMIT_MAX + 1);
+        let err = validate_allow_entry_evidence_and_limit(&oversized_limit, &requirements)
+            .expect_err("oversized occurrence_limit should fail validation");
+        assert_eq!(
+            err,
+            CargoAllowError::new(format!(
+                "{} occurrence_limit must be at most {OCCURRENCE_LIMIT_MAX}",
+                oversized_limit.id
             ))
         );
 

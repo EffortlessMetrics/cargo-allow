@@ -58,6 +58,7 @@ pub use evidence_reference::{
     canonical_evidence_prefixes, local_file_evidence_prefixes, recognized_evidence_prefixes,
     traceability_evidence_prefixes,
 };
+pub use entry_validation::OCCURRENCE_LIMIT_MAX;
 pub use lifecycle::BASELINE_DEBT_MAX_DAYS;
 pub use render::render_policy;
 pub use starter::starter_policy;

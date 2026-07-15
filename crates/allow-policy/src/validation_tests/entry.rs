@@ -290,3 +290,58 @@ fn rejects_zero_occurrence_limit() {
             .contains("occurrence_limit must be greater than zero")
     );
 }
+
+#[test]
+fn rejects_oversized_occurrence_limit() {
+    let oversized = OCCURRENCE_LIMIT_MAX + 1;
+    let err = parse_err(&format!(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-oversized"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "baseline_debt"
+                reason = "Generated baseline debt."
+                occurrence_limit = {oversized}
+                created = "2026-05-26"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#
+    ));
+
+    assert!(err.contains(&format!(
+        "occurrence_limit must be at most {OCCURRENCE_LIMIT_MAX}"
+    )));
+}
+
+#[test]
+fn accepts_occurrence_limit_at_documented_ceiling() {
+    let ceiling = OCCURRENCE_LIMIT_MAX;
+    let policy = parse_policy(&format!(
+        r#"
+                policy = "cargo-allow"
+                [[allow]]
+                id = "allow-ceiling"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "baseline_debt"
+                reason = "Generated baseline debt."
+                occurrence_limit = {ceiling}
+                created = "2026-05-26"
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#
+    ))
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("ceiling occurrence_limit should parse: {err}"))
+    });
+
+    assert_eq!(policy.allow[0].occurrence_limit, Some(ceiling));
+}
