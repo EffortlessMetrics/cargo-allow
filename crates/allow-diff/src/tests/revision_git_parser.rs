@@ -121,6 +121,9 @@ fn parse_git_tree_record_outcome_distinguishes_entry_and_malformed() {
         None
     );
 }
+
+#[test]
+fn parse_git_ls_tree_record_preserves_colon_and_literal_backslash_path_bytes() {
     let colon = revision_git::parse_git_ls_tree_record_for_test(
         b"100644 blob abc123\tnotes/file:with:colons.txt",
     )
