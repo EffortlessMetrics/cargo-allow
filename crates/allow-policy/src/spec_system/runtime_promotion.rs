@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 
 use super::{
     EvidenceDispositionState, ImplementationDispositionState, ImplementationSliceClass,
-    ImplementationSliceId, ImplementationSliceV1, RequirementDelta, RequirementGraph, RequirementId,
-    RequirementLifecycle, SupportClaimDispositionState,
+    ImplementationSliceId, ImplementationSliceV1, RequirementDelta, RequirementGraph,
+    RequirementId, RequirementLifecycle, SupportClaimDispositionState,
 };
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -261,7 +261,10 @@ state = "unchanged"
             .map_err(|findings| format!("unexpected findings: {findings:?}"))?;
 
         assert_eq!(transition.requirement_delta.len(), 1);
-        assert_eq!(transition.requirement_delta[0].to, RequirementLifecycle::Accepted);
+        assert_eq!(
+            transition.requirement_delta.first().map(|delta| delta.to),
+            Some(RequirementLifecycle::Accepted)
+        );
         assert_eq!(
             transition.implementation_state,
             ImplementationDispositionState::Outstanding
@@ -277,7 +280,11 @@ state = "unchanged"
     fn spec_or_policy_slice_rejects_unproved_runtime_promotion() -> Result<(), String> {
         let graph = graph()?;
         let mut slice = slice()?;
-        slice.requirement_delta[0].to = RequirementLifecycle::Implemented;
+        let delta = slice
+            .requirement_delta
+            .first_mut()
+            .ok_or_else(|| "expected one requirement delta".to_string())?;
+        delta.to = RequirementLifecycle::Implemented;
 
         let findings = validate_runtime_promotion(&graph, &slice);
 
@@ -292,7 +299,13 @@ state = "unchanged"
             }]
         );
         assert!(validated_runtime_transition(&graph, &slice).is_err());
-        assert_eq!(graph.requirements[0].lifecycle, RequirementLifecycle::Accepted);
+        assert_eq!(
+            graph
+                .requirements
+                .first()
+                .map(|requirement| requirement.lifecycle),
+            Some(RequirementLifecycle::Accepted)
+        );
         Ok(())
     }
 
@@ -313,10 +326,11 @@ state = "unchanged"
         let graph = graph()?;
         let mut slice = slice()?;
         slice.evidence.state = EvidenceDispositionState::Current;
+        let findings = validate_runtime_promotion(&graph, &slice);
 
         assert_eq!(
-            validate_runtime_promotion(&graph, &slice)[0].code,
-            RuntimePromotionFindingCode::RuntimeProofWithoutReceipt
+            findings.first().map(|finding| finding.code),
+            Some(RuntimePromotionFindingCode::RuntimeProofWithoutReceipt)
         );
         Ok(())
     }
@@ -326,7 +340,11 @@ state = "unchanged"
         let graph = graph()?;
         let mut slice = slice()?;
         slice.change_class = ImplementationSliceClass::BehaviorChange;
-        slice.requirement_delta[0].to = RequirementLifecycle::Implemented;
+        let delta = slice
+            .requirement_delta
+            .first_mut()
+            .ok_or_else(|| "expected one requirement delta".to_string())?;
+        delta.to = RequirementLifecycle::Implemented;
 
         assert!(validate_runtime_promotion(&graph, &slice).is_empty());
         Ok(())
