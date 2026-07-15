@@ -13,6 +13,7 @@ mod doc_artifacts;
 mod implementation_slice;
 mod profile_resolution;
 mod requirement;
+mod requirement_adapter;
 mod ripr_dialect;
 mod runtime_promotion;
 mod support_tiers;
@@ -44,8 +45,10 @@ pub use profile_resolution::{
 pub use requirement::{
     REQUIREMENT_BLOCK_SCHEMA_VERSION, RequirementClaimClass, RequirementGraph, RequirementId,
     RequirementLifecycle, RequirementSource, SpecRequirement, parse_requirement_blocks,
-    parse_requirement_blocks_at, parse_requirement_blocks_for_document,
-    parse_requirement_blocks_for_document_at,
+    parse_requirement_blocks_at,
+};
+pub use requirement_adapter::{
+    parse_requirement_blocks_for_document, parse_requirement_blocks_for_document_at,
 };
 pub use ripr_dialect::{
     RIPR_SPEC_DIALECT_ID, RiprSpecDocument, RiprSpecLinks, RiprSpecSource,
