@@ -131,6 +131,8 @@ reason = "Narrow selector after parser refactor."
 
 allow_ids = ["allow-0042"]
 change_kinds = ["selector_changed"]
+before_fingerprint = "sha256:v1:..."
+after_fingerprint = "sha256:v1:..."
 
 links = [
   "issue:123",
@@ -142,14 +144,17 @@ The design slice must decide:
 
 - which changes require a note;
 - how one note covers multiple entries;
-- how notes are matched to a diff;
+- how notes are matched to a diff, including exact before/after entry
+  fingerprints for retained entries;
 - whether notes expire after merge;
 - whether notes are append-only.
 
 Enforcement (`diff --require-change-note`) applies only after the contract is
-accepted. Governed weakening edits require a matching note; obvious improvements
+accepted. Governed weakening edits require a matching note keyed by exact allow
+ID, canonical change kind, and retained-entry before/after fingerprints. The
+matching note authorizes that bounded transition only. Obvious improvements
 (narrowing scope, adding typed evidence, assigning owner, reducing
-occurrence_limit, removing stale entries) do not.
+occurrence_limit, removing stale entries) do not require a note.
 
 ## Mutation Receipt Envelope (Future Implementation)
 
