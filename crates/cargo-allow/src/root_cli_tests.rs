@@ -229,9 +229,11 @@ mod tests {
         let help = diff.render_help().to_string();
 
         assert!(help.contains("Base Git revision; resolves to an exact commit before comparison"));
-        assert!(help.contains(
-            "Optional head Git revision; defaults to committed HEAD and resolves first"
-        ));
+        assert!(
+            help.contains(
+                "Optional head Git revision; defaults to committed HEAD and resolves first"
+            )
+        );
     }
 
     fn argv(items: Vec<&str>) -> Vec<String> {
