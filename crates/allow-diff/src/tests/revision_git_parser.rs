@@ -1,4 +1,5 @@
 use super::*;
+use allow_core::{CargoAllowError, CargoAllowErrorKind};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -159,36 +160,92 @@ fn revision_git_commands_report_changed_tracked_and_missing_files() {
 }
 
 #[test]
-fn revision_git_commands_report_git_failures() {
+fn read_file_at_revision_treats_leading_dash_space_and_unicode_paths_literally() {
+    let repo = TempGitRepo::new("revision-git-literal-paths");
+    repo.git(&["init"]);
+    repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
+    repo.git(&["config", "user.name", "cargo-allow"]);
+    repo.write("-leading.txt", "leading dash\n");
+    repo.write("notes/hello world.txt", "space\n");
+    repo.write("notes/naïve.txt", "unicode\n");
+    repo.git(&["add", "."]);
+    repo.git(&["commit", "-m", "literal paths"]);
+
+    for (path, expected) in [
+        ("-leading.txt", "leading dash\n"),
+        ("notes/hello world.txt", "space\n"),
+        ("notes/naïve.txt", "unicode\n"),
+    ] {
+        let value = revision_git::read_file_at_revision(repo.path(), "HEAD", path)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read {path}: {err}")));
+        assert_eq!(value.as_deref(), Some(expected), "{path}");
+    }
+}
+
+#[test]
+fn option_like_revision_is_rejected_before_git_can_create_output() {
+    let repo = TempGitRepo::new("revision-git-option-like");
+    repo.git(&["init"]);
+    repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
+    repo.git(&["config", "user.name", "cargo-allow"]);
+    repo.write("README.md", "fixture\n");
+    repo.git(&["add", "."]);
+    repo.git(&["commit", "-m", "fixture"]);
+
+    let side_effect = repo.path().join("git-option-side-effect.txt");
+    let revision = format!("--output={}", side_effect.display());
+    let err = revision_git::changed_files(repo.path(), &revision, Some("HEAD"))
+        .err()
+        .unwrap_or_else(|| std::panic::panic_any("option-like revision should fail"));
+
+    assert_eq!(err.kind(), CargoAllowErrorKind::InvalidConfig);
+    assert_diagnostic_code(&err, "invalid_revision_input");
+    assert!(
+        !side_effect.exists(),
+        "option-like revision must not create {}",
+        side_effect.display()
+    );
+}
+
+#[test]
+fn revision_git_commands_report_unresolved_revision_without_clean_fallback() {
     let repo = TempGitRepo::new("revision-git-failures");
     repo.git(&["init"]);
 
     let changed_err = revision_git::changed_files(repo.path(), "missing-revision", None)
         .err()
         .unwrap_or_else(|| std::panic::panic_any("missing diff base should fail"));
-    assert!(
-        changed_err
-            .to_string()
-            .contains("git diff --name-only failed")
-    );
+    assert_revision_not_found(&changed_err);
 
     let tree_err = revision_git::git_tree_files_at_revision(repo.path(), "missing-revision")
         .err()
         .unwrap_or_else(|| std::panic::panic_any("missing tree revision should fail"));
-    assert!(
-        tree_err
-            .to_string()
-            .contains("git ls-tree failed for missing-revision")
-    );
+    assert_revision_not_found(&tree_err);
 
     let read_err =
         revision_git::read_file_at_revision(repo.path(), "missing-revision", "README.md")
             .err()
-            .unwrap_or_else(|| std::panic::panic_any("missing show revision should fail"));
+            .unwrap_or_else(|| std::panic::panic_any("missing revision read should fail"));
+    assert_revision_not_found(&read_err);
+}
+
+fn assert_revision_not_found(err: &CargoAllowError) {
+    assert_eq!(err.kind(), CargoAllowErrorKind::Inventory);
     assert!(
-        read_err
-            .to_string()
-            .contains("failed to read README.md from missing-revision")
+        err.to_string()
+            .contains("could not be resolved to a commit"),
+        "unexpected error: {err}"
+    );
+    assert_diagnostic_code(err, "revision_not_found");
+}
+
+fn assert_diagnostic_code(err: &CargoAllowError, code: &str) {
+    assert!(
+        err.diagnostics()
+            .iter()
+            .any(|diagnostic| diagnostic.code == code),
+        "expected diagnostic code `{code}` in {:?}",
+        err.diagnostics()
     );
 }
 

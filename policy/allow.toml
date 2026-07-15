@@ -72,6 +72,29 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9001"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/ledger-coherence/closeouts/CARGO-ALLOW-CLOSEOUT-0051-lifecycle-repair-route-convergence.md"
+owner = "core/policy"
+classification = "source_truth_closeout"
+reason = "Records the exact GOAL-0004 PR 7 lifecycle repair-route convergence commit, proof, and bounded remaining work."
+evidence = ["doc:.allow/artifacts/doc-artifacts.toml", "doc:plans/ledger-coherence/implementation-plan.md"]
+created = "2026-07-15"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "plans/ledger-coherence/closeouts/CARGO-ALLOW-CLOSEOUT-0051-lifecycle-repair-route-convergence.md"
+target_fingerprint = "md"
+line_hint = 1
+    glob = "plans/ledger-coherence/closeouts/CARGO-ALLOW-CLOSEOUT-0051-lifecycle-repair-route-convergence.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-4729"
 kind = "non_rust_file"
 family = "documentation"
