@@ -1437,3 +1437,186 @@ fn git(root: &Path, args: &[&str]) {
         ));
     }
 }
+
+#[test]
+fn repair_routes_converge_into_refresh_and_prune_mutation_previews() {
+    let root = create_fixture("repair-route-convergence", true);
+    let policy_path = root.join("policy/allow.toml");
+    let policy_text = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read repair policy: {err}")));
+    fs::write(
+        &policy_path,
+        policy_text.replace(
+            "evidence = [\"doc:docs/missing-evidence.md\"]",
+            "evidence = [\"test:lifecycle_corpus\"]",
+        ),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("prepare repair policy: {err}")));
+
+    let (worklist_path, worklist_result) = run_report(&root, "repair-worklist", &["worklist"]);
+    assert_status("repair route worklist", &worklist_result, true);
+    assert_quiet("repair route worklist", &worklist_result);
+    let worklist = assert_saved_json_artifact(
+        &worklist_path,
+        "repair route worklist",
+        "cargo-allow.worklist.v1",
+        "worklist",
+    );
+    let stale_item = worklist
+        .pointer("/work_items")
+        .and_then(Value::as_array)
+        .and_then(|items| {
+            items
+                .iter()
+                .find(|item| item.get("allow_id").and_then(Value::as_str) == Some(STALE_ID))
+        })
+        .unwrap_or_else(|| std::panic::panic_any("stale work item should be projected"));
+    assert_eq!(
+        stale_item.get("status").and_then(Value::as_str),
+        Some("stale")
+    );
+    assert!(
+        stale_item
+            .pointer("/proof_commands")
+            .and_then(Value::as_array)
+            .is_some_and(|commands| {
+                commands.iter().any(|command| {
+                    command
+                        .as_str()
+                        .is_some_and(|command| command.contains("prune --stale --dry-run"))
+                })
+            }),
+        "stale work item should route to prune preview"
+    );
+
+    let (refresh_preview_path, refresh_preview_result) = run_report(
+        &root,
+        "refresh-preview",
+        &["refresh", "--allow-id", DRIFT_ID, "--dry-run"],
+    );
+    assert_status("refresh preview", &refresh_preview_result, true);
+    assert_quiet("refresh preview", &refresh_preview_result);
+    let refresh_preview = assert_saved_json_artifact(
+        &refresh_preview_path,
+        "refresh preview",
+        "cargo-allow.refresh.v1",
+        "refresh",
+    );
+    assert_eq!(
+        refresh_preview
+            .pointer("/summary/entry_id")
+            .and_then(Value::as_str),
+        Some(DRIFT_ID)
+    );
+    assert_eq!(
+        refresh_preview
+            .pointer("/mode/write_requested")
+            .and_then(Value::as_bool),
+        Some(false)
+    );
+    assert_eq!(
+        refresh_preview
+            .pointer("/mutation_receipt/changed_allow_ids/0")
+            .and_then(Value::as_str),
+        Some(DRIFT_ID)
+    );
+
+    let (refresh_write_path, refresh_write_result) = run_report(
+        &root,
+        "refresh-write",
+        &["refresh", "--allow-id", DRIFT_ID, "--write"],
+    );
+    assert_status("refresh write", &refresh_write_result, true);
+    assert_quiet("refresh write", &refresh_write_result);
+    let refresh_write = assert_saved_json_artifact(
+        &refresh_write_path,
+        "refresh write",
+        "cargo-allow.refresh.v1",
+        "refresh",
+    );
+    assert_eq!(
+        refresh_write
+            .pointer("/mutation_receipt/result")
+            .and_then(Value::as_str),
+        Some("written")
+    );
+    assert_eq!(
+        refresh_write
+            .pointer("/mutation_receipt/after_fingerprints/0")
+            .and_then(Value::as_str)
+            .map(|fingerprint| fingerprint.starts_with("sha256:v1:")),
+        Some(true)
+    );
+
+    let (prune_preview_path, prune_preview_result) =
+        run_report(&root, "prune-preview", &["prune", "--stale", "--dry-run"]);
+    assert_status("prune preview", &prune_preview_result, true);
+    assert_quiet("prune preview", &prune_preview_result);
+    let prune_preview = assert_saved_json_artifact(
+        &prune_preview_path,
+        "prune preview",
+        "cargo-allow.prune.v1",
+        "prune",
+    );
+    let stale_entries = prune_preview
+        .pointer("/stale_entries")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("prune preview should list stale entries"));
+    assert!(
+        stale_entries
+            .iter()
+            .any(|entry| { entry.get("id").and_then(Value::as_str) == Some(STALE_ID) }),
+        "prune preview should select the stale worklist subject"
+    );
+    assert!(
+        prune_preview
+            .pointer("/mutation_receipt/changed_allow_ids")
+            .and_then(Value::as_array)
+            .is_some_and(|ids| ids.iter().any(|id| id.as_str() == Some(STALE_ID))),
+        "prune receipt should retain the stale worklist subject identity"
+    );
+
+    let (prune_write_path, prune_write_result) =
+        run_report(&root, "prune-write", &["prune", "--stale", "--write"]);
+    assert_status("prune write", &prune_write_result, true);
+    assert_quiet("prune write", &prune_write_result);
+    let prune_write = assert_saved_json_artifact(
+        &prune_write_path,
+        "prune write",
+        "cargo-allow.prune.v1",
+        "prune",
+    );
+    assert_eq!(
+        prune_write
+            .pointer("/mutation_receipt/result")
+            .and_then(Value::as_str),
+        Some("written")
+    );
+
+    let (final_list_path, final_list_result) = run_report(&root, "repair-final-list", &["list"]);
+    assert_status("repair final list", &final_list_result, true);
+    assert_quiet("repair final list", &final_list_result);
+    let final_list = assert_saved_json_artifact(
+        &final_list_path,
+        "repair final list",
+        "cargo-allow.list.v1",
+        "list",
+    );
+    assert_entry_absent(&final_list, STALE_ID);
+    assert_entry_status(&final_list, "/allow_entries", DRIFT_ID, "matched");
+
+    remove_temp_root(root);
+}
+
+fn assert_entry_absent(value: &Value, allow_id: &str) {
+    let entries = value
+        .pointer("/allow_entries")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("allow_entries should be an array"));
+    assert!(
+        entries
+            .iter()
+            .all(|entry| { entry.get("id").and_then(Value::as_str) != Some(allow_id) }),
+        "{allow_id} should be absent after its repair mutation"
+    );
+}
