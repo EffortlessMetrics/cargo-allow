@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+use allow_core::allow_entry_content_fingerprint;
 use serde_json::Value;
 use support::{
     assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
@@ -19,9 +20,153 @@ const MISSING_EVIDENCE_ID: &str = "allow-missing-evidence";
 const BROKEN_EVIDENCE_ID: &str = "allow-broken-evidence";
 const WEAK_EVIDENCE_ID: &str = "allow-weak-evidence";
 const BASELINE_DEBT_ID: &str = "allow-baseline-debt";
+const MIRROR_LEDGER_ID: &str = "source-policy-mirror";
+const MIRROR_LEDGER_PATH: &str = ".allow/mirror/policy.toml";
 const AUDIT_ARGS: &[&str] = &["audit"];
 const CHECK_NO_NEW_ARGS: &[&str] = &["check", "--mode", "no-new"];
 const DIFF_ARGS: &[&str] = &["diff", "--base", "HEAD"];
+
+#[test]
+fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
+    let weakening_root = create_policy_change_fixture("policy-weakening", "src/lib.rs");
+    let weakening_base = policy_with_occurrence_limit(1);
+    git(&weakening_root, &["add", "policy/allow.toml"]);
+    fs::write(weakening_root.join("policy/allow.toml"), &weakening_base)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write weakening base policy: {err}")));
+    git(&weakening_root, &["add", "policy/allow.toml"]);
+    git(
+        &weakening_root,
+        &["commit", "--no-gpg-sign", "-m", "set weakening base"],
+    );
+    let weakening_head = policy_with_occurrence_limit(3);
+    fs::write(weakening_root.join("policy/allow.toml"), &weakening_head)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write weakening policy: {err}")));
+
+    let missing_output = weakening_root.join("target/cargo-allow/weakening-missing.json");
+    let missing = run_diff_with_note_requirement(
+        &weakening_root,
+        &weakening_base,
+        &weakening_head,
+        &missing_output,
+    );
+    assert_status("weakening without note", &missing, false);
+    assert_saved_json_artifact(
+        &missing_output,
+        "weakening without note",
+        "cargo-allow.report.v1",
+        "diff",
+    );
+    let missing_changes = policy_changes(&missing_output);
+    assert_eq!(
+        missing_changes.len(),
+        1,
+        "unexpected weakening rows: {missing_changes:?}"
+    );
+    assert_policy_change_fields(
+        &missing_output,
+        "occurrence_limit_loosened",
+        "allow-transition",
+        "fail",
+        "retained",
+        "worsened",
+    );
+    let (before_fingerprint, after_fingerprint) =
+        transition_fingerprints(&weakening_base, &weakening_head);
+    let missing_stderr = String::from_utf8_lossy(&missing.stderr);
+    assert!(
+        missing_stderr.contains("change note required: allow-transition occurrence_limit_loosened"),
+        "missing-note diagnostic should identify the transition: {missing_stderr}"
+    );
+    assert!(
+        missing_stderr.contains(&before_fingerprint) && missing_stderr.contains(&after_fingerprint),
+        "missing-note diagnostic should provide the exact fingerprint route: {missing_stderr}"
+    );
+
+    fs::create_dir_all(weakening_root.join(".allow/revisions"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create revision directory: {err}")));
+    write_revision_note(&weakening_root, &before_fingerprint, &after_fingerprint);
+    let matching_output = weakening_root.join("target/cargo-allow/weakening-matching.json");
+    let matching = run_diff_with_note_requirement(
+        &weakening_root,
+        &weakening_base,
+        &weakening_head,
+        &matching_output,
+    );
+    assert_status("weakening with exact note", &matching, true);
+    assert_saved_json_artifact(
+        &matching_output,
+        "weakening with exact note",
+        "cargo-allow.report.v1",
+        "diff",
+    );
+    assert_eq!(policy_changes(&matching_output).len(), 1);
+
+    write_revision_note(&weakening_root, "sha256:v1:stale", &after_fingerprint);
+    let stale_output = weakening_root.join("target/cargo-allow/weakening-stale.json");
+    let stale = run_diff_with_note_requirement(
+        &weakening_root,
+        &weakening_base,
+        &weakening_head,
+        &stale_output,
+    );
+    assert_status("weakening with stale note", &stale, false);
+    assert!(
+        String::from_utf8_lossy(&stale.stderr).contains("change note required"),
+        "stale fingerprint should reopen the note obligation"
+    );
+    remove_temp_root(weakening_root);
+
+    let improvement_root = create_policy_change_fixture("policy-improvement", "src/lib.rs");
+    let improvement_base = policy_with_occurrence_limit(3);
+    fs::write(
+        improvement_root.join("policy/allow.toml"),
+        &improvement_base,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write improvement base policy: {err}")));
+    git(&improvement_root, &["add", "policy/allow.toml"]);
+    git(
+        &improvement_root,
+        &["commit", "--no-gpg-sign", "-m", "set improvement base"],
+    );
+    let improvement_head = policy_with_occurrence_limit(1);
+    fs::write(
+        improvement_root.join("policy/allow.toml"),
+        &improvement_head,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write improvement policy: {err}")));
+    let improvement_output = improvement_root.join("target/cargo-allow/improvement.json");
+    let improvement = run_diff(&improvement_root, &improvement_output, false);
+    assert_status("policy improvement", &improvement, true);
+    assert_saved_json_artifact(
+        &improvement_output,
+        "policy improvement",
+        "cargo-allow.report.v1",
+        "diff",
+    );
+    assert_eq!(policy_changes(&improvement_output).len(), 1);
+    assert_policy_change_fields(
+        &improvement_output,
+        "occurrence_limit_tightened",
+        "allow-transition",
+        "improvement",
+        "retained",
+        "improved",
+    );
+    remove_temp_root(improvement_root);
+
+    let formatting_root = create_policy_change_fixture("policy-formatting", "src/lib.rs");
+    let formatting_output = formatting_root.join("target/cargo-allow/formatting.json");
+    let formatting_policy = policy_with_scope("src/lib.rs").replace(
+        "reason = \"fixture transition\"",
+        "reason = \"fixture transition\"\n\n",
+    );
+    fs::write(formatting_root.join("policy/allow.toml"), formatting_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write formatting policy: {err}")));
+    let formatting = run_diff(&formatting_root, &formatting_output, true);
+    assert_status("formatting-only policy edit", &formatting, true);
+    assert_eq!(policy_changes(&formatting_output).len(), 0);
+    remove_temp_root(formatting_root);
+}
 
 #[test]
 fn lifecycle_statuses_converge_across_read_artifacts() {
@@ -355,6 +500,104 @@ fn baseline_debt_is_advisory_in_no_new_and_blocking_in_strict() {
     remove_temp_root(root);
 }
 
+#[test]
+fn mirror_divergence_projects_across_check_worklist_and_doctor() {
+    let root = create_mirror_divergence_fixture();
+    let check_output = root.join("target/cargo-allow/check.json");
+    let check_receipt = root.join("target/cargo-allow/check.receipt.json");
+    let check = run_command_with_receipt(&root, CHECK_NO_NEW_ARGS, &check_output, &check_receipt);
+    assert_status("mirror divergence no-new", &check, true);
+    assert_quiet("mirror divergence no-new", &check);
+    let check_report = assert_saved_json_artifact(
+        &check_output,
+        "mirror divergence no-new",
+        "cargo-allow.report.v1",
+        "check",
+    );
+    assert_eq!(
+        check_report.pointer("/failed").and_then(Value::as_bool),
+        Some(false),
+        "mirror divergence remains advisory in no-new mode"
+    );
+
+    let check_receipt = assert_saved_json_artifact(
+        &check_receipt,
+        "mirror divergence receipt",
+        allow_report::RECEIPT_SCHEMA_ID,
+        "check",
+    );
+    assert_eq!(
+        check_receipt
+            .pointer("/federation/divergence_summary/counts_by_kind/0/kind")
+            .and_then(Value::as_str),
+        Some("mirror_divergence"),
+        "check receipt should retain the divergence kind"
+    );
+    assert_eq!(
+        check_receipt
+            .pointer("/federation/divergence_summary/counts_by_kind/0/count")
+            .and_then(Value::as_u64),
+        Some(1),
+        "check receipt should retain the divergence count"
+    );
+    assert_eq!(
+        check_receipt
+            .pointer("/advisory/mirror_divergence")
+            .and_then(Value::as_u64),
+        Some(1),
+        "check receipt should report mirror divergence as advisory"
+    );
+
+    let (worklist_path, worklist_result) = run_report(&root, "mirror-worklist", &["worklist"]);
+    assert_status("mirror divergence worklist", &worklist_result, true);
+    assert_quiet("mirror divergence worklist", &worklist_result);
+    let worklist = assert_saved_json_artifact(
+        &worklist_path,
+        "mirror divergence worklist",
+        "cargo-allow.worklist.v1",
+        "worklist",
+    );
+    assert_work_item_ledger(
+        &worklist,
+        "mirror_divergence",
+        MIRROR_LEDGER_ID,
+        MIRROR_LEDGER_PATH,
+        "mirror",
+        "advisory",
+    );
+
+    let (doctor_path, doctor_result) = run_report(&root, "mirror-doctor", &["doctor"]);
+    assert_status("mirror divergence doctor", &doctor_result, true);
+    assert_quiet("mirror divergence doctor", &doctor_result);
+    let doctor = assert_saved_json_artifact(
+        &doctor_path,
+        "mirror divergence doctor",
+        "cargo-allow.doctor.v1",
+        "doctor",
+    );
+    assert_eq!(
+        doctor
+            .pointer("/federation/divergences/0/kind")
+            .and_then(Value::as_str),
+        Some("mirror_divergence"),
+        "doctor should report the runtime divergence kind"
+    );
+    let ledger_ids = doctor
+        .pointer("/federation/divergences/0/ledger_ids")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("doctor divergence ledger IDs should be an array")
+        });
+    assert!(
+        ledger_ids
+            .iter()
+            .any(|id| id.as_str() == Some(MIRROR_LEDGER_ID)),
+        "doctor should retain mirror ledger provenance: {doctor}"
+    );
+
+    remove_temp_root(root);
+}
+
 fn create_fixture(label: &str, include_expired: bool) -> PathBuf {
     let root = temp_root(label);
     fs::create_dir_all(root.join("src"))
@@ -383,6 +626,273 @@ fn create_fixture(label: &str, include_expired: bool) -> PathBuf {
         &["commit", "--no-gpg-sign", "-m", "lifecycle corpus fixture"],
     );
     root
+}
+
+fn create_mirror_divergence_fixture() -> PathBuf {
+    let root = temp_root("mirror-divergence");
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source directory: {err}")));
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
+    fs::create_dir_all(root.join(".allow/mirror"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create mirror directory: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
+    fs::write(root.join("policy/allow.toml"), mirror_canonical_policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write canonical policy: {err}")));
+    fs::write(
+        root.join(MIRROR_LEDGER_PATH),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write mirror policy: {err}")));
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/federation/canonical-mirror-drain-config.toml"),
+        root.join(".allow/config.toml"),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("copy federation config: {err}")));
+
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(
+        &root,
+        &["commit", "--no-gpg-sign", "-m", "mirror divergence fixture"],
+    );
+    root
+}
+
+fn create_policy_change_fixture(label: &str, base_scope: &str) -> PathBuf {
+    let root = temp_root(label);
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source directory: {err}")));
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write transition source: {err}")));
+    let policy = if base_scope.contains('*') {
+        policy_with_glob(base_scope)
+    } else {
+        policy_with_scope(base_scope)
+    };
+    fs::write(root.join("policy/allow.toml"), policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write transition policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(
+        &root,
+        &["commit", "--no-gpg-sign", "-m", "policy transition fixture"],
+    );
+    root
+}
+
+fn policy_with_scope(scope: &str) -> String {
+    transition_policy(&format!("path = \"{scope}\""))
+}
+
+fn policy_with_glob(glob: &str) -> String {
+    transition_policy(&format!("glob = \"{glob}\""))
+}
+
+fn policy_with_occurrence_limit(limit: u32) -> String {
+    policy_with_scope("src/lib.rs").replace(
+        "reason = \"fixture transition\"",
+        &format!("occurrence_limit = {limit}\nreason = \"fixture transition\""),
+    )
+}
+
+fn transition_policy(scope: &str) -> String {
+    format!(
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[workspace]
+ignored = ["policy/**", "target/**"]
+
+[[allow]]
+id = "allow-transition"
+kind = "panic"
+family = "unwrap"
+{scope}
+owner = "core"
+classification = "reviewed_exception"
+reason = "fixture transition"
+evidence = ["test:lifecycle_corpus"]
+created = "2026-06-01"
+review_after = "2099-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    )
+}
+
+fn transition_fingerprints(base_policy: &str, head_policy: &str) -> (String, String) {
+    let base = allow_policy::parse_policy(base_policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("parse base transition policy: {err}"))
+    });
+    let head = allow_policy::parse_policy(head_policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("parse head transition policy: {err}"))
+    });
+    let base_entry = base
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("base transition policy has no entry"));
+    let head_entry = head
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("head transition policy has no entry"));
+    (
+        allow_entry_content_fingerprint(base_entry),
+        allow_entry_content_fingerprint(head_entry),
+    )
+}
+
+fn write_revision_note(root: &Path, before_fingerprint: &str, after_fingerprint: &str) {
+    let note = format!(
+        r#"[[records]]
+allow_ids = ["allow-transition"]
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "{before_fingerprint}"
+after_fingerprint = "{after_fingerprint}"
+"#
+    );
+    fs::write(root.join(".allow/revisions/transition.toml"), note)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write revision note: {err}")));
+}
+
+fn run_diff_with_note_requirement(
+    root: &Path,
+    _base_policy: &str,
+    _head_policy: &str,
+    output: &Path,
+) -> Output {
+    run_diff(root, output, true)
+}
+
+fn run_diff(root: &Path, output: &Path, require_change_note: bool) -> Output {
+    let mut command = cargo_allow_command();
+    command
+        .args(["diff", "--base", "HEAD"])
+        .arg("--root")
+        .arg(root)
+        .arg("--config")
+        .arg(root.join("policy/allow.toml"))
+        .args(["--format", "json", "--output"])
+        .arg(output);
+    if require_change_note {
+        command
+            .arg("--require-change-note")
+            .args(["--revisions-dir", ".allow/revisions"]);
+    }
+    command
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run transition diff: {err}")))
+}
+
+fn policy_changes(output: &Path) -> Vec<Value> {
+    let text = fs::read_to_string(output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read diff output: {err}")));
+    let value: Value = serde_json::from_str(&text)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse diff output: {err}")));
+    value
+        .pointer("/diff/policy_changes")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_else(|| std::panic::panic_any("diff policy_changes should be an array"))
+}
+
+fn assert_policy_change_fields(
+    output: &Path,
+    kind: &str,
+    allow_id: &str,
+    severity: &str,
+    movement: &str,
+    posture_delta: &str,
+) {
+    let changes = policy_changes(output);
+    let change = changes
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one policy change"));
+    assert_eq!(change.get("kind").and_then(Value::as_str), Some(kind));
+    assert_eq!(
+        change.get("allow_id").and_then(Value::as_str),
+        Some(allow_id)
+    );
+    assert_eq!(
+        change.get("severity").and_then(Value::as_str),
+        Some(severity)
+    );
+    assert_eq!(
+        change.get("movement").and_then(Value::as_str),
+        Some(movement)
+    );
+    assert_eq!(
+        change.get("posture_delta").and_then(Value::as_str),
+        Some(posture_delta)
+    );
+}
+
+fn mirror_canonical_policy() -> &'static str {
+    r#"schema_version = "0.1"
+policy = "cargo-allow"
+owner = "core/policy"
+status = "active"
+
+[workspace]
+root = "."
+inventory = "git-tracked"
+ignored = [".allow/**", "policy/**", "target/**"]
+generated = ["target/**", "vendor/**"]
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+stale_entries_fail = false
+
+[requirements.unsafe]
+evidence_required = true
+safety_comment_required = false
+
+[[allow]]
+id = "canonical-only"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "The canonical fixture entry is intentionally absent from the mirror."
+evidence = ["test:lifecycle_corpus"]
+created = "2026-07-14"
+review_after = "2099-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
 }
 
 fn policy(include_expired: bool) -> String {
@@ -717,6 +1227,25 @@ fn run_command(root: &Path, args: &[&str], output: &Path) -> Output {
         .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow {args:?}: {err}")))
 }
 
+fn run_command_with_receipt(root: &Path, args: &[&str], output: &Path, receipt: &Path) -> Output {
+    cargo_allow_command()
+        .args(args)
+        .arg("--root")
+        .arg(root)
+        .arg("--config")
+        .arg(root.join("policy/allow.toml"))
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(output)
+        .arg("--receipt")
+        .arg(receipt)
+        .output()
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("run cargo-allow {args:?} with receipt: {err}"))
+        })
+}
+
 fn assert_quiet(command: &str, result: &Output) {
     assert_stdout_empty(command, result, "--output should not emit report JSON");
     assert_stderr_empty(command, result, "--output should not emit status text");
@@ -824,6 +1353,36 @@ fn assert_work_item_kind(value: &Value, allow_id: &str, kind: &str) {
     );
 }
 
+fn assert_work_item_ledger(
+    value: &Value,
+    kind: &str,
+    ledger_id: &str,
+    ledger_path: &str,
+    role: &str,
+    mode: &str,
+) {
+    let items = value
+        .pointer("/work_items")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("/work_items should be an array"));
+    let item = items
+        .iter()
+        .find(|item| item.get("kind").and_then(Value::as_str) == Some(kind))
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!("{kind} missing from /work_items: {items:?}"))
+        });
+    assert_eq!(
+        item.get("ledger_id").and_then(Value::as_str),
+        Some(ledger_id)
+    );
+    assert_eq!(
+        item.get("ledger_path").and_then(Value::as_str),
+        Some(ledger_path)
+    );
+    assert_eq!(item.get("role").and_then(Value::as_str), Some(role));
+    assert_eq!(item.get("mode").and_then(Value::as_str), Some(mode));
+}
+
 fn assert_work_item_message(value: &Value, allow_id: &str, fragment: &str) {
     let items = value
         .pointer("/work_items")
@@ -877,4 +1436,187 @@ fn git(root: &Path, args: &[&str]) {
             String::from_utf8_lossy(&output.stderr)
         ));
     }
+}
+
+#[test]
+fn repair_routes_converge_into_refresh_and_prune_mutation_previews() {
+    let root = create_fixture("repair-route-convergence", true);
+    let policy_path = root.join("policy/allow.toml");
+    let policy_text = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read repair policy: {err}")));
+    fs::write(
+        &policy_path,
+        policy_text.replace(
+            "evidence = [\"doc:docs/missing-evidence.md\"]",
+            "evidence = [\"test:lifecycle_corpus\"]",
+        ),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("prepare repair policy: {err}")));
+
+    let (worklist_path, worklist_result) = run_report(&root, "repair-worklist", &["worklist"]);
+    assert_status("repair route worklist", &worklist_result, true);
+    assert_quiet("repair route worklist", &worklist_result);
+    let worklist = assert_saved_json_artifact(
+        &worklist_path,
+        "repair route worklist",
+        "cargo-allow.worklist.v1",
+        "worklist",
+    );
+    let stale_item = worklist
+        .pointer("/work_items")
+        .and_then(Value::as_array)
+        .and_then(|items| {
+            items
+                .iter()
+                .find(|item| item.get("allow_id").and_then(Value::as_str) == Some(STALE_ID))
+        })
+        .unwrap_or_else(|| std::panic::panic_any("stale work item should be projected"));
+    assert_eq!(
+        stale_item.get("status").and_then(Value::as_str),
+        Some("stale")
+    );
+    assert!(
+        stale_item
+            .pointer("/proof_commands")
+            .and_then(Value::as_array)
+            .is_some_and(|commands| {
+                commands.iter().any(|command| {
+                    command
+                        .as_str()
+                        .is_some_and(|command| command.contains("prune --stale --dry-run"))
+                })
+            }),
+        "stale work item should route to prune preview"
+    );
+
+    let (refresh_preview_path, refresh_preview_result) = run_report(
+        &root,
+        "refresh-preview",
+        &["refresh", "--allow-id", DRIFT_ID, "--dry-run"],
+    );
+    assert_status("refresh preview", &refresh_preview_result, true);
+    assert_quiet("refresh preview", &refresh_preview_result);
+    let refresh_preview = assert_saved_json_artifact(
+        &refresh_preview_path,
+        "refresh preview",
+        "cargo-allow.refresh.v1",
+        "refresh",
+    );
+    assert_eq!(
+        refresh_preview
+            .pointer("/summary/entry_id")
+            .and_then(Value::as_str),
+        Some(DRIFT_ID)
+    );
+    assert_eq!(
+        refresh_preview
+            .pointer("/mode/write_requested")
+            .and_then(Value::as_bool),
+        Some(false)
+    );
+    assert_eq!(
+        refresh_preview
+            .pointer("/mutation_receipt/changed_allow_ids/0")
+            .and_then(Value::as_str),
+        Some(DRIFT_ID)
+    );
+
+    let (refresh_write_path, refresh_write_result) = run_report(
+        &root,
+        "refresh-write",
+        &["refresh", "--allow-id", DRIFT_ID, "--write"],
+    );
+    assert_status("refresh write", &refresh_write_result, true);
+    assert_quiet("refresh write", &refresh_write_result);
+    let refresh_write = assert_saved_json_artifact(
+        &refresh_write_path,
+        "refresh write",
+        "cargo-allow.refresh.v1",
+        "refresh",
+    );
+    assert_eq!(
+        refresh_write
+            .pointer("/mutation_receipt/result")
+            .and_then(Value::as_str),
+        Some("written")
+    );
+    assert_eq!(
+        refresh_write
+            .pointer("/mutation_receipt/after_fingerprints/0")
+            .and_then(Value::as_str)
+            .map(|fingerprint| fingerprint.starts_with("sha256:v1:")),
+        Some(true)
+    );
+
+    let (prune_preview_path, prune_preview_result) =
+        run_report(&root, "prune-preview", &["prune", "--stale", "--dry-run"]);
+    assert_status("prune preview", &prune_preview_result, true);
+    assert_quiet("prune preview", &prune_preview_result);
+    let prune_preview = assert_saved_json_artifact(
+        &prune_preview_path,
+        "prune preview",
+        "cargo-allow.prune.v1",
+        "prune",
+    );
+    let stale_entries = prune_preview
+        .pointer("/stale_entries")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("prune preview should list stale entries"));
+    assert!(
+        stale_entries
+            .iter()
+            .any(|entry| { entry.get("id").and_then(Value::as_str) == Some(STALE_ID) }),
+        "prune preview should select the stale worklist subject"
+    );
+    assert!(
+        prune_preview
+            .pointer("/mutation_receipt/changed_allow_ids")
+            .and_then(Value::as_array)
+            .is_some_and(|ids| ids.iter().any(|id| id.as_str() == Some(STALE_ID))),
+        "prune receipt should retain the stale worklist subject identity"
+    );
+
+    let (prune_write_path, prune_write_result) =
+        run_report(&root, "prune-write", &["prune", "--stale", "--write"]);
+    assert_status("prune write", &prune_write_result, true);
+    assert_quiet("prune write", &prune_write_result);
+    let prune_write = assert_saved_json_artifact(
+        &prune_write_path,
+        "prune write",
+        "cargo-allow.prune.v1",
+        "prune",
+    );
+    assert_eq!(
+        prune_write
+            .pointer("/mutation_receipt/result")
+            .and_then(Value::as_str),
+        Some("written")
+    );
+
+    let (final_list_path, final_list_result) = run_report(&root, "repair-final-list", &["list"]);
+    assert_status("repair final list", &final_list_result, true);
+    assert_quiet("repair final list", &final_list_result);
+    let final_list = assert_saved_json_artifact(
+        &final_list_path,
+        "repair final list",
+        "cargo-allow.list.v1",
+        "list",
+    );
+    assert_entry_absent(&final_list, STALE_ID);
+    assert_entry_status(&final_list, "/allow_entries", DRIFT_ID, "matched");
+
+    remove_temp_root(root);
+}
+
+fn assert_entry_absent(value: &Value, allow_id: &str) {
+    let entries = value
+        .pointer("/allow_entries")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("allow_entries should be an array"));
+    assert!(
+        entries
+            .iter()
+            .all(|entry| { entry.get("id").and_then(Value::as_str) != Some(allow_id) }),
+        "{allow_id} should be absent after its repair mutation"
+    );
 }
