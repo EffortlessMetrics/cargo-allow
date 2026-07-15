@@ -377,7 +377,10 @@ fn validate_artifact_source_path(
         ArtifactKind::ImplementationPlan | ArtifactKind::PlanItem | ArtifactKind::Closeout => {
             path_has_prefix(&source_path, &roots.plans)
         }
-        ArtifactKind::ActiveGoal => path_has_prefix(&source_path, &roots.goals),
+        ArtifactKind::ActiveGoal => roots
+            .goals
+            .as_deref()
+            .is_some_and(|goals| path_has_prefix(&source_path, goals)),
         ArtifactKind::SupportTier => source_path == normalize_source_path(&roots.support_tiers),
         ArtifactKind::PolicyLedger => {
             path_has_prefix(&source_path, "policy")

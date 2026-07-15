@@ -933,6 +933,11 @@ fn fixture_root(label: &str) -> PathBuf {
 fn write_valid_spec_system_fixture(root: &Path) {
     write_file(
         root,
+        "policy/spec-system.toml",
+        &spec_system_config("advisory"),
+    );
+    write_file(
+        root,
         "policy/doc-artifacts.toml",
         &valid_doc_artifact_ledger(),
     );

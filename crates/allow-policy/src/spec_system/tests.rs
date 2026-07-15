@@ -40,12 +40,92 @@ fn parses_minimal_spec_system_config() {
     assert_eq!(cfg.schema_version, "1.0");
     assert_eq!(cfg.profile, "spec-system");
     assert_eq!(cfg.mode, SpecSystemMode::Advisory);
+    assert_eq!(cfg.generation, SpecSystemGeneration::LegacyV1);
     assert_eq!(
         cfg.roots.artifact_ledger,
         ".allow/artifacts/doc-artifacts.toml"
     );
     assert!(cfg.requirements.ledger_required);
     assert!(cfg.requirements.closeout_required_for_done_items);
+}
+
+#[test]
+fn parses_current_spec_system_config_without_active_goal() -> Result<(), String> {
+    let cfg = parse_spec_system_config(
+        r#"
+            schema_version = "1.0"
+            profile = "spec-system"
+            mode = "advisory"
+            generation = "current-v2"
+
+            [roots]
+            proposals = "docs/proposals"
+            specs = "docs/specs"
+            adrs = "docs/adr"
+            plans = "plans"
+            support_tiers = "docs/status/SUPPORT_TIERS.md"
+            artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
+        "#,
+    )
+    .map_err(|error| error.to_string())?;
+
+    assert_eq!(cfg.generation, SpecSystemGeneration::CurrentV2);
+    assert!(cfg.roots.goals.is_none());
+    assert!(!cfg.requirements.active_goal_required);
+    Ok(())
+}
+
+#[test]
+fn rejects_current_spec_system_config_with_legacy_goal_fields() -> Result<(), String> {
+    let err = match parse_spec_system_config(
+        r#"
+            schema_version = "1.0"
+            profile = "spec-system"
+            mode = "advisory"
+            generation = "current-v2"
+
+            [roots]
+            proposals = "docs/proposals"
+            specs = "docs/specs"
+            adrs = "docs/adr"
+            plans = "plans"
+            goals = ".allow/goals"
+            support_tiers = "docs/status/SUPPORT_TIERS.md"
+            artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
+        "#,
+    ) {
+        Ok(_) => return Err("current profile accepted a legacy goals root".to_string()),
+        Err(error) => error,
+    };
+
+    assert!(err.to_string().contains("current-v2"));
+    Ok(())
+}
+
+#[test]
+fn rejects_unknown_spec_system_generation() -> Result<(), String> {
+    let err = match parse_spec_system_config(
+        r#"
+            schema_version = "1.0"
+            profile = "spec-system"
+            mode = "advisory"
+            generation = "future-v3"
+
+            [roots]
+            proposals = "docs/proposals"
+            specs = "docs/specs"
+            adrs = "docs/adr"
+            plans = "plans"
+            support_tiers = "docs/status/SUPPORT_TIERS.md"
+            artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
+        "#,
+    ) {
+        Ok(_) => return Err("unknown profile generation was accepted".to_string()),
+        Err(error) => error,
+    };
+
+    assert!(err.to_string().contains("unknown variant") || err.to_string().contains("future-v3"));
+    Ok(())
 }
 
 #[test]
@@ -2811,7 +2891,7 @@ fn test_roots() -> SpecSystemRoots {
         specs: "docs/specs".to_string(),
         adrs: "docs/adr".to_string(),
         plans: "plans".to_string(),
-        goals: ".allow/goals".to_string(),
+        goals: Some(".allow/goals".to_string()),
         support_tiers: "docs/status/SUPPORT_TIERS.md".to_string(),
         artifact_ledger: ".allow/artifacts/doc-artifacts.toml".to_string(),
     }
