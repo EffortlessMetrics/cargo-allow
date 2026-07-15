@@ -35,8 +35,6 @@ pub struct SpecSystemRoots {
     pub goals: String,
     pub support_tiers: String,
     pub artifact_ledger: String,
-    #[serde(default)]
-    pub implementation_slices: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
