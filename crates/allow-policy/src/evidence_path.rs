@@ -14,11 +14,13 @@ pub(crate) struct EvidencePathInspectionError {
 }
 
 impl EvidencePathInspectionError {
-    pub(crate) fn component(&self) -> &Path {
+    #[cfg(test)]
+    fn component(&self) -> &Path {
         &self.component
     }
 
-    pub(crate) fn source_error(&self) -> &io::Error {
+    #[cfg(test)]
+    fn source_error(&self) -> &io::Error {
         &self.source
     }
 }
