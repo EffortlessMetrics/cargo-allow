@@ -1,6 +1,7 @@
 use allow_core::{normalize_path, stable_hash_hex};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 
 use super::{
     ImplementationSliceClass, ImplementationSliceId, ImplementationSliceV1, RequirementDelta,
@@ -661,39 +662,39 @@ impl GraphDiagnostic {
     }
 }
 
-impl ToString for ImplementationSliceId {
-    fn to_string(&self) -> String {
-        self.as_str().to_string()
+impl fmt::Display for ImplementationSliceId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
     }
 }
 
-impl ToString for RequirementId {
-    fn to_string(&self) -> String {
-        self.as_str().to_string()
+impl fmt::Display for RequirementId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
     }
 }
 
-impl ToString for ImplementationSeamId {
-    fn to_string(&self) -> String {
-        self.as_str().to_string()
+impl fmt::Display for ImplementationSeamId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
     }
 }
 
-impl ToString for EvidenceClaimId {
-    fn to_string(&self) -> String {
-        self.as_str().to_string()
+impl fmt::Display for EvidenceClaimId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
     }
 }
 
-impl ToString for RustTestSubjectId {
-    fn to_string(&self) -> String {
-        self.as_str().to_string()
+impl fmt::Display for RustTestSubjectId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
     }
 }
 
-impl ToString for ProofCommandId {
-    fn to_string(&self) -> String {
-        self.as_str().to_string()
+impl fmt::Display for ProofCommandId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
     }
 }
 
