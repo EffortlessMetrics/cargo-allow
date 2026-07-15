@@ -5,8 +5,7 @@
 //! without invoking Cargo, rustc, Clippy, build scripts, proc macros, macro
 //! expansion, type analysis, or MIR.
 
-use allow_core::{CargoAllowResult, Finding};
-use std::fs;
+use allow_core::{CargoAllowResult, Finding, read_text_file_capped};
 use std::path::{Path, PathBuf};
 
 mod finding_builder;
@@ -46,10 +45,10 @@ pub fn scan_rust_files(
             continue;
         }
         let path = root.join(rel);
-        // Read each file independently — a single unreadable or non-UTF8
-        // file must NOT abort the entire workspace scan (#1882). Skip the
-        // file and continue scanning the rest.
-        let text = match fs::read_to_string(&path) {
+        // Read each file independently — a single unreadable, non-UTF8, or
+        // oversized file must NOT abort the entire workspace scan (#1882,
+        // #1916). Skip the file and continue scanning the rest.
+        let text = match read_text_file_capped(&path) {
             Ok(text) => text,
             Err(e) => {
                 eprintln!("warning: skipping {} (read error: {e})", path.display());

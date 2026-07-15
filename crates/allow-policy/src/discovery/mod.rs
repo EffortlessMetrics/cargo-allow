@@ -1,6 +1,6 @@
-use std::fs;
 use std::path::{Path, PathBuf};
 
+use allow_core::read_text_file_capped;
 use serde::Deserialize;
 
 use crate::policy_header::{SUPPORTED_SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSION_ALIAS};
@@ -83,7 +83,7 @@ enum CandidateClass {
 }
 
 fn classify_candidate(path: &Path, rel: &str) -> CandidateClass {
-    let text = match fs::read_to_string(path) {
+    let text = match read_text_file_capped(path) {
         Ok(text) => text,
         Err(err) => {
             return CandidateClass::Skip(format!(
