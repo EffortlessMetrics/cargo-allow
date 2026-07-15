@@ -232,7 +232,8 @@ fn revision_git_commands_report_unresolved_revision_without_clean_fallback() {
 fn assert_revision_not_found(err: &CargoAllowError) {
     assert_eq!(err.kind(), CargoAllowErrorKind::Inventory);
     assert!(
-        err.to_string().contains("could not be resolved to a commit"),
+        err.to_string()
+            .contains("could not be resolved to a commit"),
         "unexpected error: {err}"
     );
     assert_diagnostic_code(err, "revision_not_found");

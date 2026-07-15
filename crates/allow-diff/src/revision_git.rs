@@ -1,6 +1,4 @@
-use allow_core::{
-    CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult,
-};
+use allow_core::{CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -63,11 +61,7 @@ pub(crate) fn git_tree_files_at_revision(
     let root = root.as_ref();
     let oid = resolve_commit_oid(root, revision)?;
     let mut cmd = git_command(root);
-    cmd.arg("ls-tree")
-        .arg("-r")
-        .arg("-z")
-        .arg(&oid)
-        .arg("--");
+    cmd.arg("ls-tree").arg("-r").arg("-z").arg(&oid).arg("--");
     let output = run_git(cmd, "git ls-tree")?;
     if !output.status.success() {
         return Err(git_status_error("git ls-tree", &output));
@@ -396,11 +390,7 @@ fn bounded_stderr(stderr: &[u8]) -> String {
         .collect()
 }
 
-fn git_error(
-    kind: CargoAllowErrorKind,
-    code: &str,
-    message: impl Into<String>,
-) -> CargoAllowError {
+fn git_error(kind: CargoAllowErrorKind, code: &str, message: impl Into<String>) -> CargoAllowError {
     let message = message.into();
     CargoAllowError::with_kind(kind, message.clone()).with_diagnostic(CargoAllowDiagnostic::error(
         code,

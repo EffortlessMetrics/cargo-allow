@@ -85,14 +85,7 @@ mod tests {
 
     #[test]
     fn diff_args_reject_option_like_and_malformed_revisions() {
-        for revision in [
-            "--output=owned",
-            "-O",
-            "",
-            " HEAD",
-            "HEAD ",
-            "HEAD\nmain",
-        ] {
+        for revision in ["--output=owned", "-O", "", " HEAD", "HEAD ", "HEAD\nmain"] {
             let result = DiffArgs::try_parse_from(["diff", &format!("--base={revision}")]);
             assert!(result.is_err(), "revision `{revision}` should be rejected");
         }
