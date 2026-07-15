@@ -235,7 +235,7 @@ differently by discovery commands and gating commands:
 
 | Command path | Broken local reference behavior |
 |---|---|
-| `audit`, `diff`, `explain`, `list`, `worklist`, and `propose` | Emit source-tree artifacts and surface the broken-link count or diagnostics so repair work can be routed. |
+| `audit`, `diff`, `explain`, `why`, `list`, `worklist`, and `propose` | Emit source-tree artifacts and surface the broken-link count or diagnostics so repair work can be routed. |
 | `prune --stale` dry-run | Emits a stale-cleanup preview even when the stale entry itself has broken evidence. |
 | `check` | Fails closed on broken local evidence links and broken local-file traceability links. |
 | `doctor` | Reports invalid policy state for broken local evidence links and broken local-file traceability links. |
@@ -406,6 +406,13 @@ analysis, build output, control-flow analysis, or data-flow analysis.
 `cargo-allow.explain.v1`, including source-tree inventory context, scanner
 limitations, evidence/link diagnostics, current findings, match outcomes, and the
 same suggested actions/proof commands shown in the human view.
+
+`cargo-allow why --kind <kind> --path <path> --line <line>` is the inverse of
+`explain`: given a finding location, it shows why that finding is unreceipted
+(or already receipted) and lists nearby same-kind allow entries with per-gate
+selector mismatch reasons. Use it when a CI failure names a path and line and
+you need operator clarity before `add` or `explain`. Human output only in this
+slice; JSON/`cargo-allow.why.v1` is deferred.
 
 Lint suppression scanning includes direct `#[allow(...)]`, `#![allow(...)]`,
 `#[expect(...)]`, and `#![expect(...)]` attributes, plus source-visible

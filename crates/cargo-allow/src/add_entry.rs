@@ -7,7 +7,7 @@ use std::path::Path;
 
 use crate::{KindFilter, selector_from_finding};
 
-pub(super) fn select_add_finding<'a>(
+pub(crate) fn select_add_finding<'a>(
     findings: &'a [Finding],
     kind: KindFilter,
     path: &Path,

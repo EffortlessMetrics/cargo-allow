@@ -3,7 +3,7 @@ use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
 
 use crate::{
-    add, audit, check, diff, doctor, explain, init, list, migrate, propose, prune, refresh,
+    add, audit, check, diff, doctor, explain, init, list, migrate, propose, prune, refresh, why,
     worklist,
 };
 
@@ -42,6 +42,8 @@ pub(crate) enum CargoAllowCommand {
     List(list::ListArgs),
     /// Explain one allow entry.
     Explain(explain::ExplainArgs),
+    /// Explain why a finding at a path/line is unreceipted.
+    Why(why::WhyArgs),
     /// Generate an allow entry from a current finding.
     Add(add::AddArgs),
     /// Generate temporary baseline_debt entries.
@@ -75,6 +77,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Diff(args) => diff::cmd_diff(&args),
         CargoAllowCommand::List(args) => list::cmd_list(&args),
         CargoAllowCommand::Explain(args) => explain::cmd_explain(&args),
+        CargoAllowCommand::Why(args) => why::cmd_why(&args),
         CargoAllowCommand::Add(args) => add::cmd_add(&args),
         CargoAllowCommand::Propose(args) => propose::cmd_propose(&args),
         CargoAllowCommand::Worklist(args) => worklist::cmd_worklist(&args),
@@ -107,7 +110,7 @@ fn leading_cargo_allow_token_index(args: &[String]) -> Option<usize> {
 
 impl CargoAllowCommand {
     const SUBCOMMANDS: &[&str] = &[
-        "init", "audit", "check", "diff", "list", "explain", "add", "propose", "worklist",
+        "init", "audit", "check", "diff", "list", "explain", "why", "add", "propose", "worklist",
         "migrate", "refresh", "prune", "doctor",
     ];
 }
