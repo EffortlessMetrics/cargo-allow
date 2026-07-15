@@ -11,7 +11,7 @@ An agent should be able to start from source-tree artifacts:
 - spec for the required behavior.
 - ADR for durable design constraints.
 - implementation plan for PR order.
-- active goal manifest for current execution state.
+- accepted requirements and PR-local implementation slices for current scope.
 - support tiers for user-facing claim boundaries.
 - policy ledgers for governed exception and profile state.
 - closeout for what already landed.
@@ -72,44 +72,36 @@ Source-of-truth work should land in narrow PRs. Each PR should state:
 - rollback path.
 
 For example, a source-of-truth PR can update one artifact family, close one
-broken graph edge, or repair one worklist class. The implemented profile already
-has templates, a proposal, a spec, a doc artifact ledger, support tiers, an
-active goal manifest, an implementation plan, profile config, and CLI support.
+broken graph edge, or repair one worklist class. The implemented profile has
+templates, proposals, specs, a doc artifact ledger, support tiers,
+implementation plans, profile config, and CLI support. Historical goal
+artifacts remain available for navigation but are not current coordination
+state.
 
-## Active Goal Manifest
+## Current Work and Historical Goals
 
-The active goal manifest should describe the current agent lane, not product
-runtime state.
+Current work is identified by GitHub issues and PRs, accepted requirements, and
+one PR-local implementation slice or claim. One writer per branch/worktree is a
+local collision rule, not a repository-global goal selector. Local agent or
+session focus is disposable and uncommitted.
 
-Example active goal manifest:
+Legacy goal files may still be parsed when explicitly requested for historical
+navigation. They cannot authorize mutations, select current work, or promote
+implementation or support status. The completed records are archived under
+`.allow/goals/archive/`.
+
+Example PR-local claim:
 
 ```toml
-schema_version = "1.0"
-
-id = "spec-system-profile"
-title = "Spec-system profile"
-status = "active"
-owner = "codex"
-created = "2026-06-12"
-
-linked_proposal = "CARGO-ALLOW-PROP-0001"
-linked_spec = "CARGO-ALLOW-SPEC-0001"
-linked_plan = "plans/spec-system/implementation-plan.md"
-
-[[work_item]]
-id = "spec-system-pr-001"
-status = "ready"
-title = "Add doc artifact ledger parser"
-proof_commands = [
-  "rtk cargo test -p allow-policy spec_system",
-  "rtk cargo run -p cargo-allow -- check --mode no-new"
-]
+requirement = "REQ-EXAMPLE"
+slice = "SLICE-EXAMPLE"
+implementation_seam = "crates/example/src/lib.rs::feature"
+tests = ["crates/example/tests/feature.rs::accepts_valid_input"]
+proof_obligations = ["exact-head receipt", "negative regression"]
 ```
 
-The current manifest is a completed stub for
-[`CARGO-ALLOW-GOAL-0003`](../../.allow/goals/active.toml) after
-[CARGO-ALLOW-CLOSEOUT-0017](../../plans/spec-system/closeouts/goal-0003-partial-progress.md).
-Full execution history lives in
-[`.allow/goals/archive/CARGO-ALLOW-GOAL-0003-portable-governance-substrate.toml`](../../.allow/goals/archive/CARGO-ALLOW-GOAL-0003-portable-governance-substrate.toml).
-Its `linked_plan` value points to
-[`CARGO-ALLOW-PLAN-0001`](../../plans/spec-system/implementation-plan.md).
+The current repository profile has no live goal manifest. Completed GOAL-0003
+and GOAL-0004 records live under
+[`.allow/goals/archive/`](../../.allow/goals/archive/) as historical evidence.
+Current work is located through GitHub issues and PRs, accepted requirements,
+and PR-local implementation slices; local session focus is disposable.

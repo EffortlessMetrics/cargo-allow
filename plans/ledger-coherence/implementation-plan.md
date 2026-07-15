@@ -30,7 +30,7 @@ converged read surfaces, and a lifecycle scenario corpus.
 - Spec:
   [CARGO-ALLOW-SPEC-0008](../../docs/specs/CARGO-ALLOW-SPEC-0008-ledger-coherence-change-control.md)
 - Support-tier surface: [CARGO-ALLOW-SUPPORT-0001](../../docs/status/SUPPORT_TIERS.md)
-- Historical campaign tracker: `.allow/goals/active.toml` (`CARGO-ALLOW-GOAL-0004`), retained parseable until #2259 archives it.
+- Historical campaign tracker: [archived GOAL-0004](../../.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml).
 
 ## Non-Goals
 

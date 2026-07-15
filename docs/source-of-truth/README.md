@@ -74,9 +74,9 @@ The first accepted spec is
 [CARGO-ALLOW-SPEC-0001](../specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md).
 The first support-tier map is
 [CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md).
-The current active goal manifest is a completed stub for
-[CARGO-ALLOW-GOAL-0003](../../.allow/goals/active.toml) (full history in
-[archive](../../.allow/goals/archive/CARGO-ALLOW-GOAL-0003-portable-governance-substrate.toml)).
+The current repository profile has no live active-goal manifest. Completed
+GOAL-0003 and GOAL-0004 records are retained under the
+[goal archive](../../.allow/goals/archive/) as historical evidence.
 The current implementation plan is
 [CARGO-ALLOW-PLAN-0001](../../plans/spec-system/implementation-plan.md).
 First-hour adoption guidance is in
@@ -96,7 +96,9 @@ It must not claim semantic correctness, proof execution, test adequacy, unsafe
 soundness, or release readiness.
 
 Other tools can provide evidence. The `spec-system` profile owns only the
-durable source-tree graph that records where that evidence is expected.
+durable source-tree graph that records where that evidence is expected. Legacy
+goal artifacts remain readable but cannot select current work or authorize
+mutations.
 
 ## Non-Goals
 

@@ -91,7 +91,7 @@ linked_plan_status = "done"
 [[artifact]]
 id = "CARGO-ALLOW-GOAL-0004"
 kind = "active_goal"
-path = ".allow/goals/active.toml"
+path = ".allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml"
 status = "done"
 owner = "codex"
 created = "2026-06-19"
@@ -551,6 +551,7 @@ linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
 linked_goal = "CARGO-ALLOW-GOAL-0004"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0053"
 
 [[artifact]]
 id = "CARGO-ALLOW-CLOSEOUT-0019"

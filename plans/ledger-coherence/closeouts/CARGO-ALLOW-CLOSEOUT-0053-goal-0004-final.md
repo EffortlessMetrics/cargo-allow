@@ -10,7 +10,7 @@ linked_spec: CARGO-ALLOW-SPEC-0008
 linked_support_tier: CARGO-ALLOW-SUPPORT-0001
 linked_goal: CARGO-ALLOW-GOAL-0004
 support_tier_impact: advisory
-policy_impact: .allow/goals/active.toml
+policy_impact: .allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml
 ---
 
 # Closeout: GOAL-0004 final campaign completion
@@ -19,8 +19,8 @@ policy_impact: .allow/goals/active.toml
 
 GOAL-0004 is historically complete after the issue-first operator guide
 landed as #2310 and the change-control dogfood closeout landed as #2313.
-The campaign now has one durable final record while its legacy manifest remains
-parseable until the separate #2259 migration is merged.
+The campaign now has one durable final record while its legacy manifest is
+archived by the separate #2259 migration.
 
 ## Delivered campaign scope
 
@@ -40,14 +40,14 @@ parseable until the separate #2259 migration is merged.
 - Its required hosted test passed; the UB Review job remained source-gated by
   the missing `MINIMAX_API_KEY` preflight.
 - The final closeout head passed the active-goal parser, spec-system audit,
-  no-new guard, and `git diff --check`.
+  no-new guard, and `git diff --check` before migration.
 
 ## Claim boundary and handoff
 
 This closeout records historical completion of the bounded GOAL-0004 campaign.
 It does not claim release readiness, runtime implementation or support
 promotion beyond the recorded slices, external RIPR adoption, full import
-mode, or publication. The legacy `.allow/goals/active.toml` remains intact and
-parseable only so #2259 can archive it without losing identity. #2259 is the
-sole owner of the non-singleton default/profile/bootstrap migration.
-
+mode, or publication. The legacy manifest is now retained at
+`.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml` and
+cannot select current work. #2259 remains the sole owner of the
+non-singleton default/profile/bootstrap migration.

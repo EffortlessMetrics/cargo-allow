@@ -1,13 +1,13 @@
 schema_version = "1.0"
 profile = "spec-system"
 mode = "blocking"
+generation = "current-v2"
 
 [roots]
 proposals = "docs/proposals"
 specs = "docs/specs"
 adrs = "docs/adr"
 plans = "plans"
-goals = ".allow/goals"
 support_tiers = "docs/status/SUPPORT_TIERS.md"
 artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
 
@@ -15,7 +15,6 @@ artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
 ledger_required = true
 templates_required = true
 support_tiers_required = true
-active_goal_required = true
 closeout_required_for_done_items = true
 
 [import_roots]
