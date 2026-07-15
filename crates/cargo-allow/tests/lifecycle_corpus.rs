@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 use allow_core::allow_entry_content_fingerprint;
-use serde_json::Value;
+use serde_json::{Value, json};
 use support::{
     assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
     cargo_allow_command, remove_temp_root, temp_root,
@@ -82,8 +82,46 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
         "missing-note diagnostic should provide the exact fingerprint route: {missing_stderr}"
     );
 
-    fs::create_dir_all(weakening_root.join(".allow/revisions"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create revision directory: {err}")));
+    let template_path = weakening_root.join(".allow/revisions/generated.toml");
+    let template_output = weakening_root.join("target/cargo-allow/weakening-template.json");
+    let template = run_diff_with_template(
+        &weakening_root,
+        &weakening_base,
+        &weakening_head,
+        &template_output,
+        Path::new(".allow/revisions/generated.toml"),
+    );
+    assert_status("weakening template generation", &template, false);
+    let template_text = fs::read_to_string(&template_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read generated template: {err}")));
+    assert!(template_text.contains("allow_ids = [\"allow-transition\"]"));
+    assert!(template_text.contains(&before_fingerprint));
+    assert!(template_text.contains(&after_fingerprint));
+
+    let dogfood_receipt =
+        weakening_root.join("target/cargo-allow/change-control-dogfood.receipt.json");
+    fs::write(
+        &dogfood_receipt,
+        serde_json::to_vec_pretty(&json!({
+            "repository": weakening_root.display().to_string(),
+            "base": "HEAD",
+            "merge_base": "HEAD",
+            "tested_head": "working-tree-policy",
+            "policy": "policy/allow.toml",
+            "revisions_dir": ".allow/revisions",
+            "allow_id": "allow-transition",
+            "change_kind": "occurrence_limit_loosened",
+            "before_fingerprint": before_fingerprint,
+            "after_fingerprint": after_fingerprint,
+            "missing_note": "blocked",
+            "template": ".allow/revisions/generated.toml",
+            "satisfied_note": "passed",
+            "stale_note": "blocked",
+            "claim_boundary": "fixture-only exact weakening-note-repair journey"
+        }))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("serialize dogfood receipt: {err}"))),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write dogfood receipt: {err}")));
     write_revision_note(&weakening_root, &before_fingerprint, &after_fingerprint);
     let matching_output = weakening_root.join("target/cargo-allow/weakening-matching.json");
     let matching = run_diff_with_note_requirement(
@@ -100,6 +138,9 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
         "diff",
     );
     assert_eq!(policy_changes(&matching_output).len(), 1);
+    fs::remove_file(&template_path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("remove completed template fixture: {err}"))
+    });
 
     write_revision_note(&weakening_root, "sha256:v1:stale", &after_fingerprint);
     let stale_output = weakening_root.join("target/cargo-allow/weakening-stale.json");
@@ -785,6 +826,34 @@ fn run_diff_with_note_requirement(
     output: &Path,
 ) -> Output {
     run_diff(root, output, true)
+}
+
+fn run_diff_with_template(
+    root: &Path,
+    _base_policy: &str,
+    _head_policy: &str,
+    output: &Path,
+    template: &Path,
+) -> Output {
+    let mut command = cargo_allow_command();
+    command
+        .args(["diff", "--base", "HEAD"])
+        .arg("--root")
+        .arg(root)
+        .arg("--config")
+        .arg(root.join("policy/allow.toml"))
+        .args(["--format", "json", "--output"])
+        .arg(output)
+        .args([
+            "--require-change-note",
+            "--revisions-dir",
+            ".allow/revisions",
+        ])
+        .arg("--write-change-note-template")
+        .arg(template);
+    command
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run template diff: {err}")))
 }
 
 fn run_diff(root: &Path, output: &Path, require_change_note: bool) -> Output {

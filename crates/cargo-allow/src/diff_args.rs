@@ -47,6 +47,10 @@ pub(crate) struct DiffArgs {
     /// before/after content fingerprints.
     #[arg(long, default_value = ".allow/revisions")]
     pub(super) revisions_dir: PathBuf,
+    /// Write a bounded starter revision-note template for missing weakening notes.
+    /// The template is evidence, not approval, and is never written outside the repository root.
+    #[arg(long)]
+    pub(super) write_change_note_template: Option<PathBuf>,
 }
 
 fn parse_revision_arg(value: &str) -> Result<String, String> {
@@ -92,5 +96,21 @@ mod tests {
             let result = DiffArgs::try_parse_from(["diff", &format!("--base={revision}")]);
             assert!(result.is_err(), "revision `{revision}` should be rejected");
         }
+    }
+
+    #[test]
+    fn diff_args_accept_change_note_template_path() {
+        let args = DiffArgs::try_parse_from([
+            "diff",
+            "--base",
+            "HEAD~1",
+            "--write-change-note-template",
+            ".allow/revisions/next.toml",
+        ])
+        .unwrap_or_else(|err| std::panic::panic_any(format!("template path should parse: {err}")));
+        assert_eq!(
+            args.write_change_note_template,
+            Some(PathBuf::from(".allow/revisions/next.toml"))
+        );
     }
 }
