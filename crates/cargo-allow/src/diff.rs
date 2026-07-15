@@ -132,6 +132,18 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         Vec::new()
     };
     let change_note_failed = !missing_change_notes.is_empty();
+    if let Some(template_path) = args.write_change_note_template.as_deref() {
+        if !args.require_change_note {
+            return Err(CargoAllowError::new(
+                "--write-change-note-template requires --require-change-note",
+            ));
+        }
+        write_change_note_template(&root, template_path, &missing_change_notes)?;
+        eprintln!(
+            "change note template written: {}",
+            root.join(template_path).display()
+        );
+    }
     let evidence = evidence_summary_for_diff(
         &root,
         evidence_source_tree_files.as_ref(),
@@ -710,6 +722,80 @@ fn format_fingerprint_hint(before: Option<&str>, after: Option<&str>) -> String 
         hint.push_str(&format!(" after_fingerprint=\"{after}\""));
     }
     hint
+}
+
+fn write_change_note_template(
+    root: &Path,
+    template_path: &Path,
+    missing: &[MissingChangeNote],
+) -> CargoAllowResult<()> {
+    if missing.is_empty() {
+        return Err(CargoAllowError::new(
+            "cannot write a change-note template when no note is required",
+        ));
+    }
+    if template_path.is_absolute()
+        || template_path
+            .components()
+            .any(|component| matches!(component, std::path::Component::ParentDir))
+    {
+        return Err(CargoAllowError::new(
+            "change-note template path must be repository-relative",
+        ));
+    }
+
+    let destination = root.join(template_path);
+    if destination.exists() {
+        return Err(CargoAllowError::new(format!(
+            "change-note template already exists: {}",
+            destination.display()
+        )));
+    }
+    let parent = destination.parent().ok_or_else(|| {
+        CargoAllowError::new("change-note template path has no repository parent")
+    })?;
+    fs::create_dir_all(parent).map_err(|error| {
+        CargoAllowError::new(format!(
+            "create change-note template directory {}: {error}",
+            parent.display()
+        ))
+    })?;
+
+    let mut contents = String::from(
+        "# Generated starter only. Author and review the exact transition before merge.\n\n",
+    );
+    for note in missing {
+        contents.push_str("[[records]]\n");
+        contents.push_str(&format!("allow_ids = [\"{}\"]\n", note.allow_id));
+        contents.push_str(&format!("change_kinds = [\"{}\"]\n", note.change_kind));
+        if let Some(before) = note.before_fingerprint.as_deref() {
+            contents.push_str(&format!("before_fingerprint = \"{before}\"\n"));
+        }
+        if let Some(after) = note.after_fingerprint.as_deref() {
+            contents.push_str(&format!("after_fingerprint = \"{after}\"\n"));
+        }
+        contents.push('\n');
+    }
+
+    let file_name = destination
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| CargoAllowError::new("change-note template filename must be valid UTF-8"))?;
+    let temporary = parent.join(format!(".{file_name}.tmp-{}", process::id()));
+    fs::write(&temporary, contents).map_err(|error| {
+        CargoAllowError::new(format!(
+            "write change-note template {}: {error}",
+            temporary.display()
+        ))
+    })?;
+    if let Err(error) = fs::rename(&temporary, &destination) {
+        let _ = fs::remove_file(&temporary);
+        return Err(CargoAllowError::new(format!(
+            "install change-note template {}: {error}",
+            destination.display()
+        )));
+    }
+    Ok(())
 }
 
 #[cfg(test)]
