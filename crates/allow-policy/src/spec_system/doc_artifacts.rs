@@ -1,7 +1,6 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowResult, read_text_file_capped};
 use serde::Deserialize;
 use std::collections::HashSet;
-use std::fs;
 use std::path::Path;
 
 use super::SpecSystemMode;
@@ -86,7 +85,7 @@ pub fn parse_doc_artifact_ledger_at(
 }
 
 pub fn load_doc_artifacts(path: impl AsRef<Path>) -> CargoAllowResult<DocArtifactLedger> {
-    let text = fs::read_to_string(path.as_ref()).map_err(|e| {
+    let text = read_text_file_capped(path.as_ref()).map_err(|e| {
         CargoAllowError::new(format!(
             "failed to read doc artifact ledger {}: {e}",
             path.as_ref().display()

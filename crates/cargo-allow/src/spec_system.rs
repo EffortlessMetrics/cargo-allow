@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowResult, read_text_file_capped};
 use allow_inventory::resolve_source_tree_root;
 use allow_policy::federation::{
     FederationLoadOutcome, evaluate_spec_system_ledger, load_federation_config,
@@ -492,7 +492,7 @@ fn spec_system_legacy_compatibility(root: &Path, config_path: &Path) -> CargoAll
     if !path.is_file() {
         return Ok(false);
     }
-    let text = fs::read_to_string(&path).map_err(|error| {
+    let text = read_text_file_capped(&path).map_err(|error| {
         CargoAllowError::new(format!(
             "failed to read existing spec-system profile config {}: {error}",
             path.display()
@@ -759,7 +759,7 @@ fn build_spec_system_report(
     }
 
     let support_tiers_path = root_relative_path(&root, Path::new(&cfg.roots.support_tiers));
-    match fs::read_to_string(&support_tiers_path) {
+    match read_text_file_capped(&support_tiers_path) {
         Ok(text) => match parse_support_tier_claims(&text) {
             Ok(rows) => {
                 support_tier_rows = rows.len();
@@ -930,7 +930,7 @@ fn load_spec_system_config(root: &Path, config: Option<&Path>) -> LoadedSpecSyst
         };
     }
 
-    match fs::read_to_string(&config_path) {
+    match read_text_file_capped(&config_path) {
         Ok(text) => match parse_spec_system_config_at(Some(&config_path), &text) {
             Ok(cfg) => LoadedSpecSystemConfig {
                 cfg,
@@ -1214,7 +1214,7 @@ fn validate_active_goal_file(
         CargoAllowError::new("legacy active-goal validation requires an explicit legacy goals root")
     })?;
     let active_goal_path = root_relative_path(root, Path::new(&source_path));
-    let text = fs::read_to_string(&active_goal_path).map_err(|err| {
+    let text = read_text_file_capped(&active_goal_path).map_err(|err| {
         CargoAllowError::new(format!(
             "failed to read active goal manifest {source_path}: {err}"
         ))
@@ -1287,7 +1287,7 @@ fn collect_spec_system_readiness(
     ));
 
     let support_tiers_path = root_relative_path(root, Path::new(&cfg.roots.support_tiers));
-    let support_tiers_result = fs::read_to_string(&support_tiers_path)
+    let support_tiers_result = read_text_file_capped(&support_tiers_path)
         .map_err(|err| {
             format!(
                 "failed to read support-tier file {}: {err}",
@@ -1435,7 +1435,7 @@ fn work_items_from_artifact_files(
             continue;
         }
 
-        match fs::read_to_string(&source_path) {
+        match read_text_file_capped(&source_path) {
             Ok(text) if !text.contains(&artifact.id) => {
                 items.push(artifact_work_item(
                     "artifact_id_not_in_file",

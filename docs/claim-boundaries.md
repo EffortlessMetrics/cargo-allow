@@ -37,9 +37,10 @@ All exceptions are proven safe.
 ## Source Syntax Only
 
 The current scanner reads source-tree files and source text. It does not require
-a successful build and does not execute repository code. Individual source and
-policy discovery files larger than `SOURCE_FILE_READ_MAX_BYTES` (8 MiB) are
-skipped with a diagnostic instead of being loaded whole. It does not analyze:
+a successful build and does not execute repository code. Individual source,
+policy, federation, import-root, and spec-system files larger than
+`SOURCE_FILE_READ_MAX_BYTES` (8 MiB) are rejected or skipped with a diagnostic
+instead of being loaded whole. It does not analyze:
 
 - macro expansion.
 - macro token-tree contents as Rust expressions.

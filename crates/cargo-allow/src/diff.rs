@@ -1,6 +1,6 @@
 use allow_core::{
     AllowConfig, CargoAllowError, CargoAllowResult, Finding, MatchOutcome, normalize_path,
-    source_tree_path_is_ignored,
+    read_text_file_capped, source_tree_path_is_ignored,
 };
 use allow_inventory::{InventorySource, resolve_source_tree_root};
 use allow_match::{CheckMode, evaluate};
@@ -633,7 +633,7 @@ fn check_change_notes(
             if path.extension().and_then(|e| e.to_str()) != Some("toml") {
                 continue;
             }
-            let text = fs::read_to_string(&path)
+            let text = read_text_file_capped(&path)
                 .map_err(|e| CargoAllowError::new(format!("read {}: {e}", path.display())))?;
             let table: toml::Table = toml::from_str(&text).map_err(|error| {
                 CargoAllowError::new(format!("parse revision note {}: {error}", path.display()))

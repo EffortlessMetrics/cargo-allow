@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use allow_core::read_text_file_capped;
+
 use crate::import_roots::config::{
     ImportConfidence, ImportEdgeKind, ImportNodeRole, ImportProvenance, ImportRootEntry,
 };
@@ -95,12 +97,12 @@ fn discover_registry_file(
         provenance: ImportProvenance::Discovered,
     });
 
-    let text = match fs::read_to_string(registry_path) {
+    let text = match read_text_file_capped(registry_path) {
         Ok(text) => text,
-        Err(_) => {
+        Err(err) => {
             diagnostics.push(ImportDiagnostic {
                 kind: ImportDiagnosticKind::BrokenEdge,
-                message: format!("failed to read xtask command registry `{relative}`"),
+                message: format!("failed to read xtask command registry `{relative}`: {err}"),
                 root_ids: vec![entry.id.clone(), registry_node_id],
             });
             return;

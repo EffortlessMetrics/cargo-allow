@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowResult, read_text_file_capped};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -59,7 +59,7 @@ pub fn validate_doc_artifact_files(
             )));
         }
 
-        let text = fs::read_to_string(&source_path).map_err(|e| {
+        let text = read_text_file_capped(&source_path).map_err(|e| {
             CargoAllowError::new(format!("failed to read artifact {}: {e}", artifact.path))
         })?;
         if !contains_artifact_id(&text, &artifact.id) {

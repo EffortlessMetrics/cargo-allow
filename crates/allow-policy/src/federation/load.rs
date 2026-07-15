@@ -1,7 +1,6 @@
-use std::fs;
 use std::path::Path;
 
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowResult, read_text_file_capped};
 
 use super::config::{ValidatedFederationConfig, parse_federation_config_at};
 use super::validate::validate_federation_config;
@@ -41,7 +40,7 @@ pub fn load_federation_config(root: &Path) -> CargoAllowResult<FederationLoadRes
             outcome: FederationLoadOutcome::Missing,
         });
     }
-    let text = fs::read_to_string(&path).map_err(|err| {
+    let text = read_text_file_capped(&path).map_err(|err| {
         CargoAllowError::new(format!(
             "failed to read {}: {err}",
             FEDERATION_CONFIG_REL_PATH

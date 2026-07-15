@@ -258,6 +258,51 @@ fn load_policy_with_reportable_evidence_reads_file_and_keeps_invalid_links() -> 
     Ok(())
 }
 
+#[test]
+fn load_policy_rejects_oversized_policy_files() -> std::io::Result<()> {
+    let root = TempRoot::new("load-policy-oversized")?;
+    let policy_path = root.path().join("policy/allow.toml");
+    if let Some(parent) = policy_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let oversized_len = (allow_core::SOURCE_FILE_READ_MAX_BYTES as usize).saturating_add(1);
+    let mut bytes = Vec::with_capacity(oversized_len);
+    bytes.extend_from_slice(b"policy = \"cargo-allow\"\n#");
+    bytes.resize(oversized_len, b'x');
+    std::fs::write(&policy_path, bytes)?;
+
+    let err = load_policy(&policy_path).expect_err("oversized policy should fail closed");
+    let message = err.to_string();
+    assert!(
+        message.contains("source-read limit") || message.contains("exceeds"),
+        "expected size-limit diagnostic, got: {message}"
+    );
+    Ok(())
+}
+
+#[test]
+fn load_federation_config_rejects_oversized_config() -> std::io::Result<()> {
+    let root = TempRoot::new("federation-oversized")?;
+    let config_path = root.path().join(".allow/config.toml");
+    if let Some(parent) = config_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let oversized_len = (allow_core::SOURCE_FILE_READ_MAX_BYTES as usize).saturating_add(1);
+    let mut bytes = Vec::with_capacity(oversized_len);
+    bytes.extend_from_slice(b"schema_version = \"0.1\"\n#");
+    bytes.resize(oversized_len, b'y');
+    std::fs::write(&config_path, bytes)?;
+
+    let err = load_federation_config(root.path())
+        .expect_err("oversized federation config should fail closed");
+    let message = err.to_string();
+    assert!(
+        message.contains("source-read limit") || message.contains("exceeds"),
+        "expected size-limit diagnostic, got: {message}"
+    );
+    Ok(())
+}
+
 struct TempRoot {
     path: std::path::PathBuf,
 }
