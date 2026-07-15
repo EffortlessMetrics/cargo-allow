@@ -1,0 +1,27 @@
+name: Temporary sync minimal graph stack
+
+on:
+  push:
+    branches:
+      - agent/spec-system-minimal-graph
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: agent/spec-system-minimal-graph
+          fetch-depth: 0
+      - name: Merge current stack base
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git fetch origin agent/spec-system-minimal-runtime-promotion
+          git merge --no-edit origin/agent/spec-system-minimal-runtime-promotion
+          git push origin HEAD:agent/spec-system-minimal-graph
