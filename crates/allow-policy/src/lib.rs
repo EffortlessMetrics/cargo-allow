@@ -5,8 +5,7 @@
 //! debt, and local evidence-reference constraints without executing linked
 //! evidence tools or repository code.
 
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
-use std::fs;
+use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, read_text_file_capped};
 use std::path::{Path, PathBuf};
 
 mod bare_allow_conflict;
@@ -91,7 +90,7 @@ pub fn find_config(start: impl AsRef<Path>) -> Option<PathBuf> {
 
 pub fn load_policy(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
     let path = path.as_ref();
-    let text = fs::read_to_string(path)
+    let text = read_text_file_capped(path)
         .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))?;
     parse_policy_at(path, &text)
 }
@@ -100,7 +99,7 @@ pub fn load_policy_with_reportable_evidence(
     path: impl AsRef<Path>,
 ) -> CargoAllowResult<AllowConfig> {
     let path = path.as_ref();
-    let text = fs::read_to_string(path)
+    let text = read_text_file_capped(path)
         .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))?;
     parse_policy_with_reportable_evidence_at(path, &text)
 }

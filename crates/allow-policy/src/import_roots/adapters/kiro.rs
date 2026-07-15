@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::Path;
 
+use allow_core::read_text_file_capped;
+
 use crate::import_roots::config::{
     ImportConfidence, ImportEdgeKind, ImportNodeRole, ImportProvenance, ImportRootEntry,
 };
@@ -66,11 +68,13 @@ pub fn discover_kiro_root(
                 kind: ImportEdgeKind::Contains,
                 provenance: ImportProvenance::Discovered,
             });
-            match fs::read_to_string(&child_path) {
+            match read_text_file_capped(&child_path) {
                 Ok(text) => collect_reference_edges(&node_id, &text, edges),
-                Err(_) => diagnostics.push(ImportDiagnostic {
+                Err(err) => diagnostics.push(ImportDiagnostic {
                     kind: ImportDiagnosticKind::BrokenEdge,
-                    message: format!("failed to read discovered Kiro import node `{relative}`"),
+                    message: format!(
+                        "failed to read discovered Kiro import node `{relative}`: {err}"
+                    ),
                     root_ids: vec![entry.id.clone(), node_id],
                 }),
             }
