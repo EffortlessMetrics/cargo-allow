@@ -667,3 +667,13 @@ linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
 linked_goal = "CARGO-ALLOW-GOAL-0004"
 linked_plan = "CARGO-ALLOW-PLAN-0009"
+
+[[artifact]]
+id = "CARGO-ALLOW-SPEC-0009"
+kind = "spec"
+path = "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-07-15"
+standalone_reason = "The first design-to-proof walking skeleton is a bounded self-hosted control-plane invariant; no separate product proposal is required."
+
