@@ -14,9 +14,15 @@ fmt-check:
 clippy:
     cargo clippy --workspace --all-targets -- -D warnings
 
+test-fast:
+    cargo test -p cargo-allow --bins --locked
+
+test-contract:
+    cargo test -p cargo-allow --tests --locked
+
 test:
-    cargo test --workspace
-    cargo test --doc --workspace
+    cargo test --workspace --locked
+    cargo test --doc --workspace --locked
 
 doc:
     RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
@@ -28,6 +34,6 @@ check:
     cargo run -p cargo-allow -- check --mode no-new
 
 # Runs the same checks as the CI workflow.
-ci: fmt-check clippy test doc
+ci: fmt-check clippy test-fast test-contract test doc
     cargo run -p cargo-allow -- audit --format json --output target/cargo-allow/audit.json
     cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
