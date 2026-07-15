@@ -119,9 +119,7 @@ pub fn read_file_at_revision(
                 return Err(git_error(
                     CargoAllowErrorKind::Inventory,
                     "git_output_malformed",
-                    format!(
-                        "git ls-tree returned path bytes that do not match the requested source-tree path"
-                    ),
+                    "git ls-tree returned path bytes that do not match the requested source-tree path",
                 ));
             }
             if !mode.starts_with("100") {
