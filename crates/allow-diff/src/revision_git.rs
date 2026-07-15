@@ -297,7 +297,14 @@ fn regular_file_exists_at_revision(root: &Path, oid: &str, path: &str) -> CargoA
         ));
     }
 
-    let entry = parse_git_tree_record_any(records[0]).ok_or_else(|| {
+    let record = records.first().copied().ok_or_else(|| {
+        git_error(
+            CargoAllowErrorKind::Inventory,
+            "git_output_malformed",
+            format!("git ls-tree returned no record for exact path `{path}`"),
+        )
+    })?;
+    let entry = parse_git_tree_record_any(record).ok_or_else(|| {
         git_error(
             CargoAllowErrorKind::Inventory,
             "git_output_malformed",
