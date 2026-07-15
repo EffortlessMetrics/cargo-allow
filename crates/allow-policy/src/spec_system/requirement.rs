@@ -204,34 +204,36 @@ fn find_single_requirement_block(
     path: Option<&Path>,
     markdown: &str,
 ) -> CargoAllowResult<RequirementBlock> {
-    let lines = markdown.lines().collect::<Vec<_>>();
+    let mut lines = markdown.lines().enumerate();
     let mut blocks = Vec::new();
-    let mut index = 0usize;
 
-    while index < lines.len() {
-        if lines[index].trim() != REQUIREMENT_FENCE {
-            index += 1;
+    while let Some((line_index, line)) = lines.next() {
+        if line.trim() != REQUIREMENT_FENCE {
             continue;
         }
 
-        let opening_line = index + 1;
-        let body_start = index + 1;
-        let Some(relative_end) = lines[body_start..]
-            .iter()
-            .position(|line| line.trim() == FENCE_END)
-        else {
+        let opening_line = line_index + 1;
+        let mut body = Vec::new();
+        let mut closing_line = None;
+        for (body_index, body_line) in lines.by_ref() {
+            if body_line.trim() == FENCE_END {
+                closing_line = Some(body_index + 1);
+                break;
+            }
+            body.push(body_line);
+        }
+
+        let Some(end_line) = closing_line else {
             return Err(invalid_requirement_source(
                 path,
                 format!("requirement block opened on line {opening_line} is not closed"),
             ));
         };
-        let body_end = body_start + relative_end;
         blocks.push(RequirementBlock {
-            body: lines[body_start..body_end].join("\n"),
+            body: body.join("\n"),
             start_line: u32::try_from(opening_line).unwrap_or(u32::MAX),
-            end_line: u32::try_from(body_end + 1).unwrap_or(u32::MAX),
+            end_line: u32::try_from(end_line).unwrap_or(u32::MAX),
         });
-        index = body_end + 1;
     }
 
     match blocks.len() {
