@@ -2,14 +2,18 @@
 //!
 //! This module parses source-tree configuration and artifact ledgers, then
 //! validates registered artifact file existence, roots, visible IDs,
-//! ledger-resolvable graph links, active-goal TOML references, and support-tier
-//! claim/proof fields. It does not execute proof commands or affect default
-//! cargo-allow behavior.
+//! ledger-resolvable graph links, active-goal TOML references, support-tier
+//! claim/proof fields, and the first bounded requirement/implementation-slice
+//! invariant. It does not execute proof commands or affect default cargo-allow
+//! behavior.
 
 mod active_goal;
 mod config;
 mod doc_artifacts;
+mod implementation_slice;
 mod profile_resolution;
+mod requirement;
+mod runtime_promotion;
 mod support_tiers;
 mod validate;
 
@@ -26,9 +30,24 @@ pub use doc_artifacts::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, load_doc_artifacts,
     parse_doc_artifact_ledger, parse_doc_artifact_ledger_at,
 };
+pub use implementation_slice::{
+    EvidenceDisposition, EvidenceDispositionState, IMPLEMENTATION_SLICE_SCHEMA_VERSION,
+    ImplementationDisposition, ImplementationDispositionState, ImplementationSliceClass,
+    ImplementationSliceId, ImplementationSliceV1, RequirementDelta, SupportClaimDisposition,
+    SupportClaimDispositionState, parse_implementation_slice, parse_implementation_slice_at,
+};
 pub use profile_resolution::{
     ALLOW_CONFIG_REL_PATH, ProfileConfigProvenance, ResolvedProfileConfig, allow_profile_rel_path,
     legacy_profile_rel_path, profile_config_conflict_message, resolve_profile_config,
+};
+pub use requirement::{
+    REQUIREMENT_BLOCK_SCHEMA_VERSION, RequirementClaimClass, RequirementGraph, RequirementId,
+    RequirementLifecycle, RequirementSource, SpecRequirement, parse_requirement_blocks,
+    parse_requirement_blocks_at,
+};
+pub use runtime_promotion::{
+    RuntimePromotionFinding, RuntimePromotionFindingCode, ValidatedRuntimeTransition,
+    validate_runtime_promotion, validated_runtime_transition,
 };
 pub use support_tiers::{
     SupportTierLevel, SupportTierRow, parse_support_tier_claims, validate_support_tier_claims,
