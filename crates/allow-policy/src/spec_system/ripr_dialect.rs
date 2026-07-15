@@ -128,7 +128,7 @@ pub fn parse_ripr_spec_at(
         source_class,
         requirements,
         source: RiprSpecSource {
-            path: path.map(|value| normalize_path(&value.display().to_string())),
+            path: path.map(|value| normalize_path(value.display().to_string())),
             title_line: 1,
             status_line,
             owner_line,
