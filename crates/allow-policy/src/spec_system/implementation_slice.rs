@@ -140,7 +140,10 @@ fn validate_slice_structure(
         ));
     }
     if slice.id.as_str().trim().is_empty() {
-        return Err(invalid_slice(path, "implementation slice id must not be empty"));
+        return Err(invalid_slice(
+            path,
+            "implementation slice id must not be empty",
+        ));
     }
     if slice.generation == 0 {
         return Err(invalid_slice(
@@ -171,7 +174,10 @@ fn validate_slice_structure(
     let mut seen = BTreeSet::new();
     for delta in &slice.requirement_delta {
         if delta.requirement_id.as_str().trim().is_empty() {
-            return Err(invalid_slice(path, "requirement delta id must not be empty"));
+            return Err(invalid_slice(
+                path,
+                "requirement delta id must not be empty",
+            ));
         }
         if delta.requirement_generation == 0 {
             return Err(invalid_slice(
@@ -256,10 +262,9 @@ state = "unchanged"
 
     #[test]
     fn implementation_slice_rejects_unknown_generation() {
-        let result = parse_implementation_slice(&SLICE.replace(
-            "schema_version = \"1.0\"",
-            "schema_version = \"2.0\"",
-        ));
+        let result = parse_implementation_slice(
+            &SLICE.replace("schema_version = \"1.0\"", "schema_version = \"2.0\""),
+        );
         assert!(result.is_err());
     }
 
