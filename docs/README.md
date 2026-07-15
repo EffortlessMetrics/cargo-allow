@@ -33,6 +33,8 @@ governance profile model around it.
 
 - [Adopt no-new-debt](how-to/adopt-no-new-debt.md): move an existing repo toward
   a no-new source-exception posture.
+- [Manage an exception](how-to/manage-an-exception.md): follow one finding
+  through decision, repair, weakening notes, pruning, and final proof.
 - [Run in CI](how-to/run-in-ci.md): add default source-exception checks to CI.
 - [Review PR posture](how-to/review-pr-posture.md): use `cargo-allow diff` for
   reviewer-facing posture.
