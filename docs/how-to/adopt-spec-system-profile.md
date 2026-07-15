@@ -29,19 +29,19 @@ Check setup readiness:
 cargo-allow doctor --profile spec-system
 ```
 
-The generated profile starts in advisory mode and treats the bootstrap active
-goal as optional. That lets a new repository get a clean first-hour setup before
-it has registered real proposal, spec, plan, support-tier, and closeout
-artifacts. After the first source-of-truth graph is registered in
-`policy/doc-artifacts.toml`, set `active_goal_required = true` if the repository
-wants active-goal links to be enforced.
+The generated profile starts in advisory mode with the `current-v2` generation.
+It has no repository-global goal root or active manifest. A current profile is
+deliberately independent of any one issue, branch, session, or worker. Existing
+legacy goal files may be read only under an explicit `legacy-v1` profile and do
+not select current work or authorize mutation, implementation, support, or
+proof status.
 
 Expected first-hour states:
 
 | State | Meaning | Next step |
 | --- | --- | --- |
 | `ready = true` | The profile files and configured roots are present enough for structural graph checks. | Run `check --profile spec-system --mode audit`. |
-| active goal optional | `active_goal_required = false`, so placeholder execution state does not fail setup. | Keep it false until real proposal/spec/plan links exist. |
+| no global active goal | Current profiles omit `roots.goals` and `active_goal_required`; bootstrap does not create `.allow/goals/active.toml`. | Use the controlling GitHub issue and a PR-local implementation slice for live work. |
 | empty worklist | No structural repair work was found in the current source-tree graph. | Register real artifacts or add CI artifact upload. |
 | non-empty worklist | The profile found bounded graph repair work. | Fix objective structural items first. |
 
@@ -107,13 +107,10 @@ Promote only proven, low-noise structural checks later. The profile should not
 block on closeout freshness, support-tier completeness, or README claim coverage
 until those checks have enough local evidence to stay useful.
 
-Flip `active_goal_required = true` only after:
-
-- `policy/doc-artifacts.toml` registers the real proposal/spec/plan artifacts.
-- `.codex/goals/active.toml` points at those registered artifacts.
-- `cargo-allow check --profile spec-system --mode audit` has no unknown-link
-  findings for those edges.
-- the repository wants active-goal drift to become a setup/readiness signal.
+Use an explicit `generation = "legacy-v1"` profile only when a repository needs
+to inspect historical active-goal metadata during migration. Keep that profile
+outside the current default path; a legacy goal marked `done` cannot promote a
+requirement, support claim, mutation permission, or current session.
 
 ## Claim Boundary
 

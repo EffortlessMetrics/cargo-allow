@@ -266,9 +266,6 @@ fn spec_system_init_bootstraps_profile_files() {
     for path in [
         ".allow/profiles/spec-system.toml",
         ".allow/artifacts/doc-artifacts.toml",
-        ".allow/goals/README.md",
-        ".allow/goals/active.toml",
-        ".allow/goals/archive/.gitkeep",
         ".allow/imports/README.md",
         "docs/proposals/README.md",
         "docs/specs/README.md",
@@ -292,13 +289,86 @@ fn spec_system_init_bootstraps_profile_files() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("read profile config: {err}")));
     assert!(config.contains("profile = \"spec-system\""));
     assert!(config.contains("mode = \"advisory\""));
-    assert!(config.contains("goals = \".allow/goals\""));
+    assert!(config.contains("generation = \"current-v2\""));
+    assert!(!config.contains("goals = \".allow/goals\""));
     assert!(config.contains("artifact_ledger = \".allow/artifacts/doc-artifacts.toml\""));
-    assert!(
-        config.contains("active_goal_required = false"),
-        "new repositories should not start with a self-invalidating active goal"
-    );
+    assert!(!config.contains("active_goal_required"));
+    assert!(!root.join(".allow/goals").exists());
 
+    remove_init_fixture_dir(root);
+}
+
+#[test]
+fn spec_system_init_explicit_legacy_profile_bootstraps_legacy_goal_files() {
+    let root = init_fixture_dir();
+    let config_path = root.join("legacy-profile.toml");
+    fs::write(
+        &config_path,
+        r#"
+schema_version = "1.0"
+profile = "spec-system"
+mode = "advisory"
+generation = "legacy-v1"
+
+[roots]
+proposals = "docs/proposals"
+specs = "docs/specs"
+adrs = "docs/adr"
+plans = "plans"
+goals = ".allow/goals"
+support_tiers = "docs/status/SUPPORT_TIERS.md"
+artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write legacy profile: {err}")));
+
+    cmd_init(&InitArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        strict: false,
+        profile: Some(ProfileArg::SpecSystem),
+        dry_run: false,
+        force: false,
+        config: PathBuf::from("legacy-profile.toml"),
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("legacy spec-system init should pass: {err}"))
+    });
+
+    for path in [
+        ".allow/goals/README.md",
+        ".allow/goals/active.toml",
+        ".allow/goals/archive/.gitkeep",
+    ] {
+        assert!(root.join(path).exists(), "legacy init should create {path}");
+    }
+    let config = fs::read_to_string(root.join("legacy-profile.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read legacy profile: {err}")));
+    assert!(config.contains("generation = \"legacy-v1\""));
+    assert!(config.contains("goals = \".allow/goals\""));
+
+    remove_init_fixture_dir(root);
+}
+
+#[test]
+fn spec_system_init_current_profile_reports_legacy_conflict_without_writing() {
+    let root = init_fixture_dir();
+    fs::create_dir_all(root.join(".allow/goals"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy root: {err}")));
+    let result = cmd_init(&InitArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        strict: false,
+        profile: Some(ProfileArg::SpecSystem),
+        dry_run: false,
+        force: false,
+        config: PathBuf::from("policy/allow.toml"),
+    });
+
+    assert!(result.is_err());
+    assert!(!root.join(".allow/profiles/spec-system.toml").exists());
     remove_init_fixture_dir(root);
 }
 

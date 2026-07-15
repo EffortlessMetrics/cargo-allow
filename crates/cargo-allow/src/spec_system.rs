@@ -137,7 +137,24 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
     let config_path = args
         .config
         .unwrap_or_else(|| Path::new(DEFAULT_PROFILE_CONFIG));
-    let files = spec_system_bootstrap_files(config_path);
+    let legacy_compatibility = spec_system_legacy_compatibility(&root, config_path)?;
+    if !legacy_compatibility {
+        let conflicts = legacy_bootstrap_conflicts(&root);
+        if args.dry_run {
+            for conflict in &conflicts {
+                println!(
+                    "conflict {}: current bootstrap leaves legacy active-goal state untouched",
+                    root_relative_display(&root, conflict)
+                );
+            }
+        } else if let Some(conflict) = conflicts.first() {
+            return Err(CargoAllowError::new(format!(
+                "current spec-system bootstrap will not overwrite legacy active-goal state at {}; choose an explicit legacy-v1 profile or migrate it first",
+                root_relative_display(&root, conflict)
+            )));
+        }
+    }
+    let files = spec_system_bootstrap_files(config_path, legacy_compatibility);
 
     for file in files {
         let path = root_relative_path(&root, &file.path);
@@ -331,9 +348,15 @@ struct SpecSystemBootstrapFile {
     contents: String,
 }
 
-fn spec_system_bootstrap_files(config_path: &Path) -> Vec<SpecSystemBootstrapFile> {
+fn spec_system_bootstrap_files(
+    config_path: &Path,
+    legacy_compatibility: bool,
+) -> Vec<SpecSystemBootstrapFile> {
     let mut files = vec![
-        bootstrap_file(config_path, spec_system_config_template()),
+        bootstrap_file(
+            config_path,
+            spec_system_config_template(legacy_compatibility),
+        ),
         bootstrap_file(
             Path::new(DEFAULT_OWNED_ARTIFACT_LEDGER),
             doc_artifacts_template(),
@@ -354,18 +377,6 @@ fn spec_system_bootstrap_files(config_path: &Path) -> Vec<SpecSystemBootstrapFil
             Path::new("plans/README.md"),
             artifact_root_readme("Plans", "PR-sized execution sequences and rollback notes"),
         ),
-        bootstrap_file(
-            Path::new(".allow/goals/README.md"),
-            artifact_root_readme(
-                "Active Goals",
-                "agent execution state that points at repo truth",
-            ),
-        ),
-        bootstrap_file(
-            Path::new(".allow/goals/active.toml"),
-            active_goal_template(),
-        ),
-        bootstrap_file(Path::new(".allow/goals/archive/.gitkeep"), String::new()),
         bootstrap_file(Path::new(".allow/imports/README.md"), imports_root_readme()),
         bootstrap_file(
             Path::new("docs/status/SUPPORT_TIERS.md"),
@@ -378,6 +389,26 @@ fn spec_system_bootstrap_files(config_path: &Path) -> Vec<SpecSystemBootstrapFil
             .iter()
             .map(|path| bootstrap_file(Path::new(path), template_contents(path))),
     );
+
+    if legacy_compatibility {
+        files.splice(
+            6..6,
+            [
+                bootstrap_file(
+                    Path::new(".allow/goals/README.md"),
+                    artifact_root_readme(
+                        "Legacy Active Goals",
+                        "historical compatibility metadata only; not current work authority",
+                    ),
+                ),
+                bootstrap_file(
+                    Path::new(".allow/goals/active.toml"),
+                    active_goal_template(),
+                ),
+                bootstrap_file(Path::new(".allow/goals/archive/.gitkeep"), String::new()),
+            ],
+        );
+    }
     files
 }
 
@@ -388,10 +419,12 @@ fn bootstrap_file(path: &Path, contents: String) -> SpecSystemBootstrapFile {
     }
 }
 
-fn spec_system_config_template() -> String {
-    r#"schema_version = "1.0"
+fn spec_system_config_template(legacy_compatibility: bool) -> String {
+    if legacy_compatibility {
+        return r#"schema_version = "1.0"
 profile = "spec-system"
 mode = "advisory"
+generation = "legacy-v1"
 
 [roots]
 proposals = "docs/proposals"
@@ -406,9 +439,8 @@ artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
 ledger_required = true
 templates_required = true
 support_tiers_required = true
-# New repositories start with a placeholder active goal. Set this to true after
-# registering the proposal, spec, plan, support-tier, and active-goal artifacts
-# that the active goal should link to in `.allow/artifacts/doc-artifacts.toml`.
+# Legacy active-goal compatibility is explicit and historical-only. It cannot
+# select current work or authorize mutation, implementation, or support state.
 active_goal_required = false
 closeout_required_for_done_items = true
 
@@ -421,7 +453,67 @@ path = ".allow/imports"
 ecosystem = "cargo-allow"
 role = "owned"
 "#
+        .to_string();
+    }
+
+    r#"schema_version = "1.0"
+profile = "spec-system"
+mode = "advisory"
+generation = "current-v2"
+
+[roots]
+proposals = "docs/proposals"
+specs = "docs/specs"
+adrs = "docs/adr"
+plans = "plans"
+support_tiers = "docs/status/SUPPORT_TIERS.md"
+artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
+
+[requirements]
+ledger_required = true
+templates_required = true
+support_tiers_required = true
+closeout_required_for_done_items = true
+
+[import_roots]
+owned = ".allow/imports"
+
+[[import_roots.entries]]
+id = "owned-imports"
+path = ".allow/imports"
+ecosystem = "cargo-allow"
+role = "owned"
+"#
     .to_string()
+}
+
+fn spec_system_legacy_compatibility(root: &Path, config_path: &Path) -> CargoAllowResult<bool> {
+    let path = root_relative_path(root, config_path);
+    if !path.is_file() {
+        return Ok(false);
+    }
+    let text = fs::read_to_string(&path).map_err(|error| {
+        CargoAllowError::new(format!(
+            "failed to read existing spec-system profile config {}: {error}",
+            path.display()
+        ))
+    })?;
+    let config = parse_spec_system_config_at(Some(&path), &text)?;
+    Ok(matches!(config.generation, SpecSystemGeneration::LegacyV1))
+}
+
+fn legacy_bootstrap_conflicts(root: &Path) -> Vec<PathBuf> {
+    [
+        ".allow/goals",
+        ".allow/goals/README.md",
+        ".allow/goals/active.toml",
+        ".allow/goals/archive/.gitkeep",
+    ]
+    .into_iter()
+    .map(Path::new)
+    .map(|path| root_relative_path(root, path))
+    .filter(|path| path.exists())
+    .collect()
 }
 
 fn doc_artifacts_template() -> String {
@@ -454,9 +546,8 @@ external spec systems such as Kiro, Spec Kit, or generic `.spec/` trees.
 fn active_goal_template() -> String {
     r#"schema_version = "1.0"
 
-# Placeholder execution state for the first adoption PR.
-# Register real proposal/spec/plan artifacts in .allow/artifacts/doc-artifacts.toml
-# before setting active_goal_required = true in .allow/profiles/spec-system.toml.
+# Placeholder execution state for explicit legacy compatibility only.
+# This file is historical/read-only metadata and is not current work authority.
 id = "spec-system-profile"
 title = "Spec-system profile"
 status = "active"
@@ -3256,7 +3347,7 @@ mod tests {
     #[test]
     fn collect_spec_system_readiness_discriminates_invalid_active_goal() -> std::io::Result<()> {
         let root = temp_root("invalid-active-goal")?;
-        for file in spec_system_bootstrap_files(Path::new(DEFAULT_PROFILE_CONFIG)) {
+        for file in spec_system_bootstrap_files(Path::new(DEFAULT_PROFILE_CONFIG), false) {
             write_fixture_file(&root, &file.path.display().to_string(), &file.contents)?;
         }
         write_fixture_file(
