@@ -1,4 +1,6 @@
-use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, normalize_path, stable_hash_hex};
+use allow_core::{
+    CargoAllowError, CargoAllowErrorKind, CargoAllowResult, normalize_path, stable_hash_hex,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -86,28 +88,6 @@ pub fn parse_requirement_blocks_at(
     markdown: &str,
 ) -> CargoAllowResult<RequirementGraph> {
     let document_id = parse_document_id(path, markdown)?;
-    parse_requirement_blocks_for_document_at(&document_id, path, markdown)
-}
-
-pub fn parse_requirement_blocks_for_document(
-    document_id: &str,
-    markdown: &str,
-) -> CargoAllowResult<RequirementGraph> {
-    parse_requirement_blocks_for_document_at(document_id, None, markdown)
-}
-
-pub fn parse_requirement_blocks_for_document_at(
-    document_id: &str,
-    path: Option<&Path>,
-    markdown: &str,
-) -> CargoAllowResult<RequirementGraph> {
-    if document_id.trim().is_empty() || document_id.contains('#') {
-        return Err(invalid_requirement_source(
-            path,
-            "requirement document id must be non-empty and must not contain '#'",
-        ));
-    }
-
     let block = find_single_requirement_block(path, markdown)?;
     let raw = toml::from_str::<RawRequirementBlock>(&block.body).map_err(|error| {
         CargoAllowError::with_kind(
@@ -133,7 +113,6 @@ pub fn parse_requirement_blocks_for_document_at(
         ));
     }
 
-    let document_id = document_id.trim();
     let mut seen = BTreeSet::new();
     let mut requirements = Vec::with_capacity(raw.requirement.len());
     for requirement in raw.requirement {
@@ -176,9 +155,9 @@ pub fn parse_requirement_blocks_for_document_at(
 
     Ok(RequirementGraph {
         schema_version: raw.schema_version,
-        document_id: document_id.to_string(),
+        document_id,
         source: RequirementSource {
-            path: path.map(|value| normalize_path(&value.display().to_string())),
+            path: path.map(|value| normalize_path(value.display().to_string())),
             start_line: block.start_line,
             end_line: block.end_line,
             content_identity: stable_hash_hex(&block.body),
@@ -225,34 +204,36 @@ fn find_single_requirement_block(
     path: Option<&Path>,
     markdown: &str,
 ) -> CargoAllowResult<RequirementBlock> {
-    let lines = markdown.lines().collect::<Vec<_>>();
+    let mut lines = markdown.lines().enumerate();
     let mut blocks = Vec::new();
-    let mut index = 0usize;
 
-    while index < lines.len() {
-        if lines[index].trim() != REQUIREMENT_FENCE {
-            index += 1;
+    while let Some((line_index, line)) = lines.next() {
+        if line.trim() != REQUIREMENT_FENCE {
             continue;
         }
 
-        let opening_line = index + 1;
-        let body_start = index + 1;
-        let Some(relative_end) = lines[body_start..]
-            .iter()
-            .position(|line| line.trim() == FENCE_END)
-        else {
+        let opening_line = line_index + 1;
+        let mut body = Vec::new();
+        let mut closing_line = None;
+        for (body_index, body_line) in lines.by_ref() {
+            if body_line.trim() == FENCE_END {
+                closing_line = Some(body_index + 1);
+                break;
+            }
+            body.push(body_line);
+        }
+
+        let Some(end_line) = closing_line else {
             return Err(invalid_requirement_source(
                 path,
                 format!("requirement block opened on line {opening_line} is not closed"),
             ));
         };
-        let body_end = body_start + relative_end;
         blocks.push(RequirementBlock {
-            body: lines[body_start..body_end].join("\n"),
+            body: body.join("\n"),
             start_line: u32::try_from(opening_line).unwrap_or(u32::MAX),
-            end_line: u32::try_from(body_end + 1).unwrap_or(u32::MAX),
+            end_line: u32::try_from(end_line).unwrap_or(u32::MAX),
         });
-        index = body_end + 1;
     }
 
     match blocks.len() {
@@ -313,21 +294,13 @@ claim_class = "runtime_behavior"
             "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion"
         );
         assert_eq!(graph.requirements[0].generation, 1);
-        assert_eq!(graph.requirements[0].lifecycle, RequirementLifecycle::Accepted);
+        assert_eq!(
+            graph.requirements[0].lifecycle,
+            RequirementLifecycle::Accepted
+        );
         assert_eq!(graph.source.path.as_deref(), Some("docs/spec.md"));
         assert!(graph.source.start_line < graph.source.end_line);
         assert!(graph.source.content_identity.starts_with("fnv1a64:"));
-        Ok(())
-    }
-
-    #[test]
-    fn parses_requirement_fence_with_dialect_document_id() -> Result<(), String> {
-        let graph = parse_requirement_blocks_for_document("RIPR-SPEC-0124", SPEC)
-            .map_err(|error| error.to_string())?;
-        assert_eq!(
-            graph.requirements[0].id.as_str(),
-            "RIPR-SPEC-0124#spec-only-runtime-promotion"
-        );
         Ok(())
     }
 
@@ -345,10 +318,9 @@ claim_class = "runtime_behavior"
 
     #[test]
     fn rejects_unknown_requirement_generation() {
-        let result = parse_requirement_blocks(&SPEC.replace(
-            "schema_version = \"1.0\"",
-            "schema_version = \"2.0\"",
-        ));
+        let result = parse_requirement_blocks(
+            &SPEC.replace("schema_version = \"1.0\"", "schema_version = \"2.0\""),
+        );
         assert!(result.is_err());
     }
 }
