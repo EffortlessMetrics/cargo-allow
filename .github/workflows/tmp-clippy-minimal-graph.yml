@@ -19,30 +19,52 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy,rustfmt
-      - name: Apply Clippy fixes and capture diagnostics
+      - name: Replace direct ToString implementations
         shell: bash
         run: |
-          set +e
-          cargo clippy --fix --workspace --all-targets --allow-dirty --allow-staged -- -D warnings 2>&1 | tee clippy-minimal-graph.log
-          status=${PIPESTATUS[0]}
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("crates/allow-policy/src/spec_system/compiled_graph.rs")
+          text = path.read_text(encoding="utf-8")
+          if "use std::fmt;" not in text:
+              text = text.replace("use std::collections", "use std::fmt;\nuse std::collections", 1)
+
+          types = [
+              "ImplementationSliceId",
+              "RequirementId",
+              "ImplementationSeamId",
+              "EvidenceClaimId",
+              "RustTestSubjectId",
+              "ProofCommandId",
+          ]
+          for name in types:
+              old = f'''impl ToString for {name} {{
+              fn to_string(&self) -> String {{
+                  self.as_str().to_string()
+              }}
+          }}'''
+              new = f'''impl fmt::Display for {name} {{
+              fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {{
+                  formatter.write_str(self.as_str())
+              }}
+          }}'''
+              if old not in text:
+                  raise SystemExit(f"expected ToString implementation for {name} was not found")
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding="utf-8")
+          PY
           cargo fmt --all
-          echo "CLIPPY_STATUS=$status" >> "$GITHUB_ENV"
-          exit 0
-      - name: Commit automatic fixes and temporary diagnostics
+          cargo clippy --workspace --all-targets -- -D warnings
+      - name: Commit source repairs
         shell: bash
         run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add crates/allow-policy/src/spec_system clippy-minimal-graph.log
-          if git diff --cached --quiet; then
+          if git diff --quiet; then
             exit 0
           fi
-          git commit -m "chore: capture graph clippy diagnostics"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add crates/allow-policy/src/spec_system/compiled_graph.rs
+          git commit -m "fix(spec-system): implement graph ID display"
           git push origin HEAD:agent/spec-system-minimal-graph
-      - uses: actions/upload-artifact@v7.0.1
-        with:
-          name: clippy-minimal-graph
-          path: clippy-minimal-graph.log
-      - name: Preserve Clippy result
-        shell: bash
-        run: exit "$CLIPPY_STATUS"
