@@ -300,20 +300,14 @@ impl CompiledSpecGraph {
             .collect()
     }
 
-    pub fn evidence_for_subject(
-        &self,
-        subject_id: &RustTestSubjectId,
-    ) -> Vec<&EvidenceClaimNode> {
+    pub fn evidence_for_subject(&self, subject_id: &RustTestSubjectId) -> Vec<&EvidenceClaimNode> {
         self.evidence_claims
             .values()
             .filter(|claim| claim.subject_ids.contains(subject_id))
             .collect()
     }
 
-    pub fn diagnostics_for_slice(
-        &self,
-        slice_id: &ImplementationSliceId,
-    ) -> Vec<&GraphDiagnostic> {
+    pub fn diagnostics_for_slice(&self, slice_id: &ImplementationSliceId) -> Vec<&GraphDiagnostic> {
         let Some(slice) = self.slices.get(slice_id) else {
             return Vec::new();
         };
@@ -347,12 +341,7 @@ pub fn compile_spec_graph(input: GraphCompileInput) -> CompiledSpecGraph {
                     symbol: Some(requirement.local_id),
                 },
             };
-            insert_unique(
-                &mut requirements,
-                requirement.id,
-                node,
-                &mut diagnostics,
-            );
+            insert_unique(&mut requirements, requirement.id, node, &mut diagnostics);
         }
     }
 
@@ -779,7 +768,8 @@ state = "unchanged"
     fn compile_input() -> Result<GraphCompileInput, String> {
         let requirements = parse_requirement_blocks(SPEC).map_err(|error| error.to_string())?;
         let slice = parse_implementation_slice(SLICE).map_err(|error| error.to_string())?;
-        let source = SourceLocation::new("crates/allow-policy/src/spec_system/runtime_promotion.rs");
+        let source =
+            SourceLocation::new("crates/allow-policy/src/spec_system/runtime_promotion.rs");
         let seam = ImplementationSeamRegistration {
             id: seam_id(),
             owner: "allow-policy::spec_system".to_string(),
@@ -793,9 +783,9 @@ state = "unchanged"
             target: "lib".to_string(),
             module_path: "spec_system::runtime_promotion::tests".to_string(),
             test_name: "spec_or_policy_slice_keeps_runtime_requirement_accepted".to_string(),
-            source: source.clone().with_symbol(
-                "spec_or_policy_slice_keeps_runtime_requirement_accepted",
-            ),
+            source: source
+                .clone()
+                .with_symbol("spec_or_policy_slice_keeps_runtime_requirement_accepted"),
             source_identity: "source:positive-v1".to_string(),
         };
         let negative = RustTestSubjectRegistration {
@@ -805,9 +795,9 @@ state = "unchanged"
             target: "lib".to_string(),
             module_path: "spec_system::runtime_promotion::tests".to_string(),
             test_name: "spec_or_policy_slice_rejects_unproved_runtime_promotion".to_string(),
-            source: source.clone().with_symbol(
-                "spec_or_policy_slice_rejects_unproved_runtime_promotion",
-            ),
+            source: source
+                .clone()
+                .with_symbol("spec_or_policy_slice_rejects_unproved_runtime_promotion"),
             source_identity: "source:negative-v1".to_string(),
         };
         let weak = RustTestSubjectRegistration {
@@ -834,9 +824,11 @@ state = "unchanged"
                     requirement_id: requirement_id(),
                     seam_id: seam_id(),
                     purpose: EvidencePurpose::PositiveAcceptance,
-                    precondition: "spec or policy slice leaves runtime work outstanding".to_string(),
+                    precondition: "spec or policy slice leaves runtime work outstanding"
+                        .to_string(),
                     operation: "validate runtime promotion".to_string(),
-                    expected_observable: "accepted transition without runtime promotion".to_string(),
+                    expected_observable: "accepted transition without runtime promotion"
+                        .to_string(),
                     discriminator: "requirement remains accepted and support unchanged".to_string(),
                     claim_boundary: "structural validator behavior only".to_string(),
                     source: SourceLocation::new("graph:self-hosted").with_symbol("positive"),
@@ -848,7 +840,8 @@ state = "unchanged"
                     requirement_id: requirement_id(),
                     seam_id: seam_id(),
                     purpose: EvidencePurpose::ForbiddenRuntimePromotion,
-                    precondition: "spec or policy slice attempts runtime implementation".to_string(),
+                    precondition: "spec or policy slice attempts runtime implementation"
+                        .to_string(),
                     operation: "validate runtime promotion".to_string(),
                     expected_observable: "exact RuntimeImplementationWithoutDisposition finding"
                         .to_string(),
@@ -892,16 +885,14 @@ state = "unchanged"
             graph.subjects_for_evidence(&EvidenceClaimId(
                 "evidence:forbidden-promotion".to_string()
             )),
-            vec![graph
-                .test_subjects
-                .get(&negative_subject_id())
-                .ok_or_else(|| "expected exact negative subject".to_string())?]
+            vec![
+                graph
+                    .test_subjects
+                    .get(&negative_subject_id())
+                    .ok_or_else(|| "expected exact negative subject".to_string())?
+            ]
         );
-        assert!(
-            graph
-                .evidence_for_subject(&weak_subject_id())
-                .is_empty()
-        );
+        assert!(graph.evidence_for_subject(&weak_subject_id()).is_empty());
         assert!(graph.snapshot_id.as_str().starts_with("fnv1a64:"));
         Ok(())
     }
