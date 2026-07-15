@@ -1,4 +1,6 @@
-use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, normalize_path, stable_hash_hex};
+use allow_core::{
+    CargoAllowError, CargoAllowErrorKind, CargoAllowResult, normalize_path, stable_hash_hex,
+};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -85,11 +87,11 @@ pub fn parse_ripr_spec_at(
     let (created, created_line) = parse_named_value(path, &lines, "Created:")?;
     let status = parse_status(path, &status)?;
 
-    let fence_count = lines
+    let requirement_block_count = lines
         .iter()
         .filter(|line| line.trim() == REQUIREMENT_FENCE)
         .count();
-    let (source_class, requirements) = match fence_count {
+    let (source_class, requirements) = match requirement_block_count {
         0 => (RiprSpecSourceClass::LegacyDocumentLevel, None),
         1 => (
             RiprSpecSourceClass::V2Requirements,
@@ -220,13 +222,14 @@ fn parse_status(path: Option<&Path>, value: &str) -> CargoAllowResult<RiprSpecSt
 }
 
 fn parse_list_section(lines: &[&str], label: &str) -> Vec<String> {
-    let Some(start) = lines.iter().position(|line| line.trim() == label) else {
+    let mut iter = lines.iter();
+    if iter.find(|line| line.trim() == label).is_none() {
         return Vec::new();
-    };
-    let mut values = Vec::new();
-    let mut seen_item = false;
+    }
 
-    for line in &lines[start + 1..] {
+    let mut values: Vec<String> = Vec::new();
+    let mut seen_item = false;
+    for line in iter {
         let trimmed = line.trim();
         if trimmed.is_empty() {
             if seen_item {
@@ -368,7 +371,10 @@ claim_class = "runtime_behavior"
         assert_eq!(document.id, "RIPR-SPEC-0123");
         assert_eq!(document.title, "Targeted Rust Rerun");
         assert_eq!(document.status, RiprSpecStatus::Accepted);
-        assert_eq!(document.source_class, RiprSpecSourceClass::LegacyDocumentLevel);
+        assert_eq!(
+            document.source_class,
+            RiprSpecSourceClass::LegacyDocumentLevel
+        );
         assert!(document.requirements.is_none());
         assert_eq!(document.links.issues, vec!["#1424"]);
         Ok(())
@@ -381,10 +387,17 @@ claim_class = "runtime_behavior"
             .requirements
             .as_ref()
             .ok_or_else(|| "expected requirement graph".to_string())?;
+        let requirement = graph
+            .requirements
+            .first()
+            .ok_or_else(|| "expected one parsed requirement".to_string())?;
 
-        assert_eq!(document.source_class, RiprSpecSourceClass::V2Requirements);
         assert_eq!(
-            graph.requirements[0].id.as_str(),
+            document.source_class,
+            RiprSpecSourceClass::V2Requirements
+        );
+        assert_eq!(
+            requirement.id.as_str(),
             "RIPR-SPEC-0124#spec-only-runtime-promotion"
         );
         assert_eq!(graph.document_id, document.id);
@@ -402,7 +415,9 @@ claim_class = "runtime_behavior"
         assert_eq!(unix.source.content_identity, windows.source.content_identity);
         assert_eq!(unix.source.path, windows.source.path);
         assert_eq!(
-            unix.requirements.as_ref().map(|graph| &graph.source.content_identity),
+            unix.requirements
+                .as_ref()
+                .map(|graph| &graph.source.content_identity),
             windows
                 .requirements
                 .as_ref()
