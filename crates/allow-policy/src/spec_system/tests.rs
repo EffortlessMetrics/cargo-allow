@@ -1495,7 +1495,7 @@ fn rejects_active_goal_unknown_plan() {
 }
 
 #[test]
-fn parses_current_repository_active_goal_manifest() {
+fn parses_current_repository_historical_goal_manifest() {
     let ledger_result = parse_doc_artifact_ledger(include_str!(
         "../../../../.allow/artifacts/doc-artifacts.toml"
     ));
@@ -1509,7 +1509,9 @@ fn parses_current_repository_active_goal_manifest() {
     };
 
     let result = validate_active_goal_manifest_text(
-        include_str!("../../../../.allow/goals/active.toml"),
+        include_str!(
+            "../../../../.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml"
+        ),
         &ledger,
     );
 

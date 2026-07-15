@@ -828,10 +828,10 @@ column = 1
 id = "allow-0167"
 kind = "non_rust_file"
 family = "configuration"
-path = ".allow/goals/active.toml"
+path = ".allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml"
 owner = "core/policy"
-classification = "active_goal_manifest"
-reason = "Records the active Codex execution state for portable governance substrate work under owned `.allow/` profile state."
+classification = "historical_goal_manifest"
+reason = "Preserves the completed GOAL-0004 execution record as read-only historical evidence after repository-global active-goal retirement."
 evidence = ["doc:.allow/goals/README.md", "doc:docs/source-of-truth/agent-operating-model.md"]
 created = "2026-06-12"
 review_after = "2026-11-01"
@@ -840,7 +840,7 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
 line_hint = 1
-glob = ".allow/goals/active.toml"
+glob = ".allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml"
 
 [allow.last_seen]
 line = 1
@@ -4743,7 +4743,7 @@ path = "plans/migration-parity/closeouts/adoption-substrate-lane.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records adoption-substrate 10-PR cleanup queue closeout without claiming 0.2.0 milestone parity or import-mode implementation."
-evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/active.toml"]
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -4944,7 +4944,7 @@ path = "plans/migration-parity/closeouts/import-parity-lane.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records import-parity execution lane closeout (#1713-#1718) without claiming full import mode or closing umbrella #1466."
-evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -4988,7 +4988,7 @@ path = "plans/spec-system/closeouts/portable-governance-transition.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records portable governance transition closeout (GOAL-0002 archive, GOAL-0003 activation) without implementing C2 profile resolution."
-evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5010,7 +5010,7 @@ path = "plans/spec-system/closeouts/profile-resolution-c2.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records C2 profile resolution closeout after #1748 without implementing C3 init or C4 dogfood migration."
-evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5032,7 +5032,7 @@ path = "plans/spec-system/closeouts/init-writes-c3.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records C3 init writes closeout after #1750 without implementing C4 dogfood migration."
-evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5098,7 +5098,7 @@ path = "plans/spec-system/closeouts/dogfood-migration-c4.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records C4 dogfood migration closeout after moving profile state to `.allow/` without implementing import adapters or federation."
-evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5208,7 +5208,7 @@ path = "plans/federation/closeouts/f0-design.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records F0 federation design closeout without claiming runtime federation support."
-evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+evidence = ["doc:plans/migration-parity/gap-inventory.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5252,7 +5252,7 @@ path = "plans/federation/closeouts/f1-config-parse.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records F1 federation config parse closeout without claiming multi-ledger check evaluation."
-evidence = ["doc:plans/federation/implementation-plan.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+evidence = ["doc:plans/federation/implementation-plan.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5274,7 +5274,7 @@ path = "plans/federation/closeouts/f2-evaluation.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records F2 federation canonical ledger evaluation closeout without claiming mirror divergence or import adapters."
-evidence = ["doc:plans/federation/implementation-plan.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+evidence = ["doc:plans/federation/implementation-plan.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5296,7 +5296,7 @@ path = "plans/federation/closeouts/f3-drain-divergence.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records F3 federation drain windows and mirror divergence closeout without claiming import adapters or release readiness."
-evidence = ["doc:plans/federation/implementation-plan.md", "doc:.allow/goals/active.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+evidence = ["doc:plans/federation/implementation-plan.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5318,7 +5318,7 @@ path = "plans/spec-system/closeouts/import-i1-model.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records I1 generic import-root model closeout without claiming ecosystem adapters or release readiness."
-evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/active.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
+evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5384,7 +5384,7 @@ path = "plans/spec-system/closeouts/import-i2-generic-adapters.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records I2 generic import adapter narrow start closeout without claiming Kiro/Spec Kit adapters or release readiness."
-evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/active.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
+evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5406,7 +5406,7 @@ path = "plans/spec-system/closeouts/import-i2-kiro-spec-kit-adapters.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records I2 Kiro and Spec Kit import adapter closeout without claiming xtask adapter or full import mode."
-evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/active.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
+evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5472,7 +5472,7 @@ path = "plans/spec-system/closeouts/import-i2-xtask-adapter.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records I2 xtask command registry import adapter closeout without claiming full import mode or release readiness."
-evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/active.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
+evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5494,7 +5494,7 @@ path = "plans/spec-system/closeouts/import-graph-dogfood.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records import graph dogfood closeout for I1+I2 adapters without claiming full import mode or release readiness."
-evidence = ["doc:docs/dogfood/cargo-allow-import-graph.md", "doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/active.toml"]
+evidence = ["doc:docs/dogfood/cargo-allow-import-graph.md", "doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5516,7 +5516,7 @@ path = "docs/dogfood/cargo-allow-import-graph.md"
 owner = "core/policy"
 classification = "dogfood_receipt"
 reason = "Records import graph dogfood receipt for I1+I2 adapters without claiming full import mode or release readiness."
-evidence = ["doc:docs/dogfood/cargo-allow-import-graph.md", "doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/active.toml"]
+evidence = ["doc:docs/dogfood/cargo-allow-import-graph.md", "doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5626,7 +5626,7 @@ path = "plans/spec-system/closeouts/goal-0003-partial-progress.md"
 owner = "core/policy"
 classification = "source_truth_closeout"
 reason = "Records GOAL-0003 portable governance substrate closeout (C2-C4, F0-F3, I1-I2, import dogfood done; ripr/full-import blocked) without claiming release readiness."
-evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/active.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
+evidence = ["doc:plans/spec-system/allow-import-plan.md", "doc:.allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml", "doc:docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -5834,7 +5834,7 @@ container = "validate_allow_entries_with_link_scope_validation"
 callee = "expect"
 
 [allow.last_seen]
-line = 67
+line = 86
 column = 39
 
 [[allow]]
@@ -5856,7 +5856,7 @@ callee = "expect"
 line_hint = 60
 
 [allow.last_seen]
-line = 60
+line = 62
 column = 39
 
 [[allow]]

@@ -8,7 +8,7 @@ receipts, diffs, explanations, and worklists.
 
 Opt-in profiles use the same source-tree/no-execution model for other governed
 repo structures. The first profile is `spec-system`, which validates the static
-source-of-truth graph for proposals, specs, ADRs, plans, active goals, support
+source-of-truth graph for proposals, specs, ADRs, plans, requirements, support
 tiers, policy ledgers, proof-command fields, release records, and closeouts.
 
 ## Choose Your Path
@@ -90,11 +90,11 @@ Success looks like:
 - `worklist --profile spec-system --format json` is empty or contains bounded
   repair items.
 
-The generated profile starts with `active_goal_required = false`. That is the
-first-hour posture: the bootstrap active goal is placeholder execution state
-until the repo registers real proposal/spec/plan/support-tier/closeout
-artifacts. Flip it to `true` after those links exist and the repo wants
-active-goal validation.
+The generated current-v2 profile has no goals root and does not generate an
+active goal. Live work belongs to the controlling GitHub issue and PR-local
+implementation slice; archived legacy goals remain historical evidence only.
+Repositories that explicitly need legacy compatibility may select the v1
+profile, but a legacy goal cannot authorize current work or promote claims.
 
 Do not claim spec-system executes proof commands or proves semantic
 correctness. It validates source-tree graph structure only.

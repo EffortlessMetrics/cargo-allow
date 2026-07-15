@@ -67,20 +67,21 @@ They should cover:
 
 They should not redefine the behavior contract. Specs own that contract.
 
-## Active Goal Manifest
+## Historical Goal Artifacts
 
-The active goal manifest records the current agent execution surface.
+Historical goal artifacts record completed or superseded execution campaigns.
+They are read-only evidence, not a current agent execution surface.
 
 It should cover:
 
-- current objective.
-- linked proposal, spec, and plan.
-- ready work items.
-- status for each work item.
-- proof commands expected for each work item.
+- completed objective and claim boundary.
+- linked proposal, spec, plan, and closeout.
+- historical work-item statuses.
+- proof commands recorded as evidence.
 
-It is not product runtime state, release state, or a replacement for the
-artifact ledger.
+They are not product runtime state, release state, a current issue pointer, or
+a replacement for the artifact ledger. Current work belongs to GitHub issues,
+PR-local implementation slices, and disposable local session focus.
 
 ## Support Tiers
 
