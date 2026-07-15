@@ -86,6 +86,28 @@ pub fn parse_requirement_blocks_at(
     markdown: &str,
 ) -> CargoAllowResult<RequirementGraph> {
     let document_id = parse_document_id(path, markdown)?;
+    parse_requirement_blocks_for_document_at(&document_id, path, markdown)
+}
+
+pub fn parse_requirement_blocks_for_document(
+    document_id: &str,
+    markdown: &str,
+) -> CargoAllowResult<RequirementGraph> {
+    parse_requirement_blocks_for_document_at(document_id, None, markdown)
+}
+
+pub fn parse_requirement_blocks_for_document_at(
+    document_id: &str,
+    path: Option<&Path>,
+    markdown: &str,
+) -> CargoAllowResult<RequirementGraph> {
+    if document_id.trim().is_empty() || document_id.contains('#') {
+        return Err(invalid_requirement_source(
+            path,
+            "requirement document id must be non-empty and must not contain '#'",
+        ));
+    }
+
     let block = find_single_requirement_block(path, markdown)?;
     let raw = toml::from_str::<RawRequirementBlock>(&block.body).map_err(|error| {
         CargoAllowError::with_kind(
@@ -111,6 +133,7 @@ pub fn parse_requirement_blocks_at(
         ));
     }
 
+    let document_id = document_id.trim();
     let mut seen = BTreeSet::new();
     let mut requirements = Vec::with_capacity(raw.requirement.len());
     for requirement in raw.requirement {
@@ -153,7 +176,7 @@ pub fn parse_requirement_blocks_at(
 
     Ok(RequirementGraph {
         schema_version: raw.schema_version,
-        document_id,
+        document_id: document_id.to_string(),
         source: RequirementSource {
             path: path.map(|value| normalize_path(&value.display().to_string())),
             start_line: block.start_line,
@@ -294,6 +317,17 @@ claim_class = "runtime_behavior"
         assert_eq!(graph.source.path.as_deref(), Some("docs/spec.md"));
         assert!(graph.source.start_line < graph.source.end_line);
         assert!(graph.source.content_identity.starts_with("fnv1a64:"));
+        Ok(())
+    }
+
+    #[test]
+    fn parses_requirement_fence_with_dialect_document_id() -> Result<(), String> {
+        let graph = parse_requirement_blocks_for_document("RIPR-SPEC-0124", SPEC)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            graph.requirements[0].id.as_str(),
+            "RIPR-SPEC-0124#spec-only-runtime-promotion"
+        );
         Ok(())
     }
 
