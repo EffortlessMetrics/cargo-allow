@@ -1,7 +1,7 @@
 ---
 id: CARGO-ALLOW-PLAN-0009
 kind: implementation_plan
-status: draft
+status: done
 owner: repo-infra
 created: 2026-06-19
 linked_proposal: CARGO-ALLOW-PROP-0008
@@ -30,7 +30,7 @@ converged read surfaces, and a lifecycle scenario corpus.
 - Spec:
   [CARGO-ALLOW-SPEC-0008](../../docs/specs/CARGO-ALLOW-SPEC-0008-ledger-coherence-change-control.md)
 - Support-tier surface: [CARGO-ALLOW-SUPPORT-0001](../../docs/status/SUPPORT_TIERS.md)
-- Active goal: `.allow/goals/active.toml` (`CARGO-ALLOW-GOAL-0004`)
+- Historical campaign tracker: `.allow/goals/active.toml` (`CARGO-ALLOW-GOAL-0004`), retained parseable until #2259 archives it.
 
 ## Non-Goals
 
@@ -42,9 +42,10 @@ converged read surfaces, and a lifecycle scenario corpus.
 
 ## Claim Boundary
 
-This plan sequences ledger-coherence work. It does not prove semantic
-correctness, revision enforcement, release readiness, unsafe soundness, test
-adequacy, or coverage until each PR lands its stated proof.
+This plan sequences ledger-coherence work. Its bounded campaign is complete as
+recorded by `CARGO-ALLOW-CLOSEOUT-0053`. It does not prove release readiness,
+unsafe soundness, test adequacy, or coverage beyond the stated proofs, and it
+does not grant the historical active-goal file current authority.
 
 ## Validation Baseline
 
@@ -234,7 +235,7 @@ Review `CARGO-ALLOW-SUPPORT-0001` after PR 8 if claim boundaries change.
 - PR 0 closeout:
   [goal-0004-registration.md](closeouts/goal-0004-registration.md)
 - Final lane closeout after PR 9 records landed slices, proof commands, and
-  deferred ripr/full-import follow-ups.
+  deferred ripr/full-import follow-ups: `CARGO-ALLOW-CLOSEOUT-0053`.
 
 ## Rollback Path
 

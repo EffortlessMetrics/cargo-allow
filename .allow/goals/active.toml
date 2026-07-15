@@ -2,7 +2,7 @@ schema_version = "1.0"
 
 id = "CARGO-ALLOW-GOAL-0004"
 title = "Core exception ledger coherence and change control"
-status = "active"
+status = "done"
 owner = "codex"
 created = "2026-06-19"
 
@@ -20,12 +20,14 @@ linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
-linked_plan_status = "draft"
+linked_plan_status = "done"
 
 claim_boundary = """
-Agent execution state for ledger-coherence lanes. Does not implement canonical
-domain types, diff classification, revision enforcement, or release cut. See
-CARGO-ALLOW-CLOSEOUT-0019 for PR 0 governance registration proof.
+Historical completion record for the bounded ledger-coherence campaign. The
+landed work covers the recorded ledger, lifecycle, change-control, and operator
+guide slices. It does not grant release readiness, runtime/support promotion,
+or current authority to this legacy active-goal file. Repository-global
+active-goal retirement is owned by #2259.
 """
 
 [[work_item]]
@@ -137,11 +139,12 @@ evidence_notes = [
 
 [[work_item]]
 id = "ledger-coherence-pr6-read-surface-convergence"
-status = "in_progress"
+status = "done"
 title = "Converge read surfaces (PR 6)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0053"
 proof_commands = [
   "rtk cargo test -p allow-report",
   "rtk cargo test -p cargo-allow",
@@ -159,6 +162,7 @@ evidence_notes = [
   "Current-main PR6C proof passes: hosted test (workspace fmt, Clippy, workspace/unit/doc tests, docs, audit, no-new, and spec-system checks), focused check_lane_posture 5 tests, allow-match 70 tests, cargo-allow Clippy, and no-new guard.",
   "Fourth PR6 slice landed via #2230 as 521d60d3: audit, check, and diff reports now consume per-outcome lifecycle overrides for expired/review-due matched entries; evidence accounting and dedicated baseline-debt counts remain unchanged.",
   "Current-main PR6D proof passes: hosted test (workspace fmt, Clippy, workspace/unit/doc tests, docs, audit, no-new, and spec-system checks), allow-report read_model 3 tests, audit_output 7 tests, e2e_occurrence_limit 1 test, diff_render 8 tests, check_lane_posture 5 tests, and cargo-allow Clippy.",
+  "The four landed PR6 slices complete the shared read-model convergence scope; later PR7 lifecycle coverage supplies the remaining cross-command scenario proof.",
 ]
 
 [[work_item]]
@@ -203,17 +207,19 @@ proof_commands = [
 
 [[work_item]]
 id = "ledger-coherence-pr9-operator-docs"
-status = "ready"
+status = "done"
 title = "Operator documentation manage-an-exception guide (PR 9)"
 linked_proposal = "CARGO-ALLOW-PROP-0008"
 linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
-evidence_notes = [
-  "Add docs/how-to/manage-an-exception.md covering full exception lifecycle.",
-]
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0053"
 proof_commands = [
   "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
   "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+]
+evidence_notes = [
+  "Merged as #2310; the guide covers discovery, bounded policy decisions, evidence repair, lifecycle review, weakening rationale, pruning, and final PR verification.",
+  "This final closeout completes the bounded GOAL-0004 campaign but does not retire the repository-global active-goal mechanism; #2259 owns that migration.",
 ]
 
 [[work_item]]
