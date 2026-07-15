@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 
 use super::{
     EvidenceDispositionState, ImplementationDispositionState, ImplementationSliceClass,
-    ImplementationSliceId, ImplementationSliceV1, RequirementDelta, RequirementGraph, RequirementId,
-    RequirementLifecycle, SupportClaimDispositionState,
+    ImplementationSliceId, ImplementationSliceV1, RequirementDelta, RequirementGraph,
+    RequirementId, RequirementLifecycle, SupportClaimDispositionState,
 };
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -261,7 +261,10 @@ state = "unchanged"
             .map_err(|findings| format!("unexpected findings: {findings:?}"))?;
 
         assert_eq!(transition.requirement_delta.len(), 1);
-        assert_eq!(transition.requirement_delta[0].to, RequirementLifecycle::Accepted);
+        assert_eq!(
+            transition.requirement_delta[0].to,
+            RequirementLifecycle::Accepted
+        );
         assert_eq!(
             transition.implementation_state,
             ImplementationDispositionState::Outstanding
@@ -292,7 +295,10 @@ state = "unchanged"
             }]
         );
         assert!(validated_runtime_transition(&graph, &slice).is_err());
-        assert_eq!(graph.requirements[0].lifecycle, RequirementLifecycle::Accepted);
+        assert_eq!(
+            graph.requirements[0].lifecycle,
+            RequirementLifecycle::Accepted
+        );
         Ok(())
     }
 
