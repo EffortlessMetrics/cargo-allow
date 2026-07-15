@@ -109,8 +109,9 @@ mod tests {
             std::process::id()
         ));
         assert_eq!(
-            first_symlink_component(&root, Path::new("docs/safety.md"))
-                .unwrap_or_else(|err| panic!("missing path should not be an inspection error: {err}")),
+            first_symlink_component(&root, Path::new("docs/safety.md")).unwrap_or_else(
+                |err| panic!("missing path should not be an inspection error: {err}")
+            ),
             None
         );
     }
@@ -118,17 +119,13 @@ mod tests {
     #[test]
     fn returns_first_symlink_component() {
         let root = Path::new("repo-root");
-        let result = first_symlink_component_with(
-            root,
-            Path::new("docs/link/safety.md"),
-            |path| {
-                if path.ends_with(Path::new("docs/link")) {
-                    Ok(EvidencePathComponentKind::Symlink)
-                } else {
-                    Ok(EvidencePathComponentKind::Other)
-                }
-            },
-        )
+        let result = first_symlink_component_with(root, Path::new("docs/link/safety.md"), |path| {
+            if path.ends_with(Path::new("docs/link")) {
+                Ok(EvidencePathComponentKind::Symlink)
+            } else {
+                Ok(EvidencePathComponentKind::Other)
+            }
+        })
         .unwrap_or_else(|err| panic!("simulated symlink inspection should succeed: {err}"));
 
         assert_eq!(result, Some(PathBuf::from("docs/link")));
@@ -137,20 +134,16 @@ mod tests {
     #[test]
     fn preserves_non_not_found_inspection_failure() {
         let root = Path::new("repo-root");
-        let err = first_symlink_component_with(
-            root,
-            Path::new("docs/private/safety.md"),
-            |path| {
-                if path.ends_with(Path::new("docs/private")) {
-                    Err(io::Error::new(
-                        io::ErrorKind::PermissionDenied,
-                        "fixture permission denied",
-                    ))
-                } else {
-                    Ok(EvidencePathComponentKind::Other)
-                }
-            },
-        )
+        let err = first_symlink_component_with(root, Path::new("docs/private/safety.md"), |path| {
+            if path.ends_with(Path::new("docs/private")) {
+                Err(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "fixture permission denied",
+                ))
+            } else {
+                Ok(EvidencePathComponentKind::Other)
+            }
+        })
         .err()
         .unwrap_or_else(|| panic!("permission failure should be retained"));
 
