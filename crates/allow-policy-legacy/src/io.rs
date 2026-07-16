@@ -1,9 +1,8 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
-use std::fs;
+use allow_core::{CargoAllowError, CargoAllowResult, read_text_file_capped};
 use std::path::Path;
 
 pub(crate) fn read_policy(path: &Path) -> CargoAllowResult<String> {
-    fs::read_to_string(path).map_err(|e| {
+    read_text_file_capped(path).map_err(|e| {
         CargoAllowError::new(format!(
             "failed to read legacy policy {}: {e}",
             path.display()
@@ -46,6 +45,25 @@ mod tests {
         let err = read_policy(&path).expect_err("missing policy should produce read error");
         assert!(err.to_string().contains("failed to read legacy policy"));
         assert!(err.to_string().contains(&path.display().to_string()));
+    }
+
+    #[test]
+    fn read_policy_rejects_oversized_files() {
+        let path = temp_policy_path("read-policy-oversized");
+        let oversized_len = (allow_core::SOURCE_FILE_READ_MAX_BYTES as usize).saturating_add(1);
+        let mut bytes = Vec::with_capacity(oversized_len);
+        bytes.extend_from_slice(b"policy = \"non-rust-allowlist\"\n#");
+        bytes.resize(oversized_len, b'x');
+        fs::write(&path, bytes)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("fixture write: {err}")));
+
+        let err = read_policy(&path).expect_err("oversized legacy policy should fail closed");
+        let message = err.to_string();
+        assert!(
+            message.contains("source-read limit") || message.contains("exceeds"),
+            "expected size-limit diagnostic, got: {message}"
+        );
+        let _ = fs::remove_file(&path);
     }
 
     #[test]

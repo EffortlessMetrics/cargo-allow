@@ -1,5 +1,6 @@
-use allow_core::{CargoAllowError, CargoAllowResult, Finding, FindingKind, normalize_path};
-use std::fs;
+use allow_core::{
+    CargoAllowError, CargoAllowResult, Finding, FindingKind, normalize_path, read_text_file_capped,
+};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -10,7 +11,7 @@ pub fn generated_findings_from_gitattributes(
     if !path.is_file() {
         return Ok(Vec::new());
     }
-    let text = fs::read_to_string(&path)
+    let text = read_text_file_capped(&path)
         .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))?;
     Ok(generated_findings_from_gitattributes_text(&text))
 }
@@ -224,5 +225,40 @@ malformed without tab
             Some("makefile")
         );
         assert_eq!(file_fingerprint(Path::new("")).as_deref(), None);
+    }
+
+    #[test]
+    fn generated_findings_from_gitattributes_rejects_oversized_file() {
+        let root = temp_root("gitattributes-oversized");
+        let path = root.join(".gitattributes");
+        let oversized_len = (allow_core::SOURCE_FILE_READ_MAX_BYTES as usize).saturating_add(1);
+        let mut bytes = Vec::with_capacity(oversized_len);
+        bytes.extend_from_slice(b"generated/schema.json linguist-generated=true\n#");
+        bytes.resize(oversized_len, b'g');
+        std::fs::write(&path, bytes)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write gitattributes: {err}")));
+
+        let err = generated_findings_from_gitattributes(&root)
+            .expect_err("oversized .gitattributes should fail closed");
+        let message = err.to_string();
+        assert!(
+            message.contains("source-read limit") || message.contains("exceeds"),
+            "expected size-limit diagnostic, got: {message}"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    fn temp_root(label: &str) -> PathBuf {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-legacy-{label}-{}-{stamp}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
+        root
     }
 }
