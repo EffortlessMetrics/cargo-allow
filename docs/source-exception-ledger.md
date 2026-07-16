@@ -438,9 +438,9 @@ missing evidence artifacts. It supports maintenance
 filters such as `--kind`, `--family`, `--owner`, `--classification`, `--path`,
 `--source-package`, `--allow-id`, `--status`, `--expired`, `--review-due`, `--stale`,
 `--baseline-debt`, `--missing-evidence`, `--broken-evidence`, and
-`--weak-evidence`. `--status` conflicts with the status shortcuts
-`--expired`/`--review-due`/`--stale` (pick one style); `--baseline-debt` is a
-classification filter and may still be combined with `--status`. Governed kind
+`--weak-evidence`. Status selectors `--status`, `--expired`, `--review-due`, and
+`--stale` are mutually exclusive (pick one); `--baseline-debt` is a
+classification filter and may still be combined with one status selector. Governed kind
 filters are validated up front, so a mistyped `--kind` fails closed instead of
 producing a misleading empty list. Path filtering uses normalized
 source-tree paths and includes broad glob scopes that cover the selected path.
