@@ -78,9 +78,7 @@ fn claim_boundary_docs_preserve_source_package_boundary() {
 
 #[test]
 fn manage_an_exception_guide_keeps_command_parity_and_claim_boundary() {
-    let guide = normalize_lf(include_str!(
-        "../../../docs/how-to/manage-an-exception.md"
-    ));
+    let guide = normalize_lf(include_str!("../../../docs/how-to/manage-an-exception.md"));
     let how_to_index = normalize_lf(include_str!("../../../docs/how-to/README.md"));
     let getting_started = normalize_lf(include_str!("../../../docs/getting-started.md"));
     let onboarding = normalize_lf(include_str!("../../../docs/onboarding.md"));
