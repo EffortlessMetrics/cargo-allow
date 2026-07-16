@@ -74,6 +74,26 @@ fn example_exact_candidate_package_set_matches_schema_constants() {
             .any(|v| v.as_str() == Some("not_full_local_registry_index")),
         "example must record local-registry follow-up limitation"
     );
+    let negatives = example
+        .get("negative_controls")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("negative_controls missing"));
+    let ids: Vec<&str> = negatives
+        .iter()
+        .filter_map(|v| v.get("id").and_then(serde_json::Value::as_str))
+        .collect();
+    for required in [
+        "omit_internal_crate_from_patch",
+        "workspace_path_install_rejected",
+        "package_checksum_mutation_after_inventory",
+        "injected_normalized_path_dependency",
+        "older_internal_package_version",
+    ] {
+        assert!(
+            ids.contains(&required),
+            "example receipt missing negative control {required}"
+        );
+    }
 }
 
 #[test]
