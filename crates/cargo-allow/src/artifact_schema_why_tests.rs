@@ -76,5 +76,11 @@ fn why_schema_locks_finding_outcome_and_candidates_contract() {
         ],
     );
     let next = required_schema_pointer("why", &schema, "/properties/next");
-    assert_required_fields("why next", next, &["suggested_actions", "proof_commands"]);
+    assert_required_fields(
+        "why next",
+        next,
+        &["suggested_actions", "proof_commands", "proof_plans"],
+    );
+    let proof_plan = required_schema_pointer("why", &schema, "/$defs/proof_plan");
+    assert_required_fields("why proof_plan", proof_plan, &["program", "args"]);
 }

@@ -34,12 +34,28 @@ pub fn render_why_json(report: WhyReport<'_>) -> String {
         json_string_array(report.suggested_actions)
     ));
     out.push_str(&format!(
-        "    \"proof_commands\": {}\n",
+        "    \"proof_commands\": {},\n",
         json_string_array(report.proof_commands)
     ));
+    out.push_str("    \"proof_plans\": [\n");
+    for (index, plan) in report.proof_plans.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&render_proof_plan_json(plan));
+    }
+    out.push_str("\n    ]\n");
     out.push_str("  }\n");
     out.push_str("}\n");
     out
+}
+
+fn render_proof_plan_json(plan: &crate::WhyProofPlan<'_>) -> String {
+    format!(
+        "      {{\n        \"program\": \"{}\",\n        \"args\": {}\n      }}",
+        json_escape(plan.program),
+        json_string_array(plan.args)
+    )
 }
 
 fn render_candidate_entry_json(candidate: &crate::WhyCandidateEntry<'_>) -> String {

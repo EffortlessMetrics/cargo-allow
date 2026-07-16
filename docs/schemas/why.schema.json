@@ -63,7 +63,8 @@
       "additionalProperties": false,
       "required": [
         "suggested_actions",
-        "proof_commands"
+        "proof_commands",
+        "proof_plans"
       ],
       "properties": {
         "suggested_actions": {
@@ -78,13 +79,42 @@
           "items": {
             "type": "string",
             "minLength": 1,
-            "description": "Suggested follow-up command. cargo-allow emits standalone cargo-allow commands here; it does not execute them."
+            "description": "Human projection of a proof plan for the current platform shell when paste-safe, or an explicit non-copyable argv listing. cargo-allow does not execute these strings; structured authority is next.proof_plans."
           }
+        },
+        "proof_plans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/proof_plan"
+          },
+          "description": "Authoritative program + ordered argv for each suggested follow-up. Machine consumers must use this field rather than parsing proof_commands shell text."
         }
       }
     }
   },
   "$defs": {
+    "proof_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "program",
+        "args"
+      ],
+      "properties": {
+        "program": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Executable name. why emits cargo-allow."
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ordered argv after the program. Repository-controlled values appear as single array elements and must not be shell-split."
+        }
+      }
+    },
     "claim_boundary_flag": {
       "type": "string",
       "enum": [

@@ -13,6 +13,8 @@ use crate::{
 mod why_args;
 #[path = "why_render.rs"]
 mod why_render;
+#[path = "why_shell.rs"]
+mod why_shell;
 
 pub(crate) use why_args::WhyArgs;
 use why_args::WhyFormat;

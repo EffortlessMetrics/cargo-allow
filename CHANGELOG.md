@@ -23,6 +23,10 @@ inventory without executing repository code.
 - Glob matching budgets recursive steps (`GLOB_MATCH_MAX_STEPS = 10_000`) so
   pathological `*` / `**` patterns fail closed quickly instead of
   exponential-backtracking (#1924).
+- `cargo-allow why` proof guidance is built as structured argv (`proof_plans`)
+  and rendered with platform shell quoting (or an explicit non-copyable argv
+  listing). Ambiguous outcomes emit `explain` plans for every candidate ID
+  (#2335).
 - Structured `CargoAllowErrorKind::Usage` errors now exit `2` (same class as
   Clap parse failures); policy/runtime failures remain exit `1` (#2340).
 - Filesystem inventory walks now cap recursion depth (64) and collected file

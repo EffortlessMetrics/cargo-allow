@@ -13,6 +13,13 @@ pub struct WhyCandidateEntry<'a> {
     pub mismatch_reasons: &'a [String],
 }
 
+/// Structured proof-plan argv for machine consumers of `cargo-allow.why.v1`.
+#[derive(Debug, Clone, Copy)]
+pub struct WhyProofPlan<'a> {
+    pub program: &'a str,
+    pub args: &'a [String],
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct WhyReport<'a> {
     pub inventory: InventoryContext<'a>,
@@ -21,4 +28,5 @@ pub struct WhyReport<'a> {
     pub candidate_entries: &'a [WhyCandidateEntry<'a>],
     pub suggested_actions: &'a [String],
     pub proof_commands: &'a [String],
+    pub proof_plans: &'a [WhyProofPlan<'a>],
 }

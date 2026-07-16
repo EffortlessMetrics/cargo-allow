@@ -42,6 +42,27 @@ fn render_why_json_emits_schema_id_and_candidates() {
         "cargo-allow add --kind panic --path src/lib.rs --line 10 --owner <owner> --reason \"...\" --evidence <ref> --write policy/allow.toml"
             .to_string(),
     ];
+    let add_args = [
+        "add".to_string(),
+        "--kind".to_string(),
+        "panic".to_string(),
+        "--path".to_string(),
+        "src/lib.rs".to_string(),
+        "--line".to_string(),
+        "10".to_string(),
+        "--owner".to_string(),
+        "<owner>".to_string(),
+        "--reason".to_string(),
+        "...".to_string(),
+        "--evidence".to_string(),
+        "<ref>".to_string(),
+        "--write".to_string(),
+        "policy/allow.toml".to_string(),
+    ];
+    let plans = [WhyProofPlan {
+        program: "cargo-allow",
+        args: &add_args,
+    }];
     let report = WhyReport {
         inventory: InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(12)),
         finding: &finding,
@@ -49,12 +70,59 @@ fn render_why_json_emits_schema_id_and_candidates() {
         candidate_entries: &candidates,
         suggested_actions: &actions,
         proof_commands: &proofs,
+        proof_plans: &plans,
     };
 
     let json = render_why_json(report);
-    assert!(json.contains("\"schema_id\": \"cargo-allow.why.v1\""));
-    assert!(json.contains("\"command\": \"why\""));
-    assert!(json.contains("\"id\": \"allow-near-miss\""));
-    assert!(json.contains("callee mismatch"));
-    assert!(json.contains("\"status\": \"new\""));
+    let value: serde_json::Value = serde_json::from_str(&json).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("why JSON should deserialize: {err}\n{json}"))
+    });
+    assert_eq!(
+        value
+            .pointer("/schema_id")
+            .and_then(serde_json::Value::as_str),
+        Some("cargo-allow.why.v1")
+    );
+    assert_eq!(
+        value
+            .pointer("/command")
+            .and_then(serde_json::Value::as_str),
+        Some("why")
+    );
+    assert_eq!(
+        value
+            .pointer("/candidate_entries/0/id")
+            .and_then(serde_json::Value::as_str),
+        Some("allow-near-miss")
+    );
+    assert!(
+        value
+            .pointer("/candidate_entries/0/mismatch_reasons/0")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|reason| reason.contains("callee mismatch"))
+    );
+    assert_eq!(
+        value
+            .pointer("/outcome/status")
+            .and_then(serde_json::Value::as_str),
+        Some("new")
+    );
+    assert_eq!(
+        value
+            .pointer("/next/proof_plans/0/program")
+            .and_then(serde_json::Value::as_str),
+        Some("cargo-allow")
+    );
+    assert_eq!(
+        value
+            .pointer("/next/proof_plans/0/args/3")
+            .and_then(serde_json::Value::as_str),
+        Some("--path")
+    );
+    assert_eq!(
+        value
+            .pointer("/next/proof_plans/0/args/4")
+            .and_then(serde_json::Value::as_str),
+        Some("src/lib.rs")
+    );
 }
