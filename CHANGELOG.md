@@ -8,8 +8,26 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+### Added
+
+- `cargo-allow why` explains unreceipted findings at a path/line, with human and
+  `cargo-allow.why.v1` JSON output for first-hour diagnosis before `add`.
+- `list --location-drift` status shortcut (parity with `--stale` / `--expired` /
+  `--review-due`) for reviewing drifted `last_seen` ledger rows.
+- CI MSRV job on Rust 1.85: workspace `cargo check` plus fast `cargo-allow`
+  binary package proof, so the declared `rust-version = "1.85"` is executed
+  rather than documentation-only.
+
 ### Fixed
 
+- Source-tree text reads are capped at 8 MiB (`SOURCE_FILE_READ_MAX_BYTES`)
+  across scanners, policy loaders, federation, and legacy migrate paths so a
+  single oversized file cannot unbounded-memory the scan.
+- `list` status selectors (`--status`, `--expired`, `--review-due`, `--stale`,
+  `--location-drift`) are mutually exclusive instead of silently ANDing to an
+  empty result.
+- `list` / `worklist --status` accept every `MatchStatus` value, including
+  `location_drift`.
 - Inventory reports now disclose whether source coverage is complete, scoped,
   obtained through fallback, or partial across shared report artifacts and
   schemas.
