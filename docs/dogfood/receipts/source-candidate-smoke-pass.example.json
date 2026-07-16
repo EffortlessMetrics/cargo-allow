@@ -157,7 +157,7 @@
       "id": "failed_policy_rollback_after_prune",
       "result_class": "RecoveryFailed",
       "passed": true,
-      "detail": "git restore that leaves prune allow absent is classified RecoveryFailed"
+      "detail": "empty policy after pretended restore leaves prune allow absent (RecoveryFailed)"
     }
   ],
   "limitations": [

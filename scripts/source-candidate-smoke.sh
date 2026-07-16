@@ -411,7 +411,8 @@ if allow_id in ids:
     raise SystemExit(f"expected allow {allow_id!r} absent after prune, still present")
 '
 # Baseline commit predates prune write; restore the ledger file from HEAD.
-git -C "${consumer_dir}" checkout HEAD -- policy/allow.toml
+policy_rel="${policy_path#"${consumer_dir}/"}"
+git -C "${consumer_dir}" checkout HEAD -- "${policy_rel}"
 [[ -f "${policy_path}" ]] || fail "policy rollback did not restore ${policy_path}"
 restored_list="$("${cargo_bin}" list --root "${consumer_dir}" --config "${policy_path}" --kind panic --format json)"
 printf '%s\n' "${restored_list}" | ALLOW_ID="${allow_id}" python3 -c '
@@ -679,19 +680,38 @@ PY
   fi
 
   log "negative: failed policy rollback is RecoveryFailed"
+  # Adversarial: replace restored policy with an empty ledger so list cannot
+  # see the pruned allow. Classify with the same allow-presence check used by
+  # the positive rollback step, then restore again.
+  printf '# adversarial empty policy for RecoveryFailed control\n' >"${policy_path}"
+  set +e
+  "${cargo_bin}" list --root "${consumer_dir}" --config "${policy_path}" --kind panic --format json \
+    >"${work_dir}/recovery-failed-list.json" 2>"${work_dir}/recovery-failed-list.stderr"
+  failed_restore_list_code=$?
+  set -e
   recovery_failed_class="$(
-    ALLOW_ID="${allow_id}" python3 <<'PY'
-import os
-# Adversarial: git restore claimed success but allow id is still absent.
-# Harness must classify RecoveryFailed (fail closed), never Passed.
+    ALLOW_ID="${allow_id}" LIST_PATH="${work_dir}/recovery-failed-list.json" \
+    LIST_CODE="${failed_restore_list_code}" python3 <<'PY'
+import json, os
+from pathlib import Path
 allow_id = os.environ["ALLOW_ID"]
-restored_allow_ids = set()  # forged empty restore
-if allow_id not in restored_allow_ids:
+if int(os.environ["LIST_CODE"]) != 0:
+    # Empty/malformed policy may fail list; still a failed restore posture.
+    print("RecoveryFailed")
+    raise SystemExit(0)
+report = json.loads(Path(os.environ["LIST_PATH"]).read_text(encoding="utf-8"))
+entries = report.get("allow_entries") or []
+ids = {entry.get("id") for entry in entries if isinstance(entry, dict)}
+# Same classifier as positive rollback: missing allow => RecoveryFailed.
+if allow_id not in ids:
     print("RecoveryFailed")
 else:
     print("InstrumentFailure")
 PY
   )"
+  # Restore the successful rollback state for any later inspection.
+  policy_rel="${policy_path#"${consumer_dir}/"}"
+  git -C "${consumer_dir}" checkout HEAD -- "${policy_rel}"
   recovery_failed_passed=true
   if [[ "${recovery_failed_class}" != "RecoveryFailed" ]]; then
     recovery_failed_passed=false
@@ -773,7 +793,7 @@ print(json.dumps([
         "id": "failed_policy_rollback_after_prune",
         "result_class": os.environ["RECOVERY_FAILED_CLASS"],
         "passed": os.environ["RECOVERY_FAILED_PASSED"] == "true",
-        "detail": "git restore that leaves prune allow absent is classified RecoveryFailed",
+        "detail": "empty policy after pretended restore leaves prune allow absent (RecoveryFailed)",
     },
 ]))
 PY

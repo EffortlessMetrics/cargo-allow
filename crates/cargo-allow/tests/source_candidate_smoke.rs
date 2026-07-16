@@ -41,6 +41,10 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
         SCHEMA_DOC.contains("NetworkRequired"),
         "schema must enumerate NetworkRequired for unexpected-network fails"
     );
+    assert!(
+        SCHEMA_DOC.contains("RecoveryFailed"),
+        "schema must enumerate RecoveryFailed for failed-policy-rollback fails"
+    );
     let example: serde_json::Value = serde_json::from_str(EXAMPLE_RECEIPT)
         .unwrap_or_else(|err| std::panic::panic_any(format!("example receipt json: {err}")));
     assert_eq!(
