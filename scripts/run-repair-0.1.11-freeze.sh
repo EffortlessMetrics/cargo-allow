@@ -4,12 +4,16 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
+mkdir -p target/release-repair
+log="target/release-repair/repair.log"
 
-# Restore the complete qualified policy after a connector-side partial-file
-# edit, then apply the exact review correction to the readiness receipt.
-git checkout f5ca942150045016cb1b50f3c4a7e9a5b312ee75 -- policy/allow.toml
+{
+  set -x
+  # Restore the complete qualified policy after a connector-side partial-file
+  # edit, then apply the exact review correction to the readiness receipt.
+  git checkout f5ca942150045016cb1b50f3c4a7e9a5b312ee75 -- policy/allow.toml
 
-python3 - <<'PY'
+  python3 - <<'PY'
 from pathlib import Path
 
 policy_path = Path("policy/allow.toml")
@@ -31,19 +35,20 @@ elif new not in record:
 record_path.write_text(record, encoding="utf-8", newline="\n")
 PY
 
-git rm -f scripts/run-repair-0.1.11-freeze.sh
+  git rm -f scripts/run-repair-0.1.11-freeze.sh
 
-cargo fmt --all --check
-cargo test -p cargo-allow --bins --locked
-cargo test -p cargo-allow --test published_quick_start --locked
-cargo run -p cargo-allow -- check --mode no-new \
-  --format markdown \
-  --receipt target/cargo-allow/check.receipt.json \
-  --output target/cargo-allow/check.md
-bash scripts/release-version-preflight.sh 0.1.11
+  cargo fmt --all --check
+  cargo test -p cargo-allow --bins --locked
+  cargo test -p cargo-allow --test published_quick_start --locked
+  cargo run -p cargo-allow -- check --mode no-new \
+    --format markdown \
+    --receipt target/cargo-allow/check.receipt.json \
+    --output target/cargo-allow/check.md
+  bash scripts/release-version-preflight.sh 0.1.11
 
-git config user.name "github-actions[bot]"
-git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-git add -A
-git commit -m "docs(release): reconcile final 0.1.11 review findings"
-git push origin HEAD:release/0.1.11
+  git config user.name "github-actions[bot]"
+  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+  git add -A
+  git commit -m "docs(release): reconcile final 0.1.11 review findings"
+  git push origin HEAD:release/0.1.11
+} > >(tee "${log}") 2>&1
