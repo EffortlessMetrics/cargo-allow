@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
 
-pub const REQUIREMENT_BLOCK_SCHEMA_VERSION: &str = "1.0";
+pub const REQUIREMENT_BLOCK_SCHEMA_VERSION: &str = "2.0";
 const REQUIREMENT_FENCE: &str = "```toml cargo-allow-requirements";
 const FENCE_END: &str = "```";
 
@@ -19,11 +19,26 @@ impl RequirementId {
     }
 }
 
+/// Normative status of a requirement.
+///
+/// This deliberately does not contain implementation states. A requirement may
+/// remain accepted while different implementation claims are planned,
+/// implemented, unsupported, or stale independently.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum RequirementLifecycle {
+pub enum RequirementStatus {
+    Draft,
     Accepted,
-    Implemented,
+    Deferred,
+    Superseded,
+    Rejected,
+    RemovedWithReplacement,
+}
+
+impl RequirementStatus {
+    pub fn allows_implementation_claim(self) -> bool {
+        matches!(self, Self::Accepted)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -38,7 +53,7 @@ pub struct SpecRequirement {
     pub id: RequirementId,
     pub local_id: String,
     pub generation: u32,
-    pub lifecycle: RequirementLifecycle,
+    pub status: RequirementStatus,
     pub statement: String,
     pub claim_class: RequirementClaimClass,
 }
@@ -74,7 +89,7 @@ struct RawRequirementBlock {
 struct RawRequirement {
     id: String,
     generation: u32,
-    lifecycle: RequirementLifecycle,
+    status: RequirementStatus,
     statement: String,
     claim_class: RequirementClaimClass,
 }
@@ -147,7 +162,7 @@ pub fn parse_requirement_blocks_at(
             id,
             local_id: local_id.to_string(),
             generation: requirement.generation,
-            lifecycle: requirement.lifecycle,
+            status: requirement.status,
             statement: requirement.statement,
             claim_class: requirement.claim_class,
         });
@@ -271,12 +286,12 @@ kind: spec
 # Spec
 
 ```toml cargo-allow-requirements
-schema_version = "1.0"
+schema_version = "2.0"
 
 [[requirement]]
 id = "spec-only-runtime-promotion"
 generation = 1
-lifecycle = "accepted"
+status = "accepted"
 statement = "A spec-only slice cannot promote runtime state without closure."
 claim_class = "runtime_behavior"
 ```
@@ -294,14 +309,19 @@ claim_class = "runtime_behavior"
             "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion"
         );
         assert_eq!(graph.requirements[0].generation, 1);
-        assert_eq!(
-            graph.requirements[0].lifecycle,
-            RequirementLifecycle::Accepted
-        );
+        assert_eq!(graph.requirements[0].status, RequirementStatus::Accepted);
         assert_eq!(graph.source.path.as_deref(), Some("docs/spec.md"));
         assert!(graph.source.start_line < graph.source.end_line);
         assert!(graph.source.content_identity.starts_with("fnv1a64:"));
         Ok(())
+    }
+
+    #[test]
+    fn rejects_legacy_implemented_lifecycle_shape() {
+        let legacy = SPEC
+            .replace("schema_version = \"2.0\"", "schema_version = \"1.0\"")
+            .replace("status = \"accepted\"", "lifecycle = \"implemented\"");
+        assert!(parse_requirement_blocks(&legacy).is_err());
     }
 
     #[test]
@@ -319,7 +339,7 @@ claim_class = "runtime_behavior"
     #[test]
     fn rejects_unknown_requirement_generation() {
         let result = parse_requirement_blocks(
-            &SPEC.replace("schema_version = \"1.0\"", "schema_version = \"2.0\""),
+            &SPEC.replace("schema_version = \"2.0\"", "schema_version = \"3.0\""),
         );
         assert!(result.is_err());
     }
