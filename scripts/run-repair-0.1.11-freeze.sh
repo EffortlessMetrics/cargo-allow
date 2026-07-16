@@ -104,6 +104,18 @@ Published internal crates in dependency order:
         raise SystemExit("0.1.11 release record package graph changed unexpectedly")
     record = record.replace(old, new, 1)
 record_path.write_text(record, encoding="utf-8", newline="\n")
+
+# The committed step inventory now promotes `why` to the Published 0.1.11
+# channel; keep the human guide's checked table on the same stable step ID.
+guide_path = Path("docs/getting-started.md")
+guide = guide_path.read_text(encoding="utf-8")
+old = "| `why_candidate` | Source-candidate `why` (not ordinary on Published 0.1.11) |"
+new = "| `why_published` | Published diagnosis with `cargo-allow why` |"
+if old in guide:
+    guide = guide.replace(old, new, 1)
+elif new not in guide:
+    raise SystemExit("getting-started checked step table is missing why row")
+guide_path.write_text(guide, encoding="utf-8", newline="\n")
 PY
 }
 
