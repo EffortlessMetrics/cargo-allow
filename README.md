@@ -59,6 +59,14 @@ one repo
 That is the adoption spine: make retained exceptions visible, keep new debt out,
 record CI evidence, and give humans or agents a bounded repair queue.
 
+Before the first command, pick a product channel: **Published** `0.1.10`
+(`cargo install cargo-allow --version 0.1.10 --locked`) versus **source
+candidate** (`cargo run -p cargo-allow -- …` on this checkout). The branched
+first-hour journey, install prerequisites, clean-vs-brownfield forks, and
+fixture-backed expected outputs live in
+[Getting started](docs/getting-started.md). Mechanical published-command
+registry checks remain [#2353](https://github.com/EffortlessMetrics/cargo-allow/issues/2353).
+
 ## The Problem
 
 Most repositories accumulate exceptions:
@@ -81,7 +89,7 @@ broaden.
 `cargo-allow` scans source-tree inventory and compares findings to policy
 receipts. The durable policy file is `policy/allow.toml`.
 
-Core workflows:
+Core workflows (Published `0.1.10` and source candidate):
 
 ```bash
 cargo-allow doctor
@@ -89,9 +97,14 @@ cargo-allow audit
 cargo-allow check --mode no-new
 cargo-allow diff --base origin/main
 cargo-allow list
-cargo-allow explain allow-0042
-cargo-allow why --kind panic --path src/lib.rs --line 42
+cargo-allow explain <allow-id>
 cargo-allow worklist --format json
+```
+
+Unreleased on Published `0.1.10` (source candidate / current `main` only):
+
+```bash
+cargo-allow why --kind panic --path src/lib.rs --line 42
 ```
 
 ## What cargo-allow Does Not Claim

@@ -1,11 +1,12 @@
 //! First-hour adoption proof: run the real cargo-allow binary end-to-end through
 //! the adoption path from an empty temporary repo —
-//! doctor → audit → propose → check no-new → list → explain → worklist → diff —
+//! doctor → audit → propose → check no-new → list → explain → worklist —
 //! and assert exit codes, generated files, receipts, next-step guidance, and the
 //! no-new ratchet (a new in-scope exception after baselining fails the gate).
 //!
-//! This is the product proof that cargo-allow bootstraps a policy that passes its
-//! own check and explains failures a maintainer can act on.
+//! Also proves the clean-audit branch (no `propose`), the `init` bootstrap path,
+//! and that `docs/getting-started.md` stays aligned with the checked step
+//! inventory and fixture-derived expected-output markers (#2354).
 //!
 //! Focused test: self-contained subprocess helpers (no shared `tests/support`).
 
@@ -69,6 +70,418 @@ fn run_fail(output: Output, label: &str) -> Output {
 
 fn combined(output: &Output) -> String {
     String::from_utf8_lossy(&output.stdout).into_owned() + &String::from_utf8_lossy(&output.stderr)
+}
+
+fn getting_started_doc() -> &'static str {
+    include_str!("../../../docs/getting-started.md")
+}
+
+fn step_inventory() -> &'static str {
+    include_str!("../../../docs/dogfood/fixtures/getting-started/step-inventory.toml")
+}
+
+fn expected_markers_doc() -> &'static str {
+    include_str!("../../../docs/dogfood/fixtures/getting-started/expected-markers.md")
+}
+
+/// Parse `id = "..."` rows from the committed step inventory (no extra deps).
+fn inventory_step_ids(inventory: &str) -> Vec<&str> {
+    let mut ids = Vec::new();
+    for line in inventory.lines() {
+        let trimmed = line.trim();
+        let Some(rest) = trimmed.strip_prefix("id = \"") else {
+            continue;
+        };
+        let Some(end) = rest.find('"') else {
+            continue;
+        };
+        let Some(id) = rest.get(..end) else {
+            continue;
+        };
+        ids.push(id);
+    }
+    ids
+}
+
+#[test]
+fn getting_started_documents_checked_step_inventory() {
+    let guide = getting_started_doc();
+    let inventory = step_inventory();
+    let ids = inventory_step_ids(inventory);
+    assert!(
+        !ids.is_empty(),
+        "step-inventory.toml must list at least one step id"
+    );
+    for id in &ids {
+        assert!(
+            guide.contains(id),
+            "getting-started must document step id `{id}`"
+        );
+    }
+
+    // Stable journey phrases the guide must keep for each inventory step.
+    for required in [
+        ("channel_select", "Choose a product channel"),
+        ("install_prereqs", "Rust 1.85"),
+        ("doctor_no_policy", "cargo-allow.doctor.v1"),
+        ("audit_clean", "do not manufacture baseline debt"),
+        ("audit_with_finding", "Choose ONE bootstrap path"),
+        ("bootstrap_init", "cargo-allow init"),
+        ("bootstrap_propose_preview", "omit `--write` to preview"),
+        ("bootstrap_propose_write", "propose --write"),
+        ("check_no_new_pass", "Result: passed/advisory"),
+        ("check_no_new_fail", "Result: failed"),
+        ("list_explain_worklist", "cargo-allow list"),
+        ("why_candidate", "Source-candidate diagnosis"),
+    ] {
+        assert!(
+            inventory.contains(&format!("id = \"{}\"", required.0)),
+            "inventory missing step {}",
+            required.0
+        );
+        assert!(
+            guide.contains(required.1),
+            "getting-started missing phrase for {}: {}",
+            required.0,
+            required.1
+        );
+    }
+
+    assert!(
+        guide.contains("Illustrative only"),
+        "headline allow-0042 example must be marked illustrative"
+    );
+    assert!(
+        guide.contains("how-to/manage-an-exception.md"),
+        "getting-started should route to manage-an-exception"
+    );
+}
+
+#[test]
+fn first_hour_expected_markers_match_live_renderer() {
+    let guide = getting_started_doc();
+    let markers = expected_markers_doc();
+    for required in [
+        "cargo-allow.doctor.v1",
+        "\"command\": \"doctor\"",
+        "config: not found",
+        "\"command\": \"audit\"",
+        "\"findings\": 0",
+        "\"new\": 0",
+        "\"new\": 1",
+        "\"status\": \"passed\"",
+        "\"command\": \"check\"",
+        "Result: passed/advisory",
+        "Result: failed",
+        "new: unreceipted",
+        "cargo-allow list",
+        "cargo-allow explain",
+    ] {
+        assert!(
+            markers.contains(required),
+            "expected-markers.md must list `{required}`"
+        );
+        assert!(
+            guide.contains(required),
+            "getting-started must carry fixture marker `{required}`"
+        );
+    }
+
+    // Live renderer: clean tree → doctor + clean audit markers.
+    let clean = temp_root("markers-clean");
+    write_source(&clean, "pub fn ok() -> u8 { 1 }\n");
+    let doctor = run(
+        cargo_allow()
+            .arg("doctor")
+            .arg("--root")
+            .arg(&clean)
+            .arg("--format")
+            .arg("json")
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor: {err}"))),
+        "doctor json",
+    );
+    let doctor_text = combined(&doctor);
+    assert!(
+        doctor_text.contains("cargo-allow.doctor.v1"),
+        "live doctor must emit schema_id marker"
+    );
+    assert!(
+        doctor_text.contains("\"command\":\"doctor\"") || doctor_text.contains("\"command\": \"doctor\""),
+        "live doctor must emit command marker: `{doctor_text}`"
+    );
+
+    let doctor_human = run(
+        cargo_allow()
+            .arg("doctor")
+            .arg("--root")
+            .arg(&clean)
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor human: {err}"))),
+        "doctor human",
+    );
+    assert!(
+        combined(&doctor_human).contains("config: not found"),
+        "live human doctor must emit config-not-found marker"
+    );
+
+    let audit_clean = run(
+        cargo_allow()
+            .arg("audit")
+            .arg("--root")
+            .arg(&clean)
+            .arg("--kind")
+            .arg("panic")
+            .arg("--format")
+            .arg("json")
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run audit clean: {err}"))),
+        "audit clean",
+    );
+    let audit_clean_json: serde_json::Value = serde_json::from_slice(&audit_clean.stdout)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("audit clean json: {err}")));
+    assert_eq!(
+        audit_clean_json
+            .pointer("/summary/findings")
+            .and_then(serde_json::Value::as_u64),
+        Some(0)
+    );
+    assert_eq!(
+        audit_clean_json
+            .pointer("/summary/new")
+            .and_then(serde_json::Value::as_u64),
+        Some(0)
+    );
+    drop_root(clean);
+
+    // Live renderer: brownfield → audit new=1, check pass, then fail after new debt.
+    let brown = temp_root("markers-brown");
+    write_source(
+        &brown,
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    );
+    let audit = run(
+        cargo_allow()
+            .arg("audit")
+            .arg("--root")
+            .arg(&brown)
+            .arg("--kind")
+            .arg("panic")
+            .arg("--format")
+            .arg("json")
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}"))),
+        "audit finding",
+    );
+    let audit_json: serde_json::Value = serde_json::from_slice(&audit.stdout)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("audit json: {err}")));
+    assert_eq!(
+        audit_json
+            .pointer("/summary/new")
+            .and_then(serde_json::Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        audit_json.get("status").and_then(serde_json::Value::as_str),
+        Some("passed")
+    );
+
+    let policy = brown.join("policy/allow.toml");
+    run(
+        cargo_allow()
+            .arg("propose")
+            .arg("--root")
+            .arg(&brown)
+            .arg("--kind")
+            .arg("panic")
+            .arg("--write")
+            .arg(&policy)
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}"))),
+        "propose",
+    );
+
+    let check_pass = run(
+        cargo_allow()
+            .arg("check")
+            .arg("--root")
+            .arg(&brown)
+            .arg("--config")
+            .arg(&policy)
+            .arg("--kind")
+            .arg("panic")
+            .arg("--mode")
+            .arg("no-new")
+            .arg("--format")
+            .arg("json")
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run check pass: {err}"))),
+        "check pass json",
+    );
+    let check_pass_json: serde_json::Value = serde_json::from_slice(&check_pass.stdout)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("check pass json: {err}")));
+    assert_eq!(
+        check_pass_json
+            .get("status")
+            .and_then(serde_json::Value::as_str),
+        Some("passed")
+    );
+    assert_eq!(
+        check_pass_json
+            .pointer("/summary/new")
+            .and_then(serde_json::Value::as_u64),
+        Some(0)
+    );
+
+    let check_pass_human = run(
+        cargo_allow()
+            .arg("check")
+            .arg("--root")
+            .arg(&brown)
+            .arg("--config")
+            .arg(&policy)
+            .arg("--kind")
+            .arg("panic")
+            .arg("--mode")
+            .arg("no-new")
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run check pass human: {err}"))),
+        "check pass human",
+    );
+    assert!(
+        combined(&check_pass_human).contains("Result: passed/advisory"),
+        "live passing check must emit Result: passed/advisory"
+    );
+
+    write_source(
+        &brown,
+        concat!(
+            "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+            "pub fn reload(value: Result<u8, ()>) -> u8 { value.unwrap() }\n",
+        ),
+    );
+    let check_fail = run_fail(
+        cargo_allow()
+            .arg("check")
+            .arg("--root")
+            .arg(&brown)
+            .arg("--config")
+            .arg(&policy)
+            .arg("--kind")
+            .arg("panic")
+            .arg("--mode")
+            .arg("no-new")
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run check fail: {err}"))),
+        "check fail",
+    );
+    let fail_text = combined(&check_fail);
+    assert!(
+        fail_text.contains("Result: failed"),
+        "live failing check must emit Result: failed: `{fail_text}`"
+    );
+    assert!(
+        fail_text.contains("new: unreceipted"),
+        "live failing check must emit new: unreceipted: `{fail_text}`"
+    );
+    drop_root(brown);
+}
+
+/// Clean-audit branch: doctor + zero-finding audit must succeed without propose.
+#[test]
+fn first_hour_clean_audit_branch_does_not_require_propose() {
+    let root = temp_root("clean-audit");
+    write_source(&root, "pub fn ok() -> u8 { 1 }\n");
+
+    run(
+        cargo_allow()
+            .arg("doctor")
+            .arg("--root")
+            .arg(&root)
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor: {err}"))),
+        "doctor",
+    );
+
+    let audit = run(
+        cargo_allow()
+            .arg("audit")
+            .arg("--root")
+            .arg(&root)
+            .arg("--kind")
+            .arg("panic")
+            .arg("--format")
+            .arg("json")
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}"))),
+        "audit clean",
+    );
+    let audit_json: serde_json::Value = serde_json::from_slice(&audit.stdout)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("audit json: {err}")));
+    assert_eq!(
+        audit_json
+            .pointer("/summary/new")
+            .and_then(serde_json::Value::as_u64),
+        Some(0),
+        "clean tree must not surface unreceipted panic findings"
+    );
+    assert!(
+        !root.join("policy/allow.toml").exists(),
+        "clean-audit branch must not invent a policy file"
+    );
+
+    drop_root(root);
+}
+
+/// Strict-repo bootstrap: init creates a policy that passes no-new without propose.
+#[test]
+fn first_hour_init_bootstrap_passes_no_new_without_propose() {
+    let root = temp_root("init-bootstrap");
+    write_source(&root, "pub fn ok() -> u8 { 1 }\n");
+
+    run(
+        cargo_allow()
+            .arg("init")
+            .arg("--root")
+            .arg(&root)
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run init: {err}"))),
+        "init",
+    );
+    let policy = root.join("policy/allow.toml");
+    assert!(policy.is_file(), "init must create policy/allow.toml");
+
+    let check = run(
+        cargo_allow()
+            .arg("check")
+            .arg("--root")
+            .arg(&root)
+            .arg("--config")
+            .arg(&policy)
+            .arg("--kind")
+            .arg("panic")
+            .arg("--mode")
+            .arg("no-new")
+            .arg("--format")
+            .arg("json")
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}"))),
+        "check after init",
+    );
+    let check_json: serde_json::Value = serde_json::from_slice(&check.stdout)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("check json: {err}")));
+    assert_eq!(
+        check_json.get("status").and_then(serde_json::Value::as_str),
+        Some("passed")
+    );
+    assert_eq!(
+        check_json
+            .pointer("/summary/new")
+            .and_then(serde_json::Value::as_u64),
+        Some(0)
+    );
+
+    drop_root(root);
 }
 
 #[test]

@@ -1,0 +1,94 @@
+# Checked first-hour step inventory for docs/getting-started.md (#2354).
+# Consumed by crates/cargo-allow/tests/first_hour_adoption.rs.
+# Intended for reuse by the installed-package journey (#2278).
+#
+# Fields:
+#   id            stable step id (must appear in getting-started.md)
+#   channel       published | candidate | both
+#   argv_head     first argv token after the binary (empty = docs-only gate)
+#   exit_class    success | failure | advisory_success
+#   output_id     stable renderer / artifact identity marker
+
+[[step]]
+id = "channel_select"
+channel = "both"
+argv_head = ""
+exit_class = "success"
+output_id = "Choose a product channel"
+
+[[step]]
+id = "install_prereqs"
+channel = "both"
+argv_head = ""
+exit_class = "success"
+output_id = "Rust 1.85"
+
+[[step]]
+id = "doctor_no_policy"
+channel = "published"
+argv_head = "doctor"
+exit_class = "success"
+output_id = "cargo-allow.doctor.v1"
+
+[[step]]
+id = "audit_clean"
+channel = "published"
+argv_head = "audit"
+exit_class = "advisory_success"
+output_id = "audit_clean_new_0"
+
+[[step]]
+id = "audit_with_finding"
+channel = "published"
+argv_head = "audit"
+exit_class = "advisory_success"
+output_id = "audit_finding_new_1"
+
+[[step]]
+id = "bootstrap_init"
+channel = "published"
+argv_head = "init"
+exit_class = "success"
+output_id = "created policy/allow.toml"
+
+[[step]]
+id = "bootstrap_propose_preview"
+channel = "published"
+argv_head = "propose"
+exit_class = "success"
+output_id = "propose_preview"
+
+[[step]]
+id = "bootstrap_propose_write"
+channel = "published"
+argv_head = "propose"
+exit_class = "success"
+output_id = "baseline_debt"
+
+[[step]]
+id = "check_no_new_pass"
+channel = "published"
+argv_head = "check"
+exit_class = "success"
+output_id = "check_status_passed"
+
+[[step]]
+id = "check_no_new_fail"
+channel = "published"
+argv_head = "check"
+exit_class = "failure"
+output_id = "check_status_failed"
+
+[[step]]
+id = "list_explain_worklist"
+channel = "published"
+argv_head = "list"
+exit_class = "success"
+output_id = "list_explain_worklist"
+
+[[step]]
+id = "why_candidate"
+channel = "candidate"
+argv_head = "why"
+exit_class = "success"
+output_id = "why_unreleased"

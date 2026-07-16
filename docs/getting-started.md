@@ -1,110 +1,235 @@
 # Getting Started
 
-This tutorial gets a repository from "no cargo-allow policy" to a first
-source-tree exception check.
+This tutorial is the executable first-hour journey: choose a product channel,
+verify install prerequisites, run `doctor` and `audit`, then take **one**
+bootstrap path (`init` **or** `propose`), gate with `check --mode no-new`, and
+hand off to list / explain / worklist (plus `why` on the source-candidate
+channel).
 
 `cargo-allow` scans repository files without executing project code. The steps
 below do not require Cargo metadata, compilation, rustc, Clippy, build scripts,
-proc macro expansion, or proof-tool execution.
+proc macro expansion, or proof-tool execution against the **target** repository.
 
-## 1. Install
+Executable proof for this journey lives in
+`crates/cargo-allow/tests/first_hour_adoption.rs` and the checked step inventory
+at [`docs/dogfood/fixtures/getting-started/step-inventory.toml`](dogfood/fixtures/getting-started/step-inventory.toml).
+Expected-output markers are regenerated against the just-built binary in that
+same test.
 
-Install the latest published release from crates.io:
+## 0. Choose a product channel
 
-```bash
-cargo install cargo-allow --locked
-```
+| Channel | How you invoke cargo-allow | Commands this guide treats as ordinary |
+| --- | --- | --- |
+| **Published** `0.1.10` | `cargo install cargo-allow --version 0.1.10 --locked` then `cargo-allow …` | `doctor`, `audit`, `init`, `propose`, `check`, `list`, `explain`, `worklist`, `diff`, `add`, `refresh`, `prune` |
+| **Source candidate** (this checkout / current `main`) | `cargo run -p cargo-allow -- …` | Published set **plus** unreleased surfaces such as `why` |
 
-For a pinned published release:
+Mechanical published-vs-candidate command registry enforcement is tracked in
+[#2353](https://github.com/EffortlessMetrics/cargo-allow/issues/2353). Until
+that lands, do not copy a source-candidate-only command into a Published install
+path.
+
+## 1. Install prerequisites
+
+For the `0.1.x` line:
+
+- **Rust 1.85 or newer** (workspace `rust-version`) to build or install
+  cargo-allow itself.
+- Installing from crates.io or from source may need a **C toolchain** because
+  cargo-allow's own parser dependencies compile native code.
+- Scanning a target repository still does **not** build or execute that
+  repository. Do not conflate cargo-allow's build prerequisites with its
+  no-build scan claim.
+
+Published install:
 
 ```bash
 cargo install cargo-allow --version 0.1.10 --locked
 ```
 
-Do not copy release-candidate versions into install commands until they are
-published.
+Source-candidate invoke (from this repository):
 
-## 2. Check Setup
+```bash
+cargo run -p cargo-allow -- doctor
+```
 
-Run from the repository root:
+Do not copy release-candidate crate versions into install commands until they
+are published.
+
+## 2. Check setup (`doctor`)
+
+Run from the repository root (or pass `--root`):
 
 ```bash
 cargo-allow doctor
+```
+
+Healthy output with **no policy yet** includes markers such as:
+
+```text
+config: not found; run `cargo-allow init --root "…"`
+inventory: source_tree/source_syntax
+Claim boundary: scanned source-tree/source syntax only
+```
+
+JSON identity (stable for scripts and the first-hour test):
+
+```text
+"schema_id": "cargo-allow.doctor.v1"
+"command": "doctor"
 ```
 
 `doctor` reports the source-tree root, inventory mode, policy path, scanner
 limitations, and local evidence-health diagnostics. It does not build the
 project.
 
-If you are scanning a source snapshot or running from outside the repository
-root, pass the root explicitly:
-
-```bash
-cargo-allow doctor --root path/to/source-tree
-```
-
-## 3. Audit Current Exceptions
-
-Run:
+## 3. Audit current exceptions
 
 ```bash
 cargo-allow audit
 ```
 
-The audit shows syntax-visible exception surfaces such as unsafe syntax,
-panic-family calls/macros, indexing/slicing, lint suppressions, non-Rust tracked
-files, stale policy entries, expired entries, broad selectors, baseline debt,
-and evidence-health issues.
+`audit` is advisory. It surfaces syntax-visible exception surfaces (unsafe,
+panic-family, indexing/slicing, lint suppressions, non-Rust tracked files,
+stale/expired policy rows, broad selectors, `baseline_debt`, and evidence-health
+issues) without failing the process for unreceipted findings alone.
+
+### Branch A — clean / zero findings
+
+When the audit summary shows no findings (JSON markers including
+`"command": "audit"`, `"findings": 0`, and `"new": 0`), **do not manufacture baseline debt**.
+Wire CI later with `check --mode no-new` only after you deliberately create a
+policy (`init` for a strict empty ledger, or keep scanning advisory until you
+need a gate).
+
+### Branch B — retained findings
+
+Continue to step 4 and choose **one** bootstrap path. Fixture markers for one
+unreceipted finding include `"command": "audit"`, `"new": 1`, and
+`"status": "passed"`.
 
 The claim is scoped to scanned source-tree inventory. It is not a proof that no
 exception exists outside the syntax-visible surface cargo-allow scanned.
 
-## 4. Create a Policy
+## 4. Choose ONE bootstrap path
 
-For a small or strict repository, start with a starter policy:
+```text
+Choose ONE bootstrap path:
+- init: small/strict repository (starter ledger, usually empty allows)
+- propose: existing repository with retained debt (preview, then reviewed write)
+```
+
+### `init` — small / strict repository
 
 ```bash
 cargo-allow init --root .
 ```
 
-For an existing repository with historical exceptions, adopt no-new-debt first:
+Creates `policy/allow.toml` with workspace defaults and no generated debt.
+Useful when the tree is clean or you want to receipt findings one-by-one with
+`add` later.
+
+### `propose` — existing debt (preview, then write)
+
+Preview only (does not write):
+
+```bash
+cargo-allow propose
+```
+
+Persist a reviewed candidate:
 
 ```bash
 cargo-allow propose --write policy/allow.toml
 ```
 
-Generated baseline entries are intentionally uncomfortable. Treat
-`classification = "baseline_debt"` as a queue for review, narrowing, evidence,
-or removal. Do not convert generated debt into approval just to pass CI.
+Generated entries use `classification = "baseline_debt"`. Treat that as a queue
+for review, narrowing, evidence, or removal. Do not convert generated debt into
+approval just to pass CI.
 
-## 5. Run the No-New Check
+`check` needs a policy path (default discovery or `--config`). Running
+`check --mode no-new` with no policy fails closed and tells you to `init` or
+pass `--config`.
 
-Run:
+## 5. Run the no-new check
 
 ```bash
 cargo-allow check --mode no-new
 ```
 
-A passing no-new check means:
+Passing baseline (after `propose --write` or an empty `init` ledger with no new
+debt) includes:
 
 ```text
-No new unreceipted findings were found in scanned source-tree inventory.
+Result: passed/advisory
 ```
 
-It does not mean the project is safe, buildable, type-checked, or free of all
-possible exceptions.
+JSON markers: `"command": "check"`, `"status": "passed"`, and summary `"new": 0`.
 
-## 6. Manage one exception
+Failing after one new in-scope exception includes:
+
+```text
+new: unreceipted …
+Result: failed
+```
+
+JSON marker: `"status": "failed"`.
+
+A passing no-new check means no new unreceipted findings were found in scanned
+source-tree inventory. It does not mean the project is safe, buildable,
+type-checked, or free of all possible exceptions.
+
+## 6. Understand and repair
 
 When a check failure or audit finding needs a deliberate decision, follow the
 issue-first lifecycle in [Manage an exception](how-to/manage-an-exception.md):
-understand the finding (`list` / `explain` / `why` / `worklist`), decide whether
-policy is appropriate, preview then apply mutations, repair evidence or drift,
-and verify with no-new / diff proof on the final head.
 
-## Minimal Policy Entry
+| Intent | Command | Preview vs write |
+| --- | --- | --- |
+| create a strict starter policy | `init` | writes `policy/allow.toml` (use only when chosen in step 4) |
+| generate a reviewed baseline candidate | `propose` | omit `--write` to preview; `--write <path>` to persist |
+| receipt one deliberate finding | `add` | `--dry-run` preview; `--write` apply |
+| refresh drift for one selected ID | `refresh --allow-id <id>` | `--dry-run` preview; omit dry-run to apply |
+| remove selected stale entries | `prune` | `--dry-run` preview; omit dry-run to apply |
+| repair the source instead of policy | edit code, then rerun `check` | no policy mutation |
 
-Retained exceptions should be owned, scoped, evidenced, and reviewable:
+Published-channel diagnosis:
+
+```bash
+cargo-allow list
+cargo-allow explain <allow-id>
+cargo-allow worklist --format json
+```
+
+Source-candidate diagnosis (unreleased on Published `0.1.10`):
+
+```bash
+cargo-allow why --kind panic --path src/lib.rs --line 1
+```
+
+## Terminology (first use)
+
+- **`baseline_debt`**: generated adoption classification; a review queue, not
+  approval.
+- **selector / structural identity**: how a ledger row matches a syntax-visible
+  finding (AST kind, path, fingerprints) rather than a fragile line-only guess.
+- **`review_after` / `expires`**: live lifecycle thresholds; due or expired rows
+  surface in `list` / `worklist` / check summaries.
+- **stale vs location drift**: unused or unmatched receipts versus matched
+  findings whose `last_seen` location moved.
+- **evidence reference**: `doc:`, `test:`, `issue:`, … pointers checked for
+  presence or reported as traceability without running external tools.
+- **occurrence headroom**: how many matching findings a receipt may still cover;
+  prefer narrowing or source repair over silently widening.
+
+More detail: [source-exception-ledger.md](source-exception-ledger.md).
+
+## Policy entry shape
+
+**Illustrative only** — the `allow-0042` / `crates/parser/src/span.rs` example
+below is not a runnable path in this repository. For a live bootstrap that
+creates a real allow ID, run the first-hour test fixture
+(`crates/cargo-allow/tests/first_hour_adoption.rs`) or follow
+[Manage an exception](how-to/manage-an-exception.md) against your own tree.
 
 ```toml
 [[allow]]
@@ -132,11 +257,31 @@ Local-file evidence such as `doc:`, `spec:`, `adr:`, `ripr:`,
 references such as `test:`, `issue:`, `pr:`, and `legacy-policy:` are reported
 without running tools or contacting services.
 
-## Next Workflows
+## Next workflows
 
-- Explain an entry: `cargo-allow explain allow-0042`
-- List policy entries: `cargo-allow list`
 - Review a pull request: `cargo-allow diff --base origin/main`
 - Generate agent work: `cargo-allow worklist --format json`
 - Read claim boundaries: [claim-boundaries.md](claim-boundaries.md)
 - Read the ledger model: [source-exception-ledger.md](source-exception-ledger.md)
+- Channel synchronization follow-up: [#2353](https://github.com/EffortlessMetrics/cargo-allow/issues/2353)
+
+## Checked step inventory
+
+Stable step IDs shared with
+[`step-inventory.toml`](dogfood/fixtures/getting-started/step-inventory.toml)
+and `crates/cargo-allow/tests/first_hour_adoption.rs` (consumable by #2278):
+
+| Step ID | Stage |
+| --- | --- |
+| `channel_select` | Choose published vs source-candidate channel |
+| `install_prereqs` | Rust 1.85+ / C toolchain for installing cargo-allow |
+| `doctor_no_policy` | Healthy doctor with no policy yet |
+| `audit_clean` | Clean audit; no manufactured baseline debt |
+| `audit_with_finding` | Audit with retained findings → bootstrap choice |
+| `bootstrap_init` | Strict `init` path |
+| `bootstrap_propose_preview` | `propose` without `--write` |
+| `bootstrap_propose_write` | `propose --write` baseline debt |
+| `check_no_new_pass` | Passing baseline no-new check |
+| `check_no_new_fail` | Failing no-new after new debt |
+| `list_explain_worklist` | Published diagnosis commands |
+| `why_candidate` | Source-candidate `why` (not ordinary on Published 0.1.10) |

@@ -132,6 +132,18 @@ fn manage_an_exception_guide_keeps_command_parity_and_claim_boundary() {
         "getting-started should route to manage-an-exception"
     );
     assert!(
+        getting_started.contains("Choose a product channel"),
+        "getting-started should require channel selection before first commands"
+    );
+    assert!(
+        getting_started.contains("Choose ONE bootstrap path"),
+        "getting-started should present init and propose as alternatives"
+    );
+    assert!(
+        getting_started.contains("Illustrative only"),
+        "getting-started must not present allow-0042 as a runnable repo example"
+    );
+    assert!(
         onboarding.contains("how-to/manage-an-exception.md"),
         "onboarding should route to manage-an-exception"
     );

@@ -10,6 +10,11 @@ inventory without executing repository code.
 
 ### Added
 
+- Branched, executable first-hour journey in `docs/getting-started.md` with
+  published-vs-candidate channel selection, install prerequisites, clean vs
+  brownfield forks, `init`/`propose` alternatives, policy command map, fixture
+  markers, and a checked step inventory shared with
+  `first_hour_adoption` tests (#2354).
 - `cargo-allow why` explains unreceipted findings at a path/line, with human and
   `cargo-allow.why.v1` JSON output for first-hour diagnosis before `add`.
 - `list --location-drift` status shortcut (parity with `--stale` / `--expired` /
