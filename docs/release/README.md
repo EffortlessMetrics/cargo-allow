@@ -29,7 +29,7 @@ That script:
 1. runs `cargo package --workspace --locked`
 2. asserts every packaged crate `Cargo.toml` has no `path =` dependencies
 3. installs `cargo-allow` into an isolated root after packaging succeeded
-4. runs `--version`, `doctor`, and core `--help` checks
+4. runs `--version`, `doctor`, and `check`/`list`/`why` `--help` checks
 5. writes `target/package-candidate-smoke/package-candidate-smoke.receipt.txt`
 
 Post-publication registry install remains
