@@ -8,6 +8,27 @@ fn argv(items: Vec<&str>) -> Vec<String> {
 }
 
 #[test]
+fn clap_parses_worklist_location_drift_status() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "worklist",
+        "--status",
+        "location_drift",
+    ]))
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("CLI should accept location_drift status: {err}"))
+    });
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::Worklist(WorklistArgs {
+            status: Some(status),
+            ..
+        })) if status == "location_drift"
+    ));
+}
+
+#[test]
 fn clap_parses_worklist_json_output() {
     let parsed = CargoAllowCli::try_parse_from(argv(vec![
         "cargo-allow",

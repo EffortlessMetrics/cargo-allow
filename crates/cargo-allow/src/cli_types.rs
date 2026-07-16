@@ -1,3 +1,4 @@
+use allow_core::MatchStatus;
 use allow_inventory::{Inventory, InventoryCompleteness, InventorySource};
 use clap::{Args, ValueEnum};
 use std::path::PathBuf;
@@ -7,6 +8,62 @@ pub(crate) struct RootArgs {
     /// Source tree root. Defaults to the nearest git root, then current directory.
     #[arg(long)]
     pub(crate) root: Option<PathBuf>,
+}
+
+/// Parse a `--status` CLI value against the full [`MatchStatus`] vocabulary.
+///
+/// Kept in one place so list and worklist cannot drift away from scanner statuses
+/// such as `location_drift`.
+pub(crate) fn parse_match_status_arg(value: &str) -> Result<String, String> {
+    if MatchStatus::ALL
+        .iter()
+        .any(|status| status.as_str() == value)
+    {
+        return Ok(value.to_string());
+    }
+    let supported = MatchStatus::ALL
+        .iter()
+        .map(|status| status.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
+    Err(format!(
+        "unknown status `{value}`; possible values: {supported}"
+    ))
+}
+
+#[cfg(test)]
+mod match_status_arg_tests {
+    use super::*;
+
+    #[test]
+    fn parse_match_status_arg_accepts_every_match_status() {
+        for status in MatchStatus::ALL {
+            let parsed = parse_match_status_arg(status.as_str()).unwrap_or_else(|err| {
+                std::panic::panic_any(format!(
+                    "status `{}` should be accepted: {err}",
+                    status.as_str()
+                ))
+            });
+            assert_eq!(parsed, status.as_str());
+        }
+    }
+
+    #[test]
+    fn parse_match_status_arg_accepts_location_drift() {
+        assert_eq!(
+            parse_match_status_arg("location_drift").as_deref(),
+            Ok("location_drift")
+        );
+    }
+
+    #[test]
+    fn parse_match_status_arg_rejects_unknown() {
+        let err = parse_match_status_arg("not_a_status")
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("unknown status should fail closed"));
+        assert!(err.contains("unknown status `not_a_status`"));
+        assert!(err.contains("location_drift"));
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
