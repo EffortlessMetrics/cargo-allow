@@ -168,6 +168,15 @@ PY
   git checkout origin/main -- .github/workflows/ci.yml
   patch_release_oracle
 
+  # `cargo package` deliberately rejects dirty trees. Commit this throwaway
+  # detached merge so every package and installed-smoke assertion is against an
+  # exact immutable candidate. The same merge is recreated on the writer branch
+  # after qualification succeeds.
+  git add -A
+  git commit -m "test(release): temporary exact 0.1.11 qualification tree"
+  qualification_commit="$(git rev-parse HEAD)"
+  echo "qualification_commit=${qualification_commit}"
+
   cargo fmt --all --check
   cargo clippy --workspace --all-targets -- -D warnings
   cargo test --workspace --locked
@@ -190,7 +199,6 @@ PY
 
   # Recreate the exact qualified merge on the writer branch, remove the staging
   # wrapper, and push an up-to-date mergeable candidate.
-  git merge --abort || true
   git checkout "${branch}"
   resolve_main_merge
   patch_release_oracle
