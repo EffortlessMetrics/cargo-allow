@@ -123,12 +123,14 @@ PY
   echo "qualification_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "branch_head=${branch_head}"
 
-  # Validate the exact tree GitHub would merge: current release head plus the
-  # current main commit (including #2374 SourceCandidateSmoke work).
-  git fetch origin refs/pull/2376/merge
-  merge_sha="$(git rev-parse FETCH_HEAD)"
-  echo "merge_ref_sha=${merge_sha}"
-  git checkout --detach "${merge_sha}"
+  # Build the merge candidate directly from the current writer head and current
+  # main. Connector-written commits do not always refresh refs/pull/*/merge, so
+  # the synthetic PR ref is not an acceptable qualification authority here.
+  git fetch origin main
+  main_head="$(git rev-parse origin/main)"
+  echo "main_head=${main_head}"
+  git checkout --detach "${branch_head}"
+  git merge --no-commit --no-ff origin/main
 
   # Remove the one-shot staging wrapper from the qualification tree. ci.yml is
   # restored from current main so the tested tree matches the post-cleanup PR.
@@ -159,6 +161,7 @@ PY
   # Apply the identical release-oracle correction to the writer branch, remove
   # this staging wrapper, and restore current main CI. The resulting tree is the
   # one qualified above.
+  git merge --abort || true
   git checkout "${branch}"
   patch_release_oracle
   git rm -f scripts/run-repair-0.1.11-freeze.sh
