@@ -7,12 +7,10 @@ use std::path::Path;
 
 const SPEC_PATH: &str = "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md";
 const SLICE_PATH: &str = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml";
-const SPEC: &str = include_str!(
-    "../../../docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"
-);
-const SLICE: &str = include_str!(
-    "../../../.allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
-);
+const SPEC: &str =
+    include_str!("../../../docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md");
+const SLICE: &str =
+    include_str!("../../../.allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml");
 
 #[test]
 fn self_hosted_runtime_promotion_sources_parse_and_remain_outstanding() -> Result<(), String> {
