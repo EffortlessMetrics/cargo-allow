@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/source-candidate-smoke-receipt.v1.schema.json",
+  "title": "cargo-allow SourceCandidateSmokeReceipt v1",
+  "description": "Release harness receipt for an installed-binary first-hour journey against a temporary consumer repository. Not a cargo-allow CLI product artifact.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "result",
+    "claim_boundary",
+    "candidate",
+    "environment",
+    "installed_binary",
+    "journey",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "schema_id": {
+      "const": "cargo-allow.source-candidate-smoke-receipt.v1"
+    },
+    "tool": { "const": "cargo-allow" },
+    "result": {
+      "type": "string",
+      "enum": [
+        "Passed",
+        "ProductFailure",
+        "MissingAsset",
+        "StaleCandidate",
+        "MalformedArtifact",
+        "OmittedStep",
+        "InstrumentFailure",
+        "TimedOut",
+        "Cancelled",
+        "Unsupported",
+        "Partial"
+      ]
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace_version",
+        "package_set_provenance",
+        "install_method"
+      ],
+      "properties": {
+        "workspace_version": { "type": "string", "minLength": 1 },
+        "git_head": { "type": ["string", "null"] },
+        "package_set_provenance": { "type": "string", "minLength": 1 },
+        "install_method": {
+          "type": "string",
+          "enum": [
+            "cargo_install_path",
+            "cargo_install_crate",
+            "cargo_install_registry",
+            "prebuilt_override"
+          ]
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "arch", "network_posture"],
+      "properties": {
+        "os": { "type": "string" },
+        "arch": { "type": "string" },
+        "rustc_version": { "type": ["string", "null"] },
+        "cargo_version": { "type": ["string", "null"] },
+        "network_posture": { "type": "string" }
+      }
+    },
+    "installed_binary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version_output"],
+      "properties": {
+        "version_output": { "type": "string", "minLength": 1 },
+        "path_redacted": { "type": "boolean" }
+      }
+    },
+    "journey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixture_generation",
+        "steps_expected",
+        "steps_executed"
+      ],
+      "properties": {
+        "fixture_generation": { "type": "string" },
+        "steps_expected": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "steps_executed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "exit_code"],
+            "properties": {
+              "id": { "type": "string" },
+              "exit_code": { "type": "integer" },
+              "artifact_schema_id": { "type": ["string", "null"] }
+            }
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

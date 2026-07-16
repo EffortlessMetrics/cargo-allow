@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/exact-candidate-package-set.v1.schema.json",
+  "title": "cargo-allow ExactCandidatePackageSet v1",
+  "description": "Release harness receipt proving the ten candidate crates package and resolve together via Cargo [patch.crates-io] against extracted .crate trees. Not a cargo-allow CLI product artifact.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "result",
+    "claim_boundary",
+    "candidate",
+    "environment",
+    "package_set",
+    "isolation",
+    "install",
+    "negative_controls",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "schema_id": {
+      "const": "cargo-allow.exact-candidate-package-set.v1"
+    },
+    "tool": { "const": "cargo-allow" },
+    "result": {
+      "type": "string",
+      "enum": [
+        "Passed",
+        "PackageMissing",
+        "PackageChecksumMismatch",
+        "InternalVersionConflict",
+        "WorkspacePathLeak",
+        "SourceFallbackDetected",
+        "ManifestMalformed",
+        "CandidateStale",
+        "UnsupportedCargoBehavior",
+        "InstrumentFailure",
+        "TimedOut",
+        "Cancelled"
+      ]
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace_version", "crate_set_schema_id", "git_head"],
+      "properties": {
+        "workspace_version": { "type": "string", "minLength": 1 },
+        "crate_set_schema_id": {
+          "const": "cargo-allow.candidate-crate-set.v1"
+        },
+        "git_head": { "type": ["string", "null"] }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "arch", "network_posture", "isolation_mechanism"],
+      "properties": {
+        "os": { "type": "string" },
+        "arch": { "type": "string" },
+        "rustc_version": { "type": ["string", "null"] },
+        "cargo_version": { "type": ["string", "null"] },
+        "network_posture": { "type": "string" },
+        "isolation_mechanism": {
+          "type": "string",
+          "enum": [
+            "patch_crates_io_extracted_packages",
+            "local_registry",
+            "directory_source_replacement"
+          ]
+        }
+      }
+    },
+    "package_set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["crates", "order"],
+      "properties": {
+        "order": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 10,
+          "maxItems": 10
+        },
+        "crates": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "version",
+              "crate_file",
+              "sha256",
+              "size_bytes",
+              "extracted_dir",
+              "no_path_deps"
+            ],
+            "properties": {
+              "name": { "type": "string" },
+              "version": { "type": "string" },
+              "crate_file": { "type": "string" },
+              "sha256": { "type": "string", "minLength": 64, "maxLength": 64 },
+              "size_bytes": { "type": "integer", "minimum": 1 },
+              "extracted_dir": { "type": "string" },
+              "no_path_deps": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "isolation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fresh_cargo_home",
+        "install_from_extracted_package",
+        "internal_deps_patched",
+        "workspace_paths_absent"
+      ],
+      "properties": {
+        "fresh_cargo_home": { "type": "boolean" },
+        "install_from_extracted_package": { "type": "boolean" },
+        "internal_deps_patched": { "type": "boolean" },
+        "workspace_paths_absent": { "type": "boolean" },
+        "source_checkout_denied": { "type": "boolean" }
+      }
+    },
+    "install": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "version_output", "exit_code"],
+      "properties": {
+        "method": {
+          "const": "cargo_install_path_extracted_with_patch"
+        },
+        "version_output": { "type": "string" },
+        "exit_code": { "type": "integer" }
+      }
+    },
+    "negative_controls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "result_class", "passed"],
+        "properties": {
+          "id": { "type": "string" },
+          "result_class": { "type": "string" },
+          "passed": { "type": "boolean" },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
