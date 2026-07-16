@@ -5,8 +5,9 @@
 //! ledger-resolvable graph links, active-goal TOML references, support-tier
 //! claim/proof fields, and the first bounded requirement/implementation-slice
 //! invariant. Normative requirement status and implementation-claim status are
-//! intentionally independent. The module does not execute proof commands or
-//! affect default cargo-allow behavior.
+//! intentionally independent; compatibility accepts the old field name only
+//! when its value remains a normative status. The module does not execute proof
+//! commands or affect default cargo-allow behavior.
 
 mod active_goal;
 mod config;
