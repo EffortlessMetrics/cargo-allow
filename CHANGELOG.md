@@ -23,6 +23,8 @@ inventory without executing repository code.
 - Glob matching budgets recursive steps (`GLOB_MATCH_MAX_STEPS = 10_000`) so
   pathological `*` / `**` patterns fail closed quickly instead of
   exponential-backtracking (#1924).
+- Structured `CargoAllowErrorKind::Usage` errors now exit `2` (same class as
+  Clap parse failures); policy/runtime failures remain exit `1` (#2340).
 - Filesystem inventory walks now cap recursion depth (64) and collected file
   entries (250_000). Cap hits record skip diagnostics and mark completeness
   partial instead of unbounded stack/memory growth (#1917).

@@ -4,6 +4,24 @@
 structured `kind()` and human-readable message. Downstream tooling should
 branch on the code or kind, not on rendered message text.
 
+## Process exit codes
+
+The `cargo-allow` binary maps failures to process exit codes as follows:
+
+| Exit | Meaning |
+| --- | --- |
+| `0` | Successful command. |
+| `1` | Policy/check/diff gate failure, or runtime / configuration / validation / IO / invariant failure. |
+| `2` | Operator invocation / usage failure: Clap parse errors, or structured `CargoAllowErrorKind::Usage` (`E0001_USAGE`). |
+
+Exit `2` means the invocation was wrong (bad flags, conflicting options, missing
+required arguments). It does **not** mean a policy violation or an internal
+instrument problem. Exit codes are chosen from the structured error kind (or by
+Clap before `main`), never by matching message text.
+
+Policy-gate failures in `check` / `diff` still exit `1` from those command
+handlers. Structured usage errors that reach `main` share exit `2` with Clap.
+
 ## Registry
 
 | Code | Kind | Meaning |

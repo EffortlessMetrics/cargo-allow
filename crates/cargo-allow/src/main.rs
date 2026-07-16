@@ -15,6 +15,7 @@ mod doctor;
 mod error_report;
 mod evidence_inventory;
 mod evidence_render;
+mod exit_code;
 mod explain;
 mod federation_doctor;
 mod federation_report;
@@ -40,12 +41,11 @@ pub(crate) use command_support::*;
 fn main() {
     if let Err(err) = cli::run() {
         error_report::report_cli_error(&err);
-        // Exit 1 for runtime/validation failures. Clap usage errors are
-        // handled by clap internally (exit 2) and never reach here.
-        // Policy-violation exits (check/diff gate failures) call
-        // process::exit(1) directly in their command handlers.
-        // Structured Usage → exit 2 is tracked separately in #2340.
-        process::exit(1);
+        // Clap usage errors exit 2 before reaching here. Structured
+        // `CargoAllowErrorKind::Usage` errors use the same exit code via
+        // `exit_code::exit_code_for_error`. Policy-gate failures in check/diff
+        // still call `process::exit(1)` directly in their handlers.
+        process::exit(exit_code::exit_code_for_error(&err));
     }
 }
 

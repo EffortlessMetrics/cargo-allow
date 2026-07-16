@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_policy::{render_policy, validate_policy};
 
 use crate::{MutationLock, emit_stderr_text, write_file_no_overwrite};
@@ -32,12 +32,14 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
             load_repo_policy_migration_config(args.root.root.as_deref(), repo_policy)?
         }
         (Some(_), Some(_)) => {
-            return Err(CargoAllowError::new(
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
                 "pass either --from or --repo-policy, not both",
             ));
         }
         (None, None) => {
-            return Err(CargoAllowError::new(
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
                 "pass --from <file> or --repo-policy <dir>",
             ));
         }
