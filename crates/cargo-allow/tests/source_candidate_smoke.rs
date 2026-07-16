@@ -121,7 +121,8 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
         "unexpected-network control must classify NetworkRequired"
     );
     let recovery_failed = negatives.iter().find(|v| {
-        v.get("id").and_then(serde_json::Value::as_str) == Some("failed_policy_rollback_after_prune")
+        v.get("id").and_then(serde_json::Value::as_str)
+            == Some("failed_policy_rollback_after_prune")
     });
     assert_eq!(
         recovery_failed
