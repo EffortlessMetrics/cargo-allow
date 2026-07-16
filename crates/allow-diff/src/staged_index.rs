@@ -1,6 +1,4 @@
-use allow_core::{
-    CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult,
-};
+use allow_core::{CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -80,10 +78,7 @@ pub struct StagedRepositorySnapshot {
 pub enum StagedPathRead {
     Missing,
     Regular(Vec<u8>),
-    Unsupported {
-        mode: String,
-        kind: StagedEntryKind,
-    },
+    Unsupported { mode: String, kind: StagedEntryKind },
 }
 
 pub fn staged_repository_snapshot(
@@ -387,11 +382,9 @@ fn parse_change_status(text: &str) -> CargoAllowResult<(StagedPathStatus, Option
         if digits.is_empty() {
             None
         } else {
-            Some(
-                digits
-                    .parse::<u8>()
-                    .map_err(|source| malformed_git("similarity score is malformed").with_cause(&source))?,
-            )
+            Some(digits.parse::<u8>().map_err(|source| {
+                malformed_git("similarity score is malformed").with_cause(&source)
+            })?)
         }
     } else {
         None
@@ -489,14 +482,15 @@ fn is_full_oid(value: &str) -> bool {
 }
 
 fn is_full_or_zero_oid(value: &str) -> bool {
-    is_full_oid(value)
-        || (matches!(value.len(), 40 | 64) && value.bytes().all(|byte| byte == b'0'))
+    is_full_oid(value) || (matches!(value.len(), 40 | 64) && value.bytes().all(|byte| byte == b'0'))
 }
 
 fn ascii_field(bytes: &[u8], name: &str) -> CargoAllowResult<String> {
     std::str::from_utf8(bytes)
         .map(str::to_string)
-        .map_err(|source| malformed_git(format!("Git returned a non-UTF-8 {name}")).with_cause(&source))
+        .map_err(|source| {
+            malformed_git(format!("Git returned a non-UTF-8 {name}")).with_cause(&source)
+        })
 }
 
 fn host_path_from_raw(raw_path: &[u8]) -> Option<PathBuf> {
