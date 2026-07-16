@@ -114,7 +114,8 @@ jobs:
         run: cargo test -p cargo-allow --tests --locked
       - name: Full workspace proof union
         run: cargo test --workspace --locked
-      - run: cargo test --doc --workspace      - run: cargo doc --workspace --no-deps
+      - run: cargo test --doc --workspace
+      - run: cargo doc --workspace --no-deps
         env:
           RUSTDOCFLAGS: -D warnings
       - run: cargo run -p cargo-allow -- audit --format json --output target/cargo-allow/audit.json
