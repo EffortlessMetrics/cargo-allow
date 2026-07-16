@@ -34,9 +34,10 @@ pub use doc_artifacts::{
 };
 pub use implementation_slice::{
     EvidenceDisposition, EvidenceDispositionState, IMPLEMENTATION_SLICE_SCHEMA_VERSION,
-    ImplementationDisposition, ImplementationDispositionState, ImplementationSliceClass,
-    ImplementationSliceId, ImplementationSliceV1, RequirementDelta, SupportClaimDisposition,
-    SupportClaimDispositionState, parse_implementation_slice, parse_implementation_slice_at,
+    ImplementationClaim, ImplementationClaimStatus, ImplementationSliceClass,
+    ImplementationSliceId, ImplementationSliceV1, RequirementDelta, RequirementStatusChange,
+    SupportClaimDisposition, SupportClaimDispositionState, parse_implementation_slice,
+    parse_implementation_slice_at,
 };
 pub use profile_resolution::{
     ALLOW_CONFIG_REL_PATH, ProfileConfigProvenance, ResolvedProfileConfig, allow_profile_rel_path,
@@ -44,7 +45,7 @@ pub use profile_resolution::{
 };
 pub use requirement::{
     REQUIREMENT_BLOCK_SCHEMA_VERSION, RequirementClaimClass, RequirementGraph, RequirementId,
-    RequirementLifecycle, RequirementSource, SpecRequirement, parse_requirement_blocks,
+    RequirementSource, RequirementStatus, SpecRequirement, parse_requirement_blocks,
     parse_requirement_blocks_at,
 };
 pub use requirement_adapter::{
