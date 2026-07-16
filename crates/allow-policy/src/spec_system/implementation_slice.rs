@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use super::{RequirementId, RequirementLifecycle};
+use super::{RequirementId, RequirementStatus};
 
-pub const IMPLEMENTATION_SLICE_SCHEMA_VERSION: &str = "1.0";
+pub const IMPLEMENTATION_SLICE_SCHEMA_VERSION: &str = "2.0";
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -26,15 +26,19 @@ pub enum ImplementationSliceClass {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum ImplementationDispositionState {
+pub enum ImplementationClaimStatus {
     Outstanding,
+    Partial,
     Implemented,
+    Unsupported,
+    NotApplicable,
+    Removed,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ImplementationDisposition {
-    pub state: ImplementationDispositionState,
+pub struct ImplementationClaim {
+    pub status: ImplementationClaimStatus,
     #[serde(default)]
     pub seams: Vec<String>,
 }
@@ -69,6 +73,18 @@ pub struct SupportClaimDisposition {
     pub claim: Option<String>,
 }
 
+/// Optional normative change for a requirement referenced by a slice.
+///
+/// Most behavior slices merely reference an already accepted requirement and
+/// therefore omit this object. When present, it describes a real normative
+/// status transition and cannot be a no-op.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RequirementStatusChange {
+    pub from: RequirementStatus,
+    pub to: RequirementStatus,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RequirementDelta {
@@ -76,8 +92,7 @@ pub struct RequirementDelta {
     pub requirement_generation: u32,
     pub runtime: bool,
     #[serde(default)]
-    pub from: Option<RequirementLifecycle>,
-    pub to: RequirementLifecycle,
+    pub status_change: Option<RequirementStatusChange>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -91,7 +106,7 @@ pub struct ImplementationSliceV1 {
     pub change_class: ImplementationSliceClass,
     pub basis: String,
     pub requirement_delta: Vec<RequirementDelta>,
-    pub implementation: ImplementationDisposition,
+    pub implementation_claim: ImplementationClaim,
     pub evidence: EvidenceDisposition,
     pub support_claim: SupportClaimDisposition,
     #[serde(default)]
@@ -188,6 +203,17 @@ fn validate_slice_structure(
                 ),
             ));
         }
+        if let Some(change) = &delta.status_change {
+            if change.from == change.to {
+                return Err(invalid_slice(
+                    path,
+                    format!(
+                        "requirement {} status_change must describe a real normative transition",
+                        delta.requirement_id.as_str()
+                    ),
+                ));
+            }
+        }
         if !seen.insert(delta.requirement_id.clone()) {
             return Err(invalid_slice(
                 path,
@@ -215,7 +241,7 @@ mod tests {
     use super::*;
 
     const SLICE: &str = r#"
-schema_version = "1.0"
+schema_version = "2.0"
 id = "cargo-allow.slice.self-hosted-runtime-promotion.v1"
 generation = 1
 source_issue = "issue:2206"
@@ -232,10 +258,9 @@ forbidden_seams = ["support:runtime-stable"]
 requirement_id = "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion"
 requirement_generation = 1
 runtime = true
-to = "accepted"
 
-[implementation]
-state = "outstanding"
+[implementation_claim]
+status = "outstanding"
 
 [evidence]
 state = "outstanding"
@@ -257,15 +282,28 @@ state = "unchanged"
             "cargo-allow.slice.self-hosted-runtime-promotion.v1"
         );
         assert_eq!(slice.requirement_delta.len(), 1);
+        assert_eq!(
+            slice.implementation_claim.status,
+            ImplementationClaimStatus::Outstanding
+        );
         Ok(())
     }
 
     #[test]
     fn implementation_slice_rejects_unknown_generation() {
         let result = parse_implementation_slice(
-            &SLICE.replace("schema_version = \"1.0\"", "schema_version = \"2.0\""),
+            &SLICE.replace("schema_version = \"2.0\"", "schema_version = \"3.0\""),
         );
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn implementation_slice_rejects_fake_normative_transition() {
+        let text = SLICE.replace(
+            "runtime = true",
+            "runtime = true\n\n[requirement_delta.status_change]\nfrom = \"accepted\"\nto = \"accepted\"",
+        );
+        assert!(parse_implementation_slice(&text).is_err());
     }
 
     #[test]
@@ -276,16 +314,25 @@ state = "unchanged"
                 "cargo-allow.slice.self-hosted-runtime-promotion.v1",
                 "cargo-allow.slice.other-requirement.v1",
             )
-            .replace("issue:2206", "issue:2215");
+            .replace("issue:2206", "issue:2215")
+            .replace("status = \"outstanding\"", "status = \"partial\"");
         let second = parse_implementation_slice(&second_text).map_err(|error| error.to_string())?;
 
-        let ids = [first.id, second.id]
+        let ids = [first.id.clone(), second.id.clone()]
             .into_iter()
             .map(|slice_id| slice_id.as_str().to_string())
             .collect::<BTreeSet<_>>();
         assert_eq!(ids.len(), 2);
         assert_eq!(first.source_issue, "issue:2206");
         assert_eq!(second.source_issue, "issue:2215");
+        assert_eq!(
+            first.implementation_claim.status,
+            ImplementationClaimStatus::Outstanding
+        );
+        assert_eq!(
+            second.implementation_claim.status,
+            ImplementationClaimStatus::Partial
+        );
         Ok(())
     }
 
@@ -293,5 +340,14 @@ state = "unchanged"
     fn implementation_slice_rejects_mutable_execution_state() {
         let result = parse_implementation_slice(&format!("{SLICE}\nbranch = \"main\"\n"));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn implementation_slice_rejects_legacy_implementation_field() {
+        let legacy = SLICE
+            .replace("schema_version = \"2.0\"", "schema_version = \"1.0\"")
+            .replace("[implementation_claim]", "[implementation]")
+            .replace("status = \"outstanding\"", "state = \"implemented\"");
+        assert!(parse_implementation_slice(&legacy).is_err());
     }
 }
