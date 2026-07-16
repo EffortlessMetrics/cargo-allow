@@ -15,6 +15,7 @@
     "environment",
     "installed_binary",
     "journey",
+    "negative_controls",
     "limitations"
   ],
   "properties": {
@@ -116,6 +117,20 @@
             }
           },
           "minItems": 1
+        }
+      }
+    },
+    "negative_controls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "result_class", "passed"],
+        "properties": {
+          "id": { "type": "string" },
+          "result_class": { "type": "string" },
+          "passed": { "type": "boolean" },
+          "detail": { "type": "string" }
         }
       }
     },

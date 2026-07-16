@@ -10,17 +10,18 @@ inventory without executing repository code.
 
 ### Added
 
+- `scripts/source-candidate-smoke.sh` emits
+  `cargo-allow.source-candidate-smoke-receipt.v1` after a path-installed (or
+  `CARGO_ALLOW_BIN`) binary completes the brownfield first-hour journey plus
+  `diff --base` and prune preview→write lifecycle steps in a temporary
+  consumer repo, with omitted-step and preview/apply-disagree negatives
+  (#2373 / #2278; refresh and checkout-denial remain deferred).
 - `scripts/exact-candidate-package-set.sh` emits
   `cargo-allow.exact-candidate-package-set.v1` after packaging the shared
   ten-crate set, assembling a Cargo directory vendor with injected candidate
   packages, offline-installing with crates-io source replacement, and running
   omit/path/checksum/version/vendor-omit negatives (#2380 / #2277 Stage C;
   classic transitive local-registry index remains deferred).
-- `scripts/source-candidate-smoke.sh` emits
-  `cargo-allow.source-candidate-smoke-receipt.v1` after a path-installed (or
-  `CARGO_ALLOW_BIN`) binary completes the brownfield first-hour journey in a
-  temporary consumer repo (#2278 Stage A+; ExactCandidatePackageSet isolation
-  remains #2277).
 - Hosted `shallow-diff-smoke` CI job and `scripts/shallow-diff-base-smoke.sh`:
   prove `diff --base` fails closed without base history, then succeeds after
   history is available (#2366).

@@ -5,6 +5,7 @@
   "result": "Passed",
   "claim_boundary": [
     "installed_binary_first_hour_journey",
+    "diff_and_prune_lifecycle",
     "temporary_consumer_repository",
     "source_candidate_not_published_registry"
   ],
@@ -33,7 +34,10 @@
       "audit_with_finding",
       "bootstrap_propose_write",
       "check_no_new_pass",
-      "list_explain_worklist"
+      "list_explain_worklist",
+      "diff_against_exact_base",
+      "prune_stale_preview_write",
+      "final_check_no_new"
     ],
     "steps_executed": [
       { "id": "version", "exit_code": 0, "artifact_schema_id": null },
@@ -61,14 +65,44 @@
         "id": "list_explain_worklist",
         "exit_code": 0,
         "artifact_schema_id": "cargo-allow.list.v1"
+      },
+      {
+        "id": "diff_against_exact_base",
+        "exit_code": 0,
+        "artifact_schema_id": "cargo-allow.report.v1"
+      },
+      {
+        "id": "prune_stale_preview_write",
+        "exit_code": 0,
+        "artifact_schema_id": "cargo-allow.prune.v1"
+      },
+      {
+        "id": "final_check_no_new",
+        "exit_code": 0,
+        "artifact_schema_id": "cargo-allow.report.v1"
       }
     ]
   },
+  "negative_controls": [
+    {
+      "id": "omitted_journey_step_cannot_claim_passed",
+      "result_class": "OmittedStep",
+      "passed": true,
+      "detail": "Passed receipt missing a steps_expected id is classified OmittedStep"
+    },
+    {
+      "id": "prune_preview_apply_subject_agree",
+      "result_class": "PreviewApplyDisagree",
+      "passed": true,
+      "detail": "forged prune write subject mismatch is classified PreviewApplyDisagree"
+    }
+  ],
   "limitations": [
     "package_set_not_consumed_from_isolated_registry",
     "source_checkout_not_denied_during_install",
-    "lifecycle_diff_refresh_prune_not_executed",
-    "negative_controls_not_run",
-    "published_registry_install_not_executed"
+    "refresh_lifecycle_not_executed",
+    "checkout_denial_negative_deferred",
+    "published_registry_install_not_executed",
+    "linux_hosted_claim_only"
   ]
 }
