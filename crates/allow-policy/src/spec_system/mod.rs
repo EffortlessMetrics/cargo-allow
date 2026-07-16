@@ -6,8 +6,10 @@
 //! claim/proof fields, and the first bounded requirement/implementation-slice
 //! invariant. Normative requirement status and implementation-claim status are
 //! intentionally independent; compatibility accepts the old field name only
-//! when its value remains a normative status. The module does not execute proof
-//! commands or affect default cargo-allow behavior.
+//! when its value remains a normative status. Prior-status transition history is
+//! deferred to future ancestry support rather than inferred from the current
+//! graph. The module does not execute proof commands or affect default
+//! cargo-allow behavior.
 
 mod active_goal;
 mod config;
