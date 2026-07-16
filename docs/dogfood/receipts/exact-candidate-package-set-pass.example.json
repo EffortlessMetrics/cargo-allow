@@ -6,6 +6,7 @@
   "claim_boundary": [
     "exact_ten_crate_package_graph",
     "directory_source_replacement_offline_install",
+    "source_checkout_denied_during_decisive_install",
     "source_candidate_not_published_install_journey"
   ],
   "candidate": {
@@ -132,7 +133,7 @@
     "install_from_extracted_package": true,
     "internal_deps_patched": false,
     "workspace_paths_absent": true,
-    "source_checkout_denied": false
+    "source_checkout_denied": true
   },
   "install": {
     "method": "cargo_install_path_extracted_with_directory_source",
@@ -187,13 +188,18 @@
       "result_class": "ManifestMalformed",
       "passed": true,
       "detail": "stripped license and missing README.md in normalized allow-core classifies ManifestMalformed"
+    },
+    {
+      "id": "decisive_install_source_checkout_denied",
+      "result_class": "CheckoutIsolated",
+      "passed": true,
+      "detail": "decisive offline install succeeds while workspace crates/ is renamed away (CheckoutIsolated)"
     }
   ],
   "limitations": [
     "vendor_warm_may_use_crates_io",
     "vendor_warm_may_rewrite_extracted_cargo_lock",
     "not_classic_transitive_local_registry_index",
-    "source_checkout_not_denied_during_install",
     "linux_hosted_claim_only"
   ]
 }
