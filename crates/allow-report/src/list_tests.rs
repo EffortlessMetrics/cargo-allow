@@ -47,6 +47,7 @@ fn list_json_renderer_records_filters_context_and_rows() {
     assert!(json.contains("\"owner\": \"parser\""));
     assert!(json.contains("\"allow_id\": \"allow-json\""));
     assert!(json.contains("\"baseline_debt\": true"));
+    assert!(json.contains("\"location_drift\": false"));
     assert!(json.contains("\"broken_evidence\": true"));
     assert!(json.contains("\"weak_evidence\": true"));
     assert!(json.contains("\"allow_entries\": 1"));
@@ -85,6 +86,7 @@ fn list_json_renderer_records_filters_context_and_rows() {
     "expired": false,
     "review_due": false,
     "stale": false,
+    "location_drift": false,
     "baseline_debt": true,
     "broad_scope": false,
     "missing_evidence": false,

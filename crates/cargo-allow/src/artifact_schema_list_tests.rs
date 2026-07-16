@@ -145,6 +145,7 @@ fn assert_list_filter_properties(filters: &Value) {
         "expired",
         "review_due",
         "stale",
+        "location_drift",
         "baseline_debt",
         "broad_scope",
         "missing_evidence",

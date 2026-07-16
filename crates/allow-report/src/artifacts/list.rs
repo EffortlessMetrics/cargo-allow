@@ -11,6 +11,7 @@ pub struct ListFilters<'a> {
     pub expired: bool,
     pub review_due: bool,
     pub stale: bool,
+    pub location_drift: bool,
     pub baseline_debt: bool,
     pub broad_scope: bool,
     pub missing_evidence: bool,

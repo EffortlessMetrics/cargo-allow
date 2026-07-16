@@ -31,6 +31,7 @@ fn render_list_rows_filters_owner_kind_classification_and_baseline_debt() {
         expired: false,
         review_due: false,
         stale: false,
+        location_drift: false,
         baseline_debt: true,
         broad_scope: false,
         missing_evidence: false,
@@ -73,6 +74,7 @@ fn render_list_rows_filters_classification_without_baseline_shortcut() {
         expired: false,
         review_due: false,
         stale: false,
+        location_drift: false,
         baseline_debt: false,
         broad_scope: false,
         missing_evidence: false,
@@ -116,6 +118,7 @@ fn render_list_rows_filters_status() {
         expired: false,
         review_due: false,
         stale: false,
+        location_drift: false,
         baseline_debt: false,
         broad_scope: false,
         missing_evidence: false,
@@ -127,6 +130,49 @@ fn render_list_rows_filters_status() {
 
     assert!(!text.contains("allow-baseline"));
     assert!(text.contains("allow-stale"));
+}
+
+#[test]
+fn render_list_rows_filters_location_drift_shortcut() {
+    let mut matched = list_row(
+        "allow-matched",
+        FindingKind::Panic,
+        "parser",
+        "reviewed_exception",
+    );
+    matched.status = MatchStatus::Matched;
+    let mut drifted = list_row(
+        "allow-drifted",
+        FindingKind::Panic,
+        "parser",
+        "reviewed_exception",
+    );
+    drifted.status = MatchStatus::LocationDrift;
+    let rows = vec![matched, drifted];
+    let filters = ListFilters {
+        kind: None,
+        family: None,
+        owner: None,
+        classification: None,
+        path: None,
+        source_package: None,
+        allow_id: None,
+        status: None,
+        expired: false,
+        review_due: false,
+        stale: false,
+        location_drift: true,
+        baseline_debt: false,
+        broad_scope: false,
+        missing_evidence: false,
+        broken_evidence: false,
+        weak_evidence: false,
+    };
+
+    let text = render_list_rows(&rows, &filters);
+
+    assert!(!text.contains("allow-matched"));
+    assert!(text.contains("allow-drifted"));
 }
 
 #[test]
@@ -157,6 +203,7 @@ fn render_list_rows_filters_allow_id() {
         expired: false,
         review_due: false,
         stale: false,
+        location_drift: false,
         baseline_debt: false,
         broad_scope: false,
         missing_evidence: false,

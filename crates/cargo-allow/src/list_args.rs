@@ -38,26 +38,32 @@ pub(crate) struct ListArgs {
     ///
     /// Accepts every `MatchStatus` value, including `location_drift`.
     /// Mutually exclusive with the status shortcut flags `--expired`,
-    /// `--review-due`, and `--stale` (pick one status selector).
-    /// `--baseline-debt` is a classification filter and may still be combined
-    /// with one status selector.
+    /// `--review-due`, `--stale`, and `--location-drift` (pick one status
+    /// selector). `--baseline-debt` is a classification filter and may still
+    /// be combined with one status selector.
     #[arg(long, group = "status_selector", value_parser = parse_match_status_arg)]
     pub(super) status: Option<String>,
     /// Include only expired allow entries.
     ///
-    /// Mutually exclusive with `--status`, `--review-due`, and `--stale`.
+    /// Mutually exclusive with other status selectors.
     #[arg(long, group = "status_selector")]
     pub(super) expired: bool,
     /// Include only review-due allow entries.
     ///
-    /// Mutually exclusive with `--status`, `--expired`, and `--stale`.
+    /// Mutually exclusive with other status selectors.
     #[arg(long, group = "status_selector")]
     pub(super) review_due: bool,
     /// Include only stale allow entries.
     ///
-    /// Mutually exclusive with `--status`, `--expired`, and `--review-due`.
+    /// Mutually exclusive with other status selectors.
     #[arg(long, group = "status_selector")]
     pub(super) stale: bool,
+    /// Include only location-drift allow entries.
+    ///
+    /// Mutually exclusive with other status selectors. Same as
+    /// `--status location_drift`.
+    #[arg(long, group = "status_selector")]
+    pub(super) location_drift: bool,
     /// Include only generated baseline debt entries (classification filter).
     ///
     /// May be combined with `--status` (AND). Prefer `--status baseline_debt`
@@ -106,6 +112,7 @@ pub(super) fn list_filters(args: &ListArgs) -> CargoAllowResult<ListFilters<'_>>
         expired: args.expired,
         review_due: args.review_due,
         stale: args.stale,
+        location_drift: args.location_drift,
         baseline_debt: args.baseline_debt,
         broad_scope: args.broad_scope,
         missing_evidence: args.missing_evidence,

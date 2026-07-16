@@ -52,6 +52,9 @@ pub(super) fn list_row_matches(row: &ListRow, filters: &ListFilters<'_>) -> bool
     if filters.stale && row.status != MatchStatus::Stale {
         return false;
     }
+    if filters.location_drift && row.status != MatchStatus::LocationDrift {
+        return false;
+    }
     if filters.baseline_debt && row.classification != "baseline_debt" {
         return false;
     }
