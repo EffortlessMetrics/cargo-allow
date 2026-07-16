@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- `cargo-allow add --update` writes the new entry directly into the live
+  `policy/allow.toml` via load → validate → atomic replace, instead of
+  rendering a candidate file. This is the normal receipt path: it preserves
+  unrelated entries, validates the complete result, and emits a mutation
+  receipt. The existing `--write <PATH>` candidate-file behavior is unchanged;
+  `--update` and `--write` are mutually exclusive.
 - Branched, executable first-hour journey in `docs/getting-started.md` with
   published-vs-candidate channel selection, install prerequisites, clean vs
   brownfield forks, `init`/`propose` alternatives, policy command map, fixture

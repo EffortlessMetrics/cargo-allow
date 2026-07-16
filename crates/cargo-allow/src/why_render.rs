@@ -117,8 +117,7 @@ fn add_receipt_plan(finding: &Finding) -> ProofPlan {
         "...".to_string(),
         "--evidence".to_string(),
         "<ref>".to_string(),
-        "--write".to_string(),
-        "policy/allow.toml".to_string(),
+        "--update".to_string(),
     ])
 }
 

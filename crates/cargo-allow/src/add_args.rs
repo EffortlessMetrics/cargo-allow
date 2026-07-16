@@ -68,6 +68,12 @@ pub(crate) struct AddArgs {
     /// Overwrite an existing output policy file.
     #[arg(long)]
     pub(super) force: bool,
+    /// Update the live policy in place instead of printing or writing a
+    /// candidate file. Resolves the discovered policy/allow.toml, validates
+    /// the full result, and atomically replaces it. Mutually exclusive with
+    /// --write.
+    #[arg(long)]
+    pub(super) update: bool,
     /// Summary output format. Policy output remains TOML.
     #[arg(long, value_enum, default_value_t = AddSummaryFormat::Human)]
     pub(super) summary_format: AddSummaryFormat,

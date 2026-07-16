@@ -5,6 +5,7 @@ use allow_core::{AllowConfig, AllowEntry, CargoAllowError, MatchOutcome, MatchSt
 use allow_policy::render_policy;
 use clap::Parser;
 use std::fs;
+use std::path::Path;
 use std::process::Command;
 
 #[test]
@@ -377,6 +378,7 @@ fn cmd_add_rejects_duplicate_allow_id() {
         include_untracked: false,
         write: Some(output.clone()),
         force: false,
+        update: false,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -421,6 +423,7 @@ fn cmd_add_rejects_already_matched_finding() {
         include_untracked: false,
         write: Some(output.clone()),
         force: false,
+        update: false,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -468,6 +471,7 @@ fn cmd_add_rejects_untracked_local_evidence_by_default() {
         include_untracked: false,
         write: Some(output.clone()),
         force: false,
+        update: false,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -513,6 +517,7 @@ fn cmd_add_include_untracked_accepts_untracked_local_evidence() {
         include_untracked: true,
         write: Some(output.clone()),
         force: false,
+        update: false,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -571,6 +576,7 @@ fn cmd_add_reports_missing_policy_config_with_exact_error() {
         include_untracked: false,
         write: Some(output.clone()),
         force: false,
+        update: false,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -615,6 +621,7 @@ fn cmd_add_validate_policy_rejects_unsupported_schema_version() {
         include_untracked: false,
         write: Some(output.clone()),
         force: false,
+        update: false,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -661,6 +668,7 @@ fn cmd_add_rejects_write_to_existing_output_without_force() {
         include_untracked: false,
         write: Some(output.clone()),
         force: false,
+        update: false,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -678,6 +686,157 @@ fn cmd_add_rejects_write_to_existing_output_without_force() {
             "read output policy: {read_err}"
         ))),
         "existing policy output"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn cmd_add_update_writes_entry_into_live_policy() {
+    let root = add_fixture_dir();
+    write_add_fixture_with_new_panic_finding(&root);
+    let policy_path = root.join("policy/allow.toml");
+    // Snapshot the existing entry so we can prove it survives the update.
+    let before = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read before: {err}")));
+
+    cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(root.join("policy/allow.toml")),
+        kind: "panic".to_string(),
+        glob: None,
+        family: None,
+        callee: None,
+        path: Some(PathBuf::from("src/lib.rs")),
+        line: Some(1),
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: None,
+        force: false,
+        update: true,
+        summary_format: AddSummaryFormat::Human,
+        summary_output: None,
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("add --update should write live policy: {err}"))
+    });
+
+    let after = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read after: {err}")));
+    // New entry landed.
+    assert!(
+        after.contains("allow-0002") && after.contains("test:parser_validates"),
+        "updated policy should contain the new entry"
+    );
+    // Existing entry preserved (allow-0001 block intact).
+    assert!(
+        before.lines().all(|line| after.contains(line)),
+        "update must preserve every existing line"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn cmd_add_update_rejects_when_write_also_set() {
+    let root = add_fixture_dir();
+    write_add_fixture_with_new_panic_finding(&root);
+
+    let err = cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(root.join("policy/allow.toml")),
+        kind: "panic".to_string(),
+        glob: None,
+        family: None,
+        callee: None,
+        path: Some(PathBuf::from("src/lib.rs")),
+        line: Some(1),
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: Some(root.join("policy/allow.proposed.toml")),
+        force: false,
+        update: true,
+        summary_format: AddSummaryFormat::Human,
+        summary_output: None,
+    })
+    .expect_err("--update and --write together should be rejected");
+
+    assert_eq!(
+        err,
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "pass either --update or --write, not both",
+        )
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn cmd_add_update_requires_existing_policy() {
+    let root = add_fixture_dir();
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("source write: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "src/lib.rs"]);
+    git(&root, &["commit", "-m", "source only"]);
+
+    let err = cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        kind: "panic".to_string(),
+        glob: None,
+        family: None,
+        callee: None,
+        path: Some(PathBuf::from("src/lib.rs")),
+        line: Some(1),
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: None,
+        force: false,
+        update: true,
+        summary_format: AddSummaryFormat::Human,
+        summary_output: None,
+    })
+    .expect_err("--update without a discovered policy should fail");
+
+    assert_eq!(
+        err,
+        CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
     );
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));

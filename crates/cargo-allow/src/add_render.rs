@@ -1,6 +1,5 @@
 use allow_core::{AllowEntry, Finding};
 use allow_report::MutationReceipt;
-use std::path::Path;
 
 use super::AddContext;
 
@@ -37,16 +36,15 @@ pub(super) fn add_mutation_receipt<'a, 'b>(
 pub(super) fn render_add_summary(
     entry: &AllowEntry,
     finding: &Finding,
-    output: Option<&Path>,
+    policy_output: Option<&str>,
     context: AddContext<'_>,
 ) -> String {
-    let policy_output = output.map(|path| path.display().to_string());
-    let mutation_receipt = add_mutation_receipt(entry, &context, policy_output.as_deref());
+    let mutation_receipt = add_mutation_receipt(entry, &context, policy_output);
     allow_report::render_add_human(allow_report::AddReport::new(
         context.inventory,
         entry,
         finding,
-        policy_output.as_deref(),
+        policy_output,
         false,
         mutation_receipt,
     ))
@@ -55,17 +53,16 @@ pub(super) fn render_add_summary(
 pub(super) fn render_add_summary_json(
     entry: &AllowEntry,
     finding: &Finding,
-    output: Option<&Path>,
+    policy_output: Option<&str>,
     force: bool,
     context: AddContext<'_>,
 ) -> String {
-    let policy_output = output.map(|path| path.display().to_string());
-    let mutation_receipt = add_mutation_receipt(entry, &context, policy_output.as_deref());
+    let mutation_receipt = add_mutation_receipt(entry, &context, policy_output);
     allow_report::render_add_json(allow_report::AddReport::new(
         context.inventory,
         entry,
         finding,
-        policy_output.as_deref(),
+        policy_output,
         force,
         mutation_receipt,
     ))
