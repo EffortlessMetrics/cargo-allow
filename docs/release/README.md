@@ -65,12 +65,13 @@ extracts each `.crate`, assembles a Cargo directory vendor (`cargo vendor` for
 externals + injected exact candidate packages), installs `cargo-allow` offline
 with crates-io replaced by that directory source, verifies internal manifests
 resolve from the vendor (not `crates/` / crates.io), runs omit-crate /
-workspace-path / checksum / injected-path / version-conflict / vendor-omit
+workspace-path / checksum / injected-path / version-conflict / vendor-omit /
+candidate-mismatch (`CandidateStale`) / missing-metadata (`ManifestMalformed`)
 negatives, and writes
 `target/exact-candidate-package-set/exact-candidate-package-set.receipt.json`
 (`cargo-allow.exact-candidate-package-set.v1`). It does **not** yet build a
-classic transitive local-registry (`.crate` + index) mirror, deny the source
-checkout, or cover every #2277 negative.
+classic transitive local-registry (`.crate` + index) mirror or deny the source
+checkout during decisive install.
 
 Post-publication registry install remains
 [scripts/release-install-smoke.sh](../../scripts/release-install-smoke.sh)

@@ -175,6 +175,18 @@
       "result_class": "PackageMissing",
       "passed": true,
       "detail": "removing allow-core from directory vendor fails offline resolve (PackageMissing)"
+    },
+    {
+      "id": "candidate_commit_or_version_mismatch",
+      "result_class": "CandidateStale",
+      "passed": true,
+      "detail": "forged candidate git_head/version vs packaged set classifies CandidateStale"
+    },
+    {
+      "id": "missing_required_package_metadata_or_file",
+      "result_class": "ManifestMalformed",
+      "passed": true,
+      "detail": "stripped license and missing README.md in normalized allow-core classifies ManifestMalformed"
     }
   ],
   "limitations": [
@@ -182,8 +194,6 @@
     "vendor_warm_may_rewrite_extracted_cargo_lock",
     "not_classic_transitive_local_registry_index",
     "source_checkout_not_denied_during_install",
-    "candidate_commit_mismatch_negative_deferred",
-    "missing_package_metadata_negative_deferred",
     "linux_hosted_claim_only"
   ]
 }

@@ -15,9 +15,11 @@
 #   - injected normalized path dependency
 #   - older/incompatible internal package version
 #   - omit injected candidate from directory vendor (offline resolve fail)
+#   - candidate commit/version mismatch (CandidateStale)
+#   - missing required package metadata/file (ManifestMalformed)
 #
 # Does not: publish; classic transitive local-registry (.crate+index) mirror;
-# deny the source checkout; every #2277 negative; run the installed operator
+# deny the source checkout during decisive install; run the installed operator
 # journey (#2278).
 #
 # Usage:
@@ -665,6 +667,92 @@ EOF
     fail "omitting allow-core from vendor unexpectedly allowed offline resolve"
   fi
 
+  log "negative: candidate commit/version mismatch is CandidateStale"
+  # Receipt candidate identity is git_head + workspace_version. A forged claim
+  # that disagrees with the packaged set must classify CandidateStale (fail
+  # closed), never Passed.
+  stale_class="$(
+    ACTUAL_HEAD="${git_head}" \
+    ACTUAL_VERSION="${version}" \
+    python3 <<'PY'
+import os
+
+actual_head = os.environ.get("ACTUAL_HEAD") or ""
+actual_version = os.environ["ACTUAL_VERSION"]
+forged_head = "0000000000000000000000000000000000000000"
+forged_version = "0.0.0-forged-stale"
+packaged_versions = [actual_version]
+head_mismatch = forged_head != actual_head
+version_mismatch = forged_version != actual_version or any(
+    v != forged_version for v in packaged_versions
+)
+if head_mismatch or version_mismatch:
+    print("CandidateStale")
+else:
+    print("InstrumentFailure")
+PY
+  )"
+  stale_passed=true
+  if [[ "${stale_class}" != "CandidateStale" ]]; then
+    stale_passed=false
+    fail "candidate mismatch negative produced unexpected class ${stale_class}"
+  fi
+
+  log "negative: missing required package metadata/file is ManifestMalformed"
+  # Normalized packages must retain required publish metadata and the readme
+  # file they declare. Stripping license and deleting README.md must classify
+  # ManifestMalformed (fail closed).
+  malformed_dir="${work_dir}/neg-malformed/allow-core-${version}"
+  rm -rf "${work_dir}/neg-malformed"
+  mkdir -p "${work_dir}/neg-malformed"
+  cp -R "${extracted_dir}/allow-core-${version}" "${malformed_dir}"
+  python3 - "$(to_cargo_path "${malformed_dir}")" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+manifest = root / "Cargo.toml"
+text = manifest.read_text(encoding="utf-8")
+text2, count = re.subn(r'(?m)^license\s*=\s*"[^"]+"\s*\n?', "", text, count=1)
+if count != 1:
+    raise SystemExit("could not strip license from normalized allow-core Cargo.toml")
+manifest.write_text(text2, encoding="utf-8")
+readme = root / "README.md"
+if readme.is_file():
+    readme.unlink()
+print("stripped_license_and_readme")
+PY
+  malformed_class="$(
+    python3 - "$(to_cargo_path "${malformed_dir}")" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+manifest = root / "Cargo.toml"
+text = manifest.read_text(encoding="utf-8")
+has_license = bool(re.search(r'(?m)^license\s*=', text))
+readme_decl = re.search(r'(?m)^readme\s*=\s*"([^"]+)"\s*$', text)
+readme_missing = False
+if readme_decl is not None:
+    readme_path = root / readme_decl.group(1)
+    readme_missing = not readme_path.is_file()
+else:
+    # Packaged crates declare readme; absence of the declaration is also malformed.
+    readme_missing = True
+if (not has_license) or readme_missing:
+    print("ManifestMalformed")
+else:
+    print("InstrumentFailure")
+PY
+  )"
+  malformed_passed=true
+  if [[ "${malformed_class}" != "ManifestMalformed" ]]; then
+    malformed_passed=false
+    fail "missing metadata/file negative produced unexpected class ${malformed_class}"
+  fi
+
   negatives_json="$(
     python3 - \
       "${omit_class}" "${omit_passed}" \
@@ -672,7 +760,9 @@ EOF
       "${checksum_class}" "${checksum_passed}" \
       "${path_class}" "${path_passed}" \
       "${version_class}" "${version_passed}" \
-      "${vendor_omit_class}" "${vendor_omit_passed}" <<'PY'
+      "${vendor_omit_class}" "${vendor_omit_passed}" \
+      "${stale_class}" "${stale_passed}" \
+      "${malformed_class}" "${malformed_passed}" <<'PY'
 import json, sys
 (
     omit_class,
@@ -686,6 +776,10 @@ import json, sys
     version_passed,
     vendor_omit_class,
     vendor_omit_passed,
+    stale_class,
+    stale_passed,
+    malformed_class,
+    malformed_passed,
 ) = sys.argv[1:]
 print(json.dumps([
     {
@@ -723,6 +817,18 @@ print(json.dumps([
         "result_class": vendor_omit_class,
         "passed": vendor_omit_passed == "true",
         "detail": "removing allow-core from directory vendor fails offline resolve (PackageMissing)",
+    },
+    {
+        "id": "candidate_commit_or_version_mismatch",
+        "result_class": stale_class,
+        "passed": stale_passed == "true",
+        "detail": "forged candidate git_head/version vs packaged set classifies CandidateStale",
+    },
+    {
+        "id": "missing_required_package_metadata_or_file",
+        "result_class": malformed_class,
+        "passed": malformed_passed == "true",
+        "detail": "stripped license and missing README.md in normalized allow-core classifies ManifestMalformed",
     },
 ]))
 PY
@@ -825,8 +931,6 @@ receipt = {
         "vendor_warm_may_rewrite_extracted_cargo_lock",
         "not_classic_transitive_local_registry_index",
         "source_checkout_not_denied_during_install",
-        "candidate_commit_mismatch_negative_deferred",
-        "missing_package_metadata_negative_deferred",
         "linux_hosted_claim_only",
     ],
 }
