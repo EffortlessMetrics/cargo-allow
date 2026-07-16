@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 
 use super::{
     EvidenceDispositionState, ImplementationClaimStatus, ImplementationSliceClass,
-    ImplementationSliceId, ImplementationSliceV1, RequirementDelta, RequirementGraph,
-    RequirementId, RequirementStatus, SupportClaimDispositionState,
+    ImplementationSliceId, ImplementationSliceV1, RequirementClaimClass, RequirementDelta,
+    RequirementGraph, RequirementId, RequirementStatus, SupportClaimDispositionState,
 };
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -13,7 +13,6 @@ pub enum RuntimePromotionFindingCode {
     RequirementNotFound,
     RequirementGenerationMismatch,
     RequirementStatusDoesNotAllowImplementation,
-    ImplementedClaimWithoutRuntimeRequirement,
     SpecOnlyRuntimeImplementationClaim,
     RuntimeImplementationWithoutEvidenceClosure,
     RuntimeProofWithoutReceipt,
@@ -77,7 +76,10 @@ pub fn validate_runtime_promotion(
                 ),
             ));
         }
-        if delta.runtime {
+        if matches!(
+            requirement.claim_class,
+            RequirementClaimClass::RuntimeBehavior
+        ) {
             runtime_requirement_ids.push((delta.requirement_id.clone(), requirement.status));
         }
     }
@@ -120,15 +122,6 @@ fn validate_implementation_claim(
     findings: &mut Vec<RuntimePromotionFinding>,
 ) {
     if slice.implementation_claim.status != ImplementationClaimStatus::Implemented {
-        return;
-    }
-
-    if runtime_requirements.is_empty() {
-        findings.push(RuntimePromotionFinding::new(
-            RuntimePromotionFindingCode::ImplementedClaimWithoutRuntimeRequirement,
-            None,
-            "implemented claim requires at least one eligible runtime requirement",
-        ));
         return;
     }
 
@@ -271,13 +264,11 @@ generation = 1
 source_issue = "issue:2206"
 design_reference = "design:self-hosted-runtime-promotion"
 change_class = "spec_or_policy_change"
-basis = "git:example-head"
 claim_boundary = "Defines the requirement without claiming runtime completion."
 
 [[requirement_delta]]
 requirement_id = "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion"
 requirement_generation = 1
-runtime = true
 
 [implementation_claim]
 status = "outstanding"
@@ -380,25 +371,12 @@ state = "unchanged"
     }
 
     #[test]
-    fn implemented_claim_without_runtime_requirement_is_rejected() -> Result<(), String> {
-        let graph = graph()?;
-        let mut slice = slice()?;
-        slice.change_class = ImplementationSliceClass::BehaviorChange;
-        slice.implementation_claim.status = ImplementationClaimStatus::Implemented;
-        slice.evidence.state = EvidenceDispositionState::Current;
-        slice.evidence.receipt = Some("receipt:current-head".to_string());
-        slice
-            .requirement_delta
-            .first_mut()
-            .ok_or_else(|| "expected one requirement delta".to_string())?
-            .runtime = false;
-
-        let findings = validate_runtime_promotion(&graph, &slice);
-        assert_eq!(
-            findings.first().map(|finding| finding.code),
-            Some(RuntimePromotionFindingCode::ImplementedClaimWithoutRuntimeRequirement)
+    fn slice_cannot_override_normative_requirement_claim_class() {
+        let legacy = SLICE.replace(
+            "requirement_generation = 1",
+            "requirement_generation = 1\nruntime = false",
         );
-        Ok(())
+        assert!(parse_implementation_slice(&legacy).is_err());
     }
 
     #[test]
@@ -471,7 +449,13 @@ state = "unchanged"
 
         assert!(validate_runtime_promotion(&graph, &outstanding).is_empty());
         assert!(validate_runtime_promotion(&graph, &implemented).is_empty());
-        assert_eq!(graph.requirements[0].status, RequirementStatus::Accepted);
+        assert_eq!(
+            graph
+                .requirements
+                .first()
+                .map(|requirement| requirement.status),
+            Some(RequirementStatus::Accepted)
+        );
         Ok(())
     }
 }

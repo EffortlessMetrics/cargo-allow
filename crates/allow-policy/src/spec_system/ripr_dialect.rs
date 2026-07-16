@@ -433,24 +433,22 @@ claim_class = "runtime_behavior"
     #[test]
     fn shared_slice_parser_rejects_mutable_execution_state() {
         let slice = r#"
-schema_version = "1.0"
+schema_version = "2.0"
 id = "ripr.slice.example.v1"
 generation = 1
 source_issue = "issue:1672"
 design_reference = "RIPR-SPEC-0124#spec-only-runtime-promotion"
 change_class = "spec_or_policy_change"
-basis = "git:example"
 claim_boundary = "No runtime claim."
 branch = "main"
 
 [[requirement_delta]]
 requirement_id = "RIPR-SPEC-0124#spec-only-runtime-promotion"
 requirement_generation = 1
-runtime = true
 to = "accepted"
 
-[implementation]
-state = "outstanding"
+[implementation_claim]
+status = "outstanding"
 
 [evidence]
 state = "outstanding"

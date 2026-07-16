@@ -78,7 +78,6 @@ pub struct SupportClaimDisposition {
 pub struct RequirementDelta {
     pub requirement_id: RequirementId,
     pub requirement_generation: u32,
-    pub runtime: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -90,7 +89,6 @@ pub struct ImplementationSliceV1 {
     pub source_issue: String,
     pub design_reference: String,
     pub change_class: ImplementationSliceClass,
-    pub basis: String,
     pub requirement_delta: Vec<RequirementDelta>,
     pub implementation_claim: ImplementationClaim,
     pub evidence: EvidenceDisposition,
@@ -155,7 +153,6 @@ fn validate_slice_structure(
     for (field, value) in [
         ("source_issue", slice.source_issue.as_str()),
         ("design_reference", slice.design_reference.as_str()),
-        ("basis", slice.basis.as_str()),
         ("claim_boundary", slice.claim_boundary.as_str()),
     ] {
         if value.trim().is_empty() {
@@ -222,7 +219,6 @@ generation = 1
 source_issue = "issue:2206"
 design_reference = "design:self-hosted-runtime-promotion"
 change_class = "spec_or_policy_change"
-basis = "git:example-head"
 claim_boundary = "Defines the requirement without claiming runtime completion."
 non_goals = ["runtime implementation"]
 return_conditions = ["implementation and evidence are available"]
@@ -232,7 +228,6 @@ forbidden_seams = ["support:runtime-stable"]
 [[requirement_delta]]
 requirement_id = "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion"
 requirement_generation = 1
-runtime = true
 
 [implementation_claim]
 status = "outstanding"
@@ -270,6 +265,27 @@ state = "unchanged"
             &SLICE.replace("schema_version = \"2.0\"", "schema_version = \"3.0\""),
         );
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn implementation_slice_rejects_zero_slice_generation() {
+        let result = parse_implementation_slice(&SLICE.replace("generation = 1", "generation = 0"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn implementation_slice_rejects_runtime_class_override() {
+        let legacy = SLICE.replace(
+            "requirement_generation = 1",
+            "requirement_generation = 1\nruntime = false",
+        );
+        assert!(parse_implementation_slice(&legacy).is_err());
+    }
+
+    #[test]
+    fn implementation_slice_rejects_free_form_git_basis() {
+        let legacy = format!("{SLICE}\nbasis = \"git:pr-head\"\n");
+        assert!(parse_implementation_slice(&legacy).is_err());
     }
 
     #[test]
