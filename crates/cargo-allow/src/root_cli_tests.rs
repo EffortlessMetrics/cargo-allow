@@ -29,10 +29,47 @@ mod tests {
     }
 
     #[test]
+    fn normalized_args_strips_allow_shim_when_flags_follow_before_subcommand() {
+        let normalized =
+            normalized_args(argv(vec!["cargo-allow", "allow", "--color=never", "check"]));
+        let expected = argv(vec!["cargo-allow", "--color=never", "check"]);
+        assert_eq!(normalized, expected);
+    }
+
+    #[test]
+    fn normalized_args_does_not_strip_bare_allow_without_following_subcommand() {
+        // Keeps `allow` available as a future subcommand name. Cargo plugin
+        // invocations with only the shim token stay free for that evolution.
+        let normalized = normalized_args(argv(vec!["cargo-allow", "allow"]));
+        let expected = argv(vec!["cargo-allow", "allow"]);
+        assert_eq!(normalized, expected);
+    }
+
+    #[test]
+    fn normalized_args_strips_allow_shim_before_root_version_flag() {
+        // `cargo allow --version` becomes `cargo-allow allow --version`.
+        let normalized = normalized_args(argv(vec!["cargo-allow", "allow", "--version"]));
+        let expected = argv(vec!["cargo-allow", "--version"]);
+        assert_eq!(normalized, expected);
+    }
+
+    #[test]
+    fn normalized_args_does_not_strip_allow_when_followed_by_unknown_command() {
+        let normalized = normalized_args(argv(vec!["cargo-allow", "allow", "future-cmd"]));
+        let expected = argv(vec!["cargo-allow", "allow", "future-cmd"]);
+        assert_eq!(normalized, expected);
+    }
+
+    #[test]
     fn normalized_args_does_not_strip_allow_after_real_subcommand() {
         let normalized = normalized_args(argv(vec!["cargo-allow", "add", "allow"]));
         let expected = argv(vec!["cargo-allow", "add", "allow"]);
         assert_eq!(normalized, expected);
+    }
+
+    #[test]
+    fn known_subcommands_do_not_reserve_allow_name() {
+        assert!(!CargoAllowCommand::SUBCOMMANDS.contains(&"allow"));
     }
 
     #[test]

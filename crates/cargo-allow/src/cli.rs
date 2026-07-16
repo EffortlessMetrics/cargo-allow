@@ -90,26 +90,67 @@ pub(crate) fn run() -> CargoAllowResult<()> {
 
 pub(crate) fn normalized_args(args: impl IntoIterator<Item = String>) -> Vec<String> {
     let mut args = args.into_iter().collect::<Vec<_>>();
-    if let Some(index) = leading_cargo_allow_token_index(&args) {
+    if let Some(index) = leading_cargo_allow_shim_index(&args) {
         args.remove(index);
     }
     args
 }
 
-fn leading_cargo_allow_token_index(args: &[String]) -> Option<usize> {
+/// Locate the cargo-plugin `allow` shim token (`cargo allow …`).
+///
+/// Cargo invokes this binary as `cargo-allow` and inserts a literal `allow`
+/// before the real subcommand or root flags. Strip that shim when:
+/// - a known subcommand follows (flags may appear in between), or
+/// - only root flags follow (for example `cargo allow --version`).
+///
+/// Bare `cargo-allow allow` with no further tokens keeps `allow` so a future
+/// `Allow` subcommand is not permanently reserved. Unknown non-flag tokens
+/// after `allow` also keep it (for example `cargo-allow allow future-cmd`).
+fn leading_cargo_allow_shim_index(args: &[String]) -> Option<usize> {
     for (index, arg) in args.iter().enumerate().skip(1) {
         if arg == "allow" {
-            return Some(index);
+            return if should_strip_cargo_allow_shim(args, index + 1) {
+                Some(index)
+            } else {
+                None
+            };
         }
-        if CargoAllowCommand::SUBCOMMANDS.contains(&arg.as_str()) {
+        if is_known_subcommand(arg) {
             return None;
         }
     }
     None
 }
 
+fn should_strip_cargo_allow_shim(args: &[String], start: usize) -> bool {
+    let mut saw_token = false;
+    for arg in args.iter().skip(start) {
+        saw_token = true;
+        if is_known_subcommand(arg) {
+            return true;
+        }
+        if arg.starts_with('-') {
+            continue;
+        }
+        // A non-flag token that is not a known subcommand means `allow` is
+        // itself the command (or an unknown command), not a cargo shim.
+        return false;
+    }
+    // Only flags after `allow` (for example `--version`) are cargo-plugin root
+    // options. Empty tail keeps bare `allow` free for a future subcommand.
+    saw_token
+}
+
+fn is_known_subcommand(arg: &str) -> bool {
+    CargoAllowCommand::SUBCOMMANDS.contains(&arg)
+}
+
 impl CargoAllowCommand {
-    const SUBCOMMANDS: &[&str] = &[
+    /// Installed subcommand names. Do not add `"allow"` here: that token is the
+    /// cargo-plugin shim stripped by [`normalized_args`] when a real subcommand
+    /// follows. A future `Allow` command can use the bare `allow` name because
+    /// the shim no longer steals it without a following known subcommand.
+    pub(crate) const SUBCOMMANDS: &[&str] = &[
         "init", "audit", "check", "diff", "list", "explain", "why", "add", "propose", "worklist",
         "migrate", "refresh", "prune", "doctor",
     ];
