@@ -148,6 +148,27 @@ impl fmt::Display for CargoAllowErrorKind {
     }
 }
 
+/// Linked cause node for [`std::error::Error::source`] walks.
+#[derive(Debug, Clone)]
+struct CauseError {
+    message: String,
+    next: Option<Box<CauseError>>,
+}
+
+impl fmt::Display for CauseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for CauseError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.next
+            .as_ref()
+            .map(|next| next.as_ref() as &(dyn std::error::Error + 'static))
+    }
+}
+
 /// The unified error type for the cargo-allow workspace.
 ///
 /// Carries a structured [`CargoAllowErrorKind`], a human-readable message, and
@@ -163,6 +184,8 @@ pub struct CargoAllowError {
     /// Rendered cause chain (each element is the `Display` of an underlying
     /// error). Stored as strings so the struct stays `Clone` + `PartialEq`.
     causes: Vec<String>,
+    /// Linked cause chain for `Error::source` / `successors` walks.
+    source: Option<Box<CauseError>>,
 }
 
 impl CargoAllowError {
@@ -174,6 +197,7 @@ impl CargoAllowError {
             location: None,
             diagnostics: Vec::new(),
             causes: Vec::new(),
+            source: None,
         }
     }
 
@@ -185,14 +209,31 @@ impl CargoAllowError {
             location: None,
             diagnostics: Vec::new(),
             causes: Vec::new(),
+            source: None,
         }
     }
 
     /// Attach a cause (underlying error) to this error, returning a new value.
-    /// The cause is rendered as a `caused by:` line in `Display`.
+    ///
+    /// The cause is rendered as a `caused by:` line in `Display` and linked for
+    /// [`std::error::Error::source`] walks.
     pub fn with_cause(mut self, cause: &(impl std::error::Error + ?Sized)) -> Self {
-        self.causes.push(cause.to_string());
+        let message = cause.to_string();
+        self.causes.push(message.clone());
+        let node = Box::new(CauseError {
+            message,
+            next: None,
+        });
+        match self.source.as_mut() {
+            None => self.source = Some(node),
+            Some(head) => append_cause(head, node),
+        }
         self
+    }
+
+    /// Rendered cause messages in attachment order (outermost first).
+    pub fn causes(&self) -> &[String] {
+        &self.causes
     }
 
     /// Attach one structured diagnostic detail, returning a new value.
@@ -279,7 +320,13 @@ impl fmt::Display for CargoAllowError {
     }
 }
 
-impl std::error::Error for CargoAllowError {}
+impl std::error::Error for CargoAllowError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source
+            .as_ref()
+            .map(|cause| cause.as_ref() as &(dyn std::error::Error + 'static))
+    }
+}
 
 /// `PartialEq` compares kind + message only (not the cause chain), so tests
 /// that `assert_eq!` on constructed errors are not sensitive to cause text.
@@ -296,15 +343,28 @@ impl Eq for CargoAllowError {}
 /// a specific kind (e.g. `Inventory`) should use `with_kind` explicitly.
 impl From<std::io::Error> for CargoAllowError {
     fn from(e: std::io::Error) -> Self {
-        let mut err = CargoAllowError::with_kind(CargoAllowErrorKind::Unknown, e.to_string());
-        err.causes.push(e.to_string());
+        let message = e.to_string();
+        let mut err = CargoAllowError::with_kind(CargoAllowErrorKind::Unknown, message.clone());
         err.kind = match e.kind() {
             std::io::ErrorKind::NotFound => CargoAllowErrorKind::InvalidConfig,
             std::io::ErrorKind::PermissionDenied => CargoAllowErrorKind::Inventory,
             _ => CargoAllowErrorKind::Unknown,
         };
-        err.message = e.to_string();
+        err.message = message.clone();
+        // Keep the IO error visible to `Error::source` walkers without
+        // duplicating the same text under Display's `caused by:` lines.
+        err.source = Some(Box::new(CauseError {
+            message,
+            next: None,
+        }));
         err
+    }
+}
+
+fn append_cause(head: &mut CauseError, node: Box<CauseError>) {
+    match head.next.as_mut() {
+        Some(next) => append_cause(next, node),
+        None => head.next = Some(node),
     }
 }
 
