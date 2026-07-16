@@ -6,6 +6,22 @@ on:
   workflow_dispatch:
 
 jobs:
+  repair-release-0-1-11:
+    if: github.event_name == 'pull_request' && github.head_ref == 'release/0.1.11' && github.actor != 'github-actions[bot]'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: release/0.1.11
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Reconcile exact Published 0.1.11 command surface
+        run: bash scripts/repair-0.1.11-freeze.sh
+
   # Prove the workspace rust-version pin (1.85) still builds and runs the
   # fast package proof. Stable/full suite stays on the `test` job below so
   # the MSRV lane stays short and release-claim oriented (#1901).
