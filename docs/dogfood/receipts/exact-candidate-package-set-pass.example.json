@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.exact-candidate-package-set.v1",
+  "tool": "cargo-allow",
+  "result": "Passed",
+  "claim_boundary": [
+    "exact_ten_crate_package_graph",
+    "patch_crates_io_extracted_packages",
+    "source_candidate_not_published_install_journey"
+  ],
+  "candidate": {
+    "workspace_version": "0.1.10",
+    "crate_set_schema_id": "cargo-allow.candidate-crate-set.v1",
+    "git_head": null
+  },
+  "environment": {
+    "os": "linux",
+    "arch": "x86_64",
+    "rustc_version": null,
+    "cargo_version": null,
+    "network_posture": "external_deps_may_use_crates_io_cache",
+    "isolation_mechanism": "patch_crates_io_extracted_packages"
+  },
+  "package_set": {
+    "order": [
+      "allow-core",
+      "allow-policy",
+      "allow-inventory",
+      "allow-files",
+      "allow-rust",
+      "allow-match",
+      "allow-report",
+      "allow-policy-legacy",
+      "allow-diff",
+      "cargo-allow"
+    ],
+    "crates": [
+      {
+        "name": "allow-core",
+        "version": "0.1.10",
+        "crate_file": "allow-core-0.1.10.crate",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "size_bytes": 1,
+        "extracted_dir": "allow-core-0.1.10",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-policy",
+        "version": "0.1.10",
+        "crate_file": "allow-policy-0.1.10.crate",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "size_bytes": 1,
+        "extracted_dir": "allow-policy-0.1.10",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-inventory",
+        "version": "0.1.10",
+        "crate_file": "allow-inventory-0.1.10.crate",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "size_bytes": 1,
+        "extracted_dir": "allow-inventory-0.1.10",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-files",
+        "version": "0.1.10",
+        "crate_file": "allow-files-0.1.10.crate",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "size_bytes": 1,
+        "extracted_dir": "allow-files-0.1.10",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-rust",
+        "version": "0.1.10",
+        "crate_file": "allow-rust-0.1.10.crate",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "size_bytes": 1,
+        "extracted_dir": "allow-rust-0.1.10",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-match",
+        "version": "0.1.10",
+        "crate_file": "allow-match-0.1.10.crate",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "size_bytes": 1,
+        "extracted_dir": "allow-match-0.1.10",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-report",
+        "version": "0.1.10",
+        "crate_file": "allow-report-0.1.10.crate",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "size_bytes": 1,
+        "extracted_dir": "allow-report-0.1.10",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-policy-legacy",
+        "version": "0.1.10",
+        "crate_file": "allow-policy-legacy-0.1.10.crate",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "size_bytes": 1,
+        "extracted_dir": "allow-policy-legacy-0.1.10",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-diff",
+        "version": "0.1.10",
+        "crate_file": "allow-diff-0.1.10.crate",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "size_bytes": 1,
+        "extracted_dir": "allow-diff-0.1.10",
+        "no_path_deps": true
+      },
+      {
+        "name": "cargo-allow",
+        "version": "0.1.10",
+        "crate_file": "cargo-allow-0.1.10.crate",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "size_bytes": 1,
+        "extracted_dir": "cargo-allow-0.1.10",
+        "no_path_deps": true
+      }
+    ]
+  },
+  "isolation": {
+    "fresh_cargo_home": true,
+    "install_from_extracted_package": true,
+    "internal_deps_patched": true,
+    "workspace_paths_absent": true,
+    "source_checkout_denied": false
+  },
+  "install": {
+    "method": "cargo_install_path_extracted_with_patch",
+    "version_output": "cargo-allow 0.1.10",
+    "exit_code": 0
+  },
+  "negative_controls": [
+    {
+      "id": "omit_internal_crate_from_patch",
+      "result_class": "SourceFallbackDetected",
+      "passed": true,
+      "detail": "omitting allow-core from [patch.crates-io] resolves registry or fails closed"
+    },
+    {
+      "id": "workspace_path_install_rejected",
+      "result_class": "WorkspacePathLeak",
+      "passed": true,
+      "detail": "decisive install uses extracted package path, not crates/cargo-allow"
+    }
+  ],
+  "limitations": [
+    "external_deps_may_use_crates_io",
+    "not_full_local_registry_index",
+    "source_checkout_not_denied_during_install",
+    "remaining_negative_controls_deferred",
+    "linux_hosted_claim_only"
+  ]
+}

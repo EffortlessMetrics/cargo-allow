@@ -4781,6 +4781,94 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-4759"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/exact-candidate-package-set.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "ExactCandidatePackageSetV1 Stage A harness: package/extract/patch-install ten-crate set and emit receipt (#2372 / #2277)."
+evidence = ["doc:docs/release/README.md", "test:example_exact_candidate_package_set_matches_schema_constants", "issue:2372"]
+created = "2026-07-16"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+line_hint = 1
+glob = "scripts/exact-candidate-package-set.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4760"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/release/candidate-crate-set.toml"
+owner = "core/release"
+classification = "docs_executable_contract"
+reason = "Shared canonical ten-crate package/publish order for ExactCandidate and package smokes (#2277 / #2372)."
+evidence = ["test:candidate_crate_set_fixture_lists_ten_publish_order_crates", "doc:docs/release/README.md", "issue:2372"]
+created = "2026-07-16"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "docs/dogfood/fixtures/release/candidate-crate-set.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4761"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/release/exact-candidate-package-set.v1.schema.json"
+owner = "core/release"
+classification = "docs_executable_contract"
+reason = "JSON Schema for ExactCandidatePackageSetV1 (#2372 / #2277)."
+evidence = ["test:example_exact_candidate_package_set_matches_schema_constants", "issue:2372", "doc:docs/release/README.md"]
+created = "2026-07-16"
+review_after = "2026-10-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "json"
+line_hint = 1
+glob = "docs/dogfood/fixtures/release/exact-candidate-package-set.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4762"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/exact-candidate-package-set-pass.example.json"
+owner = "core/release"
+classification = "docs_executable_contract"
+reason = "Example Passed ExactCandidatePackageSetV1 for docs and offline characterization (#2372)."
+evidence = ["test:example_exact_candidate_package_set_matches_schema_constants", "issue:2372"]
+created = "2026-07-16"
+review_after = "2026-10-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "json"
+line_hint = 1
+glob = "docs/dogfood/receipts/exact-candidate-package-set-pass.example.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-4754"
 kind = "non_rust_file"
 family = "shell_script"
