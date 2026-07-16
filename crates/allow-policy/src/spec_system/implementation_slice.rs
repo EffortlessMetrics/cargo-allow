@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use super::{RequirementId, RequirementLifecycle};
+use super::RequirementId;
 
-pub const IMPLEMENTATION_SLICE_SCHEMA_VERSION: &str = "1.0";
+pub const IMPLEMENTATION_SLICE_SCHEMA_VERSION: &str = "2.0";
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -26,15 +26,19 @@ pub enum ImplementationSliceClass {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum ImplementationDispositionState {
+pub enum ImplementationClaimStatus {
     Outstanding,
+    Partial,
     Implemented,
+    Unsupported,
+    NotApplicable,
+    Removed,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ImplementationDisposition {
-    pub state: ImplementationDispositionState,
+pub struct ImplementationClaim {
+    pub status: ImplementationClaimStatus,
     #[serde(default)]
     pub seams: Vec<String>,
 }
@@ -74,10 +78,6 @@ pub struct SupportClaimDisposition {
 pub struct RequirementDelta {
     pub requirement_id: RequirementId,
     pub requirement_generation: u32,
-    pub runtime: bool,
-    #[serde(default)]
-    pub from: Option<RequirementLifecycle>,
-    pub to: RequirementLifecycle,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -89,9 +89,8 @@ pub struct ImplementationSliceV1 {
     pub source_issue: String,
     pub design_reference: String,
     pub change_class: ImplementationSliceClass,
-    pub basis: String,
     pub requirement_delta: Vec<RequirementDelta>,
-    pub implementation: ImplementationDisposition,
+    pub implementation_claim: ImplementationClaim,
     pub evidence: EvidenceDisposition,
     pub support_claim: SupportClaimDisposition,
     #[serde(default)]
@@ -154,7 +153,6 @@ fn validate_slice_structure(
     for (field, value) in [
         ("source_issue", slice.source_issue.as_str()),
         ("design_reference", slice.design_reference.as_str()),
-        ("basis", slice.basis.as_str()),
         ("claim_boundary", slice.claim_boundary.as_str()),
     ] {
         if value.trim().is_empty() {
@@ -215,13 +213,12 @@ mod tests {
     use super::*;
 
     const SLICE: &str = r#"
-schema_version = "1.0"
+schema_version = "2.0"
 id = "cargo-allow.slice.self-hosted-runtime-promotion.v1"
 generation = 1
 source_issue = "issue:2206"
 design_reference = "design:self-hosted-runtime-promotion"
 change_class = "spec_or_policy_change"
-basis = "git:example-head"
 claim_boundary = "Defines the requirement without claiming runtime completion."
 non_goals = ["runtime implementation"]
 return_conditions = ["implementation and evidence are available"]
@@ -231,11 +228,9 @@ forbidden_seams = ["support:runtime-stable"]
 [[requirement_delta]]
 requirement_id = "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion"
 requirement_generation = 1
-runtime = true
-to = "accepted"
 
-[implementation]
-state = "outstanding"
+[implementation_claim]
+status = "outstanding"
 
 [evidence]
 state = "outstanding"
@@ -257,15 +252,40 @@ state = "unchanged"
             "cargo-allow.slice.self-hosted-runtime-promotion.v1"
         );
         assert_eq!(slice.requirement_delta.len(), 1);
+        assert_eq!(
+            slice.implementation_claim.status,
+            ImplementationClaimStatus::Outstanding
+        );
         Ok(())
     }
 
     #[test]
-    fn implementation_slice_rejects_unknown_generation() {
+    fn implementation_slice_rejects_unknown_schema_version() {
         let result = parse_implementation_slice(
-            &SLICE.replace("schema_version = \"1.0\"", "schema_version = \"2.0\""),
+            &SLICE.replace("schema_version = \"2.0\"", "schema_version = \"3.0\""),
         );
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn implementation_slice_rejects_zero_slice_generation() {
+        let result = parse_implementation_slice(&SLICE.replace("generation = 1", "generation = 0"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn implementation_slice_rejects_runtime_class_override() {
+        let legacy = SLICE.replace(
+            "requirement_generation = 1",
+            "requirement_generation = 1\nruntime = false",
+        );
+        assert!(parse_implementation_slice(&legacy).is_err());
+    }
+
+    #[test]
+    fn implementation_slice_rejects_free_form_git_basis() {
+        let legacy = format!("{SLICE}\nbasis = \"git:pr-head\"\n");
+        assert!(parse_implementation_slice(&legacy).is_err());
     }
 
     #[test]
@@ -276,16 +296,25 @@ state = "unchanged"
                 "cargo-allow.slice.self-hosted-runtime-promotion.v1",
                 "cargo-allow.slice.other-requirement.v1",
             )
-            .replace("issue:2206", "issue:2215");
+            .replace("issue:2206", "issue:2215")
+            .replace("status = \"outstanding\"", "status = \"partial\"");
         let second = parse_implementation_slice(&second_text).map_err(|error| error.to_string())?;
 
-        let ids = [first.id, second.id]
+        let ids = [first.id.clone(), second.id.clone()]
             .into_iter()
             .map(|slice_id| slice_id.as_str().to_string())
             .collect::<BTreeSet<_>>();
         assert_eq!(ids.len(), 2);
         assert_eq!(first.source_issue, "issue:2206");
         assert_eq!(second.source_issue, "issue:2215");
+        assert_eq!(
+            first.implementation_claim.status,
+            ImplementationClaimStatus::Outstanding
+        );
+        assert_eq!(
+            second.implementation_claim.status,
+            ImplementationClaimStatus::Partial
+        );
         Ok(())
     }
 
@@ -293,5 +322,14 @@ state = "unchanged"
     fn implementation_slice_rejects_mutable_execution_state() {
         let result = parse_implementation_slice(&format!("{SLICE}\nbranch = \"main\"\n"));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn implementation_slice_rejects_legacy_implementation_field() {
+        let legacy = SLICE
+            .replace("schema_version = \"2.0\"", "schema_version = \"1.0\"")
+            .replace("[implementation_claim]", "[implementation]")
+            .replace("status = \"outstanding\"", "state = \"implemented\"");
+        assert!(parse_implementation_slice(&legacy).is_err());
     }
 }

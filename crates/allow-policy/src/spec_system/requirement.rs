@@ -19,11 +19,26 @@ impl RequirementId {
     }
 }
 
+/// Normative status of a requirement.
+///
+/// This deliberately does not contain implementation states. A requirement may
+/// remain accepted while different implementation claims are planned,
+/// implemented, unsupported, or stale independently.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum RequirementLifecycle {
+pub enum RequirementStatus {
+    Draft,
     Accepted,
-    Implemented,
+    Deferred,
+    Superseded,
+    Rejected,
+    RemovedWithReplacement,
+}
+
+impl RequirementStatus {
+    pub fn allows_implementation_claim(self) -> bool {
+        matches!(self, Self::Accepted)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -38,7 +53,7 @@ pub struct SpecRequirement {
     pub id: RequirementId,
     pub local_id: String,
     pub generation: u32,
-    pub lifecycle: RequirementLifecycle,
+    pub status: RequirementStatus,
     pub statement: String,
     pub claim_class: RequirementClaimClass,
 }
@@ -74,7 +89,8 @@ struct RawRequirementBlock {
 struct RawRequirement {
     id: String,
     generation: u32,
-    lifecycle: RequirementLifecycle,
+    #[serde(alias = "lifecycle")]
+    status: RequirementStatus,
     statement: String,
     claim_class: RequirementClaimClass,
 }
@@ -147,7 +163,7 @@ pub fn parse_requirement_blocks_at(
             id,
             local_id: local_id.to_string(),
             generation: requirement.generation,
-            lifecycle: requirement.lifecycle,
+            status: requirement.status,
             statement: requirement.statement,
             claim_class: requirement.claim_class,
         });
@@ -276,7 +292,7 @@ schema_version = "1.0"
 [[requirement]]
 id = "spec-only-runtime-promotion"
 generation = 1
-lifecycle = "accepted"
+status = "accepted"
 statement = "A spec-only slice cannot promote runtime state without closure."
 claim_class = "runtime_behavior"
 ```
@@ -294,13 +310,21 @@ claim_class = "runtime_behavior"
             "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion"
         );
         assert_eq!(graph.requirements[0].generation, 1);
-        assert_eq!(
-            graph.requirements[0].lifecycle,
-            RequirementLifecycle::Accepted
-        );
+        assert_eq!(graph.requirements[0].status, RequirementStatus::Accepted);
         assert_eq!(graph.source.path.as_deref(), Some("docs/spec.md"));
         assert!(graph.source.start_line < graph.source.end_line);
         assert!(graph.source.content_identity.starts_with("fnv1a64:"));
+        Ok(())
+    }
+
+    #[test]
+    fn reads_accepted_legacy_field_without_allowing_implemented_status() -> Result<(), String> {
+        let accepted = SPEC.replace("status = \"accepted\"", "lifecycle = \"accepted\"");
+        let graph = parse_requirement_blocks(&accepted).map_err(|error| error.to_string())?;
+        assert_eq!(graph.requirements[0].status, RequirementStatus::Accepted);
+
+        let implemented = SPEC.replace("status = \"accepted\"", "lifecycle = \"implemented\"");
+        assert!(parse_requirement_blocks(&implemented).is_err());
         Ok(())
     }
 

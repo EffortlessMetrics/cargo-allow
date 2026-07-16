@@ -4,8 +4,12 @@
 //! validates registered artifact file existence, roots, visible IDs,
 //! ledger-resolvable graph links, active-goal TOML references, support-tier
 //! claim/proof fields, and the first bounded requirement/implementation-slice
-//! invariant. It does not execute proof commands or affect default cargo-allow
-//! behavior.
+//! invariant. Normative requirement status and implementation-claim status are
+//! intentionally independent; compatibility accepts the old field name only
+//! when its value remains a normative status. Prior-status transition history is
+//! deferred to future ancestry support rather than inferred from the current
+//! graph. The module does not execute proof commands or affect default
+//! cargo-allow behavior.
 
 mod active_goal;
 mod config;
@@ -34,7 +38,7 @@ pub use doc_artifacts::{
 };
 pub use implementation_slice::{
     EvidenceDisposition, EvidenceDispositionState, IMPLEMENTATION_SLICE_SCHEMA_VERSION,
-    ImplementationDisposition, ImplementationDispositionState, ImplementationSliceClass,
+    ImplementationClaim, ImplementationClaimStatus, ImplementationSliceClass,
     ImplementationSliceId, ImplementationSliceV1, RequirementDelta, SupportClaimDisposition,
     SupportClaimDispositionState, parse_implementation_slice, parse_implementation_slice_at,
 };
@@ -44,7 +48,7 @@ pub use profile_resolution::{
 };
 pub use requirement::{
     REQUIREMENT_BLOCK_SCHEMA_VERSION, RequirementClaimClass, RequirementGraph, RequirementId,
-    RequirementLifecycle, RequirementSource, SpecRequirement, parse_requirement_blocks,
+    RequirementSource, RequirementStatus, SpecRequirement, parse_requirement_blocks,
     parse_requirement_blocks_at,
 };
 pub use requirement_adapter::{
