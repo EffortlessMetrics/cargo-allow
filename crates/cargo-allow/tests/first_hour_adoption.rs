@@ -207,7 +207,8 @@ fn first_hour_expected_markers_match_live_renderer() {
         "live doctor must emit schema_id marker"
     );
     assert!(
-        doctor_text.contains("\"command\":\"doctor\"") || doctor_text.contains("\"command\": \"doctor\""),
+        doctor_text.contains("\"command\":\"doctor\"")
+            || doctor_text.contains("\"command\": \"doctor\""),
         "live doctor must emit command marker: `{doctor_text}`"
     );
 
