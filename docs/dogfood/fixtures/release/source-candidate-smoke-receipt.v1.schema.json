@@ -37,7 +37,8 @@
         "TimedOut",
         "Cancelled",
         "Unsupported",
-        "Partial"
+        "Partial",
+        "NetworkRequired"
       ]
     },
     "claim_boundary": {

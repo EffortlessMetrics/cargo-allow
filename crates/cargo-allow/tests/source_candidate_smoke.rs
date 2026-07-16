@@ -1,5 +1,5 @@
 //! Offline characterization for SourceCandidateSmokeReceiptV1
-//! (#2278 / #2373 / #2387 / #2396).
+//! (#2278 / #2373 / #2387 / #2396 / #2398).
 //!
 //! The installed first-hour + lifecycle journey itself lives in
 //! `scripts/source-candidate-smoke.sh` so release harnesses can invoke Cargo
@@ -34,7 +34,11 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
     );
     assert!(
         SCHEMA_DOC.contains("negative_controls"),
-        "schema must include negative_controls for #2373/#2387/#2396"
+        "schema must include negative_controls for #2373/#2387/#2396/#2398"
+    );
+    assert!(
+        SCHEMA_DOC.contains("NetworkRequired"),
+        "schema must enumerate NetworkRequired for unexpected-network fails"
     );
     let example: serde_json::Value = serde_json::from_str(EXAMPLE_RECEIPT)
         .unwrap_or_else(|err| std::panic::panic_any(format!("example receipt json: {err}")));
@@ -67,6 +71,12 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
             .any(|v| v.as_str() == Some("post_install_source_hidden_ordinary_scan")),
         "example must claim post-install source-hidden ordinary scan"
     );
+    assert!(
+        claim_boundary
+            .iter()
+            .any(|v| v.as_str() == Some("ordinary_scan_does_not_require_network")),
+        "example must claim ordinary scan does not require network"
+    );
     let negatives = example
         .get("negative_controls")
         .and_then(serde_json::Value::as_array)
@@ -83,12 +93,25 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
         "post_install_source_hidden_ordinary_scan",
         "missing_asset_not_satisfied_by_source_checkout",
         "wrong_installed_binary_version",
+        "ordinary_scan_does_not_require_network",
+        "unexpected_network_requirement_during_ordinary_scan",
     ] {
         assert!(
             ids.contains(&required),
             "example receipt missing negative control {required}"
         );
     }
+    let network_required = negatives.iter().find(|v| {
+        v.get("id").and_then(serde_json::Value::as_str)
+            == Some("unexpected_network_requirement_during_ordinary_scan")
+    });
+    assert_eq!(
+        network_required
+            .and_then(|v| v.get("result_class"))
+            .and_then(serde_json::Value::as_str),
+        Some("NetworkRequired"),
+        "unexpected-network control must classify NetworkRequired"
+    );
     let limitations = example
         .get("limitations")
         .and_then(serde_json::Value::as_array)

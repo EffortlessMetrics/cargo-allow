@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Installed-binary first-hour + lifecycle smoke (#2278 / #2373 / #2387 / #2396).
+# Installed-binary first-hour + lifecycle smoke (#2278 / #2373 / #2387 / #2396 / #2398).
 #
 # Path-installs cargo-allow (or reuses CARGO_ALLOW_BIN), runs the brownfield
 # first-hour journey plus refresh / diff / prune preview→write in a temporary
 # consumer repository outside this checkout, and emits
 # cargo-allow.source-candidate-smoke-receipt.v1 JSON.
 #
-# Includes post-install source-hidden ordinary-scan denial plus wrong-version /
-# MissingAsset harness negatives. Does not prove ExactCandidatePackageSet
-# isolation, crates.io published install, deny-source during path install, or
-# every remaining #2278 negative control.
+# Includes post-install source-hidden ordinary-scan denial, wrong-version /
+# MissingAsset harness negatives, and ordinary-scan offline / unexpected-network
+# classification. Does not prove ExactCandidatePackageSet isolation, crates.io
+# published install, deny-source during path install, package-rebuild omit,
+# optional-profile-without-assets, or recovery/rollback beyond final check.
 #
 # Usage:
 #   bash scripts/source-candidate-smoke.sh
@@ -575,6 +576,64 @@ PY
     fail "wrong-version negative produced unexpected class ${stale_class}"
   fi
 
+  log "negative: ordinary scan must not require network"
+  # Hostile network posture: Cargo offline + bogus proxy. cargo-allow ordinary
+  # scan is source-tree only and must still pass (NetworkIsolated).
+  set +e
+  offline_check_json="$(
+    CARGO_NET_OFFLINE=true \
+    CARGO_HTTP_PROXY=http://127.0.0.1:9 \
+    HTTPS_PROXY=http://127.0.0.1:9 \
+    HTTP_PROXY=http://127.0.0.1:9 \
+    http_proxy=http://127.0.0.1:9 \
+    https_proxy=http://127.0.0.1:9 \
+    ALL_PROXY=http://127.0.0.1:9 \
+    all_proxy=http://127.0.0.1:9 \
+    NO_PROXY= \
+    no_proxy= \
+    "${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" \
+      --kind panic --mode no-new --format json 2>"${work_dir}/offline-check.stderr"
+  )"
+  offline_check_code=$?
+  set -e
+  offline_class="NetworkIsolated"
+  offline_passed=true
+  if [[ "${offline_check_code}" -ne 0 ]]; then
+    offline_class="NetworkRequired"
+    offline_passed=false
+    fail "offline ordinary check failed (exit ${offline_check_code}); see ${work_dir}/offline-check.stderr"
+  fi
+  printf '%s\n' "${offline_check_json}" | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+status = report.get("status")
+if status != "passed":
+    raise SystemExit(f"offline check status {status!r}, expected passed")
+' || {
+    offline_class="NetworkRequired"
+    offline_passed=false
+    fail "offline ordinary check did not report passed"
+  }
+
+  log "negative: unexpected network requirement is NetworkRequired"
+  network_required_class="$(
+    python3 <<'PY'
+# Adversarial: ordinary scan reports success while recording that network was
+# required. Harness must classify NetworkRequired (fail closed), never Passed.
+ordinary_scan_exit = 0
+network_was_required = True
+if ordinary_scan_exit == 0 and network_was_required:
+    print("NetworkRequired")
+else:
+    print("InstrumentFailure")
+PY
+  )"
+  network_required_passed=true
+  if [[ "${network_required_class}" != "NetworkRequired" ]]; then
+    network_required_passed=false
+    fail "unexpected-network negative produced unexpected class ${network_required_class}"
+  fi
+
   negatives_json="$(
     OMITTED_CLASS="${omitted_class}" OMITTED_PASSED="${omitted_passed}" \
     DISAGREE_CLASS="${disagree_class}" DISAGREE_PASSED="${disagree_passed}" \
@@ -584,6 +643,9 @@ PY
     HIDDEN_CLASS="${hidden_class}" HIDDEN_PASSED="${hidden_passed}" \
     MISSING_ASSET_CLASS="${missing_asset_class}" MISSING_ASSET_PASSED="${missing_asset_passed}" \
     STALE_CLASS="${stale_class}" STALE_PASSED="${stale_passed}" \
+    OFFLINE_CLASS="${offline_class}" OFFLINE_PASSED="${offline_passed}" \
+    NETWORK_REQUIRED_CLASS="${network_required_class}" \
+    NETWORK_REQUIRED_PASSED="${network_required_passed}" \
     python3 <<'PY'
 import json, os
 print(json.dumps([
@@ -628,6 +690,18 @@ print(json.dumps([
         "result_class": os.environ["STALE_CLASS"],
         "passed": os.environ["STALE_PASSED"] == "true",
         "detail": "forged version_output mismatch vs workspace version is classified StaleCandidate",
+    },
+    {
+        "id": "ordinary_scan_does_not_require_network",
+        "result_class": os.environ["OFFLINE_CLASS"],
+        "passed": os.environ["OFFLINE_PASSED"] == "true",
+        "detail": "check --mode no-new under CARGO_NET_OFFLINE and bogus HTTP(S)_PROXY must still pass (NetworkIsolated)",
+    },
+    {
+        "id": "unexpected_network_requirement_during_ordinary_scan",
+        "result_class": os.environ["NETWORK_REQUIRED_CLASS"],
+        "passed": os.environ["NETWORK_REQUIRED_PASSED"] == "true",
+        "detail": "ordinary scan success while network_was_required is classified NetworkRequired",
     },
 ]))
 PY
@@ -755,6 +829,7 @@ receipt = {
         "temporary_consumer_repository",
         "source_candidate_not_published_registry",
         "post_install_source_hidden_ordinary_scan",
+        "ordinary_scan_does_not_require_network",
     ],
     "candidate": {
         "workspace_version": os.environ["WORKSPACE_VERSION"],

@@ -8,7 +8,8 @@
     "refresh_diff_and_prune_lifecycle",
     "temporary_consumer_repository",
     "source_candidate_not_published_registry",
-    "post_install_source_hidden_ordinary_scan"
+    "post_install_source_hidden_ordinary_scan",
+    "ordinary_scan_does_not_require_network"
   ],
   "candidate": {
     "workspace_version": "0.1.10",
@@ -132,6 +133,18 @@
       "result_class": "StaleCandidate",
       "passed": true,
       "detail": "forged version_output mismatch vs workspace version is classified StaleCandidate"
+    },
+    {
+      "id": "ordinary_scan_does_not_require_network",
+      "result_class": "NetworkIsolated",
+      "passed": true,
+      "detail": "check --mode no-new under CARGO_NET_OFFLINE and bogus HTTP(S)_PROXY must still pass (NetworkIsolated)"
+    },
+    {
+      "id": "unexpected_network_requirement_during_ordinary_scan",
+      "result_class": "NetworkRequired",
+      "passed": true,
+      "detail": "ordinary scan success while network_was_required is classified NetworkRequired"
     }
   ],
   "limitations": [
