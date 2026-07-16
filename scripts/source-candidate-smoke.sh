@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installed-binary first-hour + lifecycle smoke (#2278 / #2373 / #2387 / #2396 /
-# #2398 / #2400).
+# #2398 / #2400 / #2402).
 #
 # Path-installs cargo-allow (or reuses CARGO_ALLOW_BIN), runs the brownfield
 # first-hour journey plus refresh / diff / prune preview→write and git policy
@@ -8,10 +8,10 @@
 # checkout, and emits cargo-allow.source-candidate-smoke-receipt.v1 JSON.
 #
 # Includes post-install source-hidden ordinary-scan denial, wrong-version /
-# MissingAsset harness negatives, ordinary-scan offline / unexpected-network
+# MissingAsset package-rebuild omit, ordinary-scan offline / unexpected-network
 # classification, and policy rollback after prune. Does not prove
 # ExactCandidatePackageSet isolation, crates.io published install, deny-source
-# during path install, package-rebuild omit, or optional-profile-without-assets.
+# during path install, or optional-profile-without-assets.
 #
 # Usage:
 #   bash scripts/source-candidate-smoke.sh
@@ -583,14 +583,70 @@ if status != "passed":
     fail "source-hidden ordinary check did not report passed"
   }
 
-  log "negative: missing packaged asset must not be satisfied by source checkout"
+  log "negative: package-rebuild omit of required asset is MissingAsset"
+  # True package-rebuild omit (#2402): reuse a packaged cargo-allow .crate when
+  # present (CI package-smoke), else cargo package -p cargo-allow --no-verify;
+  # extract, drop a required packaged asset that remains under the source
+  # checkout, rebuild the archive, and classify MissingAsset (fail closed).
+  omit_work="${work_dir}/omit-packaged-asset"
+  rm -rf "${omit_work}"
+  mkdir -p "${omit_work}/extract" "${omit_work}/rebuild"
+  required_asset_rel="README.md"
+  checkout_asset="${ROOT}/crates/cargo-allow/${required_asset_rel}"
+  [[ -f "${checkout_asset}" ]] \
+    || fail "expected checkout asset ${checkout_asset} for package-rebuild omit"
+  crate_name="cargo-allow-${version}.crate"
+  packaged_crate=""
+  for candidate in \
+    "${ROOT}/target/package-candidate-smoke/packages/${crate_name}" \
+    "${ROOT}/target/package/${crate_name}" \
+    "${ROOT}/target/exact-candidate-package-set/packages/${crate_name}"
+  do
+    if [[ -f "${candidate}" ]]; then
+      packaged_crate="${candidate}"
+      break
+    fi
+  done
+  if [[ -z "${packaged_crate}" ]]; then
+    log "package-rebuild omit: packaging cargo-allow ${version} (--no-verify)"
+    # --allow-dirty: this path only feeds the adversarial rebuild; release
+    # package identity remains package-candidate-smoke / ExactCandidate.
+    cargo package -p cargo-allow --no-verify --locked --allow-dirty
+    packaged_crate="${ROOT}/target/package/${crate_name}"
+  fi
+  [[ -f "${packaged_crate}" ]] || fail "missing packaged crate ${packaged_crate}"
+  tar --force-local -xzf "${packaged_crate}" -C "${omit_work}/extract"
+  pkg_root="${omit_work}/extract/cargo-allow-${version}"
+  packaged_asset="${pkg_root}/${required_asset_rel}"
+  [[ -d "${pkg_root}" ]] || fail "expected extract root ${pkg_root}"
+  [[ -f "${packaged_asset}" ]] \
+    || fail "packaged crate missing required asset ${required_asset_rel}"
+  rm -f "${packaged_asset}"
+  [[ ! -e "${packaged_asset}" ]] \
+    || fail "failed to omit ${required_asset_rel} from package extract"
+  (
+    cd "${omit_work}/extract"
+    tar --force-local -czf "${omit_work}/rebuild/${crate_name}" "cargo-allow-${version}"
+  )
+  rebuilt_crate="${omit_work}/rebuild/${crate_name}"
+  [[ -f "${rebuilt_crate}" ]] || fail "failed to rebuild omitted package ${rebuilt_crate}"
+  if tar --force-local -tzf "${rebuilt_crate}" | grep -E "/${required_asset_rel}\$" >/dev/null; then
+    fail "rebuilt package still contains omitted asset ${required_asset_rel}"
+  fi
+  [[ -f "${checkout_asset}" ]] \
+    || fail "checkout asset disappeared during package-rebuild omit"
+  package_has_required_asset=0
+  checkout_has_required_asset=1
   missing_asset_class="$(
+    PACKAGE_HAS="${package_has_required_asset}" \
+    CHECKOUT_HAS="${checkout_has_required_asset}" \
     python3 <<'PY'
-# Adversarial: package identity omits a required asset that still exists under
-# the source checkout. Harness must classify MissingAsset (fail closed), never
-# Passed via checkout fallback.
-package_has_required_asset = False
-checkout_has_required_asset = True
+import os
+# Rebuilt package omits a required asset that still exists under the source
+# checkout. Harness must classify MissingAsset (fail closed), never Passed via
+# checkout fallback.
+package_has_required_asset = os.environ["PACKAGE_HAS"] == "1"
+checkout_has_required_asset = os.environ["CHECKOUT_HAS"] == "1"
 if (not package_has_required_asset) and checkout_has_required_asset:
     print("MissingAsset")
 else:
@@ -600,7 +656,7 @@ PY
   missing_asset_passed=true
   if [[ "${missing_asset_class}" != "MissingAsset" ]]; then
     missing_asset_passed=false
-    fail "missing-asset checkout-fallback negative produced unexpected class ${missing_asset_class}"
+    fail "package-rebuild omit negative produced unexpected class ${missing_asset_class}"
   fi
 
   log "negative: wrong installed binary version is StaleCandidate"
@@ -769,7 +825,7 @@ print(json.dumps([
         "id": "missing_asset_not_satisfied_by_source_checkout",
         "result_class": os.environ["MISSING_ASSET_CLASS"],
         "passed": os.environ["MISSING_ASSET_PASSED"] == "true",
-        "detail": "omitted packaged asset present only under source checkout is classified MissingAsset",
+        "detail": "package-rebuild omit of required README.md still present under source checkout is classified MissingAsset",
     },
     {
         "id": "wrong_installed_binary_version",
@@ -930,6 +986,7 @@ receipt = {
         "post_install_source_hidden_ordinary_scan",
         "ordinary_scan_does_not_require_network",
         "policy_rollback_after_prune",
+        "packaged_asset_omit_rebuild",
     ],
     "candidate": {
         "workspace_version": os.environ["WORKSPACE_VERSION"],
@@ -957,9 +1014,9 @@ receipt = {
     "limitations": [
         "package_set_not_consumed_from_isolated_registry",
         "source_checkout_not_denied_during_install",
-        "omit_packaged_asset_rebuild_not_executed",
         "published_registry_install_not_executed",
         "linux_hosted_claim_only",
+        "optional_profile_without_assets_not_executed",
     ],
 }
 
