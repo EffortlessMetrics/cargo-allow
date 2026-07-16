@@ -1,0 +1,38 @@
+name: one-shot-format-staged-index-2370
+
+on:
+  push:
+    branches:
+      - agent/staged-index-source-2359
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.repository == 'EffortlessMetrics/cargo-allow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: agent/staged-index-source-2359
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Format and verify staged-index source
+        run: |
+          cargo fmt --all
+          cargo test -p allow-diff staged_index --locked -- --nocapture
+          cargo clippy -p allow-diff --all-targets --locked -- -D warnings
+      - name: Remove one-shot workflow and prove no-new
+        run: |
+          rm .github/workflows/one-shot-format-staged-index-2370.yml
+          cargo run -p cargo-allow -- check --mode no-new --format markdown --output target/cargo-allow/staged-index-no-new.md
+      - name: Commit verified formatting
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'style(diff): format staged-index source'
+          git push origin HEAD:agent/staged-index-source-2359
