@@ -16,9 +16,11 @@ inventory without executing repository code.
   refresh (location_drift), `diff --base`, and prune preview→write lifecycle
   steps in a temporary consumer repo, with omitted-step / preview-apply /
   malformed-receipt / post-install source-hidden ordinary-scan /
-  MissingAsset-vs-checkout-fallback / wrong-version (`StaleCandidate`)
-  negatives (#2396 / #2387 / #2373 / #2278; path-install still uses the source
-  checkout; package-rebuild omit remains deferred).
+  MissingAsset-vs-checkout-fallback / wrong-version (`StaleCandidate`) /
+  ordinary-scan offline (`NetworkIsolated`) / unexpected-network
+  (`NetworkRequired`) negatives (#2398 / #2396 / #2387 / #2373 / #2278;
+  path-install still uses the source checkout; package-rebuild omit, optional
+  profile, and recovery/rollback beyond final check remain deferred).
 - `scripts/exact-candidate-package-set.sh` emits
   `cargo-allow.exact-candidate-package-set.v1` after packaging the shared
   ten-crate set, assembling a Cargo directory vendor with injected candidate

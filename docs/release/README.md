@@ -43,11 +43,12 @@ That harness path-installs into a temp root (or reuses `CARGO_ALLOW_BIN`),
 runs the brownfield first-hour journey plus refresh (location_drift),
 `diff --base`, and prune preview→write in an isolated git consumer, records
 omitted-step / preview-apply / malformed-receipt / post-install source-hidden
-ordinary-scan / MissingAsset-vs-checkout-fallback / wrong-version negatives,
-and writes `target/source-candidate-smoke/source-candidate-smoke.receipt.json`.
+ordinary-scan / MissingAsset-vs-checkout-fallback / wrong-version /
+ordinary-scan offline / unexpected-network negatives, and writes
+`target/source-candidate-smoke/source-candidate-smoke.receipt.json`.
 It does **not** deny the source tree during path install, rebuild packages with
-omitted assets, or cover every remaining #2278 negative (network / optional
-profile / recovery beyond final `check --mode no-new`). Offline schema/example
+omitted assets, or cover every remaining #2278 negative (optional profile /
+recovery beyond final `check --mode no-new`). Offline schema/example
 characterization remains
 `cargo test -p cargo-allow --test source_candidate_smoke --locked`.
 
