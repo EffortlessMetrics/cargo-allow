@@ -43,13 +43,13 @@ That harness path-installs into a temp root (or reuses `CARGO_ALLOW_BIN`),
 runs the brownfield first-hour journey plus refresh (location_drift),
 `diff --base`, prune preview→write, and git policy rollback after prune in an
 isolated git consumer, records omitted-step / preview-apply / malformed-receipt
-/ post-install source-hidden ordinary-scan / MissingAsset-vs-checkout-fallback /
-wrong-version / ordinary-scan offline / unexpected-network / failed-policy-
-rollback negatives, and writes
+/ post-install source-hidden ordinary-scan / package-rebuild omit
+(`MissingAsset`) / wrong-version / ordinary-scan offline / unexpected-network /
+failed-policy-rollback negatives, and writes
 `target/source-candidate-smoke/source-candidate-smoke.receipt.json`.
-It does **not** deny the source tree during path install, rebuild packages with
-omitted assets, or cover every remaining #2278 negative (optional profile
-without packaged assets). Offline schema/example characterization remains
+It does **not** deny the source tree during path install or cover every
+remaining #2278 negative (optional profile without packaged assets). Offline
+schema/example characterization remains
 `cargo test -p cargo-allow --test source_candidate_smoke --locked`.
 
 Exact ten-crate isolation (#2277 / #2372 Stage A, #2378 Stage B negatives, #2380 Stage C directory source) is

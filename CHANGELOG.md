@@ -16,11 +16,11 @@ inventory without executing repository code.
   refresh (location_drift), `diff --base`, prune preview→write, and git policy
   rollback after prune in a temporary consumer repo, with omitted-step /
   preview-apply / malformed-receipt / post-install source-hidden ordinary-scan /
-  MissingAsset-vs-checkout-fallback / wrong-version (`StaleCandidate`) /
+  package-rebuild omit (`MissingAsset`) / wrong-version (`StaleCandidate`) /
   ordinary-scan offline (`NetworkIsolated`) / unexpected-network
   (`NetworkRequired`) / failed-policy-rollback (`RecoveryFailed`) negatives
-  (#2400 / #2398 / #2396 / #2387 / #2373 / #2278; path-install still uses the
-  source checkout; package-rebuild omit and optional profile remain deferred).
+  (#2402 / #2400 / #2398 / #2396 / #2387 / #2373 / #2278; path-install still
+  uses the source checkout; optional-profile-without-assets remains deferred).
 - `scripts/exact-candidate-package-set.sh` emits
   `cargo-allow.exact-candidate-package-set.v1` after packaging the shared
   ten-crate set, assembling a Cargo directory vendor with injected candidate

@@ -1,5 +1,5 @@
 //! Offline characterization for SourceCandidateSmokeReceiptV1
-//! (#2278 / #2373 / #2387 / #2396 / #2398 / #2400).
+//! (#2278 / #2373 / #2387 / #2396 / #2398 / #2400 / #2402).
 //!
 //! The installed first-hour + lifecycle journey itself lives in
 //! `scripts/source-candidate-smoke.sh` so release harnesses can invoke Cargo
@@ -35,7 +35,7 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
     );
     assert!(
         SCHEMA_DOC.contains("negative_controls"),
-        "schema must include negative_controls for #2373/#2387/#2396/#2398/#2400"
+        "schema must include negative_controls for #2373/#2387/#2396/#2398/#2400/#2402"
     );
     assert!(
         SCHEMA_DOC.contains("NetworkRequired"),
@@ -87,6 +87,12 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
             .iter()
             .any(|v| v.as_str() == Some("policy_rollback_after_prune")),
         "example must claim policy rollback after prune"
+    );
+    assert!(
+        claim_boundary
+            .iter()
+            .any(|v| v.as_str() == Some("packaged_asset_omit_rebuild")),
+        "example must claim packaged asset omit rebuild"
     );
     let negatives = example
         .get("negative_controls")
@@ -158,9 +164,33 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
         "example must not claim checkout-denial remains deferred after #2396"
     );
     assert!(
-        limitations
+        !limitations
             .iter()
             .any(|v| v.as_str() == Some("omit_packaged_asset_rebuild_not_executed")),
-        "example must record that MissingAsset is harness-classified, not package-rebuild omitted"
+        "example must not claim package-rebuild omit remains deferred after #2402"
+    );
+    assert!(
+        limitations
+            .iter()
+            .any(|v| v.as_str() == Some("optional_profile_without_assets_not_executed")),
+        "example must record that optional-profile-without-assets remains deferred"
+    );
+    let missing_asset = negatives.iter().find(|v| {
+        v.get("id").and_then(serde_json::Value::as_str)
+            == Some("missing_asset_not_satisfied_by_source_checkout")
+    });
+    assert_eq!(
+        missing_asset
+            .and_then(|v| v.get("result_class"))
+            .and_then(serde_json::Value::as_str),
+        Some("MissingAsset"),
+        "package-rebuild omit control must classify MissingAsset"
+    );
+    assert!(
+        missing_asset
+            .and_then(|v| v.get("detail"))
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|detail| detail.contains("package-rebuild omit")),
+        "MissingAsset detail must record package-rebuild omit execution"
     );
 }
