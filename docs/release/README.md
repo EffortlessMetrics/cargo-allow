@@ -40,11 +40,11 @@ bash scripts/source-candidate-smoke.sh
 ```
 
 That harness path-installs into a temp root (or reuses `CARGO_ALLOW_BIN`),
-runs the brownfield first-hour journey plus `diff --base` and prune
-preview→write in an isolated git consumer, records omitted-step /
-preview-apply-disagree negatives, and writes
+runs the brownfield first-hour journey plus refresh (location_drift),
+`diff --base`, and prune preview→write in an isolated git consumer, records
+omitted-step / preview-apply / malformed-receipt negatives, and writes
 `target/source-candidate-smoke/source-candidate-smoke.receipt.json`. It does
-**not** yet cover refresh lifecycle, checkout denial, or every #2278 negative.
+**not** yet cover checkout denial or every remaining #2278 negative.
 Offline schema/example characterization remains
 `cargo test -p cargo-allow --test source_candidate_smoke --locked`.
 

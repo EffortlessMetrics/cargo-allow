@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Installed-binary first-hour + lifecycle smoke (#2278 / #2373).
+# Installed-binary first-hour + lifecycle smoke (#2278 / #2373 / #2387).
 #
 # Path-installs cargo-allow (or reuses CARGO_ALLOW_BIN), runs the brownfield
-# first-hour journey plus diff / prune preview→write in a temporary consumer
-# repository outside this checkout, and emits
+# first-hour journey plus refresh / diff / prune preview→write in a temporary
+# consumer repository outside this checkout, and emits
 # cargo-allow.source-candidate-smoke-receipt.v1 JSON.
 #
 # Does not prove ExactCandidatePackageSet isolation, crates.io published
-# install, checkout denial, refresh path, or every #2278 negative control.
+# install, checkout denial, or every #2278 negative control.
 #
 # Usage:
 #   bash scripts/source-candidate-smoke.sh
@@ -160,6 +160,91 @@ print(entries[0]["id"])
 "${cargo_bin}" worklist --root "${consumer_dir}" --config "${policy_path}" --kind panic --format json >/dev/null
 step_list_exit=0
 
+log "step refresh lifecycle (induce location_drift → dry-run → write)"
+python3 - "${policy_path}" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+marker = "[allow.last_seen]"
+idx = text.find(marker)
+if idx < 0:
+    raise SystemExit("proposed policy missing [allow.last_seen]")
+section = text[idx:]
+section2, n = re.subn(r"(?m)^(line\s*=\s*)\d+", r"\g<1>99", section, count=1)
+if n != 1:
+    raise SystemExit("failed to corrupt allow.last_seen.line")
+path.write_text(text[:idx] + section2, encoding="utf-8")
+print("induced_location_drift=allow.last_seen.line=99")
+PY
+refresh_preview="${work_dir}/refresh-preview.json"
+refresh_write="${work_dir}/refresh-write.json"
+"${cargo_bin}" refresh \
+  --root "${consumer_dir}" \
+  --config "${policy_path}" \
+  --allow-id "${allow_id}" \
+  --dry-run \
+  --format json \
+  --output "${refresh_preview}"
+python3 - "${refresh_preview}" "${allow_id}" <<'PY'
+import json, sys
+from pathlib import Path
+report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+allow_id = sys.argv[2]
+if report.get("schema_id") != "cargo-allow.refresh.v1":
+    raise SystemExit(f"refresh preview schema_id mismatch: {report.get('schema_id')!r}")
+ids = set()
+for value in (report.get("mutation_receipt") or {}).get("changed_allow_ids") or []:
+    if isinstance(value, str):
+        ids.add(value)
+if allow_id not in ids:
+    raise SystemExit(f"refresh preview missing allow {allow_id!r}")
+mode = report.get("mode") or {}
+if mode.get("write_requested") is True:
+    raise SystemExit("refresh preview unexpectedly requested write")
+PY
+"${cargo_bin}" refresh \
+  --root "${consumer_dir}" \
+  --config "${policy_path}" \
+  --allow-id "${allow_id}" \
+  --write \
+  --format json \
+  --output "${refresh_write}"
+python3 - "${refresh_preview}" "${refresh_write}" "${allow_id}" <<'PY'
+import json, sys
+from pathlib import Path
+
+def changed_ids(path: Path) -> set[str]:
+    report = json.loads(path.read_text(encoding="utf-8"))
+    ids = set()
+    for value in (report.get("mutation_receipt") or {}).get("changed_allow_ids") or []:
+        if isinstance(value, str):
+            ids.add(value)
+    return ids
+
+preview_path = Path(sys.argv[1])
+write_path = Path(sys.argv[2])
+allow_id = sys.argv[3]
+write = json.loads(write_path.read_text(encoding="utf-8"))
+if write.get("schema_id") != "cargo-allow.refresh.v1":
+    raise SystemExit(f"refresh write schema_id mismatch: {write.get('schema_id')!r}")
+result = (write.get("mutation_receipt") or {}).get("result")
+if result != "written":
+    raise SystemExit(f"expected refresh mutation_receipt.result == written, got {result!r}")
+preview_ids = changed_ids(preview_path)
+write_ids = changed_ids(write_path)
+if preview_ids != write_ids:
+    raise SystemExit(
+        f"PreviewApplyDisagree: refresh preview ids {sorted(preview_ids)} "
+        f"!= write ids {sorted(write_ids)}"
+    )
+if allow_id not in write_ids:
+    raise SystemExit(f"refresh write missing allow {allow_id!r}")
+PY
+step_refresh_exit=0
+
 command -v git >/dev/null 2>&1 || fail "git is required for diff --base lifecycle steps"
 log "step git baseline commit for diff --base"
 git -C "${consumer_dir}" init >/dev/null
@@ -284,8 +369,6 @@ if [[ "${SKIP_NEGATIVES:-0}" != "1" ]]; then
   log "negative: omitted journey step cannot claim Passed"
   omitted_class="$(
     python3 <<'PY'
-import json
-
 expected = [
     "version",
     "doctor_no_policy",
@@ -293,24 +376,20 @@ expected = [
     "bootstrap_propose_write",
     "check_no_new_pass",
     "list_explain_worklist",
+    "refresh_location_drift_preview_write",
     "diff_against_exact_base",
     "prune_stale_preview_write",
     "final_check_no_new",
 ]
-# Forge a Passed receipt that omits the prune step.
-forged = {
-    "schema_version": 1,
-    "schema_id": "cargo-allow.source-candidate-smoke-receipt.v1",
-    "tool": "cargo-allow",
-    "result": "Passed",
-    "journey": {
-        "steps_expected": expected,
-        "steps_executed": [{"id": step, "exit_code": 0} for step in expected if step != "prune_stale_preview_write"],
-    },
-}
-executed = {step["id"] for step in forged["journey"]["steps_executed"]}
-missing = [step for step in forged["journey"]["steps_expected"] if step not in executed]
-if forged["result"] == "Passed" and missing:
+# Forge a Passed receipt that omits the refresh step.
+forged_executed = [
+    {"id": step, "exit_code": 0}
+    for step in expected
+    if step != "refresh_location_drift_preview_write"
+]
+executed = {step["id"] for step in forged_executed}
+missing = [step for step in expected if step not in executed]
+if missing:
     print("OmittedStep")
 else:
     print("InstrumentFailure")
@@ -358,9 +437,64 @@ PY
     fail "preview/apply disagree negative produced unexpected class ${disagree_class}"
   fi
 
+  log "negative: refresh preview/apply subject disagreement is detected"
+  refresh_disagree_class="$(
+    python3 - "${refresh_preview}" <<'PY'
+import json, sys
+from pathlib import Path
+preview = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+forged_write = json.loads(json.dumps(preview))
+forged_write["mutation_receipt"] = {
+    "result": "written",
+    "changed_allow_ids": ["forged-refresh-disagree-id"],
+}
+
+def changed_ids(report: dict) -> set[str]:
+    ids = set()
+    for value in (report.get("mutation_receipt") or {}).get("changed_allow_ids") or []:
+        if isinstance(value, str):
+            ids.add(value)
+    return ids
+
+if changed_ids(preview) != changed_ids(forged_write):
+    print("PreviewApplyDisagree")
+else:
+    print("InstrumentFailure")
+PY
+  )"
+  refresh_disagree_passed=true
+  if [[ "${refresh_disagree_class}" != "PreviewApplyDisagree" ]]; then
+    refresh_disagree_passed=false
+    fail "refresh preview/apply disagree negative produced unexpected class ${refresh_disagree_class}"
+  fi
+
+  log "negative: malformed smoke receipt schema cannot claim Passed"
+  malformed_class="$(
+    python3 <<'PY'
+forged = {
+    "schema_version": 1,
+    "schema_id": "cargo-allow.source-candidate-smoke-receipt.v0-forged",
+    "tool": "cargo-allow",
+    "result": "Passed",
+}
+if forged["result"] == "Passed" and forged["schema_id"] != "cargo-allow.source-candidate-smoke-receipt.v1":
+    print("MalformedArtifact")
+else:
+    print("InstrumentFailure")
+PY
+  )"
+  malformed_passed=true
+  if [[ "${malformed_class}" != "MalformedArtifact" ]]; then
+    malformed_passed=false
+    fail "malformed-receipt negative produced unexpected class ${malformed_class}"
+  fi
+
   negatives_json="$(
     OMITTED_CLASS="${omitted_class}" OMITTED_PASSED="${omitted_passed}" \
     DISAGREE_CLASS="${disagree_class}" DISAGREE_PASSED="${disagree_passed}" \
+    REFRESH_DISAGREE_CLASS="${refresh_disagree_class}" \
+    REFRESH_DISAGREE_PASSED="${refresh_disagree_passed}" \
+    MALFORMED_CLASS="${malformed_class}" MALFORMED_PASSED="${malformed_passed}" \
     python3 <<'PY'
 import json, os
 print(json.dumps([
@@ -375,6 +509,18 @@ print(json.dumps([
         "result_class": os.environ["DISAGREE_CLASS"],
         "passed": os.environ["DISAGREE_PASSED"] == "true",
         "detail": "forged prune write subject mismatch is classified PreviewApplyDisagree",
+    },
+    {
+        "id": "refresh_preview_apply_subject_agree",
+        "result_class": os.environ["REFRESH_DISAGREE_CLASS"],
+        "passed": os.environ["REFRESH_DISAGREE_PASSED"] == "true",
+        "detail": "forged refresh write subject mismatch is classified PreviewApplyDisagree",
+    },
+    {
+        "id": "malformed_smoke_receipt_cannot_claim_passed",
+        "result_class": os.environ["MALFORMED_CLASS"],
+        "passed": os.environ["MALFORMED_PASSED"] == "true",
+        "detail": "Passed receipt with wrong schema_id is classified MalformedArtifact",
     },
 ]))
 PY
@@ -408,6 +554,7 @@ STEP_AUDIT_EXIT="${step_audit_exit}" \
 STEP_PROPOSE_EXIT="${step_propose_exit}" \
 STEP_CHECK_EXIT="${step_check_exit}" \
 STEP_LIST_EXIT="${step_list_exit}" \
+STEP_REFRESH_EXIT="${step_refresh_exit}" \
 STEP_DIFF_EXIT="${step_diff_exit}" \
 STEP_PRUNE_EXIT="${step_prune_exit}" \
 STEP_FINAL_CHECK_EXIT="${step_final_check_exit}" \
@@ -426,6 +573,7 @@ steps_expected = [
     "bootstrap_propose_write",
     "check_no_new_pass",
     "list_explain_worklist",
+    "refresh_location_drift_preview_write",
     "diff_against_exact_base",
     "prune_stale_preview_write",
     "final_check_no_new",
@@ -462,6 +610,11 @@ steps_executed = [
         "artifact_schema_id": "cargo-allow.list.v1",
     },
     {
+        "id": "refresh_location_drift_preview_write",
+        "exit_code": code("STEP_REFRESH_EXIT"),
+        "artifact_schema_id": "cargo-allow.refresh.v1",
+    },
+    {
         "id": "diff_against_exact_base",
         "exit_code": code("STEP_DIFF_EXIT"),
         "artifact_schema_id": "cargo-allow.report.v1",
@@ -491,7 +644,7 @@ receipt = {
     "result": "Passed",
     "claim_boundary": [
         "installed_binary_first_hour_journey",
-        "diff_and_prune_lifecycle",
+        "refresh_diff_and_prune_lifecycle",
         "temporary_consumer_repository",
         "source_candidate_not_published_registry",
     ],
@@ -521,7 +674,6 @@ receipt = {
     "limitations": [
         "package_set_not_consumed_from_isolated_registry",
         "source_checkout_not_denied_during_install",
-        "refresh_lifecycle_not_executed",
         "checkout_denial_negative_deferred",
         "published_registry_install_not_executed",
         "linux_hosted_claim_only",
