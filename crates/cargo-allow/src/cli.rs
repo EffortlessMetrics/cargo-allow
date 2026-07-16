@@ -96,16 +96,20 @@ pub(crate) fn normalized_args(args: impl IntoIterator<Item = String>) -> Vec<Str
     args
 }
 
-/// Locate the cargo-plugin `allow` shim token (`cargo allow <subcommand>`).
+/// Locate the cargo-plugin `allow` shim token (`cargo allow …`).
 ///
 /// Cargo invokes this binary as `cargo-allow` and inserts a literal `allow`
-/// before the real subcommand. Strip that shim only when a known subcommand
-/// follows (flags may appear in between). Bare `cargo-allow allow …` keeps
-/// `allow` so a future `Allow` subcommand is not permanently reserved.
+/// before the real subcommand or root flags. Strip that shim when:
+/// - a known subcommand follows (flags may appear in between), or
+/// - only root flags follow (for example `cargo allow --version`).
+///
+/// Bare `cargo-allow allow` with no further tokens keeps `allow` so a future
+/// `Allow` subcommand is not permanently reserved. Unknown non-flag tokens
+/// after `allow` also keep it (for example `cargo-allow allow future-cmd`).
 fn leading_cargo_allow_shim_index(args: &[String]) -> Option<usize> {
     for (index, arg) in args.iter().enumerate().skip(1) {
         if arg == "allow" {
-            return if has_known_subcommand_after(args, index + 1) {
+            return if should_strip_cargo_allow_shim(args, index + 1) {
                 Some(index)
             } else {
                 None
@@ -118,8 +122,10 @@ fn leading_cargo_allow_shim_index(args: &[String]) -> Option<usize> {
     None
 }
 
-fn has_known_subcommand_after(args: &[String], start: usize) -> bool {
+fn should_strip_cargo_allow_shim(args: &[String], start: usize) -> bool {
+    let mut saw_token = false;
     for arg in args.iter().skip(start) {
+        saw_token = true;
         if is_known_subcommand(arg) {
             return true;
         }
@@ -130,7 +136,9 @@ fn has_known_subcommand_after(args: &[String], start: usize) -> bool {
         // itself the command (or an unknown command), not a cargo shim.
         return false;
     }
-    false
+    // Only flags after `allow` (for example `--version`) are cargo-plugin root
+    // options. Empty tail keeps bare `allow` free for a future subcommand.
+    saw_token
 }
 
 fn is_known_subcommand(arg: &str) -> bool {

@@ -39,9 +39,17 @@ mod tests {
     #[test]
     fn normalized_args_does_not_strip_bare_allow_without_following_subcommand() {
         // Keeps `allow` available as a future subcommand name. Cargo plugin
-        // invocations always include a real subcommand after the shim.
+        // invocations with only the shim token stay free for that evolution.
         let normalized = normalized_args(argv(vec!["cargo-allow", "allow"]));
         let expected = argv(vec!["cargo-allow", "allow"]);
+        assert_eq!(normalized, expected);
+    }
+
+    #[test]
+    fn normalized_args_strips_allow_shim_before_root_version_flag() {
+        // `cargo allow --version` becomes `cargo-allow allow --version`.
+        let normalized = normalized_args(argv(vec!["cargo-allow", "allow", "--version"]));
+        let expected = argv(vec!["cargo-allow", "--version"]);
         assert_eq!(normalized, expected);
     }
 
