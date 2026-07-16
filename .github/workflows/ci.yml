@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  # One-shot release-branch generator. The script removes its own staging files
-  # and restores this workflow from main before committing the final candidate.
+  # One-shot release-branch generator. The scripts remove their own staging files
+  # and restore this workflow from main before committing the final candidate.
   prepare-release-0-1-11:
     if: github.event_name == 'pull_request' && github.head_ref == 'release/0.1.11' && github.actor != 'github-actions[bot]'
     permissions:
@@ -22,7 +22,12 @@ jobs:
         with:
           components: rustfmt
       - name: Generate and push exact 0.1.11 source freeze
-        run: bash scripts/prepare-0.1.11.sh
+        run: bash scripts/run-prepare-0.1.11.sh
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: release-0.1.11-prepare-log
+          path: target/release-prepare/prepare.log
 
   # Prove the workspace rust-version pin (1.85) still builds and runs the
   # fast package proof. Stable/full suite stays on the `test` job below so
