@@ -1,6 +1,6 @@
 use allow_core::{
-    AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, MatchOutcome, SimpleDate,
-    json_escape,
+    AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, FindingKind,
+    MatchOutcome, SimpleDate, json_escape,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
@@ -81,7 +81,8 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         // in-scope findings, and pin that count as occurrence_limit so the
         // entry is a ratchet floor (#2056).
         if args.path.is_some() || args.line.is_some() {
-            return Err(CargoAllowError::new(
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
                 "--glob is mutually exclusive with --path/--line",
             ));
         }
@@ -122,10 +123,16 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     } else {
         // --path/--line: receipt one specific occurrence (structurally anchored).
         let path = args.path.as_ref().ok_or_else(|| {
-            CargoAllowError::new("either --glob or --path (with --line) is required")
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                "either --glob or --path (with --line) is required",
+            )
         })?;
         let line = args.line.ok_or_else(|| {
-            CargoAllowError::new("--line is required with --path (or use --glob)")
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                "--line is required with --path (or use --glob)",
+            )
         })?;
         let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
         let (finding_index, finding) = select_add_finding(&findings, parsed_kind, path, line)?;

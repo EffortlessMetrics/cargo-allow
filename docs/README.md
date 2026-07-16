@@ -126,6 +126,8 @@ governance profile model around it.
 ## Reference
 
 - [How-to guides](how-to/README.md): task guide index.
+- [Error codes and exit codes](error-codes.md): stable `E000*` registry and
+  process exit mapping (`0` / `1` / `2`).
 - [CI](ci.md): GitHub Actions examples for PR posture diffs, mainline checks,
   and opt-in profile artifacts.
 - [Crates](crates.md): workspace crate responsibilities and library namespace
