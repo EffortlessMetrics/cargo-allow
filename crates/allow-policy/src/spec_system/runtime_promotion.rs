@@ -445,7 +445,8 @@ state = "unchanged"
         let graph = graph()?;
         let outstanding = slice()?;
         let mut implemented = outstanding.clone();
-        implemented.id = ImplementationSliceId("cargo-allow.slice.runtime-implementation.v1".into());
+        implemented.id =
+            ImplementationSliceId("cargo-allow.slice.runtime-implementation.v1".into());
         implemented.change_class = ImplementationSliceClass::BehaviorChange;
         implemented.implementation_claim.status = ImplementationClaimStatus::Implemented;
         implemented.evidence.state = EvidenceDispositionState::Current;
