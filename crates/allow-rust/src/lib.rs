@@ -3,9 +3,10 @@
 //! This crate scans `.rs` file text for syntax-visible unsafe, panic-family,
 //! indexing/slicing, lint-suppression, and exact source-declared test surfaces.
 //! Test inventory establishes source identity and reports cfg, generated-case,
-//! and target-membership limits explicitly. It parses source directly without
-//! invoking Cargo, rustc, Clippy, build scripts, proc macros, macro expansion,
-//! type analysis, or MIR.
+//! and target-membership limits explicitly; implicit binary roots do not claim
+//! unrelated library modules. It parses source directly without invoking Cargo,
+//! rustc, Clippy, build scripts, proc macros, macro expansion, type analysis, or
+//! MIR.
 
 use allow_core::{CargoAllowResult, Finding, read_text_file_capped};
 use std::path::{Path, PathBuf};
