@@ -477,10 +477,11 @@ fn recursive_inventory_stops_at_depth_limit() -> Result<(), Box<dyn std::error::
     let (files, skipped) = super::recursive_files(&root)?;
 
     assert!(files.contains(&PathBuf::from("shallow.txt")));
-    assert!(!files.iter().any(|path| {
-        path.file_name()
-            .is_some_and(|name| name == "too-deep.txt")
-    }));
+    assert!(
+        !files
+            .iter()
+            .any(|path| { path.file_name().is_some_and(|name| name == "too-deep.txt") })
+    );
     assert!(
         skipped.iter().any(|path| {
             path.to_string_lossy()

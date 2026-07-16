@@ -19,9 +19,9 @@ pub use root::{discover_source_tree_root, resolve_source_tree_root};
 
 use filesystem::{existing_regular_files, recursive_files};
 
+pub use filesystem::{INVENTORY_MAX_DEPTH, INVENTORY_MAX_ENTRIES};
 #[cfg(test)]
 pub(crate) use git::parse_git_ls_files_z;
-pub use filesystem::{INVENTORY_MAX_DEPTH, INVENTORY_MAX_ENTRIES};
 
 pub fn inventory_files(
     root: impl AsRef<Path>,
