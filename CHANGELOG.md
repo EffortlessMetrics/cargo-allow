@@ -10,6 +10,10 @@ inventory without executing repository code.
 
 ### Added
 
+- Offline Published `0.1.10` first-run command registry
+  (`docs/dogfood/fixtures/getting-started/published-command-registry.toml`) with
+  `PublishedQuickStartV1` docs contract tests so candidate-only commands such as
+  `why` cannot appear as ordinary published quick-start instructions (#2353).
 - Branched, executable first-hour journey in `docs/getting-started.md` with
   published-vs-candidate channel selection, install prerequisites, clean vs
   brownfield forks, `init`/`propose` alternatives, policy command map, fixture

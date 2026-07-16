@@ -64,8 +64,9 @@ Before the first command, pick a product channel: **Published** `0.1.10`
 candidate** (`cargo run -p cargo-allow -- …` on this checkout). The branched
 first-hour journey, install prerequisites, clean-vs-brownfield forks, and
 fixture-backed expected outputs live in
-[Getting started](docs/getting-started.md). Mechanical published-command
-registry checks remain [#2353](https://github.com/EffortlessMetrics/cargo-allow/issues/2353).
+[Getting started](docs/getting-started.md). The offline published command
+registry is
+[`published-command-registry.toml`](docs/dogfood/fixtures/getting-started/published-command-registry.toml).
 
 ## The Problem
 
@@ -184,7 +185,7 @@ Most users start from the surface they already own.
 | New adopter | Choose the closest path: source exceptions, no-new, spec-system, CI, or cross-repo rollout. | [Onboarding](docs/onboarding.md) |
 | CI owner | Add `cargo-allow check --mode no-new` and upload the receipt. | [CI guide](docs/how-to/run-in-ci.md) |
 | Reviewer | Run `cargo-allow diff --base origin/main`. | [PR posture](docs/pr-posture.md) |
-| Auditor | Run `cargo-allow list`, `cargo-allow explain <id>`, and `cargo-allow why --kind <kind> --path <path> --line <line>`. | [Explain an allow](docs/how-to/explain-an-allow.md), [Explain why a finding](docs/how-to/explain-why-a-finding.md) |
+| Auditor | Run `cargo-allow list` and `cargo-allow explain <id>` on Published `0.1.10`; add `cargo-allow why --kind <kind> --path <path> --line <line>` only on the source candidate. | [Explain an allow](docs/how-to/explain-an-allow.md), [Explain why a finding](docs/how-to/explain-why-a-finding.md) |
 | Migrator | Run `cargo-allow migrate --repo-policy <dir>`. | [Migration](docs/how-to/migrate-from-xtask.md) |
 | Agent operator | Run `cargo-allow worklist --format json`. | [Agent worklists](docs/how-to/feed-agent-worklists.md) |
 

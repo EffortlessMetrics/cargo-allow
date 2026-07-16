@@ -1955,6 +1955,28 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-4750"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/getting-started/published-command-registry.toml"
+owner = "core/policy"
+classification = "docs_executable_contract"
+reason = "Offline Published 0.1.10 first-run command registry snapshot for the published-quick-start contract (#2353)."
+evidence = ["doc:docs/getting-started.md", "test:published_quick_start_docs_respect_command_registry", "issue:2353"]
+created = "2026-07-15"
+review_after = "2026-10-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "docs/dogfood/fixtures/getting-started/published-command-registry.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0130"
 kind = "non_rust_file"
 family = "documentation"

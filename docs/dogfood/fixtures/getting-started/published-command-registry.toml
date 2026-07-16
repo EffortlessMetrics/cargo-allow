@@ -1,0 +1,71 @@
+# Offline published first-run command registry (#2353).
+# Source: git tag v0.1.10 `crates/cargo-allow/src/cli.rs` `SUBCOMMANDS`.
+# Ordinary PR checks use this snapshot (no crates.io download).
+# Installed-binary execution of snippets remains #2278.
+# Update this file atomically when promoting the next published release.
+
+schema_id = "cargo-allow.published-quick-start.v1"
+version = "0.1.10"
+channel = "published"
+source = "git-tag:v0.1.10:crates/cargo-allow/src/cli.rs:SUBCOMMANDS"
+
+# Full published binary subcommand surface (exact tag snapshot).
+subcommands = [
+  "init",
+  "audit",
+  "check",
+  "diff",
+  "list",
+  "explain",
+  "add",
+  "propose",
+  "worklist",
+  "migrate",
+  "refresh",
+  "prune",
+  "doctor",
+]
+
+# Subcommands taught as ordinary Published first-run / quick-start instructions.
+# Must be a subset of `subcommands`.
+first_run_subcommands = [
+  "doctor",
+  "audit",
+  "init",
+  "propose",
+  "check",
+  "list",
+  "explain",
+  "worklist",
+  "diff",
+  "add",
+  "refresh",
+  "prune",
+]
+
+# Present on current main / source candidate, absent from Published 0.1.10.
+# These may appear only in docs labeled Unreleased / Source-candidate.
+candidate_only_subcommands = [
+  "why",
+]
+
+# Root/shared flags taught on the Published path (docs may use these).
+# Not a full clap inventory; only the first-run contract surface.
+first_run_flags = [
+  "--locked",
+  "--version",
+  "--root",
+  "--write",
+  "--mode",
+  "--format",
+  "--receipt",
+  "--output",
+  "--base",
+  "--kind",
+  "--dry-run",
+  "--config",
+  "--path",
+  "--line",
+  "--allow-id",
+  "--profile",
+]

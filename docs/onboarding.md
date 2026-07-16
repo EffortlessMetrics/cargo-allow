@@ -16,7 +16,8 @@ tiers, policy ledgers, proof-command fields, release records, and closeouts.
 | I want to... | Start with | Then read |
 | --- | --- | --- |
 | audit source exceptions | `cargo-allow doctor` then `cargo-allow audit` | [Getting started](getting-started.md) |
-| manage one exception | `cargo-allow list` / `explain` / `why` | [Manage an exception](how-to/manage-an-exception.md) |
+| manage one exception (Published `0.1.10`) | `cargo-allow list` / `cargo-allow explain` | [Manage an exception](how-to/manage-an-exception.md) |
+| diagnose an unreceipted finding (source candidate) | Unreleased: `cargo-allow why` | [Explain why a finding](how-to/explain-why-a-finding.md) |
 | adopt no-new governance | `cargo-allow check --mode no-new` | [Adopt no-new-debt](how-to/adopt-no-new-debt.md) |
 | try spec-system | `cargo-allow init --profile spec-system --dry-run` | [Adopt the spec-system profile](how-to/adopt-spec-system-profile.md) |
 | add CI | `cargo-allow check --mode no-new` | [Run in CI](how-to/run-in-ci.md) |
