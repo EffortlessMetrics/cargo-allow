@@ -5,7 +5,7 @@
   "result": "Passed",
   "claim_boundary": [
     "exact_ten_crate_package_graph",
-    "directory_source_replacement_offline_install",
+    "classic_transitive_local_registry_offline_install",
     "source_checkout_denied_during_decisive_install",
     "source_candidate_not_published_install_journey"
   ],
@@ -19,8 +19,8 @@
     "arch": "x86_64",
     "rustc_version": null,
     "cargo_version": null,
-    "network_posture": "vendor_warm_may_use_crates_io_then_offline_install",
-    "isolation_mechanism": "directory_source_replacement"
+    "network_posture": "fetch_warm_may_use_crates_io_then_offline_install",
+    "isolation_mechanism": "local_registry"
   },
   "package_set": {
     "order": [
@@ -136,7 +136,7 @@
     "source_checkout_denied": true
   },
   "install": {
-    "method": "cargo_install_path_extracted_with_directory_source",
+    "method": "cargo_install_path_extracted_with_local_registry",
     "version_output": "cargo-allow 0.1.10",
     "exit_code": 0
   },
@@ -172,10 +172,10 @@
       "detail": "patching allow-core to an incompatible version yields InternalVersionConflict"
     },
     {
-      "id": "omit_candidate_from_directory_vendor",
+      "id": "omit_candidate_from_local_registry",
       "result_class": "PackageMissing",
       "passed": true,
-      "detail": "removing allow-core from directory vendor fails offline resolve (PackageMissing)"
+      "detail": "removing allow-core from local-registry fails offline resolve (PackageMissing)"
     },
     {
       "id": "candidate_commit_or_version_mismatch",
@@ -197,9 +197,7 @@
     }
   ],
   "limitations": [
-    "vendor_warm_may_use_crates_io",
-    "vendor_warm_may_rewrite_extracted_cargo_lock",
-    "not_classic_transitive_local_registry_index",
+    "fetch_warm_may_use_crates_io",
     "linux_hosted_claim_only"
   ]
 }
