@@ -6020,3 +6020,26 @@ glob = "docs/how-to/explain-why-a-finding.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-9007"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/why.schema.json"
+owner = "core/policy"
+classification = "schema_contract"
+reason = "Machine-readable cargo-allow.why.v1 schema for the why command JSON artifact."
+evidence = ["issue:2324", "doc:docs/schemas/README.md", "doc:docs/schemas/explain.schema.json"]
+created = "2026-07-16"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/why.schema.json"
+target_fingerprint = "json"
+line_hint = 1
+glob = "docs/schemas/why.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
