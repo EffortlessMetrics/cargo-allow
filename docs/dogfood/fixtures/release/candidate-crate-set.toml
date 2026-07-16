@@ -1,0 +1,20 @@
+# Canonical ten-crate ExactCandidate package / publish set (#2277 / #2372).
+# Shared by release docs, package-candidate smoke, and ExactCandidatePackageSet harness.
+# Do not fork this list into additional independent copies without updating callers.
+
+schema_id = "cargo-allow.candidate-crate-set.v1"
+schema_version = 1
+
+# Dependency / publish order (leaf → binary).
+crates = [
+  "allow-core",
+  "allow-policy",
+  "allow-inventory",
+  "allow-files",
+  "allow-rust",
+  "allow-match",
+  "allow-report",
+  "allow-policy-legacy",
+  "allow-diff",
+  "cargo-allow",
+]
