@@ -1,0 +1,113 @@
+name: one-shot-register-self-hosted-source-2307
+
+on:
+  push:
+    branches:
+      - agent/self-hosted-runtime-promotion-source-2307
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.repository == 'EffortlessMetrics/cargo-allow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: agent/self-hosted-runtime-promotion-source-2307
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Register retained spec and source exceptions
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          ledger = Path('.allow/artifacts/doc-artifacts.toml')
+          ledger_text = ledger.read_text()
+          if 'id = "CARGO-ALLOW-SPEC-0009"' not in ledger_text:
+              ledger_text = ledger_text.rstrip() + '''
+
+          [[artifact]]
+          id = "CARGO-ALLOW-SPEC-0009"
+          kind = "spec"
+          path = "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"
+          status = "accepted"
+          owner = "repo-infra"
+          created = "2026-07-16"
+          standalone_reason = "The first design-to-proof walking skeleton is a bounded self-hosted control-plane invariant; no separate product proposal is required."
+          '''
+              ledger.write_text(ledger_text)
+
+          policy = Path('policy/allow.toml')
+          policy_text = policy.read_text()
+          existing_ids = [int(value) for value in re.findall(r'id = "allow-(\d+)"', policy_text)]
+          next_id = max(existing_ids, default=0) + 1
+          additions = []
+          if 'path = "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"' not in policy_text:
+              additions.append(f'''
+
+          [[allow]]
+          id = "allow-{next_id:04d}"
+          kind = "non_rust_file"
+          family = "documentation"
+          path = "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"
+          owner = "core/policy"
+          classification = "source_truth_spec"
+          reason = "Defines the first retained design-to-proof runtime-promotion requirement and its bounded non-claims."
+          evidence = ["issue:2206", "doc:.allow/artifacts/doc-artifacts.toml"]
+          created = "2026-07-16"
+          review_after = "2026-11-01"
+
+          [allow.selector]
+          ast_kind = "tracked_file"
+          symbol = "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"
+          target_fingerprint = "md"
+          line_hint = 1
+          ''')
+              next_id += 1
+          if 'path = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"' not in policy_text:
+              additions.append(f'''
+
+          [[allow]]
+          id = "allow-{next_id:04d}"
+          kind = "non_rust_file"
+          family = "configuration"
+          path = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
+          owner = "core/policy"
+          classification = "normative_implementation_slice"
+          reason = "Carries the compact spec/governance implementation slice for the first self-hosted requirement without mutable execution state."
+          evidence = ["issue:2206", "doc:docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"]
+          created = "2026-07-16"
+          review_after = "2026-11-01"
+
+          [allow.selector]
+          ast_kind = "tracked_file"
+          symbol = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
+          target_fingerprint = "toml"
+          line_hint = 1
+          glob = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
+          ''')
+          if additions:
+              policy.write_text(policy_text.rstrip() + ''.join(additions) + '\n')
+      - name: Verify retained sources
+        run: |
+          cargo fmt --all
+          cargo test -p allow-policy self_hosted_runtime_promotion_sources --locked -- --nocapture
+          cargo test -p allow-policy spec_system --locked -- --nocapture
+          cargo clippy -p allow-policy --all-targets --locked -- -D warnings
+          cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json
+      - name: Remove one-shot workflow and prove no-new
+        run: |
+          rm .github/workflows/one-shot-register-self-hosted-source-2307.yml
+          cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
+      - name: Commit verified source registration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'specs(spec-system): register self-hosted runtime-promotion source'
+          git push origin HEAD:agent/self-hosted-runtime-promotion-source-2307
