@@ -52,7 +52,7 @@ It does **not** deny the source tree during path install. Offline
 schema/example characterization remains
 `cargo test -p cargo-allow --test source_candidate_smoke --locked`.
 
-Exact ten-crate isolation (#2277 / #2372 Stage A, #2378 Stage B negatives, #2380 Stage C directory source) is
+Exact ten-crate isolation (#2277 / #2372 / #2378 / #2380 / #2408) is
 proven by:
 
 ```bash
@@ -61,17 +61,17 @@ bash scripts/exact-candidate-package-set.sh
 
 That harness packages the shared
 [`candidate-crate-set.toml`](../dogfood/fixtures/release/candidate-crate-set.toml),
-extracts each `.crate`, assembles a Cargo directory vendor (`cargo vendor` for
-externals + injected exact candidate packages), installs `cargo-allow` offline
-with crates-io replaced by that directory source while renaming workspace
-`crates/` away (`source_checkout_denied` / `CheckoutIsolated`), verifies
-internal manifests resolve from the vendor (not `crates/` / crates.io), runs
-omit-crate / workspace-path / checksum / injected-path / version-conflict /
-vendor-omit / candidate-mismatch (`CandidateStale`) / missing-metadata
+extracts each `.crate`, warms externals via patched `cargo fetch`, assembles a
+classic Cargo local-registry (`.crate` + index) for the lockfile graph with
+candidate crates injected, installs `cargo-allow` offline with crates-io
+replaced by that local-registry while renaming workspace `crates/` away
+(`source_checkout_denied` / `CheckoutIsolated`), verifies internal manifests
+unpack under the install registry src (not `crates/`), runs omit-crate /
+workspace-path / checksum / injected-path / version-conflict / local-registry
+omit / candidate-mismatch (`CandidateStale`) / missing-metadata
 (`ManifestMalformed`) / source-checkout-denied negatives, and writes
 `target/exact-candidate-package-set/exact-candidate-package-set.receipt.json`
-(`cargo-allow.exact-candidate-package-set.v1`). It does **not** yet build a
-classic transitive local-registry (`.crate` + index) mirror.
+(`cargo-allow.exact-candidate-package-set.v1`).
 
 Post-publication registry install remains
 [scripts/release-install-smoke.sh](../../scripts/release-install-smoke.sh)

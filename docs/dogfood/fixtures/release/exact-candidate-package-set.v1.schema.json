@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/exact-candidate-package-set.v1.schema.json",
   "title": "cargo-allow ExactCandidatePackageSet v1",
-  "description": "Release harness receipt proving the ten candidate crates package and resolve together via Cargo [patch.crates-io] against extracted .crate trees. Not a cargo-allow CLI product artifact.",
+  "description": "Release harness receipt proving the ten candidate crates package and resolve together via a classic Cargo local-registry (.crate + index) with crates-io source replacement. Not a cargo-allow CLI product artifact.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -145,7 +145,8 @@
           "type": "string",
           "enum": [
             "cargo_install_path_extracted_with_patch",
-            "cargo_install_path_extracted_with_directory_source"
+            "cargo_install_path_extracted_with_directory_source",
+            "cargo_install_path_extracted_with_local_registry"
           ]
         },
         "version_output": { "type": "string" },

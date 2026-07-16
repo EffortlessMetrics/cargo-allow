@@ -4787,8 +4787,8 @@ family = "release_script"
 path = "scripts/exact-candidate-package-set.sh"
 owner = "core/release"
 classification = "release_automation_script"
-reason = "ExactCandidatePackageSetV1 Stage A harness: package/extract/patch-install ten-crate set and emit receipt (#2372 / #2277)."
-evidence = ["doc:docs/release/README.md", "test:example_exact_candidate_package_set_matches_schema_constants", "issue:2372"]
+reason = "ExactCandidatePackageSetV1 harness: package/extract/local-registry-install ten-crate set and emit receipt (#2408 / #2372 / #2277)."
+evidence = ["doc:docs/release/README.md", "test:example_exact_candidate_package_set_matches_schema_constants", "issue:2408", "issue:2372"]
 created = "2026-07-16"
 review_after = "2027-01-01"
 
@@ -4797,6 +4797,28 @@ ast_kind = "tracked_file"
 target_fingerprint = "sh"
 line_hint = 1
 glob = "scripts/exact-candidate-package-set.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4763"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/exact-candidate-assemble-local-registry.py"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Assemble classic Cargo local-registry (.crate + index) for ExactCandidatePackageSetV1 decisive install (#2408)."
+evidence = ["doc:docs/release/README.md", "test:example_exact_candidate_package_set_matches_schema_constants", "issue:2408"]
+created = "2026-07-16"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "py"
+line_hint = 1
+glob = "scripts/exact-candidate-assemble-local-registry.py"
 
 [allow.last_seen]
 line = 1
