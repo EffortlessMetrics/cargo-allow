@@ -115,6 +115,42 @@ fn display_includes_cause_chain() {
 }
 
 #[test]
+fn error_source_walks_attached_causes() {
+    use std::error::Error as _;
+
+    let inner = std::io::Error::new(std::io::ErrorKind::NotFound, "file missing");
+    let mid = std::io::Error::other("git failed");
+    let err = CargoAllowError::with_kind(CargoAllowErrorKind::Inventory, "failed to read revision")
+        .with_cause(&mid)
+        .with_cause(&inner);
+
+    let first = err
+        .source()
+        .unwrap_or_else(|| std::panic::panic_any("expected first cause"));
+    assert_eq!(first.to_string(), "git failed");
+    let second = first
+        .source()
+        .unwrap_or_else(|| std::panic::panic_any("expected nested cause"));
+    assert_eq!(second.to_string(), "file missing");
+    assert!(second.source().is_none());
+}
+
+#[test]
+fn from_io_error_exposes_source_without_duplicate_display_cause() {
+    use std::error::Error as _;
+
+    let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "no such file");
+    let err: CargoAllowError = io_err.into();
+    assert_eq!(err.message(), "no such file");
+    assert!(err.causes().is_empty());
+    let source = err
+        .source()
+        .unwrap_or_else(|| std::panic::panic_any("expected io source"));
+    assert_eq!(source.to_string(), "no such file");
+    assert!(!format!("{err}").contains("caused by:"));
+}
+
+#[test]
 fn partialeq_compares_kind_and_message_not_causes() {
     let a = CargoAllowError::with_kind(CargoAllowErrorKind::Scan, "read error");
     let b = CargoAllowError::with_kind(CargoAllowErrorKind::Scan, "read error");

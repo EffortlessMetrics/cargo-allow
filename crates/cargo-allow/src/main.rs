@@ -12,6 +12,7 @@ mod diff;
 #[cfg(test)]
 mod diff_json_test_support;
 mod doctor;
+mod error_report;
 mod evidence_inventory;
 mod evidence_render;
 mod explain;
@@ -38,11 +39,12 @@ pub(crate) use command_support::*;
 
 fn main() {
     if let Err(err) = cli::run() {
-        eprintln!("error: {err}");
+        error_report::report_cli_error(&err);
         // Exit 1 for runtime/validation failures. Clap usage errors are
         // handled by clap internally (exit 2) and never reach here.
         // Policy-violation exits (check/diff gate failures) call
         // process::exit(1) directly in their command handlers.
+        // Structured Usage → exit 2 is tracked separately in #2340.
         process::exit(1);
     }
 }
