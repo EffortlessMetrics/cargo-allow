@@ -1,4 +1,6 @@
-use allow_core::{CargoAllowError, CargoAllowResult, Finding, FindingKind, normalize_path};
+use allow_core::{
+    CargoAllowError, CargoAllowResult, Finding, FindingKind, normalize_path, read_text_file_capped,
+};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -38,7 +40,7 @@ pub fn workflow_findings_from_files(root: impl AsRef<Path>) -> CargoAllowResult<
             path.to_string_lossy()
                 .replace('/', std::path::MAIN_SEPARATOR_STR),
         );
-        let text = fs::read_to_string(&full_path).map_err(|e| {
+        let text = read_text_file_capped(&full_path).map_err(|e| {
             CargoAllowError::new(format!("failed to read {}: {e}", full_path.display()))
         })?;
         let uses = text
@@ -207,5 +209,43 @@ mod tests {
         assert!(!is_workflow_path(Path::new(
             ".github/workflows/no-extension"
         )));
+    }
+
+    #[test]
+    fn workflow_findings_from_files_rejects_oversized_workflow() {
+        let root = temp_root("workflow-oversized");
+        let workflows = root.join(".github").join("workflows");
+        fs::create_dir_all(&workflows)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create workflows dir: {err}")));
+        let workflow_path = workflows.join("ci.yml");
+        let oversized_len = (allow_core::SOURCE_FILE_READ_MAX_BYTES as usize).saturating_add(1);
+        let mut bytes = Vec::with_capacity(oversized_len);
+        bytes.extend_from_slice(b"name: ci\n#");
+        bytes.resize(oversized_len, b'w');
+        fs::write(&workflow_path, bytes)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write workflow: {err}")));
+
+        let err =
+            workflow_findings_from_files(&root).expect_err("oversized workflow should fail closed");
+        let message = err.to_string();
+        assert!(
+            message.contains("source-read limit") || message.contains("exceeds"),
+            "expected size-limit diagnostic, got: {message}"
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    fn temp_root(label: &str) -> PathBuf {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-legacy-{label}-{}-{stamp}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
+        root
     }
 }
