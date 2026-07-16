@@ -1,0 +1,34 @@
+name: one-shot-capture-2369
+
+on:
+  push:
+    branches:
+      - agent/fix-requirement-implementation-status-2303
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: agent/fix-requirement-implementation-status-2303
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Capture failing workspace tests
+        shell: bash
+        run: |
+          mkdir -p .tmp/verification
+          set +e
+          cargo test --workspace --no-fail-fast --locked > .tmp/verification/2369-test.log 2>&1
+          status=$?
+          echo "$status" > .tmp/verification/2369-status
+          git rm .github/workflows/one-shot-capture-2369.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -f .tmp/verification/2369-test.log .tmp/verification/2369-status
+          git commit -m "chore(ci): retain temporary PR 2369 verification log"
+          git push origin HEAD:agent/fix-requirement-implementation-status-2303
