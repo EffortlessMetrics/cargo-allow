@@ -288,4 +288,4 @@ and `crates/cargo-allow/tests/first_hour_adoption.rs` (consumable by #2278):
 | `check_no_new_pass` | Passing baseline no-new check |
 | `check_no_new_fail` | Failing no-new after new debt |
 | `list_explain_worklist` | Published diagnosis commands |
-| `why_candidate` | Source-candidate `why` (not ordinary on Published 0.1.11) |
+| `why_published` | Published diagnosis with `cargo-allow why` |
