@@ -1,4 +1,4 @@
-use allow_core::CargoAllowResult;
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
@@ -35,6 +35,8 @@ pub(crate) struct ListArgs {
     #[arg(long)]
     pub(super) allow_id: Option<String>,
     /// Filter allow entries by current match status.
+    ///
+    /// Mutually exclusive with `--expired`, `--review-due`, and `--stale`.
     #[arg(
         long,
         value_parser = [
@@ -52,15 +54,23 @@ pub(crate) struct ListArgs {
     )]
     pub(super) status: Option<String>,
     /// Include only expired allow entries.
+    ///
+    /// Mutually exclusive with `--status`, `--review-due`, and `--stale`.
     #[arg(long)]
     pub(super) expired: bool,
     /// Include only review-due allow entries.
+    ///
+    /// Mutually exclusive with `--status`, `--expired`, and `--stale`.
     #[arg(long)]
     pub(super) review_due: bool,
     /// Include only stale allow entries.
+    ///
+    /// Mutually exclusive with `--status`, `--expired`, and `--review-due`.
     #[arg(long)]
     pub(super) stale: bool,
-    /// Include only generated baseline debt entries.
+    /// Include only entries with classification `baseline_debt`.
+    ///
+    /// Classification filter; may be combined with a single status selector.
     #[arg(long)]
     pub(super) baseline_debt: bool,
     /// Include only entries with wildcard source-tree scopes.
@@ -93,6 +103,7 @@ pub(super) enum ListFormat {
 }
 
 pub(super) fn list_filters(args: &ListArgs) -> CargoAllowResult<ListFilters<'_>> {
+    validate_status_selectors(args)?;
     Ok(ListFilters {
         kind: args.kind.as_deref().map(parse_kind_filter).transpose()?,
         family: args.family.as_deref(),
@@ -111,4 +122,125 @@ pub(super) fn list_filters(args: &ListArgs) -> CargoAllowResult<ListFilters<'_>>
         broken_evidence: args.broken_evidence,
         weak_evidence: args.weak_evidence,
     })
+}
+
+/// Reject conflicting status selectors so list never silently ANDs them to empty.
+///
+/// Status selectors are `--status`, `--expired`, `--review-due`, and `--stale`.
+/// `--baseline-debt` is a classification filter and may combine with one status
+/// selector.
+fn validate_status_selectors(args: &ListArgs) -> CargoAllowResult<()> {
+    let mut selected = Vec::new();
+    if args.status.is_some() {
+        selected.push("--status");
+    }
+    if args.expired {
+        selected.push("--expired");
+    }
+    if args.review_due {
+        selected.push("--review-due");
+    }
+    if args.stale {
+        selected.push("--stale");
+    }
+    if selected.len() <= 1 {
+        return Ok(());
+    }
+    Err(CargoAllowError::with_kind(
+        CargoAllowErrorKind::Usage,
+        format!(
+            "status filters are mutually exclusive; got {} (choose one of --status, --expired, --review-due, --stale)",
+            selected.join(", ")
+        ),
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::RootArgs;
+
+    fn list_args(
+        status: Option<&str>,
+        expired: bool,
+        review_due: bool,
+        stale: bool,
+        baseline_debt: bool,
+    ) -> ListArgs {
+        ListArgs {
+            root: RootArgs { root: None },
+            config: None,
+            kind: None,
+            family: None,
+            owner: None,
+            classification: None,
+            path: None,
+            source_package: None,
+            allow_id: None,
+            status: status.map(str::to_owned),
+            expired,
+            review_due,
+            stale,
+            baseline_debt,
+            broad_scope: false,
+            missing_evidence: false,
+            broken_evidence: false,
+            weak_evidence: false,
+            format: ListFormat::Human,
+            output: None,
+            include_untracked: false,
+        }
+    }
+
+    #[test]
+    fn list_filters_accepts_single_status_selector() {
+        let args = list_args(Some("expired"), false, false, false, false);
+        let filters = list_filters(&args).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("single --status should be accepted: {err}"))
+        });
+        assert_eq!(filters.status, Some("expired"));
+        assert!(!filters.expired);
+
+        let args = list_args(None, true, false, false, false);
+        let filters = list_filters(&args).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("single --expired should be accepted: {err}"))
+        });
+        assert!(filters.expired);
+        assert!(filters.status.is_none());
+    }
+
+    #[test]
+    fn list_filters_allows_status_with_baseline_debt_classification() {
+        let args = list_args(Some("expired"), false, false, false, true);
+        let filters = list_filters(&args).unwrap_or_else(|err| {
+            std::panic::panic_any(format!(
+                "--status with --baseline-debt classification filter should be accepted: {err}"
+            ))
+        });
+        assert_eq!(filters.status, Some("expired"));
+        assert!(filters.baseline_debt);
+    }
+
+    #[test]
+    fn list_filters_rejects_status_with_status_bool() {
+        let err = list_filters(&list_args(Some("expired"), false, true, false, false))
+            .err()
+            .unwrap_or_else(|| {
+                std::panic::panic_any("--status with --review-due should fail closed")
+            });
+        assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
+        assert!(err.message().contains("mutually exclusive"));
+        assert!(err.message().contains("--status"));
+        assert!(err.message().contains("--review-due"));
+    }
+
+    #[test]
+    fn list_filters_rejects_conflicting_status_bools() {
+        let err = list_filters(&list_args(None, true, false, true, false))
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("--expired with --stale should fail closed"));
+        assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
+        assert!(err.message().contains("--expired"));
+        assert!(err.message().contains("--stale"));
+    }
 }
