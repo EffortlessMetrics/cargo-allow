@@ -1,0 +1,37 @@
+name: one-shot-capture-2375
+
+on:
+  push:
+    branches:
+      - agent/exact-rust-test-subjects-2224
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: agent/exact-rust-test-subjects-2224
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Capture focused checks
+        shell: bash
+        run: |
+          mkdir -p .tmp/verification
+          set +e
+          cargo clippy -p allow-rust --all-targets --locked -- -D warnings > .tmp/verification/2375-clippy.log 2>&1
+          echo "$?" > .tmp/verification/2375-clippy-status
+          cargo test -p allow-rust --locked --no-fail-fast > .tmp/verification/2375-test.log 2>&1
+          echo "$?" > .tmp/verification/2375-test-status
+          git rm .github/workflows/one-shot-capture-2375.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -f .tmp/verification/2375-*.log .tmp/verification/2375-*-status
+          git commit -m "chore(ci): retain temporary PR 2375 verification logs"
+          git push origin HEAD:agent/exact-rust-test-subjects-2224
