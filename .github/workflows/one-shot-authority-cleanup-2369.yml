@@ -1,0 +1,153 @@
+name: one-shot-authority-cleanup-2369
+
+on:
+  push:
+    branches:
+      - agent/fix-requirement-implementation-status-2303
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.repository == 'EffortlessMetrics/cargo-allow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: agent/fix-requirement-implementation-status-2303
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Make normative requirement source authoritative
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one replacement, found {count}: {old[:100]!r}')
+              path.write_text(text.replace(old, new, 1))
+
+          slice_path = Path('crates/allow-policy/src/spec_system/implementation_slice.rs')
+          text = slice_path.read_text()
+          text = text.replace('    pub runtime: bool,\n', '')
+          text = text.replace('    pub basis: String,\n', '')
+          text = text.replace('        ("basis", slice.basis.as_str()),\n', '')
+          text = text.replace('basis = "git:example-head"\n', '')
+          text = text.replace('runtime = true\n', '')
+          marker = '''    #[test]
+              fn several_independent_implementation_slices_can_coexist() -> Result<(), String> {
+          '''
+          additions = '''    #[test]
+              fn implementation_slice_rejects_zero_slice_generation() {
+                  let result = parse_implementation_slice(&SLICE.replace("generation = 1", "generation = 0"));
+                  assert!(result.is_err());
+              }
+
+              #[test]
+              fn implementation_slice_rejects_runtime_class_override() {
+                  let legacy = SLICE.replace(
+                      "requirement_generation = 1",
+                      "requirement_generation = 1\\nruntime = false",
+                  );
+                  assert!(parse_implementation_slice(&legacy).is_err());
+              }
+
+              #[test]
+              fn implementation_slice_rejects_free_form_git_basis() {
+                  let legacy = format!("{SLICE}\\nbasis = \\"git:pr-head\\"\\n");
+                  assert!(parse_implementation_slice(&legacy).is_err());
+              }
+
+          ''' + marker
+          if marker not in text:
+              raise SystemExit('implementation-slice test insertion marker missing')
+          text = text.replace(marker, additions, 1)
+          slice_path.write_text(text)
+
+          runtime_path = Path('crates/allow-policy/src/spec_system/runtime_promotion.rs')
+          text = runtime_path.read_text()
+          text = text.replace(
+              '    RequirementId, RequirementStatus, SupportClaimDispositionState,\n',
+              '    RequirementClaimClass, RequirementId, RequirementStatus, SupportClaimDispositionState,\n',
+          )
+          text = text.replace('    ImplementedClaimWithoutRuntimeRequirement,\n', '')
+          text = text.replace(
+              '''        if delta.runtime {
+                      runtime_requirement_ids.push((delta.requirement_id.clone(), requirement.status));
+                  }
+          ''',
+              '''        if matches!(requirement.claim_class, RequirementClaimClass::RuntimeBehavior) {
+                      runtime_requirement_ids.push((delta.requirement_id.clone(), requirement.status));
+                  }
+          ''',
+          )
+          empty_guard = '''    if runtime_requirements.is_empty() {
+                  findings.push(RuntimePromotionFinding::new(
+                      RuntimePromotionFindingCode::ImplementedClaimWithoutRuntimeRequirement,
+                      None,
+                      "implemented claim requires at least one eligible runtime requirement",
+                  ));
+                  return;
+              }
+
+          '''
+          if empty_guard not in text:
+              raise SystemExit('runtime empty-guard marker missing')
+          text = text.replace(empty_guard, '', 1)
+          text = text.replace('basis = "git:example-head"\n', '')
+          text = text.replace('runtime = true\n', '')
+
+          old_test_start = text.index('    #[test]\n    fn implemented_claim_without_runtime_requirement_is_rejected()')
+          old_test_end = text.index('\n    #[test]\n    fn behavior_change_accepts_implemented_claim_with_current_evidence()', old_test_start)
+          replacement = '''    #[test]
+              fn slice_cannot_override_normative_requirement_claim_class() {
+                  let legacy = SLICE.replace(
+                      "requirement_generation = 1",
+                      "requirement_generation = 1\\nruntime = false",
+                  );
+                  assert!(parse_implementation_slice(&legacy).is_err());
+              }
+          '''
+          text = text[:old_test_start] + replacement + text[old_test_end:]
+          text = text.replace(
+              '        assert_eq!(graph.requirements[0].status, RequirementStatus::Accepted);',
+              '''        assert_eq!(
+                      graph.requirements.first().map(|requirement| requirement.status),
+                      Some(RequirementStatus::Accepted)
+                  );''',
+          )
+          runtime_path.write_text(text)
+
+          ripr_path = Path('crates/allow-policy/src/spec_system/ripr_dialect.rs')
+          text = ripr_path.read_text()
+          text = text.replace('schema_version = "1.0"\nid = "ripr.slice.example.v1"', 'schema_version = "2.0"\nid = "ripr.slice.example.v1"')
+          text = text.replace('basis = "git:example"\n', '')
+          text = text.replace('runtime = true\n', '')
+          text = text.replace('[implementation]\nstate = "outstanding"', '[implementation_claim]\nstatus = "outstanding"')
+          ripr_path.write_text(text)
+
+          for path in (slice_path, runtime_path):
+              text = path.read_text()
+              if 'pub runtime: bool' in text or 'pub basis: String' in text:
+                  raise SystemExit(f'{path}: mutable/override authority field remained')
+      - name: Verify corrected authority boundary
+        run: |
+          cargo fmt --all
+          cargo test -p allow-policy spec_system --locked -- --nocapture
+          cargo clippy -p allow-policy --all-targets --locked -- -D warnings
+      - name: Remove one-shot workflow and prove no-new
+        run: |
+          rm .github/workflows/one-shot-authority-cleanup-2369.yml
+          cargo run -p cargo-allow -- check --mode no-new --format markdown --output target/cargo-allow/authority-cleanup-no-new.md
+      - name: Commit verified schema cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix(spec-system): make requirement source authoritative'
+          git push origin HEAD:agent/fix-requirement-implementation-status-2303
