@@ -2,7 +2,8 @@
 # This is NOT a recommended workflow. It deliberately uses a shallow checkout
 # (no full history fetch) so tests can prove the PR example requires base history.
 #
-# Hosted shallow-checkout characterization (fail then fix) is tracked separately.
+# Hosted shallow-checkout characterization (fail then fix) is covered by
+# scripts/shallow-diff-base-smoke.sh and the CI job shallow-diff-smoke (#2366).
 
 name: cargo-allow diff shallow negative
 

@@ -10,6 +10,9 @@ inventory without executing repository code.
 
 ### Added
 
+- Hosted `shallow-diff-smoke` CI job and `scripts/shallow-diff-base-smoke.sh`:
+  prove `diff --base` fails closed without base history, then succeeds after
+  history is available (#2366).
 - Copy-paste CI/ops path: expanded `docs/how-to/run-in-ci.md`, troubleshooting
   and rollback guides, and offline workflow-contract tests for the committed
   GitHub Actions examples (#2355).
