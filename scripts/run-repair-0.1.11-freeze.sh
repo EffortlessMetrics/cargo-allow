@@ -26,8 +26,8 @@ policy_path.write_text(policy.replace(old, new, 1), encoding="utf-8", newline="\
 
 record_path = Path("docs/release/0.1.11.md")
 record = record_path.read_text(encoding="utf-8")
-old = "#2371 owns 0.2.0: Rust 1.95, `#2336` matching parity, safe active-ledger `add`,"
-new = "Issue #2371 owns 0.2.0: Rust 1.95, `#2336` matching parity, safe active-ledger `add`,"
+old = "#2371 owns 0.2.0: Rust 1.95, #2336 matching parity, safe active-ledger `add`,"
+new = "Issue #2371 owns 0.2.0: Rust 1.95, #2336 matching parity, safe active-ledger `add`,"
 if old in record:
     record = record.replace(old, new, 1)
 elif new not in record:
