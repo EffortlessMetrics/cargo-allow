@@ -19,7 +19,9 @@ inventory without executing repository code.
   rather than documentation-only.
 - Pre-publication `scripts/package-candidate-smoke.sh` (SourceCandidateSmoke):
   workspace package verification, no-path-deps check on packed crates, isolated
-  install, and first-hour CLI smoke with a receipt (#2256 Stage A).
+  install, and first-hour CLI smoke with a receipt (#2256 Stage A). The smoke
+  runs in hosted CI on Linux as the `package-smoke` job and uploads a
+  `package-candidate-smoke-receipt` artifact for every PR and push to `main`.
 
 ### Fixed
 

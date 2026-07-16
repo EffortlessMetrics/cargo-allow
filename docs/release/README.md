@@ -36,6 +36,12 @@ Post-publication registry install remains
 [scripts/release-install-smoke.sh](../../scripts/release-install-smoke.sh)
 (Stage B). The next 0.1.x cut stays on Rust 1.85; do not raise MSRV here.
 
+This smoke runs in hosted CI on Linux as the `package-smoke` job in
+[ci.yml](../../.github/workflows/ci.yml) (on every PR and push to `main`),
+producing a `package-candidate-smoke-receipt` workflow artifact. That hosted
+receipt is the durable evidence for the #2256 Stage A candidate claim;
+Windows and macOS candidate smoke remain a documented follow-up.
+
 ## Prerequisites
 
 Complete these checks before the first tag-triggered automated release:

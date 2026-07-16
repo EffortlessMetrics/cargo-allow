@@ -116,7 +116,9 @@ for crate in "${crates[@]}"; do
   tmp="${package_dir}/inspect-${crate}"
   rm -rf "${tmp}"
   mkdir -p "${tmp}"
-  tar -xzf "${packages_dir}/${crate}-${version}.crate" -C "${tmp}"
+  # --force-local stops GNU tar from reading a Windows drive-letter prefix
+  # (e.g. C:/...) as a remote "host:path" pair. Harmless on Linux/macOS.
+  tar --force-local -xzf "${packages_dir}/${crate}-${version}.crate" -C "${tmp}"
   assert_no_path_deps "${tmp}" "${crate}"
   echo "no_path_deps=${crate}" >>"${receipt}"
 done
@@ -125,26 +127,32 @@ log "installing cargo-allow ${version} from workspace path after package verific
 rm -rf "${install_root}"
 mkdir -p "${install_root}"
 cargo install --path "${ROOT}/crates/cargo-allow" --locked --root "${install_root}" --force
-export PATH="${install_root}/bin:${PATH}"
+
+# Invoke the isolated binary by absolute path instead of relying on PATH
+# resolution. A pre-existing global cargo-allow install (e.g. ~/.cargo/bin)
+# can otherwise shadow the install root, defeating the isolation guarantee.
+cargo_bin="${install_root}/bin/cargo-allow"
+[[ -x "${cargo_bin}" || -x "${cargo_bin}.exe" ]] \
+  || fail "expected installed binary at ${cargo_bin}(\\.exe)"
 
 log "cargo-allow --version"
-installed_version="$(cargo-allow --version)"
+installed_version="$("${cargo_bin}" --version)"
 printf '%s\n' "${installed_version}"
 echo "installed_version=${installed_version}" >>"${receipt}"
 printf '%s\n' "${installed_version}" | grep -F "cargo-allow ${version}" >/dev/null \
   || fail "installed version mismatch: ${installed_version} (expected cargo-allow ${version})"
 
 log "cargo-allow doctor"
-cargo-allow doctor
+"${cargo_bin}" doctor
 
 log "cargo-allow check --help"
-cargo-allow check --help >/dev/null
+"${cargo_bin}" check --help >/dev/null
 
 log "cargo-allow list --help"
-cargo-allow list --help >/dev/null
+"${cargo_bin}" list --help >/dev/null
 
 log "cargo-allow why --help"
-cargo-allow why --help >/dev/null
+"${cargo_bin}" why --help >/dev/null
 
 {
   echo "completed_unix=$(date +%s)"
