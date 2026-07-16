@@ -1,4 +1,6 @@
-use allow_core::{CargoAllowError, CargoAllowResult, normalize_path, read_text_file_capped, stable_hash_hex};
+use allow_core::{
+    CargoAllowError, CargoAllowResult, normalize_path, read_text_file_capped, stable_hash_hex,
+};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path, PathBuf};
 use tree_sitter::Node;
@@ -203,8 +205,9 @@ pub fn inventory_rust_test_subjects_from_sources(
             diagnostics.push(RustTestInventoryDiagnostic {
                 kind: RustTestInventoryDiagnosticKind::TargetUnresolved,
                 path: Some(normalize_path(&path)),
-                message: "Rust source target cannot be resolved from source-only Cargo manifest rules"
-                    .to_string(),
+                message:
+                    "Rust source target cannot be resolved from source-only Cargo manifest rules"
+                        .to_string(),
             });
             continue;
         };
@@ -249,7 +252,11 @@ pub fn inventory_rust_test_subjects_from_sources(
         left.selector
             .cmp(&right.selector)
             .then_with(|| left.source_path.cmp(&right.source_path))
-            .then_with(|| left.source_range.start_line.cmp(&right.source_range.start_line))
+            .then_with(|| {
+                left.source_range
+                    .start_line
+                    .cmp(&right.source_range.start_line)
+            })
     });
     diagnostics.sort_by(diagnostic_order);
     diagnostics.dedup();
@@ -395,11 +402,9 @@ impl PackageManifest {
 
         let relative = path.strip_prefix(&self.root).ok()?;
         let components = path_components(relative);
-        if matches!(components.as_slice(), [first, file] if first == "tests" && file.ends_with(".rs")) {
-            let name = Path::new(&components[1])
-                .file_stem()?
-                .to_str()?
-                .to_string();
+        if matches!(components.as_slice(), [first, file] if first == "tests" && file.ends_with(".rs"))
+        {
+            let name = Path::new(&components[1]).file_stem()?.to_str()?.to_string();
             return Some(TargetContext {
                 identity: RustTestTargetIdentity {
                     kind: RustTestTargetKind::IntegrationTest,
@@ -419,8 +424,12 @@ impl PackageManifest {
                 source_membership_limited: false,
             });
         }
-        if components.first().is_some_and(|component| component == "src")
-            && components.get(1).is_some_and(|component| component == "bin")
+        if components
+            .first()
+            .is_some_and(|component| component == "src")
+            && components
+                .get(1)
+                .is_some_and(|component| component == "bin")
         {
             return default_bin_target(path, &self.root, &components);
         }
@@ -533,9 +542,17 @@ fn default_bin_target(
                     kind: RustTestTargetKind::Binary,
                     name: name.clone(),
                 },
-                root_path: package_root.join("src").join("bin").join(name).join("main.rs"),
+                root_path: package_root
+                    .join("src")
+                    .join("bin")
+                    .join(name)
+                    .join("main.rs"),
                 source_membership_limited: path
-                    != package_root.join("src").join("bin").join(name).join("main.rs"),
+                    != package_root
+                        .join("src")
+                        .join("bin")
+                        .join(name)
+                        .join("main.rs"),
             })
         }
         _ => None,
@@ -596,8 +613,8 @@ fn collect_test_subjects(
                 .and_then(|name| node_text(source, name))
             {
                 let start_byte = attribute_start_byte(node, source).unwrap_or(node.start_byte());
-                let start_position = attribute_start_position(node, source)
-                    .unwrap_or_else(|| node.start_position());
+                let start_position =
+                    attribute_start_position(node, source).unwrap_or_else(|| node.start_position());
                 let end_position = node.end_position();
                 let body = source
                     .get(start_byte..node.end_byte())
@@ -842,8 +859,7 @@ mod tests {
     fn manifest() -> Vec<(PathBuf, String)> {
         vec![(
             PathBuf::from("crates/demo/Cargo.toml"),
-            "[package]\nname = \"demo-package\"\nversion = \"0.1.0\"\n"
-                .to_string(),
+            "[package]\nname = \"demo-package\"\nversion = \"0.1.0\"\n".to_string(),
         )]
     }
 
@@ -907,7 +923,10 @@ mod policy_tests {
         let path = PathBuf::from("crates/demo/src/lib.rs");
         let first = inventory_rust_test_subjects_from_sources(
             manifest(),
-            vec![(path.clone(), "#[test]\nfn exact() { assert_eq!(1, 1); }".into())],
+            vec![(
+                path.clone(),
+                "#[test]\nfn exact() { assert_eq!(1, 1); }".into(),
+            )],
             &RustTestInventoryOptions::default(),
         );
         let second = inventory_rust_test_subjects_from_sources(
