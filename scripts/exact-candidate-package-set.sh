@@ -1,20 +1,24 @@
 #!/usr/bin/env bash
-# ExactCandidatePackageSetV1 Stage A/B (#2372 / #2277 / #2378).
+# ExactCandidatePackageSetV1 Stage A/B/C (#2372 / #2277 / #2378 / #2380).
 #
 # Packages the canonical ten-crate set, extracts each .crate outside the
-# workspace, installs cargo-allow from the extracted package using
-# [patch.crates-io] for internal deps, verifies internal package sources are
-# not the workspace tree, runs negative controls, and emits a JSON receipt.
+# workspace, assembles a Cargo directory vendor (externals via `cargo vendor`,
+# candidate crates injected from exact extracts), installs cargo-allow offline
+# with crates-io replaced by that directory source, verifies internal package
+# sources are not the workspace tree / crates.io, runs negative controls, and
+# emits a JSON receipt.
 #
 # Negatives covered:
-#   - omit internal crate from patch
+#   - omit internal crate from patch (warm-path characterization)
 #   - workspace path install rejected
 #   - package checksum mutation after inventory
 #   - injected normalized path dependency
 #   - older/incompatible internal package version
+#   - omit injected candidate from directory vendor (offline resolve fail)
 #
-# Does not: publish; full local-registry index; deny the source checkout;
-# every #2277 negative; run the installed operator journey (#2278).
+# Does not: publish; classic transitive local-registry (.crate+index) mirror;
+# deny the source checkout; every #2277 negative; run the installed operator
+# journey (#2278).
 #
 # Usage:
 #   bash scripts/exact-candidate-package-set.sh
@@ -23,6 +27,7 @@
 #   WORK_DIR=<path>     work root (default: target/exact-candidate-package-set)
 #   SKIP_PACKAGE=1      reuse WORK_DIR/packages without re-packing
 #   SKIP_NEGATIVES=1    skip negative controls (debug only)
+#   SKIP_VENDOR=1       reuse OFFLINE_ROOT/vendor if present (debug only)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -35,6 +40,8 @@ packages_dir="${work_dir}/packages"
 offline_root="${OFFLINE_ROOT:-$(mktemp -d "${TMPDIR:-/tmp}/cargo-allow-ecps-offline.XXXXXX")}"
 extracted_dir="${offline_root}/extracted"
 cargo_home="${offline_root}/cargo-home"
+vendor_dir="${offline_root}/vendor"
+install_cargo_home="${offline_root}/install-cargo-home"
 target_dir="${offline_root}/target"
 install_root="${offline_root}/install"
 receipt="${work_dir}/exact-candidate-package-set.receipt.json"
@@ -123,7 +130,7 @@ if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
 fi
 
 rm -rf "${work_dir}"
-mkdir -p "${packages_dir}" "${extracted_dir}" "${cargo_home}" "${target_dir}" "${install_root}" "${work_dir}/install/bin"
+mkdir -p "${packages_dir}" "${extracted_dir}" "${cargo_home}" "${target_dir}" "${install_root}" "${work_dir}/install/bin" "${vendor_dir}"
 
 if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
   log "SKIP_PACKAGE=1; restoring prebuilt packages"
@@ -215,7 +222,7 @@ export CARGO_TARGET_DIR="${target_dir}"
 extracted_bin_pkg="${extracted_dir}/cargo-allow-${version}"
 [[ -d "${extracted_bin_pkg}" ]] || fail "missing extracted cargo-allow package"
 
-log "verifying internal package sources via cargo metadata (patched)"
+log "verifying extracted cargo-allow root is outside the workspace"
 root_meta_path="${offline_root}/root-metadata.json"
 cargo metadata --format-version 1 --no-deps --manifest-path "${extracted_bin_pkg}/Cargo.toml" \
   >"${root_meta_path}" 2>/dev/null \
@@ -230,7 +237,6 @@ from pathlib import Path
 meta = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 root = Path(sys.argv[2]).resolve()
 extracted = Path(sys.argv[3]).resolve()
-version = sys.argv[4]
 packages = {p["name"]: p for p in meta.get("packages", [])}
 root_pkg = packages.get("cargo-allow")
 if root_pkg is None:
@@ -246,18 +252,87 @@ if crates_dir in manifest.parents or str(manifest).startswith(str(crates_dir)):
 print("metadata_root_ok")
 PY
 
-log "installing cargo-allow from extracted package with [patch.crates-io]"
+log "assembling directory vendor (cargo vendor + inject exact candidate crates)"
+if [[ "${SKIP_VENDOR:-0}" == "1" && -d "${vendor_dir}" ]]; then
+  log "SKIP_VENDOR=1; reusing ${vendor_dir}"
+else
+  rm -rf "${vendor_dir}"
+  mkdir -p "${vendor_dir}"
+  # Note: warm `[patch.crates-io]` may rewrite the extracted Cargo.lock while
+  # vendoring. Restoring the packaged lock afterward fails directory-source
+  # install (crates-io checksums vs replacement source). Recorded as a
+  # receipt limitation rather than silently claiming an unmodified lock.
+  (
+    cd "${extracted_bin_pkg}"
+    cargo vendor "${vendor_dir}"
+  )
+fi
+
+python3 - "$(to_cargo_path "${extracted_dir}")" "$(to_cargo_path "${vendor_dir}")" "${version}" "${crates[@]}" <<'PY'
+import hashlib
+import json
+import shutil
+import sys
+from pathlib import Path
+
+extracted = Path(sys.argv[1])
+vendor = Path(sys.argv[2])
+version = sys.argv[3]
+crates = sys.argv[4:]
+for name in crates:
+    src = extracted / f"{name}-{version}"
+    if not src.is_dir():
+        raise SystemExit(f"missing extracted package {src}")
+    dst = vendor / f"{name}-{version}"
+    if dst.exists():
+        shutil.rmtree(dst)
+    # Also remove unversioned vendor dir if cargo vendor created one.
+    alt = vendor / name
+    if alt.exists() and alt.is_dir():
+        shutil.rmtree(alt)
+    shutil.copytree(src, dst)
+    files = {}
+    for path in sorted(dst.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(dst).as_posix()
+        if rel == ".cargo-checksum.json":
+            continue
+        files[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
+    (dst / ".cargo-checksum.json").write_text(
+        json.dumps({"files": files, "package": None}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(f"injected_vendor={name}-{version}")
+PY
+
+install_config="${install_cargo_home}/config.toml"
+rm -rf "${install_cargo_home}"
+mkdir -p "${install_cargo_home}"
+vendor_native="$(to_cargo_path "${vendor_dir}")"
+cat >"${install_config}" <<EOF
+# Generated by scripts/exact-candidate-package-set.sh (decisive install config)
+[source.crates-io]
+replace-with = "candidate-vendor"
+
+[source.candidate-vendor]
+directory = "${vendor_native}"
+EOF
+
+log "installing cargo-allow offline from extracted package via directory source"
 rm -rf "${install_root}"
 mkdir -p "${install_root}"
 set +e
-cargo install \
-  --path "${extracted_bin_pkg}" \
-  --locked \
-  --root "${install_root}" \
-  --force
+CARGO_HOME="${install_cargo_home}" CARGO_TARGET_DIR="${target_dir}" \
+  cargo install \
+    --path "${extracted_bin_pkg}" \
+    --locked \
+    --root "${install_root}" \
+    --force \
+    --offline
 install_code=$?
 set -e
-[[ "${install_code}" -eq 0 ]] || fail "cargo install from extracted package failed (exit ${install_code})"
+[[ "${install_code}" -eq 0 ]] || fail "offline directory-source cargo install failed (exit ${install_code})"
 
 cargo_bin="${install_root}/bin/cargo-allow"
 if [[ -x "${cargo_bin}.exe" ]]; then
@@ -270,23 +345,34 @@ printf '%s\n' "${version_output}"
 printf '%s\n' "${version_output}" | grep -F "cargo-allow ${version}" >/dev/null \
   || fail "installed version mismatch: ${version_output}"
 
-# Stronger source proof: cargo tree / metadata with deps after successful install
-# using a throwaway check that patches resolve to extracted paths.
-log "confirming patched internal deps resolve under extracted/"
+log "confirming internal deps resolve from directory vendor (not crates.io download / workspace)"
 resolve_meta_path="${offline_root}/resolve-metadata.json"
-CARGO_HOME="${cargo_home}" CARGO_TARGET_DIR="${target_dir}" \
+CARGO_HOME="${install_cargo_home}" CARGO_TARGET_DIR="${target_dir}" \
   cargo metadata --format-version 1 --manifest-path "${extracted_bin_pkg}/Cargo.toml" \
+  --offline \
   >"${resolve_meta_path}"
 ROOT_NATIVE="$(to_cargo_path "${ROOT}")"
+VENDOR_NATIVE="$(to_cargo_path "${vendor_dir}")"
 EXTRACTED_NATIVE="$(to_cargo_path "${extracted_dir}")"
-python3 - "${resolve_meta_path}" "${ROOT_NATIVE}" "${EXTRACTED_NATIVE}" "${crates[@]}" <<'PY'
+python3 - "${resolve_meta_path}" "${ROOT_NATIVE}" "${VENDOR_NATIVE}" "${EXTRACTED_NATIVE}" \
+  "${crates[@]}" <<'PY'
 import json, sys
 from pathlib import Path
 
+# Directory source replacement keeps SourceId as crates-io while serving
+# package trees from the vendor directory. The isolation oracle is therefore
+# the resolved manifest path (under vendor, not workspace crates/), not a
+# null source field (that was the Stage B [patch.crates-io] signal).
+# The binary package itself is path-installed from extracted/, so it may live
+# there; library crates must resolve under vendor/.
+CRATES_IO = "registry+https://github.com/rust-lang/crates.io-index"
+BIN_NAME = "cargo-allow"
+
 meta = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 root = Path(sys.argv[2]).resolve()
-extracted = Path(sys.argv[3]).resolve()
-internal = set(sys.argv[4:])
+vendor = Path(sys.argv[3]).resolve()
+extracted = Path(sys.argv[4]).resolve()
+internal = set(sys.argv[5:])
 seen = set()
 for pkg in meta.get("packages", []):
     name = pkg.get("name")
@@ -295,17 +381,36 @@ for pkg in meta.get("packages", []):
     seen.add(name)
     manifest = Path(pkg["manifest_path"]).resolve()
     source = pkg.get("source")
-    if source is not None:
-        raise SystemExit(
-            f"SourceFallbackDetected: {name} source={source!r} manifest={manifest}"
-        )
     crates_dir = root / "crates"
     if crates_dir in manifest.parents or str(manifest).startswith(str(crates_dir)):
         raise SystemExit(f"WorkspacePathLeak: {name} manifest={manifest}")
+    if name == BIN_NAME:
+        try:
+            manifest.relative_to(extracted)
+        except ValueError as err:
+            raise SystemExit(
+                f"binary {name} not under extracted package tree: {manifest}"
+            ) from err
+        if source is not None:
+            raise SystemExit(
+                f"binary {name} expected path source (null), got {source!r}"
+            )
+        continue
     try:
-        manifest.relative_to(extracted)
+        manifest.relative_to(vendor)
     except ValueError as err:
-        raise SystemExit(f"internal {name} not under extracted: {manifest}") from err
+        if source == CRATES_IO or (isinstance(source, str) and "crates.io-index" in source):
+            raise SystemExit(
+                f"SourceFallbackDetected: {name} source={source!r} manifest={manifest}"
+            ) from err
+        raise SystemExit(f"internal {name} not under vendor directory: {manifest}") from err
+    if source not in (None, CRATES_IO) and not (
+        isinstance(source, str)
+        and source.startswith("registry+https://github.com/rust-lang/crates.io-index")
+    ):
+        raise SystemExit(
+            f"unexpected source for vendored internal {name}: {source!r} manifest={manifest}"
+        )
 missing = internal - seen
 if missing:
     raise SystemExit(f"PackageMissing from metadata: {sorted(missing)}")
@@ -507,10 +612,57 @@ PY
   if [[ "${version_code}" -eq 0 ]]; then
     if ! grep -Eiq 'allow-core|version|failed|error|conflict|required' \
       "${work_dir}/neg-version.stderr" "${version_meta_path}" 2>/dev/null; then
-      # Metadata succeeded silently with 0.0.0 package — still a distinct class
-      # but record that Cargo accepted the patch version rewrite.
       :
     fi
+  fi
+
+  log "negative: omit injected candidate from directory vendor"
+  omit_vendor_dir="${work_dir}/neg-omit-vendor"
+  rm -rf "${omit_vendor_dir}"
+  mkdir -p "${omit_vendor_dir}"
+  # Copy vendor tree but drop allow-core candidate injection.
+  python3 - "$(to_cargo_path "${vendor_dir}")" "$(to_cargo_path "${omit_vendor_dir}")" "allow-core-${version}" <<'PY'
+import shutil
+import sys
+from pathlib import Path
+src = Path(sys.argv[1])
+dst = Path(sys.argv[2])
+drop = sys.argv[3]
+if dst.exists():
+    shutil.rmtree(dst)
+shutil.copytree(src, dst)
+target = dst / drop
+if target.exists():
+    shutil.rmtree(target)
+alt = dst / "allow-core"
+if alt.exists():
+    shutil.rmtree(alt)
+print("omitted", drop)
+PY
+  omit_vendor_home="${work_dir}/neg-omit-vendor-home"
+  omit_vendor_target="${work_dir}/neg-omit-vendor-target"
+  rm -rf "${omit_vendor_home}" "${omit_vendor_target}"
+  mkdir -p "${omit_vendor_home}" "${omit_vendor_target}"
+  omit_vendor_native="$(to_cargo_path "${omit_vendor_dir}")"
+  cat >"${omit_vendor_home}/config.toml" <<EOF
+[source.crates-io]
+replace-with = "candidate-vendor"
+
+[source.candidate-vendor]
+directory = "${omit_vendor_native}"
+EOF
+  set +e
+  CARGO_HOME="${omit_vendor_home}" CARGO_TARGET_DIR="${omit_vendor_target}" \
+    cargo metadata --format-version 1 --manifest-path "${extracted_bin_pkg}/Cargo.toml" \
+    --offline \
+    >"${work_dir}/neg-omit-vendor-metadata.json" 2>"${work_dir}/neg-omit-vendor.stderr"
+  omit_vendor_code=$?
+  set -e
+  vendor_omit_passed=true
+  vendor_omit_class="PackageMissing"
+  if [[ "${omit_vendor_code}" -eq 0 ]]; then
+    vendor_omit_passed=false
+    fail "omitting allow-core from vendor unexpectedly allowed offline resolve"
   fi
 
   negatives_json="$(
@@ -519,7 +671,8 @@ PY
       "${ws_passed}" \
       "${checksum_class}" "${checksum_passed}" \
       "${path_class}" "${path_passed}" \
-      "${version_class}" "${version_passed}" <<'PY'
+      "${version_class}" "${version_passed}" \
+      "${vendor_omit_class}" "${vendor_omit_passed}" <<'PY'
 import json, sys
 (
     omit_class,
@@ -531,6 +684,8 @@ import json, sys
     path_passed,
     version_class,
     version_passed,
+    vendor_omit_class,
+    vendor_omit_passed,
 ) = sys.argv[1:]
 print(json.dumps([
     {
@@ -562,6 +717,12 @@ print(json.dumps([
         "result_class": version_class,
         "passed": version_passed == "true",
         "detail": "patching allow-core to an incompatible version yields InternalVersionConflict",
+    },
+    {
+        "id": "omit_candidate_from_directory_vendor",
+        "result_class": vendor_omit_class,
+        "passed": vendor_omit_passed == "true",
+        "detail": "removing allow-core from directory vendor fails offline resolve (PackageMissing)",
     },
 ]))
 PY
@@ -629,7 +790,7 @@ receipt = {
     "result": "Passed",
     "claim_boundary": [
         "exact_ten_crate_package_graph",
-        "patch_crates_io_extracted_packages",
+        "directory_source_replacement_offline_install",
         "source_candidate_not_published_install_journey",
     ],
     "candidate": {
@@ -642,26 +803,27 @@ receipt = {
         "arch": os.environ["ARCH_NAME"],
         "rustc_version": os.environ["RUSTC_VERSION"] or None,
         "cargo_version": os.environ["CARGO_VERSION"] or None,
-        "network_posture": "external_deps_may_use_crates_io_cache",
-        "isolation_mechanism": "patch_crates_io_extracted_packages",
+        "network_posture": "vendor_warm_may_use_crates_io_then_offline_install",
+        "isolation_mechanism": "directory_source_replacement",
     },
     "package_set": {"order": order, "crates": records},
     "isolation": {
         "fresh_cargo_home": True,
         "install_from_extracted_package": True,
-        "internal_deps_patched": True,
+        "internal_deps_patched": False,
         "workspace_paths_absent": True,
         "source_checkout_denied": False,
     },
     "install": {
-        "method": "cargo_install_path_extracted_with_patch",
+        "method": "cargo_install_path_extracted_with_directory_source",
         "version_output": os.environ["VERSION_OUTPUT"],
         "exit_code": int(os.environ["INSTALL_CODE"]),
     },
     "negative_controls": negatives,
     "limitations": [
-        "external_deps_may_use_crates_io",
-        "not_full_local_registry_index",
+        "vendor_warm_may_use_crates_io",
+        "vendor_warm_may_rewrite_extracted_cargo_lock",
+        "not_classic_transitive_local_registry_index",
         "source_checkout_not_denied_during_install",
         "candidate_commit_mismatch_negative_deferred",
         "missing_package_metadata_negative_deferred",

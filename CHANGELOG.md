@@ -12,10 +12,10 @@ inventory without executing repository code.
 
 - `scripts/exact-candidate-package-set.sh` emits
   `cargo-allow.exact-candidate-package-set.v1` after packaging the shared
-  ten-crate set, installing from extracted packages with `[patch.crates-io]`,
-  and running omit-crate / workspace-path / checksum / injected-path /
-  version-conflict negatives (#2372 / #2277 Stage A, #2378 Stage B; full
-  local-registry index remains deferred).
+  ten-crate set, assembling a Cargo directory vendor with injected candidate
+  packages, offline-installing with crates-io source replacement, and running
+  omit/path/checksum/version/vendor-omit negatives (#2380 / #2277 Stage C;
+  classic transitive local-registry index remains deferred).
 - `scripts/source-candidate-smoke.sh` emits
   `cargo-allow.source-candidate-smoke-receipt.v1` after a path-installed (or
   `CARGO_ALLOW_BIN`) binary completes the brownfield first-hour journey in a

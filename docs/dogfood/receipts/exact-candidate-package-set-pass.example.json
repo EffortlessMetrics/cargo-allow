@@ -5,7 +5,7 @@
   "result": "Passed",
   "claim_boundary": [
     "exact_ten_crate_package_graph",
-    "patch_crates_io_extracted_packages",
+    "directory_source_replacement_offline_install",
     "source_candidate_not_published_install_journey"
   ],
   "candidate": {
@@ -18,8 +18,8 @@
     "arch": "x86_64",
     "rustc_version": null,
     "cargo_version": null,
-    "network_posture": "external_deps_may_use_crates_io_cache",
-    "isolation_mechanism": "patch_crates_io_extracted_packages"
+    "network_posture": "vendor_warm_may_use_crates_io_then_offline_install",
+    "isolation_mechanism": "directory_source_replacement"
   },
   "package_set": {
     "order": [
@@ -130,12 +130,12 @@
   "isolation": {
     "fresh_cargo_home": true,
     "install_from_extracted_package": true,
-    "internal_deps_patched": true,
+    "internal_deps_patched": false,
     "workspace_paths_absent": true,
     "source_checkout_denied": false
   },
   "install": {
-    "method": "cargo_install_path_extracted_with_patch",
+    "method": "cargo_install_path_extracted_with_directory_source",
     "version_output": "cargo-allow 0.1.10",
     "exit_code": 0
   },
@@ -169,11 +169,18 @@
       "result_class": "InternalVersionConflict",
       "passed": true,
       "detail": "patching allow-core to an incompatible version yields InternalVersionConflict"
+    },
+    {
+      "id": "omit_candidate_from_directory_vendor",
+      "result_class": "PackageMissing",
+      "passed": true,
+      "detail": "removing allow-core from directory vendor fails offline resolve (PackageMissing)"
     }
   ],
   "limitations": [
-    "external_deps_may_use_crates_io",
-    "not_full_local_registry_index",
+    "vendor_warm_may_use_crates_io",
+    "vendor_warm_may_rewrite_extracted_cargo_lock",
+    "not_classic_transitive_local_registry_index",
     "source_checkout_not_denied_during_install",
     "candidate_commit_mismatch_negative_deferred",
     "missing_package_metadata_negative_deferred",
