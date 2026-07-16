@@ -151,13 +151,32 @@
       "result_class": "WorkspacePathLeak",
       "passed": true,
       "detail": "decisive install uses extracted package path, not crates/cargo-allow"
+    },
+    {
+      "id": "package_checksum_mutation_after_inventory",
+      "result_class": "PackageChecksumMismatch",
+      "passed": true,
+      "detail": "mutating allow-core.crate after inventory changes sha256 vs recorded digest"
+    },
+    {
+      "id": "injected_normalized_path_dependency",
+      "result_class": "WorkspacePathLeak",
+      "passed": true,
+      "detail": "path= dependency injected into normalized allow-core manifest is detected"
+    },
+    {
+      "id": "older_internal_package_version",
+      "result_class": "InternalVersionConflict",
+      "passed": true,
+      "detail": "patching allow-core to an incompatible version yields InternalVersionConflict"
     }
   ],
   "limitations": [
     "external_deps_may_use_crates_io",
     "not_full_local_registry_index",
     "source_checkout_not_denied_during_install",
-    "remaining_negative_controls_deferred",
+    "candidate_commit_mismatch_negative_deferred",
+    "missing_package_metadata_negative_deferred",
     "linux_hosted_claim_only"
   ]
 }
