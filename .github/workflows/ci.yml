@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Retry after registering the published migrate --repo-policy flag.
   repair-release-0-1-11:
     if: github.event_name == 'pull_request' && github.head_ref == 'release/0.1.11' && github.actor != 'github-actions[bot]'
     permissions:
