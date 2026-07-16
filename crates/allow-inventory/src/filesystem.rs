@@ -2,6 +2,18 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Maximum directory nesting depth for filesystem inventory walks.
+///
+/// Counts path segments under the inventory root (root itself is depth 0).
+/// Pathological deep trees stop recursion and record a skip diagnostic (#1917).
+pub const INVENTORY_MAX_DEPTH: usize = 64;
+
+/// Maximum regular files collected during one filesystem inventory walk.
+///
+/// When exceeded, the walk stops and records a skip diagnostic so completeness
+/// becomes partial rather than unbounded memory growth (#1917).
+pub const INVENTORY_MAX_ENTRIES: usize = 250_000;
+
 /// Partition `files` into those that still exist on disk as regular files and
 /// those that are git-tracked but absent from the worktree (deleted-tracked).
 ///
@@ -50,16 +62,30 @@ pub(crate) fn recursive_files(root: &Path) -> CargoAllowResult<(Vec<PathBuf>, Ve
     let mut skipped = Vec::new();
     // Top-level read_dir failure is a hard error (the root itself is
     // inaccessible). Sub-directory failures are warnings (skip + record).
-    visit(root, root, &mut out, &mut skipped)?;
+    visit(root, root, 0, &mut out, &mut skipped)?;
     Ok((out, skipped))
 }
 
 fn visit(
     root: &Path,
     dir: &Path,
+    depth: usize,
     out: &mut Vec<PathBuf>,
     skipped: &mut Vec<PathBuf>,
 ) -> CargoAllowResult<()> {
+    if depth > INVENTORY_MAX_DEPTH {
+        let rel = dir.strip_prefix(root).unwrap_or(dir).to_path_buf();
+        skipped.push(rel.join(format!(
+            ".cargo-allow-inventory-depth-limit-{INVENTORY_MAX_DEPTH}"
+        )));
+        return Ok(());
+    }
+    if out.len() >= INVENTORY_MAX_ENTRIES {
+        skipped.push(PathBuf::from(format!(
+            ".cargo-allow-inventory-entry-limit-{INVENTORY_MAX_ENTRIES}"
+        )));
+        return Ok(());
+    }
     let dir_entries = match fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(e) => {
@@ -78,6 +104,12 @@ fn visit(
         }
     };
     for entry in dir_entries {
+        if out.len() >= INVENTORY_MAX_ENTRIES {
+            skipped.push(PathBuf::from(format!(
+                ".cargo-allow-inventory-entry-limit-{INVENTORY_MAX_ENTRIES}"
+            )));
+            return Ok(());
+        }
         let entry = match entry {
             Ok(entry) => entry,
             Err(e) => {
@@ -117,7 +149,7 @@ fn visit(
             continue;
         }
         if file_type.is_dir() {
-            visit(root, &path, out, skipped)?;
+            visit(root, &path, depth + 1, out, skipped)?;
         } else if file_type.is_file() {
             let rel = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
             out.push(rel);
@@ -133,5 +165,16 @@ pub(crate) fn visit_for_test(
     out: &mut Vec<PathBuf>,
 ) -> CargoAllowResult<()> {
     let mut skipped = Vec::new();
-    visit(root, dir, out, &mut skipped)
+    visit(root, dir, 0, out, &mut skipped)
+}
+
+#[cfg(test)]
+pub(crate) fn visit_for_test_with_depth(
+    root: &Path,
+    dir: &Path,
+    depth: usize,
+    out: &mut Vec<PathBuf>,
+    skipped: &mut Vec<PathBuf>,
+) -> CargoAllowResult<()> {
+    visit(root, dir, depth, out, skipped)
 }
