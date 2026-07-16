@@ -10,6 +10,7 @@ macro-expansion, or proof-level coverage.
 | Audit/check/diff report | `cargo-allow.report.v1` | `cargo-allow audit --format json`, `cargo-allow check --format json`, `cargo-allow diff --format json` |
 | Check receipt | `cargo-allow.receipt.v1` | `cargo-allow check --receipt <path>` |
 | Single-entry explanation | `cargo-allow.explain.v1` | `cargo-allow explain <id> --format json` |
+| Unreceipted finding explanation | `cargo-allow.why.v1` | `cargo-allow why --kind <kind> --path <path> --line <line> --format json` |
 | Filtered ledger list | `cargo-allow.list.v1` | `cargo-allow list --format json` |
 | Stale prune preview/result | `cargo-allow.prune.v1` | `cargo-allow prune --stale --format json` |
 | Advisory drift refresh receipt | `cargo-allow.refresh.v1` | `cargo-allow refresh --allow-id <id> --format json` |
@@ -25,6 +26,7 @@ macro-expansion, or proof-level coverage.
 - [report.schema.json](report.schema.json)
 - [receipt.schema.json](receipt.schema.json)
 - [explain.schema.json](explain.schema.json)
+- [why.schema.json](why.schema.json)
 - [list.schema.json](list.schema.json)
 - [prune.schema.json](prune.schema.json)
 - [refresh.schema.json](refresh.schema.json)

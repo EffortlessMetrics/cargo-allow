@@ -12,6 +12,8 @@ pub const LIST_SCHEMA_VERSION: u32 = 1;
 pub const LIST_SCHEMA_ID: &str = "cargo-allow.list.v1";
 pub const EXPLAIN_SCHEMA_VERSION: u32 = 1;
 pub const EXPLAIN_SCHEMA_ID: &str = "cargo-allow.explain.v1";
+pub const WHY_SCHEMA_VERSION: u32 = 1;
+pub const WHY_SCHEMA_ID: &str = "cargo-allow.why.v1";
 pub const PRUNE_SCHEMA_VERSION: u32 = 1;
 pub const PRUNE_SCHEMA_ID: &str = "cargo-allow.prune.v1";
 pub const DOCTOR_SCHEMA_VERSION: u32 = 1;
@@ -86,6 +88,14 @@ pub(crate) const EXPLAIN_ARTIFACT: ArtifactContract = ArtifactContract {
     schema_version: EXPLAIN_SCHEMA_VERSION,
     inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
     fixed_command: Some("explain"),
+};
+
+pub(crate) const WHY_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "why",
+    schema_id: WHY_SCHEMA_ID,
+    schema_version: WHY_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: Some("why"),
 };
 
 pub(crate) const LIST_ARTIFACT: ArtifactContract = ArtifactContract {
@@ -172,6 +182,7 @@ pub const ARTIFACT_CONTRACTS: &[ArtifactContract] = &[
     RECEIPT_ARTIFACT,
     REPORT_ARTIFACT,
     SPEC_SYSTEM_ARTIFACT,
+    WHY_ARTIFACT,
     WORKLIST_ARTIFACT,
 ];
 

@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
 use crate::RootArgs;
@@ -22,7 +22,16 @@ pub(crate) struct WhyArgs {
     /// Include untracked files in addition to git-tracked files.
     #[arg(long)]
     pub(super) include_untracked: bool,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = WhyFormat::Human)]
+    pub(super) format: WhyFormat,
     /// Write explanation output to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(super) enum WhyFormat {
+    Human,
+    Json,
 }

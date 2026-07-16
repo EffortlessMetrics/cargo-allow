@@ -15,7 +15,18 @@ kinds appear near the same line. The human view shows:
 - the selected finding and structural identity
 - current match posture (`new`, matched, ambiguous, …)
 - nearby same-kind allow entries with per-gate selector mismatch reasons
-- suggested `add` / `explain` / `check` next steps
+- suggested actions, proof commands, and claim boundary
+
+## JSON Output
+
+```bash
+cargo-allow why --kind panic --path src/lib.rs --line 42 \
+  --format json \
+  --output target/cargo-allow/why.json
+```
+
+JSON emits `cargo-allow.why.v1` with the same finding, outcome, candidate
+entries, and next-step fields for agents and CI evidence.
 
 ## Claim Boundary
 

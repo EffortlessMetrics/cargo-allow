@@ -8,6 +8,7 @@ mod migrate;
 mod propose;
 mod prune;
 mod refresh;
+mod why;
 mod worklist;
 
 pub use add::AddReport;
@@ -29,4 +30,5 @@ pub use migrate::MigrateReport;
 pub use propose::ProposeReport;
 pub use prune::{PruneCandidate, PruneModeContext};
 pub use refresh::{RefreshModeContext, RefreshReport};
+pub use why::{WhyCandidateEntry, WhyReport};
 pub use worklist::{WorklistFilters, WorklistItem};

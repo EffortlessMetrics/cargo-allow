@@ -1,5 +1,5 @@
 use crate::{
-    add, diff, doctor, explain, list, migrate, propose, prune, refresh, spec_system, worklist,
+    add, diff, doctor, explain, list, migrate, propose, prune, refresh, spec_system, why, worklist,
 };
 
 pub(crate) struct ArtifactSample {
@@ -68,6 +68,25 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "schema_id",
                 "schema_version",
                 "summary",
+                "tool",
+            ],
+        },
+        ArtifactSample {
+            name: "why",
+            schema_name: "why",
+            json: why::sample_why_json_for_contract_test(),
+            expected_command: "why",
+            expected_top_level_keys: &[
+                "candidate_entries",
+                "claim_boundary",
+                "command",
+                "finding",
+                "inventory",
+                "next",
+                "outcome",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
                 "tool",
             ],
         },

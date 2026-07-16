@@ -411,8 +411,8 @@ same suggested actions/proof commands shown in the human view.
 `explain`: given a finding location, it shows why that finding is unreceipted
 (or already receipted) and lists nearby same-kind allow entries with per-gate
 selector mismatch reasons. Use it when a CI failure names a path and line and
-you need operator clarity before `add` or `explain`. Human output only in this
-slice; JSON/`cargo-allow.why.v1` is deferred.
+you need operator clarity before `add` or `explain`.
+`--format json` emits the same explanation as `cargo-allow.why.v1`.
 
 Lint suppression scanning includes direct `#[allow(...)]`, `#![allow(...)]`,
 `#[expect(...)]`, and `#![expect(...)]` attributes, plus source-visible
