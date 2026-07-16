@@ -223,9 +223,7 @@ impl GraphDiagnosticCode {
             Self::EmptyEvidenceSubjects => "empty_evidence_subjects",
             Self::ExactSubjectMarkedWeak => "exact_subject_marked_weak",
             Self::RelatedSubjectMarkedExact => "related_subject_marked_exact",
-            Self::SliceRequirementGenerationMismatch => {
-                "slice_requirement_generation_mismatch"
-            }
+            Self::SliceRequirementGenerationMismatch => "slice_requirement_generation_mismatch",
             Self::SeamNotDeclaredBySlice => "seam_not_declared_by_slice",
             Self::ForbiddenSeam => "forbidden_seam",
         }
@@ -241,7 +239,11 @@ pub struct GraphDiagnostic {
 }
 
 impl GraphDiagnostic {
-    fn new(code: GraphDiagnosticCode, subject: impl Into<String>, message: impl Into<String>) -> Self {
+    fn new(
+        code: GraphDiagnosticCode,
+        subject: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
         Self {
             code,
             subject: subject.into(),
@@ -307,10 +309,7 @@ impl CompiledSpecGraph {
             .collect()
     }
 
-    pub fn diagnostics_for_slice(
-        &self,
-        slice_id: &ImplementationSliceId,
-    ) -> Vec<&GraphDiagnostic> {
+    pub fn diagnostics_for_slice(&self, slice_id: &ImplementationSliceId) -> Vec<&GraphDiagnostic> {
         let requirement_ids = self
             .slices
             .get(slice_id)
@@ -542,7 +541,10 @@ fn validate_claim(
         diagnostics.push(GraphDiagnostic::new(
             GraphDiagnosticCode::UnknownRequirement,
             claim.requirement_id.as_str(),
-            format!("evidence {} references an unknown requirement", claim.id.as_str()),
+            format!(
+                "evidence {} references an unknown requirement",
+                claim.id.as_str()
+            ),
         ));
     }
     let slice = slices.get(&claim.slice_id);
@@ -588,13 +590,19 @@ fn validate_claim(
             None => diagnostics.push(GraphDiagnostic::new(
                 GraphDiagnosticCode::UnknownSubject,
                 subject_id.as_str(),
-                format!("evidence {} references an unknown exact subject", claim.id.as_str()),
+                format!(
+                    "evidence {} references an unknown exact subject",
+                    claim.id.as_str()
+                ),
             )),
             Some(subject) if subject.role != EvidenceSubjectRole::ExactEvidence => {
                 diagnostics.push(GraphDiagnostic::new(
                     GraphDiagnosticCode::ExactSubjectMarkedWeak,
                     subject_id.as_str(),
-                    format!("evidence {} maps a weak subject as exact evidence", claim.id.as_str()),
+                    format!(
+                        "evidence {} maps a weak subject as exact evidence",
+                        claim.id.as_str()
+                    ),
                 ));
             }
             Some(_) => {}
@@ -605,13 +613,19 @@ fn validate_claim(
             None => diagnostics.push(GraphDiagnostic::new(
                 GraphDiagnosticCode::UnknownSubject,
                 subject_id.as_str(),
-                format!("evidence {} references an unknown related subject", claim.id.as_str()),
+                format!(
+                    "evidence {} references an unknown related subject",
+                    claim.id.as_str()
+                ),
             )),
             Some(subject) if subject.role != EvidenceSubjectRole::RelatedWeak => {
                 diagnostics.push(GraphDiagnostic::new(
                     GraphDiagnosticCode::RelatedSubjectMarkedExact,
                     subject_id.as_str(),
-                    format!("evidence {} maps an exact subject as a weak neighbor", claim.id.as_str()),
+                    format!(
+                        "evidence {} maps an exact subject as a weak neighbor",
+                        claim.id.as_str()
+                    ),
                 ));
             }
             Some(_) => {}
@@ -667,26 +681,72 @@ fn graph_snapshot_id(
             support_state_name(node.support_claim_state)
         );
         for requirement_id in &node.requirement_ids {
-            let _ = writeln!(canonical, "slice_requirement|{}|{}", node.id.as_str(), requirement_id.as_str());
+            let _ = writeln!(
+                canonical,
+                "slice_requirement|{}|{}",
+                node.id.as_str(),
+                requirement_id.as_str()
+            );
         }
     }
     for node in seams.values() {
-        let _ = writeln!(canonical, "seam|{}|{}|{}|{}", node.id.as_str(), node.owner, node.operation, node.source.path);
+        let _ = writeln!(
+            canonical,
+            "seam|{}|{}|{}|{}",
+            node.id.as_str(),
+            node.owner,
+            node.operation,
+            node.source.path
+        );
     }
     for node in subjects.values() {
-        let _ = writeln!(canonical, "subject|{}|{}|{}|{}|{}|{}|{}", node.id.as_str(), node.role.as_str(), node.package, node.target, node.module_path, node.test_name, node.source_identity);
+        let _ = writeln!(
+            canonical,
+            "subject|{}|{}|{}|{}|{}|{}|{}",
+            node.id.as_str(),
+            node.role.as_str(),
+            node.package,
+            node.target,
+            node.module_path,
+            node.test_name,
+            node.source_identity
+        );
     }
     for node in claims.values() {
-        let _ = writeln!(canonical, "evidence|{}|{}|{}|{}|{}", node.id.as_str(), node.requirement_id.as_str(), node.slice_id.as_str(), node.seam_id.as_str(), node.purpose.as_str());
+        let _ = writeln!(
+            canonical,
+            "evidence|{}|{}|{}|{}|{}",
+            node.id.as_str(),
+            node.requirement_id.as_str(),
+            node.slice_id.as_str(),
+            node.seam_id.as_str(),
+            node.purpose.as_str()
+        );
         for subject_id in &node.subject_ids {
-            let _ = writeln!(canonical, "evidence_subject|{}|{}", node.id.as_str(), subject_id.as_str());
+            let _ = writeln!(
+                canonical,
+                "evidence_subject|{}|{}",
+                node.id.as_str(),
+                subject_id.as_str()
+            );
         }
         for subject_id in &node.related_subject_ids {
-            let _ = writeln!(canonical, "related_subject|{}|{}", node.id.as_str(), subject_id.as_str());
+            let _ = writeln!(
+                canonical,
+                "related_subject|{}|{}",
+                node.id.as_str(),
+                subject_id.as_str()
+            );
         }
     }
     for diagnostic in diagnostics {
-        let _ = writeln!(canonical, "diagnostic|{}|{}|{}", diagnostic.code.as_str(), diagnostic.subject, diagnostic.message);
+        let _ = writeln!(
+            canonical,
+            "diagnostic|{}|{}|{}",
+            diagnostic.code.as_str(),
+            diagnostic.subject,
+            diagnostic.message
+        );
     }
     GraphSnapshotId(stable_hash_hex(&canonical))
 }
@@ -786,7 +846,8 @@ state = "unchanged"
 "#;
 
     fn input() -> Result<GraphCompileInput, String> {
-        let requirement_graph = parse_requirement_blocks(SPEC).map_err(|error| error.to_string())?;
+        let requirement_graph =
+            parse_requirement_blocks(SPEC).map_err(|error| error.to_string())?;
         let slice = parse_implementation_slice(SLICE).map_err(|error| error.to_string())?;
         let exact = EvidenceSubjectId("subject:exact-negative".into());
         let weak = EvidenceSubjectId("subject:weak-neighbor".into());
@@ -797,8 +858,10 @@ state = "unchanged"
                 id: ImplementationSeamId("seam:runtime-promotion".into()),
                 owner: "allow-policy".into(),
                 operation: "validate runtime promotion".into(),
-                source: SourceLocation::new("crates/allow-policy/src/spec_system/runtime_promotion.rs")
-                    .with_symbol("validate_runtime_promotion"),
+                source: SourceLocation::new(
+                    "crates/allow-policy/src/spec_system/runtime_promotion.rs",
+                )
+                .with_symbol("validate_runtime_promotion"),
             }],
             subjects: vec![
                 EvidenceSubjectRegistration {
@@ -808,7 +871,9 @@ state = "unchanged"
                     target: "lib".into(),
                     module_path: "spec_system::runtime_promotion::tests".into(),
                     test_name: "spec_or_policy_slice_rejects_unproved_runtime_promotion".into(),
-                    source: SourceLocation::new("crates/allow-policy/src/spec_system/runtime_promotion.rs"),
+                    source: SourceLocation::new(
+                        "crates/allow-policy/src/spec_system/runtime_promotion.rs",
+                    ),
                     source_identity: "fnv1a64:exact".into(),
                 },
                 EvidenceSubjectRegistration {
@@ -818,7 +883,9 @@ state = "unchanged"
                     target: "lib".into(),
                     module_path: "spec_system::runtime_promotion::tests".into(),
                     test_name: "spec_or_policy_slice_rejects_invalid_transition_broadly".into(),
-                    source: SourceLocation::new("crates/allow-policy/src/spec_system/runtime_promotion.rs"),
+                    source: SourceLocation::new(
+                        "crates/allow-policy/src/spec_system/runtime_promotion.rs",
+                    ),
                     source_identity: "fnv1a64:weak".into(),
                 },
             ],
@@ -837,7 +904,9 @@ state = "unchanged"
                 expected_observable: "typed rejection".into(),
                 discriminator: "SpecOnlyRuntimeImplementationClaim".into(),
                 claim_boundary: "Does not prove execution.".into(),
-                source: SourceLocation::new("docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"),
+                source: SourceLocation::new(
+                    "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md",
+                ),
                 subject_ids: vec![exact],
                 related_subject_ids: vec![weak],
             }],
@@ -870,9 +939,11 @@ state = "unchanged"
             .ok_or_else(|| "expected evidence claim".to_string())?;
         claim.subject_ids = claim.related_subject_ids.clone();
         let graph = compile_spec_graph(input);
-        assert!(graph.diagnostics.iter().any(|diagnostic| {
-            diagnostic.code == GraphDiagnosticCode::ExactSubjectMarkedWeak
-        }));
+        assert!(
+            graph.diagnostics.iter().any(|diagnostic| {
+                diagnostic.code == GraphDiagnosticCode::ExactSubjectMarkedWeak
+            })
+        );
         Ok(())
     }
 
@@ -885,9 +956,11 @@ state = "unchanged"
             .ok_or_else(|| "expected implementation slice".to_string())?;
         slice.owned_seams.clear();
         let graph = compile_spec_graph(undeclared);
-        assert!(graph.diagnostics.iter().any(|diagnostic| {
-            diagnostic.code == GraphDiagnosticCode::SeamNotDeclaredBySlice
-        }));
+        assert!(
+            graph.diagnostics.iter().any(|diagnostic| {
+                diagnostic.code == GraphDiagnosticCode::SeamNotDeclaredBySlice
+            })
+        );
 
         let mut forbidden = input()?;
         let slice = forbidden
@@ -896,9 +969,12 @@ state = "unchanged"
             .ok_or_else(|| "expected implementation slice".to_string())?;
         slice.forbidden_seams.push("seam:runtime-promotion".into());
         let graph = compile_spec_graph(forbidden);
-        assert!(graph.diagnostics.iter().any(|diagnostic| {
-            diagnostic.code == GraphDiagnosticCode::ForbiddenSeam
-        }));
+        assert!(
+            graph
+                .diagnostics
+                .iter()
+                .any(|diagnostic| { diagnostic.code == GraphDiagnosticCode::ForbiddenSeam })
+        );
         Ok(())
     }
 }
