@@ -1,4 +1,4 @@
-//! Offline characterization for SourceCandidateSmokeReceiptV1 (#2278 / #2373).
+//! Offline characterization for SourceCandidateSmokeReceiptV1 (#2278 / #2373 / #2387).
 //!
 //! The installed first-hour + lifecycle journey itself lives in
 //! `scripts/source-candidate-smoke.sh` so release harnesses can invoke Cargo
@@ -19,6 +19,7 @@ const STEPS_EXPECTED: &[&str] = &[
     "bootstrap_propose_write",
     "check_no_new_pass",
     "list_explain_worklist",
+    "refresh_location_drift_preview_write",
     "diff_against_exact_base",
     "prune_stale_preview_write",
     "final_check_no_new",
@@ -32,7 +33,7 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
     );
     assert!(
         SCHEMA_DOC.contains("negative_controls"),
-        "schema must include negative_controls for #2373"
+        "schema must include negative_controls for #2373/#2387"
     );
     let example: serde_json::Value = serde_json::from_str(EXAMPLE_RECEIPT)
         .unwrap_or_else(|err| std::panic::panic_any(format!("example receipt json: {err}")));
@@ -66,6 +67,8 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
     for required in [
         "omitted_journey_step_cannot_claim_passed",
         "prune_preview_apply_subject_agree",
+        "refresh_preview_apply_subject_agree",
+        "malformed_smoke_receipt_cannot_claim_passed",
     ] {
         assert!(
             ids.contains(&required),
@@ -83,15 +86,15 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
         "example receipt must record ExactCandidate isolation limitation"
     );
     assert!(
-        limitations
-            .iter()
-            .any(|v| v.as_str() == Some("refresh_lifecycle_not_executed")),
-        "example must record deferred refresh limitation"
-    );
-    assert!(
         !limitations
             .iter()
-            .any(|v| v.as_str() == Some("lifecycle_diff_refresh_prune_not_executed")),
-        "example must not claim lifecycle steps were skipped after #2373"
+            .any(|v| v.as_str() == Some("refresh_lifecycle_not_executed")),
+        "example must not claim refresh was skipped after #2387"
+    );
+    assert!(
+        limitations
+            .iter()
+            .any(|v| v.as_str() == Some("checkout_denial_negative_deferred")),
+        "example must record deferred checkout-denial limitation"
     );
 }

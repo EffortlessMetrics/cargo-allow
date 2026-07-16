@@ -13,9 +13,10 @@ inventory without executing repository code.
 - `scripts/source-candidate-smoke.sh` emits
   `cargo-allow.source-candidate-smoke-receipt.v1` after a path-installed (or
   `CARGO_ALLOW_BIN`) binary completes the brownfield first-hour journey plus
-  `diff --base` and prune preview→write lifecycle steps in a temporary
-  consumer repo, with omitted-step and preview/apply-disagree negatives
-  (#2373 / #2278; refresh and checkout-denial remain deferred).
+  refresh (location_drift), `diff --base`, and prune preview→write lifecycle
+  steps in a temporary consumer repo, with omitted-step / preview-apply /
+  malformed-receipt negatives (#2387 / #2373 / #2278; checkout-denial remains
+  deferred).
 - `scripts/exact-candidate-package-set.sh` emits
   `cargo-allow.exact-candidate-package-set.v1` after packaging the shared
   ten-crate set, assembling a Cargo directory vendor with injected candidate

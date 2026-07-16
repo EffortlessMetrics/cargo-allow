@@ -5,7 +5,7 @@
   "result": "Passed",
   "claim_boundary": [
     "installed_binary_first_hour_journey",
-    "diff_and_prune_lifecycle",
+    "refresh_diff_and_prune_lifecycle",
     "temporary_consumer_repository",
     "source_candidate_not_published_registry"
   ],
@@ -35,6 +35,7 @@
       "bootstrap_propose_write",
       "check_no_new_pass",
       "list_explain_worklist",
+      "refresh_location_drift_preview_write",
       "diff_against_exact_base",
       "prune_stale_preview_write",
       "final_check_no_new"
@@ -67,6 +68,11 @@
         "artifact_schema_id": "cargo-allow.list.v1"
       },
       {
+        "id": "refresh_location_drift_preview_write",
+        "exit_code": 0,
+        "artifact_schema_id": "cargo-allow.refresh.v1"
+      },
+      {
         "id": "diff_against_exact_base",
         "exit_code": 0,
         "artifact_schema_id": "cargo-allow.report.v1"
@@ -95,12 +101,23 @@
       "result_class": "PreviewApplyDisagree",
       "passed": true,
       "detail": "forged prune write subject mismatch is classified PreviewApplyDisagree"
+    },
+    {
+      "id": "refresh_preview_apply_subject_agree",
+      "result_class": "PreviewApplyDisagree",
+      "passed": true,
+      "detail": "forged refresh write subject mismatch is classified PreviewApplyDisagree"
+    },
+    {
+      "id": "malformed_smoke_receipt_cannot_claim_passed",
+      "result_class": "MalformedArtifact",
+      "passed": true,
+      "detail": "Passed receipt with wrong schema_id is classified MalformedArtifact"
     }
   ],
   "limitations": [
     "package_set_not_consumed_from_isolated_registry",
     "source_checkout_not_denied_during_install",
-    "refresh_lifecycle_not_executed",
     "checkout_denial_negative_deferred",
     "published_registry_install_not_executed",
     "linux_hosted_claim_only"
