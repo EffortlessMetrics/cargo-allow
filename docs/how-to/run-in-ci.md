@@ -111,7 +111,8 @@ evidence tools for its own scan. The install step fetches the `cargo-allow`
 tool; the policy scan remains source-tree only.
 
 This how-to proves the committed GitHub Actions examples and ownership
-instructions are coherent and checked offline. It does not prove every
-third-party CI platform, hosted shallow-checkout characterization
-([#2366](https://github.com/EffortlessMetrics/cargo-allow/issues/2366)), or
-installed package isolation (#2278).
+instructions are coherent and checked offline. Hosted shallow-checkout
+characterization for `diff --base` lives in
+`scripts/shallow-diff-base-smoke.sh` (CI job `shallow-diff-smoke`, #2366).
+It does not prove every third-party CI platform or installed package isolation
+(#2278).

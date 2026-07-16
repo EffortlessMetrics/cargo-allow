@@ -38,11 +38,61 @@ jobs:
           key: package-smoke
       - name: Package candidate smoke (Stage A)
         run: bash scripts/package-candidate-smoke.sh
+      - name: Exact candidate package set (#2372)
+        run: |
+          mkdir -p target/exact-candidate-package-set/packages
+          cp target/package-candidate-smoke/packages/*.crate \
+            target/exact-candidate-package-set/packages/
+          SKIP_PACKAGE=1 bash scripts/exact-candidate-package-set.sh
+      - name: Source candidate first-hour journey (#2278)
+        run: |
+          bin="target/exact-candidate-package-set/install/bin/cargo-allow"
+          if [[ ! -x "${bin}" && ! -x "${bin}.exe" ]]; then
+            bin="target/package-candidate-smoke/install/bin/cargo-allow"
+          fi
+          if [[ -x "${bin}.exe" ]]; then
+            bin="${bin}.exe"
+          fi
+          CARGO_ALLOW_BIN="${bin}" bash scripts/source-candidate-smoke.sh
       - uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
           name: package-candidate-smoke-receipt
           path: target/package-candidate-smoke/package-candidate-smoke.receipt.txt
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: exact-candidate-package-set-receipt
+          path: target/exact-candidate-package-set/exact-candidate-package-set.receipt.json
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: source-candidate-smoke-receipt
+          path: target/source-candidate-smoke/source-candidate-smoke.receipt.json
+          if-no-files-found: warn
+  # Hosted characterization for #2366 / #2355: shallow missing-base fails closed,
+  # then the same diff succeeds after history is available. Linux-only; keeps PR
+  # CI cheap relative to a full matrix.
+  shallow-diff-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: shallow-diff-smoke
+      - name: Shallow diff base smoke
+        run: bash scripts/shallow-diff-base-smoke.sh
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: shallow-diff-base-smoke
+          path: |
+            target/shallow-diff-base-smoke/shallow-diff-base-smoke.receipt.txt
+            target/shallow-diff-base-smoke/artifacts/
 
   test:
     runs-on: ubuntu-latest
@@ -91,4 +141,5 @@ jobs:
         if: always()
         with:
           name: cargo-allow-reports
-          path: target/cargo-allow/
+          path: |
+            target/cargo-allow/
