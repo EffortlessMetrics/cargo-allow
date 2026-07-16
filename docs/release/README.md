@@ -40,12 +40,15 @@ bash scripts/source-candidate-smoke.sh
 ```
 
 That harness path-installs into a temp root (or reuses `CARGO_ALLOW_BIN`),
-runs the brownfield first-hour journey outside the checkout, and writes
-`target/source-candidate-smoke/source-candidate-smoke.receipt.json`. Offline
-schema/example characterization remains
+runs the brownfield first-hour journey plus `diff --base` and prune
+preview→write in an isolated git consumer, records omitted-step /
+preview-apply-disagree negatives, and writes
+`target/source-candidate-smoke/source-candidate-smoke.receipt.json`. It does
+**not** yet cover refresh lifecycle, checkout denial, or every #2278 negative.
+Offline schema/example characterization remains
 `cargo test -p cargo-allow --test source_candidate_smoke --locked`.
 
-Exact ten-crate isolation (#2277 / #2372 Stage A, #2378 Stage B negatives) is
+Exact ten-crate isolation (#2277 / #2372 Stage A, #2378 Stage B negatives, #2380 Stage C directory source) is
 proven by:
 
 ```bash

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Installed-binary first-hour journey smoke (#2278 Stage A+).
+# Installed-binary first-hour + lifecycle smoke (#2278 / #2373).
 #
 # Path-installs cargo-allow (or reuses CARGO_ALLOW_BIN), runs the brownfield
-# first-hour journey in a temporary consumer repository outside this checkout,
-# and emits cargo-allow.source-candidate-smoke-receipt.v1 JSON.
+# first-hour journey plus diff / prune preview→write in a temporary consumer
+# repository outside this checkout, and emits
+# cargo-allow.source-candidate-smoke-receipt.v1 JSON.
 #
-# Does not prove ExactCandidatePackageSetV1 local-registry isolation (#2277),
-# crates.io published install, checkout denial, or diff/refresh/prune negatives.
+# Does not prove ExactCandidatePackageSet isolation, crates.io published
+# install, checkout denial, refresh path, or every #2278 negative control.
 #
 # Usage:
 #   bash scripts/source-candidate-smoke.sh
@@ -15,6 +16,7 @@
 #   WORK_DIR=<path>          work root (default: target/source-candidate-smoke)
 #   CARGO_ALLOW_BIN=<path>   prebuilt/path-installed binary (skips cargo install)
 #   INSTALL_ROOT=<path>      cargo install --root when installing (default: WORK_DIR/install)
+#   SKIP_NEGATIVES=1         skip harness-level negative controls (debug only)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -158,6 +160,227 @@ print(entries[0]["id"])
 "${cargo_bin}" worklist --root "${consumer_dir}" --config "${policy_path}" --kind panic --format json >/dev/null
 step_list_exit=0
 
+command -v git >/dev/null 2>&1 || fail "git is required for diff --base lifecycle steps"
+log "step git baseline commit for diff --base"
+git -C "${consumer_dir}" init >/dev/null
+git -C "${consumer_dir}" config core.autocrlf false
+git -C "${consumer_dir}" config user.email "source-candidate-smoke@example.com"
+git -C "${consumer_dir}" config user.name "Source Candidate Smoke"
+# Commit policy with the source tree so diff does not treat the allow ledger as
+# newly introduced baseline debt relative to an empty base policy.
+git -C "${consumer_dir}" add -A
+git -C "${consumer_dir}" commit -m "source-candidate-smoke baseline" >/dev/null
+diff_base="$(git -C "${consumer_dir}" rev-parse HEAD)"
+
+log "step diff --base ${diff_base}"
+diff_out="${work_dir}/diff-base.json"
+"${cargo_bin}" diff \
+  --root "${consumer_dir}" \
+  --config "${policy_path}" \
+  --kind panic \
+  --base "${diff_base}" \
+  --format json \
+  --output "${diff_out}"
+python3 - "${diff_out}" <<'PY'
+import json, sys
+from pathlib import Path
+report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if report.get("schema_id") != "cargo-allow.report.v1":
+    raise SystemExit(f"diff schema_id mismatch: {report.get('schema_id')!r}")
+if report.get("command") not in (None, "diff"):
+    pass
+if report.get("status") != "passed" or report.get("failed") is True:
+    raise SystemExit(
+        f"expected diff status passed with no failure, got status={report.get('status')!r} "
+        f"failed={report.get('failed')!r} summary={report.get('summary')!r} "
+        f"diff={report.get('diff')!r}"
+    )
+PY
+step_diff_exit=0
+
+log "step prune lifecycle (fix finding → dry-run → write)"
+printf 'pub fn load(value: Option<u8>) -> u8 { value.unwrap_or(0) }\n' >"${consumer_dir}/src/lib.rs"
+prune_preview="${work_dir}/prune-preview.json"
+prune_write="${work_dir}/prune-write.json"
+"${cargo_bin}" prune \
+  --root "${consumer_dir}" \
+  --config "${policy_path}" \
+  --stale \
+  --dry-run \
+  --format json \
+  --output "${prune_preview}"
+python3 - "${prune_preview}" "${allow_id}" <<'PY'
+import json, sys
+from pathlib import Path
+report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+allow_id = sys.argv[2]
+if report.get("schema_id") != "cargo-allow.prune.v1":
+    raise SystemExit(f"prune preview schema_id mismatch: {report.get('schema_id')!r}")
+stale = report.get("stale_entries") or []
+ids = {entry.get("id") for entry in stale if isinstance(entry, dict)}
+receipt_ids = set()
+for value in (report.get("mutation_receipt") or {}).get("changed_allow_ids") or []:
+    if isinstance(value, str):
+        receipt_ids.add(value)
+if allow_id not in ids and allow_id not in receipt_ids:
+    raise SystemExit(f"prune preview missing stale allow {allow_id!r}")
+PY
+"${cargo_bin}" prune \
+  --root "${consumer_dir}" \
+  --config "${policy_path}" \
+  --stale \
+  --write \
+  --format json \
+  --output "${prune_write}"
+python3 - "${prune_preview}" "${prune_write}" "${allow_id}" <<'PY'
+import json, sys
+from pathlib import Path
+
+def stale_ids(path: Path) -> set[str]:
+    report = json.loads(path.read_text(encoding="utf-8"))
+    ids = set()
+    for entry in report.get("stale_entries") or []:
+        if isinstance(entry, dict) and isinstance(entry.get("id"), str):
+            ids.add(entry["id"])
+    for value in (report.get("mutation_receipt") or {}).get("changed_allow_ids") or []:
+        if isinstance(value, str):
+            ids.add(value)
+    return ids
+
+preview_path = Path(sys.argv[1])
+write_path = Path(sys.argv[2])
+allow_id = sys.argv[3]
+write = json.loads(write_path.read_text(encoding="utf-8"))
+if write.get("schema_id") != "cargo-allow.prune.v1":
+    raise SystemExit(f"prune write schema_id mismatch: {write.get('schema_id')!r}")
+result = (write.get("mutation_receipt") or {}).get("result")
+if result != "written":
+    raise SystemExit(f"expected prune mutation_receipt.result == written, got {result!r}")
+preview_ids = stale_ids(preview_path)
+write_ids = stale_ids(write_path)
+if preview_ids != write_ids:
+    raise SystemExit(
+        f"PreviewApplyDisagree: prune preview ids {sorted(preview_ids)} "
+        f"!= write ids {sorted(write_ids)}"
+    )
+if allow_id not in write_ids:
+    raise SystemExit(f"prune write missing allow {allow_id!r}")
+PY
+step_prune_exit=0
+
+log "step final check --mode no-new after prune"
+final_check_json="$("${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" --kind panic --mode no-new --format json)"
+printf '%s\n' "${final_check_json}" | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+status = report.get("status")
+if status != "passed":
+    raise SystemExit(f"expected final check status passed, got {status!r}")
+'
+step_final_check_exit=0
+
+negatives_json='[]'
+if [[ "${SKIP_NEGATIVES:-0}" != "1" ]]; then
+  log "negative: omitted journey step cannot claim Passed"
+  omitted_class="$(
+    python3 <<'PY'
+import json
+
+expected = [
+    "version",
+    "doctor_no_policy",
+    "audit_with_finding",
+    "bootstrap_propose_write",
+    "check_no_new_pass",
+    "list_explain_worklist",
+    "diff_against_exact_base",
+    "prune_stale_preview_write",
+    "final_check_no_new",
+]
+# Forge a Passed receipt that omits the prune step.
+forged = {
+    "schema_version": 1,
+    "schema_id": "cargo-allow.source-candidate-smoke-receipt.v1",
+    "tool": "cargo-allow",
+    "result": "Passed",
+    "journey": {
+        "steps_expected": expected,
+        "steps_executed": [{"id": step, "exit_code": 0} for step in expected if step != "prune_stale_preview_write"],
+    },
+}
+executed = {step["id"] for step in forged["journey"]["steps_executed"]}
+missing = [step for step in forged["journey"]["steps_expected"] if step not in executed]
+if forged["result"] == "Passed" and missing:
+    print("OmittedStep")
+else:
+    print("InstrumentFailure")
+PY
+  )"
+  omitted_passed=true
+  if [[ "${omitted_class}" != "OmittedStep" ]]; then
+    omitted_passed=false
+    fail "omitted-step negative produced unexpected class ${omitted_class}"
+  fi
+
+  log "negative: prune preview/apply subject disagreement is detected"
+  disagree_class="$(
+    python3 - "${prune_preview}" <<'PY'
+import json, sys
+from pathlib import Path
+preview = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+forged_write = json.loads(json.dumps(preview))
+# Corrupt write subject set so harness agreement check would fail.
+forged_write["mutation_receipt"] = {
+    "result": "written",
+    "changed_allow_ids": ["forged-disagree-id"],
+}
+forged_write["stale_entries"] = [{"id": "forged-disagree-id"}]
+
+def stale_ids(report: dict) -> set[str]:
+    ids = set()
+    for entry in report.get("stale_entries") or []:
+        if isinstance(entry, dict) and isinstance(entry.get("id"), str):
+            ids.add(entry["id"])
+    for value in (report.get("mutation_receipt") or {}).get("changed_allow_ids") or []:
+        if isinstance(value, str):
+            ids.add(value)
+    return ids
+
+if stale_ids(preview) != stale_ids(forged_write):
+    print("PreviewApplyDisagree")
+else:
+    print("InstrumentFailure")
+PY
+  )"
+  disagree_passed=true
+  if [[ "${disagree_class}" != "PreviewApplyDisagree" ]]; then
+    disagree_passed=false
+    fail "preview/apply disagree negative produced unexpected class ${disagree_class}"
+  fi
+
+  negatives_json="$(
+    OMITTED_CLASS="${omitted_class}" OMITTED_PASSED="${omitted_passed}" \
+    DISAGREE_CLASS="${disagree_class}" DISAGREE_PASSED="${disagree_passed}" \
+    python3 <<'PY'
+import json, os
+print(json.dumps([
+    {
+        "id": "omitted_journey_step_cannot_claim_passed",
+        "result_class": os.environ["OMITTED_CLASS"],
+        "passed": os.environ["OMITTED_PASSED"] == "true",
+        "detail": "Passed receipt missing a steps_expected id is classified OmittedStep",
+    },
+    {
+        "id": "prune_preview_apply_subject_agree",
+        "result_class": os.environ["DISAGREE_CLASS"],
+        "passed": os.environ["DISAGREE_PASSED"] == "true",
+        "detail": "forged prune write subject mismatch is classified PreviewApplyDisagree",
+    },
+]))
+PY
+  )"
+fi
+
 os_name="$(uname -s | tr '[:upper:]' '[:lower:]')"
 case "${os_name}" in
   mingw*|msys*|cygwin*) os_name="windows" ;;
@@ -185,12 +408,81 @@ STEP_AUDIT_EXIT="${step_audit_exit}" \
 STEP_PROPOSE_EXIT="${step_propose_exit}" \
 STEP_CHECK_EXIT="${step_check_exit}" \
 STEP_LIST_EXIT="${step_list_exit}" \
+STEP_DIFF_EXIT="${step_diff_exit}" \
+STEP_PRUNE_EXIT="${step_prune_exit}" \
+STEP_FINAL_CHECK_EXIT="${step_final_check_exit}" \
+NEGATIVES_JSON="${negatives_json}" \
 python3 <<'PY'
 import json
 import os
 
 def code(name: str) -> int:
     return int(os.environ[name])
+
+steps_expected = [
+    "version",
+    "doctor_no_policy",
+    "audit_with_finding",
+    "bootstrap_propose_write",
+    "check_no_new_pass",
+    "list_explain_worklist",
+    "diff_against_exact_base",
+    "prune_stale_preview_write",
+    "final_check_no_new",
+]
+steps_executed = [
+    {
+        "id": "version",
+        "exit_code": code("STEP_VERSION_EXIT"),
+        "artifact_schema_id": None,
+    },
+    {
+        "id": "doctor_no_policy",
+        "exit_code": code("STEP_DOCTOR_EXIT"),
+        "artifact_schema_id": "cargo-allow.doctor.v1",
+    },
+    {
+        "id": "audit_with_finding",
+        "exit_code": code("STEP_AUDIT_EXIT"),
+        "artifact_schema_id": "cargo-allow.report.v1",
+    },
+    {
+        "id": "bootstrap_propose_write",
+        "exit_code": code("STEP_PROPOSE_EXIT"),
+        "artifact_schema_id": None,
+    },
+    {
+        "id": "check_no_new_pass",
+        "exit_code": code("STEP_CHECK_EXIT"),
+        "artifact_schema_id": "cargo-allow.report.v1",
+    },
+    {
+        "id": "list_explain_worklist",
+        "exit_code": code("STEP_LIST_EXIT"),
+        "artifact_schema_id": "cargo-allow.list.v1",
+    },
+    {
+        "id": "diff_against_exact_base",
+        "exit_code": code("STEP_DIFF_EXIT"),
+        "artifact_schema_id": "cargo-allow.report.v1",
+    },
+    {
+        "id": "prune_stale_preview_write",
+        "exit_code": code("STEP_PRUNE_EXIT"),
+        "artifact_schema_id": "cargo-allow.prune.v1",
+    },
+    {
+        "id": "final_check_no_new",
+        "exit_code": code("STEP_FINAL_CHECK_EXIT"),
+        "artifact_schema_id": "cargo-allow.report.v1",
+    },
+]
+executed_ids = {step["id"] for step in steps_executed}
+missing = [step for step in steps_expected if step not in executed_ids]
+if missing:
+    raise SystemExit(f"OmittedStep: missing executed steps {missing}")
+
+negatives = json.loads(os.environ["NEGATIVES_JSON"])
 
 receipt = {
     "schema_version": 1,
@@ -199,6 +491,7 @@ receipt = {
     "result": "Passed",
     "claim_boundary": [
         "installed_binary_first_hour_journey",
+        "diff_and_prune_lifecycle",
         "temporary_consumer_repository",
         "source_candidate_not_published_registry",
     ],
@@ -221,53 +514,17 @@ receipt = {
     },
     "journey": {
         "fixture_generation": "first_hour_brownfield_v1",
-        "steps_expected": [
-            "version",
-            "doctor_no_policy",
-            "audit_with_finding",
-            "bootstrap_propose_write",
-            "check_no_new_pass",
-            "list_explain_worklist",
-        ],
-        "steps_executed": [
-            {
-                "id": "version",
-                "exit_code": code("STEP_VERSION_EXIT"),
-                "artifact_schema_id": None,
-            },
-            {
-                "id": "doctor_no_policy",
-                "exit_code": code("STEP_DOCTOR_EXIT"),
-                "artifact_schema_id": "cargo-allow.doctor.v1",
-            },
-            {
-                "id": "audit_with_finding",
-                "exit_code": code("STEP_AUDIT_EXIT"),
-                "artifact_schema_id": "cargo-allow.report.v1",
-            },
-            {
-                "id": "bootstrap_propose_write",
-                "exit_code": code("STEP_PROPOSE_EXIT"),
-                "artifact_schema_id": None,
-            },
-            {
-                "id": "check_no_new_pass",
-                "exit_code": code("STEP_CHECK_EXIT"),
-                "artifact_schema_id": "cargo-allow.report.v1",
-            },
-            {
-                "id": "list_explain_worklist",
-                "exit_code": code("STEP_LIST_EXIT"),
-                "artifact_schema_id": "cargo-allow.list.v1",
-            },
-        ],
+        "steps_expected": steps_expected,
+        "steps_executed": steps_executed,
     },
+    "negative_controls": negatives,
     "limitations": [
         "package_set_not_consumed_from_isolated_registry",
         "source_checkout_not_denied_during_install",
-        "lifecycle_diff_refresh_prune_not_executed",
-        "negative_controls_not_run",
+        "refresh_lifecycle_not_executed",
+        "checkout_denial_negative_deferred",
         "published_registry_install_not_executed",
+        "linux_hosted_claim_only",
     ],
 }
 
