@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# Installed-binary first-hour + lifecycle smoke (#2278 / #2373 / #2387 / #2396 / #2398).
+# Installed-binary first-hour + lifecycle smoke (#2278 / #2373 / #2387 / #2396 /
+# #2398 / #2400).
 #
 # Path-installs cargo-allow (or reuses CARGO_ALLOW_BIN), runs the brownfield
-# first-hour journey plus refresh / diff / prune preview→write in a temporary
-# consumer repository outside this checkout, and emits
-# cargo-allow.source-candidate-smoke-receipt.v1 JSON.
+# first-hour journey plus refresh / diff / prune preview→write and git policy
+# rollback after prune in a temporary consumer repository outside this
+# checkout, and emits cargo-allow.source-candidate-smoke-receipt.v1 JSON.
 #
 # Includes post-install source-hidden ordinary-scan denial, wrong-version /
-# MissingAsset harness negatives, and ordinary-scan offline / unexpected-network
-# classification. Does not prove ExactCandidatePackageSet isolation, crates.io
-# published install, deny-source during path install, package-rebuild omit,
-# optional-profile-without-assets, or recovery/rollback beyond final check.
+# MissingAsset harness negatives, ordinary-scan offline / unexpected-network
+# classification, and policy rollback after prune. Does not prove
+# ExactCandidatePackageSet isolation, crates.io published install, deny-source
+# during path install, package-rebuild omit, or optional-profile-without-assets.
 #
 # Usage:
 #   bash scripts/source-candidate-smoke.sh
@@ -382,6 +383,48 @@ if status != "passed":
 '
 step_final_check_exit=0
 
+log "step policy rollback after prune (git restore from baseline)"
+python3 - "${prune_write}" <<'PY'
+import json, sys
+from pathlib import Path
+report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+next_commands = (report.get("mutation_receipt") or {}).get("next_commands") or []
+if not any(isinstance(cmd, str) and cmd.startswith("git diff -- ") for cmd in next_commands):
+    raise SystemExit(
+        f"prune write mutation_receipt.next_commands missing git recovery hint: {next_commands!r}"
+    )
+if not any(
+    isinstance(cmd, str) and "check --mode no-new" in cmd for cmd in next_commands
+):
+    raise SystemExit(
+        f"prune write mutation_receipt.next_commands missing check recovery hint: {next_commands!r}"
+    )
+PY
+post_prune_list="$("${cargo_bin}" list --root "${consumer_dir}" --config "${policy_path}" --kind panic --format json)"
+printf '%s\n' "${post_prune_list}" | ALLOW_ID="${allow_id}" python3 -c '
+import json, os, sys
+report = json.load(sys.stdin)
+allow_id = os.environ["ALLOW_ID"]
+entries = report.get("allow_entries") or []
+ids = {entry.get("id") for entry in entries if isinstance(entry, dict)}
+if allow_id in ids:
+    raise SystemExit(f"expected allow {allow_id!r} absent after prune, still present")
+'
+# Baseline commit predates prune write; restore the ledger file from HEAD.
+git -C "${consumer_dir}" checkout HEAD -- policy/allow.toml
+[[ -f "${policy_path}" ]] || fail "policy rollback did not restore ${policy_path}"
+restored_list="$("${cargo_bin}" list --root "${consumer_dir}" --config "${policy_path}" --kind panic --format json)"
+printf '%s\n' "${restored_list}" | ALLOW_ID="${allow_id}" python3 -c '
+import json, os, sys
+report = json.load(sys.stdin)
+allow_id = os.environ["ALLOW_ID"]
+entries = report.get("allow_entries") or []
+ids = {entry.get("id") for entry in entries if isinstance(entry, dict)}
+if allow_id not in ids:
+    raise SystemExit(f"policy rollback failed to restore allow {allow_id!r}")
+'
+step_rollback_exit=0
+
 negatives_json='[]'
 if [[ "${SKIP_NEGATIVES:-0}" != "1" ]]; then
   log "negative: omitted journey step cannot claim Passed"
@@ -398,6 +441,7 @@ expected = [
     "diff_against_exact_base",
     "prune_stale_preview_write",
     "final_check_no_new",
+    "policy_rollback_after_prune",
 ]
 # Forge a Passed receipt that omits the refresh step.
 forged_executed = [
@@ -634,6 +678,26 @@ PY
     fail "unexpected-network negative produced unexpected class ${network_required_class}"
   fi
 
+  log "negative: failed policy rollback is RecoveryFailed"
+  recovery_failed_class="$(
+    ALLOW_ID="${allow_id}" python3 <<'PY'
+import os
+# Adversarial: git restore claimed success but allow id is still absent.
+# Harness must classify RecoveryFailed (fail closed), never Passed.
+allow_id = os.environ["ALLOW_ID"]
+restored_allow_ids = set()  # forged empty restore
+if allow_id not in restored_allow_ids:
+    print("RecoveryFailed")
+else:
+    print("InstrumentFailure")
+PY
+  )"
+  recovery_failed_passed=true
+  if [[ "${recovery_failed_class}" != "RecoveryFailed" ]]; then
+    recovery_failed_passed=false
+    fail "failed-policy-rollback negative produced unexpected class ${recovery_failed_class}"
+  fi
+
   negatives_json="$(
     OMITTED_CLASS="${omitted_class}" OMITTED_PASSED="${omitted_passed}" \
     DISAGREE_CLASS="${disagree_class}" DISAGREE_PASSED="${disagree_passed}" \
@@ -646,6 +710,8 @@ PY
     OFFLINE_CLASS="${offline_class}" OFFLINE_PASSED="${offline_passed}" \
     NETWORK_REQUIRED_CLASS="${network_required_class}" \
     NETWORK_REQUIRED_PASSED="${network_required_passed}" \
+    RECOVERY_FAILED_CLASS="${recovery_failed_class}" \
+    RECOVERY_FAILED_PASSED="${recovery_failed_passed}" \
     python3 <<'PY'
 import json, os
 print(json.dumps([
@@ -703,6 +769,12 @@ print(json.dumps([
         "passed": os.environ["NETWORK_REQUIRED_PASSED"] == "true",
         "detail": "ordinary scan success while network_was_required is classified NetworkRequired",
     },
+    {
+        "id": "failed_policy_rollback_after_prune",
+        "result_class": os.environ["RECOVERY_FAILED_CLASS"],
+        "passed": os.environ["RECOVERY_FAILED_PASSED"] == "true",
+        "detail": "git restore that leaves prune allow absent is classified RecoveryFailed",
+    },
 ]))
 PY
   )"
@@ -739,6 +811,7 @@ STEP_REFRESH_EXIT="${step_refresh_exit}" \
 STEP_DIFF_EXIT="${step_diff_exit}" \
 STEP_PRUNE_EXIT="${step_prune_exit}" \
 STEP_FINAL_CHECK_EXIT="${step_final_check_exit}" \
+STEP_ROLLBACK_EXIT="${step_rollback_exit}" \
 NEGATIVES_JSON="${negatives_json}" \
 python3 <<'PY'
 import json
@@ -758,6 +831,7 @@ steps_expected = [
     "diff_against_exact_base",
     "prune_stale_preview_write",
     "final_check_no_new",
+    "policy_rollback_after_prune",
 ]
 steps_executed = [
     {
@@ -810,6 +884,11 @@ steps_executed = [
         "exit_code": code("STEP_FINAL_CHECK_EXIT"),
         "artifact_schema_id": "cargo-allow.report.v1",
     },
+    {
+        "id": "policy_rollback_after_prune",
+        "exit_code": code("STEP_ROLLBACK_EXIT"),
+        "artifact_schema_id": "cargo-allow.list.v1",
+    },
 ]
 executed_ids = {step["id"] for step in steps_executed}
 missing = [step for step in steps_expected if step not in executed_ids]
@@ -830,6 +909,7 @@ receipt = {
         "source_candidate_not_published_registry",
         "post_install_source_hidden_ordinary_scan",
         "ordinary_scan_does_not_require_network",
+        "policy_rollback_after_prune",
     ],
     "candidate": {
         "workspace_version": os.environ["WORKSPACE_VERSION"],

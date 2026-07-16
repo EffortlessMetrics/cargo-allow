@@ -9,7 +9,8 @@
     "temporary_consumer_repository",
     "source_candidate_not_published_registry",
     "post_install_source_hidden_ordinary_scan",
-    "ordinary_scan_does_not_require_network"
+    "ordinary_scan_does_not_require_network",
+    "policy_rollback_after_prune"
   ],
   "candidate": {
     "workspace_version": "0.1.10",
@@ -40,7 +41,8 @@
       "refresh_location_drift_preview_write",
       "diff_against_exact_base",
       "prune_stale_preview_write",
-      "final_check_no_new"
+      "final_check_no_new",
+      "policy_rollback_after_prune"
     ],
     "steps_executed": [
       { "id": "version", "exit_code": 0, "artifact_schema_id": null },
@@ -88,6 +90,11 @@
         "id": "final_check_no_new",
         "exit_code": 0,
         "artifact_schema_id": "cargo-allow.report.v1"
+      },
+      {
+        "id": "policy_rollback_after_prune",
+        "exit_code": 0,
+        "artifact_schema_id": "cargo-allow.list.v1"
       }
     ]
   },
@@ -145,6 +152,12 @@
       "result_class": "NetworkRequired",
       "passed": true,
       "detail": "ordinary scan success while network_was_required is classified NetworkRequired"
+    },
+    {
+      "id": "failed_policy_rollback_after_prune",
+      "result_class": "RecoveryFailed",
+      "passed": true,
+      "detail": "git restore that leaves prune allow absent is classified RecoveryFailed"
     }
   ],
   "limitations": [
