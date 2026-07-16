@@ -588,7 +588,9 @@ PY
     http_proxy=http://127.0.0.1:9 \
     https_proxy=http://127.0.0.1:9 \
     ALL_PROXY=http://127.0.0.1:9 \
+    all_proxy=http://127.0.0.1:9 \
     NO_PROXY= \
+    no_proxy= \
     "${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" \
       --kind panic --mode no-new --format json 2>"${work_dir}/offline-check.stderr"
   )"
