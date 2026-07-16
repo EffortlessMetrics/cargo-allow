@@ -36,7 +36,9 @@ pub(crate) struct ListArgs {
     pub(super) allow_id: Option<String>,
     /// Filter allow entries by current match status.
     ///
-    /// Mutually exclusive with `--expired`, `--review-due`, and `--stale`.
+    /// Mutually exclusive with `--expired`, `--review-due`, and `--stale`
+    /// (pick one status selector). `--baseline-debt` is a classification
+    /// filter and may still be combined with `--status`.
     #[arg(
         long,
         value_parser = [
@@ -56,17 +58,17 @@ pub(crate) struct ListArgs {
     /// Include only expired allow entries.
     ///
     /// Mutually exclusive with `--status`, `--review-due`, and `--stale`.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "status")]
     pub(super) expired: bool,
     /// Include only review-due allow entries.
     ///
     /// Mutually exclusive with `--status`, `--expired`, and `--stale`.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "status")]
     pub(super) review_due: bool,
     /// Include only stale allow entries.
     ///
     /// Mutually exclusive with `--status`, `--expired`, and `--review-due`.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "status")]
     pub(super) stale: bool,
     /// Include only entries with classification `baseline_debt`.
     ///
@@ -128,7 +130,8 @@ pub(super) fn list_filters(args: &ListArgs) -> CargoAllowResult<ListFilters<'_>>
 ///
 /// Status selectors are `--status`, `--expired`, `--review-due`, and `--stale`.
 /// `--baseline-debt` is a classification filter and may combine with one status
-/// selector.
+/// selector. Clap also rejects `--status` combined with a shortcut at parse
+/// time; this check covers conflicting shortcuts and programmatic callers.
 fn validate_status_selectors(args: &ListArgs) -> CargoAllowResult<()> {
     let mut selected = Vec::new();
     if args.status.is_some() {

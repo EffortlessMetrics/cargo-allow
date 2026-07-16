@@ -1,5 +1,5 @@
 use super::test_support::{list_row, row_status, test_entry, test_finding, test_outcome};
-use super::*;
+use super::{list_filters, *};
 use crate::{CargoAllowCli, CargoAllowCommand};
 use clap::Parser;
 use serde_json::Value;
@@ -32,9 +32,6 @@ fn clap_parses_list_json_filters() {
         "allow-runtime",
         "--status",
         "baseline_debt",
-        "--expired",
-        "--review-due",
-        "--stale",
         "--baseline-debt",
         "--broad-scope",
         "--missing-evidence",
@@ -58,9 +55,9 @@ fn clap_parses_list_json_filters() {
             source_package: Some(source_package),
             allow_id: Some(allow_id),
             status: Some(status),
-            expired: true,
-            review_due: true,
-            stale: true,
+            expired: false,
+            review_due: false,
+            stale: false,
             baseline_debt: true,
             broad_scope: true,
             missing_evidence: true,
@@ -79,6 +76,71 @@ fn clap_parses_list_json_filters() {
             && status == "baseline_debt"
             && path == Path::new("target/list.json")
     ));
+}
+
+#[test]
+fn clap_rejects_list_status_combined_with_status_shortcuts() {
+    for shortcut in ["--expired", "--review-due", "--stale"] {
+        let err = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "list",
+            "--status",
+            "expired",
+            shortcut,
+        ]))
+        .expect_err("status and status shortcuts should conflict");
+        let message = err.to_string();
+        assert!(
+            message.contains("cannot be used with")
+                || message.contains("conflict")
+                || message.contains("--status"),
+            "expected conflict diagnostic for {shortcut}, got: {message}"
+        );
+    }
+}
+
+#[test]
+fn clap_parses_list_status_shortcuts_without_status() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "list",
+        "--expired",
+        "--baseline-debt",
+    ]))
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "status shortcuts without --status should parse: {err}"
+        ))
+    });
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::List(ListArgs {
+            status: None,
+            expired: true,
+            review_due: false,
+            stale: false,
+            baseline_debt: true,
+            ..
+        }))
+    ));
+}
+
+#[test]
+fn list_filters_rejects_conflicting_status_shortcuts() {
+    let parsed =
+        CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "list", "--expired", "--stale"]))
+            .unwrap_or_else(|err| {
+                std::panic::panic_any(format!(
+                    "conflicting shortcuts still parse at clap layer: {err}"
+                ))
+            });
+    let Some(CargoAllowCommand::List(args)) = parsed.command else {
+        std::panic::panic_any("expected list command");
+    };
+    let err = list_filters(&args).expect_err("conflicting status shortcuts should fail closed");
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Usage);
+    assert!(err.message().contains("mutually exclusive"));
 }
 
 #[test]
