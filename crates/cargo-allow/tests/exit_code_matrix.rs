@@ -2,14 +2,38 @@
 //!
 //! Proves process exit classes without calling the mapping helper:
 //! Clap usage and structured `Usage` → 2; config/policy/runtime → 1; success → 0.
-
-mod support;
+//!
+//! Focused test: self-contained subprocess helpers (no shared `tests/support`).
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Output;
+use std::process::{Command, Output};
 
-use support::{cargo_allow_command, remove_temp_root, temp_root};
+fn cargo_allow() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+}
+
+fn temp_root(label: &str) -> PathBuf {
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-exit-matrix-{label}-{}-{unique}",
+        std::process::id()
+    ));
+    fs::create_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
+    root
+}
+
+fn drop_root(root: PathBuf) {
+    match fs::remove_dir_all(&root) {
+        Ok(()) => {}
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
+    }
+}
 
 fn assert_exit(label: &str, output: &Output, expected: i32, stderr_fragment: &str) {
     assert_eq!(
@@ -81,7 +105,7 @@ glob = "policy/allow.toml"
 
 #[test]
 fn exit_matrix_unknown_clap_flag_is_2() {
-    let output = cargo_allow_command()
+    let output = cargo_allow()
         .arg("doctor")
         .arg("--not-a-real-flag")
         .output()
@@ -96,7 +120,7 @@ fn exit_matrix_unknown_clap_flag_is_2() {
 
 #[test]
 fn exit_matrix_missing_required_clap_value_is_2() {
-    let output = cargo_allow_command()
+    let output = cargo_allow()
         .arg("check")
         .arg("--mode")
         .output()
@@ -108,7 +132,7 @@ fn exit_matrix_missing_required_clap_value_is_2() {
 fn exit_matrix_clap_conflicting_list_status_shortcuts_is_2() {
     let root = temp_root("exit-list-conflict");
     write_empty_policy(&root);
-    let output = cargo_allow_command()
+    let output = cargo_allow()
         .arg("list")
         .arg("--root")
         .arg(&root)
@@ -122,7 +146,7 @@ fn exit_matrix_clap_conflicting_list_status_shortcuts_is_2() {
         stderr.contains("--stale"),
         "stderr should identify both shortcuts: {stderr}"
     );
-    remove_temp_root(root);
+    drop_root(root);
 }
 
 #[test]
@@ -130,7 +154,7 @@ fn exit_matrix_post_parse_structured_usage_is_2() {
     let root = temp_root("exit-add-usage");
     write_panic_source(&root);
     write_empty_policy(&root);
-    let output = cargo_allow_command()
+    let output = cargo_allow()
         .arg("add")
         .arg("--root")
         .arg(&root)
@@ -158,7 +182,7 @@ fn exit_matrix_post_parse_structured_usage_is_2() {
         2,
         "mutually exclusive",
     );
-    remove_temp_root(root);
+    drop_root(root);
 }
 
 #[test]
@@ -166,7 +190,7 @@ fn exit_matrix_missing_config_is_1() {
     let root = temp_root("exit-missing-config");
     write_panic_source(&root);
     let missing = root.join("policy/does-not-exist.toml");
-    let output = cargo_allow_command()
+    let output = cargo_allow()
         .arg("check")
         .arg("--root")
         .arg(&root)
@@ -177,7 +201,7 @@ fn exit_matrix_missing_config_is_1() {
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run missing config: {err}")));
     assert_exit("missing config", &output, 1, "error:");
-    remove_temp_root(root);
+    drop_root(root);
 }
 
 #[test]
@@ -207,7 +231,7 @@ callee = "unwrap"
     );
     fs::write(root.join("policy/allow.toml"), invalid)
         .unwrap_or_else(|err| std::panic::panic_any(format!("write invalid policy: {err}")));
-    let output = cargo_allow_command()
+    let output = cargo_allow()
         .arg("check")
         .arg("--root")
         .arg(&root)
@@ -216,7 +240,7 @@ callee = "unwrap"
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run invalid policy: {err}")));
     assert_exit("invalid policy content", &output, 1, "review_after");
-    remove_temp_root(root);
+    drop_root(root);
 }
 
 #[test]
@@ -224,7 +248,7 @@ fn exit_matrix_check_policy_violation_is_1() {
     let root = temp_root("exit-policy-violation");
     write_panic_source(&root);
     write_empty_policy(&root);
-    let output = cargo_allow_command()
+    let output = cargo_allow()
         .arg("check")
         .arg("--root")
         .arg(&root)
@@ -241,19 +265,19 @@ fn exit_matrix_check_policy_violation_is_1() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    remove_temp_root(root);
+    drop_root(root);
 }
 
 #[test]
 fn exit_matrix_successful_doctor_is_0() {
     let root = temp_root("exit-doctor-ok");
     write_empty_policy(&root);
-    let output = cargo_allow_command()
+    let output = cargo_allow()
         .arg("doctor")
         .arg("--root")
         .arg(&root)
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor: {err}")));
     assert_success("doctor success", &output);
-    remove_temp_root(root);
+    drop_root(root);
 }
