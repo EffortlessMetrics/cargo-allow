@@ -354,22 +354,9 @@ impl PackageManifest {
                     .unwrap_or("src/lib.rs"),
             ),
         };
-        let binaries = declared_targets(
-            &table,
-            "bin",
-            RustTestTargetKind::Binary,
-            &root,
-            &default_target_name,
-            "src/main.rs",
-        );
-        let integration_tests = declared_targets(
-            &table,
-            "test",
-            RustTestTargetKind::IntegrationTest,
-            &root,
-            "",
-            "",
-        );
+        let binaries = declared_targets(&table, "bin", RustTestTargetKind::Binary, &root);
+        let integration_tests =
+            declared_targets(&table, "test", RustTestTargetKind::IntegrationTest, &root);
 
         Ok(Self {
             root,
@@ -441,8 +428,6 @@ fn declared_targets(
     key: &str,
     kind: RustTestTargetKind,
     root: &Path,
-    default_name: &str,
-    default_path: &str,
 ) -> Vec<DeclaredTarget> {
     let mut targets = Vec::new();
     let Some(values) = table.get(key).and_then(toml::Value::as_array) else {
