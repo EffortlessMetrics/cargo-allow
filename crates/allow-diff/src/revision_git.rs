@@ -1,6 +1,6 @@
 use allow_core::{CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output};
 
 #[cfg(unix)]
@@ -282,11 +282,14 @@ fn is_full_oid(value: &str) -> bool {
 
 /// Convert a caller `Path` into exact Git tree path bytes for literal lookup.
 ///
-/// On Windows, OS path separators (`\`) are mapped to Git's `/` form so callers
-/// can pass ordinary host paths. Literal backslash *filename* bytes that exist
+/// Inspect host path components first so drive, UNC/device, rooted, and parent
+/// forms cannot be reinterpreted as repository-relative Git identities after
+/// separator normalization. On Windows, only accepted relative paths then map
+/// `\` separators to Git `/`. Literal backslash *filename* bytes that exist
 /// only inside a Git tree are preserved when they arrive from Git output, not
 /// from this conversion.
 fn source_tree_path_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
+    reject_host_non_relative_path(path)?;
     #[cfg(unix)]
     {
         let bytes = path.as_os_str().as_bytes().to_vec();
@@ -319,6 +322,20 @@ fn source_tree_path_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
             "source-tree Git path reads are unsupported on this platform",
         ))
     }
+}
+
+/// Reject host-absolute, drive-relative, UNC/device, rooted, and parent paths
+/// before any separator rewriting that would erase those platform semantics.
+fn reject_host_non_relative_path(path: &Path) -> CargoAllowResult<()> {
+    for component in path.components() {
+        match component {
+            Component::Prefix(_) | Component::RootDir | Component::ParentDir => {
+                return Err(invalid_source_tree_path(path));
+            }
+            Component::CurDir | Component::Normal(_) => {}
+        }
+    }
+    Ok(())
 }
 
 fn validate_source_tree_path_bytes(bytes: &[u8], path: &Path) -> CargoAllowResult<()> {
@@ -666,6 +683,11 @@ pub(crate) fn parse_git_tree_record_outcome_for_test(
         TreeRecordParse::UnsupportedPath { raw_path, .. } => Some(("unsupported", raw_path)),
         TreeRecordParse::Malformed => None,
     }
+}
+
+#[cfg(test)]
+pub(crate) fn source_tree_path_bytes_for_test(path: &Path) -> CargoAllowResult<Vec<u8>> {
+    source_tree_path_bytes(path)
 }
 
 fn parse_git_tree_record_any(record: &[u8]) -> TreeRecordParse {
