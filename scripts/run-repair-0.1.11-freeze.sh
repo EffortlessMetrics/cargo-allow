@@ -13,6 +13,100 @@ branch_head="$(git rev-parse HEAD)"
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+patch_release_oracle() {
+  python3 - <<'PY'
+from pathlib import Path
+
+# Promote the release-preparation executable oracle from the completed 0.1.10
+# record to the exact 0.1.11 source candidate.
+test_path = Path("crates/cargo-allow/src/release_prep_tests.rs")
+test = test_path.read_text(encoding="utf-8")
+replacements = {
+    'const PUBLISHED_RELEASE_VERSION: &str = "0.1.10";':
+        'const PUBLISHED_RELEASE_VERSION: &str = "0.1.11";',
+    'const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.9";':
+        'const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.10";',
+    'const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.10.md";':
+        'const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.11.md";',
+    'const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.9.md";':
+        'const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.10.md";',
+    '    "Public install examples now pin the published `0.1.10` release";':
+        '    "Public install examples now pin the published `0.1.11` release";',
+}
+for old, new in replacements.items():
+    if old in test:
+        test = test.replace(old, new, 1)
+    elif new not in test:
+        raise SystemExit(f"release_prep_tests.rs missing expected release constant: {old}")
+test_path.write_text(test, encoding="utf-8", newline="\n")
+
+# Keep the release record executable by the release-prep tests: exact version
+# identity, public install pin, and the dependency-ordered ten-crate graph.
+record_path = Path("docs/release/0.1.11.md")
+record = record_path.read_text(encoding="utf-8")
+if "## Version and Install Examples" not in record:
+    old = '''## Version and package graph
+
+All ten crates use 0.1.11 and publish in dependency order:
+
+```text
+allow-core
+allow-policy
+allow-inventory
+allow-files
+allow-rust
+allow-match
+allow-policy-legacy
+allow-report
+allow-diff
+cargo-allow
+```
+
+Install after publication:
+
+```bash
+cargo install cargo-allow --version 0.1.11 --locked
+```
+'''
+    new = '''## Version and Install Examples
+
+Workspace package versions were bumped to `0.1.11`:
+
+```text
+Cargo.toml
+Cargo.lock
+```
+
+Public install examples now pin the published `0.1.11` release:
+
+```bash
+cargo install cargo-allow --version 0.1.11 --locked
+```
+
+## Publish Order
+
+Published internal crates in dependency order:
+
+```text
+1. allow-core
+2. allow-policy
+3. allow-inventory
+4. allow-files
+5. allow-rust
+6. allow-match
+7. allow-policy-legacy
+8. allow-report
+9. allow-diff
+10. cargo-allow
+```
+'''
+    if record.count(old) != 1:
+        raise SystemExit("0.1.11 release record package graph changed unexpectedly")
+    record = record.replace(old, new, 1)
+record_path.write_text(record, encoding="utf-8", newline="\n")
+PY
+}
+
 {
   echo "qualification_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "branch_head=${branch_head}"
@@ -28,6 +122,7 @@ git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
   # restored from current main so the tested tree matches the post-cleanup PR.
   rm -f scripts/run-repair-0.1.11-freeze.sh
   git checkout origin/main -- .github/workflows/ci.yml
+  patch_release_oracle
 
   cargo fmt --all --check
   cargo clippy --workspace --all-targets -- -D warnings
@@ -49,14 +144,15 @@ git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
   bash scripts/shallow-diff-base-smoke.sh
   echo "qualification_result=pass"
 
-  # Return to the writer branch and remove this staging wrapper. The resulting
-  # branch tree is the one qualified above; the cleanup commit has no product
-  # content beyond deleting this temporary file.
+  # Apply the identical release-oracle correction to the writer branch, remove
+  # this staging wrapper, and restore current main CI. The resulting tree is the
+  # one qualified above.
   git checkout "${branch}"
+  patch_release_oracle
   git rm -f scripts/run-repair-0.1.11-freeze.sh
   git checkout origin/main -- .github/workflows/ci.yml
   git add -A
-  git commit -m "chore(release): finalize qualified 0.1.11 source tree"
+  git commit -m "release: finalize qualified cargo-allow 0.1.11 candidate"
   git push origin HEAD:"${branch}"
   echo "cleanup_head=$(git rev-parse HEAD)"
 } > >(tee "${log}") 2>&1
