@@ -123,6 +123,11 @@ governance profile model around it.
 - [0.1.8 GitHub Release body](release/github/v0.1.8.md): public release notes
   for the `v0.1.8` GitHub Release.
 
+- [0.1.9 release record](release/0.1.9.md): completed maintenance release.
+- [0.1.10 release record](release/0.1.10.md): completed adoption-trust and ledger-coherence patch release.
+- [0.1.11 release record](release/0.1.11.md): supported-core usability, safety-bound, and installed-candidate patch release.
+- [0.1.11 GitHub Release body](release/github/v0.1.11.md): public notes for `v0.1.11`.
+
 ## Reference
 
 - [How-to guides](how-to/README.md): task guide index.

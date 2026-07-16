@@ -353,7 +353,7 @@ fn published_registry_fixture_is_internally_consistent() {
     let registry = parse_registry(REGISTRY);
     assert_eq!(registry.schema_id, "cargo-allow.published-quick-start.v1");
     assert_eq!(registry.channel, "published");
-    assert_eq!(registry.version, "0.1.10");
+    assert_eq!(registry.version, "0.1.11");
     assert!(
         registry
             .first_run_subcommands
@@ -368,7 +368,7 @@ fn published_registry_fixture_is_internally_consistent() {
     }
     assert!(
         registry.candidate_only_subcommands.contains("why"),
-        "why is the current main-only first-run delta vs Published 0.1.10"
+        "why is the current main-only first-run delta vs Published 0.1.11"
     );
 }
 
@@ -383,7 +383,7 @@ fn published_quick_start_docs_respect_command_registry() {
     let mut all_taught = Vec::new();
     for (surface, body) in surfaces {
         assert!(
-            body.contains("0.1.10") || surface == "docs/onboarding.md",
+            body.contains("0.1.11") || surface == "docs/onboarding.md",
             "{surface} should name the published release or route through getting-started"
         );
         all_taught.extend(extract_taught_commands(surface, body));
@@ -426,7 +426,7 @@ fn published_quick_start_docs_respect_command_registry() {
         stale_fixture_rejected: true, // proven by sibling test
     };
     assert_eq!(result.schema_id, registry.schema_id);
-    assert_eq!(result.published_version, "0.1.10");
+    assert_eq!(result.published_version, "0.1.11");
 }
 
 #[test]
@@ -437,7 +437,7 @@ fn stale_published_path_teaching_why_is_rejected() {
 Install:
 
 ```bash
-cargo install cargo-allow --version 0.1.10 --locked
+cargo install cargo-allow --version 0.1.11 --locked
 ```
 
 ```bash
@@ -458,7 +458,7 @@ fn labeled_candidate_why_is_accepted() {
     let registry = parse_registry(REGISTRY);
     let ok = r#"# Source candidate
 
-Unreleased on Published 0.1.10 (source candidate):
+Unreleased on Published 0.1.11 (source candidate):
 
 ```bash
 cargo-allow why --kind panic --path src/lib.rs --line 1

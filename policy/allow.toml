@@ -6263,3 +6263,49 @@ glob = "docs/schemas/why.schema.json"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0292"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/0.1.11.md"
+owner = "core/release"
+classification = "release_record"
+reason = "Records the 0.1.11 supported-core release scope, evidence, limitations, and rollback."
+evidence = ["issue:2270", "issue:2258"]
+created = "2026-07-16"
+review_after = "2026-10-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/0.1.11.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/release/0.1.11.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0293"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/github/v0.1.11.md"
+owner = "core/release"
+classification = "release_record"
+reason = "Public GitHub Release notes for the v0.1.11 supported-core patch."
+evidence = ["doc:docs/release/0.1.11.md", "issue:2258"]
+created = "2026-07-16"
+review_after = "2026-10-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/github/v0.1.11.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/release/github/v0.1.11.md"
+
+[allow.last_seen]
+line = 1
+column = 1
