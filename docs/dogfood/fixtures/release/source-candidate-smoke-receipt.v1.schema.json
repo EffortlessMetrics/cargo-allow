@@ -38,7 +38,8 @@
         "Cancelled",
         "Unsupported",
         "Partial",
-        "NetworkRequired"
+        "NetworkRequired",
+        "RecoveryFailed"
       ]
     },
     "claim_boundary": {

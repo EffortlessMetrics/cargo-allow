@@ -1,5 +1,5 @@
 //! Offline characterization for SourceCandidateSmokeReceiptV1
-//! (#2278 / #2373 / #2387 / #2396 / #2398).
+//! (#2278 / #2373 / #2387 / #2396 / #2398 / #2400).
 //!
 //! The installed first-hour + lifecycle journey itself lives in
 //! `scripts/source-candidate-smoke.sh` so release harnesses can invoke Cargo
@@ -24,6 +24,7 @@ const STEPS_EXPECTED: &[&str] = &[
     "diff_against_exact_base",
     "prune_stale_preview_write",
     "final_check_no_new",
+    "policy_rollback_after_prune",
 ];
 
 #[test]
@@ -34,11 +35,15 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
     );
     assert!(
         SCHEMA_DOC.contains("negative_controls"),
-        "schema must include negative_controls for #2373/#2387/#2396/#2398"
+        "schema must include negative_controls for #2373/#2387/#2396/#2398/#2400"
     );
     assert!(
         SCHEMA_DOC.contains("NetworkRequired"),
         "schema must enumerate NetworkRequired for unexpected-network fails"
+    );
+    assert!(
+        SCHEMA_DOC.contains("RecoveryFailed"),
+        "schema must enumerate RecoveryFailed for failed-policy-rollback fails"
     );
     let example: serde_json::Value = serde_json::from_str(EXAMPLE_RECEIPT)
         .unwrap_or_else(|err| std::panic::panic_any(format!("example receipt json: {err}")));
@@ -77,6 +82,12 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
             .any(|v| v.as_str() == Some("ordinary_scan_does_not_require_network")),
         "example must claim ordinary scan does not require network"
     );
+    assert!(
+        claim_boundary
+            .iter()
+            .any(|v| v.as_str() == Some("policy_rollback_after_prune")),
+        "example must claim policy rollback after prune"
+    );
     let negatives = example
         .get("negative_controls")
         .and_then(serde_json::Value::as_array)
@@ -95,6 +106,7 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
         "wrong_installed_binary_version",
         "ordinary_scan_does_not_require_network",
         "unexpected_network_requirement_during_ordinary_scan",
+        "failed_policy_rollback_after_prune",
     ] {
         assert!(
             ids.contains(&required),
@@ -111,6 +123,17 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
             .and_then(serde_json::Value::as_str),
         Some("NetworkRequired"),
         "unexpected-network control must classify NetworkRequired"
+    );
+    let recovery_failed = negatives.iter().find(|v| {
+        v.get("id").and_then(serde_json::Value::as_str)
+            == Some("failed_policy_rollback_after_prune")
+    });
+    assert_eq!(
+        recovery_failed
+            .and_then(|v| v.get("result_class"))
+            .and_then(serde_json::Value::as_str),
+        Some("RecoveryFailed"),
+        "failed-policy-rollback control must classify RecoveryFailed"
     );
     let limitations = example
         .get("limitations")
