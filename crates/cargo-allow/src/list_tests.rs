@@ -58,6 +58,7 @@ fn clap_parses_list_json_filters() {
             expired: false,
             review_due: false,
             stale: false,
+            location_drift: false,
             baseline_debt: true,
             broad_scope: true,
             missing_evidence: true,
@@ -80,7 +81,7 @@ fn clap_parses_list_json_filters() {
 
 #[test]
 fn clap_rejects_list_status_combined_with_status_shortcuts() {
-    for shortcut in ["--expired", "--review-due", "--stale"] {
+    for shortcut in ["--expired", "--review-due", "--stale", "--location-drift"] {
         let err = CargoAllowCli::try_parse_from(argv(vec![
             "cargo-allow",
             "list",
@@ -120,6 +121,7 @@ fn clap_parses_single_list_status_shortcut_with_baseline_debt() {
             expired: true,
             review_due: false,
             stale: false,
+            location_drift: false,
             baseline_debt: true,
             ..
         }))
@@ -153,6 +155,8 @@ fn clap_rejects_conflicting_list_status_shortcuts() {
         ["--expired", "--stale"],
         ["--expired", "--review-due"],
         ["--stale", "--review-due"],
+        ["--stale", "--location-drift"],
+        ["--location-drift", "--expired"],
     ] {
         let err =
             CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "list", pair[0], pair[1]]))
@@ -168,6 +172,27 @@ fn clap_rejects_conflicting_list_status_shortcuts() {
             pair[1]
         );
     }
+}
+
+#[test]
+fn clap_parses_list_location_drift_shortcut() {
+    let parsed =
+        CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "list", "--location-drift"]))
+            .unwrap_or_else(|err| {
+                std::panic::panic_any(format!("CLI should accept --location-drift: {err}"))
+            });
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::List(ListArgs {
+            location_drift: true,
+            status: None,
+            expired: false,
+            review_due: false,
+            stale: false,
+            ..
+        }))
+    ));
 }
 
 #[test]
@@ -499,6 +524,7 @@ fn render_list_rows_with_context_filters_rows_and_reports_inventory() {
         expired: false,
         review_due: false,
         stale: false,
+        location_drift: false,
         baseline_debt: false,
         broad_scope: false,
         missing_evidence: false,
@@ -551,6 +577,7 @@ fn render_list_rows_json_projects_rows_filters_and_dash_lifecycle_fields() {
         expired: false,
         review_due: false,
         stale: false,
+        location_drift: false,
         baseline_debt: false,
         broad_scope: true,
         missing_evidence: false,

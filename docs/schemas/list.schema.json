@@ -223,6 +223,10 @@
           "type": "boolean",
           "description": "Applied --stale shortcut filter."
         },
+        "location_drift": {
+          "type": "boolean",
+          "description": "Applied --location-drift shortcut filter."
+        },
         "baseline_debt": {
           "type": "boolean",
           "description": "Applied --baseline-debt shortcut filter."

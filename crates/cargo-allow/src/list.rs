@@ -102,6 +102,7 @@ pub(crate) fn sample_list_json_for_contract_test() -> String {
         expired: false,
         review_due: false,
         stale: false,
+        location_drift: false,
         baseline_debt: true,
         broad_scope: false,
         missing_evidence: false,

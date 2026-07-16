@@ -36,6 +36,7 @@ pub(super) struct ListFilters<'a> {
     pub(super) expired: bool,
     pub(super) review_due: bool,
     pub(super) stale: bool,
+    pub(super) location_drift: bool,
     pub(super) baseline_debt: bool,
     pub(super) broad_scope: bool,
     pub(super) missing_evidence: bool,

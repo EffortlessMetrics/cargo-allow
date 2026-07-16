@@ -201,6 +201,10 @@ fn render_list_filters_json(filters: ListFilters<'_>, indent: &str) -> String {
         bool_json(filters.stale)
     ));
     out.push_str(&format!(
+        "{indent}  \"location_drift\": {},\n",
+        bool_json(filters.location_drift)
+    ));
+    out.push_str(&format!(
         "{indent}  \"baseline_debt\": {},\n",
         bool_json(filters.baseline_debt)
     ));
