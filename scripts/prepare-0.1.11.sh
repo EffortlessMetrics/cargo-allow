@@ -1,0 +1,468 @@
+#!/usr/bin/env bash
+# One-shot generator for the 0.1.11 no-feature source freeze.
+# The invoking CI job removes this script and restores ci.yml before committing,
+# so neither staging mechanism is part of the release candidate tree.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${ROOT}"
+
+old="0.1.10"
+new="0.1.11"
+release_date="2026-07-16"
+
+# Remove staging-only files from the candidate tree and restore the ordinary CI
+# workflow before generating the release commit.
+git rm -f scripts/prepare-0.1.11.sh .github/workflows/prepare-0.1.11.yml
+git checkout origin/main -- .github/workflows/ci.yml
+
+python3 - <<'PY'
+from pathlib import Path
+import re
+
+old = "0.1.10"
+new = "0.1.11"
+date = "2026-07-16"
+
+
+def read(path: str) -> str:
+    return Path(path).read_text(encoding="utf-8")
+
+
+def write(path: str, text: str) -> None:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding="utf-8", newline="\n")
+
+
+cargo = read("Cargo.toml")
+count = cargo.count(f'version = "{old}"')
+if count != 10:
+    raise SystemExit(f"expected 10 workspace/internal {old} version fields, found {count}")
+write("Cargo.toml", cargo.replace(f'version = "{old}"', f'version = "{new}"'))
+
+changelog = read("CHANGELOG.md")
+marker = "## [Unreleased]\n\n"
+if changelog.count(marker) != 1:
+    raise SystemExit("unexpected CHANGELOG Unreleased marker count")
+changelog = changelog.replace(marker, marker + f"## [{new}] - {date}\n\n", 1)
+changelog = changelog.replace(
+    "Offline Published `0.1.10` first-run command registry",
+    "Offline published-release first-run command registry",
+)
+changelog = changelog.replace(
+    "so candidate-only commands such as\n  `why` cannot appear as ordinary published quick-start instructions",
+    "so source-candidate-only commands cannot appear as ordinary published\n  quick-start instructions",
+)
+write("CHANGELOG.md", changelog)
+
+public_version_files = [
+    "README.md",
+    "docs/getting-started.md",
+    "docs/onboarding.md",
+    "docs/ci.md",
+    "docs/how-to/run-in-ci.md",
+    "docs/how-to/adopt-cargo-allow-across-repos.md",
+    "examples/README.md",
+    "examples/github-actions/cargo-allow-check.yml",
+    "examples/github-actions/cargo-allow-diff.yml",
+]
+for path in public_version_files:
+    target = Path(path)
+    if target.exists():
+        write(path, read(path).replace(old, new))
+
+readme = read("README.md")
+readme = readme.replace(
+    "`cargo-allow` is not a linter, compiler wrapper, dependency-policy tool, or\nunsafe proof system.",
+    "`cargo-allow` is a source-syntax policy linter and durable exception ledger.\nIt is not a compiler wrapper, dependency-policy tool, type-aware analyzer, or\nunsafe proof system.",
+)
+write("README.md", readme)
+
+registry_path = "docs/dogfood/fixtures/getting-started/published-command-registry.toml"
+registry = read(registry_path).replace(old, new)
+registry = registry.replace(
+    '  "explain",\n  "add",',
+    '  "explain",\n  "why",\n  "add",',
+    1,
+)
+registry = registry.replace(
+    '  "explain",\n  "worklist",',
+    '  "explain",\n  "why",\n  "worklist",',
+    1,
+)
+registry = re.sub(
+    r"# Present on current main / source candidate, absent from Published 0\.1\.11\.\n"
+    r"# These may appear only in docs labeled Unreleased / Source-candidate\.\n"
+    r"candidate_only_subcommands = \[\n  \"why\",\n\]",
+    "# No candidate-only first-run subcommands at the 0.1.11 freeze.\n"
+    "candidate_only_subcommands = []",
+    registry,
+)
+write(registry_path, registry)
+
+getting_path = "docs/getting-started.md"
+getting = read(getting_path)
+getting = getting.replace(
+    "hand off to list / explain / worklist (plus `why` on the source-candidate\nchannel).",
+    "hand off to list / explain / why / worklist.",
+)
+getting = getting.replace(
+    "`list`, `explain`, `worklist`, `diff`, `add`, `refresh`, `prune` |",
+    "`list`, `explain`, `why`, `worklist`, `diff`, `add`, `refresh`, `prune` |",
+)
+getting = getting.replace(
+    "Published set **plus** unreleased surfaces such as `why`",
+    "Published set plus any later explicitly labeled unreleased surfaces",
+)
+getting = getting.replace(
+    "| receipt one deliberate finding | `add` | `--dry-run` preview; `--write` apply |",
+    "| receipt one deliberate finding | `add` | omit `--write` to preview; `--write <new-path>` persists a proposed full policy; existing-ledger update semantics remain a documented 0.2.0 follow-up (#2371) |",
+)
+getting = getting.replace(
+    "| refresh drift for one selected ID | `refresh --allow-id <id>` | `--dry-run` preview; omit dry-run to apply |",
+    "| refresh drift for one selected ID | `refresh --allow-id <id>` | `--dry-run` preview; `--write` apply |",
+)
+getting = getting.replace(
+    "| remove selected stale entries | `prune` | `--dry-run` preview; omit dry-run to apply |",
+    "| remove selected stale entries | `prune` | `--dry-run` preview; `--write` apply |",
+)
+getting = getting.replace(
+    "Source-candidate diagnosis (unreleased on Published `0.1.11`):",
+    "Published diagnosis (`why` is included in 0.1.11):",
+)
+write(getting_path, getting)
+
+inventory_path = "docs/dogfood/fixtures/getting-started/step-inventory.toml"
+inventory = read(inventory_path)
+inventory = inventory.replace(
+    'id = "why_candidate"\nchannel = "candidate"',
+    'id = "why_published"\nchannel = "published"',
+)
+inventory = inventory.replace(
+    'output_id = "Source-candidate diagnosis"',
+    'output_id = "Published diagnosis"',
+)
+write(inventory_path, inventory)
+
+# Keep executable documentation tests aligned with the promoted published path.
+for path in Path("crates/cargo-allow").rglob("*.rs"):
+    text = path.read_text(encoding="utf-8")
+    if (
+        "published-command-registry.toml" in text
+        or "why_candidate" in text
+        or "Source-candidate diagnosis" in text
+    ):
+        text = text.replace(old, new)
+        text = text.replace("why_candidate", "why_published")
+        text = text.replace("Source-candidate diagnosis", "Published diagnosis")
+        path.write_text(text, encoding="utf-8", newline="\n")
+
+docs_index = read("docs/README.md")
+release_links = '''- [0.1.9 release record](release/0.1.9.md): completed maintenance release.\n- [0.1.10 release record](release/0.1.10.md): completed adoption-trust and ledger-coherence patch release.\n- [0.1.11 release record](release/0.1.11.md): supported-core usability, safety-bound, and installed-candidate patch release.\n- [0.1.11 GitHub Release body](release/github/v0.1.11.md): public notes for `v0.1.11`.\n'''
+if "release/0.1.11.md" not in docs_index:
+    docs_index = docs_index.replace("\n## Reference\n", "\n" + release_links + "\n## Reference\n")
+write("docs/README.md", docs_index)
+
+readiness = '''# 0.1.11 ReleaseQualificationV1
+
+## Decision
+
+```text
+selected_version = 0.1.11
+selected_msrv = Rust 1.85
+candidate_ready = true
+tag_ready = true
+publication_performed = false
+release_scope = supported core, narrow Linux package/install claim
+```
+
+The release owner has authorized the 0.1.11 cut from the exact no-feature source
+freeze. Optional spec-led, RIPR, focused-proof, and Codex-pack capabilities are
+`NotIncluded` in this patch release. Their draft or roadmap state does not block
+the supported exception-ledger core.
+
+## Supported capability matrix
+
+| Capability | Status | Current evidence / boundary |
+| --- | --- | --- |
+| Base exception ledger and source-syntax scanners | Supported | source-tree/source-syntax only; no target build, type, MIR, flow, or runtime proof |
+| No-new ratchet and PR diff | Supported | hosted full/contract proof plus shallow-base fail-then-fix characterization |
+| Checked mutation lifecycle | Supported | preview/write receipts and lifecycle corpus; `add` active-ledger ergonomics remain a 0.2.0 follow-up (#2371) |
+| List / explain / why / worklist | Supported | `why` human + `cargo-allow.why.v1`, shell-safe structured proof plans |
+| Issue-first manage-an-exception journey | Supported | checked operator guide and executable first-hour step inventory |
+| CI deployment, troubleshooting, rollback | Supported | complete GitHub Actions examples and workflow-contract tests |
+| Package/install basics | Supported for narrow Linux claim | hosted package-candidate smoke packages all ten crates, checks normalized manifests, installs isolated binary, and uploads a receipt |
+| Optional spec-led / RIPR / focused proof / Codex pack | NotIncluded | intentionally deferred; no 0.1.11 support implication |
+
+## Platform and toolchain matrix
+
+| Dimension | Status |
+| --- | --- |
+| Linux stable | Supported for hosted CI and candidate package/install smoke |
+| Rust 1.85 | Supported for the 0.1.x package line through dedicated MSRV CI |
+| Windows stable | NotProven for exact candidate install; path-boundary regressions are covered |
+| macOS stable | NotProven for exact candidate install |
+
+The release makes no unsupported Windows/macOS install claim. Rust 1.95 belongs
+to the 0.2.0 train under #2371.
+
+## Compatibility disposition
+
+0.1.11 is an additive patch over 0.1.10 for the supported core:
+
+- adds `why` and its v1 machine artifact;
+- adds `location_drift` filtering and complete status-selector exclusivity;
+- standardizes structured usage exit 2 and error cause chains;
+- bounds source reads, recursive inventory, and glob matching;
+- strengthens Windows Git revision-path handling;
+- adds executable first-hour, CI, troubleshooting, rollback, package-candidate,
+  and shallow-diff characterization paths.
+
+No policy, finding, receipt, or report schema generation is bumped solely for
+the crate version. Unsupported generations continue to fail through their
+existing validators.
+
+## Release authentication and provenance exceptions
+
+For this patch release, the existing workflow may authenticate with the
+`CARGO_REGISTRY_TOKEN` fallback when crates.io Trusted Publishing is unavailable.
+The release publish receipt must record the actual `auth` source. #2115 remains
+the required OIDC/fail-closed transition for 0.2.0.
+
+0.1.11 does not yet ship #2047's signed ten-crate registry manifest. Package,
+tag, commit, and workflow receipts must be retained, and the missing signed
+manifest remains a documented provenance limitation rather than a completed
+claim.
+
+## Tag law
+
+- merge the no-feature 0.1.11 source-freeze PR after all required CI is green;
+- create `v0.1.11` at that exact merge commit;
+- allow the tag workflow to run preflight, ten-crate publication, registry
+  install smoke, and GitHub Release creation;
+- retain publish/install receipts and record any recovery as a release incident;
+- never rebuild a different source candidate under the same version.
+
+## Known product limitation carried into 0.1.11
+
+`add` remains proposal-file oriented: writing to an already-existing active
+ledger requires explicit overwrite behavior. The supported diagnostic and
+selector-generation path is present, but the safe active-ledger transaction and
+structured stale-safe `why` → `add` plan are intentionally assigned to the
+breaking 0.2.0 train in #2371.
+
+## Claim boundary
+
+0.1.11 is a supported-core patch on Rust 1.85 with a narrow Linux candidate
+package/install claim. It is not a 1.0 declaration, a multi-platform install
+certification, a type-aware analyzer, a runtime proof system, or a completion
+claim for optional spec-led/agentic capabilities.
+'''
+write("docs/release/0.1.11-readiness.md", readiness)
+
+release_record = '''# 0.1.11 Release Record
+
+0.1.11 is the final Rust 1.85 patch before the planned 0.2.0 / Rust 1.95 train.
+It releases the supported source-syntax policy-linter and exception-ledger core
+without pulling unfinished optional spec-led or agentic capabilities into the
+claim.
+
+## Operator value
+
+```text
+doctor / audit
+→ choose init or propose
+→ check --mode no-new
+→ list / explain / why / worklist
+→ diff --base <base>
+→ preview reviewed mutations
+```
+
+## Highlights
+
+- `cargo-allow why` with human and `cargo-allow.why.v1` output, structured
+  shell-safe proof plans, and complete ambiguous-candidate guidance;
+- executable clean/brownfield first-hour documentation and checked command
+  inventories;
+- copy-paste GitHub Actions, troubleshooting, rollback, package-candidate, and
+  shallow-base characterization paths;
+- source-read, recursive-inventory, and glob-step resource bounds;
+- complete status filtering including `location_drift` and mutually exclusive
+  status selectors;
+- structured usage exit 2, error cause chains, and strengthened Windows Git
+  revision-path boundaries;
+- dedicated Rust 1.85 CI plus hosted Linux package/install candidate smoke.
+
+## Version and package graph
+
+All ten crates use 0.1.11 and publish in dependency order:
+
+```text
+allow-core
+allow-policy
+allow-inventory
+allow-files
+allow-rust
+allow-match
+allow-policy-legacy
+allow-report
+allow-diff
+cargo-allow
+```
+
+Install after publication:
+
+```bash
+cargo install cargo-allow --version 0.1.11 --locked
+```
+
+Remain on the prior patch when needed:
+
+```bash
+cargo install cargo-allow --version 0.1.10 --locked
+```
+
+## Capability and platform claim
+
+Supported: default exception ledger, no-new/diff, checked lifecycle, list,
+explain, why, worklist, first-hour/CI/rollback guidance, and narrow Linux
+candidate package/install proof.
+
+Not included: unfinished optional spec-led, RIPR, focused-execution, and Codex
+pack capabilities.
+
+Toolchain/platform:
+
+```text
+Rust 1.85: supported for 0.1.11
+Linux stable: hosted CI and package/install smoke
+Windows/macOS exact candidate install: not proven by this release
+```
+
+## Publication and receipts
+
+The `v0.1.11` tag must point at the exact merged source-freeze commit. The tag
+workflow performs full preflight, publishes the ten crates, installs the exact
+registry version, and creates the public GitHub Release. Retain preflight,
+publish, and install-smoke receipts.
+
+Trusted Publishing remains #2115. The workflow may use the documented registry
+token fallback for this patch and must record the selected auth source. The
+signed ten-crate manifest in #2047 is not yet shipped and remains an explicit
+provenance limitation.
+
+## Known limitations
+
+- source-tree/source-syntax only; no target repository execution, macro
+  expansion, types, MIR, control/data-flow, or runtime proof;
+- no exact Windows/macOS candidate-install certification;
+- `add` still treats an explicit output as a proposal/whole-policy write and is
+  not yet the streamlined safe active-ledger transaction planned in #2371;
+- no signed registry manifest for the ten-crate set.
+
+## Rollback
+
+Before publication, delete the candidate tag and repair with a new reviewed
+commit. After any crate is published, do not reuse 0.1.11. Preserve the failed
+receipt, yank affected crate versions where necessary, and publish a corrected
+patch.
+
+## Next train
+
+#2371 owns 0.2.0: Rust 1.95, #2336 matching parity, safe active-ledger `add`,
+structured stale-safe `why` → `add` plans, measured fast paths, and an explicit
+sensor capability matrix.
+'''
+write("docs/release/0.1.11.md", release_record)
+
+github_notes = '''# cargo-allow v0.1.11
+
+cargo-allow v0.1.11 is a supported-core usability and hardening patch for the
+source-syntax policy linter and durable exception ledger. It remains on Rust
+1.85; Rust 1.95 is planned for 0.2.0.
+
+## Highlights
+
+- Adds `cargo-allow why` with structured, shell-safe next-action plans.
+- Adds a branched executable first-hour journey for clean and brownfield repos.
+- Ships copy-paste CI, troubleshooting, rollback, package-candidate smoke, and
+  shallow `diff --base` characterization.
+- Adds complete `location_drift` filtering and status-selector exclusivity.
+- Standardizes usage exit code 2 and prints nested error causes.
+- Bounds source reads, filesystem recursion, and glob matching.
+- Strengthens Windows Git revision-path handling.
+- Proves the 0.1.x Rust 1.85 claim in CI and packages/installs the candidate in a
+  hosted Linux smoke job.
+
+## Install
+
+```bash
+cargo install cargo-allow --version 0.1.11 --locked
+```
+
+## Scope
+
+This release supports the default exception-ledger core. Optional spec-led,
+RIPR, focused-proof, and Codex-pack capabilities are not included in the 0.1.11
+support claim. Exact candidate install is proven on Linux; Windows/macOS remain
+unclaimed for this cut.
+
+cargo-allow scans source-tree/source-syntax surfaces without executing the
+target repository. It is not rustc, Clippy, type/MIR/control-flow analysis, or a
+runtime proof system.
+
+## Known limitation
+
+The streamlined safe active-ledger `add` transaction and structured stale-safe
+`why` → `add` handoff are planned for 0.2.0 under #2371.
+'''
+write("docs/release/github/v0.1.11.md", github_notes)
+PY
+
+# Refresh the lockfile from the changed workspace graph without updating
+# registry dependency versions.
+cargo check --workspace
+
+# Receipt the new release documents through the current real add path. The
+# explicit overwrite requirement is retained as a documented 0.1.x limitation;
+# #2371 owns the safer active-ledger transaction.
+cargo run -p cargo-allow -- add \
+  --kind non-rust \
+  --path docs/release/0.1.11.md \
+  --line 1 \
+  --owner core/release \
+  --classification release_record \
+  --reason "Records the 0.1.11 supported-core release scope, evidence, limitations, and rollback." \
+  --evidence issue:2270 \
+  --evidence issue:2258 \
+  --write policy/allow.toml \
+  --force
+rm -f policy/allow.toml.bak
+
+cargo run -p cargo-allow -- add \
+  --kind non-rust \
+  --path docs/release/github/v0.1.11.md \
+  --line 1 \
+  --owner core/release \
+  --classification release_record \
+  --reason "Public GitHub Release notes for the v0.1.11 supported-core patch." \
+  --evidence doc:docs/release/0.1.11.md \
+  --evidence issue:2258 \
+  --write policy/allow.toml \
+  --force
+rm -f policy/allow.toml.bak
+
+cargo fmt --all --check
+cargo check --workspace --all-targets --locked
+cargo run -p cargo-allow -- check --mode no-new \
+  --format markdown \
+  --receipt target/cargo-allow/check.receipt.json \
+  --output target/cargo-allow/check.md
+bash scripts/release-version-preflight.sh 0.1.11
+
+git config user.name "github-actions[bot]"
+git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+git add -A
+git commit -m "release: freeze cargo-allow 0.1.11 source candidate"
+git push origin HEAD:release/0.1.11
