@@ -387,7 +387,11 @@ state = "unchanged"
         slice.implementation_claim.status = ImplementationClaimStatus::Implemented;
         slice.evidence.state = EvidenceDispositionState::Current;
         slice.evidence.receipt = Some("receipt:current-head".to_string());
-        slice.requirement_delta[0].runtime = false;
+        slice
+            .requirement_delta
+            .first_mut()
+            .ok_or_else(|| "expected one requirement delta".to_string())?
+            .runtime = false;
 
         let findings = validate_runtime_promotion(&graph, &slice);
         assert_eq!(
