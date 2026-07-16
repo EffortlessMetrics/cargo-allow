@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use super::{RequirementId, RequirementStatus};
+use super::RequirementId;
 
 pub const IMPLEMENTATION_SLICE_SCHEMA_VERSION: &str = "2.0";
 
@@ -73,26 +73,12 @@ pub struct SupportClaimDisposition {
     pub claim: Option<String>,
 }
 
-/// Optional normative change for a requirement referenced by a slice.
-///
-/// Most behavior slices merely reference an already accepted requirement and
-/// therefore omit this object. When present, it describes a real normative
-/// status transition and cannot be a no-op.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct RequirementStatusChange {
-    pub from: RequirementStatus,
-    pub to: RequirementStatus,
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RequirementDelta {
     pub requirement_id: RequirementId,
     pub requirement_generation: u32,
     pub runtime: bool,
-    #[serde(default)]
-    pub status_change: Option<RequirementStatusChange>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -203,17 +189,6 @@ fn validate_slice_structure(
                 ),
             ));
         }
-        if let Some(change) = &delta.status_change {
-            if change.from == change.to {
-                return Err(invalid_slice(
-                    path,
-                    format!(
-                        "requirement {} status_change must describe a real normative transition",
-                        delta.requirement_id.as_str()
-                    ),
-                ));
-            }
-        }
         if !seen.insert(delta.requirement_id.clone()) {
             return Err(invalid_slice(
                 path,
@@ -290,20 +265,11 @@ state = "unchanged"
     }
 
     #[test]
-    fn implementation_slice_rejects_unknown_generation() {
+    fn implementation_slice_rejects_unknown_schema_version() {
         let result = parse_implementation_slice(
             &SLICE.replace("schema_version = \"2.0\"", "schema_version = \"3.0\""),
         );
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn implementation_slice_rejects_fake_normative_transition() {
-        let text = SLICE.replace(
-            "runtime = true",
-            "runtime = true\n\n[requirement_delta.status_change]\nfrom = \"accepted\"\nto = \"accepted\"",
-        );
-        assert!(parse_implementation_slice(&text).is_err());
     }
 
     #[test]

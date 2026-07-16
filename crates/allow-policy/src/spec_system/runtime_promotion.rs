@@ -12,8 +12,8 @@ use super::{
 pub enum RuntimePromotionFindingCode {
     RequirementNotFound,
     RequirementGenerationMismatch,
-    RequirementStatusMismatch,
     RequirementStatusDoesNotAllowImplementation,
+    ImplementedClaimWithoutRuntimeRequirement,
     SpecOnlyRuntimeImplementationClaim,
     RuntimeImplementationWithoutEvidenceClosure,
     RuntimeProofWithoutReceipt,
@@ -77,20 +77,6 @@ pub fn validate_runtime_promotion(
                 ),
             ));
         }
-        if let Some(change) = &delta.status_change {
-            if change.to != requirement.status {
-                findings.push(RuntimePromotionFinding::new(
-                    RuntimePromotionFindingCode::RequirementStatusMismatch,
-                    Some(delta.requirement_id.clone()),
-                    format!(
-                        "requirement {} status change targets {:?}, but current normative status is {:?}",
-                        delta.requirement_id.as_str(),
-                        change.to,
-                        requirement.status
-                    ),
-                ));
-            }
-        }
         if delta.runtime {
             runtime_requirement_ids.push((delta.requirement_id.clone(), requirement.status));
         }
@@ -134,6 +120,15 @@ fn validate_implementation_claim(
     findings: &mut Vec<RuntimePromotionFinding>,
 ) {
     if slice.implementation_claim.status != ImplementationClaimStatus::Implemented {
+        return;
+    }
+
+    if runtime_requirements.is_empty() {
+        findings.push(RuntimePromotionFinding::new(
+            RuntimePromotionFindingCode::ImplementedClaimWithoutRuntimeRequirement,
+            None,
+            "implemented claim requires at least one eligible runtime requirement",
+        ));
         return;
     }
 
@@ -380,6 +375,24 @@ state = "unchanged"
         assert_eq!(
             findings.first().map(|finding| finding.code),
             Some(RuntimePromotionFindingCode::RuntimeProofWithoutReceipt)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn implemented_claim_without_runtime_requirement_is_rejected() -> Result<(), String> {
+        let graph = graph()?;
+        let mut slice = slice()?;
+        slice.change_class = ImplementationSliceClass::BehaviorChange;
+        slice.implementation_claim.status = ImplementationClaimStatus::Implemented;
+        slice.evidence.state = EvidenceDispositionState::Current;
+        slice.evidence.receipt = Some("receipt:current-head".to_string());
+        slice.requirement_delta[0].runtime = false;
+
+        let findings = validate_runtime_promotion(&graph, &slice);
+        assert_eq!(
+            findings.first().map(|finding| finding.code),
+            Some(RuntimePromotionFindingCode::ImplementedClaimWithoutRuntimeRequirement)
         );
         Ok(())
     }

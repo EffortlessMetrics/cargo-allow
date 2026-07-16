@@ -37,9 +37,8 @@ pub use doc_artifacts::{
 pub use implementation_slice::{
     EvidenceDisposition, EvidenceDispositionState, IMPLEMENTATION_SLICE_SCHEMA_VERSION,
     ImplementationClaim, ImplementationClaimStatus, ImplementationSliceClass,
-    ImplementationSliceId, ImplementationSliceV1, RequirementDelta, RequirementStatusChange,
-    SupportClaimDisposition, SupportClaimDispositionState, parse_implementation_slice,
-    parse_implementation_slice_at,
+    ImplementationSliceId, ImplementationSliceV1, RequirementDelta, SupportClaimDisposition,
+    SupportClaimDispositionState, parse_implementation_slice, parse_implementation_slice_at,
 };
 pub use profile_resolution::{
     ALLOW_CONFIG_REL_PATH, ProfileConfigProvenance, ResolvedProfileConfig, allow_profile_rel_path,
