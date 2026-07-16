@@ -20,7 +20,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - name: Refactor traversal and remove panic-prone test indexing
+      - name: Refactor traversal and remove panic-prone indexing
         shell: python
         run: |
           from pathlib import Path
@@ -28,27 +28,13 @@ jobs:
           path = Path('crates/allow-rust/src/test_subjects.rs')
           text = path.read_text()
 
-          def replace_once(old: str, new: str) -> None:
-              global text
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'expected exactly one replacement, found {count}: {old[:80]!r}')
-              text = text.replace(old, new, 1)
+          old = '            let name = Path::new(&components[1]).file_stem()?.to_str()?.to_string();'
+          new = '            let file = components.get(1)?;\n            let name = Path::new(file).file_stem()?.to_str()?.to_string();'
+          if text.count(old) != 1:
+              raise SystemExit('integration target indexing marker changed')
+          text = text.replace(old, new, 1)
 
-          replace_once(
-              '''        if matches!(components.as_slice(), [first, file] if first == "tests" && file.ends_with(".rs"))
-          {
-              let name = Path::new(&components[1]).file_stem()?.to_str()?.to_string();
-''',
-              '''        if matches!(components.as_slice(), [first, file] if first == "tests" && file.ends_with(".rs"))
-          {
-              let file = components.get(1)?;
-              let name = Path::new(file).file_stem()?.to_str()?.to_string();
-''',
-          )
-
-          replace_once(
-              '''        let mut file_prefix = file_module_prefix(&path, &target.root_path);
+          old_call = '''        let mut file_prefix = file_module_prefix(&path, &target.root_path);
           let mut inline_modules = Vec::new();
           collect_test_subjects(
               syntax.tree.root_node(),
@@ -62,8 +48,8 @@ jobs:
               options,
               &mut subjects,
           );
-''',
-              '''        let file_prefix = file_module_prefix(&path, &target.root_path);
+          '''
+          new_call = '''        let file_prefix = file_module_prefix(&path, &target.root_path);
           let mut traversal = TestTraversal {
               source: &source,
               path: &path,
@@ -75,8 +61,10 @@ jobs:
               subjects: &mut subjects,
           };
           traversal.collect(syntax.tree.root_node(), false);
-''',
-          )
+          '''
+          if text.count(old_call) != 1:
+              raise SystemExit('test traversal call marker changed')
+          text = text.replace(old_call, new_call, 1)
 
           start = text.index('#[allow(clippy::too_many_arguments)]\nfn collect_test_subjects(')
           end = text.index('\nfn node_attributes(', start)
@@ -207,21 +195,14 @@ jobs:
           '''
           text = text[:start] + traversal + text[end:]
 
-          replace_once(
-              '''    fn manifest() -> Vec<(PathBuf, String)> {
+          manifest_end = '''    fn manifest() -> Vec<(PathBuf, String)> {
                   vec![(
                       PathBuf::from("crates/demo/Cargo.toml"),
                       "[package]\\nname = \\"demo-package\\"\\nversion = \\"0.1.0\\"\\n".to_string(),
                   )]
               }
-''',
-              '''    fn manifest() -> Vec<(PathBuf, String)> {
-                  vec![(
-                      PathBuf::from("crates/demo/Cargo.toml"),
-                      "[package]\\nname = \\"demo-package\\"\\nversion = \\"0.1.0\\"\\n".to_string(),
-                  )]
-              }
-
+          '''
+          helper = manifest_end + '''
               fn only_subject(inventory: &RustTestInventory) -> &RustTestSubject {
                   assert_eq!(inventory.subjects.len(), 1);
                   inventory
@@ -229,35 +210,36 @@ jobs:
                       .first()
                       .expect("one exact source-declared test subject")
               }
-''',
-          )
-
+          '''
+          if text.count(manifest_end) != 1:
+              raise SystemExit('manifest helper marker changed')
+          text = text.replace(manifest_end, helper, 1)
           text = text.replace('let subject = &inventory.subjects[0];', 'let subject = only_subject(&inventory);')
-          replace_once(
+          text = text.replace(
               '''        assert_ne!(
                   inventory.subjects[0].selector.target.name,
                   inventory.subjects[1].selector.target.name
               );
-''',
+          ''',
               '''        let mut subjects = inventory.subjects.iter();
               let first = subjects.next().expect("first integration test subject");
               let second = subjects.next().expect("second integration test subject");
               assert!(subjects.next().is_none());
               assert_ne!(first.selector.target.name, second.selector.target.name);
-''',
+          ''',
           )
-          replace_once(
+          text = text.replace(
               '''        assert_eq!(first.subjects[0].selector, second.subjects[0].selector);
               assert_ne!(
                   first.subjects[0].body_identity,
                   second.subjects[0].body_identity
               );
-''',
+          ''',
               '''        let first_subject = only_subject(&first);
               let second_subject = only_subject(&second);
               assert_eq!(first_subject.selector, second_subject.selector);
               assert_ne!(first_subject.body_identity, second_subject.body_identity);
-''',
+          ''',
           )
           text = text.replace(
               'let selector = inventory.subjects[0].selector.clone();',
@@ -268,7 +250,6 @@ jobs:
               raise SystemExit('too_many_arguments allow remained')
           if 'subjects[0]' in text or 'subjects[1]' in text or 'components[1]' in text:
               raise SystemExit('panic-prone indexing remained')
-
           path.write_text(text)
       - name: Verify focused implementation
         run: |
