@@ -94,6 +94,14 @@ No new unreceipted findings were found in scanned source-tree inventory.
 It does not mean the project is safe, buildable, type-checked, or free of all
 possible exceptions.
 
+## 6. Manage one exception
+
+When a check failure or audit finding needs a deliberate decision, follow the
+issue-first lifecycle in [Manage an exception](how-to/manage-an-exception.md):
+understand the finding (`list` / `explain` / `why` / `worklist`), decide whether
+policy is appropriate, preview then apply mutations, repair evidence or drift,
+and verify with no-new / diff proof on the final head.
+
 ## Minimal Policy Entry
 
 Retained exceptions should be owned, scoped, evidenced, and reviewable:

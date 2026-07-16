@@ -77,6 +77,67 @@ fn claim_boundary_docs_preserve_source_package_boundary() {
 }
 
 #[test]
+fn manage_an_exception_guide_keeps_command_parity_and_claim_boundary() {
+    let guide = normalize_lf(include_str!("../../../docs/how-to/manage-an-exception.md"));
+    let how_to_index = normalize_lf(include_str!("../../../docs/how-to/README.md"));
+    let getting_started = normalize_lf(include_str!("../../../docs/getting-started.md"));
+    let onboarding = normalize_lf(include_str!("../../../docs/onboarding.md"));
+
+    for command in [
+        "cargo-allow audit",
+        "cargo-allow check",
+        "cargo-allow list",
+        "cargo-allow explain",
+        "cargo-allow why",
+        "cargo-allow worklist",
+        "cargo-allow propose",
+        "cargo-allow add",
+        "cargo-allow refresh",
+        "cargo-allow prune",
+        "cargo-allow diff",
+    ] {
+        assert!(
+            guide.contains(command),
+            "manage-an-exception guide should name current command `{command}`"
+        );
+    }
+
+    for required in [
+        "--dry-run",
+        "--write",
+        "--require-change-note",
+        "--write-change-note-template",
+        "omit `--write`",
+        "signals, not approval",
+        "does not author rationale",
+        "does not execute repository code",
+        "Go issue first",
+    ] {
+        assert!(
+            guide.contains(required),
+            "manage-an-exception guide should preserve lifecycle/claim text: {required}"
+        );
+    }
+
+    assert!(
+        how_to_index.contains("manage-an-exception.md"),
+        "how-to index should link the manage-an-exception guide"
+    );
+    assert!(
+        how_to_index.contains("explain-why-a-finding.md"),
+        "how-to index should link the why guide"
+    );
+    assert!(
+        getting_started.contains("how-to/manage-an-exception.md"),
+        "getting-started should route to manage-an-exception"
+    );
+    assert!(
+        onboarding.contains("how-to/manage-an-exception.md"),
+        "onboarding should route to manage-an-exception"
+    );
+}
+
+#[test]
 fn ci_docs_preserve_source_tree_scan_boundary() {
     let ci = normalize_lf(include_str!("../../../docs/ci.md"));
 
