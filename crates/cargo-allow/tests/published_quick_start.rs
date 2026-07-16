@@ -383,7 +383,7 @@ fn published_quick_start_docs_respect_command_registry() {
     let mut all_taught = Vec::new();
     for (surface, body) in surfaces {
         assert!(
-            body.contains(&format!("0.1.10")) || surface == "docs/onboarding.md",
+            body.contains("0.1.10") || surface == "docs/onboarding.md",
             "{surface} should name the published release or route through getting-started"
         );
         all_taught.extend(extract_taught_commands(surface, body));
