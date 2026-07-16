@@ -23,10 +23,12 @@ same test (they are not hand-copied from stale receipts).
 | **Published** `0.1.10` | `cargo install cargo-allow --version 0.1.10 --locked` then `cargo-allow …` | `doctor`, `audit`, `init`, `propose`, `check`, `list`, `explain`, `worklist`, `diff`, `add`, `refresh`, `prune` |
 | **Source candidate** (this checkout / current `main`) | `cargo run -p cargo-allow -- …` | Published set **plus** unreleased surfaces such as `why` |
 
-Mechanical published-vs-candidate command registry enforcement is tracked in
-[#2353](https://github.com/EffortlessMetrics/cargo-allow/issues/2353). Until
-that lands, do not copy a source-candidate-only command into a Published install
-path.
+Mechanical published-vs-candidate command registry enforcement uses the offline
+snapshot
+[`published-command-registry.toml`](dogfood/fixtures/getting-started/published-command-registry.toml)
+(`cargo-allow.published-quick-start.v1`). Do not copy a source-candidate-only
+command into a Published install path. Installed-binary execution of these
+snippets remains [#2278](https://github.com/EffortlessMetrics/cargo-allow/issues/2278).
 
 ## 1. Install prerequisites
 
@@ -263,7 +265,10 @@ without running tools or contacting services.
 - Generate agent work: `cargo-allow worklist --format json`
 - Read claim boundaries: [claim-boundaries.md](claim-boundaries.md)
 - Read the ledger model: [source-exception-ledger.md](source-exception-ledger.md)
-- Channel synchronization follow-up: [#2353](https://github.com/EffortlessMetrics/cargo-allow/issues/2353)
+- Channel synchronization follow-up: keep
+  [`published-command-registry.toml`](dogfood/fixtures/getting-started/published-command-registry.toml)
+  in sync when promoting the next crates.io release ([#2364](https://github.com/EffortlessMetrics/cargo-allow/issues/2364))
+- Installed-package journey: [#2278](https://github.com/EffortlessMetrics/cargo-allow/issues/2278)
 
 ## Checked step inventory
 

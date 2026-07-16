@@ -61,7 +61,9 @@ is verified and a recent workflow_dispatch dry-run is green.
 ## Canonical Path
 
 1. Merge release-prep PRs to `main` (version bump, release record, install pins,
-   GitHub release notes draft under `docs/release/github/vX.Y.Z.md`).
+   GitHub release notes draft under `docs/release/github/vX.Y.Z.md`, and promote
+   [`docs/dogfood/fixtures/getting-started/published-command-registry.toml`](../dogfood/fixtures/getting-started/published-command-registry.toml)
+   so the Published first-run command contract matches the crates.io binary).
 2. Push an annotated tag matching the workspace version:
 
    ```bash
