@@ -11,7 +11,8 @@
     "post_install_source_hidden_ordinary_scan",
     "ordinary_scan_does_not_require_network",
     "policy_rollback_after_prune",
-    "packaged_asset_omit_rebuild"
+    "packaged_asset_omit_rebuild",
+    "optional_profile_without_assets_not_proven"
   ],
   "candidate": {
     "workspace_version": "0.1.10",
@@ -159,13 +160,18 @@
       "result_class": "RecoveryFailed",
       "passed": true,
       "detail": "empty policy after pretended restore leaves prune allow absent (RecoveryFailed)"
+    },
+    {
+      "id": "optional_profile_without_packaged_assets",
+      "result_class": "NotProven",
+      "passed": true,
+      "detail": "selected optional profile codex-pack without packaged assets is classified NotProven"
     }
   ],
   "limitations": [
     "package_set_not_consumed_from_isolated_registry",
     "source_checkout_not_denied_during_install",
     "published_registry_install_not_executed",
-    "linux_hosted_claim_only",
-    "optional_profile_without_assets_not_executed"
+    "linux_hosted_claim_only"
   ]
 }
