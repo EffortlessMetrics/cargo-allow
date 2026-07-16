@@ -20,6 +20,26 @@ fn glob_supports_double_star() {
 }
 
 #[test]
+fn glob_match_budget_fails_closed_on_pathological_stars() {
+    // Many consecutive `*` tokens against a long segment is the classic
+    // exponential-backtracking shape. With the step budget the matcher must
+    // return quickly (false) rather than hang.
+    let pattern = format!("a{}b", "*".repeat(40));
+    let path = format!("a{}c", "x".repeat(40));
+    assert!(!glob_matches_str(&pattern, &path));
+}
+
+#[test]
+fn glob_match_budget_still_accepts_ordinary_patterns() {
+    assert!(glob_matches_str(
+        "crates/**/src/*.rs",
+        "crates/allow-core/src/lib.rs"
+    ));
+    assert!(glob_matches_str("docs/*.md", "docs/ci.md"));
+    assert!(!glob_matches_str("docs/*.md", "docs/nested/ci.md"));
+}
+
+#[test]
 fn source_tree_path_matches_filter_exact_equality_boundary_discriminator() {
     let item_path = "docs/policy.md";
     let exact_filter = "docs/policy.md";
