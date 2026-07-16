@@ -5,6 +5,8 @@ Use these guides when you already know the task you want to complete.
 - [Adopt no-new-debt](adopt-no-new-debt.md)
 - [Manage an exception](manage-an-exception.md)
 - [Run in CI](run-in-ci.md)
+- [Troubleshoot cargo-allow](troubleshoot-cargo-allow.md)
+- [Rollback cargo-allow adoption](rollback-cargo-allow-adoption.md)
 - [Review PR posture](review-pr-posture.md)
 - [Explain an allow entry](explain-an-allow.md)
 - [Explain why a finding is unreceipted](explain-why-a-finding.md)

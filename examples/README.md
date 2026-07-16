@@ -156,10 +156,15 @@ human reason and lifecycle.
 
 ## PR Posture Summary
 
-Use the GitHub Actions examples for CI wiring:
+Use the GitHub Actions examples for CI wiring (copy these files; do not invent
+checkout/install/artifact steps):
 
-- [PR posture diff](github-actions/cargo-allow-diff.yml)
+- [PR posture diff](github-actions/cargo-allow-diff.yml) — requires `fetch-depth: 0`
 - [Mainline no-new check](github-actions/cargo-allow-check.yml)
+
+Operator how-to: [Run in CI](../docs/how-to/run-in-ci.md).
+Troubleshooting: [Troubleshoot cargo-allow](../docs/how-to/troubleshoot-cargo-allow.md).
+Rollback: [Rollback cargo-allow adoption](../docs/how-to/rollback-cargo-allow-adoption.md).
 
 The PR lane should publish a Markdown summary:
 

@@ -12,6 +12,10 @@ The example workflows are intentionally small and copyable:
 - [cargo-allow-diff.yml](../examples/github-actions/cargo-allow-diff.yml)
 - [cargo-allow-check.yml](../examples/github-actions/cargo-allow-check.yml)
 
+Primary copy-paste how-to: [Run in CI](how-to/run-in-ci.md).
+Troubleshooting: [Troubleshoot cargo-allow](how-to/troubleshoot-cargo-allow.md).
+Rollback: [Rollback cargo-allow adoption](how-to/rollback-cargo-allow-adoption.md).
+
 The examples install and run the standalone `cargo-allow` binary before
 scanning. They pin the published crates.io release by default:
 
@@ -46,6 +50,10 @@ and `main`:
   workspace tests, docs, audit, no-new check, and opt-in spec-system dogfood.
 
 ## Pull Requests
+
+The PR example checks out with `fetch-depth: 0` so `origin/<base>` is available.
+Shallow checkouts often make `diff --base` fail closed; do not silently
+substitute `HEAD` or an empty comparison. See [Run in CI](how-to/run-in-ci.md).
 
 Use the diff workflow for pull requests:
 
