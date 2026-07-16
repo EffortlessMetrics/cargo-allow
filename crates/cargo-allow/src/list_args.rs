@@ -35,6 +35,10 @@ pub(crate) struct ListArgs {
     #[arg(long)]
     pub(super) allow_id: Option<String>,
     /// Filter allow entries by current match status.
+    ///
+    /// Conflicts with the status shortcut flags `--expired`, `--review-due`,
+    /// and `--stale` (pick one style). `--baseline-debt` is a classification
+    /// filter and may still be combined with `--status`.
     #[arg(
         long,
         value_parser = [
@@ -52,15 +56,24 @@ pub(crate) struct ListArgs {
     )]
     pub(super) status: Option<String>,
     /// Include only expired allow entries.
-    #[arg(long)]
+    ///
+    /// Conflicts with `--status`; use `--status expired` instead of combining.
+    #[arg(long, conflicts_with = "status")]
     pub(super) expired: bool,
     /// Include only review-due allow entries.
-    #[arg(long)]
+    ///
+    /// Conflicts with `--status`; use `--status review_due` instead of combining.
+    #[arg(long, conflicts_with = "status")]
     pub(super) review_due: bool,
     /// Include only stale allow entries.
-    #[arg(long)]
+    ///
+    /// Conflicts with `--status`; use `--status stale` instead of combining.
+    #[arg(long, conflicts_with = "status")]
     pub(super) stale: bool,
-    /// Include only generated baseline debt entries.
+    /// Include only generated baseline debt entries (classification filter).
+    ///
+    /// May be combined with `--status` (AND). Prefer `--status baseline_debt`
+    /// when filtering by match status rather than classification.
     #[arg(long)]
     pub(super) baseline_debt: bool,
     /// Include only entries with wildcard source-tree scopes.
