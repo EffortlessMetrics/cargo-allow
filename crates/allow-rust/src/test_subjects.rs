@@ -1,7 +1,7 @@
 use allow_core::{
     CargoAllowError, CargoAllowResult, normalize_path, read_text_file_capped, stable_hash_hex,
 };
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 use tree_sitter::Node;
 
@@ -113,17 +113,9 @@ pub enum RustTestResolution {
     MalformedSelector,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct RustTestInventoryOptions {
     pub additional_test_attributes: BTreeSet<String>,
-}
-
-impl Default for RustTestInventoryOptions {
-    fn default() -> Self {
-        Self {
-            additional_test_attributes: BTreeSet::new(),
-        }
-    }
 }
 
 pub fn inventory_rust_test_subjects(
@@ -453,16 +445,6 @@ fn declared_targets(
     default_path: &str,
 ) -> Vec<DeclaredTarget> {
     let mut targets = Vec::new();
-    if key == "bin" && table.get(key).is_none() {
-        targets.push(DeclaredTarget {
-            identity: RustTestTargetIdentity {
-                kind,
-                name: default_name.to_string(),
-            },
-            path: root.join(default_path),
-        });
-        return targets;
-    }
     let Some(values) = table.get(key).and_then(toml::Value::as_array) else {
         return targets;
     };
