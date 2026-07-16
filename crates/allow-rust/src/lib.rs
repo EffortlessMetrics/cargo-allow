@@ -1,9 +1,9 @@
 //! Source-syntax Rust scanners for cargo-allow exception findings.
 //!
 //! This crate scans `.rs` file text for syntax-visible unsafe, panic-family,
-//! indexing/slicing, and lint-suppression surfaces. It parses source directly
-//! without invoking Cargo, rustc, Clippy, build scripts, proc macros, macro
-//! expansion, type analysis, or MIR.
+//! indexing/slicing, lint-suppression, and exact source-declared test surfaces.
+//! It parses source directly without invoking Cargo, rustc, Clippy, build
+//! scripts, proc macros, macro expansion, type analysis, or MIR.
 
 use allow_core::{CargoAllowResult, Finding, read_text_file_capped};
 use std::path::{Path, PathBuf};
@@ -22,6 +22,7 @@ mod safety_comments;
 mod syntax_facts;
 mod syntax_kinds;
 mod syntax_tree;
+mod test_subjects;
 mod text;
 
 use line_scan::scan_source_lines;
@@ -32,6 +33,13 @@ pub use package::{
     SourcePackageContext, apply_source_package_context, source_package_contexts_from_sources,
 };
 pub use syntax_tree::{RustSyntaxContainer, RustSyntaxTree, parse_rust_syntax};
+pub use test_subjects::{
+    RustTestInventory, RustTestInventoryDiagnostic, RustTestInventoryDiagnosticKind,
+    RustTestInventoryOptions, RustTestInventoryStatus, RustTestResolution, RustTestSelector,
+    RustTestSourceRange, RustTestSubject, RustTestTargetIdentity, RustTestTargetKind,
+    inventory_rust_test_subjects, inventory_rust_test_subjects_from_sources,
+    resolve_rust_test_selector,
+};
 
 pub fn scan_rust_files(
     root: impl AsRef<Path>,
