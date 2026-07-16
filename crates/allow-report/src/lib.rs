@@ -110,8 +110,8 @@ pub use artifacts::{
     ExplainReport, FederationDiagnosticSummary, FederationDivergenceKindCount,
     FederationDivergenceRecordSummary, FederationDivergenceSummary, FederationReportContext,
     LedgerContributorSummary, ListFilters, ListRow, MigrateReport, ProposeReport, PruneCandidate,
-    PruneModeContext, RefreshModeContext, RefreshReport, WhyCandidateEntry, WhyReport,
-    WorklistFilters, WorklistItem,
+    PruneModeContext, RefreshModeContext, RefreshReport, WhyCandidateEntry, WhyProofPlan,
+    WhyReport, WorklistFilters, WorklistItem,
 };
 pub use contracts::{
     ADD_SCHEMA_ID, ADD_SCHEMA_VERSION, ARTIFACT_CONTRACTS, ARTIFACT_STATUS_ERROR,

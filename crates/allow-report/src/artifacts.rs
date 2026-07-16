@@ -30,5 +30,5 @@ pub use migrate::MigrateReport;
 pub use propose::ProposeReport;
 pub use prune::{PruneCandidate, PruneModeContext};
 pub use refresh::{RefreshModeContext, RefreshReport};
-pub use why::{WhyCandidateEntry, WhyReport};
+pub use why::{WhyCandidateEntry, WhyProofPlan, WhyReport};
 pub use worklist::{WorklistFilters, WorklistItem};

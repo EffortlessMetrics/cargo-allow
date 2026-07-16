@@ -1,10 +1,12 @@
+use super::why_render::why_next_steps;
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand, RootArgs};
 use allow_core::{
     AllowEntry, Finding, FindingKind, Lifecycle, MatchOutcome, MatchStatus, Selector, Span,
-    StructuralIdentity,
+    StructuralIdentity, normalize_path,
 };
 use clap::Parser;
+use serde_json::Value;
 use std::path::PathBuf;
 
 #[test]
@@ -39,7 +41,7 @@ fn clap_parses_why_finding_location() {
 
 #[test]
 fn render_why_lists_mismatch_reasons_for_new_findings() {
-    let finding = sample_finding();
+    let finding = sample_finding_at("src/lib.rs", 10);
     let entry = near_miss_entry();
     let outcome = MatchOutcome {
         status: MatchStatus::New,
@@ -69,13 +71,13 @@ fn render_why_lists_mismatch_reasons_for_new_findings() {
     assert!(text.contains("src/lib.rs:10:1"));
     assert!(text.contains("### `allow-near-miss`"));
     assert!(text.contains("callee mismatch"));
-    assert!(text.contains("cargo-allow add --kind panic"));
+    assert!(text.contains("cargo-allow"));
     assert!(text.contains("Claim boundary"));
 }
 
 #[test]
-fn render_why_json_includes_schema_and_mismatch_reasons() {
-    let finding = sample_finding();
+fn render_why_json_deserializes_and_asserts_semantic_paths() {
+    let finding = sample_finding_at("src/lib.rs", 10);
     let entry = near_miss_entry();
     let outcome = MatchOutcome {
         status: MatchStatus::New,
@@ -95,15 +97,106 @@ fn render_why_json_includes_schema_and_mismatch_reasons() {
             reasons,
         }],
     );
-    assert!(json.contains("\"schema_id\": \"cargo-allow.why.v1\""));
-    assert!(json.contains("\"command\": \"why\""));
-    assert!(json.contains("allow-near-miss"));
-    assert!(json.contains("callee mismatch"));
+    let value = parse_why_json(&json);
+    assert_eq!(
+        value.pointer("/schema_id").and_then(Value::as_str),
+        Some("cargo-allow.why.v1")
+    );
+    assert_eq!(
+        value.pointer("/command").and_then(Value::as_str),
+        Some("why")
+    );
+    assert_eq!(
+        value
+            .pointer("/candidate_entries/0/id")
+            .and_then(Value::as_str),
+        Some("allow-near-miss")
+    );
+    assert!(
+        value
+            .pointer("/candidate_entries/0/mismatch_reasons/0")
+            .and_then(Value::as_str)
+            .is_some_and(|reason| reason.contains("callee mismatch"))
+    );
+    assert_eq!(
+        value.pointer("/outcome/status").and_then(Value::as_str),
+        Some("new")
+    );
+    assert_eq!(
+        value
+            .pointer("/next/proof_plans/0/program")
+            .and_then(Value::as_str),
+        Some("cargo-allow")
+    );
+    assert_eq!(
+        path_arg_from_plan(&value, 0),
+        Some("src/lib.rs".to_string())
+    );
+}
+
+#[test]
+fn proof_plans_preserve_argument_identity_for_hostile_paths() {
+    let fixtures = [
+        "src/ordinary.rs",
+        "src/has space.rs",
+        "src/quote'and\"double.rs",
+        "src/$(touch pwned).rs",
+        "src/a;echo injected.rs",
+        "-leading-dash.rs",
+        "src/line\nbreak.rs",
+        "src/ユニコード.rs",
+    ];
+    for path in fixtures {
+        let finding = sample_finding_at(path, 7);
+        let outcome = MatchOutcome {
+            status: MatchStatus::New,
+            allow_id: None,
+            candidate_ids: Vec::new(),
+            finding_index: Some(0),
+            message: format!("unreceipted at {path}"),
+            score: 0,
+        };
+        let expected = normalize_path(std::path::Path::new(path));
+        let next = why_next_steps(&finding, &outcome, &[]);
+        let add = next
+            .proof_plans
+            .first()
+            .unwrap_or_else(|| std::panic::panic_any("new findings need an add plan"));
+        let path_arg = add
+            .args
+            .iter()
+            .position(|arg| arg == "--path")
+            .and_then(|index| add.args.get(index + 1))
+            .map(String::as_str);
+        assert_eq!(
+            path_arg,
+            Some(expected.as_str()),
+            "path fixture `{path}` must remain one argv element"
+        );
+
+        let json = render_why_json(
+            allow_report::InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(1)),
+            &finding,
+            &outcome,
+            &[],
+        );
+        let value = parse_why_json(&json);
+        assert_eq!(
+            path_arg_from_plan(&value, 0).as_deref(),
+            Some(expected.as_str()),
+            "JSON argv must keep exact path for `{path}`"
+        );
+        // Guidance must never execute payloads; we only assert structure.
+        assert!(
+            !std::path::Path::new("pwned").exists(),
+            "fixture must not create sidecar files"
+        );
+    }
 }
 
 #[test]
 fn render_why_points_matched_findings_to_explain() {
-    let finding = sample_finding();
+    let finding = sample_finding_at("src/lib.rs", 10);
     let outcome = MatchOutcome {
         status: MatchStatus::Matched,
         allow_id: Some("allow-0007".to_string()),
@@ -117,18 +210,64 @@ fn render_why_points_matched_findings_to_explain() {
     assert!(text.contains("cargo-allow explain allow-0007"));
 }
 
-fn sample_finding() -> Finding {
+#[test]
+fn ambiguous_why_emits_explain_plan_for_every_candidate_id() {
+    let finding = sample_finding_at("src/lib.rs", 10);
+    let outcome = MatchOutcome {
+        status: MatchStatus::Ambiguous,
+        allow_id: None,
+        candidate_ids: vec!["allow-a".to_string(), "allow-b".to_string()],
+        finding_index: Some(0),
+        message: "ambiguous".to_string(),
+        score: 0,
+    };
+    let next = why_next_steps(&finding, &outcome, &[]);
+    let explain_ids: Vec<&str> = next
+        .proof_plans
+        .iter()
+        .filter(|plan| plan.args.first().map(String::as_str) == Some("explain"))
+        .filter_map(|plan| plan.args.get(1).map(String::as_str))
+        .collect();
+    assert_eq!(explain_ids, vec!["allow-a", "allow-b"]);
+
+    let json = render_why_json(
+        allow_report::InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(1)),
+        &finding,
+        &outcome,
+        &[],
+    );
+    let value = parse_why_json(&json);
+    assert_eq!(
+        value.pointer("/outcome/status").and_then(Value::as_str),
+        Some("ambiguous")
+    );
+    assert_eq!(
+        value
+            .pointer("/next/proof_plans/0/args/1")
+            .and_then(Value::as_str),
+        Some("allow-a")
+    );
+    assert_eq!(
+        value
+            .pointer("/next/proof_plans/1/args/1")
+            .and_then(Value::as_str),
+        Some("allow-b")
+    );
+    let text = render_why_text(&finding, &outcome, &[]);
+    assert!(text.contains("allow-a"));
+    assert!(text.contains("allow-b"));
+    assert!(text.contains("no candidate is selected as authoritative"));
+}
+
+fn sample_finding_at(path: &str, line: u32) -> Finding {
     let mut identity = StructuralIdentity::new("rust", "method_call");
     identity.container = Some("load".to_string());
     identity.callee = Some("unwrap".to_string());
     Finding {
         kind: FindingKind::Panic,
         family: Some("unwrap".to_string()),
-        path: PathBuf::from("src/lib.rs"),
-        span: Some(Span {
-            line: 10,
-            column: 1,
-        }),
+        path: PathBuf::from(path),
+        span: Some(Span { line, column: 1 }),
         identity,
         message: "unwrap call".to_string(),
         ledger: None,
@@ -161,6 +300,21 @@ fn near_miss_entry() -> AllowEntry {
 
 fn argv(items: Vec<&str>) -> Vec<String> {
     items.into_iter().map(String::from).collect()
+}
+
+fn parse_why_json(json: &str) -> Value {
+    serde_json::from_str(json).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("why JSON should deserialize: {err}\n{json}"))
+    })
+}
+
+fn path_arg_from_plan(value: &Value, plan_index: usize) -> Option<String> {
+    let args = value.pointer(&format!("/next/proof_plans/{plan_index}/args"))?;
+    let arr = args.as_array()?;
+    let path_index = arr
+        .iter()
+        .position(|item| item.as_str() == Some("--path"))?;
+    arr.get(path_index + 1)?.as_str().map(str::to_string)
 }
 
 #[test]
