@@ -179,6 +179,7 @@
   ],
   "limitations": [
     "vendor_warm_may_use_crates_io",
+    "vendor_warm_may_rewrite_extracted_cargo_lock",
     "not_classic_transitive_local_registry_index",
     "source_checkout_not_denied_during_install",
     "candidate_commit_mismatch_negative_deferred",

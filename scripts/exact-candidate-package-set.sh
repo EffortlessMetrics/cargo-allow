@@ -258,6 +258,10 @@ if [[ "${SKIP_VENDOR:-0}" == "1" && -d "${vendor_dir}" ]]; then
 else
   rm -rf "${vendor_dir}"
   mkdir -p "${vendor_dir}"
+  # Note: warm `[patch.crates-io]` may rewrite the extracted Cargo.lock while
+  # vendoring. Restoring the packaged lock afterward fails directory-source
+  # install (crates-io checksums vs replacement source). Recorded as a
+  # receipt limitation rather than silently claiming an unmodified lock.
   (
     cd "${extracted_bin_pkg}"
     cargo vendor "${vendor_dir}"
@@ -818,6 +822,7 @@ receipt = {
     "negative_controls": negatives,
     "limitations": [
         "vendor_warm_may_use_crates_io",
+        "vendor_warm_may_rewrite_extracted_cargo_lock",
         "not_classic_transitive_local_registry_index",
         "source_checkout_not_denied_during_install",
         "candidate_commit_mismatch_negative_deferred",

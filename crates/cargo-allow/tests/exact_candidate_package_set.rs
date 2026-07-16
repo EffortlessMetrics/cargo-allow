@@ -74,6 +74,12 @@ fn example_exact_candidate_package_set_matches_schema_constants() {
             .any(|v| v.as_str() == Some("not_classic_transitive_local_registry_index")),
         "example must record classic local-registry follow-up limitation"
     );
+    assert!(
+        limitations
+            .iter()
+            .any(|v| v.as_str() == Some("vendor_warm_may_rewrite_extracted_cargo_lock")),
+        "example must record vendor warm lock rewrite limitation"
+    );
     assert_eq!(
         example
             .pointer("/environment/isolation_mechanism")
