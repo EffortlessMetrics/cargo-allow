@@ -87,6 +87,10 @@ mod sarif_tests;
 mod source_inventory;
 mod summary;
 mod text;
+mod why;
+mod why_json;
+#[cfg(test)]
+mod why_tests;
 mod worklist;
 mod worklist_human;
 mod worklist_json;
@@ -106,7 +110,8 @@ pub use artifacts::{
     ExplainReport, FederationDiagnosticSummary, FederationDivergenceKindCount,
     FederationDivergenceRecordSummary, FederationDivergenceSummary, FederationReportContext,
     LedgerContributorSummary, ListFilters, ListRow, MigrateReport, ProposeReport, PruneCandidate,
-    PruneModeContext, RefreshModeContext, RefreshReport, WorklistFilters, WorklistItem,
+    PruneModeContext, RefreshModeContext, RefreshReport, WhyCandidateEntry, WhyReport,
+    WorklistFilters, WorklistItem,
 };
 pub use contracts::{
     ADD_SCHEMA_ID, ADD_SCHEMA_VERSION, ARTIFACT_CONTRACTS, ARTIFACT_STATUS_ERROR,
@@ -122,8 +127,8 @@ pub use contracts::{
     REPORT_COMMAND_AUDIT, REPORT_COMMAND_CHECK, REPORT_COMMAND_DIFF, REPORT_COMMANDS,
     REPORT_SCHEMA_ID, REPORT_SCHEMA_VERSION, ReportContext, SCANNER_LIMITATIONS,
     SPEC_SYSTEM_CLAIM_BOUNDARY, SPEC_SYSTEM_SCANNER_LIMITATIONS, SPEC_SYSTEM_SCHEMA_ID,
-    SPEC_SYSTEM_SCHEMA_VERSION, WORKLIST_SCHEMA_ID, WORKLIST_SCHEMA_VERSION,
-    artifact_contract_for_schema_id, claim_boundary_for_schema_id,
+    SPEC_SYSTEM_SCHEMA_VERSION, WHY_SCHEMA_ID, WHY_SCHEMA_VERSION, WORKLIST_SCHEMA_ID,
+    WORKLIST_SCHEMA_VERSION, artifact_contract_for_schema_id, claim_boundary_for_schema_id,
     scanner_limitations_for_schema_id,
 };
 pub use diff::{
@@ -179,6 +184,7 @@ pub use summary::{
     occurrence_headroom_entries, occurrence_headroom_for_entry, policy_baseline_debt_entries,
     policy_missing_evidence_entries,
 };
+pub use why::render_why_json;
 pub use worklist::{render_worklist_human, render_worklist_json};
 
 pub(crate) use non_rust::{FilePosture, non_rust_file_rows};

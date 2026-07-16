@@ -4,7 +4,10 @@ use allow_core::{
 };
 use allow_match::{CheckMode, evaluate, explain_match_failure, score_match};
 
-use crate::{EvidenceValidationMode, emit_text, load_world_with_evidence_mode, parse_kind_filter};
+use crate::{
+    EvidenceValidationMode, SourceTreeReportContext, emit_text, load_world_with_evidence_mode,
+    parse_kind_filter,
+};
 
 #[path = "why_args.rs"]
 mod why_args;
@@ -12,13 +15,14 @@ mod why_args;
 mod why_render;
 
 pub(crate) use why_args::WhyArgs;
-use why_render::{WhyCandidate, render_why_text};
+use why_args::WhyFormat;
+use why_render::{WhyCandidate, render_why_json, render_why_text};
 
 const MAX_CANDIDATES: usize = 8;
 
 pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     let parsed_kind = parse_kind_filter(&args.kind)?;
-    let (_root, cfg, findings, _inventory_facts, _federation) = load_world_with_evidence_mode(
+    let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
@@ -46,7 +50,13 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         Vec::new()
     };
 
-    let text = render_why_text(finding, &outcome, &candidates);
+    let source_context = SourceTreeReportContext::new(&root, inventory_facts);
+    let text = match args.format {
+        WhyFormat::Human => render_why_text(finding, &outcome, &candidates),
+        WhyFormat::Json => {
+            render_why_json(source_context.inventory(), finding, &outcome, &candidates)
+        }
+    };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
 }
@@ -112,6 +122,73 @@ fn entry_is_related(entry: &AllowEntry, finding: &Finding) -> bool {
         }
     }
     false
+}
+
+#[cfg(test)]
+pub(crate) fn sample_why_json_for_contract_test() -> String {
+    use allow_core::{
+        FindingKind, Lifecycle, MatchOutcome, MatchStatus, Selector, Span, StructuralIdentity,
+    };
+    use std::path::PathBuf;
+
+    let mut identity = StructuralIdentity::new("rust", "method_call");
+    identity.container = Some("load".to_string());
+    identity.callee = Some("unwrap".to_string());
+    let finding = Finding {
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: PathBuf::from("src/lib.rs"),
+        span: Some(Span {
+            line: 10,
+            column: 1,
+        }),
+        identity,
+        message: "unwrap call".to_string(),
+        ledger: None,
+    };
+    let entry = AllowEntry {
+        id: "allow-near-miss".to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: Some(PathBuf::from("src/lib.rs")),
+        glob: None,
+        owner: "core".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "near miss fixture".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle::empty(),
+        selector: Selector {
+            ast_kind: Some("method_call".to_string()),
+            container: Some("load".to_string()),
+            callee: Some("expect".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    };
+    let outcome = MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "unreceipted panic.unwrap at src/lib.rs:10:1".to_string(),
+        score: 0,
+    };
+    let reasons = explain_match_failure(&entry, &finding);
+    render_why_json(
+        allow_report::InventoryContext::source_syntax(
+            "git_tracked",
+            Some("H:/Code/Rust/cargo-allow"),
+            Some(48),
+        ),
+        &finding,
+        &outcome,
+        &[WhyCandidate {
+            entry: &entry,
+            reasons,
+        }],
+    )
 }
 
 #[cfg(test)]

@@ -1,0 +1,503 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/why.v1.schema.json",
+  "title": "cargo-allow why v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "command",
+    "claim_boundary",
+    "scanner_limitations",
+    "inventory",
+    "finding",
+    "outcome",
+    "candidate_entries",
+    "next"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "schema_id": {
+      "const": "cargo-allow.why.v1"
+    },
+    "tool": {
+      "const": "cargo-allow"
+    },
+    "command": {
+      "const": "why"
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/claim_boundary_flag"
+      }
+    },
+    "scanner_limitations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/scanner_limitation"
+      }
+    },
+    "inventory": {
+      "$ref": "#/$defs/inventory"
+    },
+    "finding": {
+      "$ref": "#/$defs/current_finding"
+    },
+    "outcome": {
+      "$ref": "#/$defs/match_outcome"
+    },
+    "candidate_entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/candidate_entry"
+      },
+      "description": "Nearby same-kind allow entries that do not match, with per-gate mismatch reasons."
+    },
+    "next": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "suggested_actions",
+        "proof_commands"
+      ],
+      "properties": {
+        "suggested_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "proof_commands": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Suggested follow-up command. cargo-allow emits standalone cargo-allow commands here; it does not execute them."
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "claim_boundary_flag": {
+      "type": "string",
+      "enum": [
+        "source_tree_inventory",
+        "source_syntax_only",
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "external_evidence_tools_not_invoked",
+        "repository_code_not_executed",
+        "source_text_in_identity_fields"
+      ]
+    },
+    "scanner_limitation": {
+      "type": "string",
+      "enum": [
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "external_evidence_tools_not_invoked",
+        "repository_code_not_executed"
+      ]
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "scanner",
+        "source"
+      ],
+      "properties": {
+        "scope": {
+          "const": "source_tree"
+        },
+        "scanner": {
+          "const": "source_syntax"
+        },
+        "source": {
+          "enum": [
+            "git_tracked",
+            "filesystem_fallback",
+            "filesystem_include_untracked",
+            "unknown"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Local source-tree root used for this why report. This may be an absolute path."
+        },
+        "files_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of source-tree inventory files considered before scanner filtering, when collected."
+        },
+        "empty_git_tracked": {
+          "type": "boolean",
+          "description": "True when git inventory succeeded but reported no tracked files, such as a freshly initialized repo before git add."
+        },
+        "completeness": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "scoped",
+            "fallback",
+            "partial"
+          ],
+          "description": "Authoritative inventory coverage classification for this artifact."
+        }
+      }
+    },
+    "current_finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "kind",
+        "family",
+        "path",
+        "line",
+        "column",
+        "source_package",
+        "identity",
+        "message"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "One-based source line for review/navigation when available."
+        },
+        "column": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "One-based source character column for review/navigation when available."
+        },
+        "source_package": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Scanner-provided source package context; not Cargo metadata or build proof."
+        },
+        "identity": {
+          "$ref": "#/$defs/structural_identity"
+        },
+        "message": {
+          "type": "string"
+        },
+        "ledger_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ledger_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lane": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "structural_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "language",
+        "crate_name",
+        "module",
+        "container",
+        "ast_kind",
+        "symbol",
+        "callee",
+        "macro_name",
+        "lint",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+        "line_hint",
+        "column_hint"
+      ],
+      "properties": {
+        "language": {
+          "type": "string"
+        },
+        "crate_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "module": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "container": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ast_kind": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "callee": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "macro_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "receiver_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "normalized_snippet_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line_hint": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Optional one-based source line hint for review/navigation only; excluded from stable identity."
+        },
+        "column_hint": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Optional one-based source character-column hint for review/navigation only; excluded from stable identity."
+        }
+      }
+    },
+    "match_outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "allow_id",
+        "finding_index",
+        "score",
+        "message"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/match_status"
+        },
+        "allow_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "candidate_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Structured candidate allow-entry IDs considered while resolving the finding. Ambiguous rows contain all tied candidates; an empty array means no policy candidates were considered."
+        },
+        "finding_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "match_status": {
+      "enum": [
+        "matched",
+        "new",
+        "stale",
+        "expired",
+        "review_due",
+        "location_drift",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt"
+      ]
+    },
+    "candidate_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "family",
+        "path",
+        "glob",
+        "selector_glob",
+        "mismatch_reasons"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "glob": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "selector_glob": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mismatch_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Hard-gate mismatch reasons from explain_match_failure."
+        }
+      }
+    }
+  }
+}

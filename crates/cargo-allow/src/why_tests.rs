@@ -18,6 +18,8 @@ fn clap_parses_why_finding_location() {
         "src/lib.rs",
         "--line",
         "42",
+        "--format",
+        "json",
         "--root",
         ".",
     ]))
@@ -28,6 +30,7 @@ fn clap_parses_why_finding_location() {
             assert_eq!(args.kind, "panic");
             assert_eq!(args.path, PathBuf::from("src/lib.rs"));
             assert_eq!(args.line, 42);
+            assert_eq!(args.format, WhyFormat::Json);
             assert_eq!(args.root.root.as_deref(), Some(std::path::Path::new(".")));
         }
         other => std::panic::panic_any(format!("expected Why command, got {other:?}")),
@@ -68,6 +71,34 @@ fn render_why_lists_mismatch_reasons_for_new_findings() {
     assert!(text.contains("callee mismatch"));
     assert!(text.contains("cargo-allow add --kind panic"));
     assert!(text.contains("Claim boundary"));
+}
+
+#[test]
+fn render_why_json_includes_schema_and_mismatch_reasons() {
+    let finding = sample_finding();
+    let entry = near_miss_entry();
+    let outcome = MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "unreceipted panic.unwrap at src/lib.rs:10:1".to_string(),
+        score: 0,
+    };
+    let reasons = explain_match_failure(&entry, &finding);
+    let json = render_why_json(
+        allow_report::InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(3)),
+        &finding,
+        &outcome,
+        &[WhyCandidate {
+            entry: &entry,
+            reasons,
+        }],
+    );
+    assert!(json.contains("\"schema_id\": \"cargo-allow.why.v1\""));
+    assert!(json.contains("\"command\": \"why\""));
+    assert!(json.contains("allow-near-miss"));
+    assert!(json.contains("callee mismatch"));
 }
 
 #[test]
@@ -141,6 +172,7 @@ fn why_args_round_trip_through_root_args() {
         path: PathBuf::from("crates/foo/src/lib.rs"),
         line: 3,
         include_untracked: true,
+        format: WhyFormat::Human,
         output: Some(PathBuf::from("target/why.md")),
     };
     assert_eq!(args.line, 3);

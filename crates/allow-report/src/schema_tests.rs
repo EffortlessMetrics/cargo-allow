@@ -43,6 +43,7 @@ fn artifact_contract_registry_covers_current_v1_artifacts() {
             "receipt",
             "report",
             "spec-system",
+            "why",
             "worklist"
         ])
     );
@@ -110,6 +111,7 @@ fn schemas_reference_current_contract_ids() {
     let worklist_schema = include_str!("../../../docs/schemas/worklist.schema.json");
     let list_schema = include_str!("../../../docs/schemas/list.schema.json");
     let explain_schema = include_str!("../../../docs/schemas/explain.schema.json");
+    let why_schema = include_str!("../../../docs/schemas/why.schema.json");
     let prune_schema = include_str!("../../../docs/schemas/prune.schema.json");
     let refresh_schema = include_str!("../../../docs/schemas/refresh.schema.json");
     let doctor_schema = include_str!("../../../docs/schemas/doctor.schema.json");
@@ -122,6 +124,7 @@ fn schemas_reference_current_contract_ids() {
     assert!(worklist_schema.contains(WORKLIST_SCHEMA_ID));
     assert!(list_schema.contains(LIST_SCHEMA_ID));
     assert!(explain_schema.contains(EXPLAIN_SCHEMA_ID));
+    assert!(why_schema.contains(WHY_SCHEMA_ID));
     assert!(prune_schema.contains(PRUNE_SCHEMA_ID));
     assert!(refresh_schema.contains(REFRESH_SCHEMA_ID));
     assert!(doctor_schema.contains(DOCTOR_SCHEMA_ID));
@@ -143,6 +146,7 @@ fn schemas_reference_current_contract_ids() {
     assert!(receipt_schema.contains("\"files_scanned\""));
     assert!(list_schema.contains("\"files_scanned\""));
     assert!(explain_schema.contains("\"files_scanned\""));
+    assert!(why_schema.contains("\"files_scanned\""));
     assert!(prune_schema.contains("\"files_scanned\""));
     assert!(refresh_schema.contains("\"files_scanned\""));
     assert!(doctor_schema.contains("\"files_scanned\""));
@@ -154,6 +158,7 @@ fn schemas_reference_current_contract_ids() {
     assert!(receipt_schema.contains("\"completeness\""));
     assert!(list_schema.contains("\"completeness\""));
     assert!(explain_schema.contains("\"completeness\""));
+    assert!(why_schema.contains("\"completeness\""));
     assert!(prune_schema.contains("\"completeness\""));
     assert!(refresh_schema.contains("\"completeness\""));
     assert!(doctor_schema.contains("\"completeness\""));
@@ -165,6 +170,7 @@ fn schemas_reference_current_contract_ids() {
     assert!(receipt_schema.contains("\"root\""));
     assert!(list_schema.contains("\"root\""));
     assert!(explain_schema.contains("\"root\""));
+    assert!(why_schema.contains("\"root\""));
     assert!(prune_schema.contains("\"root\""));
     assert!(refresh_schema.contains("\"root\""));
     assert!(doctor_schema.contains("\"root\""));
@@ -175,6 +181,7 @@ fn schemas_reference_current_contract_ids() {
     assert!(report_schema.contains("\"source_package\""));
     assert!(list_schema.contains("\"source_package\""));
     assert!(explain_schema.contains("\"source_package\""));
+    assert!(why_schema.contains("\"source_package\""));
     assert!(add_schema.contains("\"source_package\""));
     assert!(report_schema.contains("\"scanner_limitation\""));
     assert!(receipt_schema.contains("\"scanner_limitation\""));

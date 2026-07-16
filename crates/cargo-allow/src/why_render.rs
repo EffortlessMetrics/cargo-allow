@@ -6,11 +6,72 @@ pub(super) struct WhyCandidate<'a> {
     pub reasons: Vec<String>,
 }
 
+pub(super) struct WhyNextSteps {
+    pub suggested_actions: Vec<String>,
+    pub proof_commands: Vec<String>,
+}
+
+pub(super) fn why_next_steps(
+    finding: &Finding,
+    outcome: &MatchOutcome,
+    candidates: &[WhyCandidate<'_>],
+) -> WhyNextSteps {
+    match outcome.status {
+        MatchStatus::New => {
+            let mut suggested_actions = vec![
+                "Receipt this occurrence with cargo-allow add.".to_string(),
+                "Or repair the source so the finding disappears, then re-run cargo-allow check --mode no-new."
+                    .to_string(),
+            ];
+            let mut proof_commands = vec![format!(
+                "cargo-allow add --kind {} --path {} --line {} --owner <owner> --reason \"...\" --evidence <ref> --write policy/allow.toml",
+                finding.kind.as_str(),
+                normalize_path(&finding.path),
+                finding.span.as_ref().map(|s| s.line).unwrap_or(1)
+            )];
+            proof_commands.push("cargo-allow check --mode no-new".to_string());
+            if let Some(first) = candidates.first() {
+                suggested_actions.push(format!(
+                    "Inspect near-miss allow entry `{}` with cargo-allow explain.",
+                    first.entry.id
+                ));
+                proof_commands.push(format!("cargo-allow explain {}", first.entry.id));
+            }
+            WhyNextSteps {
+                suggested_actions,
+                proof_commands,
+            }
+        }
+        _ => {
+            let mut suggested_actions = Vec::new();
+            let mut proof_commands = Vec::new();
+            if let Some(id) = &outcome.allow_id {
+                suggested_actions.push(format!(
+                    "Inspect the linked allow entry `{id}` with cargo-allow explain."
+                ));
+                proof_commands.push(format!("cargo-allow explain {id}"));
+            } else {
+                suggested_actions.push(
+                    "Inspect the broader ledger with cargo-allow list or cargo-allow check."
+                        .to_string(),
+                );
+            }
+            proof_commands.push("cargo-allow check --mode no-new".to_string());
+            proof_commands.push("cargo-allow list".to_string());
+            WhyNextSteps {
+                suggested_actions,
+                proof_commands,
+            }
+        }
+    }
+}
+
 pub(super) fn render_why_text(
     finding: &Finding,
     outcome: &MatchOutcome,
     candidates: &[WhyCandidate<'_>],
 ) -> String {
+    let next = why_next_steps(finding, outcome, candidates);
     let mut out = String::new();
     out.push_str("# Why this finding is unreceipted\n\n");
     out.push_str("## Finding\n\n");
@@ -133,31 +194,13 @@ Use `cargo-allow explain <id>` when an allow ID is present, or `cargo-allow chec
     }
 
     out.push_str("## Suggested next steps\n\n");
-    match outcome.status {
-        MatchStatus::New => {
-            out.push_str(&format!(
-                "1. Receipt this occurrence: `cargo-allow add --kind {} --path {} --line {} --owner <owner> --reason \"...\" --evidence <ref> --write policy/allow.toml`\n",
-                finding.kind.as_str(),
-                normalize_path(&finding.path),
-                finding.span.as_ref().map(|s| s.line).unwrap_or(1)
-            ));
-            out.push_str(
-                "2. Or repair the source so the finding disappears, then re-run `cargo-allow check --mode no-new`.\n",
-            );
-            if let Some(first) = candidates.first() {
-                out.push_str(&format!(
-                    "3. Inspect a near-miss entry: `cargo-allow explain {}`\n",
-                    first.entry.id
-                ));
-            }
-        }
-        _ => {
-            if let Some(id) = &outcome.allow_id {
-                out.push_str(&format!("1. `cargo-allow explain {id}`\n"));
-            }
-            out.push_str("2. `cargo-allow check --mode no-new`\n");
-            out.push_str("3. `cargo-allow list`\n");
-        }
+    for (index, action) in next.suggested_actions.iter().enumerate() {
+        out.push_str(&format!("{}. {action}\n", index + 1));
+    }
+    out.push('\n');
+    out.push_str("## Proof commands\n\n");
+    for command in &next.proof_commands {
+        out.push_str(&format!("- `{command}`\n"));
     }
     out.push('\n');
 
@@ -168,4 +211,38 @@ It does not prove that an exception is safe, that tests are adequate, or that \
 macro-expanded / type-aware behavior would match.\n",
     );
     out
+}
+
+pub(super) fn render_why_json(
+    inventory: allow_report::InventoryContext<'_>,
+    finding: &Finding,
+    outcome: &MatchOutcome,
+    candidates: &[WhyCandidate<'_>],
+) -> String {
+    let next = why_next_steps(finding, outcome, candidates);
+    let path_texts = candidates
+        .iter()
+        .map(|candidate| candidate.entry.path.as_ref().map(normalize_path))
+        .collect::<Vec<_>>();
+    let candidate_entries = candidates
+        .iter()
+        .enumerate()
+        .map(|(index, candidate)| allow_report::WhyCandidateEntry {
+            id: candidate.entry.id.as_str(),
+            kind: candidate.entry.kind.as_str(),
+            family: candidate.entry.family.as_deref(),
+            path: path_texts.get(index).and_then(|path| path.as_deref()),
+            glob: candidate.entry.glob.as_deref(),
+            selector_glob: candidate.entry.selector.glob.as_deref(),
+            mismatch_reasons: candidate.reasons.as_slice(),
+        })
+        .collect::<Vec<_>>();
+    allow_report::render_why_json(allow_report::WhyReport {
+        inventory,
+        finding,
+        outcome,
+        candidate_entries: &candidate_entries,
+        suggested_actions: &next.suggested_actions,
+        proof_commands: &next.proof_commands,
+    })
 }
