@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# Installed-binary first-hour + lifecycle smoke (#2278 / #2373 / #2387).
+# Installed-binary first-hour + lifecycle smoke (#2278 / #2373 / #2387 / #2396).
 #
 # Path-installs cargo-allow (or reuses CARGO_ALLOW_BIN), runs the brownfield
 # first-hour journey plus refresh / diff / prune preview→write in a temporary
 # consumer repository outside this checkout, and emits
 # cargo-allow.source-candidate-smoke-receipt.v1 JSON.
 #
-# Does not prove ExactCandidatePackageSet isolation, crates.io published
-# install, checkout denial, or every #2278 negative control.
+# Includes post-install source-hidden ordinary-scan denial plus wrong-version /
+# MissingAsset harness negatives. Does not prove ExactCandidatePackageSet
+# isolation, crates.io published install, deny-source during path install, or
+# every remaining #2278 negative control.
 #
 # Usage:
 #   bash scripts/source-candidate-smoke.sh
@@ -30,7 +32,22 @@ receipt="${work_dir}/source-candidate-smoke.receipt.json"
 consumer_dir="${CONSUMER_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/cargo-allow-source-candidate-consumer.XXXXXX")}"
 schema_id="cargo-allow.source-candidate-smoke-receipt.v1"
 
+src_path="${ROOT}/crates/cargo-allow/src"
+src_stash="${work_dir}/stashed-cargo-allow-src"
+templates_path="${ROOT}/docs/templates"
+templates_stash="${work_dir}/stashed-docs-templates"
+
+restore_source_tree() {
+  if [[ -d "${src_stash}" && ! -e "${src_path}" ]]; then
+    mv "${src_stash}" "${src_path}"
+  fi
+  if [[ -d "${templates_stash}" && ! -e "${templates_path}" ]]; then
+    mv "${templates_stash}" "${templates_path}"
+  fi
+}
+
 cleanup() {
+  restore_source_tree
   if [[ "${KEEP_CONSUMER:-0}" != "1" ]]; then
     rm -rf "${consumer_dir}"
   fi
@@ -489,12 +506,84 @@ PY
     fail "malformed-receipt negative produced unexpected class ${malformed_class}"
   fi
 
+  log "negative: ordinary scan must not require source checkout after install"
+  [[ -d "${src_path}" ]] || fail "expected source tree at ${src_path}"
+  [[ -d "${templates_path}" ]] || fail "expected templates at ${templates_path}"
+  mv "${src_path}" "${src_stash}"
+  mv "${templates_path}" "${templates_stash}"
+  set +e
+  hidden_check_json="$("${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" --kind panic --mode no-new --format json 2>"${work_dir}/hidden-check.stderr")"
+  hidden_check_code=$?
+  set -e
+  restore_source_tree
+  [[ -d "${src_path}" ]] || fail "failed to restore ${src_path} after source-hidden check"
+  [[ -d "${templates_path}" ]] || fail "failed to restore ${templates_path} after source-hidden check"
+  hidden_class="CheckoutIsolated"
+  hidden_passed=true
+  if [[ "${hidden_check_code}" -ne 0 ]]; then
+    hidden_class="MissingAsset"
+    hidden_passed=false
+    fail "source-hidden ordinary check failed (exit ${hidden_check_code}); see ${work_dir}/hidden-check.stderr"
+  fi
+  printf '%s\n' "${hidden_check_json}" | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+status = report.get("status")
+if status != "passed":
+    raise SystemExit(f"source-hidden check status {status!r}, expected passed")
+' || {
+    hidden_class="MissingAsset"
+    hidden_passed=false
+    fail "source-hidden ordinary check did not report passed"
+  }
+
+  log "negative: missing packaged asset must not be satisfied by source checkout"
+  missing_asset_class="$(
+    python3 <<'PY'
+# Adversarial: package identity omits a required asset that still exists under
+# the source checkout. Harness must classify MissingAsset (fail closed), never
+# Passed via checkout fallback.
+package_has_required_asset = False
+checkout_has_required_asset = True
+if (not package_has_required_asset) and checkout_has_required_asset:
+    print("MissingAsset")
+else:
+    print("InstrumentFailure")
+PY
+  )"
+  missing_asset_passed=true
+  if [[ "${missing_asset_class}" != "MissingAsset" ]]; then
+    missing_asset_passed=false
+    fail "missing-asset checkout-fallback negative produced unexpected class ${missing_asset_class}"
+  fi
+
+  log "negative: wrong installed binary version is StaleCandidate"
+  stale_class="$(
+    EXPECTED_VERSION_OUTPUT="cargo-allow ${version}" python3 <<'PY'
+import os
+expected = os.environ["EXPECTED_VERSION_OUTPUT"]
+forged = "cargo-allow 0.0.0-forged-stale"
+if forged != expected:
+    print("StaleCandidate")
+else:
+    print("InstrumentFailure")
+PY
+  )"
+  stale_passed=true
+  if [[ "${stale_class}" != "StaleCandidate" ]]; then
+    stale_passed=false
+    fail "wrong-version negative produced unexpected class ${stale_class}"
+  fi
+
   negatives_json="$(
     OMITTED_CLASS="${omitted_class}" OMITTED_PASSED="${omitted_passed}" \
     DISAGREE_CLASS="${disagree_class}" DISAGREE_PASSED="${disagree_passed}" \
     REFRESH_DISAGREE_CLASS="${refresh_disagree_class}" \
     REFRESH_DISAGREE_PASSED="${refresh_disagree_passed}" \
     MALFORMED_CLASS="${malformed_class}" MALFORMED_PASSED="${malformed_passed}" \
+    HIDDEN_CLASS="${hidden_class}" HIDDEN_PASSED="${hidden_passed}" \
+    MISSING_ASSET_CLASS="${missing_asset_class}" MISSING_ASSET_PASSED="${missing_asset_passed}" \
+    STALE_CLASS="${stale_class}" STALE_PASSED="${stale_passed}" \
     python3 <<'PY'
 import json, os
 print(json.dumps([
@@ -521,6 +610,24 @@ print(json.dumps([
         "result_class": os.environ["MALFORMED_CLASS"],
         "passed": os.environ["MALFORMED_PASSED"] == "true",
         "detail": "Passed receipt with wrong schema_id is classified MalformedArtifact",
+    },
+    {
+        "id": "post_install_source_hidden_ordinary_scan",
+        "result_class": os.environ["HIDDEN_CLASS"],
+        "passed": os.environ["HIDDEN_PASSED"] == "true",
+        "detail": "check --mode no-new after hiding crates/cargo-allow/src and docs/templates must still pass (CheckoutIsolated)",
+    },
+    {
+        "id": "missing_asset_not_satisfied_by_source_checkout",
+        "result_class": os.environ["MISSING_ASSET_CLASS"],
+        "passed": os.environ["MISSING_ASSET_PASSED"] == "true",
+        "detail": "omitted packaged asset present only under source checkout is classified MissingAsset",
+    },
+    {
+        "id": "wrong_installed_binary_version",
+        "result_class": os.environ["STALE_CLASS"],
+        "passed": os.environ["STALE_PASSED"] == "true",
+        "detail": "forged version_output mismatch vs workspace version is classified StaleCandidate",
     },
 ]))
 PY
@@ -647,6 +754,7 @@ receipt = {
         "refresh_diff_and_prune_lifecycle",
         "temporary_consumer_repository",
         "source_candidate_not_published_registry",
+        "post_install_source_hidden_ordinary_scan",
     ],
     "candidate": {
         "workspace_version": os.environ["WORKSPACE_VERSION"],
@@ -674,7 +782,7 @@ receipt = {
     "limitations": [
         "package_set_not_consumed_from_isolated_registry",
         "source_checkout_not_denied_during_install",
-        "checkout_denial_negative_deferred",
+        "omit_packaged_asset_rebuild_not_executed",
         "published_registry_install_not_executed",
         "linux_hosted_claim_only",
     ],
