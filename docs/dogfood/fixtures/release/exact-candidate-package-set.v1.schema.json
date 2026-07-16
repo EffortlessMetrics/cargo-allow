@@ -142,7 +142,11 @@
       "required": ["method", "version_output", "exit_code"],
       "properties": {
         "method": {
-          "const": "cargo_install_path_extracted_with_patch"
+          "type": "string",
+          "enum": [
+            "cargo_install_path_extracted_with_patch",
+            "cargo_install_path_extracted_with_directory_source"
+          ]
         },
         "version_output": { "type": "string" },
         "exit_code": { "type": "integer" }

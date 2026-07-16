@@ -1,6 +1,6 @@
 //! Offline characterization for ExactCandidatePackageSetV1 (#2372 / #2277).
 //!
-//! The package/extract/patch/install harness lives in
+//! The package/extract/vendor/install harness lives in
 //! `scripts/exact-candidate-package-set.sh` so release automation can invoke
 //! Cargo without violating the product source-tree invariant.
 
@@ -71,8 +71,20 @@ fn example_exact_candidate_package_set_matches_schema_constants() {
     assert!(
         limitations
             .iter()
-            .any(|v| v.as_str() == Some("not_full_local_registry_index")),
-        "example must record local-registry follow-up limitation"
+            .any(|v| v.as_str() == Some("not_classic_transitive_local_registry_index")),
+        "example must record classic local-registry follow-up limitation"
+    );
+    assert_eq!(
+        example
+            .pointer("/environment/isolation_mechanism")
+            .and_then(serde_json::Value::as_str),
+        Some("directory_source_replacement")
+    );
+    assert_eq!(
+        example
+            .pointer("/install/method")
+            .and_then(serde_json::Value::as_str),
+        Some("cargo_install_path_extracted_with_directory_source")
     );
     let negatives = example
         .get("negative_controls")
@@ -88,6 +100,7 @@ fn example_exact_candidate_package_set_matches_schema_constants() {
         "package_checksum_mutation_after_inventory",
         "injected_normalized_path_dependency",
         "older_internal_package_version",
+        "omit_candidate_from_directory_vendor",
     ] {
         assert!(
             ids.contains(&required),
