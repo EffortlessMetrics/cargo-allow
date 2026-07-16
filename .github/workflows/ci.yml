@@ -22,6 +22,28 @@ jobs:
       - name: MSRV fast cargo-allow package proof
         run: cargo test -p cargo-allow --bins --locked
 
+  # Pre-publication SourceCandidateSmoke (#2256 Stage A): prove the exact
+  # reviewed source candidate packages, has no path dependencies, installs
+  # from the workspace path, and passes first-hour CLI checks. Uploads a
+  # hosted receipt artifact so the readiness claim rests on CI evidence, not
+  # a local run. Linux only for the narrow 0.1.x claim; the msrv lane above
+  # separately proves Rust 1.85.
+  package-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: package-smoke
+      - name: Package candidate smoke (Stage A)
+        run: bash scripts/package-candidate-smoke.sh
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: package-candidate-smoke-receipt
+          path: target/package-candidate-smoke/package-candidate-smoke.receipt.txt
+
   test:
     runs-on: ubuntu-latest
     steps:
