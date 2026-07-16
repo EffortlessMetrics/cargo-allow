@@ -83,6 +83,35 @@ crates=(
   cargo-allow
 )
 
+# Prefer the shared fixture when present so package smoke and ExactCandidate
+# harnesses cannot drift (#2277 / #2372).
+crate_set_fixture="${ROOT}/docs/dogfood/fixtures/release/candidate-crate-set.toml"
+if [[ -f "${crate_set_fixture}" ]] && command -v python3 >/dev/null 2>&1; then
+  mapfile -t crates < <(
+    python3 - "${crate_set_fixture}" <<'PY'
+import sys
+from pathlib import Path
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
+in_list = False
+for line in text.splitlines():
+    stripped = line.strip().strip("\r")
+    if stripped.startswith("crates"):
+        in_list = True
+        continue
+    if in_list:
+        if stripped.startswith("]"):
+            break
+        if stripped.startswith('"'):
+            name = stripped.strip(",").strip('"').strip()
+            if name:
+                print(name)
+PY
+  )
+  for i in "${!crates[@]}"; do
+    crates[$i]="${crates[$i]//$'\r'/}"
+  done
+fi
+
 mkdir -p "${package_dir}"
 : >"${receipt}"
 {

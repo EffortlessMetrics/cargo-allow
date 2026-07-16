@@ -43,9 +43,22 @@ That harness path-installs into a temp root (or reuses `CARGO_ALLOW_BIN`),
 runs the brownfield first-hour journey outside the checkout, and writes
 `target/source-candidate-smoke/source-candidate-smoke.receipt.json`. Offline
 schema/example characterization remains
-`cargo test -p cargo-allow --test source_candidate_smoke --locked`. It does
-**not** yet consume an ExactCandidatePackageSetV1 local registry (#2277) or a
-crates.io published binary.
+`cargo test -p cargo-allow --test source_candidate_smoke --locked`.
+
+Exact ten-crate isolation (#2277 / #2372 Stage A) is proven by:
+
+```bash
+bash scripts/exact-candidate-package-set.sh
+```
+
+That harness packages the shared
+[`candidate-crate-set.toml`](../dogfood/fixtures/release/candidate-crate-set.toml),
+extracts each `.crate`, installs `cargo-allow` from the extracted package with
+`[patch.crates-io]` for internal deps, verifies workspace paths are absent from
+resolved internal manifests, runs omit-crate / workspace-path negatives, and
+writes `target/exact-candidate-package-set/exact-candidate-package-set.receipt.json`
+(`cargo-allow.exact-candidate-package-set.v1`). It does **not** yet build a full
+local-registry index, deny the source checkout, or cover every #2277 negative.
 
 Post-publication registry install remains
 [scripts/release-install-smoke.sh](../../scripts/release-install-smoke.sh)
@@ -53,10 +66,12 @@ Post-publication registry install remains
 
 This smoke runs in hosted CI on Linux as the `package-smoke` job in
 [ci.yml](../../.github/workflows/ci.yml) (on every PR and push to `main`),
-producing `package-candidate-smoke-receipt` and
+producing `package-candidate-smoke-receipt`,
+`exact-candidate-package-set-receipt`, and
 `source-candidate-smoke-receipt` workflow artifacts. Those hosted receipts are
-the durable evidence for the #2256 Stage A / #2278 Stage A+ candidate claims;
-Windows and macOS candidate smoke remain a documented follow-up.
+the durable evidence for the #2256 Stage A / #2278 Stage A+ / #2372 Stage A
+candidate claims; Windows and macOS candidate smoke remain a documented
+follow-up.
 ## Prerequisites
 
 Complete these checks before the first tag-triggered automated release:

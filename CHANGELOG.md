@@ -12,11 +12,17 @@ inventory without executing repository code.
 
 ### Added
 
+- `scripts/exact-candidate-package-set.sh` emits
+  `cargo-allow.exact-candidate-package-set.v1` after packaging the shared
+  ten-crate set, installing from extracted packages with `[patch.crates-io]`,
+  and running omit-crate / workspace-path negatives (#2372 / #2277 Stage A;
+  full local-registry index and remaining negatives deferred).
 - `scripts/source-candidate-smoke.sh` emits
   `cargo-allow.source-candidate-smoke-receipt.v1` after a path-installed (or
   `CARGO_ALLOW_BIN`) binary completes the brownfield first-hour journey in a
   temporary consumer repo (#2278 Stage A+; ExactCandidatePackageSet isolation
-  remains #2277).- Hosted `shallow-diff-smoke` CI job and `scripts/shallow-diff-base-smoke.sh`:
+  remains #2277).
+- Hosted `shallow-diff-smoke` CI job and `scripts/shallow-diff-base-smoke.sh`:
   prove `diff --base` fails closed without base history, then succeeds after
   history is available (#2366).
 - Copy-paste CI/ops path: expanded `docs/how-to/run-in-ci.md`, troubleshooting
