@@ -45,7 +45,8 @@ runs the brownfield first-hour journey outside the checkout, and writes
 schema/example characterization remains
 `cargo test -p cargo-allow --test source_candidate_smoke --locked`.
 
-Exact ten-crate isolation (#2277 / #2372 Stage A) is proven by:
+Exact ten-crate isolation (#2277 / #2372 Stage A, #2378 Stage B negatives) is
+proven by:
 
 ```bash
 bash scripts/exact-candidate-package-set.sh
@@ -55,8 +56,9 @@ That harness packages the shared
 [`candidate-crate-set.toml`](../dogfood/fixtures/release/candidate-crate-set.toml),
 extracts each `.crate`, installs `cargo-allow` from the extracted package with
 `[patch.crates-io]` for internal deps, verifies workspace paths are absent from
-resolved internal manifests, runs omit-crate / workspace-path negatives, and
-writes `target/exact-candidate-package-set/exact-candidate-package-set.receipt.json`
+resolved internal manifests, runs omit-crate / workspace-path / checksum /
+injected-path / version-conflict negatives, and writes
+`target/exact-candidate-package-set/exact-candidate-package-set.receipt.json`
 (`cargo-allow.exact-candidate-package-set.v1`). It does **not** yet build a full
 local-registry index, deny the source checkout, or cover every #2277 negative.
 

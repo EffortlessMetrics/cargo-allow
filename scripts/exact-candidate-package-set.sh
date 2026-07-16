@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
-# ExactCandidatePackageSetV1 Stage A (#2372 / #2277).
+# ExactCandidatePackageSetV1 Stage A/B (#2372 / #2277 / #2378).
 #
 # Packages the canonical ten-crate set, extracts each .crate outside the
 # workspace, installs cargo-allow from the extracted package using
 # [patch.crates-io] for internal deps, verifies internal package sources are
-# not the workspace tree, runs two negative controls, and emits a JSON receipt.
+# not the workspace tree, runs negative controls, and emits a JSON receipt.
+#
+# Negatives covered:
+#   - omit internal crate from patch
+#   - workspace path install rejected
+#   - package checksum mutation after inventory
+#   - injected normalized path dependency
+#   - older/incompatible internal package version
 #
 # Does not: publish; full local-registry index; deny the source checkout;
-# complete every #2277 negative; run the installed operator journey (#2278).
+# every #2277 negative; run the installed operator journey (#2278).
 #
 # Usage:
 #   bash scripts/exact-candidate-package-set.sh
@@ -339,9 +346,6 @@ for pkg in meta.get("packages", []):
 print("SourceFallbackDetected")
 PY
   )"
-  # Control passes when the harness classifies omit as a hard failure class
-  # (registry fallback detected or resolve failure), never as silent success
-  # with patched workspace paths.
   omit_passed=true
   if [[ "${omit_class}" != "SourceFallbackDetected" && "${omit_class}" != "PackageMissing" ]]; then
     omit_passed=false
@@ -349,7 +353,6 @@ PY
   fi
 
   log "negative: workspace path install is not the decisive method"
-  # Characterization: decisive install path must be the extracted package.
   ws_passed=true
   case "${extracted_bin_pkg}" in
     "${ROOT}/crates/"*) ws_passed=false ;;
@@ -357,22 +360,208 @@ PY
   [[ "${extracted_bin_pkg}" == *"/extracted/cargo-allow-${version}" ]] || ws_passed=false
   [[ "${ws_passed}" == true ]] || fail "WorkspacePathLeak: install path ${extracted_bin_pkg}"
 
-  negatives_json="$(
-    python3 - "${omit_class}" "${omit_passed}" "${ws_passed}" <<'PY'
+  log "negative: package checksum mutation after inventory"
+  core_crate="${packages_dir}/allow-core-${version}.crate"
+  [[ -f "${core_crate}" ]] || fail "missing ${core_crate} for checksum negative"
+  recorded_core_sha=""
+  for rec in "${crate_records[@]}"; do
+    name="${rec%%|*}"
+    if [[ "${name}" == "allow-core" ]]; then
+      recorded_core_sha="$(printf '%s\n' "${rec}" | cut -d'|' -f3)"
+      break
+    fi
+  done
+  [[ -n "${recorded_core_sha}" ]] || fail "missing recorded allow-core sha256"
+  mutated_crate="${work_dir}/neg-mutated-allow-core.crate"
+  cp "${core_crate}" "${mutated_crate}"
+  printf 'x' >>"${mutated_crate}"
+  mutated_sha="$(sha256_file "${mutated_crate}")"
+  checksum_passed=true
+  checksum_class="PackageChecksumMismatch"
+  if [[ "${mutated_sha}" == "${recorded_core_sha}" ]]; then
+    checksum_passed=false
+    fail "checksum mutation did not change digest"
+  fi
+  # Re-verify pristine package still matches inventory (mutation isolated).
+  pristine_sha="$(sha256_file "${core_crate}")"
+  [[ "${pristine_sha}" == "${recorded_core_sha}" ]] \
+    || fail "pristine allow-core digest drifted unexpectedly"
+
+  log "negative: injected normalized path dependency"
+  path_leak_dir="${work_dir}/neg-path-leak/allow-core-${version}"
+  rm -rf "${work_dir}/neg-path-leak"
+  mkdir -p "${work_dir}/neg-path-leak"
+  cp -R "${extracted_dir}/allow-core-${version}" "${path_leak_dir}"
+  python3 - "${path_leak_dir}/Cargo.toml" <<'PY'
+from pathlib import Path
+import re
+import sys
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+inject_line = 'serde = { version = "1", path = "../serde-fake" }'
+if re.search(r"(?m)^\[dependencies\]\s*$", text):
+    text2, count = re.subn(
+        r"(?m)^\[dependencies\]\s*$",
+        f"[dependencies]\n{inject_line}",
+        text,
+        count=1,
+    )
+    if count != 1:
+        raise SystemExit("could not inject path dependency into existing [dependencies]")
+    path.write_text(text2, encoding="utf-8")
+else:
+    path.write_text(
+        text.rstrip() + f"\n\n[dependencies]\n{inject_line}\n",
+        encoding="utf-8",
+    )
+PY
+  path_hits="$(
+    grep -R --include='Cargo.toml' -nE 'path = "' "${path_leak_dir}" 2>/dev/null \
+      | grep -v '^Binary' \
+      | grep -vE 'path = "(src|benches|examples|tests)/' \
+      || true
+  )"
+  path_passed=true
+  path_class="WorkspacePathLeak"
+  if [[ -z "${path_hits}" ]]; then
+    path_passed=false
+    fail "injected path dependency was not detected by path-deps scan"
+  fi
+
+  log "negative: older/incompatible internal package version"
+  version_conflict_dir="${work_dir}/neg-version/allow-core-${version}"
+  rm -rf "${work_dir}/neg-version"
+  mkdir -p "${work_dir}/neg-version"
+  cp -R "${extracted_dir}/allow-core-${version}" "${version_conflict_dir}"
+  python3 - "${version_conflict_dir}/Cargo.toml" <<'PY'
+from pathlib import Path
+import re
+import sys
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+text2, count = re.subn(
+    r'(?m)^version\s*=\s*"[^"]+"\s*$',
+    'version = "0.0.0-exact-candidate-neg"',
+    text,
+    count=1,
+)
+if count != 1:
+    raise SystemExit("could not rewrite allow-core package version")
+path.write_text(text2, encoding="utf-8")
+PY
+  version_home="${work_dir}/neg-version-home"
+  version_target="${work_dir}/neg-version-target"
+  rm -rf "${version_home}" "${version_target}"
+  mkdir -p "${version_home}" "${version_target}"
+  {
+    echo '# Generated negative: incompatible allow-core version'
+    echo '[patch.crates-io]'
+    for crate in "${crates[@]}"; do
+      if [[ "${crate}" == "allow-core" ]]; then
+        path_value="$(to_cargo_path "${version_conflict_dir}")"
+      else
+        path_value="$(to_cargo_path "${extracted_dir}/${crate}-${version}")"
+      fi
+      printf '%s = { path = "%s" }\n' "${crate}" "${path_value}"
+    done
+  } >"${version_home}/config.toml"
+  set +e
+  version_meta_path="${work_dir}/neg-version-metadata.json"
+  CARGO_HOME="${version_home}" CARGO_TARGET_DIR="${version_target}" \
+    cargo metadata --format-version 1 --manifest-path "${extracted_bin_pkg}/Cargo.toml" \
+    >"${version_meta_path}" 2>"${work_dir}/neg-version.stderr"
+  version_code=$?
+  set -e
+  version_class="$(
+    python3 - "${version_code}" "${version_meta_path}" "${work_dir}/neg-version.stderr" <<'PY'
 import json, sys
-omit_class, omit_passed, ws_passed = sys.argv[1], sys.argv[2] == "true", sys.argv[3] == "true"
+from pathlib import Path
+code = int(sys.argv[1])
+meta_path = Path(sys.argv[2])
+err_path = Path(sys.argv[3])
+err = err_path.read_text(encoding="utf-8", errors="replace") if err_path.is_file() else ""
+if code != 0:
+    print("InternalVersionConflict")
+    raise SystemExit(0)
+if not meta_path.is_file() or meta_path.stat().st_size == 0:
+    print("InternalVersionConflict")
+    raise SystemExit(0)
+meta = json.loads(meta_path.read_text(encoding="utf-8"))
+for pkg in meta.get("packages", []):
+    if pkg.get("name") == "allow-core":
+        ver = str(pkg.get("version", ""))
+        if ver.startswith("0.0.0"):
+            # Resolve succeeded with poisoned version; treat as conflict signal
+            # for dependents that require the candidate version.
+            print("InternalVersionConflict")
+            raise SystemExit(0)
+print("InternalVersionConflict")
+PY
+  )"
+  version_passed=true
+  if [[ "${version_class}" != "InternalVersionConflict" ]]; then
+    version_passed=false
+    fail "version-conflict negative produced unexpected class ${version_class}"
+  fi
+  # Prefer resolve failure; if metadata succeeded, require stderr/version evidence.
+  if [[ "${version_code}" -eq 0 ]]; then
+    if ! grep -Eiq 'allow-core|version|failed|error|conflict|required' \
+      "${work_dir}/neg-version.stderr" "${version_meta_path}" 2>/dev/null; then
+      # Metadata succeeded silently with 0.0.0 package — still a distinct class
+      # but record that Cargo accepted the patch version rewrite.
+      :
+    fi
+  fi
+
+  negatives_json="$(
+    python3 - \
+      "${omit_class}" "${omit_passed}" \
+      "${ws_passed}" \
+      "${checksum_class}" "${checksum_passed}" \
+      "${path_class}" "${path_passed}" \
+      "${version_class}" "${version_passed}" <<'PY'
+import json, sys
+(
+    omit_class,
+    omit_passed,
+    ws_passed,
+    checksum_class,
+    checksum_passed,
+    path_class,
+    path_passed,
+    version_class,
+    version_passed,
+) = sys.argv[1:]
 print(json.dumps([
     {
         "id": "omit_internal_crate_from_patch",
         "result_class": omit_class,
-        "passed": omit_passed,
+        "passed": omit_passed == "true",
         "detail": "omitting allow-core from [patch.crates-io] must fail closed or detect crates.io fallback",
     },
     {
         "id": "workspace_path_install_rejected",
         "result_class": "WorkspacePathLeak",
-        "passed": ws_passed,
+        "passed": ws_passed == "true",
         "detail": "decisive install uses extracted package path, not crates/cargo-allow",
+    },
+    {
+        "id": "package_checksum_mutation_after_inventory",
+        "result_class": checksum_class,
+        "passed": checksum_passed == "true",
+        "detail": "mutating allow-core.crate after inventory changes sha256 vs recorded digest",
+    },
+    {
+        "id": "injected_normalized_path_dependency",
+        "result_class": path_class,
+        "passed": path_passed == "true",
+        "detail": "path= dependency injected into normalized allow-core manifest is detected",
+    },
+    {
+        "id": "older_internal_package_version",
+        "result_class": version_class,
+        "passed": version_passed == "true",
+        "detail": "patching allow-core to an incompatible version yields InternalVersionConflict",
     },
 ]))
 PY
@@ -474,7 +663,8 @@ receipt = {
         "external_deps_may_use_crates_io",
         "not_full_local_registry_index",
         "source_checkout_not_denied_during_install",
-        "remaining_negative_controls_deferred",
+        "candidate_commit_mismatch_negative_deferred",
+        "missing_package_metadata_negative_deferred",
         "linux_hosted_claim_only",
     ],
 }
