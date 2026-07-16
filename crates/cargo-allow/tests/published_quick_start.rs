@@ -367,8 +367,8 @@ fn published_registry_fixture_is_internally_consistent() {
         );
     }
     assert!(
-        registry.candidate_only_subcommands.contains("why"),
-        "why is the current main-only first-run delta vs Published 0.1.11"
+        registry.candidate_only_subcommands.is_empty(),
+        "0.1.11 has no candidate-only first-run subcommands at the release freeze"
     );
 }
 
@@ -401,20 +401,20 @@ fn published_quick_start_docs_respect_command_registry() {
         ))
     });
 
-    // Candidate-only commands must appear at least once under a labeled candidate channel.
+    // `why` is promoted into the exact Published 0.1.11 command registry.
     let why_occurrences: Vec<_> = all_taught
         .iter()
         .filter(|cmd| cmd.subcommand == "why")
         .collect();
     assert!(
         !why_occurrences.is_empty(),
-        "docs should still teach `why` on the source-candidate path"
+        "published first-run docs should teach `why`"
     );
     assert!(
         why_occurrences
             .iter()
-            .all(|cmd| cmd.channel == DocChannel::Candidate),
-        "every `why` occurrence must be labeled Source-candidate / Unreleased"
+            .any(|cmd| cmd.channel == DocChannel::Published),
+        "at least one `why` occurrence must be taught on the Published path"
     );
 
     let result = PublishedQuickStartV1 {
@@ -430,7 +430,7 @@ fn published_quick_start_docs_respect_command_registry() {
 }
 
 #[test]
-fn stale_published_path_teaching_why_is_rejected() {
+fn stale_published_path_teaching_unknown_command_is_rejected() {
     let registry = parse_registry(REGISTRY);
     let stale = r#"# Fake published quick start
 
@@ -441,24 +441,24 @@ cargo install cargo-allow --version 0.1.11 --locked
 ```
 
 ```bash
-cargo-allow why --kind panic --path src/lib.rs --line 1
+cargo-allow future-command
 ```
 "#;
     let taught = extract_taught_commands("stale-fixture.md", stale);
     let err = evaluate_published_path(&registry, &taught)
-        .expect_err("stale published-path `why` must fail the contract");
+        .expect_err("unknown published-path command must fail the contract");
     assert!(
-        err.iter().any(|msg| msg.contains("why")),
-        "expected a why-related failure, got: {err:?}"
+        err.iter().any(|msg| msg.contains("future-command")),
+        "expected an unknown-command failure, got: {err:?}"
     );
 }
 
 #[test]
-fn labeled_candidate_why_is_accepted() {
+fn labeled_candidate_may_use_published_why() {
     let registry = parse_registry(REGISTRY);
     let ok = r#"# Source candidate
 
-Unreleased on Published 0.1.11 (source candidate):
+The source candidate includes the Published 0.1.11 command surface:
 
 ```bash
 cargo-allow why --kind panic --path src/lib.rs --line 1
@@ -466,7 +466,9 @@ cargo-allow why --kind panic --path src/lib.rs --line 1
 "#;
     let taught = extract_taught_commands("candidate-fixture.md", ok);
     evaluate_published_path(&registry, &taught).unwrap_or_else(|errors| {
-        std::panic::panic_any(format!("labeled candidate why should pass: {errors:?}"))
+        std::panic::panic_any(format!(
+            "candidate use of published why should pass: {errors:?}"
+        ))
     });
 }
 

@@ -67,4 +67,5 @@ first_run_flags = [
   "--line",
   "--allow-id",
   "--profile",
+  "--repo-policy",
 ]

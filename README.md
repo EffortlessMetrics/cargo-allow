@@ -99,13 +99,8 @@ cargo-allow check --mode no-new
 cargo-allow diff --base origin/main
 cargo-allow list
 cargo-allow explain <allow-id>
-cargo-allow worklist --format json
-```
-
-Unreleased on Published `0.1.11` (source candidate / current `main` only):
-
-```bash
 cargo-allow why --kind panic --path src/lib.rs --line 42
+cargo-allow worklist --format json
 ```
 
 ## What cargo-allow Does Not Claim
@@ -186,7 +181,7 @@ Most users start from the surface they already own.
 | New adopter | Choose the closest path: source exceptions, no-new, spec-system, CI, or cross-repo rollout. | [Onboarding](docs/onboarding.md) |
 | CI owner | Add `cargo-allow check --mode no-new` and upload the receipt. | [CI guide](docs/how-to/run-in-ci.md) |
 | Reviewer | Run `cargo-allow diff --base origin/main`. | [PR posture](docs/pr-posture.md) |
-| Auditor | Run `cargo-allow list` and `cargo-allow explain <id>` on Published `0.1.11`; add `cargo-allow why --kind <kind> --path <path> --line <line>` only on the source candidate. | [Explain an allow](docs/how-to/explain-an-allow.md), [Explain why a finding](docs/how-to/explain-why-a-finding.md) |
+| Auditor | Run `cargo-allow list`, `cargo-allow explain <id>`, and `cargo-allow why --kind <kind> --path <path> --line <line>` on Published `0.1.11`. | [Explain an allow](docs/how-to/explain-an-allow.md), [Explain why a finding](docs/how-to/explain-why-a-finding.md) |
 | Migrator | Run `cargo-allow migrate --repo-policy <dir>`. | [Migration](docs/how-to/migrate-from-xtask.md) |
 | Agent operator | Run `cargo-allow worklist --format json`. | [Agent worklists](docs/how-to/feed-agent-worklists.md) |
 

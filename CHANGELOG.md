@@ -20,8 +20,8 @@ inventory without executing repository code.
   GitHub Actions examples (#2355).
 - Offline published-release first-run command registry
   (`docs/dogfood/fixtures/getting-started/published-command-registry.toml`) with
-  `PublishedQuickStartV1` docs contract tests so source-candidate-only commands cannot appear as ordinary published
-  quick-start instructions (#2353).
+  `PublishedQuickStartV1` docs contract tests so source-candidate-only commands
+  cannot appear as ordinary published quick-start instructions (#2353).
 - Branched, executable first-hour journey in `docs/getting-started.md` with
   published-vs-candidate channel selection, install prerequisites, clean vs
   brownfield forks, `init`/`propose` alternatives, policy command map, fixture

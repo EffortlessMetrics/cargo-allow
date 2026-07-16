@@ -6,28 +6,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Retry after registering the published migrate --repo-policy flag.
-  repair-release-0-1-11:
-    if: github.event_name == 'pull_request' && github.head_ref == 'release/0.1.11' && github.actor != 'github-actions[bot]'
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6.0.2
-        with:
-          ref: release/0.1.11
-          fetch-depth: 0
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
-      - name: Reconcile exact Published 0.1.11 command surface
-        run: bash scripts/run-repair-0.1.11-freeze.sh
-      - uses: actions/upload-artifact@v7.0.1
-        if: always()
-        with:
-          name: release-0.1.11-repair-log
-          path: target/release-repair/repair.log
-
   # Prove the workspace rust-version pin (1.85) still builds and runs the
   # fast package proof. Stable/full suite stays on the `test` job below so
   # the MSRV lane stays short and release-claim oriented (#1901).
@@ -60,12 +38,24 @@ jobs:
           key: package-smoke
       - name: Package candidate smoke (Stage A)
         run: bash scripts/package-candidate-smoke.sh
+      - name: Source candidate first-hour journey (#2278)
+        run: |
+          bin="target/package-candidate-smoke/install/bin/cargo-allow"
+          if [[ -x "${bin}.exe" ]]; then
+            bin="${bin}.exe"
+          fi
+          CARGO_ALLOW_BIN="${bin}" bash scripts/source-candidate-smoke.sh
       - uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
           name: package-candidate-smoke-receipt
           path: target/package-candidate-smoke/package-candidate-smoke.receipt.txt
-
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: source-candidate-smoke-receipt
+          path: target/source-candidate-smoke/source-candidate-smoke.receipt.json
+          if-no-files-found: warn
   # Hosted characterization for #2366 / #2355: shallow missing-base fails closed,
   # then the same diff succeeds after history is available. Linux-only; keeps PR
   # CI cheap relative to a full matrix.
@@ -136,4 +126,5 @@ jobs:
         if: always()
         with:
           name: cargo-allow-reports
-          path: target/cargo-allow/
+          path: |
+            target/cargo-allow/
