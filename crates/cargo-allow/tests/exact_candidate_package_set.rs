@@ -80,6 +80,28 @@ fn example_exact_candidate_package_set_matches_schema_constants() {
             .any(|v| v.as_str() == Some("vendor_warm_may_rewrite_extracted_cargo_lock")),
         "example must record vendor warm lock rewrite limitation"
     );
+    assert!(
+        !limitations
+            .iter()
+            .any(|v| v.as_str() == Some("source_checkout_not_denied_during_install")),
+        "source-checkout denial is no longer a deferred limitation"
+    );
+    assert_eq!(
+        example
+            .pointer("/isolation/source_checkout_denied")
+            .and_then(serde_json::Value::as_bool),
+        Some(true),
+        "example must claim source_checkout_denied during decisive install"
+    );
+    assert!(
+        example
+            .get("claim_boundary")
+            .and_then(serde_json::Value::as_array)
+            .into_iter()
+            .flatten()
+            .any(|v| v.as_str() == Some("source_checkout_denied_during_decisive_install")),
+        "example claim_boundary must include source-checkout denial"
+    );
     assert_eq!(
         example
             .pointer("/environment/isolation_mechanism")
@@ -109,6 +131,7 @@ fn example_exact_candidate_package_set_matches_schema_constants() {
         "omit_candidate_from_directory_vendor",
         "candidate_commit_or_version_mismatch",
         "missing_required_package_metadata_or_file",
+        "decisive_install_source_checkout_denied",
     ] {
         assert!(
             ids.contains(&required),
@@ -126,6 +149,10 @@ fn example_exact_candidate_package_set_matches_schema_constants() {
     assert!(
         classes.contains(&"ManifestMalformed"),
         "example must include ManifestMalformed negative class"
+    );
+    assert!(
+        classes.contains(&"CheckoutIsolated"),
+        "example must include CheckoutIsolated negative class"
     );
     assert!(
         !limitations.iter().any(|v| {

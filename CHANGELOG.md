@@ -25,11 +25,12 @@ inventory without executing repository code.
 - `scripts/exact-candidate-package-set.sh` emits
   `cargo-allow.exact-candidate-package-set.v1` after packaging the shared
   ten-crate set, assembling a Cargo directory vendor with injected candidate
-  packages, offline-installing with crates-io source replacement, and running
-  omit/path/checksum/version/vendor-omit / candidate-mismatch (`CandidateStale`)
-  / missing-metadata (`ManifestMalformed`) negatives (#2384 / #2380 / #2277
-  Stage C; classic transitive local-registry index and source-checkout denial
-  remain deferred).
+  packages, offline-installing with crates-io source replacement while renaming
+  workspace `crates/` away (`source_checkout_denied` / `CheckoutIsolated`), and
+  running omit/path/checksum/version/vendor-omit / candidate-mismatch
+  (`CandidateStale`) / missing-metadata (`ManifestMalformed`) /
+  source-checkout-denied negatives (#2406 / #2384 / #2380 / #2277 Stage C;
+  classic transitive local-registry index remains deferred).
 - Hosted `shallow-diff-smoke` CI job and `scripts/shallow-diff-base-smoke.sh`:
   prove `diff --base` fails closed without base history, then succeeds after
   history is available (#2366).

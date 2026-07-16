@@ -17,10 +17,10 @@
 #   - omit injected candidate from directory vendor (offline resolve fail)
 #   - candidate commit/version mismatch (CandidateStale)
 #   - missing required package metadata/file (ManifestMalformed)
+#   - decisive install with crates/ renamed away (CheckoutIsolated)
 #
 # Does not: publish; classic transitive local-registry (.crate+index) mirror;
-# deny the source checkout during decisive install; run the installed operator
-# journey (#2278).
+# run the installed operator journey (#2278).
 #
 # Usage:
 #   bash scripts/exact-candidate-package-set.sh
@@ -50,8 +50,17 @@ receipt="${work_dir}/exact-candidate-package-set.receipt.json"
 crate_set_fixture="${ROOT}/docs/dogfood/fixtures/release/candidate-crate-set.toml"
 schema_id="cargo-allow.exact-candidate-package-set.v1"
 crate_set_schema_id="cargo-allow.candidate-crate-set.v1"
+crates_path="${ROOT}/crates"
+crates_stash="${work_dir}/crates-source-stash"
+
+restore_source_checkout() {
+  if [[ -d "${crates_stash}" && ! -e "${crates_path}" ]]; then
+    mv "${crates_stash}" "${crates_path}"
+  fi
+}
 
 cleanup_offline() {
+  restore_source_checkout
   if [[ "${KEEP_OFFLINE:-0}" != "1" ]]; then
     rm -rf "${offline_root}"
   fi
@@ -322,6 +331,12 @@ directory = "${vendor_native}"
 EOF
 
 log "installing cargo-allow offline from extracted package via directory source"
+log "denying workspace source checkout (renaming crates/) during decisive install"
+[[ -d "${crates_path}" ]] || fail "expected workspace crates/ at ${crates_path}"
+restore_source_checkout
+rm -rf "${crates_stash}"
+mv "${crates_path}" "${crates_stash}"
+[[ ! -e "${crates_path}" ]] || fail "crates/ still present after stash for source-checkout denial"
 rm -rf "${install_root}"
 mkdir -p "${install_root}"
 set +e
@@ -334,7 +349,12 @@ CARGO_HOME="${install_cargo_home}" CARGO_TARGET_DIR="${target_dir}" \
     --offline
 install_code=$?
 set -e
+restore_source_checkout
+[[ -d "${crates_path}" ]] || fail "failed to restore crates/ after decisive install"
+[[ ! -e "${crates_stash}" ]] || fail "crates stash still present after restore"
 [[ "${install_code}" -eq 0 ]] || fail "offline directory-source cargo install failed (exit ${install_code})"
+checkout_denied_class="CheckoutIsolated"
+checkout_denied_passed=true
 
 cargo_bin="${install_root}/bin/cargo-allow"
 if [[ -x "${cargo_bin}.exe" ]]; then
@@ -762,7 +782,8 @@ PY
       "${version_class}" "${version_passed}" \
       "${vendor_omit_class}" "${vendor_omit_passed}" \
       "${stale_class}" "${stale_passed}" \
-      "${malformed_class}" "${malformed_passed}" <<'PY'
+      "${malformed_class}" "${malformed_passed}" \
+      "${checkout_denied_class}" "${checkout_denied_passed}" <<'PY'
 import json, sys
 (
     omit_class,
@@ -780,6 +801,8 @@ import json, sys
     stale_passed,
     malformed_class,
     malformed_passed,
+    checkout_denied_class,
+    checkout_denied_passed,
 ) = sys.argv[1:]
 print(json.dumps([
     {
@@ -829,6 +852,12 @@ print(json.dumps([
         "result_class": malformed_class,
         "passed": malformed_passed == "true",
         "detail": "stripped license and missing README.md in normalized allow-core classifies ManifestMalformed",
+    },
+    {
+        "id": "decisive_install_source_checkout_denied",
+        "result_class": checkout_denied_class,
+        "passed": checkout_denied_passed == "true",
+        "detail": "decisive offline install succeeds while workspace crates/ is renamed away (CheckoutIsolated)",
     },
 ]))
 PY
@@ -897,6 +926,7 @@ receipt = {
     "claim_boundary": [
         "exact_ten_crate_package_graph",
         "directory_source_replacement_offline_install",
+        "source_checkout_denied_during_decisive_install",
         "source_candidate_not_published_install_journey",
     ],
     "candidate": {
@@ -918,7 +948,7 @@ receipt = {
         "install_from_extracted_package": True,
         "internal_deps_patched": False,
         "workspace_paths_absent": True,
-        "source_checkout_denied": False,
+        "source_checkout_denied": True,
     },
     "install": {
         "method": "cargo_install_path_extracted_with_directory_source",
@@ -930,7 +960,6 @@ receipt = {
         "vendor_warm_may_use_crates_io",
         "vendor_warm_may_rewrite_extracted_cargo_lock",
         "not_classic_transitive_local_registry_index",
-        "source_checkout_not_denied_during_install",
         "linux_hosted_claim_only",
     ],
 }
