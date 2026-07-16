@@ -1,4 +1,5 @@
-//! Offline characterization for SourceCandidateSmokeReceiptV1 (#2278 / #2373 / #2387).
+//! Offline characterization for SourceCandidateSmokeReceiptV1
+//! (#2278 / #2373 / #2387 / #2396).
 //!
 //! The installed first-hour + lifecycle journey itself lives in
 //! `scripts/source-candidate-smoke.sh` so release harnesses can invoke Cargo
@@ -33,7 +34,7 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
     );
     assert!(
         SCHEMA_DOC.contains("negative_controls"),
-        "schema must include negative_controls for #2373/#2387"
+        "schema must include negative_controls for #2373/#2387/#2396"
     );
     let example: serde_json::Value = serde_json::from_str(EXAMPLE_RECEIPT)
         .unwrap_or_else(|err| std::panic::panic_any(format!("example receipt json: {err}")));
@@ -56,6 +57,16 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
             Some(*step)
         );
     }
+    let claim_boundary = example
+        .get("claim_boundary")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("claim_boundary missing"));
+    assert!(
+        claim_boundary
+            .iter()
+            .any(|v| v.as_str() == Some("post_install_source_hidden_ordinary_scan")),
+        "example must claim post-install source-hidden ordinary scan"
+    );
     let negatives = example
         .get("negative_controls")
         .and_then(serde_json::Value::as_array)
@@ -69,6 +80,9 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
         "prune_preview_apply_subject_agree",
         "refresh_preview_apply_subject_agree",
         "malformed_smoke_receipt_cannot_claim_passed",
+        "post_install_source_hidden_ordinary_scan",
+        "missing_asset_not_satisfied_by_source_checkout",
+        "wrong_installed_binary_version",
     ] {
         assert!(
             ids.contains(&required),
@@ -86,15 +100,21 @@ fn example_source_candidate_smoke_receipt_matches_schema_constants() {
         "example receipt must record ExactCandidate isolation limitation"
     );
     assert!(
+        limitations
+            .iter()
+            .any(|v| v.as_str() == Some("source_checkout_not_denied_during_install")),
+        "example must still record that path install uses the source checkout"
+    );
+    assert!(
         !limitations
             .iter()
-            .any(|v| v.as_str() == Some("refresh_lifecycle_not_executed")),
-        "example must not claim refresh was skipped after #2387"
+            .any(|v| v.as_str() == Some("checkout_denial_negative_deferred")),
+        "example must not claim checkout-denial remains deferred after #2396"
     );
     assert!(
         limitations
             .iter()
-            .any(|v| v.as_str() == Some("checkout_denial_negative_deferred")),
-        "example must record deferred checkout-denial limitation"
+            .any(|v| v.as_str() == Some("omit_packaged_asset_rebuild_not_executed")),
+        "example must record that MissingAsset is harness-classified, not package-rebuild omitted"
     );
 }

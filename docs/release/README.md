@@ -42,10 +42,13 @@ bash scripts/source-candidate-smoke.sh
 That harness path-installs into a temp root (or reuses `CARGO_ALLOW_BIN`),
 runs the brownfield first-hour journey plus refresh (location_drift),
 `diff --base`, and prune preview→write in an isolated git consumer, records
-omitted-step / preview-apply / malformed-receipt negatives, and writes
-`target/source-candidate-smoke/source-candidate-smoke.receipt.json`. It does
-**not** yet cover checkout denial or every remaining #2278 negative.
-Offline schema/example characterization remains
+omitted-step / preview-apply / malformed-receipt / post-install source-hidden
+ordinary-scan / MissingAsset-vs-checkout-fallback / wrong-version negatives,
+and writes `target/source-candidate-smoke/source-candidate-smoke.receipt.json`.
+It does **not** deny the source tree during path install, rebuild packages with
+omitted assets, or cover every remaining #2278 negative (network / optional
+profile / recovery beyond final `check --mode no-new`). Offline schema/example
+characterization remains
 `cargo test -p cargo-allow --test source_candidate_smoke --locked`.
 
 Exact ten-crate isolation (#2277 / #2372 Stage A, #2378 Stage B negatives, #2380 Stage C directory source) is

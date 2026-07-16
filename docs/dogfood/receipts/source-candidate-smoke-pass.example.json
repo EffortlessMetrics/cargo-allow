@@ -7,7 +7,8 @@
     "installed_binary_first_hour_journey",
     "refresh_diff_and_prune_lifecycle",
     "temporary_consumer_repository",
-    "source_candidate_not_published_registry"
+    "source_candidate_not_published_registry",
+    "post_install_source_hidden_ordinary_scan"
   ],
   "candidate": {
     "workspace_version": "0.1.10",
@@ -113,12 +114,30 @@
       "result_class": "MalformedArtifact",
       "passed": true,
       "detail": "Passed receipt with wrong schema_id is classified MalformedArtifact"
+    },
+    {
+      "id": "post_install_source_hidden_ordinary_scan",
+      "result_class": "CheckoutIsolated",
+      "passed": true,
+      "detail": "check --mode no-new after hiding crates/cargo-allow/src and docs/templates must still pass (CheckoutIsolated)"
+    },
+    {
+      "id": "missing_asset_not_satisfied_by_source_checkout",
+      "result_class": "MissingAsset",
+      "passed": true,
+      "detail": "omitted packaged asset present only under source checkout is classified MissingAsset"
+    },
+    {
+      "id": "wrong_installed_binary_version",
+      "result_class": "StaleCandidate",
+      "passed": true,
+      "detail": "forged version_output mismatch vs workspace version is classified StaleCandidate"
     }
   ],
   "limitations": [
     "package_set_not_consumed_from_isolated_registry",
     "source_checkout_not_denied_during_install",
-    "checkout_denial_negative_deferred",
+    "omit_packaged_asset_rebuild_not_executed",
     "published_registry_install_not_executed",
     "linux_hosted_claim_only"
   ]
