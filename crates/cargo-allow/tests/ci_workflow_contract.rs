@@ -293,7 +293,8 @@ fn run_in_ci_references_hosted_shallow_diff_smoke() {
         "shallow-diff-base-smoke.sh must exist"
     );
     assert!(
-        root.join("scripts/test-shallow-diff-base-smoke.sh").is_file(),
+        root.join("scripts/test-shallow-diff-base-smoke.sh")
+            .is_file(),
         "test-shallow-diff-base-smoke.sh must exist"
     );
     let workflow = normalize_lf(include_str!("../../../.github/workflows/ci.yml"));

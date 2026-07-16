@@ -4761,7 +4761,7 @@ column = 1
 [[allow]]
 id = "allow-4754"
 kind = "non_rust_file"
-family = "ci_declarative"
+family = "shell_script"
 path = "scripts/shallow-diff-base-smoke.sh"
 owner = "core/ci"
 classification = "ci_characterization_script"
@@ -4783,7 +4783,7 @@ column = 1
 [[allow]]
 id = "allow-4755"
 kind = "non_rust_file"
-family = "ci_declarative"
+family = "shell_script"
 path = "scripts/test-shallow-diff-base-smoke.sh"
 owner = "core/ci"
 classification = "ci_characterization_script"
