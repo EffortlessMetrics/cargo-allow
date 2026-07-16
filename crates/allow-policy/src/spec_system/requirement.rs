@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
 
-pub const REQUIREMENT_BLOCK_SCHEMA_VERSION: &str = "2.0";
+pub const REQUIREMENT_BLOCK_SCHEMA_VERSION: &str = "1.0";
 const REQUIREMENT_FENCE: &str = "```toml cargo-allow-requirements";
 const FENCE_END: &str = "```";
 
@@ -89,6 +89,7 @@ struct RawRequirementBlock {
 struct RawRequirement {
     id: String,
     generation: u32,
+    #[serde(alias = "lifecycle")]
     status: RequirementStatus,
     statement: String,
     claim_class: RequirementClaimClass,
@@ -286,7 +287,7 @@ kind: spec
 # Spec
 
 ```toml cargo-allow-requirements
-schema_version = "2.0"
+schema_version = "1.0"
 
 [[requirement]]
 id = "spec-only-runtime-promotion"
@@ -317,11 +318,14 @@ claim_class = "runtime_behavior"
     }
 
     #[test]
-    fn rejects_legacy_implemented_lifecycle_shape() {
-        let legacy = SPEC
-            .replace("schema_version = \"2.0\"", "schema_version = \"1.0\"")
-            .replace("status = \"accepted\"", "lifecycle = \"implemented\"");
-        assert!(parse_requirement_blocks(&legacy).is_err());
+    fn reads_accepted_legacy_field_without_allowing_implemented_status() -> Result<(), String> {
+        let accepted = SPEC.replace("status = \"accepted\"", "lifecycle = \"accepted\"");
+        let graph = parse_requirement_blocks(&accepted).map_err(|error| error.to_string())?;
+        assert_eq!(graph.requirements[0].status, RequirementStatus::Accepted);
+
+        let implemented = SPEC.replace("status = \"accepted\"", "lifecycle = \"implemented\"");
+        assert!(parse_requirement_blocks(&implemented).is_err());
+        Ok(())
     }
 
     #[test]
@@ -339,7 +343,7 @@ claim_class = "runtime_behavior"
     #[test]
     fn rejects_unknown_requirement_generation() {
         let result = parse_requirement_blocks(
-            &SPEC.replace("schema_version = \"2.0\"", "schema_version = \"3.0\""),
+            &SPEC.replace("schema_version = \"1.0\"", "schema_version = \"2.0\""),
         );
         assert!(result.is_err());
     }
