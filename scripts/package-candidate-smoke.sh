@@ -94,19 +94,22 @@ from pathlib import Path
 text = Path(sys.argv[1]).read_text(encoding="utf-8")
 in_list = False
 for line in text.splitlines():
-    stripped = line.strip()
+    stripped = line.strip().strip("\r")
     if stripped.startswith("crates"):
         in_list = True
         continue
     if in_list:
         if stripped.startswith("]"):
             break
-        if stripped.startswith('"') and stripped.endswith('",'):
-            print(stripped.strip('",'))
-        elif stripped.startswith('"') and stripped.endswith('"'):
-            print(stripped.strip('"'))
+        if stripped.startswith('"'):
+            name = stripped.strip(",").strip('"').strip()
+            if name:
+                print(name)
 PY
   )
+  for i in "${!crates[@]}"; do
+    crates[$i]="${crates[$i]//$'\r'/}"
+  done
 fi
 
 mkdir -p "${package_dir}"
