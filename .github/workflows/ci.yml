@@ -20,7 +20,12 @@ jobs:
         with:
           components: rustfmt
       - name: Reconcile exact Published 0.1.11 command surface
-        run: bash scripts/repair-0.1.11-freeze.sh
+        run: bash scripts/run-repair-0.1.11-freeze.sh
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: release-0.1.11-repair-log
+          path: target/release-repair/repair.log
 
   # Prove the workspace rust-version pin (1.85) still builds and runs the
   # fast package proof. Stable/full suite stays on the `test` job below so
