@@ -1,0 +1,32 @@
+# Documented negative fixture for #2355 / offline CI workflow contract.
+# This is NOT a recommended workflow. It deliberately uses a shallow checkout
+# (no full history fetch) so tests can prove the PR example requires base history.
+#
+# Hosted shallow-checkout characterization (fail then fix) is tracked separately.
+
+name: cargo-allow diff shallow negative
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-allow-diff-shallow-negative:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        # Intentionally shallow: do not set fetch-depth
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-allow
+        run: cargo install cargo-allow --version 0.1.10 --locked
+      - name: Run cargo-allow PR posture diff
+        shell: bash
+        run: |
+          base_ref="origin/${GITHUB_BASE_REF:-main}"
+          mkdir -p target/cargo-allow
+          cargo-allow diff \
+            --base "$base_ref" \
+            --format markdown \
+            --output target/cargo-allow/pr-summary.md

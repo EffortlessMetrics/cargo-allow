@@ -1609,8 +1609,8 @@ family = "documentation"
 path = "docs/how-to/run-in-ci.md"
 owner = "core/policy"
 classification = "product_documentation"
-reason = "Documents the task-focused CI setup path for PR posture and mainline receipts."
-evidence = ["doc:README.md", "doc:docs/ci.md", "doc:docs/claim-boundaries.md"]
+reason = "Documents the copy-paste CI path for PR posture, mainline receipts, artifacts, and exit contracts."
+evidence = ["doc:README.md", "doc:docs/ci.md", "doc:docs/claim-boundaries.md", "issue:2355", "test:run_in_ci_links_complete_workflow_examples"]
 created = "2026-06-01"
 review_after = "2026-11-01"
 
@@ -1971,6 +1971,72 @@ ast_kind = "tracked_file"
 target_fingerprint = "toml"
 line_hint = 1
 glob = "docs/dogfood/fixtures/getting-started/published-command-registry.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4751"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/troubleshoot-cargo-allow.md"
+owner = "core/docs"
+classification = "product_documentation"
+reason = "Operator troubleshooting matrix mapping fail-closed symptoms to next commands (#2355)."
+evidence = ["doc:docs/how-to/run-in-ci.md", "test:troubleshooting_and_rollback_guides_cover_ops_contract", "issue:2355"]
+created = "2026-07-15"
+review_after = "2026-10-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/how-to/troubleshoot-cargo-allow.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4752"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/rollback-cargo-allow-adoption.md"
+owner = "core/docs"
+classification = "product_documentation"
+reason = "Adopter rollback/uninstall ownership map for binary, policy, artifacts, and CI (#2355)."
+evidence = ["doc:docs/how-to/run-in-ci.md", "test:troubleshooting_and_rollback_guides_cover_ops_contract", "issue:2355"]
+created = "2026-07-15"
+review_after = "2026-10-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/how-to/rollback-cargo-allow-adoption.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4753"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/ci/shallow-checkout-missing-base.yml"
+owner = "core/policy"
+classification = "docs_executable_contract"
+reason = "Documented negative CI fixture omitting fetch-depth: 0 for the offline workflow contract (#2355)."
+evidence = ["doc:docs/how-to/run-in-ci.md", "test:committed_workflow_examples_parse_and_meet_semantic_contract", "issue:2355"]
+created = "2026-07-15"
+review_after = "2026-10-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "yml"
+line_hint = 1
+glob = "docs/dogfood/fixtures/ci/shallow-checkout-missing-base.yml"
 
 [allow.last_seen]
 line = 1
