@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::{ProfileArg, RootArgs, parse_kind_filter};
+use crate::{ProfileArg, RootArgs, parse_kind_filter, parse_match_status_arg};
 
 use super::worklist_item_kind::parse_work_item_kind_filter;
 use super::worklist_types::WorklistFilters;
@@ -26,21 +26,9 @@ pub(crate) struct WorklistArgs {
     #[arg(long, value_parser = parse_work_item_kind_filter)]
     pub(super) item_kind: Option<String>,
     /// Filter work items by match status.
-    #[arg(
-        long,
-        value_parser = [
-            "matched",
-            "new",
-            "stale",
-            "expired",
-            "review_due",
-            "ambiguous",
-            "invalid_selector",
-            "missing_required_field",
-            "evidence_missing",
-            "baseline_debt"
-        ]
-    )]
+    ///
+    /// Accepts every `MatchStatus` value, including `location_drift`.
+    #[arg(long, value_parser = parse_match_status_arg)]
     pub(super) status: Option<String>,
     /// Filter work items by durable allow entry ID.
     #[arg(long)]
