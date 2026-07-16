@@ -1,0 +1,95 @@
+# Checked first-hour step inventory for docs/getting-started.md (#2354).
+# Consumed by crates/cargo-allow/tests/first_hour_adoption.rs.
+# Intended for reuse by the installed-package journey (#2278).
+#
+# Fields:
+#   id            stable step id (must appear in getting-started.md)
+#   channel       published | candidate | both
+#   argv_head     first argv token after the binary (empty = docs-only gate)
+#   exit_class    success | failure | advisory_success
+#   output_id     stable phrase that must appear in getting-started.md
+#                 (and, for live steps, in renderer output or adoption proof)
+
+[[step]]
+id = "channel_select"
+channel = "both"
+argv_head = ""
+exit_class = "success"
+output_id = "Choose a product channel"
+
+[[step]]
+id = "install_prereqs"
+channel = "both"
+argv_head = ""
+exit_class = "success"
+output_id = "Rust 1.85"
+
+[[step]]
+id = "doctor_no_policy"
+channel = "published"
+argv_head = "doctor"
+exit_class = "success"
+output_id = "cargo-allow.doctor.v1"
+
+[[step]]
+id = "audit_clean"
+channel = "published"
+argv_head = "audit"
+exit_class = "advisory_success"
+output_id = "do not manufacture baseline debt"
+
+[[step]]
+id = "audit_with_finding"
+channel = "published"
+argv_head = "audit"
+exit_class = "advisory_success"
+output_id = "Choose ONE bootstrap path"
+
+[[step]]
+id = "bootstrap_init"
+channel = "published"
+argv_head = "init"
+exit_class = "success"
+output_id = "cargo-allow init"
+
+[[step]]
+id = "bootstrap_propose_preview"
+channel = "published"
+argv_head = "propose"
+exit_class = "success"
+output_id = "omit `--write` to preview"
+
+[[step]]
+id = "bootstrap_propose_write"
+channel = "published"
+argv_head = "propose"
+exit_class = "success"
+output_id = "baseline_debt"
+
+[[step]]
+id = "check_no_new_pass"
+channel = "published"
+argv_head = "check"
+exit_class = "success"
+output_id = "Result: passed/advisory"
+
+[[step]]
+id = "check_no_new_fail"
+channel = "published"
+argv_head = "check"
+exit_class = "failure"
+output_id = "Result: failed"
+
+[[step]]
+id = "list_explain_worklist"
+channel = "published"
+argv_head = "list"
+exit_class = "success"
+output_id = "cargo-allow list"
+
+[[step]]
+id = "why_candidate"
+channel = "candidate"
+argv_head = "why"
+exit_class = "success"
+output_id = "Source-candidate diagnosis"

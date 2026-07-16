@@ -1895,8 +1895,8 @@ family = "documentation"
 path = "docs/getting-started.md"
 owner = "core/policy"
 classification = "product_documentation"
-reason = "Provides the first-run tutorial for setup, audit, policy creation, and no-new checks."
-evidence = ["doc:README.md", "doc:docs/source-exception-ledger.md", "doc:docs/claim-boundaries.md"]
+reason = "Provides the branched first-hour journey for channel selection, doctor/audit, init-or-propose bootstrap, and no-new checks."
+evidence = ["doc:README.md", "doc:docs/source-exception-ledger.md", "doc:docs/claim-boundaries.md", "issue:2354", "test:getting_started_documents_checked_step_inventory"]
 created = "2026-06-01"
 review_after = "2026-11-01"
 
@@ -1905,6 +1905,50 @@ ast_kind = "tracked_file"
 target_fingerprint = "md"
 line_hint = 1
 glob = "docs/getting-started.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4748"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/getting-started/step-inventory.toml"
+owner = "core/policy"
+classification = "docs_executable_contract"
+reason = "Checked first-hour step inventory shared by getting-started.md and first_hour_adoption tests (#2354), consumable by #2278."
+evidence = ["doc:docs/getting-started.md", "test:getting_started_documents_checked_step_inventory", "issue:2354"]
+created = "2026-07-15"
+review_after = "2026-10-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+line_hint = 1
+glob = "docs/dogfood/fixtures/getting-started/step-inventory.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4749"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/getting-started/expected-markers.md"
+owner = "core/policy"
+classification = "docs_executable_contract"
+reason = "Fixture-derived expected-output markers for the branched getting-started journey (#2354)."
+evidence = ["doc:docs/getting-started.md", "test:first_hour_expected_markers_match_live_renderer", "issue:2354"]
+created = "2026-07-15"
+review_after = "2026-10-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/dogfood/fixtures/getting-started/expected-markers.md"
 
 [allow.last_seen]
 line = 1
