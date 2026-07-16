@@ -84,77 +84,131 @@ fn expected_markers_doc() -> &'static str {
     include_str!("../../../docs/dogfood/fixtures/getting-started/expected-markers.md")
 }
 
-/// Parse `id = "..."` rows from the committed step inventory (no extra deps).
-fn inventory_step_ids(inventory: &str) -> Vec<&str> {
-    let mut ids = Vec::new();
+/// Parse `[[step]]` rows from the committed step inventory (no extra deps).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct InventoryStep {
+    id: String,
+    channel: String,
+    argv_head: String,
+    exit_class: String,
+    output_id: String,
+}
+
+fn inventory_steps(inventory: &str) -> Vec<InventoryStep> {
+    let mut steps = Vec::new();
+    let mut current: Option<InventoryStep> = None;
+    let flush = |steps: &mut Vec<InventoryStep>, current: &mut Option<InventoryStep>| {
+        if let Some(step) = current.take() {
+            if !step.id.is_empty() {
+                steps.push(step);
+            }
+        }
+    };
+
     for line in inventory.lines() {
         let trimmed = line.trim();
-        let Some(rest) = trimmed.strip_prefix("id = \"") else {
+        if trimmed.starts_with("[[step]]") {
+            flush(&mut steps, &mut current);
+            current = Some(InventoryStep {
+                id: String::new(),
+                channel: String::new(),
+                argv_head: String::new(),
+                exit_class: String::new(),
+                output_id: String::new(),
+            });
+            continue;
+        }
+        let Some(step) = current.as_mut() else {
             continue;
         };
-        let Some(end) = rest.find('"') else {
+        let Some((key, raw)) = trimmed.split_once('=') else {
             continue;
         };
-        let Some(id) = rest.get(..end) else {
-            continue;
-        };
-        ids.push(id);
+        let value = raw.trim().trim_matches('"');
+        match key.trim() {
+            "id" => step.id = value.to_string(),
+            "channel" => step.channel = value.to_string(),
+            "argv_head" => step.argv_head = value.to_string(),
+            "exit_class" => step.exit_class = value.to_string(),
+            "output_id" => step.output_id = value.to_string(),
+            _ => {}
+        }
     }
-    ids
+    flush(&mut steps, &mut current);
+    steps
 }
 
 #[test]
 fn getting_started_documents_checked_step_inventory() {
     let guide = getting_started_doc();
     let inventory = step_inventory();
-    let ids = inventory_step_ids(inventory);
+    let steps = inventory_steps(inventory);
     assert!(
-        !ids.is_empty(),
-        "step-inventory.toml must list at least one step id"
+        !steps.is_empty(),
+        "step-inventory.toml must list at least one step"
     );
-    for id in &ids {
+
+    for step in &steps {
+        assert!(!step.id.is_empty(), "inventory step missing id: {step:?}");
         assert!(
-            guide.contains(id),
-            "getting-started must document step id `{id}`"
+            matches!(step.channel.as_str(), "published" | "candidate" | "both"),
+            "inventory step `{}` has invalid channel `{}`",
+            step.id,
+            step.channel
         );
+        assert!(
+            matches!(
+                step.exit_class.as_str(),
+                "success" | "failure" | "advisory_success"
+            ),
+            "inventory step `{}` has invalid exit_class `{}`",
+            step.id,
+            step.exit_class
+        );
+        assert!(
+            !step.output_id.is_empty(),
+            "inventory step `{}` missing output_id",
+            step.id
+        );
+        assert!(
+            guide.contains(&step.id),
+            "getting-started must document step id `{}`",
+            step.id
+        );
+        assert!(
+            guide.contains(&step.output_id),
+            "getting-started must document output_id `{}` for step `{}`",
+            step.output_id,
+            step.id
+        );
+        if !step.argv_head.is_empty() {
+            assert!(
+                guide.contains(&step.argv_head),
+                "getting-started must name argv_head `{}` for step `{}`",
+                step.argv_head,
+                step.id
+            );
+        }
+        if step.channel == "candidate" {
+            assert!(
+                guide.contains("Source-candidate") || guide.contains("source candidate"),
+                "candidate step `{}` must stay labeled as source-candidate in the guide",
+                step.id
+            );
+        }
     }
 
-    // Stable journey phrases the guide must keep for each inventory step.
     for required in [
-        ("channel_select", "Choose a product channel"),
-        ("install_prereqs", "Rust 1.85"),
-        ("doctor_no_policy", "cargo-allow.doctor.v1"),
-        ("audit_clean", "do not manufacture baseline debt"),
-        ("audit_with_finding", "Choose ONE bootstrap path"),
-        ("bootstrap_init", "cargo-allow init"),
-        ("bootstrap_propose_preview", "omit `--write` to preview"),
-        ("bootstrap_propose_write", "propose --write"),
-        ("check_no_new_pass", "Result: passed/advisory"),
-        ("check_no_new_fail", "Result: failed"),
-        ("list_explain_worklist", "cargo-allow list"),
-        ("why_candidate", "Source-candidate diagnosis"),
+        "Illustrative only",
+        "how-to/manage-an-exception.md",
+        "do not manufacture baseline debt",
+        "Choose ONE bootstrap path",
     ] {
         assert!(
-            inventory.contains(&format!("id = \"{}\"", required.0)),
-            "inventory missing step {}",
-            required.0
-        );
-        assert!(
-            guide.contains(required.1),
-            "getting-started missing phrase for {}: {}",
-            required.0,
-            required.1
+            guide.contains(required),
+            "getting-started missing required phrase: {required}"
         );
     }
-
-    assert!(
-        guide.contains("Illustrative only"),
-        "headline allow-0042 example must be marked illustrative"
-    );
-    assert!(
-        guide.contains("how-to/manage-an-exception.md"),
-        "getting-started should route to manage-an-exception"
-    );
 }
 
 #[test]

@@ -13,8 +13,8 @@ proc macro expansion, or proof-tool execution against the **target** repository.
 Executable proof for this journey lives in
 `crates/cargo-allow/tests/first_hour_adoption.rs` and the checked step inventory
 at [`docs/dogfood/fixtures/getting-started/step-inventory.toml`](dogfood/fixtures/getting-started/step-inventory.toml).
-Expected-output markers are regenerated against the just-built binary in that
-same test.
+Expected-output markers are validated against the just-built binary in that
+same test (they are not hand-copied from stale receipts).
 
 ## 0. Choose a product channel
 
