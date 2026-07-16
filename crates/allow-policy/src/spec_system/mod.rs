@@ -4,8 +4,9 @@
 //! validates registered artifact file existence, roots, visible IDs,
 //! ledger-resolvable graph links, active-goal TOML references, support-tier
 //! claim/proof fields, and the first bounded requirement/implementation-slice
-//! invariant. It does not execute proof commands or affect default cargo-allow
-//! behavior.
+//! invariant. Normative requirement status and implementation-claim status are
+//! intentionally independent. The module does not execute proof commands or
+//! affect default cargo-allow behavior.
 
 mod active_goal;
 mod config;
