@@ -5393,10 +5393,10 @@ review_after = "2026-11-01"
 ast_kind = "method_call"
 container = "tests::parse_front_matter_extracts_id_and_links"
 callee = "expect"
-line_hint = 259
+line_hint = 261
 
 [allow.last_seen]
-line = 259
+line = 261
 column = 47
 
 [[allow]]
@@ -5481,10 +5481,10 @@ review_after = "2026-11-01"
 ast_kind = "method_call"
 container = "tests::parse_command_registry_reads_command_tables"
 callee = "expect"
-line_hint = 247
+line_hint = 249
 
 [allow.last_seen]
-line = 247
+line = 249
 column = 53
 
 [[allow]]
