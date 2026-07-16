@@ -1,0 +1,345 @@
+name: one-shot-review-staged-index-2370
+
+on:
+  push:
+    branches:
+      - agent/staged-index-source-2359
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.repository == 'EffortlessMetrics/cargo-allow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          ref: agent/staged-index-source-2359
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Apply reviewed staged-index contract fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('crates/allow-diff/src/staged_index.rs')
+          text = path.read_text()
+
+          def replace_once(old: str, new: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected exactly one replacement, found {count}: {old[:100]!r}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              'use allow_core::{CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};\n',
+              'use allow_core::{CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};\nuse sha2::{Digest, Sha256};\n',
+          )
+          replace_once(
+              '#[derive(Clone, Debug, Eq, PartialEq)]\npub struct StagedRepositorySnapshot {',
+              '#[derive(Clone, Debug)]\npub struct StagedRepositorySnapshot {',
+          )
+          snapshot_end = '''    pub limitations: Vec<String>,
+          }
+
+          #[derive(Clone, Debug, Eq, PartialEq)]
+          pub enum StagedPathRead'''
+          snapshot_impl = '''    pub limitations: Vec<String>,
+          }
+
+          impl PartialEq for StagedRepositorySnapshot {
+              fn eq(&self, other: &Self) -> bool {
+                  self.parent_commit == other.parent_commit
+                      && self.entries == other.entries
+                      && self.changes == other.changes
+                      && self.identity == other.identity
+                      && self.completeness == other.completeness
+                      && self.limitations == other.limitations
+              }
+          }
+
+          impl Eq for StagedRepositorySnapshot {}
+
+          #[derive(Clone, Debug, Eq, PartialEq)]
+          pub enum StagedPathRead'''
+          replace_once(snapshot_end, snapshot_impl)
+          replace_once('    if first.identity != second.identity {', '    if first != second {')
+          replace_once(
+              '''    match entry.kind {
+                  StagedEntryKind::RegularFile | StagedEntryKind::ExecutableFile => {
+                      read_blob_by_oid(&snapshot.root, &entry.object_oid).map(StagedPathRead::Regular)
+                  }
+                  kind => Ok(StagedPathRead::Unsupported {
+''',
+              '''    match entry.kind {
+                  StagedEntryKind::RegularFile | StagedEntryKind::ExecutableFile
+                      if !is_zero_oid(&entry.object_oid) =>
+                  {
+                      read_blob_by_oid(&snapshot.root, &entry.object_oid).map(StagedPathRead::Regular)
+                  }
+                  kind => Ok(StagedPathRead::Unsupported {
+''',
+          )
+          replace_once('    let limitations = staged_limitations(&entries);', '    let limitations = staged_limitations(&entries, &changes);')
+          replace_once(
+              'fn staged_limitations(entries: &[StagedIndexEntry]) -> Vec<String> {',
+              'fn staged_limitations(entries: &[StagedIndexEntry], changes: &[StagedPathChange]) -> Vec<String> {',
+          )
+          replace_once(
+              '''    }
+              limitations.sort();
+              limitations.dedup();
+              limitations
+          }
+
+          fn ensure_git_worktree''',
+              '''    }
+              for change in changes {
+                  if change.path.is_none() {
+                      limitations.push(format!(
+                          "staged change path is not representable on this host: {}",
+                          display_raw_path(&change.raw_path)
+                      ));
+                  }
+                  if let Some(previous_raw_path) = &change.previous_raw_path {
+                      if change.previous_path.is_none() {
+                          limitations.push(format!(
+                              "previous staged change path is not representable on this host: {}",
+                              display_raw_path(previous_raw_path)
+                          ));
+                      }
+                  }
+              }
+              limitations.sort();
+              limitations.dedup();
+              limitations
+          }
+
+          fn ensure_git_worktree''',
+          )
+          replace_once(
+              '''    if output.status.success() && output.stdout.as_slice() == b"true\\n" {
+                  Ok(())
+              } else {
+                  Err(staged_error(
+                      CargoAllowErrorKind::Inventory,
+                      "not_a_git_worktree",
+                      "staged candidate requires a Git worktree",
+                  ))
+              }
+''',
+              '''    if !output.status.success() {
+                  return Err(git_status_error(
+                      "git rev-parse --is-inside-work-tree",
+                      &output,
+                  ));
+              }
+              if output.stdout.as_slice() != b"true\\n" {
+                  return Err(staged_error(
+                      CargoAllowErrorKind::Inventory,
+                      "not_a_git_worktree",
+                      "staged candidate requires a Git worktree",
+                  ));
+              }
+              Ok(())
+''',
+          )
+          replace_once(
+              'git_command(root).args(["ls-files", "--stage", "-z"]),\n        "git ls-files --stage",',
+              'git_command(root).args(["ls-files", "--stage", "--sparse", "-z"]),\n        "git ls-files --stage --sparse (requires Git 2.32+)",',
+          )
+          replace_once(
+              'return Err(git_status_error("git ls-files --stage", &output));',
+              'return Err(git_status_error(\n            "git ls-files --stage --sparse (requires Git 2.32+)",\n            &output,\n        ));',
+          )
+          replace_once(
+              'git_command(root).args(["diff", "--cached", "--name-status", "-z", "-M", "-C", "--"]),',
+              'git_command(root).args([\n            "diff",\n            "--cached",\n            "--name-status",\n            "-z",\n            "-M",\n            "-C",\n            "--find-copies-harder",\n            "--",\n        ]),',
+          )
+          hash_start = text.index('fn stable_hash_bytes(bytes: &[u8]) -> String {')
+          hash_end = text.index('\nfn read_blob_by_oid', hash_start)
+          hash_impl = '''fn stable_hash_bytes(bytes: &[u8]) -> String {
+              let digest = Sha256::digest(bytes);
+              let hex = digest
+                  .iter()
+                  .map(|byte| format!("{byte:02x}"))
+                  .collect::<String>();
+              format!("sha256:{hex}")
+          }
+          '''
+          text = text[:hash_start] + hash_impl + text[hash_end:]
+          replace_once(
+              '''fn is_full_or_zero_oid(value: &str) -> bool {
+              is_full_oid(value) || (matches!(value.len(), 40 | 64) && value.bytes().all(|byte| byte == b'0'))
+          }
+''',
+              '''fn is_zero_oid(value: &str) -> bool {
+              matches!(value.len(), 40 | 64) && value.bytes().all(|byte| byte == b'0')
+          }
+
+          fn is_full_or_zero_oid(value: &str) -> bool {
+              is_full_oid(value) || is_zero_oid(value)
+          }
+''',
+          )
+
+          insert_before = '\n    #[test]\n    fn staged_blob_reads_ignore_worktree()'
+          tests = r'''
+              #[test]
+              fn snapshot_equality_ignores_repository_root() {
+                  let identity = StagedSnapshotIdentity {
+                      parent_commit: Some("a".repeat(40)),
+                      semantic_hash: format!("sha256:{}", "b".repeat(64)),
+                  };
+                  let first = StagedRepositorySnapshot {
+                      root: PathBuf::from("/first"),
+                      parent_commit: identity.parent_commit.clone(),
+                      entries: Vec::new(),
+                      changes: Vec::new(),
+                      identity: identity.clone(),
+                      completeness: StagedSnapshotCompleteness::Complete,
+                      limitations: Vec::new(),
+                  };
+                  let second = StagedRepositorySnapshot {
+                      root: PathBuf::from("/second"),
+                      ..first.clone()
+                  };
+                  assert_eq!(first, second);
+              }
+
+              #[test]
+              fn change_only_unrepresentable_paths_make_snapshot_partial() {
+                  let change = StagedPathChange {
+                      status: StagedPathStatus::Renamed,
+                      similarity: Some(100),
+                      path: None,
+                      raw_path: vec![0xff],
+                      previous_path: None,
+                      previous_raw_path: Some(vec![0xfe]),
+                  };
+                  let limitations = staged_limitations(&[], &[change]);
+                  assert_eq!(limitations.len(), 2);
+              }
+
+              #[test]
+              fn malformed_and_special_modes_are_classified_without_guessing() -> Result<(), String> {
+                  assert!(parse_index_record(b"malformed").is_err());
+                  let oid = "1".repeat(40);
+                  let gitlink = parse_index_record(format!("160000 {oid} 0\\tvendor/demo").as_bytes())
+                      .map_err(|error| error.to_string())?;
+                  let sparse = parse_index_record(format!("040000 {oid} 0\\tomitted").as_bytes())
+                      .map_err(|error| error.to_string())?;
+                  let unsupported = parse_index_record(format!("100600 {oid} 0\\todd").as_bytes())
+                      .map_err(|error| error.to_string())?;
+                  assert_eq!(gitlink.kind, StagedEntryKind::Gitlink);
+                  assert_eq!(sparse.kind, StagedEntryKind::SparseDirectory);
+                  assert_eq!(unsupported.kind, StagedEntryKind::Unsupported);
+                  Ok(())
+              }
+          '''
+          if insert_before not in text:
+              raise SystemExit('test insertion marker missing')
+          text = text.replace(insert_before, tests + insert_before, 1)
+
+          copy_marker = '\n    #[test]\n    fn unborn_repository_is_distinct_and_readable()'
+          copy_test = r'''
+              #[test]
+              fn staged_changes_detect_copy_from_unmodified_source() -> Result<(), String> {
+                  let repo = TestRepo::new()?;
+                  repo.commit_file("source.txt", "same content\\n")?;
+                  fs::copy(repo.root.join("source.txt"), repo.root.join("copy.txt"))
+                      .map_err(|error| error.to_string())?;
+                  repo.git(&["add", "--", "copy.txt"])?;
+
+                  let snapshot =
+                      staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
+                  assert!(snapshot.changes.iter().any(|change| {
+                      change.status == StagedPathStatus::Copied
+                          && change.raw_path == b"copy.txt"
+                          && change.previous_raw_path.as_deref() == Some(b"source.txt")
+                  }));
+                  Ok(())
+              }
+
+              #[test]
+              fn intent_to_add_is_partial_and_never_reads_zero_oid() -> Result<(), String> {
+                  let repo = TestRepo::new()?;
+                  repo.write("intent.txt", "intent\\n")?;
+                  repo.git(&["add", "-N", "--", "intent.txt"])?;
+
+                  let snapshot =
+                      staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
+                  assert_eq!(snapshot.completeness, StagedSnapshotCompleteness::Partial);
+                  assert!(matches!(
+                      read_staged_path(&snapshot, Path::new("intent.txt"))
+                          .map_err(|error| error.to_string())?,
+                      StagedPathRead::Unsupported {
+                          kind: StagedEntryKind::RegularFile,
+                          ..
+                      }
+                  ));
+                  Ok(())
+              }
+          '''
+          if copy_marker not in text:
+              raise SystemExit('copy-test insertion marker missing')
+          text = text.replace(copy_marker, copy_test + copy_marker, 1)
+
+          unix_marker = '\n    #[cfg(unix)]\n    #[test]\n    fn staged_paths_preserve_newline_and_non_utf8_bytes()'
+          unix_tests = r'''
+              #[cfg(unix)]
+              #[test]
+              fn staged_symlink_is_partial_and_typed_unsupported() -> Result<(), String> {
+                  use std::os::unix::fs::symlink;
+
+                  let repo = TestRepo::new()?;
+                  repo.commit_file("target.txt", "target\\n")?;
+                  symlink("target.txt", repo.root.join("link.txt"))
+                      .map_err(|error| error.to_string())?;
+                  repo.git(&["add", "--", "link.txt"])?;
+
+                  let snapshot =
+                      staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
+                  assert_eq!(snapshot.completeness, StagedSnapshotCompleteness::Partial);
+                  assert!(matches!(
+                      read_staged_path(&snapshot, Path::new("link.txt"))
+                          .map_err(|error| error.to_string())?,
+                      StagedPathRead::Unsupported {
+                          kind: StagedEntryKind::Symlink,
+                          ..
+                      }
+                  ));
+                  Ok(())
+              }
+          '''
+          if unix_marker not in text:
+              raise SystemExit('unix test insertion marker missing')
+          text = text.replace(unix_marker, unix_tests + unix_marker, 1)
+
+          path.write_text(text)
+
+          cargo = Path('crates/allow-diff/Cargo.toml')
+          cargo_text = cargo.read_text()
+          if 'sha2.workspace = true' not in cargo_text:
+              cargo_text = cargo_text.replace('allow-rust.workspace = true\n', 'allow-rust.workspace = true\nsha2.workspace = true\n')
+          cargo.write_text(cargo_text)
+      - name: Verify reviewed staged-index behavior
+        run: |
+          cargo fmt --all
+          cargo test -p allow-diff staged_index --locked -- --nocapture
+          cargo clippy -p allow-diff --all-targets --locked -- -D warnings
+      - name: Remove one-shot workflow and prove no-new
+        run: |
+          rm .github/workflows/one-shot-review-staged-index-2370.yml
+          cargo run -p cargo-allow -- check --mode no-new --format markdown --output target/cargo-allow/staged-index-review-no-new.md
+      - name: Commit verified review fixes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix(diff): harden staged-index identity and edge states'
+          git push origin HEAD:agent/staged-index-source-2359
