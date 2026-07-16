@@ -461,6 +461,75 @@ fn recursive_inventory_skips_symlinked_directories() -> Result<(), Box<dyn std::
     Ok(())
 }
 
+#[test]
+fn recursive_inventory_stops_at_depth_limit() -> Result<(), Box<dyn std::error::Error>> {
+    use super::filesystem::{INVENTORY_MAX_DEPTH, visit_for_test_with_depth};
+
+    let root = temp_root("depth-limit");
+    let mut deep = root.clone();
+    for index in 0..=INVENTORY_MAX_DEPTH {
+        deep = deep.join(format!("d{index}"));
+    }
+    fs::create_dir_all(&deep)?;
+    write_file(deep.join("too-deep.txt"), "hidden-by-depth-cap\n");
+    write_file(root.join("shallow.txt"), "visible\n");
+
+    let (files, skipped) = super::recursive_files(&root)?;
+
+    assert!(files.contains(&PathBuf::from("shallow.txt")));
+    assert!(
+        !files
+            .iter()
+            .any(|path| { path.file_name().is_some_and(|name| name == "too-deep.txt") })
+    );
+    assert!(
+        skipped.iter().any(|path| {
+            path.to_string_lossy()
+                .contains(".cargo-allow-inventory-depth-limit-")
+        }),
+        "expected depth-limit diagnostic in skipped={skipped:?}"
+    );
+
+    // Depth already beyond the cap skips without walking children.
+    let mut out = Vec::new();
+    let mut local_skipped = Vec::new();
+    visit_for_test_with_depth(
+        &root,
+        &root,
+        INVENTORY_MAX_DEPTH + 1,
+        &mut out,
+        &mut local_skipped,
+    )?;
+    assert!(out.is_empty());
+    assert_eq!(local_skipped.len(), 1);
+    remove_dir(&root);
+    Ok(())
+}
+
+#[test]
+fn recursive_inventory_stops_at_entry_limit() -> Result<(), Box<dyn std::error::Error>> {
+    use super::filesystem::{INVENTORY_MAX_ENTRIES, visit_for_test_with_depth};
+
+    // Avoid creating 250k files: start the walk as if the entry budget is
+    // already exhausted and assert the synthetic skip diagnostic.
+    let root = temp_root("entry-limit");
+    write_file(root.join("never-reached.txt"), "x\n");
+    let mut out = Vec::with_capacity(INVENTORY_MAX_ENTRIES);
+    out.resize(INVENTORY_MAX_ENTRIES, PathBuf::from("seed"));
+    let mut skipped = Vec::new();
+    visit_for_test_with_depth(&root, &root, 0, &mut out, &mut skipped)?;
+    assert_eq!(out.len(), INVENTORY_MAX_ENTRIES);
+    assert!(
+        skipped.iter().any(|path| {
+            path.to_string_lossy()
+                .contains(".cargo-allow-inventory-entry-limit-")
+        }),
+        "expected entry-limit diagnostic in skipped={skipped:?}"
+    );
+    remove_dir(&root);
+    Ok(())
+}
+
 fn temp_root(label: &str) -> PathBuf {
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

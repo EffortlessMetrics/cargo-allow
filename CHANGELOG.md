@@ -20,6 +20,9 @@ inventory without executing repository code.
 
 ### Fixed
 
+- Filesystem inventory walks now cap recursion depth (64) and collected file
+  entries (250_000). Cap hits record skip diagnostics and mark completeness
+  partial instead of unbounded stack/memory growth (#1917).
 - Source-tree text reads are capped at 8 MiB (`SOURCE_FILE_READ_MAX_BYTES`)
   across scanners, policy loaders, federation, and legacy migrate paths so a
   single oversized file cannot unbounded-memory the scan.
