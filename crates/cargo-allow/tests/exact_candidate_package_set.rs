@@ -59,7 +59,10 @@ fn example_exact_candidate_package_set_matches_schema_constants() {
         .unwrap_or_else(|| std::panic::panic_any("order missing"));
     assert_eq!(order.len(), EXPECTED_CRATES.len());
     for (idx, name) in EXPECTED_CRATES.iter().enumerate() {
-        assert_eq!(order.get(idx).and_then(serde_json::Value::as_str), Some(*name));
+        assert_eq!(
+            order.get(idx).and_then(serde_json::Value::as_str),
+            Some(*name)
+        );
     }
     let limitations = example
         .get("limitations")
