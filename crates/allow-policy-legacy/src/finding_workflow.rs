@@ -225,8 +225,8 @@ mod tests {
         fs::write(&workflow_path, bytes)
             .unwrap_or_else(|err| std::panic::panic_any(format!("write workflow: {err}")));
 
-        let err = workflow_findings_from_files(&root)
-            .expect_err("oversized workflow should fail closed");
+        let err =
+            workflow_findings_from_files(&root).expect_err("oversized workflow should fail closed");
         let message = err.to_string();
         assert!(
             message.contains("source-read limit") || message.contains("exceeds"),
