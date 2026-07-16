@@ -4583,6 +4583,50 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0290"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/package-candidate-smoke.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Pre-publication Stage A package candidate smoke; runs workspace cargo package --locked, no-path-deps check, isolated install, and first-hour CLI checks with receipt."
+evidence = ["doc:docs/release/README.md"]
+created = "2026-07-15"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+line_hint = 1
+glob = "scripts/package-candidate-smoke.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0291"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-package-candidate-smoke.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Characterization wrapper for the Stage A package candidate smoke; guarded by the release README operator path."
+evidence = ["doc:docs/release/README.md"]
+created = "2026-07-15"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+line_hint = 1
+glob = "scripts/test-package-candidate-smoke.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0239"
 kind = "non_rust_file"
 family = "documentation"
