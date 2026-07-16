@@ -44,6 +44,29 @@ jobs:
           name: package-candidate-smoke-receipt
           path: target/package-candidate-smoke/package-candidate-smoke.receipt.txt
 
+  # Hosted characterization for #2366 / #2355: shallow missing-base fails closed,
+  # then the same diff succeeds after history is available. Linux-only; keeps PR
+  # CI cheap relative to a full matrix.
+  shallow-diff-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: shallow-diff-smoke
+      - name: Shallow diff base smoke
+        run: bash scripts/shallow-diff-base-smoke.sh
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: shallow-diff-base-smoke
+          path: |
+            target/shallow-diff-base-smoke/shallow-diff-base-smoke.receipt.txt
+            target/shallow-diff-base-smoke/artifacts/
+
   test:
     runs-on: ubuntu-latest
     steps:

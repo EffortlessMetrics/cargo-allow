@@ -280,3 +280,30 @@ fn ci_doc_points_at_ops_how_tos_and_base_history() {
         );
     }
 }
+
+#[test]
+fn run_in_ci_references_hosted_shallow_diff_smoke() {
+    assert!(
+        RUN_IN_CI.contains("shallow-diff-base-smoke.sh"),
+        "run-in-ci.md should point at the hosted shallow-diff characterization script"
+    );
+    let root = workspace_root();
+    assert!(
+        root.join("scripts/shallow-diff-base-smoke.sh").is_file(),
+        "shallow-diff-base-smoke.sh must exist"
+    );
+    assert!(
+        root.join("scripts/test-shallow-diff-base-smoke.sh")
+            .is_file(),
+        "test-shallow-diff-base-smoke.sh must exist"
+    );
+    let workflow = normalize_lf(include_str!("../../../.github/workflows/ci.yml"));
+    assert!(
+        workflow.contains("shallow-diff-smoke:"),
+        "ci.yml must define shallow-diff-smoke job"
+    );
+    assert!(
+        workflow.contains("scripts/shallow-diff-base-smoke.sh"),
+        "ci.yml must run the shallow-diff script"
+    );
+}
