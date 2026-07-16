@@ -4761,11 +4761,11 @@ column = 1
 [[allow]]
 id = "allow-4758"
 kind = "non_rust_file"
-family = "release_script"
+family = "shell_script"
 path = "scripts/source-candidate-smoke.sh"
 owner = "core/release"
 classification = "release_automation_script"
-reason = "Installed first-hour journey smoke emitting SourceCandidateSmokeReceiptV1 (#2278 Stage A+); path-install or CARGO_ALLOW_BIN reuse."
+reason = "Installed first-hour journey smoke emitting SourceCandidateSmokeReceiptV1 (#2278 Stage A+); path-install or CARGO_ALLOW_BIN reuse. Classified shell_script (filename lacks package/release/publish/deploy token)."
 evidence = ["doc:docs/release/README.md", "test:example_source_candidate_smoke_receipt_matches_schema_constants", "issue:2278"]
 created = "2026-07-15"
 review_after = "2027-01-01"
