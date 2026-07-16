@@ -2,9 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use super::{
-    EvidenceDispositionState, ImplementationDispositionState, ImplementationSliceClass,
+    EvidenceDispositionState, ImplementationClaimStatus, ImplementationSliceClass,
     ImplementationSliceId, ImplementationSliceV1, RequirementDelta, RequirementGraph,
-    RequirementId, RequirementLifecycle, SupportClaimDispositionState,
+    RequirementId, RequirementStatus, SupportClaimDispositionState,
 };
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -12,8 +12,10 @@ use super::{
 pub enum RuntimePromotionFindingCode {
     RequirementNotFound,
     RequirementGenerationMismatch,
-    RequirementLifecycleMismatch,
-    RuntimeImplementationWithoutDisposition,
+    RequirementStatusMismatch,
+    RequirementStatusDoesNotAllowImplementation,
+    SpecOnlyRuntimeImplementationClaim,
+    RuntimeImplementationWithoutEvidenceClosure,
     RuntimeProofWithoutReceipt,
     SupportPromotionWithoutClosure,
 }
@@ -33,7 +35,7 @@ pub struct ValidatedRuntimeTransition {
     pub slice_id: ImplementationSliceId,
     pub slice_generation: u32,
     pub requirement_delta: Vec<RequirementDelta>,
-    pub implementation_state: ImplementationDispositionState,
+    pub implementation_claim_status: ImplementationClaimStatus,
     pub evidence_state: EvidenceDispositionState,
     pub support_claim_state: SupportClaimDispositionState,
 }
@@ -48,6 +50,7 @@ pub fn validate_runtime_promotion(
         .map(|requirement| (requirement.id.clone(), requirement))
         .collect::<BTreeMap<_, _>>();
     let mut findings = Vec::new();
+    let mut runtime_requirement_ids = Vec::new();
 
     for delta in &slice.requirement_delta {
         let Some(requirement) = requirement_by_id.get(&delta.requirement_id) else {
@@ -74,25 +77,28 @@ pub fn validate_runtime_promotion(
                 ),
             ));
         }
-        if let Some(from) = delta.from {
-            if from != requirement.lifecycle {
+        if let Some(change) = &delta.status_change {
+            if change.to != requirement.status {
                 findings.push(RuntimePromotionFinding::new(
-                    RuntimePromotionFindingCode::RequirementLifecycleMismatch,
+                    RuntimePromotionFindingCode::RequirementStatusMismatch,
                     Some(delta.requirement_id.clone()),
                     format!(
-                        "requirement {} expected lifecycle {:?}, found {:?}",
+                        "requirement {} status change targets {:?}, but current normative status is {:?}",
                         delta.requirement_id.as_str(),
-                        from,
-                        requirement.lifecycle
+                        change.to,
+                        requirement.status
                     ),
                 ));
             }
         }
+        if delta.runtime {
+            runtime_requirement_ids.push((delta.requirement_id.clone(), requirement.status));
+        }
     }
 
-    if slice.change_class == ImplementationSliceClass::SpecOrPolicyChange {
-        validate_spec_or_policy_promotion(slice, &mut findings);
-    }
+    validate_implementation_claim(slice, &runtime_requirement_ids, &mut findings);
+    validate_current_evidence(slice, &mut findings);
+    validate_support_promotion(slice, &mut findings);
 
     findings.sort_by(|left, right| {
         left.code
@@ -116,32 +122,67 @@ pub fn validated_runtime_transition(
         slice_id: slice.id.clone(),
         slice_generation: slice.generation,
         requirement_delta: slice.requirement_delta.clone(),
-        implementation_state: slice.implementation.state,
+        implementation_claim_status: slice.implementation_claim.status,
         evidence_state: slice.evidence.state,
         support_claim_state: slice.support_claim.state,
     })
 }
 
-fn validate_spec_or_policy_promotion(
+fn validate_implementation_claim(
     slice: &ImplementationSliceV1,
+    runtime_requirements: &[(RequirementId, RequirementStatus)],
     findings: &mut Vec<RuntimePromotionFinding>,
 ) {
-    for delta in &slice.requirement_delta {
-        if delta.runtime
-            && delta.to == RequirementLifecycle::Implemented
-            && slice.implementation.state != ImplementationDispositionState::Implemented
-        {
+    if slice.implementation_claim.status != ImplementationClaimStatus::Implemented {
+        return;
+    }
+
+    for (requirement_id, status) in runtime_requirements {
+        if !status.allows_implementation_claim() {
             findings.push(RuntimePromotionFinding::new(
-                RuntimePromotionFindingCode::RuntimeImplementationWithoutDisposition,
-                Some(delta.requirement_id.clone()),
+                RuntimePromotionFindingCode::RequirementStatusDoesNotAllowImplementation,
+                Some(requirement_id.clone()),
                 format!(
-                    "spec or policy slice cannot mark runtime requirement {} implemented while implementation remains outstanding",
-                    delta.requirement_id.as_str()
+                    "requirement {} has normative status {:?}, which does not allow an ordinary implemented claim",
+                    requirement_id.as_str(),
+                    status
                 ),
             ));
         }
     }
 
+    if slice.change_class == ImplementationSliceClass::SpecOrPolicyChange {
+        for (requirement_id, _) in runtime_requirements {
+            findings.push(RuntimePromotionFinding::new(
+                RuntimePromotionFindingCode::SpecOnlyRuntimeImplementationClaim,
+                Some(requirement_id.clone()),
+                format!(
+                    "spec or policy slice cannot publish an implemented runtime claim for {}",
+                    requirement_id.as_str()
+                ),
+            ));
+        }
+        return;
+    }
+
+    if !evidence_is_current_and_receipted(slice) {
+        for (requirement_id, _) in runtime_requirements {
+            findings.push(RuntimePromotionFinding::new(
+                RuntimePromotionFindingCode::RuntimeImplementationWithoutEvidenceClosure,
+                Some(requirement_id.clone()),
+                format!(
+                    "implemented runtime claim for {} requires current receipt-backed evidence",
+                    requirement_id.as_str()
+                ),
+            ));
+        }
+    }
+}
+
+fn validate_current_evidence(
+    slice: &ImplementationSliceV1,
+    findings: &mut Vec<RuntimePromotionFinding>,
+) {
     if slice.evidence.state == EvidenceDispositionState::Current
         && slice
             .evidence
@@ -152,33 +193,44 @@ fn validate_spec_or_policy_promotion(
         findings.push(RuntimePromotionFinding::new(
             RuntimePromotionFindingCode::RuntimeProofWithoutReceipt,
             None,
-            "spec or policy slice cannot claim current runtime proof without a non-empty receipt reference",
+            "current runtime proof requires a non-empty receipt reference",
         ));
     }
+}
 
-    if slice.support_claim.state == SupportClaimDispositionState::Promoted {
-        let implementation_closed =
-            slice.implementation.state == ImplementationDispositionState::Implemented;
-        let evidence_closed = slice.evidence.state == EvidenceDispositionState::Current
-            && slice
-                .evidence
-                .receipt
-                .as_deref()
-                .is_some_and(|receipt| !receipt.trim().is_empty());
-        let claim_named = slice
-            .support_claim
-            .claim
-            .as_deref()
-            .is_some_and(|claim| !claim.trim().is_empty());
-
-        if !implementation_closed || !evidence_closed || !claim_named {
-            findings.push(RuntimePromotionFinding::new(
-                RuntimePromotionFindingCode::SupportPromotionWithoutClosure,
-                None,
-                "spec or policy slice cannot promote runtime support without implemented behavior, current receipt-backed evidence, and a named support claim",
-            ));
-        }
+fn validate_support_promotion(
+    slice: &ImplementationSliceV1,
+    findings: &mut Vec<RuntimePromotionFinding>,
+) {
+    if slice.support_claim.state != SupportClaimDispositionState::Promoted {
+        return;
     }
+
+    let implementation_closed =
+        slice.implementation_claim.status == ImplementationClaimStatus::Implemented;
+    let evidence_closed = evidence_is_current_and_receipted(slice);
+    let claim_named = slice
+        .support_claim
+        .claim
+        .as_deref()
+        .is_some_and(|claim| !claim.trim().is_empty());
+
+    if !implementation_closed || !evidence_closed || !claim_named {
+        findings.push(RuntimePromotionFinding::new(
+            RuntimePromotionFindingCode::SupportPromotionWithoutClosure,
+            None,
+            "runtime support promotion requires an implemented claim, current receipt-backed evidence, and a named support claim",
+        ));
+    }
+}
+
+fn evidence_is_current_and_receipted(slice: &ImplementationSliceV1) -> bool {
+    slice.evidence.state == EvidenceDispositionState::Current
+        && slice
+            .evidence
+            .receipt
+            .as_deref()
+            .is_some_and(|receipt| !receipt.trim().is_empty())
 }
 
 impl RuntimePromotionFinding {
@@ -206,19 +258,19 @@ kind: spec
 ---
 
 ```toml cargo-allow-requirements
-schema_version = "1.0"
+schema_version = "2.0"
 
 [[requirement]]
 id = "spec-only-runtime-promotion"
 generation = 1
-lifecycle = "accepted"
+status = "accepted"
 statement = "A spec-only slice cannot promote runtime state without closure."
 claim_class = "runtime_behavior"
 ```
 "#;
 
     const SLICE: &str = r#"
-schema_version = "1.0"
+schema_version = "2.0"
 id = "cargo-allow.slice.self-hosted-runtime-promotion.v1"
 generation = 1
 source_issue = "issue:2206"
@@ -231,11 +283,9 @@ claim_boundary = "Defines the requirement without claiming runtime completion."
 requirement_id = "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion"
 requirement_generation = 1
 runtime = true
-from = "accepted"
-to = "accepted"
 
-[implementation]
-state = "outstanding"
+[implementation_claim]
+status = "outstanding"
 
 [evidence]
 state = "outstanding"
@@ -262,16 +312,19 @@ state = "unchanged"
 
         assert_eq!(transition.requirement_delta.len(), 1);
         assert_eq!(
-            transition.requirement_delta.first().map(|delta| delta.to),
-            Some(RequirementLifecycle::Accepted)
-        );
-        assert_eq!(
-            transition.implementation_state,
-            ImplementationDispositionState::Outstanding
+            transition.implementation_claim_status,
+            ImplementationClaimStatus::Outstanding
         );
         assert_eq!(
             transition.support_claim_state,
             SupportClaimDispositionState::Unchanged
+        );
+        assert_eq!(
+            graph
+                .requirements
+                .first()
+                .map(|requirement| requirement.status),
+            Some(RequirementStatus::Accepted)
         );
         Ok(())
     }
@@ -280,22 +333,18 @@ state = "unchanged"
     fn spec_or_policy_slice_rejects_unproved_runtime_promotion() -> Result<(), String> {
         let graph = graph()?;
         let mut slice = slice()?;
-        let delta = slice
-            .requirement_delta
-            .first_mut()
-            .ok_or_else(|| "expected one requirement delta".to_string())?;
-        delta.to = RequirementLifecycle::Implemented;
+        slice.implementation_claim.status = ImplementationClaimStatus::Implemented;
 
         let findings = validate_runtime_promotion(&graph, &slice);
 
         assert_eq!(
             findings,
             vec![RuntimePromotionFinding {
-                code: RuntimePromotionFindingCode::RuntimeImplementationWithoutDisposition,
+                code: RuntimePromotionFindingCode::SpecOnlyRuntimeImplementationClaim,
                 requirement_id: Some(RequirementId(
                     "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion".to_string()
                 )),
-                message: "spec or policy slice cannot mark runtime requirement CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion implemented while implementation remains outstanding".to_string(),
+                message: "spec or policy slice cannot publish an implemented runtime claim for CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion".to_string(),
             }]
         );
         assert!(validated_runtime_transition(&graph, &slice).is_err());
@@ -303,8 +352,8 @@ state = "unchanged"
             graph
                 .requirements
                 .first()
-                .map(|requirement| requirement.lifecycle),
-            Some(RequirementLifecycle::Accepted)
+                .map(|requirement| requirement.status),
+            Some(RequirementStatus::Accepted)
         );
         Ok(())
     }
@@ -336,17 +385,75 @@ state = "unchanged"
     }
 
     #[test]
-    fn behavior_change_is_not_subject_to_spec_only_rule() -> Result<(), String> {
+    fn behavior_change_accepts_implemented_claim_with_current_evidence() -> Result<(), String> {
         let graph = graph()?;
         let mut slice = slice()?;
         slice.change_class = ImplementationSliceClass::BehaviorChange;
-        let delta = slice
-            .requirement_delta
-            .first_mut()
-            .ok_or_else(|| "expected one requirement delta".to_string())?;
-        delta.to = RequirementLifecycle::Implemented;
+        slice.implementation_claim.status = ImplementationClaimStatus::Implemented;
+        slice.evidence.state = EvidenceDispositionState::Current;
+        slice.evidence.receipt = Some("receipt:current-head".to_string());
 
-        assert!(validate_runtime_promotion(&graph, &slice).is_empty());
+        let transition = validated_runtime_transition(&graph, &slice)
+            .map_err(|findings| format!("unexpected findings: {findings:?}"))?;
+        assert_eq!(
+            transition.implementation_claim_status,
+            ImplementationClaimStatus::Implemented
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn behavior_change_rejects_implemented_claim_without_evidence_closure() -> Result<(), String> {
+        let graph = graph()?;
+        let mut slice = slice()?;
+        slice.change_class = ImplementationSliceClass::BehaviorChange;
+        slice.implementation_claim.status = ImplementationClaimStatus::Implemented;
+
+        let findings = validate_runtime_promotion(&graph, &slice);
+        assert_eq!(
+            findings.first().map(|finding| finding.code),
+            Some(RuntimePromotionFindingCode::RuntimeImplementationWithoutEvidenceClosure)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn non_accepted_requirement_rejects_ordinary_implemented_claim() -> Result<(), String> {
+        let mut graph = graph()?;
+        let requirement = graph
+            .requirements
+            .first_mut()
+            .ok_or_else(|| "expected one requirement".to_string())?;
+        requirement.status = RequirementStatus::Deferred;
+
+        let mut slice = slice()?;
+        slice.change_class = ImplementationSliceClass::BehaviorChange;
+        slice.implementation_claim.status = ImplementationClaimStatus::Implemented;
+        slice.evidence.state = EvidenceDispositionState::Current;
+        slice.evidence.receipt = Some("receipt:current-head".to_string());
+
+        let findings = validate_runtime_promotion(&graph, &slice);
+        assert_eq!(
+            findings.first().map(|finding| finding.code),
+            Some(RuntimePromotionFindingCode::RequirementStatusDoesNotAllowImplementation)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn two_claims_can_reference_one_accepted_requirement() -> Result<(), String> {
+        let graph = graph()?;
+        let outstanding = slice()?;
+        let mut implemented = outstanding.clone();
+        implemented.id = ImplementationSliceId("cargo-allow.slice.runtime-implementation.v1".into());
+        implemented.change_class = ImplementationSliceClass::BehaviorChange;
+        implemented.implementation_claim.status = ImplementationClaimStatus::Implemented;
+        implemented.evidence.state = EvidenceDispositionState::Current;
+        implemented.evidence.receipt = Some("receipt:current-head".into());
+
+        assert!(validate_runtime_promotion(&graph, &outstanding).is_empty());
+        assert!(validate_runtime_promotion(&graph, &implemented).is_empty());
+        assert_eq!(graph.requirements[0].status, RequirementStatus::Accepted);
         Ok(())
     }
 }
