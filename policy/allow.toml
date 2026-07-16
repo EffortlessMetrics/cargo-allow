@@ -4805,7 +4805,7 @@ column = 1
 [[allow]]
 id = "allow-4763"
 kind = "non_rust_file"
-family = "release_script"
+family = "python_tool"
 path = "scripts/exact-candidate-assemble-local-registry.py"
 owner = "core/release"
 classification = "release_automation_script"
