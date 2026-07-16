@@ -33,6 +33,18 @@ commands, rustc, Clippy, build scripts, proc macros, external evidence tools,
 or repository code. The install step fetches the `cargo-allow` tool; the policy
 scan should remain usable even when the checked-out repository does not build.
 
+## Repository CI
+
+cargo-allow's own GitHub Actions workflow runs two proof lanes on pull requests
+and `main`:
+
+- **MSRV (`1.85`)**: `cargo check --workspace --all-targets --locked` plus the
+  fast `cargo-allow` package binary tests, on the declared workspace
+  `rust-version`. This keeps the 0.1.x install claim honest before any later
+  MSRV raise.
+- **Stable full suite**: rustfmt, Clippy, fast and contract package tests,
+  workspace tests, docs, audit, no-new check, and opt-in spec-system dogfood.
+
 ## Pull Requests
 
 Use the diff workflow for pull requests:
