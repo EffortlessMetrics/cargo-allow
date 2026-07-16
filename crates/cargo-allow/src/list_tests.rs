@@ -144,6 +144,27 @@ fn list_filters_rejects_conflicting_status_shortcuts() {
 }
 
 #[test]
+fn clap_parses_list_location_drift_status() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "list",
+        "--status",
+        "location_drift",
+    ]))
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("CLI should accept location_drift status: {err}"))
+    });
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::List(ListArgs {
+            status: Some(status),
+            ..
+        })) if status == "location_drift"
+    ));
+}
+
+#[test]
 fn clap_rejects_unknown_list_kind() {
     let err = CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "list", "--kind", "unsfae"]))
         .expect_err("unknown list kind should fail closed");

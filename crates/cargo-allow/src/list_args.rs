@@ -2,7 +2,7 @@ use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::{RootArgs, parse_kind_filter, parse_kind_filter_arg};
+use crate::{RootArgs, parse_kind_filter, parse_kind_filter_arg, parse_match_status_arg};
 
 use super::list_types::ListFilters;
 
@@ -36,24 +36,11 @@ pub(crate) struct ListArgs {
     pub(super) allow_id: Option<String>,
     /// Filter allow entries by current match status.
     ///
+    /// Accepts every `MatchStatus` value, including `location_drift`.
     /// Mutually exclusive with `--expired`, `--review-due`, and `--stale`
     /// (pick one status selector). `--baseline-debt` is a classification
     /// filter and may still be combined with `--status`.
-    #[arg(
-        long,
-        value_parser = [
-            "matched",
-            "new",
-            "stale",
-            "expired",
-            "review_due",
-            "ambiguous",
-            "invalid_selector",
-            "missing_required_field",
-            "evidence_missing",
-            "baseline_debt"
-        ]
-    )]
+    #[arg(long, value_parser = parse_match_status_arg)]
     pub(super) status: Option<String>,
     /// Include only expired allow entries.
     ///
