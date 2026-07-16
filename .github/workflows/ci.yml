@@ -38,12 +38,24 @@ jobs:
           key: package-smoke
       - name: Package candidate smoke (Stage A)
         run: bash scripts/package-candidate-smoke.sh
+      - name: Source candidate first-hour journey (#2278)
+        run: |
+          bin="target/package-candidate-smoke/install/bin/cargo-allow"
+          if [[ -x "${bin}.exe" ]]; then
+            bin="${bin}.exe"
+          fi
+          CARGO_ALLOW_BIN="${bin}" bash scripts/source-candidate-smoke.sh
       - uses: actions/upload-artifact@v7.0.1
         if: always()
         with:
           name: package-candidate-smoke-receipt
           path: target/package-candidate-smoke/package-candidate-smoke.receipt.txt
-
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: source-candidate-smoke-receipt
+          path: target/source-candidate-smoke/source-candidate-smoke.receipt.json
+          if-no-files-found: warn
   # Hosted characterization for #2366 / #2355: shallow missing-base fails closed,
   # then the same diff succeeds after history is available. Linux-only; keeps PR
   # CI cheap relative to a full matrix.
@@ -102,15 +114,7 @@ jobs:
         run: cargo test -p cargo-allow --tests --locked
       - name: Full workspace proof union
         run: cargo test --workspace --locked
-      - name: Upload source-candidate smoke receipt
-        if: always()
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: source-candidate-smoke-receipt
-          path: target/source-candidate-smoke/source-candidate-smoke.receipt.json
-          if-no-files-found: ignore
-      - run: cargo test --doc --workspace
-      - run: cargo doc --workspace --no-deps
+      - run: cargo test --doc --workspace      - run: cargo doc --workspace --no-deps
         env:
           RUSTDOCFLAGS: -D warnings
       - run: cargo run -p cargo-allow -- audit --format json --output target/cargo-allow/audit.json
@@ -123,4 +127,3 @@ jobs:
           name: cargo-allow-reports
           path: |
             target/cargo-allow/
-            target/source-candidate-smoke/source-candidate-smoke.receipt.json

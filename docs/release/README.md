@@ -36,12 +36,14 @@ Installed first-hour journey (temp consumer repo + JSON receipt
 `cargo-allow.source-candidate-smoke-receipt.v1`) is separately proven by:
 
 ```bash
-cargo test -p cargo-allow --test source_candidate_smoke --locked
+bash scripts/source-candidate-smoke.sh
 ```
 
-That harness path-installs into a temp root, runs the brownfield first-hour
-journey outside the checkout, and writes
-`target/source-candidate-smoke/source-candidate-smoke.receipt.json`. It does
+That harness path-installs into a temp root (or reuses `CARGO_ALLOW_BIN`),
+runs the brownfield first-hour journey outside the checkout, and writes
+`target/source-candidate-smoke/source-candidate-smoke.receipt.json`. Offline
+schema/example characterization remains
+`cargo test -p cargo-allow --test source_candidate_smoke --locked`. It does
 **not** yet consume an ExactCandidatePackageSetV1 local registry (#2277) or a
 crates.io published binary.
 
@@ -51,10 +53,10 @@ Post-publication registry install remains
 
 This smoke runs in hosted CI on Linux as the `package-smoke` job in
 [ci.yml](../../.github/workflows/ci.yml) (on every PR and push to `main`),
-producing a `package-candidate-smoke-receipt` workflow artifact. That hosted
-receipt is the durable evidence for the #2256 Stage A candidate claim;
+producing `package-candidate-smoke-receipt` and
+`source-candidate-smoke-receipt` workflow artifacts. Those hosted receipts are
+the durable evidence for the #2256 Stage A / #2278 Stage A+ candidate claims;
 Windows and macOS candidate smoke remain a documented follow-up.
-
 ## Prerequisites
 
 Complete these checks before the first tag-triggered automated release:
