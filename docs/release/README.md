@@ -14,6 +14,28 @@ The current qualification snapshot is
 [0.1.11-readiness.md](0.1.11-readiness.md). It is a go/no-go input, not a tag
 or publication authorization.
 
+## Pre-publication package candidate smoke
+
+Before freezing a version/changelog candidate, prove the exact source tree
+packages cleanly and the installed binary still answers the first-hour surface
+(#2256 Stage A):
+
+```bash
+bash scripts/package-candidate-smoke.sh
+```
+
+That script:
+
+1. runs `cargo package --workspace --locked`
+2. asserts every packaged crate `Cargo.toml` has no `path =` dependencies
+3. installs `cargo-allow` into an isolated root after packaging succeeded
+4. runs `--version`, `doctor`, and core `--help` checks
+5. writes `target/package-candidate-smoke/package-candidate-smoke.receipt.txt`
+
+Post-publication registry install remains
+[scripts/release-install-smoke.sh](../../scripts/release-install-smoke.sh)
+(Stage B). The next 0.1.x cut stays on Rust 1.85; do not raise MSRV here.
+
 ## Prerequisites
 
 Complete these checks before the first tag-triggered automated release:
