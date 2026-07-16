@@ -23,6 +23,9 @@ inventory without executing repository code.
 - Glob matching budgets recursive steps (`GLOB_MATCH_MAX_STEPS = 10_000`) so
   pathological `*` / `**` patterns fail closed quickly instead of
   exponential-backtracking (#1924).
+- Revision path reads reject Windows drive, UNC/device, and rooted host paths
+  before separator rewriting, and prove literal pathspec selection against
+  colliding metacharacter names (#2321).
 - Operator `manage-an-exception` guide now includes `why`, preview/`--write`
   add examples, adoption-route links, and a docs command-parity test (#2251).
 - `cargo-allow why` proof guidance is built as structured argv (`proof_plans`)

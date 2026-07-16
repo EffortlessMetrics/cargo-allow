@@ -430,6 +430,143 @@ fn read_file_at_revision_rejects_parent_and_absolute_paths() {
 }
 
 #[test]
+fn source_tree_path_bytes_maps_ordinary_relative_paths_to_git_form() {
+    let slash = revision_git::source_tree_path_bytes_for_test(Path::new("src/lib.rs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("slash path: {err}")));
+    assert_eq!(slash, b"src/lib.rs");
+
+    let nested =
+        revision_git::source_tree_path_bytes_for_test(Path::new("nested/dir/file name.rs"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("nested path: {err}")));
+    assert_eq!(nested, b"nested/dir/file name.rs");
+
+    #[cfg(windows)]
+    {
+        let backslash = revision_git::source_tree_path_bytes_for_test(Path::new(r"src\lib.rs"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("backslash path: {err}")));
+        assert_eq!(backslash, b"src/lib.rs");
+        let spaced =
+            revision_git::source_tree_path_bytes_for_test(Path::new(r"nested\dir\file name.rs"))
+                .unwrap_or_else(|err| {
+                    std::panic::panic_any(format!("spaced backslash path: {err}"))
+                });
+        assert_eq!(spaced, b"nested/dir/file name.rs");
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn source_tree_path_bytes_rejects_windows_drive_unc_and_rooted_host_paths() {
+    for path in [
+        PathBuf::from(r"C:\repo\file.rs"),
+        PathBuf::from(r"C:file.rs"),
+        PathBuf::from(r"\\server\share\file.rs"),
+        PathBuf::from(r"\\?\C:\repo\file.rs"),
+        PathBuf::from(r"\rooted\file.rs"),
+        PathBuf::from(r"/host-rooted/file.rs"),
+    ] {
+        let err = revision_git::source_tree_path_bytes_for_test(&path)
+            .err()
+            .unwrap_or_else(|| {
+                std::panic::panic_any(format!(
+                    "host path `{}` must be rejected before Git lookup",
+                    path.display()
+                ))
+            });
+        assert_eq!(err.kind(), CargoAllowErrorKind::InvalidConfig);
+        assert_diagnostic_code(&err, "invalid_source_tree_path");
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn read_file_at_revision_rejects_windows_drive_prefixed_caller_paths() {
+    let repo = TempGitRepo::new("revision-git-windows-drive");
+    repo.git(&["init"]);
+    repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
+    repo.git(&["config", "user.name", "cargo-allow"]);
+    repo.write("README.md", "fixture\n");
+    repo.git(&["add", "."]);
+    repo.git(&["commit", "-m", "fixture"]);
+
+    let abs = PathBuf::from(r"C:\repo\README.md");
+    let err = revision_git::read_file_at_revision(repo.path(), "HEAD", &abs)
+        .err()
+        .unwrap_or_else(|| std::panic::panic_any("drive path must fail closed"));
+    assert_eq!(err.kind(), CargoAllowErrorKind::InvalidConfig);
+    assert_diagnostic_code(&err, "invalid_source_tree_path");
+}
+
+#[test]
+fn read_file_at_revision_keeps_literal_pathspec_from_selecting_neighbors() {
+    let repo = TempGitRepo::new("revision-git-literal-pathspec");
+    repo.git(&["init"]);
+    repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
+    repo.git(&["config", "user.name", "cargo-allow"]);
+
+    // Use plumbing so hosts that cannot materialize `*` / `[` filenames still
+    // prove exact tree selection under `--literal-pathspecs`. On Windows Git,
+    // disable protectNTFS only for these plumbing index writes.
+    let protect_off = [("core.protectNTFS", "false")];
+    let bracket = repo.hash_blob("bracket-content\n");
+    let plain = repo.hash_blob("plain-content\n");
+    let star = repo.hash_blob("star-content\n");
+    repo.git_with_config(
+        &protect_off,
+        &[
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            &format!("100644,{bracket},literal[1].txt"),
+        ],
+    );
+    repo.git_with_config(
+        &protect_off,
+        &[
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            &format!("100644,{plain},literal1.txt"),
+        ],
+    );
+    repo.git_with_config(
+        &protect_off,
+        &[
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            &format!("100644,{star},literal*.txt"),
+        ],
+    );
+    let tree = repo.git_stdout(&["write-tree"]);
+    let commit = repo.git_stdout(&["commit-tree", &tree, "-m", "literal pathspec collision"]);
+    repo.git(&["update-ref", "HEAD", &commit]);
+
+    let bracket_text = revision_git::read_file_at_revision(repo.path(), "HEAD", "literal[1].txt")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("bracket path: {err}")));
+    assert_eq!(bracket_text.as_deref(), Some("bracket-content\n"));
+
+    let plain_text = revision_git::read_file_at_revision(repo.path(), "HEAD", "literal1.txt")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("plain path: {err}")));
+    assert_eq!(plain_text.as_deref(), Some("plain-content\n"));
+
+    let star_text = revision_git::read_file_at_revision(repo.path(), "HEAD", "literal*.txt")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("star path: {err}")));
+    assert_eq!(star_text.as_deref(), Some("star-content\n"));
+
+    let tracked = revision_git::git_tracked_files_at_revision(repo.path(), "HEAD")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("tracked collision paths: {err}")));
+    assert_eq!(
+        tracked,
+        vec![
+            PathBuf::from("literal*.txt"),
+            PathBuf::from("literal1.txt"),
+            PathBuf::from("literal[1].txt"),
+        ]
+    );
+}
+
+#[test]
 fn parse_git_ls_tree_record_preserves_embedded_newline_raw_path() {
     let entry = revision_git::parse_git_ls_tree_record_for_test(
         b"100644 blob abc123\tfixtures/line\nbreak.rs",
@@ -515,6 +652,26 @@ impl TempGitRepo {
         if !output.status.success() {
             std::panic::panic_any(format!(
                 "git {args:?} failed: stdout=`{}` stderr=`{}`",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+    }
+
+    /// Run git with temporary `-c` overrides (for plumbing names Windows protects).
+    fn git_with_config(&self, config: &[(&str, &str)], args: &[&str]) {
+        let mut command = Command::new("git");
+        command.arg("-C").arg(&self.path);
+        for (key, value) in config {
+            command.arg("-c").arg(format!("{key}={value}"));
+        }
+        command.args(args);
+        let output = command
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("git process starts: {err}")));
+        if !output.status.success() {
+            std::panic::panic_any(format!(
+                "git -c {config:?} {args:?} failed: stdout=`{}` stderr=`{}`",
                 String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)
             ));
