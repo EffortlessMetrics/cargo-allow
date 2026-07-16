@@ -45,10 +45,10 @@ runs the brownfield first-hour journey plus refresh (location_drift),
 isolated git consumer, records omitted-step / preview-apply / malformed-receipt
 / post-install source-hidden ordinary-scan / package-rebuild omit
 (`MissingAsset`) / wrong-version / ordinary-scan offline / unexpected-network /
-failed-policy-rollback negatives, and writes
+failed-policy-rollback / optional-profile-without-assets (`NotProven`)
+negatives, and writes
 `target/source-candidate-smoke/source-candidate-smoke.receipt.json`.
-It does **not** deny the source tree during path install or cover every
-remaining #2278 negative (optional profile without packaged assets). Offline
+It does **not** deny the source tree during path install. Offline
 schema/example characterization remains
 `cargo test -p cargo-allow --test source_candidate_smoke --locked`.
 

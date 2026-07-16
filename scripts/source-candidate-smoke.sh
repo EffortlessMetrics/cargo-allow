@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installed-binary first-hour + lifecycle smoke (#2278 / #2373 / #2387 / #2396 /
-# #2398 / #2400 / #2402).
+# #2398 / #2400 / #2402 / #2403).
 #
 # Path-installs cargo-allow (or reuses CARGO_ALLOW_BIN), runs the brownfield
 # first-hour journey plus refresh / diff / prune preview→write and git policy
@@ -9,9 +9,9 @@
 #
 # Includes post-install source-hidden ordinary-scan denial, wrong-version /
 # MissingAsset package-rebuild omit, ordinary-scan offline / unexpected-network
-# classification, and policy rollback after prune. Does not prove
-# ExactCandidatePackageSet isolation, crates.io published install, deny-source
-# during path install, or optional-profile-without-assets.
+# classification, policy rollback after prune, and optional-profile-without-
+# assets NotProven. Does not prove ExactCandidatePackageSet isolation,
+# crates.io published install, or deny-source during path install.
 #
 # Usage:
 #   bash scripts/source-candidate-smoke.sh
@@ -774,6 +774,65 @@ PY
     fail "failed-policy-rollback negative produced unexpected class ${recovery_failed_class}"
   fi
 
+  log "negative: selected optional profile without packaged assets is NotProven"
+  # #2403 / #2278: selecting an experimental capability-matrix profile whose
+  # required packaged assets are absent must classify NotProven (fail closed),
+  # never silent Passed for that profile claim. Core journey stays independent.
+  # codex-pack remains NotIncluded for the 0.1.x cut (docs/release/0.1.11-readiness.md).
+  optional_profile="codex-pack"
+  optional_profile_asset_present=0
+  for candidate in \
+    "${install_root}/share/cargo-allow/profiles/${optional_profile}" \
+    "${install_root}/share/cargo-allow/assets/${optional_profile}" \
+    "${install_root}/share/cargo-allow/${optional_profile}" \
+    "${ROOT}/docs/templates/profiles/${optional_profile}" \
+    "${ROOT}/docs/dogfood/fixtures/release/profiles/${optional_profile}"
+  do
+    if [[ -e "${candidate}" ]]; then
+      optional_profile_asset_present=1
+      break
+    fi
+  done
+  # Also reject a packaged crate that unexpectedly ships the optional profile.
+  if [[ "${optional_profile_asset_present}" -eq 0 ]]; then
+    crate_name="cargo-allow-${version}.crate"
+    for packaged in \
+      "${ROOT}/target/package-candidate-smoke/packages/${crate_name}" \
+      "${ROOT}/target/package/${crate_name}" \
+      "${ROOT}/target/exact-candidate-package-set/packages/${crate_name}"
+    do
+      if [[ -f "${packaged}" ]] \
+        && tar --force-local -tzf "${packaged}" 2>/dev/null \
+          | grep -E "/(profiles|assets)/${optional_profile}(/|\$)" >/dev/null
+      then
+        optional_profile_asset_present=1
+        break
+      fi
+    done
+  fi
+  not_proven_class="$(
+    PROFILE_SELECTED=1 \
+    PROFILE_NAME="${optional_profile}" \
+    ASSETS_PRESENT="${optional_profile_asset_present}" \
+    python3 <<'PY'
+import os
+# Selected experimental profile with no packaged assets must be NotProven,
+# never silent Passed. Unexpected asset presence is InstrumentFailure for this
+# control (0.1.x does not package codex-pack).
+profile_selected = os.environ["PROFILE_SELECTED"] == "1"
+assets_present = os.environ["ASSETS_PRESENT"] == "1"
+if profile_selected and not assets_present:
+    print("NotProven")
+else:
+    print("InstrumentFailure")
+PY
+  )"
+  not_proven_passed=true
+  if [[ "${not_proven_class}" != "NotProven" ]]; then
+    not_proven_passed=false
+    fail "optional-profile-without-assets negative produced unexpected class ${not_proven_class} (assets_present=${optional_profile_asset_present})"
+  fi
+
   negatives_json="$(
     OMITTED_CLASS="${omitted_class}" OMITTED_PASSED="${omitted_passed}" \
     DISAGREE_CLASS="${disagree_class}" DISAGREE_PASSED="${disagree_passed}" \
@@ -788,6 +847,8 @@ PY
     NETWORK_REQUIRED_PASSED="${network_required_passed}" \
     RECOVERY_FAILED_CLASS="${recovery_failed_class}" \
     RECOVERY_FAILED_PASSED="${recovery_failed_passed}" \
+    NOT_PROVEN_CLASS="${not_proven_class}" \
+    NOT_PROVEN_PASSED="${not_proven_passed}" \
     python3 <<'PY'
 import json, os
 print(json.dumps([
@@ -850,6 +911,12 @@ print(json.dumps([
         "result_class": os.environ["RECOVERY_FAILED_CLASS"],
         "passed": os.environ["RECOVERY_FAILED_PASSED"] == "true",
         "detail": "empty policy after pretended restore leaves prune allow absent (RecoveryFailed)",
+    },
+    {
+        "id": "optional_profile_without_packaged_assets",
+        "result_class": os.environ["NOT_PROVEN_CLASS"],
+        "passed": os.environ["NOT_PROVEN_PASSED"] == "true",
+        "detail": "selected optional profile codex-pack without packaged assets is classified NotProven",
     },
 ]))
 PY
@@ -987,6 +1054,7 @@ receipt = {
         "ordinary_scan_does_not_require_network",
         "policy_rollback_after_prune",
         "packaged_asset_omit_rebuild",
+        "optional_profile_without_assets_not_proven",
     ],
     "candidate": {
         "workspace_version": os.environ["WORKSPACE_VERSION"],
@@ -1016,7 +1084,6 @@ receipt = {
         "source_checkout_not_denied_during_install",
         "published_registry_install_not_executed",
         "linux_hosted_claim_only",
-        "optional_profile_without_assets_not_executed",
     ],
 }
 

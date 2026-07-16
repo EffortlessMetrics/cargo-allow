@@ -18,9 +18,10 @@ inventory without executing repository code.
   preview-apply / malformed-receipt / post-install source-hidden ordinary-scan /
   package-rebuild omit (`MissingAsset`) / wrong-version (`StaleCandidate`) /
   ordinary-scan offline (`NetworkIsolated`) / unexpected-network
-  (`NetworkRequired`) / failed-policy-rollback (`RecoveryFailed`) negatives
-  (#2402 / #2400 / #2398 / #2396 / #2387 / #2373 / #2278; path-install still
-  uses the source checkout; optional-profile-without-assets remains deferred).
+  (`NetworkRequired`) / failed-policy-rollback (`RecoveryFailed`) /
+  optional-profile-without-assets (`NotProven`) negatives
+  (#2403 / #2402 / #2400 / #2398 / #2396 / #2387 / #2373 / #2278; path-install
+  still uses the source checkout).
 - `scripts/exact-candidate-package-set.sh` emits
   `cargo-allow.exact-candidate-package-set.v1` after packaging the shared
   ten-crate set, assembling a Cargo directory vendor with injected candidate
