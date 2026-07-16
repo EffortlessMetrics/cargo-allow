@@ -7,6 +7,7 @@ Use these guides when you already know the task you want to complete.
 - [Run in CI](run-in-ci.md)
 - [Review PR posture](review-pr-posture.md)
 - [Explain an allow entry](explain-an-allow.md)
+- [Explain why a finding is unreceipted](explain-why-a-finding.md)
 - [Fix broken evidence](fix-broken-evidence.md)
 - [Prune stale allows](prune-stale-allows.md)
 - [Migrate from xtask](migrate-from-xtask.md)

@@ -23,6 +23,8 @@ inventory without executing repository code.
 - Glob matching budgets recursive steps (`GLOB_MATCH_MAX_STEPS = 10_000`) so
   pathological `*` / `**` patterns fail closed quickly instead of
   exponential-backtracking (#1924).
+- Operator `manage-an-exception` guide now includes `why`, preview/`--write`
+  add examples, adoption-route links, and a docs command-parity test (#2251).
 - `cargo-allow why` proof guidance is built as structured argv (`proof_plans`)
   and rendered with platform shell quoting (or an explicit non-copyable argv
   listing). Ambiguous outcomes emit `explain` plans for every candidate ID

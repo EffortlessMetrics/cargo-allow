@@ -5,6 +5,13 @@ exception. Start with the controlling GitHub issue or PR. The issue owns the
 decision and live work identity; cargo-allow reports findings and applies only
 the explicit mutation requested by the operator.
 
+Sibling references (do not duplicate every flag here):
+[Explain an allow entry](explain-an-allow.md),
+[Explain why a finding is unreceipted](explain-why-a-finding.md),
+[Fix broken evidence](fix-broken-evidence.md),
+[Prune stale allows](prune-stale-allows.md),
+[Review PR posture](review-pr-posture.md).
+
 ## 1. Understand the finding
 
 Run the cheapest useful read first:
@@ -16,13 +23,15 @@ cargo-allow check --mode no-new --format markdown \
   --output target/cargo-allow/check.md
 cargo-allow list --status new --format json
 cargo-allow explain <allow-id> --format json
+cargo-allow why --kind <kind> --path <path> --line <line> --format json
 cargo-allow worklist --format json
 ```
 
-Confirm the exact allow ID, source path, selector, current status, evidence
-references, owner, and review date. `review_due`, `baseline_debt`, and
-advisory work items are signals, not approval. A partial or incomplete
-inventory is a reason to investigate before editing policy.
+Confirm the exact allow ID or finding location, source path, selector, current
+status, evidence references, owner, and review date. Use `explain` for a
+retained entry and `why` for an unreceipted path/line. `review_due`,
+`baseline_debt`, and advisory work items are signals, not approval. A partial
+or incomplete inventory is a reason to investigate before editing policy.
 
 ## 2. Decide whether policy is appropriate
 
@@ -40,15 +49,31 @@ reason, scope, evidence, review date, and claim boundary.
 
 ## 3. Add or propose safely
 
-Use `propose` for generated candidates and review them as temporary debt. Use
-`add` for one deliberate entry after the issue decision is accepted. Keep the
-policy change, source/evidence repair, tests, and issue or PR context atomic.
+Use `propose` for generated `baseline_debt` candidates and review them as
+temporary debt. Use `add` for one deliberate entry after the issue decision is
+accepted. Keep the policy change, source/evidence repair, tests, and issue or
+PR context atomic.
 
-Every mutation should be previewed and should leave a mutation receipt when the
-repository workflow requires one. If a command offers a dry-run, inspect that
-result before using its write/apply form. Recover by reverting the scoped PR
-change or using the receipt's recorded subject and path; do not rerun a broad
-mutation until its selection is understood.
+Preview is the default for both commands: omit `--write` to inspect the
+candidate entry or summary first. Apply only with an explicit `--write` path
+after review:
+
+```bash
+cargo-allow propose --kind panic --summary-format json
+cargo-allow add --kind panic --path src/lib.rs --line 42 \
+  --owner core --reason "bounded fixture exception" \
+  --evidence doc:docs/design.md
+cargo-allow add --kind panic --path src/lib.rs --line 42 \
+  --owner core --reason "bounded fixture exception" \
+  --evidence doc:docs/design.md \
+  --write policy/allow.toml
+```
+
+Every mutation should leave a mutation receipt when the repository workflow
+requires one. Commands that offer `--dry-run` (for example `refresh` and
+`prune`) must be previewed before `--write`. Recover by reverting the scoped
+PR change or using the receipt's recorded subject and path; do not rerun a
+broad mutation until its selection is understood.
 
 ## 4. Repair lifecycle and evidence
 
