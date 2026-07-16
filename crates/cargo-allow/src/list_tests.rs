@@ -100,18 +100,16 @@ fn clap_rejects_list_status_combined_with_status_shortcuts() {
 }
 
 #[test]
-fn clap_parses_list_status_shortcuts_without_status() {
+fn clap_parses_single_list_status_shortcut_with_baseline_debt() {
     let parsed = CargoAllowCli::try_parse_from(argv(vec![
         "cargo-allow",
         "list",
         "--expired",
-        "--review-due",
-        "--stale",
         "--baseline-debt",
     ]))
     .unwrap_or_else(|err| {
         std::panic::panic_any(format!(
-            "status shortcuts without --status should parse: {err}"
+            "single status shortcut with --baseline-debt should parse: {err}"
         ))
     });
 
@@ -120,8 +118,8 @@ fn clap_parses_list_status_shortcuts_without_status() {
         Some(CargoAllowCommand::List(ListArgs {
             status: None,
             expired: true,
-            review_due: true,
-            stale: true,
+            review_due: false,
+            stale: false,
             baseline_debt: true,
             ..
         }))
@@ -147,6 +145,29 @@ fn clap_parses_list_location_drift_status() {
             ..
         })) if status == "location_drift"
     ));
+}
+
+#[test]
+fn clap_rejects_conflicting_list_status_shortcuts() {
+    for pair in [
+        ["--expired", "--stale"],
+        ["--expired", "--review-due"],
+        ["--stale", "--review-due"],
+    ] {
+        let err =
+            CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "list", pair[0], pair[1]]))
+                .expect_err("status shortcuts should be mutually exclusive");
+        let message = err.to_string();
+        assert!(
+            message.contains("cannot be used with")
+                || message.contains("conflict")
+                || message.contains(pair[0])
+                || message.contains(pair[1]),
+            "expected conflict diagnostic for {} {}, got: {message}",
+            pair[0],
+            pair[1]
+        );
+    }
 }
 
 #[test]

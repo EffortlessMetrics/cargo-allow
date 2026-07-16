@@ -37,25 +37,26 @@ pub(crate) struct ListArgs {
     /// Filter allow entries by current match status.
     ///
     /// Accepts every `MatchStatus` value, including `location_drift`.
-    /// Conflicts with the status shortcut flags `--expired`, `--review-due`,
-    /// and `--stale` (pick one style). `--baseline-debt` is a classification
-    /// filter and may still be combined with `--status`.
-    #[arg(long, value_parser = parse_match_status_arg)]
+    /// Mutually exclusive with the status shortcut flags `--expired`,
+    /// `--review-due`, and `--stale` (pick one status selector).
+    /// `--baseline-debt` is a classification filter and may still be combined
+    /// with one status selector.
+    #[arg(long, group = "status_selector", value_parser = parse_match_status_arg)]
     pub(super) status: Option<String>,
     /// Include only expired allow entries.
     ///
-    /// Conflicts with `--status`; use `--status expired` instead of combining.
-    #[arg(long, conflicts_with = "status")]
+    /// Mutually exclusive with `--status`, `--review-due`, and `--stale`.
+    #[arg(long, group = "status_selector")]
     pub(super) expired: bool,
     /// Include only review-due allow entries.
     ///
-    /// Conflicts with `--status`; use `--status review_due` instead of combining.
-    #[arg(long, conflicts_with = "status")]
+    /// Mutually exclusive with `--status`, `--expired`, and `--stale`.
+    #[arg(long, group = "status_selector")]
     pub(super) review_due: bool,
     /// Include only stale allow entries.
     ///
-    /// Conflicts with `--status`; use `--status stale` instead of combining.
-    #[arg(long, conflicts_with = "status")]
+    /// Mutually exclusive with `--status`, `--expired`, and `--review-due`.
+    #[arg(long, group = "status_selector")]
     pub(super) stale: bool,
     /// Include only generated baseline debt entries (classification filter).
     ///
