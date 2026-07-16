@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.source-candidate-smoke-receipt.v1",
+  "tool": "cargo-allow",
+  "result": "Passed",
+  "claim_boundary": [
+    "installed_binary_first_hour_journey",
+    "temporary_consumer_repository",
+    "source_candidate_not_published_registry"
+  ],
+  "candidate": {
+    "workspace_version": "0.1.10",
+    "git_head": null,
+    "package_set_provenance": "workspace_path_install_after_optional_package_gate",
+    "install_method": "cargo_install_path"
+  },
+  "environment": {
+    "os": "linux",
+    "arch": "x86_64",
+    "rustc_version": null,
+    "cargo_version": null,
+    "network_posture": "not_required_for_core_journey"
+  },
+  "installed_binary": {
+    "version_output": "cargo-allow 0.1.10",
+    "path_redacted": true
+  },
+  "journey": {
+    "fixture_generation": "first_hour_brownfield_v1",
+    "steps_expected": [
+      "version",
+      "doctor_no_policy",
+      "audit_with_finding",
+      "bootstrap_propose_write",
+      "check_no_new_pass",
+      "list_explain_worklist"
+    ],
+    "steps_executed": [
+      { "id": "version", "exit_code": 0, "artifact_schema_id": null },
+      {
+        "id": "doctor_no_policy",
+        "exit_code": 0,
+        "artifact_schema_id": "cargo-allow.doctor.v1"
+      },
+      {
+        "id": "audit_with_finding",
+        "exit_code": 0,
+        "artifact_schema_id": "cargo-allow.report.v1"
+      },
+      {
+        "id": "bootstrap_propose_write",
+        "exit_code": 0,
+        "artifact_schema_id": null
+      },
+      {
+        "id": "check_no_new_pass",
+        "exit_code": 0,
+        "artifact_schema_id": "cargo-allow.report.v1"
+      },
+      {
+        "id": "list_explain_worklist",
+        "exit_code": 0,
+        "artifact_schema_id": "cargo-allow.list.v1"
+      }
+    ]
+  },
+  "limitations": [
+    "package_set_not_consumed_from_isolated_registry",
+    "source_checkout_not_denied_during_install",
+    "lifecycle_diff_refresh_prune_not_executed",
+    "negative_controls_not_run",
+    "published_registry_install_not_executed"
+  ]
+}

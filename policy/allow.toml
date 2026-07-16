@@ -4803,6 +4803,50 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-4756"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/release/source-candidate-smoke-receipt.v1.schema.json"
+owner = "core/release"
+classification = "docs_executable_contract"
+reason = "JSON Schema for SourceCandidateSmokeReceiptV1 used by the installed first-hour smoke harness (#2278)."
+evidence = ["test:example_source_candidate_smoke_receipt_matches_schema_constants", "issue:2278", "doc:docs/release/README.md"]
+created = "2026-07-15"
+review_after = "2026-10-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "json"
+line_hint = 1
+glob = "docs/dogfood/fixtures/release/source-candidate-smoke-receipt.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4757"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/receipts/source-candidate-smoke-pass.example.json"
+owner = "core/release"
+classification = "docs_executable_contract"
+reason = "Example Passed SourceCandidateSmokeReceiptV1 for docs and offline characterization (#2278)."
+evidence = ["test:example_source_candidate_smoke_receipt_matches_schema_constants", "issue:2278"]
+created = "2026-07-15"
+review_after = "2026-10-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "json"
+line_hint = 1
+glob = "docs/dogfood/receipts/source-candidate-smoke-pass.example.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0239"
 kind = "non_rust_file"
 family = "documentation"

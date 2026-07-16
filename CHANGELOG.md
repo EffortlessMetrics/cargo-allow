@@ -10,6 +10,10 @@ inventory without executing repository code.
 
 ### Added
 
+- `source_candidate_smoke` harness emits
+  `cargo-allow.source-candidate-smoke-receipt.v1` after a path-installed binary
+  completes the brownfield first-hour journey in a temporary consumer repo
+  (#2278 Stage A+; ExactCandidatePackageSet isolation remains #2277).
 - Hosted `shallow-diff-smoke` CI job and `scripts/shallow-diff-base-smoke.sh`:
   prove `diff --base` fails closed without base history, then succeeds after
   history is available (#2366).

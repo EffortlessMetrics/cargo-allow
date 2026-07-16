@@ -102,6 +102,13 @@ jobs:
         run: cargo test -p cargo-allow --tests --locked
       - name: Full workspace proof union
         run: cargo test --workspace --locked
+      - name: Upload source-candidate smoke receipt
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: source-candidate-smoke-receipt
+          path: target/source-candidate-smoke/source-candidate-smoke.receipt.json
+          if-no-files-found: ignore
       - run: cargo test --doc --workspace
       - run: cargo doc --workspace --no-deps
         env:
@@ -114,4 +121,6 @@ jobs:
         if: always()
         with:
           name: cargo-allow-reports
-          path: target/cargo-allow/
+          path: |
+            target/cargo-allow/
+            target/source-candidate-smoke/source-candidate-smoke.receipt.json

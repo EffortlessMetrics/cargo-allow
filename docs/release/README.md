@@ -32,6 +32,19 @@ That script:
 4. runs `--version`, `doctor`, and `check`/`list`/`why` `--help` checks
 5. writes `target/package-candidate-smoke/package-candidate-smoke.receipt.txt`
 
+Installed first-hour journey (temp consumer repo + JSON receipt
+`cargo-allow.source-candidate-smoke-receipt.v1`) is separately proven by:
+
+```bash
+cargo test -p cargo-allow --test source_candidate_smoke --locked
+```
+
+That harness path-installs into a temp root, runs the brownfield first-hour
+journey outside the checkout, and writes
+`target/source-candidate-smoke/source-candidate-smoke.receipt.json`. It does
+**not** yet consume an ExactCandidatePackageSetV1 local registry (#2277) or a
+crates.io published binary.
+
 Post-publication registry install remains
 [scripts/release-install-smoke.sh](../../scripts/release-install-smoke.sh)
 (Stage B). The next 0.1.x cut stays on Rust 1.85; do not raise MSRV here.
