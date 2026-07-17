@@ -47,6 +47,11 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             "pass either --update or --write, not both",
         ));
     }
+    // Discovered once, before the mutation lock, and reused below for the
+    // lock target, the mutation receipt's `config_source`/`result` fields,
+    // and the actual --update write target — so locking, reporting, and
+    // writing can never race onto different discovered paths.
+    let discovered_config_path = config_path(&mutation_root, args.config.as_deref());
     let mutation_target = args
         .write
         .as_deref()
@@ -57,7 +62,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                 cwd.join(path)
             }
         })
-        .or_else(|| config_path(&mutation_root, args.config.as_deref()));
+        .or_else(|| discovered_config_path.clone());
     let _mutation_lock = mutation_target.map(MutationLock::acquire).transpose()?;
     let (root, mut cfg, findings, inventory_facts, _federation) = load_world(
         args.root.root.as_deref(),
@@ -72,27 +77,22 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             "allow entry id `{id}` already exists"
         )));
     }
-    // Discovered once and reused below: for the mutation receipt's
-    // `config_source`/`result` fields (--update writes the live ledger, so
-    // reports the discovered config path) and for the actual --update write
-    // target. `load_world` above already required a discovered config, so
-    // this is guaranteed `Some` on the --update path.
-    let discovered_config_path = config_path(&root, args.config.as_deref());
+    // `load_world` above already required a discovered config, so this is
+    // guaranteed `Some` on the --update path.
+    let discovered_config_path_str = discovered_config_path
+        .as_deref()
+        .map(|path| path.display().to_string());
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = AddContext {
         inventory: source_context.inventory(),
         repo_root: Some(root.display().to_string()),
-        config_source: discovered_config_path
-            .as_deref()
-            .map(|path| path.display().to_string()),
+        config_source: discovered_config_path_str.clone(),
     };
     // For the mutation receipt's `result` field: --update writes the live
     // ledger, so report the discovered config path; --write reports its target;
     // otherwise stdout (None).
     let policy_output: Option<String> = if args.update {
-        discovered_config_path
-            .as_deref()
-            .map(|path| path.display().to_string())
+        discovered_config_path_str
     } else {
         args.write.as_deref().map(|path| path.display().to_string())
     };
