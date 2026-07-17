@@ -10,6 +10,13 @@ inventory without executing repository code.
 
 ### Added
 
+- `cargo-allow diff` now includes copy-paste `why` / `add --update` receipt
+  commands for each introduced (unreceipted) finding, so a PR reviewer can
+  investigate and receipt a new finding without looking up the command syntax.
+- `cargo-allow why` now passes the `--kind` filter to the scanner, matching
+  `add`'s behavior, so fewer irrelevant findings are evaluated before the
+  requested finding is selected.
+
 - `cargo-allow add --update` writes the new entry directly into the live
   `policy/allow.toml` via load → validate → atomic replace, instead of
   rendering a candidate file. This is the normal receipt path: it preserves
