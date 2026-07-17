@@ -559,7 +559,11 @@ fn append_remediation_roadmap_human(summary: &Summary, signals: ReviewSignals, o
     }
 }
 
-fn append_remediation_roadmap_markdown(summary: &Summary, signals: ReviewSignals, out: &mut String) {
+fn append_remediation_roadmap_markdown(
+    summary: &Summary,
+    signals: ReviewSignals,
+    out: &mut String,
+) {
     let items = audit_remediation_items(summary, signals);
     if items.is_empty() {
         return;
