@@ -63,6 +63,36 @@ fn clap_parses_add_from_finding() {
 }
 
 #[test]
+fn clap_rejects_add_update_and_write_together() {
+    let err = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "add",
+        "--kind",
+        "panic",
+        "--path",
+        "src/lib.rs",
+        "--line",
+        "42",
+        "--owner",
+        "parser",
+        "--reason",
+        "validated invariant",
+        "--evidence",
+        "test:parser_invariant",
+        "--update",
+        "--write",
+        "policy/allow.proposed.toml",
+    ]))
+    .expect_err("clap should reject --update with --write before cmd_add ever runs");
+
+    assert_eq!(
+        err.kind(),
+        clap::error::ErrorKind::ArgumentConflict,
+        "unexpected clap error: {err}"
+    );
+}
+
+#[test]
 fn select_add_finding_picks_nearest_path_and_kind() {
     let findings = vec![
         test_finding_at_line(
@@ -740,6 +770,78 @@ fn cmd_add_update_writes_entry_into_live_policy() {
     assert!(
         before.lines().all(|line| after.contains(line)),
         "update must preserve every existing line"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn cmd_add_update_json_discovers_config_and_reports_written() {
+    let root = add_fixture_dir();
+    write_add_fixture_with_new_panic_finding(&root);
+    let discovered_policy_path = root.join("policy/allow.toml");
+
+    cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        // The advertised discovered-policy flow: no explicit --config, so
+        // --update must resolve policy/allow.toml on its own.
+        config: None,
+        kind: "panic".to_string(),
+        glob: None,
+        family: None,
+        callee: None,
+        path: Some(PathBuf::from("src/lib.rs")),
+        line: Some(1),
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: None,
+        force: false,
+        update: true,
+        summary_format: AddSummaryFormat::Json,
+        summary_output: Some(root.join("target/add-summary.json")),
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "add --update with discovered config should succeed: {err}"
+        ))
+    });
+
+    let summary = fs::read_to_string(root.join("target/add-summary.json"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read summary: {err}")));
+    let value: serde_json::Value = serde_json::from_str(&summary).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "add --update summary should parse as JSON: {err}\n{summary}"
+        ))
+    });
+
+    assert_eq!(
+        value
+            .pointer("/options/policy_output")
+            .and_then(serde_json::Value::as_str),
+        Some(discovered_policy_path.display().to_string().as_str()),
+        "add --update JSON summary should report the discovered policy path, not stdout"
+    );
+    assert_eq!(
+        value
+            .pointer("/mutation_receipt/result")
+            .and_then(serde_json::Value::as_str),
+        Some("written"),
+        "add --update JSON summary should report result=written for the discovered target"
+    );
+
+    let after = fs::read_to_string(&discovered_policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read after: {err}")));
+    assert!(
+        after.contains("allow-0002") && after.contains("test:parser_validates"),
+        "discovered live policy should contain the new entry"
     );
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));

@@ -72,18 +72,26 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             "allow entry id `{id}` already exists"
         )));
     }
+    // Discovered once and reused below: for the mutation receipt's
+    // `config_source`/`result` fields (--update writes the live ledger, so
+    // reports the discovered config path) and for the actual --update write
+    // target. `load_world` above already required a discovered config, so
+    // this is guaranteed `Some` on the --update path.
+    let discovered_config_path = config_path(&root, args.config.as_deref());
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = AddContext {
         inventory: source_context.inventory(),
         repo_root: Some(root.display().to_string()),
-        config_source: crate::policy_config::config_path(&root, args.config.as_deref())
+        config_source: discovered_config_path
+            .as_deref()
             .map(|path| path.display().to_string()),
     };
     // For the mutation receipt's `result` field: --update writes the live
     // ledger, so report the discovered config path; --write reports its target;
     // otherwise stdout (None).
     let policy_output: Option<String> = if args.update {
-        crate::policy_config::config_path(&root, args.config.as_deref())
+        discovered_config_path
+            .as_deref()
             .map(|path| path.display().to_string())
     } else {
         args.write.as_deref().map(|path| path.display().to_string())
@@ -190,7 +198,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     validate_evidence_references_for_source_tree(&root, &cfg, evidence_source_tree_files.as_ref())?;
     let rendered = render_policy(&cfg);
     if args.update {
-        let policy_path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
+        let policy_path = discovered_config_path.ok_or_else(|| {
             CargoAllowError::new("no policy config found to update; run `cargo-allow init`")
         })?;
         write_file(&policy_path, &rendered)?;
