@@ -128,9 +128,12 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             AddSummaryFormat::Human => {
                 render_add_summary_broad_human(&broad, policy_output.as_deref())
             }
-            AddSummaryFormat::Json => {
-                render_add_summary_broad_json(&broad, policy_output.as_deref(), args.force, &context)
-            }
+            AddSummaryFormat::Json => render_add_summary_broad_json(
+                &broad,
+                policy_output.as_deref(),
+                args.force,
+                &context,
+            ),
         };
         (broad, summary)
     } else {
@@ -169,9 +172,13 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             AddSummaryFormat::Human => {
                 render_add_summary(&entry, finding, policy_output.as_deref(), context)
             }
-            AddSummaryFormat::Json => {
-                render_add_summary_json(&entry, finding, policy_output.as_deref(), args.force, context)
-            }
+            AddSummaryFormat::Json => render_add_summary_json(
+                &entry,
+                finding,
+                policy_output.as_deref(),
+                args.force,
+                context,
+            ),
         };
         (entry, summary)
     };
