@@ -19,6 +19,12 @@ pub(crate) struct MigrateArgs {
     /// Overwrite an existing output policy file.
     #[arg(long)]
     pub(super) force: bool,
+    /// Update the output policy in place via atomic replace instead of
+    /// requiring --force when the target already exists. The output is
+    /// validated before writing and unrelated entries are preserved.
+    /// Mutually exclusive with --force.
+    #[arg(long)]
+    pub(super) update: bool,
     /// Summary output format. Policy output remains TOML.
     #[arg(long, value_enum, default_value_t = MigrateSummaryFormat::Human)]
     pub(super) summary_format: MigrateSummaryFormat,
