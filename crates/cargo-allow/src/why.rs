@@ -28,7 +28,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
-        None,
+        Some(args.kind.as_str()),
         args.include_untracked,
         EvidenceValidationMode::ReportOnly,
     )?;

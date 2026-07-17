@@ -276,6 +276,7 @@ pub fn render_diff_finding_changes_human(changes: &[DiffFindingChange<'_>]) -> S
         changes,
         PresenceMovement::Introduced.finding_change_label(),
     );
+    append_finding_receipt_commands_human(&mut out, changes);
     append_finding_changes_human_section(
         &mut out,
         "Finding improvements",
@@ -333,6 +334,32 @@ fn append_finding_changes_human_section(
         out.push_str(&format!(
             "    ... {} more omitted\n",
             matching_count - DIFF_HUMAN_CHANGE_LIMIT
+        ));
+    }
+}
+
+/// Suggests `cargo-allow why` / `cargo-allow add --update` commands for each
+/// introduced (unreceipted) finding so the reviewer can investigate and
+/// receipt it without looking up the command syntax.
+fn append_finding_receipt_commands_human(out: &mut String, changes: &[DiffFindingChange<'_>]) {
+    let introduced: Vec<_> = changes
+        .iter()
+        .filter(|change| change.change == PresenceMovement::Introduced.finding_change_label())
+        .take(DIFF_HUMAN_CHANGE_LIMIT)
+        .collect();
+    if introduced.is_empty() {
+        return;
+    }
+    out.push_str("  Receipt commands:\n");
+    for change in introduced {
+        let line = change.line.unwrap_or(1);
+        out.push_str(&format!(
+            "    cargo-allow why --kind {} --path {} --line {line}\n",
+            change.kind, change.path,
+        ));
+        out.push_str(&format!(
+            "    cargo-allow add --kind {} --path {} --line {line} --owner <owner> --reason ... --evidence <ref> --update\n",
+            change.kind, change.path,
         ));
     }
 }
