@@ -67,12 +67,18 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
         write_file_no_overwrite(&args.out, &render_policy(&cfg), args.force)?;
     }
     let summary = match args.summary_format {
-        MigrateSummaryFormat::Human => {
-            render_migrate_summary(&cfg, &migration.context, &args.out, args.force || args.update)
-        }
-        MigrateSummaryFormat::Json => {
-            render_migrate_summary_json(&cfg, &migration.context, &args.out, args.force || args.update)
-        }
+        MigrateSummaryFormat::Human => render_migrate_summary(
+            &cfg,
+            &migration.context,
+            &args.out,
+            args.force || args.update,
+        ),
+        MigrateSummaryFormat::Json => render_migrate_summary_json(
+            &cfg,
+            &migration.context,
+            &args.out,
+            args.force || args.update,
+        ),
     };
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())
