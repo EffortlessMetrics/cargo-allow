@@ -28,12 +28,10 @@ use crate::{
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    load_world, parse_kind_filter, resolve_source_tree_root, write_file_no_overwrite,
+    load_world, parse_kind_filter, resolve_source_tree_root, write_file, write_file_no_overwrite,
 };
 
 const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
-
-use std::path::Path;
 
 #[cfg(test)]
 use std::path::PathBuf;
@@ -43,6 +41,12 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let cwd = std::env::current_dir()
         .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
     let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
+    if args.update && args.write.is_some() {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "pass either --update or --write, not both",
+        ));
+    }
     let mutation_target = args
         .write
         .as_deref()
@@ -74,6 +78,15 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         repo_root: Some(root.display().to_string()),
         config_source: crate::policy_config::config_path(&root, args.config.as_deref())
             .map(|path| path.display().to_string()),
+    };
+    // For the mutation receipt's `result` field: --update writes the live
+    // ledger, so report the discovered config path; --write reports its target;
+    // otherwise stdout (None).
+    let policy_output: Option<String> = if args.update {
+        crate::policy_config::config_path(&root, args.config.as_deref())
+            .map(|path| path.display().to_string())
+    } else {
+        args.write.as_deref().map(|path| path.display().to_string())
     };
 
     let (entry, summary) = if let Some(glob) = args.glob.clone() {
@@ -113,11 +126,14 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         broad.occurrence_limit = Some(count);
         let summary = match args.summary_format {
             AddSummaryFormat::Human => {
-                render_add_summary_broad_human(&broad, args.write.as_deref())
+                render_add_summary_broad_human(&broad, policy_output.as_deref())
             }
-            AddSummaryFormat::Json => {
-                render_add_summary_broad_json(&broad, args.write.as_deref(), args.force, &context)
-            }
+            AddSummaryFormat::Json => render_add_summary_broad_json(
+                &broad,
+                policy_output.as_deref(),
+                args.force,
+                &context,
+            ),
         };
         (broad, summary)
     } else {
@@ -154,11 +170,15 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         });
         let summary = match args.summary_format {
             AddSummaryFormat::Human => {
-                render_add_summary(&entry, finding, args.write.as_deref(), context)
+                render_add_summary(&entry, finding, policy_output.as_deref(), context)
             }
-            AddSummaryFormat::Json => {
-                render_add_summary_json(&entry, finding, args.write.as_deref(), args.force, context)
-            }
+            AddSummaryFormat::Json => render_add_summary_json(
+                &entry,
+                finding,
+                policy_output.as_deref(),
+                args.force,
+                context,
+            ),
         };
         (entry, summary)
     };
@@ -169,7 +189,12 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         current_evidence_source_tree_files(&root, args.include_untracked);
     validate_evidence_references_for_source_tree(&root, &cfg, evidence_source_tree_files.as_ref())?;
     let rendered = render_policy(&cfg);
-    if let Some(path) = &args.write {
+    if args.update {
+        let policy_path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
+            CargoAllowError::new("no policy config found to update; run `cargo-allow init`")
+        })?;
+        write_file(&policy_path, &rendered)?;
+    } else if let Some(path) = &args.write {
         write_file_no_overwrite(path, &rendered, args.force)?;
     } else {
         println!("{rendered}");
@@ -202,10 +227,8 @@ fn require_add_evidence_for_kind(kind: FindingKind, evidence: &[String]) -> Carg
     )))
 }
 
-fn render_add_summary_broad_human(entry: &AllowEntry, output: Option<&Path>) -> String {
-    let target = output
-        .map(|p| p.display().to_string())
-        .unwrap_or_else(|| "stdout".to_string());
+fn render_add_summary_broad_human(entry: &AllowEntry, policy_output: Option<&str>) -> String {
+    let target = policy_output.unwrap_or("stdout");
     format!(
         "added broad baseline {} (kind={}, scope={}, occurrence_limit={}); policy written to {}\n",
         entry.id,
@@ -218,20 +241,19 @@ fn render_add_summary_broad_human(entry: &AllowEntry, output: Option<&Path>) -> 
 
 fn render_add_summary_broad_json(
     entry: &AllowEntry,
-    output: Option<&Path>,
+    policy_output: Option<&str>,
     force: bool,
     context: &AddContext<'_>,
 ) -> String {
-    let policy_output = output.map(|p| p.display().to_string());
     let action = if force { "overwrite" } else { "write" };
-    let mutation_receipt = add_mutation_receipt(entry, context, policy_output.as_deref());
+    let mutation_receipt = add_mutation_receipt(entry, context, policy_output);
     format!(
         "{{\"id\":\"{}\",\"kind\":\"{}\",\"scope\":\"{}\",\"occurrence_limit\":{},\"policy_output\":\"{}\",\"action\":\"{}\",\"mutation_receipt\":{}}}",
         json_escape(&entry.id),
         json_escape(&entry.kind.to_string()),
         json_escape(&entry.path_or_glob()),
         entry.occurrence_limit.unwrap_or(0),
-        json_escape(policy_output.as_deref().unwrap_or("stdout")),
+        json_escape(policy_output.unwrap_or("stdout")),
         json_escape(action),
         allow_report::render_mutation_receipt_json(&mutation_receipt, ""),
     )
@@ -317,7 +339,7 @@ pub(crate) fn sample_add_json_for_contract_test() -> String {
     render_add_summary_json(
         &add_entry,
         &add_finding,
-        Some(Path::new("policy/allow.proposed.toml")),
+        Some("policy/allow.proposed.toml"),
         false,
         AddContext {
             inventory: allow_report::InventoryContext::source_syntax(
