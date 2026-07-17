@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_policy::{render_policy, validate_policy};
 
-use crate::{MutationLock, emit_stderr_text, write_file_no_overwrite};
+use crate::{MutationLock, emit_stderr_text, write_file, write_file_no_overwrite};
 
 #[path = "migrate_args.rs"]
 mod migrate_args;
@@ -55,13 +55,23 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
         );
         eprintln!("warning: review the output and remove or fix invalid entries before using it");
     }
-    write_file_no_overwrite(&args.out, &render_policy(&cfg), args.force)?;
+    if args.update && args.force {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "pass either --update or --force, not both",
+        ));
+    }
+    if args.update {
+        write_file(&args.out, &render_policy(&cfg))?;
+    } else {
+        write_file_no_overwrite(&args.out, &render_policy(&cfg), args.force)?;
+    }
     let summary = match args.summary_format {
         MigrateSummaryFormat::Human => {
-            render_migrate_summary(&cfg, &migration.context, &args.out, args.force)
+            render_migrate_summary(&cfg, &migration.context, &args.out, args.force || args.update)
         }
         MigrateSummaryFormat::Json => {
-            render_migrate_summary_json(&cfg, &migration.context, &args.out, args.force)
+            render_migrate_summary_json(&cfg, &migration.context, &args.out, args.force || args.update)
         }
     };
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;

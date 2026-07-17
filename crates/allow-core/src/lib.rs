@@ -29,9 +29,7 @@ pub use finding::{
     Finding, FindingKind, MAX_IDENTITY_FIELD_LEN, STRUCTURAL_IDENTITY_SCHEMA_ID, Span,
     StructuralIdentity, finding_identity_key,
 };
-pub use fingerprint::{
-    allow_entry_content_fingerprint, maybe_line_distance_score, normalize_snippet, stable_hash_hex,
-};
+pub use fingerprint::{allow_entry_content_fingerprint, normalize_snippet, stable_hash_hex};
 pub use json::json_escape;
 pub use lane_posture::{
     LaneConfig, LaneEnforcementMode, effective_lane_posture_for_findings,

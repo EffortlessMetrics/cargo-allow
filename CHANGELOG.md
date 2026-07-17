@@ -16,6 +16,14 @@ inventory without executing repository code.
   unrelated entries, validates the complete result, and emits a mutation
   receipt. The existing `--write <PATH>` candidate-file behavior is unchanged;
   `--update` and `--write` are mutually exclusive.
+- `cargo-allow migrate --update` writes the migrated policy via atomic replace
+  instead of failing when the output path already exists. The existing `--out`
+  /`--force` candidate-file behavior is unchanged; `--update` and `--force`
+  are mutually exclusive.
+- `cargo-allow check --mode no-new` now includes a remediation roadmap with
+  copy-paste commands for every non-matched status, not just evidence-repair
+  queues. The same roadmap that `audit` produces is now surfaced on failed
+  `check` output so the operator knows what to run next.
 - `scripts/source-candidate-smoke.sh` emits
   `cargo-allow.source-candidate-smoke-receipt.v1` after a path-installed (or
   `CARGO_ALLOW_BIN`) binary completes the brownfield first-hour journey plus
@@ -47,6 +55,13 @@ inventory without executing repository code.
   (`docs/dogfood/fixtures/getting-started/published-command-registry.toml`) with
   `PublishedQuickStartV1` docs contract tests so candidate-only commands such as
   `why` cannot appear as ordinary published quick-start instructions (#2353).
+
+### Changed
+
+- Removed the unused `maybe_line_distance_score` helper and its tests. The
+  function was exported but never consulted by the matching engine; numeric
+  line-distance scoring was retired in favor of explicit match-strength tiers.
+
 - Branched, executable first-hour journey in `docs/getting-started.md` with
   published-vs-candidate channel selection, install prerequisites, clean vs
   brownfield forks, `init`/`propose` alternatives, policy command map, fixture

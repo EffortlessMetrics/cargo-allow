@@ -251,23 +251,3 @@ fn write_optional_u32(output: &mut Vec<u8>, value: Option<u32>) {
         None => output.push(0),
     }
 }
-
-pub fn maybe_line_distance_score(hint: Option<u32>, actual: Option<u32>) -> u32 {
-    match (hint, actual) {
-        (Some(h), Some(a)) => {
-            let diff = h.abs_diff(a);
-            if diff == 0 {
-                15
-            } else if diff <= 3 {
-                12
-            } else if diff <= 10 {
-                8
-            } else if diff <= 25 {
-                3
-            } else {
-                0
-            }
-        }
-        _ => 0,
-    }
-}
