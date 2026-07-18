@@ -1052,7 +1052,7 @@ mod tests {
             .arg(&repo.root)
             .arg("add")
             .arg("--")
-            .arg(OsStr::new(&raw_name))
+            .arg(&raw_name)
             .output()
             .map_err(|error| error.to_string())?;
         assert!(output.status.success());
