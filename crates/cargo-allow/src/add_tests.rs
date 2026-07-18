@@ -52,7 +52,7 @@ fn clap_parses_add_from_finding() {
             summary_format: AddSummaryFormat::Json,
             summary_output: Some(summary_output),
             ..
-        })) if kind == "panic"
+        })) if kind.as_deref() == Some("panic")
             && path.as_path() == Path::new("src/lib.rs")
             && owner == "parser"
             && reason == "validated invariant"
@@ -362,7 +362,7 @@ fn cmd_add_rejects_duplicate_allow_id() {
             root: Some(root.clone()),
         },
         config: Some(root.join("policy/allow.toml")),
-        kind: "panic".to_string(),
+        kind: Some("panic".to_string()),
         glob: None,
         family: None,
         callee: None,
@@ -379,6 +379,7 @@ fn cmd_add_rejects_duplicate_allow_id() {
         write: Some(output.clone()),
         force: false,
         update: false,
+        from_plan: None,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -407,7 +408,7 @@ fn cmd_add_rejects_already_matched_finding() {
             root: Some(root.clone()),
         },
         config: Some(root.join("policy/allow.toml")),
-        kind: "panic".to_string(),
+        kind: Some("panic".to_string()),
         glob: None,
         family: None,
         callee: None,
@@ -424,6 +425,7 @@ fn cmd_add_rejects_already_matched_finding() {
         write: Some(output.clone()),
         force: false,
         update: false,
+        from_plan: None,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -455,7 +457,7 @@ fn cmd_add_rejects_untracked_local_evidence_by_default() {
             root: Some(root.clone()),
         },
         config: Some(root.join("policy/allow.toml")),
-        kind: "panic".to_string(),
+        kind: Some("panic".to_string()),
         glob: None,
         family: None,
         callee: None,
@@ -472,6 +474,7 @@ fn cmd_add_rejects_untracked_local_evidence_by_default() {
         write: Some(output.clone()),
         force: false,
         update: false,
+        from_plan: None,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -501,7 +504,7 @@ fn cmd_add_include_untracked_accepts_untracked_local_evidence() {
             root: Some(root.clone()),
         },
         config: Some(root.join("policy/allow.toml")),
-        kind: "panic".to_string(),
+        kind: Some("panic".to_string()),
         glob: None,
         family: None,
         callee: None,
@@ -518,6 +521,7 @@ fn cmd_add_include_untracked_accepts_untracked_local_evidence() {
         write: Some(output.clone()),
         force: false,
         update: false,
+        from_plan: None,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -560,7 +564,7 @@ fn cmd_add_reports_missing_policy_config_with_exact_error() {
             root: Some(root.clone()),
         },
         config: None,
-        kind: "panic".to_string(),
+        kind: Some("panic".to_string()),
         glob: None,
         family: None,
         callee: None,
@@ -577,6 +581,7 @@ fn cmd_add_reports_missing_policy_config_with_exact_error() {
         write: Some(output.clone()),
         force: false,
         update: false,
+        from_plan: None,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -605,7 +610,7 @@ fn cmd_add_validate_policy_rejects_unsupported_schema_version() {
             root: Some(root.clone()),
         },
         config: Some(root.join("policy/allow.toml")),
-        kind: "panic".to_string(),
+        kind: Some("panic".to_string()),
         glob: None,
         family: None,
         callee: None,
@@ -622,6 +627,7 @@ fn cmd_add_validate_policy_rejects_unsupported_schema_version() {
         write: Some(output.clone()),
         force: false,
         update: false,
+        from_plan: None,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -652,7 +658,7 @@ fn cmd_add_rejects_write_to_existing_output_without_force() {
             root: Some(root.clone()),
         },
         config: Some(root.join("policy/allow.toml")),
-        kind: "panic".to_string(),
+        kind: Some("panic".to_string()),
         glob: None,
         family: None,
         callee: None,
@@ -669,6 +675,7 @@ fn cmd_add_rejects_write_to_existing_output_without_force() {
         write: Some(output.clone()),
         force: false,
         update: false,
+        from_plan: None,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -705,7 +712,7 @@ fn cmd_add_update_writes_entry_into_live_policy() {
             root: Some(root.clone()),
         },
         config: Some(root.join("policy/allow.toml")),
-        kind: "panic".to_string(),
+        kind: Some("panic".to_string()),
         glob: None,
         family: None,
         callee: None,
@@ -722,6 +729,7 @@ fn cmd_add_update_writes_entry_into_live_policy() {
         write: None,
         force: false,
         update: true,
+        from_plan: None,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -755,7 +763,7 @@ fn cmd_add_update_rejects_when_write_also_set() {
             root: Some(root.clone()),
         },
         config: Some(root.join("policy/allow.toml")),
-        kind: "panic".to_string(),
+        kind: Some("panic".to_string()),
         glob: None,
         family: None,
         callee: None,
@@ -772,6 +780,7 @@ fn cmd_add_update_rejects_when_write_also_set() {
         write: Some(root.join("policy/allow.proposed.toml")),
         force: false,
         update: true,
+        from_plan: None,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -812,7 +821,7 @@ fn cmd_add_update_requires_existing_policy() {
             root: Some(root.clone()),
         },
         config: None,
-        kind: "panic".to_string(),
+        kind: Some("panic".to_string()),
         glob: None,
         family: None,
         callee: None,
@@ -829,6 +838,7 @@ fn cmd_add_update_requires_existing_policy() {
         write: None,
         force: false,
         update: true,
+        from_plan: None,
         summary_format: AddSummaryFormat::Human,
         summary_output: None,
     })
@@ -857,7 +867,7 @@ fn cmd_add_update_json_summary_reports_discovered_target_and_written() {
             root: Some(root.clone()),
         },
         config: None,
-        kind: "panic".to_string(),
+        kind: Some("panic".to_string()),
         glob: None,
         family: None,
         callee: None,
@@ -874,6 +884,7 @@ fn cmd_add_update_json_summary_reports_discovered_target_and_written() {
         write: None,
         force: false,
         update: true,
+        from_plan: None,
         summary_format: AddSummaryFormat::Json,
         summary_output: Some(summary_path.clone()),
     })

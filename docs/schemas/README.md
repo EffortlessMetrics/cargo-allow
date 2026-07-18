@@ -12,6 +12,7 @@ macro-expansion, or proof-level coverage.
 | Single-entry explanation | `cargo-allow.explain.v1` | `cargo-allow explain <id> --format json` |
 | Unreceipted finding explanation | `cargo-allow.why.v1` | `cargo-allow why --kind <kind> --path <path> --line <line> --format json` |
 | Add-finding plan | `cargo-allow.add-finding-plan.v1` | `cargo-allow why --kind <kind> --path <path> --line <line> --plan <path>` |
+| Add plan application receipt | `cargo-allow.add-plan-application.v1` | `cargo-allow add --from-plan <path> --owner <owner> --reason <reason> --update` |
 | Filtered ledger list | `cargo-allow.list.v1` | `cargo-allow list --format json` |
 | Stale prune preview/result | `cargo-allow.prune.v1` | `cargo-allow prune --stale --format json` |
 | Advisory drift refresh receipt | `cargo-allow.refresh.v1` | `cargo-allow refresh --allow-id <id> --format json` |
@@ -29,6 +30,7 @@ macro-expansion, or proof-level coverage.
 - [explain.schema.json](explain.schema.json)
 - [why.schema.json](why.schema.json)
 - [add-finding-plan.schema.json](add-finding-plan.schema.json)
+- [add-plan-application.schema.json](add-plan-application.schema.json)
 - [list.schema.json](list.schema.json)
 - [prune.schema.json](prune.schema.json)
 - [refresh.schema.json](refresh.schema.json)
@@ -94,6 +96,15 @@ Its `required_fields` are derived from the active policy requirements;
 `review_after_or_expires` means the later reviewed decision must supply at
 least one of those lifecycle fields, and `evidence` appears only when the
 active policy or finding kind requires it.
+The `cargo-allow.add-plan-application.v1` artifact is the receipt emitted after
+`add --from-plan` verifies an add-finding plan against a fresh scan and applies
+it. Unlike the plan, this receipt records a mutation that already happened: it
+binds `plan_digest`, `finding_digest`, `repository_identity`, the
+`policy_before_digest`/`policy_after_digest` pair, `added_allow_id`, and the
+`target_ledger` it replaced. It does not claim `policy_not_mutated`, and it is
+honest that no recheck ran — `targeted_recheck` is always `not_executed` and
+`full_check_argv` carries the authoritative program-plus-argv the operator must
+run to confirm the full-repository posture.
 Source location fields such as `span.line`, `span.column`, `line_hint`, and
 `column_hint` are review and navigation hints. They are one-based source
 positions; when cargo-allow can derive a column from source text, the column is

@@ -10,9 +10,14 @@ pub(crate) struct AddArgs {
     /// Policy config path.
     #[arg(long)]
     pub(super) config: Option<PathBuf>,
-    /// Finding kind to add.
-    #[arg(long)]
-    pub(super) kind: String,
+    /// Finding kind to add. Required for ordinary target selection; omitted with
+    /// `--from-plan`, where the kind is taken from the plan.
+    #[arg(
+        long,
+        required_unless_present = "from_plan",
+        conflicts_with = "from_plan"
+    )]
+    pub(super) kind: Option<String>,
     /// Path containing the finding. Use with --line to receipt one specific
     /// occurrence. Mutually exclusive with --glob.
     #[arg(long)]
@@ -74,6 +79,18 @@ pub(crate) struct AddArgs {
     /// --write.
     #[arg(long, conflicts_with = "write")]
     pub(super) update: bool,
+    /// Apply a versioned add-finding plan produced by `why --plan`. Re-scans the
+    /// live source tree, recomputes and verifies every plan binding, requires the
+    /// exact finding to remain uniquely `New`, and atomically replaces the live
+    /// ledger. Consumes only operator judgment fields (owner/reason/etc.);
+    /// target selectors come from the plan. Requires `--update`; conflicts with
+    /// manual target selectors, `--write`, and `--force`.
+    #[arg(
+        long = "from-plan",
+        requires = "update",
+        conflicts_with_all = ["write", "force", "path", "line", "glob", "family", "callee"]
+    )]
+    pub(super) from_plan: Option<PathBuf>,
     /// Summary output format. Policy output remains TOML.
     #[arg(long, value_enum, default_value_t = AddSummaryFormat::Human)]
     pub(super) summary_format: AddSummaryFormat,
