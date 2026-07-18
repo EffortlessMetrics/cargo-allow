@@ -842,6 +842,111 @@ fn cmd_add_update_requires_existing_policy() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
 
+#[test]
+fn cmd_add_update_json_summary_reports_discovered_target_and_written() {
+    // Happy-path --update with `config: None`, exercising the advertised
+    // discovered-policy flow (not a caller-supplied config path). Proves the
+    // JSON summary reports the discovered target and `result=written` (#2413).
+    let root = add_fixture_dir();
+    write_add_fixture_with_new_panic_finding(&root);
+    let policy_path = root.join("policy/allow.toml");
+    let summary_path = root.join("add-summary.json");
+
+    cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        kind: "panic".to_string(),
+        glob: None,
+        family: None,
+        callee: None,
+        path: Some(PathBuf::from("src/lib.rs")),
+        line: Some(1),
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: None,
+        force: false,
+        update: true,
+        summary_format: AddSummaryFormat::Json,
+        summary_output: Some(summary_path.clone()),
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("add --update should write live policy: {err}"))
+    });
+
+    let summary = fs::read_to_string(&summary_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read summary: {err}")));
+    // The mutation receipt records a write, not the stdout fallback.
+    assert!(
+        summary.contains("\"result\": \"written\""),
+        "update summary must report result=written: {summary}"
+    );
+    // Assert on the update-specific `policy_output` field specifically, not the
+    // always-present `config_source`: extract that field's value so the check
+    // cannot pass on config_source alone. It must name the discovered live
+    // policy target (a real `.../policy/allow.toml` path), never `stdout`.
+    let policy_output_value = summary
+        .split("\"policy_output\": \"")
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!("summary missing policy_output field: {summary}"))
+        });
+    assert_ne!(
+        policy_output_value, "stdout",
+        "discovered --update target must not fall back to stdout: {summary}"
+    );
+    assert!(
+        policy_output_value.contains("policy") && policy_output_value.ends_with("allow.toml"),
+        "policy_output must name the discovered policy target, got `{policy_output_value}`: {summary}"
+    );
+
+    // The discovered live policy actually received the new entry.
+    let after = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read after: {err}")));
+    assert!(
+        after.contains("allow-0002") && after.contains("test:parser_validates"),
+        "discovered --update flow should write the new entry into the live policy"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn clap_rejects_add_update_with_write() {
+    // The --update/--write mutual exclusion is a Clap `conflicts_with`
+    // contract, rejected at parse time (#2413).
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "add",
+        "--kind",
+        "panic",
+        "--path",
+        "src/lib.rs",
+        "--line",
+        "1",
+        "--owner",
+        "parser",
+        "--reason",
+        "validated invariant",
+        "--evidence",
+        "test:parser_invariant",
+        "--update",
+        "--write",
+        "policy/allow.proposed.toml",
+    ]));
+
+    let err = parsed.expect_err("--update and --write must conflict at parse time");
+    assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
+}
+
 fn argv(items: Vec<&str>) -> Vec<String> {
     items.into_iter().map(String::from).collect()
 }

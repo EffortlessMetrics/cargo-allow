@@ -72,7 +72,7 @@ pub(crate) struct AddArgs {
     /// candidate file. Resolves the discovered policy/allow.toml, validates
     /// the full result, and atomically replaces it. Mutually exclusive with
     /// --write.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "write")]
     pub(super) update: bool,
     /// Summary output format. Policy output remains TOML.
     #[arg(long, value_enum, default_value_t = AddSummaryFormat::Human)]
