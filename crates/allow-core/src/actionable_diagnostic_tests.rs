@@ -146,6 +146,26 @@ fn actionable_diagnostic_model_fingerprint_changes_on_semantic_identity_change()
                 ..sample_diagnostic()
             },
         ),
+        (
+            "encoding",
+            CargoAllowDiagnosticV1 {
+                primary_location: SourceRange {
+                    encoding: SourceEncoding::Utf16,
+                    ..sample_diagnostic().primary_location
+                },
+                ..sample_diagnostic()
+            },
+        ),
+        (
+            "position base",
+            CargoAllowDiagnosticV1 {
+                primary_location: SourceRange {
+                    base: PositionBase::Zero,
+                    ..sample_diagnostic().primary_location
+                },
+                ..sample_diagnostic()
+            },
+        ),
     ];
     for (label, mutated) in mutations {
         assert_ne!(
@@ -171,7 +191,9 @@ fn actionable_diagnostic_model_action_applicability_is_coherent() {
         kind: ActionKind::AutomaticSafeEdit,
         applicability: ActionApplicability::Automatic,
         preconditions: vec!["field absent".to_string()],
+        mutation_scope: Some("policy/allow.toml::owner".to_string()),
         expected_effect: "insert the required owner field".to_string(),
+        rollback: Some("remove the inserted owner field".to_string()),
         required_proof: Some(RequiredProof {
             command_argv: vec![
                 "check".to_string(),
@@ -190,6 +212,52 @@ fn actionable_diagnostic_model_action_applicability_is_coherent() {
         ..sample_diagnostic()
     };
     assert!(diagnostic.actions_are_coherent());
+}
+
+#[test]
+fn actionable_diagnostic_model_auto_eligibility_matches_the_non_inventive_boundary() {
+    // Only deterministic, non-inventive changes may be automatic.
+    for kind in [
+        ActionKind::AutomaticSafeEdit,
+        ActionKind::GenerateOwnedArtifact,
+        ActionKind::RefreshOrReissue,
+    ] {
+        assert!(
+            kind.may_be_automatic(),
+            "{} should be auto-eligible",
+            kind.as_str()
+        );
+        assert!(kind.mutates_source());
+    }
+    // Creating an exception, previewing, running a command, navigating, or any
+    // external/decision action must never be automatic — even though some of
+    // them do mutate source.
+    for kind in [
+        ActionKind::SuppressOrExemptUnderPolicy,
+        ActionKind::PreviewableWorkspaceEdit,
+        ActionKind::RunCargoAllowCommand,
+        ActionKind::OpenOrNavigate,
+        ActionKind::ChooseBetweenAuthorities,
+        ActionKind::PerformExternalAction,
+        ActionKind::RequestRepositoryDecision,
+        ActionKind::DeferWithTypedReason,
+        ActionKind::NoSafeActionKnown,
+    ] {
+        assert!(
+            !kind.may_be_automatic(),
+            "{} must not be auto-eligible",
+            kind.as_str()
+        );
+    }
+    // Suppression/exemption mutates source but is inventive, so an Automatic
+    // suppression action is incoherent.
+    let auto_suppress = CargoAllowActionV1 {
+        kind: ActionKind::SuppressOrExemptUnderPolicy,
+        applicability: ActionApplicability::Automatic,
+        ..CargoAllowActionV1::navigate("suppress", "exempt under policy")
+    };
+    assert!(auto_suppress.kind.mutates_source());
+    assert!(!auto_suppress.applicability_is_coherent());
 }
 
 #[test]

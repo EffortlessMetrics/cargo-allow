@@ -370,15 +370,31 @@ impl ActionKind {
         }
     }
 
-    /// Whether this kind mutates source (edit/generate) versus navigating,
-    /// deciding, or deferring. Only mutating kinds may ever be automatic.
+    /// Whether this kind changes source (a text edit, an owned-artifact
+    /// generate/refresh, or writing a policy exception) versus navigating,
+    /// deciding, deferring, or invoking an external/command action.
     pub fn mutates_source(self) -> bool {
         matches!(
             self,
             Self::AutomaticSafeEdit
                 | Self::PreviewableWorkspaceEdit
                 | Self::GenerateOwnedArtifact
+                | Self::RefreshOrReissue
                 | Self::SuppressOrExemptUnderPolicy
+        )
+    }
+
+    /// Whether this kind may ever be applied *automatically* (without review).
+    /// The issue permits only deterministic, non-inventive changes to be
+    /// automatic: a safe edit, generating an owned artifact, or refreshing one
+    /// from unchanged canonical inputs. `SuppressOrExemptUnderPolicy` is
+    /// inventive — it creates an exception — and must never be automatic; a
+    /// `PreviewableWorkspaceEdit` requires confirmation by definition; running a
+    /// command or performing an external action is never a silent auto-apply.
+    pub fn may_be_automatic(self) -> bool {
+        matches!(
+            self,
+            Self::AutomaticSafeEdit | Self::GenerateOwnedArtifact | Self::RefreshOrReissue
         )
     }
 }
@@ -423,7 +439,13 @@ pub struct CargoAllowActionV1 {
     pub applicability: ActionApplicability,
     /// Preconditions that must hold before the action applies.
     pub preconditions: Vec<String>,
+    /// What part of the source the action touches (e.g. a path, a range, a
+    /// policy entry). `None` for actions that mutate nothing (navigation,
+    /// decision, external).
+    pub mutation_scope: Option<String>,
     pub expected_effect: String,
+    /// How to undo the action, when it mutates source.
+    pub rollback: Option<String>,
     pub required_proof: Option<RequiredProof>,
     /// What remains unproven / claimed after the action (its claim boundary).
     pub residual_claim: Vec<String>,
@@ -437,17 +459,20 @@ impl CargoAllowActionV1 {
             kind: ActionKind::OpenOrNavigate,
             applicability: ActionApplicability::Manual,
             preconditions: Vec::new(),
+            mutation_scope: None,
             expected_effect: expected_effect.into(),
+            rollback: None,
             required_proof: None,
             residual_claim: Vec::new(),
         }
     }
 
-    /// Invariant: only source-mutating kinds may be [`ActionApplicability::Automatic`].
-    /// A navigation, decision, or external action can never be automatic.
+    /// Invariant: only kinds that [`ActionKind::may_be_automatic`] may carry
+    /// [`ActionApplicability::Automatic`]. A navigation, decision, external,
+    /// preview, or exception-creating action can never be automatic.
     pub fn applicability_is_coherent(&self) -> bool {
         if self.applicability == ActionApplicability::Automatic {
-            return self.kind.mutates_source();
+            return self.kind.may_be_automatic();
         }
         true
     }
@@ -527,6 +552,11 @@ impl CargoAllowDiagnosticV1 {
             &mut canonical,
             &location_position_key(self.primary_location.end),
         );
+        // Encoding and position base are part of the physical location's
+        // meaning: the same numeric offsets under UTF-8/one-based vs.
+        // UTF-16/zero-based address different characters, so they must bind.
+        push_field(&mut canonical, self.primary_location.encoding.as_str());
+        push_field(&mut canonical, self.primary_location.base.as_str());
         push_field(&mut canonical, &self.snapshot_identity);
         sha256_v1_bytes(&canonical)
     }
