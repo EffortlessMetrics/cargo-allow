@@ -16,6 +16,12 @@ inventory without executing repository code.
   policy bytes, source bytes, structural identity, policy-derived human
   requirements, near-miss reasons, and structured add/check argv; non-new
   findings fail closed without writing a plan.
+- `cargo-allow why` now scans only the file at `--path` instead of the entire
+  source tree, so explaining a single finding no longer tree-sitter-parses every
+  `.rs` file in the repository. The fast path loads the full policy but skips the
+  `git ls-files` inventory walk. Safe for `why` (advisory, read-only); `add`
+  keeps the full pipeline since it mutates the ledger.
+
 - `cargo-allow list` now includes a "Next steps" block with per-entry commands
   for rows with actionable statuses (stale, expired, review_due,
   location_drift) or broken evidence references, so the operator can go from
