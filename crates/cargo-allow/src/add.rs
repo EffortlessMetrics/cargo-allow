@@ -9,6 +9,8 @@ use allow_policy::{render_policy, validate_policy};
 mod add_args;
 #[path = "add_entry.rs"]
 mod add_entry;
+#[path = "add_from_plan.rs"]
+mod add_from_plan;
 #[path = "add_render.rs"]
 mod add_render;
 #[path = "add_types.rs"]
@@ -37,7 +39,13 @@ const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
 use std::path::PathBuf;
 
 pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
-    let parsed_kind = parse_kind_filter(&args.kind)?;
+    if let Some(plan_path) = args.from_plan.as_deref() {
+        return add_from_plan::cmd_add_from_plan(args, plan_path);
+    }
+    let kind = args.kind.as_deref().ok_or_else(|| {
+        CargoAllowError::with_kind(CargoAllowErrorKind::Usage, "--kind is required")
+    })?;
+    let parsed_kind = parse_kind_filter(kind)?;
     let cwd = std::env::current_dir()
         .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
     let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
@@ -68,7 +76,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
-        Some(args.kind.as_str()),
+        Some(kind),
         args.include_untracked,
     )?;
     let id = args.id.clone().unwrap_or_else(|| next_allow_id(&cfg));
@@ -124,7 +132,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         if count == 0 {
             return Err(CargoAllowError::new(format!(
                 "no current {} findings match glob `{}`; cannot baseline an empty scope",
-                args.kind, glob
+                kind, glob
             )));
         }
         broad.occurrence_limit = Some(count);
@@ -355,6 +363,34 @@ pub(crate) fn sample_add_json_for_contract_test() -> String {
             config_source: Some("policy/allow.toml".to_string()),
         },
     )
+}
+
+#[cfg(test)]
+pub(crate) fn sample_add_plan_application_json_for_contract_test() -> String {
+    let digest = "sha256:v1:0000000000000000000000000000000000000000000000000000000000000000";
+    let after = "sha256:v1:1111111111111111111111111111111111111111111111111111111111111111";
+    allow_report::render_add_plan_application_json(&allow_report::AddPlanApplicationV1 {
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        inventory: allow_report::InventoryContext::source_syntax(
+            "git_tracked",
+            Some("H:/repo"),
+            Some(3),
+        )
+        .with_completeness("complete"),
+        plan_digest: digest.to_string(),
+        repository_identity: digest.to_string(),
+        finding_digest: digest.to_string(),
+        target_ledger: "policy/allow.toml".to_string(),
+        policy_before_digest: digest.to_string(),
+        policy_after_digest: after.to_string(),
+        added_allow_id: "allow-0007".to_string(),
+        targeted_recheck: "not_executed".to_string(),
+        full_check_argv: vec![
+            "check".to_string(),
+            "--mode".to_string(),
+            "no-new".to_string(),
+        ],
+    })
 }
 
 #[cfg(test)]

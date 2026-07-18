@@ -10,6 +10,24 @@ inventory without executing repository code.
 
 ### Added
 
+- `cargo-allow add --from-plan <PATH>` consumes a `cargo-allow.add-finding-plan.v1`
+  artifact (from `why --plan`) as a fail-closed live-ledger transaction. It
+  acquires the mutation lock, strictly parses the v1 plan, recomputes the
+  repository / inventory / policy / source / finding / selector bindings against
+  a fresh scan, requires the exact finding to remain uniquely `New`, validates
+  the complete policy, and atomically replaces the ledger. The allow entry is
+  built canonically from the freshly re-selected finding plus operator judgment
+  fields — never by deserializing approval metadata from the plan — and the
+  route requires `--update` while conflicting with manual target selectors,
+  `--write`, and `--force`. Every stale or malformed case (unsupported
+  schema/tool generation, different repository or policy path, policy / source /
+  inventory drift, missing or changed finding, selector drift, ambiguous or
+  non-`New` posture, replay after success) fails without changing policy. On
+  success it emits a `cargo-allow.add-plan-application.v1` receipt binding the
+  plan digest, finding digest, before/after policy digests, added allow ID, and
+  target ledger, with an honest `targeted_recheck = not_executed` plus the
+  full-check argv the operator must run next.
+
 - `cargo-allow why` now scans only the file at `--path` instead of the entire
   source tree, so explaining a single finding no longer tree-sitter-parses every
   `.rs` file in the repository. The fast path loads the full policy but skips the

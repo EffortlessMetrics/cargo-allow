@@ -34,6 +34,7 @@ fn artifact_contract_registry_covers_current_v1_artifacts() {
         BTreeSet::from([
             "add",
             "add-finding-plan",
+            "add-plan-application",
             "doctor",
             "explain",
             "list",
@@ -120,6 +121,8 @@ fn schemas_reference_current_contract_ids() {
     let add_schema = include_str!("../../../docs/schemas/add.schema.json");
     let add_finding_plan_schema =
         include_str!("../../../docs/schemas/add-finding-plan.schema.json");
+    let add_plan_application_schema =
+        include_str!("../../../docs/schemas/add-plan-application.schema.json");
     let migrate_schema = include_str!("../../../docs/schemas/migrate.schema.json");
     let spec_system_schema = include_str!("../../../docs/schemas/spec-system.schema.json");
     assert!(report_schema.contains(REPORT_SCHEMA_ID));
@@ -134,6 +137,7 @@ fn schemas_reference_current_contract_ids() {
     assert!(propose_schema.contains(PROPOSE_SCHEMA_ID));
     assert!(add_schema.contains(ADD_SCHEMA_ID));
     assert!(add_finding_plan_schema.contains(ADD_FINDING_PLAN_SCHEMA_ID));
+    assert!(add_plan_application_schema.contains(ADD_PLAN_APPLICATION_SCHEMA_ID));
     assert!(migrate_schema.contains(MIGRATE_SCHEMA_ID));
     assert!(spec_system_schema.contains(SPEC_SYSTEM_SCHEMA_ID));
     for command in REPORT_COMMANDS {

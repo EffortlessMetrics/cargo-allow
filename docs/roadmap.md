@@ -316,6 +316,14 @@ Completed:
 - Add `add --summary-format json --summary-output <path>` for machine-readable
   single-entry add summaries while keeping policy output as TOML.
 - Publish a versioned `cargo-allow.add.v1` JSON schema for saved add summaries.
+- Add `add --from-plan <path>` to consume a `cargo-allow.add-finding-plan.v1`
+  artifact as a fail-closed live-ledger transaction: recompute and verify every
+  plan binding against a fresh scan, require the finding to remain uniquely
+  `New`, atomically replace the ledger, and emit a
+  `cargo-allow.add-plan-application.v1` receipt. Stale or malformed plans fail
+  without changing policy.
+- Publish a versioned `cargo-allow.add-plan-application.v1` JSON schema for
+  saved plan-application receipts.
 
 
 ## Phase 10: Migration And External Dogfood

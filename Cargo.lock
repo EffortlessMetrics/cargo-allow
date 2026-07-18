@@ -177,6 +177,7 @@ dependencies = [
  "allow-rust",
  "clap",
  "fs4",
+ "serde",
  "serde_json",
  "toml",
 ]
