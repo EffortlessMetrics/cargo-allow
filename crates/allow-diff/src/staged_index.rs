@@ -4,7 +4,7 @@ use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 #[cfg(unix)]
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 #[cfg(unix)]
 use std::os::unix::ffi::{OsStrExt, OsStringExt};
 
