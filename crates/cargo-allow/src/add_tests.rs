@@ -883,18 +883,29 @@ fn cmd_add_update_json_summary_reports_discovered_target_and_written() {
 
     let summary = fs::read_to_string(&summary_path)
         .unwrap_or_else(|err| std::panic::panic_any(format!("read summary: {err}")));
-    // Discovered target is the live policy, and the receipt records a write.
+    // The mutation receipt records a write, not the stdout fallback.
     assert!(
         summary.contains("\"result\": \"written\""),
         "update summary must report result=written: {summary}"
     );
-    assert!(
-        summary.contains("policy/allow.toml"),
-        "update summary must name the discovered policy target: {summary}"
+    // Assert on the update-specific `policy_output` field specifically, not the
+    // always-present `config_source`: extract that field's value so the check
+    // cannot pass on config_source alone. It must name the discovered live
+    // policy target (a real `.../policy/allow.toml` path), never `stdout`.
+    let policy_output_value = summary
+        .split("\"policy_output\": \"")
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!("summary missing policy_output field: {summary}"))
+        });
+    assert_ne!(
+        policy_output_value, "stdout",
+        "discovered --update target must not fall back to stdout: {summary}"
     );
     assert!(
-        !summary.contains("stdout"),
-        "discovered --update target must not fall back to stdout: {summary}"
+        policy_output_value.contains("policy") && policy_output_value.ends_with("allow.toml"),
+        "policy_output must name the discovered policy target, got `{policy_output_value}`: {summary}"
     );
 
     // The discovered live policy actually received the new entry.
