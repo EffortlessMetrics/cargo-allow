@@ -43,6 +43,7 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
             format: args.format,
             output: args.output.as_deref(),
             receipt: args.receipt.as_deref(),
+            mode: args.mode.as_deref(),
         });
     }
 

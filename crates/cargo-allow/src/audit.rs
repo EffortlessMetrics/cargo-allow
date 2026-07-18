@@ -22,6 +22,8 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
             format: args.format,
             output: args.output.as_deref(),
             receipt: None,
+            // `audit` is report-only and exposes no `--mode`.
+            mode: None,
         });
     }
 
