@@ -19,10 +19,10 @@ Removal: [Rollback cargo-allow adoption](rollback-cargo-allow-adoption.md).
 
 | Channel | Install step |
 | --- | --- |
-| **Published** `0.1.10` | `cargo install cargo-allow --version 0.1.10 --locked` |
+| **Published** `0.1.11` | `cargo install cargo-allow --version 0.1.11 --locked` |
 | **Source candidate** (unreleased main) | `cargo install --git https://github.com/EffortlessMetrics/cargo-allow cargo-allow --locked` |
 
-The committed examples pin Published `0.1.10`. Keep first-run commands inside
+The committed examples pin Published `0.1.11`. Keep first-run commands inside
 the offline registry
 ([`published-command-registry.toml`](../dogfood/fixtures/getting-started/published-command-registry.toml)).
 Do not teach candidate-only commands such as `why` as ordinary Published CI
@@ -93,7 +93,7 @@ cargo-allow check \
 | `sarif` | Code-scanning integration where the host supports it |
 
 Aliases exist only when the selected command/`--format` help for that release
-lists them. Prefer the names above on the Published `0.1.10` path.
+lists them. Prefer the names above on the Published `0.1.11` path.
 
 ## Artifact and exit contract
 

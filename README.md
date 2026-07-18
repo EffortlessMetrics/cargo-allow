@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/EffortlessMetrics/cargo-allow/actions/workflows/ci.yml"><img src="https://github.com/EffortlessMetrics/cargo-allow/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
-  <a href="https://github.com/EffortlessMetrics/cargo-allow/releases/tag/v0.1.10"><img src="https://img.shields.io/github/v/release/EffortlessMetrics/cargo-allow?display_name=tag&include_prereleases=false" alt="GitHub release" /></a>
+  <a href="https://github.com/EffortlessMetrics/cargo-allow/releases/tag/v0.1.11"><img src="https://img.shields.io/github/v/release/EffortlessMetrics/cargo-allow?display_name=tag&include_prereleases=false" alt="GitHub release" /></a>
   <a href="https://crates.io/crates/cargo-allow"><img src="https://img.shields.io/crates/v/cargo-allow.svg" alt="crates.io" /></a>
   <a href="https://crates.io/crates/cargo-allow"><img src="https://img.shields.io/crates/d/cargo-allow.svg?label=crates.io%20downloads" alt="crates.io downloads" /></a>
   <a href="https://docs.rs/cargo-allow"><img src="https://docs.rs/cargo-allow/badge.svg" alt="docs.rs" /></a>
@@ -59,8 +59,8 @@ one repo
 That is the adoption spine: make retained exceptions visible, keep new debt out,
 record CI evidence, and give humans or agents a bounded repair queue.
 
-Before the first command, pick a product channel: **Published** `0.1.10`
-(`cargo install cargo-allow --version 0.1.10 --locked`) versus **source
+Before the first command, pick a product channel: **Published** `0.1.11`
+(`cargo install cargo-allow --version 0.1.11 --locked`) versus **source
 candidate** (`cargo run -p cargo-allow -- …` on this checkout). The branched
 first-hour journey, install prerequisites, clean-vs-brownfield forks, and
 fixture-backed expected outputs live in
@@ -90,7 +90,7 @@ broaden.
 `cargo-allow` scans source-tree inventory and compares findings to policy
 receipts. The durable policy file is `policy/allow.toml`.
 
-Core workflows (Published `0.1.10` and source candidate):
+Core workflows (Published `0.1.11` and source candidate):
 
 ```bash
 cargo-allow doctor
@@ -99,13 +99,8 @@ cargo-allow check --mode no-new
 cargo-allow diff --base origin/main
 cargo-allow list
 cargo-allow explain <allow-id>
-cargo-allow worklist --format json
-```
-
-Unreleased on Published `0.1.10` (source candidate / current `main` only):
-
-```bash
 cargo-allow why --kind panic --path src/lib.rs --line 42
+cargo-allow worklist --format json
 ```
 
 ## What cargo-allow Does Not Claim
@@ -155,7 +150,8 @@ exists outside the syntax-visible surface that was scanned.
 
 ## Where cargo-allow Fits
 
-`cargo-allow` is not a linter, compiler wrapper, dependency-policy tool, or
+`cargo-allow` is a source-syntax policy linter and durable exception ledger.
+It is not a compiler wrapper, dependency-policy tool, type-aware analyzer, or
 unsafe proof system.
 
 ```text
@@ -185,7 +181,7 @@ Most users start from the surface they already own.
 | New adopter | Choose the closest path: source exceptions, no-new, spec-system, CI, or cross-repo rollout. | [Onboarding](docs/onboarding.md) |
 | CI owner | Add `cargo-allow check --mode no-new` and upload the receipt. | [CI guide](docs/how-to/run-in-ci.md) |
 | Reviewer | Run `cargo-allow diff --base origin/main`. | [PR posture](docs/pr-posture.md) |
-| Auditor | Run `cargo-allow list` and `cargo-allow explain <id>` on Published `0.1.10`; add `cargo-allow why --kind <kind> --path <path> --line <line>` only on the source candidate. | [Explain an allow](docs/how-to/explain-an-allow.md), [Explain why a finding](docs/how-to/explain-why-a-finding.md) |
+| Auditor | Run `cargo-allow list`, `cargo-allow explain <id>`, and `cargo-allow why --kind <kind> --path <path> --line <line>` on Published `0.1.11`. | [Explain an allow](docs/how-to/explain-an-allow.md), [Explain why a finding](docs/how-to/explain-why-a-finding.md) |
 | Migrator | Run `cargo-allow migrate --repo-policy <dir>`. | [Migration](docs/how-to/migrate-from-xtask.md) |
 | Agent operator | Run `cargo-allow worklist --format json`. | [Agent worklists](docs/how-to/feed-agent-worklists.md) |
 
@@ -200,7 +196,7 @@ cargo install cargo-allow --locked
 For a specific published release:
 
 ```bash
-cargo install cargo-allow --version 0.1.10 --locked
+cargo install cargo-allow --version 0.1.11 --locked
 ```
 
 Use the latest published version shown on crates.io. Do not copy

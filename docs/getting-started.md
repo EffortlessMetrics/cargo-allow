@@ -3,8 +3,7 @@
 This tutorial is the executable first-hour journey: choose a product channel,
 verify install prerequisites, run `doctor` and `audit`, then take **one**
 bootstrap path (`init` **or** `propose`), gate with `check --mode no-new`, and
-hand off to list / explain / worklist (plus `why` on the source-candidate
-channel).
+hand off to list / explain / why / worklist.
 
 `cargo-allow` scans repository files without executing project code. The steps
 below do not require Cargo metadata, compilation, rustc, Clippy, build scripts,
@@ -20,8 +19,8 @@ same test (they are not hand-copied from stale receipts).
 
 | Channel | How you invoke cargo-allow | Commands this guide treats as ordinary |
 | --- | --- | --- |
-| **Published** `0.1.10` | `cargo install cargo-allow --version 0.1.10 --locked` then `cargo-allow …` | `doctor`, `audit`, `init`, `propose`, `check`, `list`, `explain`, `worklist`, `diff`, `add`, `refresh`, `prune` |
-| **Source candidate** (this checkout / current `main`) | `cargo run -p cargo-allow -- …` | Published set **plus** unreleased surfaces such as `why` |
+| **Published** `0.1.11` | `cargo install cargo-allow --version 0.1.11 --locked` then `cargo-allow …` | `doctor`, `audit`, `init`, `propose`, `check`, `list`, `explain`, `why`, `worklist`, `diff`, `add`, `refresh`, `prune` |
+| **Source candidate** (this checkout / current `main`) | `cargo run -p cargo-allow -- …` | Published set plus any later explicitly labeled unreleased surfaces |
 
 Mechanical published-vs-candidate command registry enforcement uses the offline
 snapshot
@@ -45,7 +44,7 @@ For the `0.1.x` line:
 Published install:
 
 ```bash
-cargo install cargo-allow --version 0.1.10 --locked
+cargo install cargo-allow --version 0.1.11 --locked
 ```
 
 Source-candidate invoke (from this repository):
@@ -189,9 +188,9 @@ issue-first lifecycle in [Manage an exception](how-to/manage-an-exception.md):
 | --- | --- | --- |
 | create a strict starter policy | `init` | writes `policy/allow.toml` (use only when chosen in step 4) |
 | generate a reviewed baseline candidate | `propose` | omit `--write` to preview; `--write <path>` to persist |
-| receipt one deliberate finding | `add` | `--dry-run` preview; `--write` apply |
-| refresh drift for one selected ID | `refresh --allow-id <id>` | `--dry-run` preview; omit dry-run to apply |
-| remove selected stale entries | `prune` | `--dry-run` preview; omit dry-run to apply |
+| receipt one deliberate finding | `add` | omit `--write` to preview; `--write <new-path>` persists a proposed full policy; existing-ledger update semantics remain a documented 0.2.0 follow-up (#2371) |
+| refresh drift for one selected ID | `refresh --allow-id <id>` | `--dry-run` preview; `--write` apply |
+| remove selected stale entries | `prune` | `--dry-run` preview; `--write` apply |
 | repair the source instead of policy | edit code, then rerun `check` | no policy mutation |
 
 Published-channel diagnosis:
@@ -202,7 +201,7 @@ cargo-allow explain <allow-id>
 cargo-allow worklist --format json
 ```
 
-Source-candidate diagnosis (unreleased on Published `0.1.10`):
+Published diagnosis (`why` is included in 0.1.11):
 
 ```bash
 cargo-allow why --kind panic --path src/lib.rs --line 1
@@ -289,4 +288,4 @@ and `crates/cargo-allow/tests/first_hour_adoption.rs` (consumable by #2278):
 | `check_no_new_pass` | Passing baseline no-new check |
 | `check_no_new_fail` | Failing no-new after new debt |
 | `list_explain_worklist` | Published diagnosis commands |
-| `why_candidate` | Source-candidate `why` (not ordinary on Published 0.1.10) |
+| `why_published` | Published diagnosis with `cargo-allow why` |

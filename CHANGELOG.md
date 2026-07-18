@@ -8,6 +8,8 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-07-17
+
 ### Added
 
 - `cargo-allow diff` now includes copy-paste `why` / `add --update` receipt
@@ -58,10 +60,10 @@ inventory without executing repository code.
 - Copy-paste CI/ops path: expanded `docs/how-to/run-in-ci.md`, troubleshooting
   and rollback guides, and offline workflow-contract tests for the committed
   GitHub Actions examples (#2355).
-- Offline Published `0.1.10` first-run command registry
+- Offline published-release first-run command registry
   (`docs/dogfood/fixtures/getting-started/published-command-registry.toml`) with
-  `PublishedQuickStartV1` docs contract tests so candidate-only commands such as
-  `why` cannot appear as ordinary published quick-start instructions (#2353).
+  `PublishedQuickStartV1` docs contract tests so source-candidate-only commands
+  cannot appear as ordinary published quick-start instructions (#2353).
 
 ### Changed
 
