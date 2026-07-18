@@ -412,7 +412,7 @@ impl PackageManifest {
                 .cmp(&right.identity)
                 .then_with(|| left.path.cmp(&right.path))
         });
-        targets.dedup_by(|left, right| left.identity == right.identity && left.path == right.path);
+        targets.dedup_by(|left, right| left.identity == right.identity);
         assign_descendant_roots(&root, &mut targets);
         Ok(Some(Self {
             root,
@@ -1015,6 +1015,32 @@ mod tests {
             .ok_or_else(|| "expected second integration subject".to_string())?;
         assert!(subjects.next().is_none());
         assert_ne!(first.selector.target.name, second.selector.target.name);
+        Ok(())
+    }
+
+    #[test]
+    fn explicit_and_auto_binary_targets_with_same_identity_are_deduplicated() -> Result<(), String>
+    {
+        let package = PackageManifest::parse(
+            Path::new("crates/demo/Cargo.toml"),
+            "[package]\nname = \"demo-package\"\nversion = \"0.1.0\"\n\n[[bin]]\nname = \"demo_package\"\npath = \"src/bin/demo_package.rs\"\n",
+            &[PathBuf::from("crates/demo/src/bin/demo_package.rs")],
+        )
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "expected package manifest".to_string())?;
+
+        assert_eq!(package.targets.len(), 1);
+        assert_eq!(
+            package.targets[0].identity,
+            RustTestTargetIdentity {
+                kind: RustTestTargetKind::Binary,
+                name: "demo_package".to_string(),
+            }
+        );
+        assert_eq!(
+            package.targets[0].path,
+            PathBuf::from("crates/demo/src/bin/demo_package.rs")
+        );
         Ok(())
     }
 
