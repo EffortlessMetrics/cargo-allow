@@ -1,4 +1,5 @@
 mod add;
+mod add_finding_plan;
 mod diff;
 mod doctor;
 mod explain;
@@ -12,6 +13,10 @@ mod why;
 mod worklist;
 
 pub use add::AddReport;
+pub use add_finding_plan::{
+    AddFindingPlanCandidate, AddFindingPlanFinding, AddFindingPlanOutcome, AddFindingPlanPolicy,
+    AddFindingPlanProofPlan, AddFindingPlanRepository, AddFindingPlanV1,
+};
 pub use diff::{
     DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange, DiffLedgerMovementSummary,
     DiffLifecycleChange, DiffMetadataChange, DiffMovementCounts, DiffOccurrenceLimitChange,

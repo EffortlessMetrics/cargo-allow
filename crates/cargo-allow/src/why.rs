@@ -11,6 +11,8 @@ use crate::{
 
 #[path = "why_args.rs"]
 mod why_args;
+#[path = "why_plan.rs"]
+mod why_plan;
 #[path = "why_render.rs"]
 mod why_render;
 #[path = "why_shell.rs"]
@@ -23,6 +25,21 @@ use why_render::{WhyCandidate, render_why_json, render_why_text};
 const MAX_CANDIDATES: usize = 8;
 
 pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
+    if let (Some(plan_path), Some(output_path)) = (args.plan.as_deref(), args.output.as_deref())
+        && same_output_target(plan_path, output_path)?
+    {
+        return Err(CargoAllowError::new(
+            "--plan and --output must name different files",
+        ));
+    }
+    if let Some(plan_path) = args.plan.as_deref()
+        && plan_path.exists()
+    {
+        return Err(CargoAllowError::new(format!(
+            "add-finding plan output {} already exists; choose a new --plan path",
+            plan_path.display()
+        )));
+    }
     let parsed_kind = parse_kind_filter(&args.kind)?;
     let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
@@ -53,6 +70,19 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     };
 
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
+    if let Some(plan_path) = args.plan.as_deref() {
+        let plan = why_plan::render_add_finding_plan(why_plan::AddFindingPlanInput {
+            root: &root,
+            config: args.config.as_deref(),
+            cfg: &cfg,
+            include_untracked: args.include_untracked,
+            source_context: &source_context,
+            finding,
+            outcome: &outcome,
+            candidates: &candidates,
+        })?;
+        crate::write_file_no_overwrite(plan_path, &plan, false)?;
+    }
     let text = match args.format {
         WhyFormat::Human => render_why_text(finding, &outcome, &candidates),
         WhyFormat::Json => {
@@ -61,6 +91,22 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
+}
+
+fn same_output_target(left: &std::path::Path, right: &std::path::Path) -> CargoAllowResult<bool> {
+    let left = std::path::absolute(left).map_err(|error| {
+        CargoAllowError::new(format!(
+            "failed to resolve output path {}: {error}",
+            left.display()
+        ))
+    })?;
+    let right = std::path::absolute(right).map_err(|error| {
+        CargoAllowError::new(format!(
+            "failed to resolve output path {}: {error}",
+            right.display()
+        ))
+    })?;
+    Ok(left == right)
 }
 
 fn related_mismatch_candidates<'a>(
@@ -191,6 +237,11 @@ pub(crate) fn sample_why_json_for_contract_test() -> String {
             reasons,
         }],
     )
+}
+
+#[cfg(test)]
+pub(crate) fn sample_add_finding_plan_json_for_contract_test() -> String {
+    why_plan::sample_add_finding_plan_json_for_contract_test()
 }
 
 #[cfg(test)]

@@ -500,17 +500,10 @@ cargo-allow can replace bespoke AST/TOML allowlist xtasks.
 `0.3.0` should claim:
 
 ```text
-cargo-allow shows how a PR changes source exception posture.
+cargo-allow is the stable source exception ledger for source trees: it shows
+how a PR changes exception posture and connects retained exceptions to proof
+artifacts.
 ```
 
-`0.4.0` should claim:
-
-```text
-cargo-allow connects source exceptions to proof artifacts.
-```
-
-`1.0` should claim:
-
-```text
-cargo-allow is the stable source exception ledger for source trees.
-```
+No `1.0` milestone is scheduled. Support and stability claims beyond `0.3.0`
+must be earned from release evidence rather than inferred from version naming.

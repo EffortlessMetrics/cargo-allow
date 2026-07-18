@@ -33,6 +33,7 @@ fn artifact_contract_registry_covers_current_v1_artifacts() {
         names,
         BTreeSet::from([
             "add",
+            "add-finding-plan",
             "doctor",
             "explain",
             "list",
@@ -117,6 +118,8 @@ fn schemas_reference_current_contract_ids() {
     let doctor_schema = include_str!("../../../docs/schemas/doctor.schema.json");
     let propose_schema = include_str!("../../../docs/schemas/propose.schema.json");
     let add_schema = include_str!("../../../docs/schemas/add.schema.json");
+    let add_finding_plan_schema =
+        include_str!("../../../docs/schemas/add-finding-plan.schema.json");
     let migrate_schema = include_str!("../../../docs/schemas/migrate.schema.json");
     let spec_system_schema = include_str!("../../../docs/schemas/spec-system.schema.json");
     assert!(report_schema.contains(REPORT_SCHEMA_ID));
@@ -130,6 +133,7 @@ fn schemas_reference_current_contract_ids() {
     assert!(doctor_schema.contains(DOCTOR_SCHEMA_ID));
     assert!(propose_schema.contains(PROPOSE_SCHEMA_ID));
     assert!(add_schema.contains(ADD_SCHEMA_ID));
+    assert!(add_finding_plan_schema.contains(ADD_FINDING_PLAN_SCHEMA_ID));
     assert!(migrate_schema.contains(MIGRATE_SCHEMA_ID));
     assert!(spec_system_schema.contains(SPEC_SYSTEM_SCHEMA_ID));
     for command in REPORT_COMMANDS {
