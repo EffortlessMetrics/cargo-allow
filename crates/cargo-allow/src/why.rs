@@ -4,9 +4,7 @@ use allow_core::{
 };
 use allow_match::{CheckMode, evaluate, explain_match_failure, score_match};
 
-use crate::{
-    SourceTreeReportContext, emit_text, load_world_for_path, parse_kind_filter,
-};
+use crate::{SourceTreeReportContext, emit_text, load_world_for_path, parse_kind_filter};
 
 #[path = "why_args.rs"]
 mod why_args;
