@@ -10,6 +10,19 @@ inventory without executing repository code.
 
 ### Added
 
+- `allow-core` defines a versioned actionable-diagnostic kernel
+  (`CargoAllowDiagnosticV1` / `CargoAllowActionV1` / `CargoAllowDiagnosticBatchV1`)
+  so every output surface can share one semantic finding/repair object. It keeps
+  four judgment dimensions independent — severity, rule posture, confidence, and
+  result class (finding vs. stale vs. not-proven vs. unsupported vs. instrument
+  failure) — carries closed missing-obligation and typed-action vocabularies,
+  explicit source ranges with encoding/base/provenance contracts (line-only
+  locations stay explicitly degraded), and a deterministic identity fingerprint
+  that survives message/format changes but changes when the rule, subject,
+  location, obligation, result class, or snapshot basis changes. Only
+  source-mutating actions may be marked automatic. This slice is the typed
+  kernel and fixtures; renderer projection parity, JSON schema wiring, and
+  safe-edit preview/apply are follow-ups. (#2188)
 - `allow-diff` exposes one exact, typed repository-snapshot identity
   (`repository_snapshot`, `resolve_revision_identity`, `resolve_dirty_state`)
   so spec plans, captured evidence, and proof receipts share common Git/source

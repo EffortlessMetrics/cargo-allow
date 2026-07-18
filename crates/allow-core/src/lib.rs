@@ -5,6 +5,7 @@
 //! the cargo-allow crate family. It does not scan source files, invoke Cargo,
 //! compile code, or execute repository artifacts.
 
+mod actionable_diagnostic;
 mod capped_read;
 mod date;
 mod error;
@@ -16,6 +17,13 @@ mod ledger_posture;
 mod ledger_provenance;
 mod policy;
 mod source_tree_path;
+pub use actionable_diagnostic::{
+    ActionApplicability, ActionKind, CargoAllowActionV1, CargoAllowDiagnosticBatchV1,
+    CargoAllowDiagnosticV1, DIAGNOSTIC_KERNEL_SCHEMA, DiagnosticConfidence, DiagnosticResultClass,
+    DiagnosticSeverity, MissingObligation, PartialDataBoundary, PositionBase, RelatedLocation,
+    RelatedRole, RequiredProof, RulePosture, SourceEncoding, SourcePosition, SourceProvenance,
+    SourceRange,
+};
 pub use capped_read::{
     CappedReadError, SOURCE_FILE_READ_MAX_BYTES, read_file_capped, read_file_capped_with_limit,
     read_text_file_capped, read_text_file_capped_with_limit,
