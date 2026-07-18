@@ -227,7 +227,7 @@ fn invalid_selector_case_has_parity_and_stays_non_live() {
 }
 
 #[test]
-fn occurrence_limit_available_has_parity() {
+fn occurrence_limit_available_has_parity() -> Result<(), String> {
     let mut entry = strong_entry();
     entry.occurrence_limit = Some(2);
     let view = assert_parity(
@@ -240,14 +240,15 @@ fn occurrence_limit_available_has_parity() {
     assert_eq!(view.winner_statuses, vec![MatchStatus::Matched]);
     let accounting = view
         .accounting
-        .expect("limited entry should have accounting");
+        .ok_or_else(|| "limited entry should have accounting".to_string())?;
     assert_eq!(accounting.observed_count, 1);
     assert_eq!(accounting.headroom, 1);
     assert_eq!(accounting.exceeded_count, 0);
+    Ok(())
 }
 
 #[test]
-fn occurrence_limit_exceeded_has_parity() {
+fn occurrence_limit_exceeded_has_parity() -> Result<(), String> {
     let mut entry = strong_entry();
     entry.occurrence_limit = Some(1);
     let finding = strong_finding();
@@ -264,9 +265,10 @@ fn occurrence_limit_exceeded_has_parity() {
     );
     let accounting = view
         .accounting
-        .expect("limited entry should have accounting");
+        .ok_or_else(|| "limited entry should have accounting".to_string())?;
     assert_eq!(accounting.observed_count, 2);
     assert_eq!(accounting.exceeded_count, 1);
+    Ok(())
 }
 
 #[test]
