@@ -557,6 +557,10 @@ impl CargoAllowDiagnosticV1 {
         // UTF-16/zero-based address different characters, so they must bind.
         push_field(&mut canonical, self.primary_location.encoding.as_str());
         push_field(&mut canonical, self.primary_location.base.as_str());
+        // Provenance binds too: an authored and a generated location at the same
+        // path/range carry different repair semantics (edit vs. regenerate), so
+        // they must not collapse to one identity in a worklist/cache/dedupe.
+        push_field(&mut canonical, self.primary_location.provenance.as_str());
         push_field(&mut canonical, &self.snapshot_identity);
         sha256_v1_bytes(&canonical)
     }

@@ -166,6 +166,15 @@ fn actionable_diagnostic_model_fingerprint_changes_on_semantic_identity_change()
                 ..sample_diagnostic()
             },
         ),
+        (
+            "provenance",
+            CargoAllowDiagnosticV1 {
+                primary_location: sample_diagnostic()
+                    .primary_location
+                    .with_provenance(SourceProvenance::Generated),
+                ..sample_diagnostic()
+            },
+        ),
     ];
     for (label, mutated) in mutations {
         assert_ne!(
