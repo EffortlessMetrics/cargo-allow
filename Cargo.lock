@@ -28,6 +28,7 @@ dependencies = [
  "allow-policy",
  "allow-policy-legacy",
  "allow-rust",
+ "sha2",
 ]
 
 [[package]]

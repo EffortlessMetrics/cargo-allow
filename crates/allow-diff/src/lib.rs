@@ -1,9 +1,12 @@
 //! PR-posture and policy-diff helpers for cargo-allow.
 //!
 //! This crate compares source-tree findings and policy ledger entries so callers
-//! can report new, removed, broadened, weakened, or improved exceptions. It
-//! works from repository text and Git object contents; it does not invoke Cargo
-//! metadata, rustc, Clippy, build scripts, proc macros, or evidence tools.
+//! can report new, removed, broadened, weakened, or improved exceptions. It also
+//! exposes the exact Git index as a read-only commit-candidate source whose
+//! identity is independent of unstaged worktree bytes. Candidate parsing uses
+//! checked extraction rather than panic-prone indexing. The crate works from
+//! repository text and Git object contents; it does not invoke Cargo metadata,
+//! rustc, Clippy, build scripts, proc macros, or evidence tools.
 
 mod finding;
 mod movement;
@@ -28,6 +31,7 @@ mod policy_workspace;
 mod revision;
 mod revision_git;
 mod revision_identity;
+mod staged_index;
 
 pub use finding::{
     FindingPostureChange, FindingPostureKind, finding_identity_key, finding_posture_changes,
@@ -55,6 +59,11 @@ pub use revision_identity::{
     RepositorySnapshotIdentity, RepositorySnapshotKind, RepositorySnapshotRequest,
     ResolvedRevisionIdentity, SelectedPathIdentity, repository_object_format, repository_snapshot,
     resolve_dirty_state, resolve_revision_identity,
+};
+pub use staged_index::{
+    StagedEntryKind, StagedIndexEntry, StagedPathChange, StagedPathRead, StagedPathStatus,
+    StagedRepositorySnapshot, StagedSnapshotCompleteness, StagedSnapshotIdentity, read_staged_path,
+    read_staged_raw_path, staged_repository_snapshot,
 };
 
 #[cfg(test)]
