@@ -68,6 +68,7 @@ pub fn render_list_human(rows: &[ListRow<'_>], inventory: InventoryContext<'_>) 
     if rows.is_empty() {
         out.push_str("(no allow entries matched filters)\n");
     }
+    append_list_next_steps(&mut out, rows);
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out.push('\n');
     out
@@ -84,6 +85,42 @@ fn list_inventory_files_suffix(inventory: InventoryContext<'_>) -> String {
 
 fn empty_as_dash(value: &str) -> &str {
     if value.trim().is_empty() { "-" } else { value }
+}
+
+/// Suggests per-entry commands for rows with actionable statuses or broken
+/// evidence so the operator can go from "this entry is stale" to the fix
+/// without looking up the command syntax.
+fn append_list_next_steps(out: &mut String, rows: &[ListRow<'_>]) {
+    let actionable: Vec<&ListRow<'_>> = rows
+        .iter()
+        .filter(|row| {
+            row.status != "matched"
+                && row.status != "healthy"
+                && row.status != "baseline_debt"
+                || row.broken_evidence_references > 0
+        })
+        .take(40)
+        .collect();
+    if actionable.is_empty() {
+        return;
+    }
+    out.push_str("\nNext steps:\n");
+    for row in actionable {
+        let cmd = list_row_command(row);
+        out.push_str(&format!("  {} ({}): {}\n", row.id, row.status, cmd));
+    }
+}
+
+fn list_row_command(row: &ListRow<'_>) -> &'static str {
+    if row.broken_evidence_references > 0 {
+        return "cargo-allow worklist --broken-evidence";
+    }
+    match row.status {
+        "stale" | "expired" => "cargo-allow prune --dry-run",
+        "location_drift" => "cargo-allow refresh --dry-run",
+        "review_due" => "cargo-allow explain <id>",
+        _ => "cargo-allow explain <id>",
+    }
 }
 
 fn render_list_row_json(row: &ListRow<'_>) -> String {
