@@ -10,26 +10,136 @@ inventory without executing repository code.
 
 ### Added
 
-- `scripts/exact-candidate-package-set.sh` emits
-  `cargo-allow.exact-candidate-package-set.v1` after packaging the shared
-  ten-crate set, installing from extracted packages with `[patch.crates-io]`,
-  and running omit-crate / workspace-path negatives (#2372 / #2277 Stage A;
-  full local-registry index and remaining negatives deferred).
+- `allow-diff` exposes one exact, typed repository-snapshot identity
+  (`repository_snapshot`, `resolve_revision_identity`, `resolve_dirty_state`)
+  so spec plans, captured evidence, and proof receipts share common Git/source
+  freshness inputs instead of each reimplementing revision interpretation. The
+  `RepositorySnapshotIdentity` binds a checkout-independent repository root
+  identity (derived from root-commit ids, never an absolute path), object
+  format, resolved head/base commit and tree, merge base, a distinct
+  worktree/index dirty state (clean vs. tracked-modified / staged / untracked /
+  unavailable / non-repository), and a deterministic selected-source closure
+  hash over caller-supplied load-bearing paths. Git failures and missing bases
+  fail visibly rather than degrading to a clean snapshot. This slice implements
+  the committed-head and committed-range kinds; staged/working-tree/external
+  kinds and consumer wiring are follow-up. (#2225)
+- `cargo-allow add --from-plan <PATH>` consumes a `cargo-allow.add-finding-plan.v1`
+  artifact (from `why --plan`) as a fail-closed live-ledger transaction. It
+  acquires the mutation lock, strictly parses the v1 plan, recomputes the
+  repository / inventory / policy / source / finding / selector bindings against
+  a fresh scan, requires the exact finding to remain uniquely `New`, validates
+  the complete policy, and atomically replaces the ledger. The allow entry is
+  built canonically from the freshly re-selected finding plus operator judgment
+  fields — never by deserializing approval metadata from the plan — and the
+  route requires `--update` while conflicting with manual target selectors,
+  `--write`, and `--force`. Every stale or malformed case (unsupported
+  schema/tool generation, different repository or policy path, policy / source /
+  inventory drift, missing or changed finding, selector drift, ambiguous or
+  non-`New` posture, replay after success) fails without changing policy. On
+  success it emits a `cargo-allow.add-plan-application.v1` receipt binding the
+  plan digest, finding digest, before/after policy digests, added allow ID, and
+  target ledger, with an honest `targeted_recheck = not_executed` plus the
+  full-check argv the operator must run next.
+
+- `cargo-allow why` now scans only the file at `--path` instead of the entire
+  source tree, so explaining a single finding no longer tree-sitter-parses every
+  `.rs` file in the repository. The fast path loads the full policy but skips the
+  `git ls-files` inventory walk. Safe for `why` (advisory, read-only); `add`
+  keeps the full pipeline since it mutates the ledger.
+
+### Changed
+
+- `Selector.line_hint` is no longer propagated from TOML into the runtime
+  `Selector`. The field is still accepted in policy TOML for backward
+  compatibility but is dropped during deserialization, making it inert
+  everywhere downstream (fingerprint, render, validation). It was never read by
+  the matching engine; numeric line-distance scoring was retired in favor of
+  explicit match-strength tiers. Existing policies with `line_hint = N` continue
+  to parse without error; new policies written by `add`/`migrate`/`refresh` no
+  longer emit the field.
+
+- `cargo-allow why --plan <PATH>` emits a versioned
+  `cargo-allow.add-finding-plan.v1` artifact for an exact currently-new
+  finding. The non-mutating, no-overwrite plan binds repository inventory,
+  policy bytes, source bytes, structural identity, policy-derived human
+  requirements, near-miss reasons, and structured add/check argv; non-new
+  findings fail closed without writing a plan.
+- `cargo-allow why` now scans only the file at `--path` instead of the entire
+  source tree, so explaining a single finding no longer tree-sitter-parses every
+  `.rs` file in the repository. The fast path loads the full policy but skips the
+  `git ls-files` inventory walk. Safe for `why` (advisory, read-only); `add`
+  keeps the full pipeline since it mutates the ledger.
+
+- `cargo-allow list` now includes a "Next steps" block with per-entry commands
+  for rows with actionable statuses (stale, expired, review_due,
+  location_drift) or broken evidence references, so the operator can go from
+  "this entry is stale" to the fix command without looking up syntax.
+- `cargo-allow doctor` now suggests a repair path when the policy config is
+  invalid, not just when it's missing.
+
+## [0.1.11] - 2026-07-17
+
+### Added
+
+- `cargo-allow diff` now includes copy-paste `why` / `add --update` receipt
+  commands for each introduced (unreceipted) finding, so a PR reviewer can
+  investigate and receipt a new finding without looking up the command syntax.
+- `cargo-allow why` now passes the `--kind` filter to the scanner, matching
+  `add`'s behavior, so fewer irrelevant findings are evaluated before the
+  requested finding is selected.
+
+- `cargo-allow add --update` writes the new entry directly into the live
+  `policy/allow.toml` via load → validate → atomic replace, instead of
+  rendering a candidate file. This is the normal receipt path: it preserves
+  unrelated entries, validates the complete result, and emits a mutation
+  receipt. The existing `--write <PATH>` candidate-file behavior is unchanged;
+  `--update` and `--write` are mutually exclusive.
+- `cargo-allow migrate --update` writes the migrated policy via atomic replace
+  instead of failing when the output path already exists. The existing `--out`
+  /`--force` candidate-file behavior is unchanged; `--update` and `--force`
+  are mutually exclusive.
+- `cargo-allow check --mode no-new` now includes a remediation roadmap with
+  copy-paste commands for every non-matched status, not just evidence-repair
+  queues. The same roadmap that `audit` produces is now surfaced on failed
+  `check` output so the operator knows what to run next.
 - `scripts/source-candidate-smoke.sh` emits
   `cargo-allow.source-candidate-smoke-receipt.v1` after a path-installed (or
-  `CARGO_ALLOW_BIN`) binary completes the brownfield first-hour journey in a
-  temporary consumer repo (#2278 Stage A+; ExactCandidatePackageSet isolation
-  remains #2277).
+  `CARGO_ALLOW_BIN`) binary completes the brownfield first-hour journey plus
+  refresh (location_drift), `diff --base`, prune preview→write, and git policy
+  rollback after prune in a temporary consumer repo, with omitted-step /
+  preview-apply / malformed-receipt / post-install source-hidden ordinary-scan /
+  package-rebuild omit (`MissingAsset`) / wrong-version (`StaleCandidate`) /
+  ordinary-scan offline (`NetworkIsolated`) / unexpected-network
+  (`NetworkRequired`) / failed-policy-rollback (`RecoveryFailed`) /
+  optional-profile-without-assets (`NotProven`) negatives
+  (#2403 / #2402 / #2400 / #2398 / #2396 / #2387 / #2373 / #2278; path-install
+  still uses the source checkout).
+- `scripts/exact-candidate-package-set.sh` emits
+  `cargo-allow.exact-candidate-package-set.v1` after packaging the shared
+  ten-crate set, assembling a classic Cargo local-registry (`.crate` + index)
+  for the lockfile graph with candidate crates injected, offline-installing
+  with crates-io source replacement while renaming workspace `crates/` away
+  (`source_checkout_denied` / `CheckoutIsolated`), and running
+  omit/path/checksum/version/local-registry-omit / candidate-mismatch
+  (`CandidateStale`) / missing-metadata (`ManifestMalformed`) /
+  source-checkout-denied negatives (#2408 / #2406 / #2384 / #2380 / #2277).
 - Hosted `shallow-diff-smoke` CI job and `scripts/shallow-diff-base-smoke.sh`:
   prove `diff --base` fails closed without base history, then succeeds after
   history is available (#2366).
 - Copy-paste CI/ops path: expanded `docs/how-to/run-in-ci.md`, troubleshooting
   and rollback guides, and offline workflow-contract tests for the committed
   GitHub Actions examples (#2355).
-- Offline Published `0.1.10` first-run command registry
+- Offline published-release first-run command registry
   (`docs/dogfood/fixtures/getting-started/published-command-registry.toml`) with
-  `PublishedQuickStartV1` docs contract tests so candidate-only commands such as
-  `why` cannot appear as ordinary published quick-start instructions (#2353).
+  `PublishedQuickStartV1` docs contract tests so source-candidate-only commands
+  cannot appear as ordinary published quick-start instructions (#2353).
+
+### Changed
+
+- Removed the unused `maybe_line_distance_score` helper and its tests. The
+  function was exported but never consulted by the matching engine; numeric
+  line-distance scoring was retired in favor of explicit match-strength tiers.
+
 - Branched, executable first-hour journey in `docs/getting-started.md` with
   published-vs-candidate channel selection, install prerequisites, clean vs
   brownfield forks, `init`/`propose` alternatives, policy command map, fixture

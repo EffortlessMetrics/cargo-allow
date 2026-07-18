@@ -99,7 +99,7 @@ fn run_in_ci_links_complete_workflow_examples() {
         "fetch-depth: 0",
         "if: always()",
         "continue-on-error",
-        "cargo install cargo-allow --version 0.1.10 --locked",
+        "cargo install cargo-allow --version 0.1.11 --locked",
         "troubleshoot-cargo-allow.md",
         "rollback-cargo-allow-adoption.md",
         "error-codes.md",
@@ -171,12 +171,12 @@ fn committed_workflow_examples_parse_and_meet_semantic_contract() {
         "shallow negative fixture must omit fetch-depth: 0"
     );
     assert!(
-        DIFF_WORKFLOW.contains("cargo install cargo-allow --version 0.1.10 --locked"),
-        "PR example must pin Published 0.1.10"
+        DIFF_WORKFLOW.contains("cargo install cargo-allow --version 0.1.11 --locked"),
+        "PR example must pin Published 0.1.11"
     );
     assert!(
-        CHECK_WORKFLOW.contains("cargo install cargo-allow --version 0.1.10 --locked"),
-        "mainline example must pin Published 0.1.10"
+        CHECK_WORKFLOW.contains("cargo install cargo-allow --version 0.1.11 --locked"),
+        "mainline example must pin Published 0.1.11"
     );
     assert!(
         DIFF_WORKFLOW.contains("upload-artifact") && DIFF_WORKFLOW.contains("if: always()"),

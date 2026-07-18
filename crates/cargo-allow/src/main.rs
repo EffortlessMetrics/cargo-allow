@@ -25,6 +25,7 @@ mod kind_filter;
 mod list;
 mod migrate;
 mod mutation_lock;
+mod plan_bindings;
 mod policy_config;
 mod propose;
 mod prune;

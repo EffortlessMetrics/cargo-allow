@@ -43,6 +43,7 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
             format: args.format,
             output: args.output.as_deref(),
             receipt: args.receipt.as_deref(),
+            mode: args.mode.as_deref(),
         });
     }
 
@@ -123,6 +124,10 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     if mirror_divergence_count > 0 {
         context.mirror_divergence_entries = Some(mirror_divergence_count);
     }
+    let blocking_divergence_count = federation_bundle.blocking_divergence_count();
+    if blocking_divergence_count > 0 {
+        context.blocking_divergence_entries = Some(blocking_divergence_count);
+    }
     if !args.deny.is_empty() {
         validate_deny_statuses(&args.deny, &summary, context)?;
     }
@@ -161,6 +166,9 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             evidence.apply_to(&mut receipt_context);
             if mirror_divergence_count > 0 {
                 receipt_context.mirror_divergence_entries = Some(mirror_divergence_count);
+            }
+            if blocking_divergence_count > 0 {
+                receipt_context.blocking_divergence_entries = Some(blocking_divergence_count);
             }
             apply_receipt_run_metadata(
                 &mut receipt_context,

@@ -1,0 +1,222 @@
+use std::path::Path;
+
+use allow_core::{
+    AllowConfig, CargoAllowError, CargoAllowResult, Finding, MatchOutcome, MatchStatus,
+};
+use allow_report::{
+    AddFindingPlanCandidate, AddFindingPlanFinding, AddFindingPlanOutcome, AddFindingPlanPolicy,
+    AddFindingPlanProofPlan, AddFindingPlanRepository, AddFindingPlanV1,
+};
+
+use super::why_render::{WhyCandidate, why_next_steps};
+use crate::SourceTreeReportContext;
+use crate::plan_bindings::compute_plan_finding_bindings;
+
+pub(super) struct AddFindingPlanInput<'a> {
+    pub root: &'a Path,
+    pub config: Option<&'a Path>,
+    pub cfg: &'a AllowConfig,
+    pub include_untracked: bool,
+    pub source_context: &'a SourceTreeReportContext,
+    pub finding: &'a Finding,
+    pub outcome: &'a MatchOutcome,
+    pub candidates: &'a [WhyCandidate<'a>],
+}
+
+pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAllowResult<String> {
+    let AddFindingPlanInput {
+        root,
+        config,
+        cfg,
+        include_untracked,
+        source_context,
+        finding,
+        outcome,
+        candidates,
+    } = input;
+    if outcome.status != MatchStatus::New {
+        return Err(CargoAllowError::new(format!(
+            "cannot produce an add-finding plan for status `{}`; use ordinary `why --format json` or `explain` for diagnosis",
+            outcome.status.as_str()
+        )));
+    }
+
+    let bindings = compute_plan_finding_bindings(root, config, cfg, include_untracked, finding)?;
+    let inventory = source_context.inventory();
+    let root_text = source_context.source_tree_root().to_string();
+
+    let plan = AddFindingPlanV1 {
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        repository: AddFindingPlanRepository {
+            identity: bindings.repository_identity,
+            root: root_text.clone(),
+        },
+        inventory,
+        inventory_basis_identity: bindings.inventory_basis_identity,
+        policy: AddFindingPlanPolicy {
+            path: bindings.policy_path.clone(),
+            digest: bindings.policy_digest,
+        },
+        finding: AddFindingPlanFinding {
+            kind: bindings.finding_kind,
+            family: bindings.finding_family,
+            path: bindings.finding_path,
+            line: bindings.finding_line,
+            column: bindings.finding_column,
+            identity: bindings.finding_identity,
+            digest: bindings.finding_digest,
+            source_file_digest: bindings.source_file_digest,
+            selector: bindings.selector,
+        },
+        outcome: AddFindingPlanOutcome {
+            status: outcome.status.as_str().to_string(),
+            allow_id: outcome.allow_id.clone(),
+            message: outcome.message.clone(),
+        },
+        candidates: candidates
+            .iter()
+            .map(|candidate| AddFindingPlanCandidate {
+                allow_id: candidate.entry.id.clone(),
+                mismatch_reasons: candidate.reasons.clone(),
+            })
+            .collect(),
+        required_fields: required_human_fields(cfg, finding),
+        proof_plans: scoped_proof_plans(
+            finding,
+            outcome,
+            candidates,
+            &root_text,
+            &bindings.policy_path,
+            include_untracked,
+        ),
+    };
+    Ok(allow_report::render_add_finding_plan_json(&plan))
+}
+
+fn scoped_proof_plans(
+    finding: &Finding,
+    outcome: &MatchOutcome,
+    candidates: &[WhyCandidate<'_>],
+    root: &str,
+    policy_path: &str,
+    include_untracked: bool,
+) -> Vec<AddFindingPlanProofPlan> {
+    why_next_steps(finding, outcome, candidates)
+        .proof_plans
+        .into_iter()
+        .map(|mut proof| {
+            proof.args.extend([
+                "--root".to_string(),
+                root.to_string(),
+                "--config".to_string(),
+                policy_path.to_string(),
+            ]);
+            if include_untracked {
+                proof.args.push("--include-untracked".to_string());
+            }
+            AddFindingPlanProofPlan {
+                program: proof.program,
+                args: proof.args,
+            }
+        })
+        .collect()
+}
+
+fn required_human_fields(cfg: &AllowConfig, finding: &Finding) -> Vec<String> {
+    let requirements = &cfg.requirements;
+    let mut fields = Vec::new();
+    if requirements.owner_required {
+        fields.push("owner".to_string());
+    }
+    if requirements.classification_required {
+        fields.push("classification".to_string());
+    }
+    if requirements.reason_required {
+        fields.push("reason".to_string());
+    }
+    if requirements.evidence_required
+        || (finding.kind == allow_core::FindingKind::Unsafe
+            && requirements.unsafe_evidence_required)
+    {
+        fields.push("evidence".to_string());
+    }
+    if requirements.expires_or_review_after_required {
+        fields.push("review_after_or_expires".to_string());
+    }
+    fields
+}
+
+#[cfg(test)]
+pub(crate) fn sample_add_finding_plan_json_for_contract_test() -> String {
+    use allow_core::{FindingKind, Span, StructuralIdentity, normalize_path};
+
+    use crate::plan_bindings::{identity_values, selector_values};
+    use crate::selector::selector_from_finding;
+
+    let mut structural = StructuralIdentity::new("rust", "method_call");
+    structural.container = Some("load".to_string());
+    structural.callee = Some("unwrap".to_string());
+    structural.line_hint = Some(10);
+    structural.column_hint = Some(5);
+    let finding = Finding {
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: "src/lib.rs".into(),
+        span: Some(Span {
+            line: 10,
+            column: 5,
+        }),
+        identity: structural,
+        message: "unwrap call".to_string(),
+        ledger: None,
+    };
+    let digest = "sha256:v1:0000000000000000000000000000000000000000000000000000000000000000";
+    let plan = AddFindingPlanV1 {
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        repository: AddFindingPlanRepository {
+            identity: digest.to_string(),
+            root: "H:/repo".to_string(),
+        },
+        inventory: allow_report::InventoryContext::source_syntax(
+            "git_tracked",
+            Some("H:/repo"),
+            Some(3),
+        )
+        .with_completeness("complete"),
+        inventory_basis_identity: digest.to_string(),
+        policy: AddFindingPlanPolicy {
+            path: "policy/allow.toml".to_string(),
+            digest: digest.to_string(),
+        },
+        finding: AddFindingPlanFinding {
+            kind: finding.kind.as_str().to_string(),
+            family: finding.family.clone(),
+            path: normalize_path(&finding.path),
+            line: Some(10),
+            column: Some(5),
+            identity: identity_values(&finding),
+            digest: digest.to_string(),
+            source_file_digest: digest.to_string(),
+            selector: selector_values(&selector_from_finding(&finding)),
+        },
+        outcome: AddFindingPlanOutcome {
+            status: "new".to_string(),
+            allow_id: None,
+            message: "unreceipted panic.unwrap".to_string(),
+        },
+        candidates: vec![AddFindingPlanCandidate {
+            allow_id: "allow-near".to_string(),
+            mismatch_reasons: vec!["callee mismatch".to_string()],
+        }],
+        required_fields: vec!["owner".to_string(), "reason".to_string()],
+        proof_plans: vec![AddFindingPlanProofPlan {
+            program: "cargo-allow".to_string(),
+            args: vec![
+                "check".to_string(),
+                "--mode".to_string(),
+                "no-new".to_string(),
+            ],
+        }],
+    };
+    allow_report::render_add_finding_plan_json(&plan)
+}

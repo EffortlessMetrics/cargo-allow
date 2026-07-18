@@ -492,6 +492,7 @@ pub fn render_diff_finding_changes_markdown(changes: &[DiffFindingChange<'_>]) -
         changes,
         FINDING_ATTENTION_LABEL,
     );
+    append_finding_receipt_commands_markdown(&mut out, changes);
     append_finding_changes_markdown_section(
         &mut out,
         "Finding Improvements",
@@ -527,6 +528,31 @@ fn append_finding_changes_markdown_section<'a>(
         out,
         changes.iter().filter(|change| change.change == change_kind),
     );
+}
+
+fn append_finding_receipt_commands_markdown(out: &mut String, changes: &[DiffFindingChange<'_>]) {
+    let introduced: Vec<_> = changes
+        .iter()
+        .filter(|change| change.change == FINDING_ATTENTION_LABEL)
+        .take(DIFF_MARKDOWN_CHANGE_LIMIT)
+        .collect();
+    if introduced.is_empty() {
+        return;
+    }
+    out.push_str("### Receipt Commands\n\n");
+    out.push_str("| Command |\n|---|\n");
+    for change in introduced {
+        let line = change.line.unwrap_or(1);
+        out.push_str(&format!(
+            "| `cargo-allow why --kind {} --path {} --line {line}` |\n",
+            change.kind, change.path,
+        ));
+        out.push_str(&format!(
+            "| `cargo-allow add --kind {} --path {} --line {line} --owner <owner> --reason ... --evidence <ref> --update` |\n",
+            change.kind, change.path,
+        ));
+    }
+    out.push('\n');
 }
 
 fn append_finding_changes_markdown_table<'a>(

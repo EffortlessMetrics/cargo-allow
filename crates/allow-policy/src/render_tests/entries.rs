@@ -191,7 +191,7 @@ fn renders_and_parses_selector_metadata() {
         entry.selector.normalized_snippet_hash.as_deref(),
         Some("fnv1a64:snippet")
     );
-    assert_eq!(entry.selector.line_hint, Some(42));
+    assert_eq!(entry.selector.line_hint, None);
     assert_eq!(entry.selector.glob.as_deref(), Some("src/parser/span.rs"));
     assert_eq!(
         entry

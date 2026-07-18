@@ -6,6 +6,12 @@
 //! what it did not execute; they do not perform scanning or validation.
 
 mod add;
+mod add_finding_plan;
+#[cfg(test)]
+mod add_finding_plan_tests;
+mod add_plan_application;
+#[cfg(test)]
+mod add_plan_application_tests;
 #[cfg(test)]
 mod add_tests;
 mod advisory_class;
@@ -99,9 +105,13 @@ mod worklist_summary;
 mod worklist_summary_tests;
 
 pub use add::{render_add_human, render_add_json};
+pub use add_finding_plan::render_add_finding_plan_json;
+pub use add_plan_application::render_add_plan_application_json;
 pub use advisory_class::{ADVISORY_DENY_FIELD_NAMES, AdvisoryClass, advisory_count_for_deny_field};
 pub use allow_entry_json::{render_allow_entry_json, render_last_seen_json, render_selector_json};
 pub use artifacts::{
+    AddFindingPlanCandidate, AddFindingPlanFinding, AddFindingPlanOutcome, AddFindingPlanPolicy,
+    AddFindingPlanProofPlan, AddFindingPlanRepository, AddFindingPlanV1, AddPlanApplicationV1,
     AddReport, ConfiguredLedgerSummary, DiffEvidenceChange, DiffExceptionIdentityChange,
     DiffFindingChange, DiffLedgerMovementSummary, DiffLifecycleChange, DiffMetadataChange,
     DiffMovementCounts, DiffOccurrenceLimitChange, DiffPolicyChange, DiffPolicyStatusChange,
@@ -114,9 +124,11 @@ pub use artifacts::{
     WhyReport, WorklistFilters, WorklistItem,
 };
 pub use contracts::{
-    ADD_SCHEMA_ID, ADD_SCHEMA_VERSION, ARTIFACT_CONTRACTS, ARTIFACT_STATUS_ERROR,
-    ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, ARTIFACT_STATUSES, ArtifactContract,
-    CLAIM_BOUNDARY, CLAIM_BOUNDARY_TEXT, DOCTOR_SCHEMA_ID, DOCTOR_SCHEMA_VERSION,
+    ADD_FINDING_PLAN_CLAIM_BOUNDARY, ADD_FINDING_PLAN_SCHEMA_ID, ADD_FINDING_PLAN_SCHEMA_VERSION,
+    ADD_PLAN_APPLICATION_CLAIM_BOUNDARY, ADD_PLAN_APPLICATION_SCHEMA_ID,
+    ADD_PLAN_APPLICATION_SCHEMA_VERSION, ADD_SCHEMA_ID, ADD_SCHEMA_VERSION, ARTIFACT_CONTRACTS,
+    ARTIFACT_STATUS_ERROR, ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, ARTIFACT_STATUSES,
+    ArtifactContract, CLAIM_BOUNDARY, CLAIM_BOUNDARY_TEXT, DOCTOR_SCHEMA_ID, DOCTOR_SCHEMA_VERSION,
     EXPLAIN_SCHEMA_ID, EXPLAIN_SCHEMA_VERSION, INVENTORY_SCANNER_POLICY_MIGRATION,
     INVENTORY_SCANNER_SOURCE_SYNTAX, INVENTORY_SCANNER_SOURCE_TREE_GRAPH,
     INVENTORY_SCOPE_SOURCE_TREE, INVENTORY_SOURCE_UNKNOWN, InventoryContext, LIST_SCHEMA_ID,

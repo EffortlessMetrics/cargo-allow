@@ -8,6 +8,7 @@ use std::path::PathBuf;
 mod evaluation;
 mod lint;
 mod mode;
+mod parity;
 mod scoring;
 mod selector_precision;
 

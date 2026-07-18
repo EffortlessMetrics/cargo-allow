@@ -1,5 +1,5 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding};
-use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
+use allow_inventory::{InventoryOptions, InventorySource, inventory, resolve_source_tree_root};
 use allow_policy::federation::{
     FederationEvaluation, PrecedenceTier, evaluate_source_exception_policy,
 };
@@ -105,6 +105,81 @@ pub(crate) fn load_world_with_evidence_mode(
         }
     }
     Ok((root, cfg, findings, inventory_facts, federation))
+}
+
+/// Load the full policy but scan only the single file at `target_path` instead
+/// of the entire source tree. Used by `why` (advisory, read-only) so a
+/// one-finding question does not parse every file in the repository.
+///
+/// Correctness caveat: the `evaluate` call downstream sees only this file's
+/// findings, so `occurrence_limit` counting and cross-file drift re-anchoring
+/// reflect a partial view. This is acceptable for `why` (advisory) but NOT for
+/// `add` (which mutates the ledger).
+pub(crate) fn load_world_for_path(
+    explicit_root: Option<&Path>,
+    config: Option<&Path>,
+    require_config: bool,
+    kind_filter: Option<&str>,
+    target_path: &Path,
+) -> CargoAllowResult<(
+    PathBuf,
+    AllowConfig,
+    Vec<Finding>,
+    InventoryFacts,
+    FederationEvaluation,
+)> {
+    let cwd =
+        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let root = resolve_source_tree_root(explicit_root, cwd)?;
+    let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
+        Ok(value) => value,
+        Err(_err) if !require_config => {
+            return load_world_without_policy(
+                &root,
+                kind_filter,
+                false,
+                EvidenceValidationMode::ReportOnly,
+                empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
+            );
+        }
+        Err(err) => return Err(err),
+    };
+    let cfg = load_policy_at_path(policy_path, EvidenceValidationMode::ReportOnly)?;
+    // Normalize the target path to repo-relative for the scan.
+    let files = vec![normalize_to_repo_relative(&root, target_path)];
+    let mut findings = Vec::new();
+    findings.extend(allow_rust::scan_rust_files(&root, &files)?);
+    findings.extend(allow_files::scan_files_with_options(
+        &files,
+        &allow_files::FileScanOptions {
+            generated: cfg.workspace.generated.clone(),
+        },
+    ));
+    let companion_findings = canonical_companion_findings(&root, &cfg, &files)?;
+    extend_unique_findings(&mut findings, companion_findings);
+    if let Some(kind) = kind_filter {
+        let parsed = parse_kind_filter(kind)?;
+        findings.retain(|f| parsed.matches_finding(f));
+    }
+    if let Some(provenance) = federation.active_provenance.clone() {
+        for finding in &mut findings {
+            finding.ledger = Some(provenance.clone());
+        }
+    }
+    let inventory_facts = InventoryFacts::scanned(InventorySource::GitTracked, files.len());
+    Ok((root, cfg, findings, inventory_facts, federation))
+}
+
+/// Normalize an arbitrary path (absolute or repo-relative) to a repo-relative
+/// PathBuf suitable for the scanner's file list.
+fn normalize_to_repo_relative(root: &Path, path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.strip_prefix(root)
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|_| path.to_path_buf())
+    } else {
+        path.to_path_buf()
+    }
 }
 
 fn load_world_without_policy(

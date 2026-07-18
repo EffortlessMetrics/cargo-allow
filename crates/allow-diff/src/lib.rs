@@ -31,6 +31,7 @@ mod policy_workspace;
 mod revision;
 mod revision_git;
 mod staged_index;
+mod revision_identity;
 
 pub use finding::{
     FindingPostureChange, FindingPostureKind, finding_identity_key, finding_posture_changes,
@@ -57,6 +58,12 @@ pub use staged_index::{
     StagedEntryKind, StagedIndexEntry, StagedPathChange, StagedPathRead, StagedPathStatus,
     StagedRepositorySnapshot, StagedSnapshotCompleteness, StagedSnapshotIdentity, read_staged_path,
     read_staged_raw_path, staged_repository_snapshot,
+};
+pub use revision_identity::{
+    REPOSITORY_SNAPSHOT_SCHEMA, RepositoryDirtyState, RepositoryObjectFormat,
+    RepositorySnapshotIdentity, RepositorySnapshotKind, RepositorySnapshotRequest,
+    ResolvedRevisionIdentity, SelectedPathIdentity, repository_object_format, repository_snapshot,
+    resolve_dirty_state, resolve_revision_identity,
 };
 
 #[cfg(test)]

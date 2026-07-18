@@ -93,6 +93,7 @@ pub fn render_human_with_context(
     render_non_rust_human(findings, outcomes, &mut out);
     if command != "audit" {
         let signals = ReviewSignals::from_summary(&summary, context);
+        append_remediation_roadmap_human(&summary, signals, &mut out);
         append_evidence_repair_queues_human(&summary, signals, &mut out);
     }
     out.push('\n');
@@ -291,6 +292,7 @@ pub fn render_markdown_with_context(
     render_non_rust_markdown(findings, outcomes, &mut out);
     if command != "audit" {
         let signals = ReviewSignals::from_summary(&summary, context);
+        append_remediation_roadmap_markdown(&summary, signals, &mut out);
         append_evidence_repair_queues_markdown(&summary, signals, &mut out);
     }
     let non_matched = outcomes
@@ -537,6 +539,36 @@ fn append_audit_remediation_roadmap_markdown(
         return;
     }
     out.push_str("\n## Audit Remediation Roadmap\n\n");
+    out.push_str("| Signal | Command |\n|---|---|\n");
+    for item in items {
+        out.push_str(&format!("| {} | `{}` |\n", item.label, item.command));
+    }
+}
+
+/// Status-neutral remediation roadmap for non-audit commands (e.g. `check`).
+/// Surfaces the same copy-paste commands as the audit roadmap so a failed
+/// `check --mode no-new` tells the operator what to run next.
+fn append_remediation_roadmap_human(summary: &Summary, signals: ReviewSignals, out: &mut String) {
+    let items = audit_remediation_items(summary, signals);
+    if items.is_empty() {
+        return;
+    }
+    out.push_str("\nRemediation roadmap:\n");
+    for item in items {
+        out.push_str(&format!("  {}: {}\n", item.label, item.command));
+    }
+}
+
+fn append_remediation_roadmap_markdown(
+    summary: &Summary,
+    signals: ReviewSignals,
+    out: &mut String,
+) {
+    let items = audit_remediation_items(summary, signals);
+    if items.is_empty() {
+        return;
+    }
+    out.push_str("\n## Remediation Roadmap\n\n");
     out.push_str("| Signal | Command |\n|---|---|\n");
     for item in items {
         out.push_str(&format!("| {} | `{}` |\n", item.label, item.command));

@@ -30,6 +30,14 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
                 "config status: {}\n",
                 config_status_text(facts.config_valid, facts.config_diagnostic)
             ));
+            if facts.config_valid == Some(false) {
+                out.push_str(
+                    "config repair: inspect the diagnostic above; run \
+                     `cargo-allow check --mode no-new` for full validation details, \
+                     or `cargo-allow migrate --from <file> --update` to convert a \
+                     legacy policy\n",
+                );
+            }
             if let Some(count) = facts.broken_evidence_links {
                 out.push_str(&format!("broken evidence links: {count}\n"));
                 if count > 0 {

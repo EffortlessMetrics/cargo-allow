@@ -46,10 +46,21 @@ pub(crate) struct SpecSystemCommandArgs<'a> {
     pub(crate) format: OutputFormat,
     pub(crate) output: Option<&'a Path>,
     pub(crate) receipt: Option<&'a Path>,
+    /// Explicit `--mode` value, if the operator passed one. Overrides the
+    /// config mode; an unrecognized value fails closed (#1941).
+    pub(crate) mode: Option<&'a str>,
 }
 
 pub(crate) fn cmd_spec_system(args: SpecSystemCommandArgs<'_>) -> CargoAllowResult<()> {
-    let report = build_spec_system_report(args.command, args.root, args.config, false, false)?;
+    let mode_override = args.mode.map(parse_spec_system_mode_override).transpose()?;
+    let report = build_spec_system_report(
+        args.command,
+        args.root,
+        args.config,
+        false,
+        false,
+        mode_override,
+    )?;
     let rendered = render_spec_system_report(&report, args.format);
     emit_text(args.output, &rendered)?;
     if let Some(path) = args.receipt {
@@ -74,7 +85,7 @@ pub(crate) struct SpecSystemWorklistCommandArgs<'a> {
 pub(crate) fn cmd_spec_system_worklist(
     args: SpecSystemWorklistCommandArgs<'_>,
 ) -> CargoAllowResult<()> {
-    let report = build_spec_system_report("worklist", args.root, args.config, true, false)?;
+    let report = build_spec_system_report("worklist", args.root, args.config, true, false, None)?;
     let rendered = if args.format_json {
         render_spec_system_json(&report)
     } else {
@@ -93,7 +104,7 @@ pub(crate) struct SpecSystemDoctorCommandArgs<'a> {
 pub(crate) fn cmd_spec_system_doctor(
     args: SpecSystemDoctorCommandArgs<'_>,
 ) -> CargoAllowResult<()> {
-    let report = build_spec_system_report("doctor", args.root, args.config, true, true)?;
+    let report = build_spec_system_report("doctor", args.root, args.config, true, true, None)?;
     let rendered = if args.format_json {
         render_spec_system_json(&report)
     } else {
@@ -113,7 +124,7 @@ pub(crate) struct SpecSystemExplainCommandArgs<'a> {
 pub(crate) fn cmd_spec_system_explain(
     args: SpecSystemExplainCommandArgs<'_>,
 ) -> CargoAllowResult<()> {
-    let report = build_spec_system_report("explain", args.root, args.config, true, false)?;
+    let report = build_spec_system_report("explain", args.root, args.config, true, false, None)?;
     let report = filter_spec_system_report_for_artifact(&report, args.artifact_id)?;
     let rendered = if args.format_json {
         render_spec_system_json(&report)
@@ -641,12 +652,19 @@ fn build_spec_system_report(
     config: Option<&Path>,
     include_work_items: bool,
     include_readiness: bool,
+    mode_override: Option<SpecSystemMode>,
 ) -> CargoAllowResult<SpecSystemReport> {
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = resolve_source_tree_root(root_args.root.as_deref(), cwd)?;
     let loaded_config = load_spec_system_config(&root, config);
-    let cfg = loaded_config.cfg.clone();
+    let mut cfg = loaded_config.cfg.clone();
+    // An explicit `--mode` overrides the config mode (mirrors source-tree
+    // `check`), so `--mode blocking`/`--mode audit` are honored instead of
+    // silently dropped (#1941).
+    if let Some(mode) = mode_override {
+        cfg.mode = mode;
+    }
     let config_source = loaded_config.source.clone();
     let config_provenance = loaded_config.provenance.as_str().to_string();
     let mut findings = profile_config_findings(&loaded_config, config.is_some());
@@ -2712,6 +2730,25 @@ fn spec_system_mode_name(mode: &SpecSystemMode) -> &'static str {
     }
 }
 
+/// Parse an explicit `--mode` value for a `check --profile spec-system` run
+/// into a [`SpecSystemMode`] override.
+///
+/// The shared `--mode` flag is validated by clap against the source-tree
+/// vocabulary (`audit`, `no-new`, `strict`, `release`). Of those, `audit` is
+/// the report-only mode, so it maps to spec-system `advisory` and makes the
+/// documented `--mode audit` proof command work. The enforcing source-tree
+/// modes have no unambiguous spec-system meaning, so they fail closed with a
+/// clear error rather than silently reverting to the config mode (#1941).
+/// Shadow and blocking enforcement stay config-driven.
+fn parse_spec_system_mode_override(value: &str) -> CargoAllowResult<SpecSystemMode> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "audit" | "advisory" => Ok(SpecSystemMode::Advisory),
+        other => Err(CargoAllowError::new(format!(
+            "--mode `{other}` is not supported with --profile spec-system; use --mode audit for a report-only run, and set shadow or blocking enforcement in the spec-system config"
+        ))),
+    }
+}
+
 fn spec_system_command_failed(report: &SpecSystemReport) -> bool {
     spec_system_setup_failed(report)
         || (report.mode == SpecSystemMode::Blocking
@@ -3415,6 +3452,67 @@ mod tests {
         kind: &str,
     ) -> Option<&'a SpecSystemReadinessCheck> {
         readiness.checks.iter().find(|check| check.kind == kind)
+    }
+
+    #[test]
+    fn parse_spec_system_mode_override_maps_audit_and_fails_closed() {
+        // #1941: `audit` (the report-only source-tree mode and the documented
+        // proof command) maps to advisory, case-insensitive. The enforcing
+        // source-tree modes have no spec-system meaning and must fail closed
+        // instead of being silently dropped.
+        for value in ["audit", "AUDIT", "  audit  "] {
+            assert_eq!(
+                parse_spec_system_mode_override(value).unwrap_or_else(|err| {
+                    std::panic::panic_any(format!("{value} should parse: {err}"))
+                }),
+                SpecSystemMode::Advisory,
+                "{value} should map to advisory"
+            );
+        }
+        for value in ["no-new", "strict", "release", "blocking"] {
+            let err = parse_spec_system_mode_override(value)
+                .expect_err("an unsupported spec-system mode must fail closed");
+            assert!(
+                err.to_string()
+                    .contains(&format!("--mode `{value}` is not supported")),
+                "error should name the rejected value: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn spec_system_check_mode_override_reaches_report_mode() -> std::io::Result<()> {
+        // #1941: an explicit --mode must reach the spec-system evaluation and
+        // override the config mode, instead of being silently dropped.
+        let root = temp_root("mode-override")?;
+        for file in spec_system_bootstrap_files(Path::new(DEFAULT_PROFILE_CONFIG), false) {
+            write_fixture_file(&root, &file.path.display().to_string(), &file.contents)?;
+        }
+        let root_args = RootArgs {
+            root: Some(root.clone()),
+        };
+
+        let build = |mode: Option<SpecSystemMode>| {
+            build_spec_system_report("check", &root_args, None, false, false, mode)
+                .unwrap_or_else(|err| std::panic::panic_any(format!("report builds: {err}")))
+        };
+
+        // `--mode blocking` forces blocking even though the bootstrap config is
+        // not blocking; `--mode audit` maps to advisory; no override keeps the
+        // config mode.
+        let blocking = build(Some(SpecSystemMode::Blocking));
+        assert_eq!(blocking.mode, SpecSystemMode::Blocking);
+        let advisory = build(Some(SpecSystemMode::Advisory));
+        assert_eq!(advisory.mode, SpecSystemMode::Advisory);
+        let default_mode = build(None).mode;
+        assert_ne!(
+            default_mode,
+            SpecSystemMode::Blocking,
+            "override must be what forced blocking, not the config default"
+        );
+
+        let _ = std::fs::remove_dir_all(&root);
+        Ok(())
     }
 
     fn temp_root(name: &str) -> std::io::Result<PathBuf> {

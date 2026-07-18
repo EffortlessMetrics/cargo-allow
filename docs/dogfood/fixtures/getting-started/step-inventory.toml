@@ -88,8 +88,8 @@ exit_class = "success"
 output_id = "cargo-allow list"
 
 [[step]]
-id = "why_candidate"
-channel = "candidate"
+id = "why_published"
+channel = "published"
 argv_head = "why"
 exit_class = "success"
-output_id = "Source-candidate diagnosis"
+output_id = "Published diagnosis"

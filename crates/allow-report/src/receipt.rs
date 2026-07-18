@@ -238,6 +238,12 @@ fn counts_value(summary: &Summary, context: ReportContext<'_>) -> Value {
             "weak_evidence_references",
             context.weak_evidence_references.filter(|count| *count > 0),
         ),
+        (
+            "blocking_divergence",
+            context
+                .blocking_divergence_entries
+                .filter(|count| *count > 0),
+        ),
     ];
     for (name, value) in optional_fields
         .into_iter()

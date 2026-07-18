@@ -22,7 +22,7 @@ fn render_broad_add_summary_json_escapes_string_fields() {
 
     let json = render_add_summary_broad_json(
         &entry,
-        Some(Path::new("policy/\\\"quoted\\\\output.toml")),
+        Some("policy/\\\"quoted\\\\output.toml"),
         true,
         &AddContext {
             inventory: allow_report::InventoryContext::source_syntax(
@@ -85,7 +85,7 @@ fn render_add_summary_json_records_entry_and_selected_finding() {
     let json = render_add_summary_json(
         &entry,
         &finding,
-        Some(Path::new("policy/allow.proposed.toml")),
+        Some("policy/allow.proposed.toml"),
         true,
         AddContext {
             inventory: allow_report::InventoryContext::source_syntax(
@@ -174,7 +174,7 @@ fn render_add_summary_human_records_inventory_context() {
     let text = render_add_summary(
         &entry,
         &finding,
-        Some(Path::new("policy/allow.proposed.toml")),
+        Some("policy/allow.proposed.toml"),
         AddContext {
             inventory: allow_report::InventoryContext::source_syntax(
                 "git_tracked",

@@ -138,8 +138,11 @@ fn rejects_padded_snippet_hash_selector() {
 }
 
 #[test]
-fn rejects_zero_selector_line_hint() {
-    let err = parse_err(
+fn ignores_zero_selector_line_hint() {
+    // line_hint is accepted in TOML for backward compatibility but no longer
+    // propagated into the runtime Selector, so line_hint = 0 no longer causes a
+    // validation failure. The entry should parse successfully.
+    let cfg = match parse_policy(
         r#"
                 policy = "cargo-allow"
                 [[allow]]
@@ -155,9 +158,13 @@ fn rejects_zero_selector_line_hint() {
                 callee = "unwrap"
                 line_hint = 0
             "#,
-    );
+    ) {
+        Ok(cfg) => cfg,
+        Err(err) => std::panic::panic_any(format!("line_hint = 0 should parse: {err}")),
+    };
 
-    assert!(err.contains("line_hint must be greater than zero"));
+    assert_eq!(cfg.allow.len(), 1);
+    assert_eq!(cfg.allow[0].selector.line_hint, None);
 }
 
 #[test]
