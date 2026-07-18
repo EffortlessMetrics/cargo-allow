@@ -114,7 +114,8 @@ column = 9
         assert_eq!(entry.lifecycle.expires.as_deref(), Some("2027-01-01"));
         assert_eq!(entry.selector.ast_kind.as_deref(), Some("macro_call"));
         assert_eq!(entry.selector.macro_name.as_deref(), Some("panic"));
-        assert_eq!(entry.selector.line_hint, Some(41));
+        // line_hint is accepted in TOML but no longer propagated into Selector.
+        assert_eq!(entry.selector.line_hint, None);
         assert_eq!(
             entry
                 .last_seen

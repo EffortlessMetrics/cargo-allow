@@ -10,6 +10,23 @@ inventory without executing repository code.
 
 ### Added
 
+- `cargo-allow why` now scans only the file at `--path` instead of the entire
+  source tree, so explaining a single finding no longer tree-sitter-parses every
+  `.rs` file in the repository. The fast path loads the full policy but skips the
+  `git ls-files` inventory walk. Safe for `why` (advisory, read-only); `add`
+  keeps the full pipeline since it mutates the ledger.
+
+### Changed
+
+- `Selector.line_hint` is no longer propagated from TOML into the runtime
+  `Selector`. The field is still accepted in policy TOML for backward
+  compatibility but is dropped during deserialization, making it inert
+  everywhere downstream (fingerprint, render, validation). It was never read by
+  the matching engine; numeric line-distance scoring was retired in favor of
+  explicit match-strength tiers. Existing policies with `line_hint = N` continue
+  to parse without error; new policies written by `add`/`migrate`/`refresh` no
+  longer emit the field.
+
 - `cargo-allow why --plan <PATH>` emits a versioned
   `cargo-allow.add-finding-plan.v1` artifact for an exact currently-new
   finding. The non-mutating, no-overwrite plan binds repository inventory,
