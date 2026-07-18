@@ -16,6 +16,12 @@ inventory without executing repository code.
   policy bytes, source bytes, structural identity, policy-derived human
   requirements, near-miss reasons, and structured add/check argv; non-new
   findings fail closed without writing a plan.
+- `cargo-allow list` now includes a "Next steps" block with per-entry commands
+  for rows with actionable statuses (stale, expired, review_due,
+  location_drift) or broken evidence references, so the operator can go from
+  "this entry is stale" to the fix command without looking up syntax.
+- `cargo-allow doctor` now suggests a repair path when the policy config is
+  invalid, not just when it's missing.
 
 ## [0.1.11] - 2026-07-17
 
