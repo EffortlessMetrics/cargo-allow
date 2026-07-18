@@ -117,7 +117,7 @@ fn parses_legacy_aliases_and_scalar_arrays() {
     assert_eq!(entry.occurrence_limit, Some(2));
     assert_eq!(entry.selector.ast_kind.as_deref(), Some("macro_call"));
     assert_eq!(entry.selector.macro_name.as_deref(), Some("panic"));
-    assert_eq!(entry.selector.line_hint, Some(12));
+    assert_eq!(entry.selector.line_hint, None);
 }
 
 #[test]

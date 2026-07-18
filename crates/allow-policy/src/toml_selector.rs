@@ -15,8 +15,15 @@ pub(crate) struct SelectorToml {
     receiver_fingerprint: Option<String>,
     target_fingerprint: Option<String>,
     normalized_snippet_hash: Option<String>,
-    #[serde(default, deserialize_with = "option_u32_or_string")]
-    line_hint: Option<u32>,
+    // line_hint is accepted in TOML for backward compatibility but no longer
+    // propagated into the runtime Selector. The leading underscore suppresses
+    // the dead-code warning without introducing a lint_exception finding.
+    #[serde(
+        default,
+        rename = "line_hint",
+        deserialize_with = "option_u32_or_string"
+    )]
+    _line_hint: Option<u32>,
     glob: Option<String>,
 }
 
@@ -32,7 +39,13 @@ impl SelectorToml {
             receiver_fingerprint: self.receiver_fingerprint,
             target_fingerprint: self.target_fingerprint,
             normalized_snippet_hash: self.normalized_snippet_hash,
-            line_hint: self.line_hint,
+            // line_hint is accepted in TOML for backward compatibility but no
+            // longer propagated into the runtime Selector. It was never read by
+            // the matching engine (scoring.rs); numeric line-distance scoring
+            // was retired in favor of explicit match-strength tiers. Keeping it
+            // None here makes it inert everywhere downstream (fingerprint,
+            // render, validation) without breaking existing policy TOML.
+            line_hint: None,
             glob: self.glob,
         }
     }
