@@ -360,3 +360,38 @@ fn extension_and_file_name_matching_are_case_insensitive() {
     assert_classification("TOOLS/CHECK.PS1", FindingKind::NonRustFile, "shell_script");
     assert_classification("Package.JSON", FindingKind::NonRustFile, "package_metadata");
 }
+
+#[test]
+fn doc_extension_files_under_fixture_dirs_are_test_fixtures() {
+    // #1876: files under fixtures/testdata/snapshots are fixture data, not
+    // project documentation, even with a doc extension. test_fixture wins over
+    // documentation by design.
+    for path in [
+        "testdata/design.md",
+        "fixtures/notes.md",
+        "snapshots/output.txt",
+        "crates/parser/tests/fixtures/spec.md",
+        "tests/fixtures/import/kiro/.kiro/specs/auth-feature/design.md",
+    ] {
+        assert_classification(path, FindingKind::NonRustFile, "test_fixture");
+    }
+}
+
+#[test]
+fn fixture_family_matches_whole_segments_only() {
+    // The fixture match is segment-anchored, so a sibling directory that merely
+    // contains the word is NOT a fixture and a `.md` file there is documentation
+    // (#1876: the substring check does not over-broaden).
+    assert_classification(
+        "myfixtures/design.md",
+        FindingKind::NonRustFile,
+        "documentation",
+    );
+    assert_classification(
+        "src/fixtures_old/design.md",
+        FindingKind::NonRustFile,
+        "documentation",
+    );
+    // A real docs tree stays documentation.
+    assert_classification("docs/guide.md", FindingKind::NonRustFile, "documentation");
+}
