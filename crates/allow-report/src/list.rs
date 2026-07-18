@@ -94,9 +94,7 @@ fn append_list_next_steps(out: &mut String, rows: &[ListRow<'_>]) {
     let actionable: Vec<&ListRow<'_>> = rows
         .iter()
         .filter(|row| {
-            row.status != "matched"
-                && row.status != "healthy"
-                && row.status != "baseline_debt"
+            row.status != "matched" && row.status != "healthy" && row.status != "baseline_debt"
                 || row.broken_evidence_references > 0
         })
         .take(40)
