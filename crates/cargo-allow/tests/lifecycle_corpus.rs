@@ -210,6 +210,184 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
 }
 
 #[test]
+fn policy_change_projections_agree_across_human_markdown_and_json() {
+    // #2248: one weakening and one improvement must be classified once and
+    // projected identically across the human, markdown, and json renders — and
+    // the improvement must not raise a weakening change-note obligation. The
+    // existing note-contract test asserts only the json projection, so this
+    // pins the human/markdown counts and identities to the same transition.
+
+    // --- Weakening: occurrence_limit 1 -> 3 ---
+    let weakening_root = create_policy_change_fixture("policy-projection-weakening", "src/lib.rs");
+    fs::write(
+        weakening_root.join("policy/allow.toml"),
+        policy_with_occurrence_limit(1),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write weakening base: {err}")));
+    git(&weakening_root, &["add", "policy/allow.toml"]);
+    git(
+        &weakening_root,
+        &["commit", "--no-gpg-sign", "-m", "weakening base"],
+    );
+    fs::write(
+        weakening_root.join("policy/allow.toml"),
+        policy_with_occurrence_limit(3),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write weakening head: {err}")));
+
+    // json is the projection the corpus already trusts: exactly one worsened
+    // occurrence_limit_loosened transition.
+    let weakening_json = weakening_root.join("target/cargo-allow/projection-weakening.json");
+    let weakening = run_diff(&weakening_root, &weakening_json, false);
+    assert_status("weakening json", &weakening, false);
+    assert_eq!(
+        policy_changes(&weakening_json).len(),
+        1,
+        "weakening json must record exactly one policy change"
+    );
+    assert_policy_change_fields(
+        &weakening_json,
+        "occurrence_limit_loosened",
+        "allow-transition",
+        "fail",
+        "retained",
+        "worsened",
+    );
+
+    // markdown must describe the same single transition, count, and posture.
+    let weakening_md = run_diff_rendered(&weakening_root, "markdown", false);
+    let weakening_md_text = String::from_utf8_lossy(&weakening_md.stdout);
+    assert!(
+        weakening_md_text.contains("`occurrence_limit_loosened`")
+            && weakening_md_text.contains("`allow-transition`"),
+        "markdown must name the weakening transition identity: {weakening_md_text}"
+    );
+    assert!(
+        weakening_md_text.contains("| Policy failures | 1 |"),
+        "markdown count must agree with the single json weakening: {weakening_md_text}"
+    );
+    assert!(
+        weakening_md_text.contains("**Net posture:** `worse`"),
+        "markdown net posture must agree with the json worsened delta: {weakening_md_text}"
+    );
+    assert!(
+        !weakening_md_text.contains("occurrence_limit_tightened"),
+        "a weakening must never render as an improvement: {weakening_md_text}"
+    );
+
+    // human must describe the same single transition and posture.
+    let weakening_human = run_diff_rendered(&weakening_root, "human", false);
+    let weakening_human_text = String::from_utf8_lossy(&weakening_human.stdout);
+    assert!(
+        weakening_human_text.contains("occurrence_limit_loosened")
+            && weakening_human_text.contains("allow-transition"),
+        "human must name the weakening transition identity: {weakening_human_text}"
+    );
+    assert!(
+        weakening_human_text.contains("net_posture: worse")
+            && weakening_human_text.contains("posture_delta=worsened"),
+        "human net posture must agree with the json worsened delta: {weakening_human_text}"
+    );
+    assert!(
+        !weakening_human_text.contains("occurrence_limit_tightened"),
+        "a weakening must never render as an improvement: {weakening_human_text}"
+    );
+    remove_temp_root(weakening_root);
+
+    // --- Improvement: occurrence_limit 3 -> 1 ---
+    let improvement_root =
+        create_policy_change_fixture("policy-projection-improvement", "src/lib.rs");
+    fs::write(
+        improvement_root.join("policy/allow.toml"),
+        policy_with_occurrence_limit(3),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write improvement base: {err}")));
+    git(&improvement_root, &["add", "policy/allow.toml"]);
+    git(
+        &improvement_root,
+        &["commit", "--no-gpg-sign", "-m", "improvement base"],
+    );
+    fs::write(
+        improvement_root.join("policy/allow.toml"),
+        policy_with_occurrence_limit(1),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write improvement head: {err}")));
+
+    let improvement_json = improvement_root.join("target/cargo-allow/projection-improvement.json");
+    let improvement = run_diff(&improvement_root, &improvement_json, false);
+    assert_status("improvement json", &improvement, true);
+    assert_eq!(
+        policy_changes(&improvement_json).len(),
+        1,
+        "improvement json must record exactly one policy change"
+    );
+    assert_policy_change_fields(
+        &improvement_json,
+        "occurrence_limit_tightened",
+        "allow-transition",
+        "improvement",
+        "retained",
+        "improved",
+    );
+
+    let improvement_md = run_diff_rendered(&improvement_root, "markdown", false);
+    let improvement_md_text = String::from_utf8_lossy(&improvement_md.stdout);
+    assert!(
+        improvement_md_text.contains("`occurrence_limit_tightened`")
+            && improvement_md_text.contains("`allow-transition`"),
+        "markdown must name the improvement transition identity: {improvement_md_text}"
+    );
+    assert!(
+        improvement_md_text.contains("| Policy improvements | 1 |"),
+        "markdown improvement count must agree with the single json record: {improvement_md_text}"
+    );
+    assert!(
+        improvement_md_text.contains("**Net posture:** `improved`"),
+        "markdown net posture must agree with the json improved delta: {improvement_md_text}"
+    );
+    assert!(
+        !improvement_md_text.contains("occurrence_limit_loosened")
+            && !improvement_md_text.contains("### Policy Failures"),
+        "an improvement must never render a false weakening: {improvement_md_text}"
+    );
+
+    let improvement_human = run_diff_rendered(&improvement_root, "human", false);
+    let improvement_human_text = String::from_utf8_lossy(&improvement_human.stdout);
+    assert!(
+        improvement_human_text.contains("occurrence_limit_tightened")
+            && improvement_human_text.contains("allow-transition"),
+        "human must name the improvement transition identity: {improvement_human_text}"
+    );
+    assert!(
+        improvement_human_text.contains("net_posture: improved")
+            && improvement_human_text.contains("posture_delta=improved"),
+        "human net posture must agree with the json improved delta: {improvement_human_text}"
+    );
+    assert!(
+        !improvement_human_text.contains("occurrence_limit_loosened"),
+        "an improvement must never render a false weakening: {improvement_human_text}"
+    );
+
+    // The improvement must not demand a weakening change note: --require-change-note
+    // only gates worsened/review transitions, so this still passes cleanly.
+    let improvement_gated =
+        improvement_root.join("target/cargo-allow/projection-improvement-gated.json");
+    let gated = run_diff(&improvement_root, &improvement_gated, true);
+    assert_status("improvement under --require-change-note", &gated, true);
+    assert!(
+        !String::from_utf8_lossy(&gated.stderr).contains("change note required"),
+        "an improvement must not raise a change-note obligation: {}",
+        String::from_utf8_lossy(&gated.stderr)
+    );
+    assert_eq!(
+        policy_changes(&improvement_gated).len(),
+        1,
+        "the gated improvement must still record its single improvement"
+    );
+    remove_temp_root(improvement_root);
+}
+
+#[test]
 fn lifecycle_statuses_converge_across_read_artifacts() {
     let root = create_fixture("lifecycle-corpus", true);
 
@@ -874,6 +1052,28 @@ fn run_diff(root: &Path, output: &Path, require_change_note: bool) -> Output {
     command
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run transition diff: {err}")))
+}
+
+/// Run `diff` in a non-JSON render format, capturing stdout. Unlike
+/// [`run_diff`], no `--output` file is written, so the human/markdown render is
+/// returned on stdout for cross-format agreement checks.
+fn run_diff_rendered(root: &Path, format: &str, require_change_note: bool) -> Output {
+    let mut command = cargo_allow_command();
+    command
+        .args(["diff", "--base", "HEAD"])
+        .arg("--root")
+        .arg(root)
+        .arg("--config")
+        .arg(root.join("policy/allow.toml"))
+        .args(["--format", format]);
+    if require_change_note {
+        command
+            .arg("--require-change-note")
+            .args(["--revisions-dir", ".allow/revisions"]);
+    }
+    command
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run {format} diff: {err}")))
 }
 
 fn policy_changes(output: &Path) -> Vec<Value> {
