@@ -5,8 +5,7 @@ use allow_core::{
 use allow_match::{CheckMode, evaluate, explain_match_failure, score_match};
 
 use crate::{
-    EvidenceValidationMode, SourceTreeReportContext, emit_text, load_world_with_evidence_mode,
-    parse_kind_filter,
+    SourceTreeReportContext, emit_text, load_world_for_path, parse_kind_filter,
 };
 
 #[path = "why_args.rs"]
@@ -41,13 +40,12 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         )));
     }
     let parsed_kind = parse_kind_filter(&args.kind)?;
-    let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
+    let (root, cfg, findings, inventory_facts, _federation) = load_world_for_path(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         Some(args.kind.as_str()),
-        args.include_untracked,
-        EvidenceValidationMode::ReportOnly,
+        &args.path,
     )?;
     let (finding_index, finding) =
         crate::add::select_add_finding(&findings, parsed_kind, &args.path, args.line)?;
