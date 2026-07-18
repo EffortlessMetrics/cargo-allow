@@ -8,6 +8,15 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+### Added
+
+- `cargo-allow why --plan <PATH>` emits a versioned
+  `cargo-allow.add-finding-plan.v1` artifact for an exact currently-new
+  finding. The non-mutating, no-overwrite plan binds repository inventory,
+  policy bytes, source bytes, structural identity, policy-derived human
+  requirements, near-miss reasons, and structured add/check argv; non-new
+  findings fail closed without writing a plan.
+
 ## [0.1.11] - 2026-07-17
 
 ### Added

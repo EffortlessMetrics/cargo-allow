@@ -28,6 +28,9 @@ pub(crate) struct WhyArgs {
     /// Write explanation output to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
+    /// Write a versioned, non-mutating add-finding plan artifact.
+    #[arg(long)]
+    pub(super) plan: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]

@@ -6515,3 +6515,22 @@ symbol = "docs/release/github/v0.1.11.md"
 target_fingerprint = "md"
 line_hint = 1
 glob = "docs/release/github/v0.1.11.md"
+
+[[allow]]
+id = "allow-9012"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/add-finding-plan.schema.json"
+owner = "core/policy"
+classification = "schema_contract"
+reason = "Defines the stable cargo-allow.add-finding-plan.v1 machine artifact contract emitted by why."
+evidence = ["doc:docs/schemas/README.md", "test:add_finding_plan_output"]
+created = "2026-07-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/add-finding-plan.schema.json"
+target_fingerprint = "json"
+line_hint = 1
+glob = "docs/schemas/add-finding-plan.schema.json"

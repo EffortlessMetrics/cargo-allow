@@ -1,6 +1,6 @@
 use crate::{
     AllowEntry, FindingKind, LastSeen, Lifecycle, Selector, allow_entry_content_fingerprint,
-    normalize_snippet, stable_hash_hex,
+    normalize_snippet, sha256_v1_bytes, stable_hash_hex,
 };
 use std::path::PathBuf;
 
@@ -8,6 +8,14 @@ use std::path::PathBuf;
 fn hash_is_stable() {
     assert_eq!(stable_hash_hex("abc"), stable_hash_hex("abc"));
     assert_ne!(stable_hash_hex("abc"), stable_hash_hex("abd"));
+}
+
+#[test]
+fn byte_fingerprint_uses_versioned_sha256() {
+    assert_eq!(
+        sha256_v1_bytes(b"abc"),
+        "sha256:v1:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    );
 }
 
 #[test]

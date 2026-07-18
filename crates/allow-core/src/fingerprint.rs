@@ -144,6 +144,18 @@ pub fn stable_hash_hex(input: &str) -> String {
     format!("fnv1a64:{hash:016x}")
 }
 
+/// Versioned SHA-256 digest for exact artifact byte bindings.
+///
+/// This is a provenance digest, not a semantic identity or matching key.
+pub fn sha256_v1_bytes(input: &[u8]) -> String {
+    let digest = Sha256::digest(input);
+    let hex = digest
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    format!("sha256:v1:{hex}")
+}
+
 const ALLOW_ENTRY_FINGERPRINT_SCHEMA: &str = "cargo-allow.allow-entry-fingerprint.v1";
 
 /// Deterministic content fingerprint of an allow entry's full state, for
@@ -212,12 +224,7 @@ pub fn allow_entry_content_fingerprint(entry: &AllowEntry) -> String {
         None => canonical.push(0),
     }
 
-    let digest = Sha256::digest(canonical);
-    let hex = digest
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>();
-    format!("sha256:v1:{hex}")
+    sha256_v1_bytes(&canonical)
 }
 
 fn write_string(output: &mut Vec<u8>, value: &str) {
