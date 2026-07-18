@@ -357,7 +357,11 @@ impl PackageManifest {
         let table = toml::from_str::<toml::Table>(text)
             .map_err(|error| CargoAllowError::new(format!("invalid Cargo manifest: {error}")))?;
         let Some(package) = table.get("package").and_then(toml::Value::as_table) else {
-            if table.get("workspace").and_then(toml::Value::as_table).is_some() {
+            if table
+                .get("workspace")
+                .and_then(toml::Value::as_table)
+                .is_some()
+            {
                 return Ok(None);
             }
             return Err(CargoAllowError::new(
@@ -377,12 +381,7 @@ impl PackageManifest {
         let autotests = package_bool(package, "autotests", true);
         let mut targets = Vec::new();
 
-        if let Some(library) = library_target(
-            &table,
-            &root,
-            &default_target_name,
-            source_paths,
-        ) {
+        if let Some(library) = library_target(&table, &root, &default_target_name, source_paths) {
             targets.push(library);
         }
         targets.extend(explicit_targets(
@@ -658,6 +657,9 @@ fn assign_descendant_roots(package_root: &Path, targets: &mut [DeclaredTarget]) 
         .map(|target| target.path.clone())
         .collect::<Vec<_>>();
     for target in targets {
+        if target.top_level_source_root.is_some() {
+            continue;
+        }
         let Some(parent) = target.path.parent() else {
             continue;
         };
@@ -666,8 +668,7 @@ fn assign_descendant_roots(package_root: &Path, targets: &mut [DeclaredTarget]) 
             .file_stem()
             .and_then(|stem| stem.to_str())
             .unwrap_or_default();
-        let candidate = if target.path.file_name().and_then(|name| name.to_str())
-            == Some("main.rs")
+        let candidate = if target.path.file_name().and_then(|name| name.to_str()) == Some("main.rs")
             || target.path.file_name().and_then(|name| name.to_str()) == Some("mod.rs")
         {
             parent.to_path_buf()
@@ -735,8 +736,8 @@ impl TestTraversal<'_> {
         let additional_attribute = attribute_names
             .iter()
             .find(|name| self.options.additional_test_attributes.contains(*name));
-        let is_test = attribute_names.iter().any(|name| name == "test")
-            || additional_attribute.is_some();
+        let is_test =
+            attribute_names.iter().any(|name| name == "test") || additional_attribute.is_some();
         if !is_test {
             return;
         }
@@ -786,7 +787,8 @@ impl TestTraversal<'_> {
             );
         }
         if ignored {
-            limitations.push("ignored tests are not executable proof subjects by default".to_string());
+            limitations
+                .push("ignored tests are not executable proof subjects by default".to_string());
         }
         limitations.sort();
         limitations.dedup();
@@ -800,11 +802,7 @@ impl TestTraversal<'_> {
             source_path: normalize_path(self.path),
             source_range: RustTestSourceRange {
                 start_line: start_position.row as u32 + 1,
-                start_column: source_column(
-                    self.source,
-                    start_position.row,
-                    start_position.column,
-                ),
+                start_column: source_column(self.source, start_position.row, start_position.column),
                 end_line: end_position.row as u32 + 1,
                 end_column: source_column(self.source, end_position.row, end_position.column),
             },
@@ -1186,9 +1184,12 @@ mod tests {
         );
         let subject = only_subject(&inventory)?;
         assert_eq!(subject.selector.target.kind, RustTestTargetKind::Binary);
-        assert!(subject.limitations.iter().any(|limitation| {
-            limitation.contains("cannot prove the module is included")
-        }));
+        assert!(
+            subject
+                .limitations
+                .iter()
+                .any(|limitation| { limitation.contains("cannot prove the module is included") })
+        );
         Ok(())
     }
 
@@ -1291,7 +1292,10 @@ mod tests {
             &RustTestInventoryOptions::default(),
         );
         let subject = only_subject(&inventory)?;
-        assert_eq!(subject.selector.target.kind, RustTestTargetKind::IntegrationTest);
+        assert_eq!(
+            subject.selector.target.kind,
+            RustTestTargetKind::IntegrationTest
+        );
         assert_eq!(subject.selector.target.name, "contract");
         Ok(())
     }
