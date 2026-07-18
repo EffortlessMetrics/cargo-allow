@@ -93,10 +93,7 @@ impl Eq for StagedRepositorySnapshot {}
 pub enum StagedPathRead {
     Missing,
     Regular(Vec<u8>),
-    Unsupported {
-        mode: String,
-        kind: StagedEntryKind,
-    },
+    Unsupported { mode: String, kind: StagedEntryKind },
 }
 
 pub fn staged_repository_snapshot(
@@ -183,10 +180,7 @@ fn load_snapshot_once(root: &Path) -> CargoAllowResult<StagedRepositorySnapshot>
     })
 }
 
-fn staged_limitations(
-    entries: &[StagedIndexEntry],
-    changes: &[StagedPathChange],
-) -> Vec<String> {
+fn staged_limitations(entries: &[StagedIndexEntry], changes: &[StagedPathChange]) -> Vec<String> {
     let mut limitations = Vec::new();
     for entry in entries {
         if is_zero_oid(&entry.object_oid) {
@@ -360,7 +354,9 @@ fn parse_index_record(record: &[u8]) -> CargoAllowResult<StagedIndexEntry> {
     .parse::<u8>()
     .map_err(|source| malformed_git("index stage is malformed").with_cause(&source))?;
     if fields.next().is_some() || !is_full_or_zero_oid(&object_oid) || stage > 3 {
-        return Err(malformed_git("git ls-files returned an invalid index entry"));
+        return Err(malformed_git(
+            "git ls-files returned an invalid index entry",
+        ));
     }
 
     Ok(StagedIndexEntry {
@@ -458,11 +454,9 @@ fn parse_change_status(text: &str) -> CargoAllowResult<(StagedPathStatus, Option
         if digits.is_empty() {
             None
         } else {
-            Some(
-                digits
-                    .parse::<u8>()
-                    .map_err(|source| malformed_git("similarity score is malformed").with_cause(&source))?,
-            )
+            Some(digits.parse::<u8>().map_err(|source| {
+                malformed_git("similarity score is malformed").with_cause(&source)
+            })?)
         }
     } else {
         None
@@ -714,7 +708,7 @@ fn git_command(root: &Path) -> Command {
     command
 }
 
-fn run_git(mut command: Command, operation: &str) -> CargoAllowResult<Output> {
+fn run_git(command: &mut Command, operation: &str) -> CargoAllowResult<Output> {
     command.output().map_err(|source| {
         staged_error(
             CargoAllowErrorKind::Inventory,
@@ -922,8 +916,7 @@ mod tests {
         repo.git(&["add", "--", "value.txt"])?;
         repo.write("value.txt", "worktree\n")?;
 
-        let snapshot =
-            staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
+        let snapshot = staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
         assert_eq!(
             read_staged_path(&snapshot, Path::new("value.txt"))
                 .map_err(|error| error.to_string())?,
@@ -941,16 +934,17 @@ mod tests {
         repo.git(&["add", "--", "copy.txt"])?;
         repo.git(&["rm", "-q", "source.txt"])?;
 
-        let snapshot =
-            staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
+        let snapshot = staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
         assert_eq!(
             read_staged_path(&snapshot, Path::new("source.txt"))
                 .map_err(|error| error.to_string())?,
             StagedPathRead::Missing
         );
         assert!(snapshot.changes.iter().any(|change| {
-            matches!(change.status, StagedPathStatus::Copied | StagedPathStatus::Renamed)
-                && change.raw_path == b"copy.txt"
+            matches!(
+                change.status,
+                StagedPathStatus::Copied | StagedPathStatus::Renamed
+            ) && change.raw_path == b"copy.txt"
                 && change.previous_raw_path.as_deref() == Some(b"source.txt")
         }));
         Ok(())
@@ -1029,8 +1023,7 @@ mod tests {
             "--cacheinfo",
             &format!("160000,{commit},vendor/demo"),
         ])?;
-        let snapshot =
-            staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
+        let snapshot = staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
         assert_eq!(snapshot.completeness, StagedSnapshotCompleteness::Partial);
         assert!(matches!(
             read_staged_path(&snapshot, Path::new("vendor/demo"))
@@ -1050,8 +1043,7 @@ mod tests {
 
         let repo = TestRepo::new()?;
         repo.commit_file("target.txt", "target\n")?;
-        symlink("target.txt", repo.root.join("link.txt"))
-            .map_err(|error| error.to_string())?;
+        symlink("target.txt", repo.root.join("link.txt")).map_err(|error| error.to_string())?;
         repo.git(&["add", "--", "link.txt"])?;
         let raw_name = OsString::from_vec(b"non-utf8-\xff.txt".to_vec());
         fs::write(repo.root.join(&raw_name), b"bytes\n").map_err(|error| error.to_string())?;
@@ -1065,21 +1057,21 @@ mod tests {
             .map_err(|error| error.to_string())?;
         assert!(output.status.success());
 
-        let snapshot =
-            staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
+        let snapshot = staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
         assert_eq!(snapshot.completeness, StagedSnapshotCompleteness::Partial);
         assert!(matches!(
-            read_staged_path(&snapshot, Path::new("link.txt"))
-                .map_err(|error| error.to_string())?,
+            read_staged_path(&snapshot, Path::new("link.txt")).map_err(|error| error.to_string())?,
             StagedPathRead::Unsupported {
                 kind: StagedEntryKind::Symlink,
                 ..
             }
         ));
-        assert!(snapshot
-            .entries
-            .iter()
-            .any(|entry| entry.raw_path == b"non-utf8-\xff.txt"));
+        assert!(
+            snapshot
+                .entries
+                .iter()
+                .any(|entry| entry.raw_path == b"non-utf8-\xff.txt")
+        );
         Ok(())
     }
 
@@ -1098,8 +1090,7 @@ mod tests {
         repo.write("value.txt", "original\n")?;
         repo.git(&["add", "--", "value.txt"])?;
 
-        let snapshot =
-            staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
+        let snapshot = staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
         assert_eq!(
             read_staged_path(&snapshot, Path::new("value.txt"))
                 .map_err(|error| error.to_string())?,
@@ -1113,8 +1104,7 @@ mod tests {
         let repo = TestRepo::new()?;
         repo.write("first.txt", "first\n")?;
         repo.git(&["add", "--", "first.txt"])?;
-        let snapshot =
-            staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
+        let snapshot = staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
         assert_eq!(snapshot.parent_commit, None);
         assert_eq!(
             read_staged_path(&snapshot, Path::new("first.txt"))
