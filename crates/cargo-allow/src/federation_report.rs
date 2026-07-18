@@ -97,10 +97,18 @@ impl FederationReportBundle {
             .count()
     }
 
-    pub(crate) fn has_blocking_divergence(&self) -> bool {
+    /// Count of blocking divergences (`drain_expired`). These fail the run, so
+    /// the receipt records them separately from the advisory mirror count
+    /// rather than leaving the operator to read a zero while CI fails (#1945).
+    pub(crate) fn blocking_divergence_count(&self) -> usize {
         self.divergence_kinds
             .iter()
-            .any(|kind| kind.as_str() == "drain_expired")
+            .filter(|kind| kind.as_str() == "drain_expired")
+            .count()
+    }
+
+    pub(crate) fn has_blocking_divergence(&self) -> bool {
+        self.blocking_divergence_count() > 0
     }
 
     pub(crate) fn with_context<R>(&self, f: impl FnOnce(FederationReportContext<'_>) -> R) -> R {

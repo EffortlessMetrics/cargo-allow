@@ -439,7 +439,15 @@ pub struct ReportContext<'a> {
     pub tool_version: Option<&'a str>,
     pub lane_posture: Option<&'a BTreeMap<String, allow_core::LaneEnforcementMode>>,
     pub federation: Option<FederationReportContext<'a>>,
+    /// Advisory count of canonical-versus-mirror divergences during active
+    /// drain windows (mirror_divergence / mirror_stale). Feeds the review-item
+    /// tally; it deliberately excludes blocking divergences.
     pub mirror_divergence_entries: Option<usize>,
+    /// Count of blocking federation divergences (drain_expired) that fail the
+    /// run. Kept distinct from `mirror_divergence_entries` so a blocking
+    /// divergence surfaces in the receipt instead of being hidden behind a
+    /// zero advisory count while CI fails (#1945).
+    pub blocking_divergence_entries: Option<usize>,
     /// Git commit SHA when available, for receipt provenance binding (#1850).
     pub git_sha: Option<&'a str>,
     /// SHA-256 hex digest of the policy file content at scan time (#1850).
@@ -475,6 +483,7 @@ impl<'a> ReportContext<'a> {
             lane_posture: None,
             federation: None,
             mirror_divergence_entries: None,
+            blocking_divergence_entries: None,
             git_sha: None,
             policy_digest: None,
             started_at: None,
